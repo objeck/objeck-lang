@@ -155,14 +155,14 @@ namespace Runtime {
         type = REG_FLOAT;
       }
       holder = h;
-      instr = NULL;
+      instr = nullptr;
     }  
 
     RegInstr(double o2) {
       type = IMM_FLOAT;
       operand2 = o2;
-      holder = NULL;
-      instr = NULL;
+      holder = nullptr;
+      instr = nullptr;
     }
 
     RegInstr(RegType t, long o) {
@@ -214,7 +214,7 @@ namespace Runtime {
         break;
       }
       instr = si;
-      holder = NULL;
+      holder = nullptr;
     }
 
     ~RegInstr() {
@@ -294,7 +294,7 @@ namespace Runtime {
 
     ~PageHolder() {
       munmap(buffer, PAGE_SIZE);
-      buffer = NULL;
+      buffer = nullptr;
     }
 
     inline bool CanAddCode(int32_t size) {
@@ -760,7 +760,7 @@ namespace Runtime {
         working_stack.pop_front();
         if(instr) {
           delete instr;
-          instr = NULL;
+          instr = nullptr;
         }
       }      
 
@@ -769,7 +769,7 @@ namespace Runtime {
         aval_regs.pop_back();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
       }
 
@@ -778,7 +778,7 @@ namespace Runtime {
         aval_xregs.pop_back();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
       }
 
@@ -786,7 +786,7 @@ namespace Runtime {
         RegisterHolder* holder = used_regs.front();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
         // next
         used_regs.pop_front();
@@ -797,7 +797,7 @@ namespace Runtime {
         RegisterHolder* holder = used_xregs.front();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
         // next
         used_xregs.pop_front();
@@ -808,7 +808,7 @@ namespace Runtime {
         RegisterHolder* holder = aux_regs.top();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
         aux_regs.pop();
       }

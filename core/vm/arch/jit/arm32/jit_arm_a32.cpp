@@ -411,7 +411,7 @@ void JitCompilerA32::ProcessInstructions() {
       ReleaseXmmRegister(left->GetRegister());
 
       delete left; 
-      left = NULL;
+      left = nullptr;
       
       RegisterHolder* holder = GetRegister();
       cmov_reg(holder->GetRegister(), instr->GetType());
@@ -648,7 +648,7 @@ void JitCompilerA32::ProcessInstructions() {
         }
         // clean up
         delete left;
-        left = NULL;
+        left = nullptr;
       }
     }
       break;
@@ -804,7 +804,7 @@ void JitCompilerA32::ProcessLoad(StackInstr* instr) {
     }
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
 }
 
@@ -858,7 +858,7 @@ void JitCompilerA32::ProcessJump(StackInstr* instr) {
       
       // clean up
       delete left;
-      left = NULL;
+      left = nullptr;
     }
     // store update index
     jump_table.insert(pair<int32_t, StackInstr*>(code_index, instr));
@@ -877,7 +877,7 @@ void JitCompilerA32::ProcessJump(StackInstr* instr) {
 
     // clean up
     delete left;
-    left = NULL;
+    left = nullptr;
   }
 }
 
@@ -976,7 +976,7 @@ void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
   }
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
@@ -1022,7 +1022,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
   }
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessStoreIntElement(StackInstr* instr) {
@@ -1056,7 +1056,7 @@ void JitCompilerA32::ProcessStoreIntElement(StackInstr* instr) {
   ReleaseRegister(elem_holder);
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessStoreFloatElement(StackInstr* instr) {
@@ -1092,7 +1092,7 @@ void JitCompilerA32::ProcessStoreFloatElement(StackInstr* instr) {
   ReleaseRegister(elem_holder);
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessFloor(StackInstr* instr) {
@@ -1105,7 +1105,7 @@ void JitCompilerA32::ProcessFloor(StackInstr* instr) {
     round_imm_xreg(left, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1115,7 +1115,7 @@ void JitCompilerA32::ProcessFloor(StackInstr* instr) {
     round_mem_xreg(left->GetOperand(), FP, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1140,7 +1140,7 @@ void JitCompilerA32::ProcessCeiling(StackInstr* instr) {
     round_imm_xreg(left, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1150,7 +1150,7 @@ void JitCompilerA32::ProcessCeiling(StackInstr* instr) {
     round_mem_xreg(left->GetOperand(), FP, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1193,7 +1193,7 @@ void JitCompilerA32::ProcessFloatToInt(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessIntToFloat(StackInstr* instr) {
@@ -1223,12 +1223,12 @@ void JitCompilerA32::ProcessIntToFloat(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessStore(StackInstr* instr) {
   Register dest;
-  RegisterHolder* addr_holder = NULL;
+  RegisterHolder* addr_holder = nullptr;
 
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
@@ -1250,7 +1250,7 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
     CheckNilDereference(dest);
     
     delete left;
-    left = NULL;
+    left = nullptr;
   }
   
   RegInstr* left = working_stack.front();
@@ -1266,7 +1266,7 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
       move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(int32_t), dest);
 
       delete left2;
-      left2 = NULL;
+      left2 = nullptr;
     }
     else {
       move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
@@ -1285,7 +1285,7 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
       move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(int32_t), dest);
 
       delete left2;
-      left2 = NULL;
+      left2 = nullptr;
     }
     else {      
       move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
@@ -1313,7 +1313,7 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
       ReleaseRegister(holder2);
 
       delete left2;
-      left2 = NULL;
+      left2 = nullptr;
     }
     else {
       /*
@@ -1353,7 +1353,7 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
   }
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerA32::ProcessCopy(StackInstr* instr) {
@@ -1374,7 +1374,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
     ReleaseRegister(holder);
     
     delete left;
-    left = NULL;
+    left = nullptr;
   }
   
   RegInstr* left = working_stack.front();
@@ -1388,7 +1388,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1401,7 +1401,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1420,7 +1420,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1433,7 +1433,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1668,7 +1668,7 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
       }
       // clean up
       delete left;
-      left = NULL;
+      left = nullptr;
     }
   }
 }
@@ -1730,7 +1730,7 @@ RegInstr* JitCompilerA32::ProcessIntFold(long left_imm, long right_imm, Instruct
     return new RegInstr(IMM_INT, left_imm >= right_imm);
     
   default:
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -1854,10 +1854,10 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
   }
 
   delete left;
-  left = NULL;
+  left = nullptr;
     
   delete right;
-  right = NULL;
+  right = nullptr;
 }
 
  void JitCompilerA32::ProcessFloatCalculation(StackInstr* instruction) {
@@ -2064,10 +2064,10 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
   }
 
   delete left;
-  left = NULL;
+  left = nullptr;
     
   delete right;
-  right = NULL;
+  right = nullptr;
 }
 
 //====================================================================
@@ -2416,7 +2416,7 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
 	<< L", " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
 
-  RegisterHolder* result_holder = NULL;
+  RegisterHolder* result_holder = nullptr;
 
   // sign divide
   uint32_t op_code = 0xe710f010;
@@ -3372,7 +3372,7 @@ void JitCompilerA32::dec_reg(Register dest) {
 void JitCompilerA32::shl_reg_reg(Register src, Register dest)
 {
   Register old_dest;
-  RegisterHolder* reg_holder = NULL;
+  RegisterHolder* reg_holder = nullptr;
   if(dest == R2) {
     reg_holder = GetRegister();
     old_dest = dest;
@@ -3434,7 +3434,7 @@ void JitCompilerA32::shr_imm_reg(int32_t value, Register dest) {
 void JitCompilerA32::shr_reg_reg(Register src, Register dest)
 {
   Register old_dest;
-  RegisterHolder* reg_holder = NULL;
+  RegisterHolder* reg_holder = nullptr;
   if(dest == R2) {
     reg_holder = GetRegister();
     old_dest = dest;
@@ -4285,7 +4285,7 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-    pthread_mutex_init((pthread_mutex_t*)& instance[1], NULL);
+    pthread_mutex_init((pthread_mutex_t*)& instance[1], nullptr);
   }
                      break;
 
@@ -4425,7 +4425,7 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
   case TRAP_RTRN: {
     size_t* stack = (size_t*)op_stack;
     long* pos = (long*)stack_pos;
-    if(!TrapProcessor::ProcessTrap(program, (size_t*)inst, stack, pos, NULL)) {
+    if(!TrapProcessor::ProcessTrap(program, (size_t*)inst, stack, pos, nullptr)) {
       wcerr << L"  JIT compiled machine code..." << endl;
       exit(1);
     }
@@ -4481,7 +4481,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
   */
 
   delete holder;
-  holder = NULL;
+  holder = nullptr;
 
   // get initial index
   RegisterHolder* index_holder;
@@ -4515,7 +4515,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
                 index_holder->GetRegister());
     if(holder) {
       delete holder;
-      holder = NULL;
+      holder = nullptr;
     }
 
     holder = working_stack.front();
@@ -4573,7 +4573,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
   ReleaseRegister(index_holder);
 
   delete holder;
-  holder = NULL;
+  holder = nullptr;
 
   return array_holder;
 }
@@ -4786,7 +4786,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, nullptr));
     
     free(code);
-    code = NULL;
+    code = nullptr;
     
     compile_success = true;
   }
@@ -4832,7 +4832,7 @@ Runtime::PageManager::~PageManager()
     holders.erase(holders.begin());
     // delete
     delete tmp;
-    tmp = NULL;
+    tmp = nullptr;
   }
 }
 
@@ -4840,7 +4840,7 @@ uint32_t* Runtime::PageManager::GetPage(uint32_t* code, int32_t size)
 {
   bool placed = false;
 
-  uint32_t* temp = NULL;
+  uint32_t* temp = nullptr;
   for(size_t i = 0; !placed && i < holders.size(); ++i) {
     PageHolder* holder = holders[i];
     if(holder->CanAddCode(size)) {
