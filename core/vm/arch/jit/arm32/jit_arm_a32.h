@@ -418,6 +418,16 @@ namespace Runtime {
       AddMachineCode(imm);
     }
     
+    inline void AddDouble(float imm) {
+      uint32_t value;
+      
+      memcpy(&value, &value, sizeof(value));
+      AddMachineCode(imm);
+      
+      memcpy(&value, &value + sizeof(value), sizeof(value));
+      AddMachineCode(imm);
+    }
+    
     // Encodes and writes out a 16-bit integer value
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
