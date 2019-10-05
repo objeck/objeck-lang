@@ -240,10 +240,6 @@ namespace Runtime {
       return type;
     }
 
-    void SetOperand(int32_t o) {
-      operand = o;
-    }
-
     int32_t GetOperand() {
       return operand;
     }
@@ -415,16 +411,6 @@ namespace Runtime {
       AddMachineCode(imm);
     }
     
-    inline void AddDouble(float imm) {
-      uint32_t value;
-      
-      memcpy(&value, &value, sizeof(value));
-      AddMachineCode(imm);
-      
-      memcpy(&value, &value + sizeof(value), sizeof(value));
-      AddMachineCode(imm);
-    }
-    
     // Encodes and writes out a 16-bit integer value
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
@@ -433,28 +419,15 @@ namespace Runtime {
         AddMachineCode(buffer[i]);
       }
     }
-
-    // Caculates the IA-32 MOD R/M
-    // offset
-    unsigned ModRM(Register eff_adr, Register mod_rm);
-
-	// Returns the name of a register
-	wstring GetRegisterName(Register reg);
-	  
-    // Encodes a byte array with a 32-bit value
-    inline void ByteEncode32(unsigned char buffer[], int32_t value) {
-      memcpy(buffer, &value, sizeof(int32_t));
-    }
+    
+	  // Returns the name of a register
+	  wstring GetRegisterName(Register reg);
 
     // Encodes a byte array with a 16-bit value
     inline void ByteEncode16(unsigned char buffer[], int16_t value) {
       memcpy(buffer, &value, sizeof(int16_t));
     }
-
-    // Encodes an array with the 
-    // binary ID of a register
-    void RegisterEncode3(unsigned char& code, int32_t offset, Register reg);
-
+    
     /***********************************
      * Check for 'Nil' dereferencing
      **********************************/

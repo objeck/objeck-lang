@@ -2356,6 +2356,10 @@ void JitCompilerA32::inc_mem(int32_t offset, Register dest) {
   add_imm_mem(1, offset, dest);
 }
 
+void JitCompilerA32::dec_reg(Register dest) {
+  sub_imm_reg(1, dest);
+}
+
 void JitCompilerA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -2659,7 +2663,7 @@ void JitCompilerA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) 
   AddMachineCode(0x66);    
   AddMachineCode(0xc7);    
   unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   // write value
   AddImm(offset);
@@ -3366,16 +3370,6 @@ void JitCompilerA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerA32::dec_reg(Register dest) {
-  unsigned char code = 0x48;
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [decl %" 
-        << GetRegisterName(dest) << L"]" << endl;
-#endif
-}
-
 void JitCompilerA32::shl_reg_reg(Register src, Register dest)
 {
   Register old_dest;
@@ -3872,105 +3866,6 @@ void JitCompilerA32::fsqrt() {
   AddMachineCode(0xfa);
 }
 
-unsigned Runtime::JitCompilerA32::ModRM(Register eff_adr, Register mod_rm)
-{
-	/*
-  unsigned byte = 0;
-
-  switch(mod_rm) {
-  case ESP:
-  case D4:
-    byte = 0xa0;
-    break;
-
-  case EAX:
-  case D0:
-    byte = 0x80;
-    break;
-
-  case EBX:
-  case D3:
-    byte = 0x98;
-    break;
-
-  case ECX:
-  case D1:
-    byte = 0x88;
-    break;
-
-  case EDX:
-  case D2:
-    byte = 0x90;
-    break;
-
-  case EDI:
-  case D7:
-    byte = 0xb8;
-    break;
-
-  case ESI:
-  case D6:
-    byte = 0xb0;
-    break;
-
-  case FP:
-  case D5:
-    byte = 0xa8;
-    break;
-  }
-
-  switch(eff_adr) {
-  case EAX:
-  case D0:
-    break;
-
-  case EBX:
-  case D3:
-    byte += 3;
-    break;
-
-  case ECX:
-  case D1:
-    byte += 1;
-    break;
-
-  case EDX:
-  case D2:
-    byte += 2;
-    break;
-
-  case EDI:
-  case D7:
-    byte += 7;
-    break;
-
-  case ESI:
-  case D6:
-    byte += 6;
-    break;
-
-  case FP:
-  case D5:
-    byte += 5;
-    break;
-
-  case D4:
-    byte += 4;
-    break;
-
-    // should never happen for esp
-  case ESP:
-    wcerr << L">>> invalid register reference <<<" << endl;
-    exit(1);
-    break;
-  }
-
-  return byte;
-  */
-	
-	return 0;
-}
-
 std::wstring Runtime::JitCompilerA32::GetRegisterName(Register reg)
 {
 	switch(reg) {
@@ -4024,68 +3919,6 @@ std::wstring Runtime::JitCompilerA32::GetRegisterName(Register reg)
 	}
   
 	return L"unknown";
-}
-
-void Runtime::JitCompilerA32::RegisterEncode3(unsigned char& code, int32_t offset, Register reg)
-{
-#ifdef _DEBUG
-  assert(offset == 2 || offset == 5);
-#endif
-
-  /*
-  unsigned char reg_id;
-  switch(reg) {
-  case EAX:
-  case D0:
-    reg_id = 0x0;
-    break;
-
-  case EBX:
-  case D3:
-    reg_id = 0x3;
-    break;
-
-  case ECX:
-  case D1:
-    reg_id = 0x1;
-    break;
-
-  case EDX:
-  case D2:
-    reg_id = 0x2;
-    break;
-
-  case EDI:
-  case D7:
-    reg_id = 0x7;
-    break;
-
-  case ESI:
-  case D6:
-    reg_id = 0x6;
-    break;
-
-  case ESP:
-  case D4:
-    reg_id = 0x4;
-    break;
-
-  case FP:
-  case D5:
-    reg_id = 0x5;
-    break;
-
-  default:
-    wcerr << L"internal error" << endl;
-    exit(1);
-    break;
-  }
-
-  if(offset == 2) {
-    reg_id = reg_id << 3;
-  }
-  code = code | reg_id;
-  */
 }
 
 void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
