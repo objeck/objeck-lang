@@ -286,9 +286,7 @@ void JitCompilerA32::ProcessInstructions() {
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      floats[floats_index] = instr->GetFloatOperand();
-      working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
-      // ‭ED100B00‬
+      working_stack.push_front(new RegInstr(instr->GetFloatOperand()));
       break;
       
       // load self
@@ -2205,6 +2203,32 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
   }
 }
 
+void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
+  double imm = instr->GetOperand2();
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xed100b00;
+    
+  uint32_t op_dest = reg << 12;
+  op_code |= op_dest;
+    
+  // op_code |= abs(101);
+  const_float_pool.insert(pair<double, int32_t>(imm, code_index));
+    
+  // encode
+  AddMachineCode(op_code);
+  
+  /*
+  // copy address of imm value
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());  
+  move_mem_xreg(0, imm_holder->GetRegister(), reg);
+  ReleaseRegister(imm_holder);
+  */
+}
+
 void JitCompilerA32::add_mem_reg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -2571,14 +2595,6 @@ void JitCompilerA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) 
   // write value
   AddImm(offset);
   AddImm16(imm);
-}
-
-void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());  
-  move_mem_xreg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
 }
     
 void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
@@ -4665,13 +4681,8 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
     }
-	
-    if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
-      wcerr << L"Unable to allocate JIT memory!" << endl;
-      exit(1);
-    }
-
-    floats_index = instr_index = code_index = instr_count = 0;
+    
+    instr_index = code_index = instr_count = 0;
     // general use registers
     aval_regs.push_back(new RegisterHolder(R3));
     aval_regs.push_back(new RegisterHolder(R2));
@@ -4772,7 +4783,8 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Caching JIT code: actual=" << code_size_bytes << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, nullptr));
+    
     free(code);
     code = NULL;
     

@@ -5274,9 +5274,16 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
 
     // translate parameters
     ProcessParameters(method->GetParamCount());
-    // tranlsate program
+    // translate program
     ProcessInstructions();
     if(!compile_success) {
+#ifdef _WIN64
+      VirtualFree(floats, 0, MEM_RELEASE);
+#else
+      free(floats);
+#endif
+      floats = nullptr;
+
       return false;
     }
 
