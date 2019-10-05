@@ -122,10 +122,12 @@ namespace Runtime {
    ********************************/
   class RegisterHolder {
     Register reg;
+    bool is_float;
 
   public:
-    RegisterHolder(Register r) {
+    RegisterHolder(Register r, bool f) {
       reg = r;
+      is_float = f;
     }
 
     ~RegisterHolder() {
@@ -133,6 +135,9 @@ namespace Runtime {
 
     Register GetRegister() {
       return reg;
+    }
+    bool IsDouble() {
+      return is_float;
     }
   };
 
@@ -142,25 +147,24 @@ namespace Runtime {
   class RegInstr {
     RegType type;
     long operand;
-    double operand2;
     RegisterHolder* holder;
     StackInstr* instr;
 
   public:    
     RegInstr(RegisterHolder* h) {
-      if(h->GetRegister() < D0) {
-        type = REG_INT;
+      if(h->IsDouble()) {
+        type = REG_FLOAT;
       }
       else {
-        type = REG_FLOAT;
+        type = REG_INT;
       }
       holder = h;
       instr = nullptr;
     }  
 
-    RegInstr(double o2) {
+    RegInstr(StackInstr* si, double* da) {
       type = IMM_FLOAT;
-      operand2 = o2;
+      operand = (long)da;
       holder = nullptr;
       instr = nullptr;
     }
@@ -242,14 +246,6 @@ namespace Runtime {
 
     int32_t GetOperand() {
       return operand;
-    }
-    
-    void SetOperand2(double o2) {
-      operand2 = o2;
-    }
-    
-    double GetOperand2() {
-      return operand2;
     }
   };
 
@@ -347,7 +343,6 @@ namespace Runtime {
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
     multimap<int32_t, int32_t> const_int_pool;
-    multimap<double, int32_t> const_float_pool;
     vector<int32_t> deref_offsets;          // -1
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
@@ -357,6 +352,8 @@ namespace Runtime {
 	  uint32_t* code;
     int32_t code_index;
     int32_t epilog_index;
+    double* floats;     
+    int32_t floats_index;
     int32_t instr_index;
     int32_t code_buf_max;
     bool compile_success;
@@ -507,7 +504,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(R0));
+          aux_regs.push(new RegisterHolder(R0, false));
           holder = aux_regs.top();
           aux_regs.pop();
         }
@@ -557,7 +554,7 @@ namespace Runtime {
 #ifdef _DEBUG
         wcout << L">>> No D registers avaiable! <<<" << endl;
 #endif
-        aval_xregs.push_back(new RegisterHolder(D0));
+        aval_xregs.push_back(new RegisterHolder(D0, true));
         holder = aval_xregs.back();
         aval_xregs.pop_back();
         used_xregs.push_back(holder);
@@ -838,6 +835,7 @@ namespace Runtime {
     StackMethod* method;
     uint32_t* code;
     int32_t code_index; 
+    double* floats;
 
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code, 
                                const int32_t code_size, size_t* op_stack, long* stack_pos,
@@ -869,6 +867,7 @@ namespace Runtime {
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
+      floats = native_code->GetFloats();
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, call_stack, call_stack_pos, frame);

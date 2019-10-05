@@ -286,7 +286,8 @@ void JitCompilerA32::ProcessInstructions() {
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      working_stack.push_front(new RegInstr(instr->GetFloatOperand()));
+      floats[floats_index] = instr->GetFloatOperand();
+      working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
       break;
       
       // load self
@@ -2194,43 +2195,21 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
     
     uint32_t op_dest = reg << 12;
     op_code |= op_dest;
+    
+    // save code index
+    const_int_pool.insert(pair<int32_t, int32_t>(imm, code_index));
         
     // encode
     AddMachineCode(op_code);
-    
-    // save address
-    const_int_pool.insert(pair<int32_t, int32_t>(imm, code_index));
   }
 }
 
 void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << code_index << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xe59f0000;
-    
-  uint32_t op_dest = reg << 12;
-  op_code |= op_dest;
-        
-  // encode
-  AddMachineCode(op_code);
-  
-  /////////////////
-  
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << code_index << L"]" << endl;
-#endif
-  uint32_t op_code2 = 0xe59f0000;
-    
-  op_dest = reg << 12;
-  op_code2 |= op_dest;
-        
-  // encode
-  AddMachineCode(op_code2);
-  
-  // save address
-  const_float_pool.insert(pair<double, int32_t>(instr->GetOperand2(), code_index));
+  // copy address of imm value
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());  
+  move_mem_xreg(0, imm_holder->GetRegister(), reg);
+  ReleaseRegister(imm_holder);
 }
 
 void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
@@ -2241,14 +2220,13 @@ void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) 
   
   uint32_t op_code = 0xed100b00;
     
-  // TODO: offset wrong
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
+  uint32_t op_dest = dest << 16;
   op_code |= op_dest;
   
-  uint32_t op_offset = abs(offset);
+  uint32_t op_src = src << 12;
+  op_code |= op_src;
+  
+  uint32_t op_offset = abs(offset) >> 2;
   op_code |= op_offset;
   
   // encode
@@ -4700,26 +4678,31 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       exit(1);
     }
     
-    instr_index = code_index = instr_count = 0;
+    if(posix_memalign((void**)& floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+      wcerr << L"Unable to allocate JIT memory!" << endl;
+      exit(1);
+    }
+    
+    floats_index = instr_index = code_index = instr_count = 0;
     // general use registers
-    aval_regs.push_back(new RegisterHolder(R3));
-    aval_regs.push_back(new RegisterHolder(R2));
-    aval_regs.push_back(new RegisterHolder(R1));
-    aval_regs.push_back(new RegisterHolder(R0));
+    aval_regs.push_back(new RegisterHolder(R3, false));
+    aval_regs.push_back(new RegisterHolder(R2, false));
+    aval_regs.push_back(new RegisterHolder(R1, false));
+    aval_regs.push_back(new RegisterHolder(R0, false));
     // aux general use registers
-    aux_regs.push(new RegisterHolder(R7));
-    aux_regs.push(new RegisterHolder(R6));	
-    aux_regs.push(new RegisterHolder(R5));
-    aux_regs.push(new RegisterHolder(R4));
+    aux_regs.push(new RegisterHolder(R7, false));
+    aux_regs.push(new RegisterHolder(R6, false));	
+    aux_regs.push(new RegisterHolder(R5, false));
+    aux_regs.push(new RegisterHolder(R4, false));
     // floating point registers
-    aval_xregs.push_back(new RegisterHolder(D7));
-    aval_xregs.push_back(new RegisterHolder(D6));
-    aval_xregs.push_back(new RegisterHolder(D5));
-    aval_xregs.push_back(new RegisterHolder(D4)); 
-    aval_xregs.push_back(new RegisterHolder(D3));
-    aval_xregs.push_back(new RegisterHolder(D2)); 
-    aval_xregs.push_back(new RegisterHolder(D1));
-    aval_xregs.push_back(new RegisterHolder(D0));
+    aval_xregs.push_back(new RegisterHolder(D7, true));
+    aval_xregs.push_back(new RegisterHolder(D6, true));
+    aval_xregs.push_back(new RegisterHolder(D5, true));
+    aval_xregs.push_back(new RegisterHolder(D4, true)); 
+    aval_xregs.push_back(new RegisterHolder(D3, true));
+    aval_xregs.push_back(new RegisterHolder(D2, true)); 
+    aval_xregs.push_back(new RegisterHolder(D1, true));
+    aval_xregs.push_back(new RegisterHolder(D0, true));
 #ifdef _DEBUG
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
@@ -4739,6 +4722,9 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     // tranlsate program
     ProcessInstructions();
     if(!compile_success) {
+      delete[] floats;
+      floats = nullptr;
+      
       return false;
     }
 
@@ -4785,15 +4771,6 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       memcpy(&code[src_offset], &offset, 2);
     }
     
-    multimap<double, int32_t>::iterator float_pool_iter = const_float_pool.begin();
-    for(; float_pool_iter != const_float_pool.end(); ++float_pool_iter) {
-      const double const_value = float_pool_iter->first;
-      const int32_t src_offset = float_pool_iter->second;
-      const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
-      AddDouble(const_value);
-      // memcpy(&code[src_offset], &offset, 2);
-    }
-    
     if(code_index * sizeof(int32_t) > CONST_TABLE_MAX) {
       return false;
     }
@@ -4803,7 +4780,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Caching JIT code: actual=" << code_size_bytes << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, nullptr));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, floats));
     
     free(code);
     code = nullptr;
