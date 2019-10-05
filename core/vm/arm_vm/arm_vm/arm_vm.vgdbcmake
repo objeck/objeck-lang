@@ -16,8 +16,10 @@
       <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
       <LocalDirectory>$(ProjectDir)</LocalDirectory>
       <RemoteDirectory>/tmp/VisualGDB/$(ProjectDirUnixStyle)</RemoteDirectory>
+      <FileMasks />
       <TransferNewFilesOnly>true</TransferNewFilesOnly>
       <IncludeSubdirectories>true</IncludeSubdirectories>
+      <SelectedDirectories />
       <DeleteDisappearedFiles>false</DeleteDisappearedFiles>
       <ApplyGlobalExclusionList>true</ApplyGlobalExclusionList>
     </MainSourceTransferCommand>
