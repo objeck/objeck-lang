@@ -4568,7 +4568,6 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     if(!compile_success) {
       delete[] floats;
       floats = nullptr;
-      
       return false;
     }
 
@@ -4611,12 +4610,14 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
       const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
+      if(offset * sizeof(int32_t) >= 4096) {
+        delete[] floats;
+        floats = nullptr;
+        return false;
+      }
+      
       AddImm(const_value);
       code[src_offset] = code[src_offset] |= offset;
-    }
-    
-    if(code_index * sizeof(int32_t) > CONST_TABLE_MAX) {
-      return false;
     }
     
     const uint32_t code_size_bytes = code_index * sizeof(uint32_t);

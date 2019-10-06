@@ -69,8 +69,6 @@ namespace Runtime {
 #define MAX_DBLS 64
 #define PAGE_SIZE 4096
   
-#define CONST_TABLE_MAX 65535
-
   // register type
   typedef enum _RegType { 
     IMM_INT = -4000,
