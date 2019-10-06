@@ -1,15 +1,16 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		GoF()->PrintLine();
+		GoF(75.49)->PrintLine();
+#		GoI(9)->PrintLine();
 	}
 
-	function : native : GoI() ~ Int {
-		a := 351;
-		return a;
+	function : native : GoI(a : Int) ~ Int {
+		b := 13;
+		return b - a;
 	}
 
-	function : native : GoF() ~ Float {
-		a := 3.145;
-		return a;
+	function : native : GoF(a : Float) ~ Float {
+		b := 25.43;
+		return a + b;
 	}
 }
