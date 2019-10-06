@@ -70,17 +70,17 @@ namespace Runtime {
 #define PAGE_SIZE 4096
   
   // register type
-  typedef enum _RegType { 
+  enum RegType { 
     IMM_INT = -4000,
     REG_INT,
     MEM_INT,
     IMM_FLOAT,
     REG_FLOAT,
     MEM_FLOAT,
-  } RegType;
-
+  };
+  
   // general and SSE (x86) registers
-  typedef enum _Register { 
+  enum Register { 
     R0 = 0, 
     R1, 
     R2, 
@@ -104,16 +104,8 @@ namespace Runtime {
     D4,
     D5,
     D6,
-    D7,
-    D8,
-    D9,
-    D10,
-    D11,
-    D12,
-    D13,
-    D14,
-    D15
-  } Register;
+    D7
+  };
 
   /********************************
    * RegisterHolder class
@@ -410,27 +402,15 @@ namespace Runtime {
       AddMachineCode(imm);
     }
     
-    // Encodes and writes out a 16-bit integer value
-    inline void AddImm16(int16_t imm) {
-      unsigned char buffer[sizeof(int16_t)];
-      ByteEncode16(buffer, imm);
-      for(int16_t i = 0; i < (int16_t)sizeof(int16_t); i++) {
-        AddMachineCode(buffer[i]);
-      }
-    }
-    
 	  // Returns the name of a register
 	  wstring GetRegisterName(Register reg);
-
-    // Encodes a byte array with a 16-bit value
-    inline void ByteEncode16(unsigned char buffer[], int16_t value) {
-      memcpy(buffer, &value, sizeof(int16_t));
-    }
-    
+        
     /***********************************
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
+      assert(false);
+      /*
       // is zero
       cmp_imm_reg(0, reg);
       AddMachineCode(0x0f);
@@ -438,12 +418,15 @@ namespace Runtime {
       deref_offsets.push_back(code_index);
       AddImm(0);
       // jump to exit
+      */
     }
 
     /***********************************
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
+      assert(false);
+      /*
       // less than zero
       cmp_imm_reg(0, reg);
       AddMachineCode(0x0f);
@@ -459,6 +442,7 @@ namespace Runtime {
       bounds_greater_offsets.push_back(code_index);
       AddImm(0);
       // jump to exit
+      */
     }
 
     /***********************************
@@ -571,9 +555,6 @@ namespace Runtime {
     void move_reg_mem8(Register src, int32_t offset, Register dest);
     void move_mem8_reg(int32_t offset, Register src, Register dest);
     void move_imm_mem8(int32_t imm, int32_t offset, Register dest);    
-    void move_reg_mem16(Register src, int32_t offset, Register dest);
-    void move_mem16_reg(int32_t offset, Register src, Register dest);
-    void move_imm_mem16(int32_t imm, int32_t offset, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, int32_t offset, Register dest);
     void move_mem_reg(int32_t offset, Register src, Register dest);
