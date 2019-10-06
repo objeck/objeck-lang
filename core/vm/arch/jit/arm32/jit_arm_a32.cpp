@@ -4612,7 +4612,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       const int32_t src_offset = int_pool_iter->second;
       const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
       AddImm(const_value);
-      memcpy(&code[src_offset], &offset, 2);
+      code[src_offset] = code[src_offset] |= offset;
     }
     
     if(code_index * sizeof(int32_t) > CONST_TABLE_MAX) {
