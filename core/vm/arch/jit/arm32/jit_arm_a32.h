@@ -134,7 +134,8 @@ namespace Runtime {
     Register GetRegister() {
       return reg;
     }
-    bool IsDouble() {
+    
+    inline bool IsDouble() {
       return is_float;
     }
   };
@@ -501,7 +502,7 @@ namespace Runtime {
 #endif
 
 #ifdef _DEBUG
-      // assert(h->GetRegister() < D0);
+      assert(!h->IsDouble());
       for(size_t i  = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
       }
@@ -546,7 +547,7 @@ namespace Runtime {
     // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
-      assert(h->GetRegister() >= D0);
+      assert(h->IsDouble());
       for(size_t i = 0; i < aval_xregs.size(); ++i) {
         assert(h != aval_xregs[i]);
       }
