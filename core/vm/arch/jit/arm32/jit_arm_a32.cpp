@@ -2297,6 +2297,46 @@ void JitCompilerA32::sub_xreg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);    
 }
 
+void JitCompilerA32::mul_xreg_xreg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vmul.f64 " << GetRegisterName(dest) 
+	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xee200b00;
+  
+  uint32_t op_src = dest << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+	
+  op_code |= src;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [div.f64 " << GetRegisterName(dest) 
+	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xee800b00;
+  
+  uint32_t op_src = dest << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+	
+  op_code |= src;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
 void JitCompilerA32::add_mem_reg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -3291,38 +3331,6 @@ void JitCompilerA32::mul_imm_xreg(RegInstr* instr, Register reg) {
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   mul_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
-}
-
-void JitCompilerA32::mul_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [mulsd %" << GetRegisterName(src) 
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x59);
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, dest);
-  // RegisterEncode3(code, 5, src);
-  AddMachineCode(code);
-}
-
-void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [divsd %" << GetRegisterName(src) 
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x5e);
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, dest);
-  // RegisterEncode3(code, 5, src);
-  AddMachineCode(code);
 }
 
 void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
