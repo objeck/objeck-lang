@@ -2812,20 +2812,6 @@ void JitCompilerA32::call_reg(Register reg) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::move_reg_mem16(Register src, int32_t offset, Register dest) { 
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src) 
-        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
-        << endl;
-#endif
-  // encode
-  AddMachineCode(0x66);
-  AddMachineCode(0x89);
-  // AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
-}
-
 void JitCompilerA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movb %" << GetRegisterName(src) 
@@ -2852,20 +2838,6 @@ void JitCompilerA32::move_mem8_reg(int32_t offset, Register src, Register dest) 
   // write value
   AddImm(offset);
 }
-
-void JitCompilerA32::move_mem16_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movw " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
-        << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0x0f);
-  AddMachineCode(0xb7);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
-}
     
 void JitCompilerA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
 #ifdef _DEBUG
@@ -2880,22 +2852,6 @@ void JitCompilerA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
   // write value
   AddImm(offset);
   AddMachineCode(imm);
-}
-
-void JitCompilerA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset 
-        << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0x66);    
-  AddMachineCode(0xc7);    
-  unsigned char code = 0x80;
-  // RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  // write value
-  AddImm(offset);
-  AddImm16(imm);
 }
 
 bool JitCompilerA32::cond_jmp(InstructionType type) {
