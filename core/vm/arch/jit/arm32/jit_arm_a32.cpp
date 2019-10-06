@@ -4610,6 +4610,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
       const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
+      // 12-bit max for 'ldr' offset
       if(offset * sizeof(int32_t) >= 4096) {
         delete[] floats;
         floats = nullptr;
