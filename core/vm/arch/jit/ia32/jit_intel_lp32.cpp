@@ -126,10 +126,10 @@ void JitCompilerIA32::Epilog() {
 }
 
 void JitCompilerIA32::RegisterRoot() {
-  // caculate root address
+  // calculate root address
   RegisterHolder* holder = GetRegister();
-  // note: -8 is the offset requried to 
-  // get to the first local variale
+  // note: -8 is the offset required to 
+  // get to the first local variable
   const int32_t offset = local_space + TMP_REG_5 - 8;
   move_reg_reg(EBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
@@ -147,10 +147,10 @@ void JitCompilerIA32::RegisterRoot() {
   }
   move_mem_reg(JIT_OFFSET, EBP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
-
+  
   // clean up
-  ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
+  ReleaseRegister(holder);
 }
 
 void JitCompilerIA32::ProcessParameters(int32_t params) {

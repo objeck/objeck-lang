@@ -173,8 +173,8 @@ void JitCompilerIA64::RegisterRoot() {
   move_imm_mem(offset, 0, mem_holder->GetRegister());
 
   // clean up
-  ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
+  ReleaseRegister(holder);
 }
 
 void JitCompilerIA64::ProcessParameters(long params) {
