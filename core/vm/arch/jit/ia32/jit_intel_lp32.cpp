@@ -128,12 +128,14 @@ void JitCompilerIA32::Epilog() {
 void JitCompilerIA32::RegisterRoot() {
   // calculate root address
   RegisterHolder* holder = GetRegister();
+  
   // note: -8 is the offset required to 
   // get to the first local variable
   const int32_t offset = local_space + TMP_REG_5 - 8;
   move_reg_reg(EBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
 
+  // store modified ebp value in **ptr
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, EBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
@@ -145,6 +147,8 @@ void JitCompilerIA32::RegisterRoot() {
     add_imm_reg(sizeof(int32_t), holder->GetRegister());
     loop(-18);
   }
+
+  // store offset value in **ptr
   move_mem_reg(JIT_OFFSET, EBP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
   
@@ -4959,7 +4963,9 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
                                         StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
+  
   // execute
+  // notes: pointers to jit_mem and jit_offset are updated by JIT code
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
   

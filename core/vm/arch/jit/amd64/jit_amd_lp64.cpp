@@ -5353,6 +5353,7 @@ long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, un
                    size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
 {
   // create function
+  // notes: pointers to jit_memand jit_offset are updated by JIT code
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
             stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
