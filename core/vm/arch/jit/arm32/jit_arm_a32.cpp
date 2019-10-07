@@ -2464,28 +2464,83 @@ void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::mul_mem_xreg(int32_t offset, Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {
-  assert(false); // TODO: implement
+void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {  
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vcmp.f64 " << GetRegisterName(dest) 
+	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xeeb40b40;
+  
+  uint32_t op_src = dest << 12;
+  op_code |= op_src;
+	
+  op_code |= src;
+  
+  // encode
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
-  assert(false); // TODO: implement
+  RegisterHolder* holder = GetXmmRegister();
+  move_mem_xreg(offset, src, holder->GetRegister());
+  cmp_xreg_xreg(dest, holder->GetRegister());
+  move_xreg_xreg(holder->GetRegister(), dest);
+  ReleaseXmmRegister(holder);
 }
 
-void JitCompilerA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
+/// ---
+
+void JitCompilerA32::and_reg_reg(Register src, Register dest) {
+  assert(false);   // TODO: implement
+}
+
+void JitCompilerA32::and_imm_reg(int32_t imm, Register reg) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::and_mem_reg(int32_t offset, Register src, Register dest) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::or_imm_reg(int32_t imm, Register reg) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::or_reg_reg(Register src, Register dest) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::or_mem_reg(int32_t offset, Register src, Register dest) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::xor_imm_reg(int32_t imm, Register reg) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::xor_reg_reg(Register src, Register dest) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
+  assert(false);  // TODO: implement
+}
+
+void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
+  RegisterHolder* holder = GetXmmRegister();
+  move_mem_xreg(offset, src, holder->GetRegister());
+  add_xreg_xreg(dest, holder->GetRegister());
+  move_xreg_xreg(holder->GetRegister(), dest);
+  ReleaseXmmRegister(holder);
+}
+
+void JitCompilerA32::mul_mem_xreg(int32_t offset, Register src, Register dest) {
+  RegisterHolder* holder = GetXmmRegister();
+  move_mem_xreg(offset, src, holder->GetRegister());
+  mul_xreg_xreg(dest, holder->GetRegister());
+  move_xreg_xreg(holder->GetRegister(), dest);
+  ReleaseXmmRegister(holder);
 }
 
 void JitCompilerA32::sub_mem_xreg(int32_t offset, Register src, Register dest) {
@@ -2502,6 +2557,14 @@ void JitCompilerA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
   div_xreg_xreg(dest, holder->GetRegister());
   move_xreg_xreg(holder->GetRegister(), dest);
   ReleaseXmmRegister(holder);
+}
+
+void JitCompilerA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
+  // copy address of imm value
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
+  cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
+  ReleaseRegister(imm_holder);
 }
 
 void JitCompilerA32::add_mem_reg(int32_t offset, Register src, Register dest) {
@@ -2723,42 +2786,6 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
     sub_reg_reg(result_holder->GetRegister(), dest);
     ReleaseRegister(result_holder);
   }
-}
-
-void JitCompilerA32::and_imm_reg(int32_t imm, Register reg) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::and_reg_reg(Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::and_mem_reg(int32_t offset, Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::or_imm_reg(int32_t imm, Register reg) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::or_reg_reg(Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::or_mem_reg(int32_t offset, Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::xor_imm_reg(int32_t imm, Register reg) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::xor_reg_reg(Register src, Register dest) {
-  assert(false); // TODO: implement
-}
-
-void JitCompilerA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
-  assert(false); // TODO: implement
 }
 
 void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
