@@ -2489,42 +2489,103 @@ void JitCompilerA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
   ReleaseXmmRegister(holder);
 }
 
-/// ---
-
 void JitCompilerA32::and_reg_reg(Register src, Register dest) {
-  assert(false);   // TODO: implement
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [and " << GetRegisterName(dest) 
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0xe0000000;
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA32::and_imm_reg(int32_t imm, Register reg) {
-  assert(false);  // TODO: implement
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  and_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
 }
 
 void JitCompilerA32::and_mem_reg(int32_t offset, Register src, Register dest) {
-  assert(false);  // TODO: implement
-}
-
-void JitCompilerA32::or_imm_reg(int32_t imm, Register reg) {
-  assert(false);  // TODO: implement
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  and_reg_reg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder); 
 }
 
 void JitCompilerA32::or_reg_reg(Register src, Register dest) {
-  assert(false);  // TODO: implement
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [orr " << GetRegisterName(dest) 
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0xe1800000;
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA32::or_imm_reg(int32_t imm, Register reg) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  or_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
 }
 
 void JitCompilerA32::or_mem_reg(int32_t offset, Register src, Register dest) {
-  assert(false);  // TODO: implement
-}
-
-void JitCompilerA32::xor_imm_reg(int32_t imm, Register reg) {
-  assert(false);  // TODO: implement
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  or_reg_reg(src_holder->GetRegister(), dest);
+  ReleaseRegister(src_holder); 
 }
 
 void JitCompilerA32::xor_reg_reg(Register src, Register dest) {
-  assert(false);  // TODO: implement
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [eor " << GetRegisterName(dest) 
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0xe0200000;
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA32::xor_imm_reg(int32_t imm, Register reg) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  xor_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
 }
 
 void JitCompilerA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
-  assert(false);  // TODO: implement
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  xor_reg_reg(src_holder->GetRegister(), dest);
+  ReleaseRegister(src_holder); 
 }
 
 void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
@@ -2715,7 +2776,7 @@ void JitCompilerA32::mul_imm_reg(int32_t imm, Register reg) {
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
   mul_reg_reg(src_holder->GetRegister(), reg);
-  ReleaseRegister(src_holder); 
+  ReleaseRegister(src_holder);
 }
 
 void JitCompilerA32::mul_mem_reg(int32_t offset, Register src, Register dest) {
