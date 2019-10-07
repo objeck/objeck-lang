@@ -2448,7 +2448,20 @@ void JitCompilerA32::math_xreg_xreg(Register src, Register dest, InstructionType
 
 // TODO -- WIP
 void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
-  assert(false); // TODO: implement
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [mov.f64 " << GetRegisterName(dest) 
+	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xeeb00b40;
+  
+  uint32_t op_src = dest << 12;
+  op_code |= op_src;
+	
+  op_code |= src;
+  
+  // encode
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
@@ -4305,6 +4318,9 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
 #ifdef _DEBUG
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
+    
+    //// TESTING ///
+    move_xreg_xreg(D5, D2);
 
     // process offsets
     ProcessIndices();
