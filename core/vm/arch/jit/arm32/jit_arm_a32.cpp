@@ -852,19 +852,14 @@ void JitCompilerA32::ProcessJump(StackInstr* instr) {
         exit(1);
         break;
       }
-
-      // 1 byte compare with register
-      AddMachineCode(0x0f);
-      AddMachineCode(0x84);
       
       // clean up
       delete left;
       left = nullptr;
     }
+    
     // store update index
     jump_table.insert(pair<int32_t, StackInstr*>(code_index, instr));
-    // temp offset, updated in next pass
-    AddImm(0);
   }
   else {
     RegInstr* left = working_stack.front();
@@ -2180,7 +2175,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
 	  << L", #" << imm << L"]" << endl;
 #endif
     uint32_t op_code = 0xe3a00000;
-
+    
     uint32_t op_dest = reg << 12;
     op_code |= op_dest;
     op_code |= abs(imm);
@@ -2755,18 +2750,25 @@ void JitCompilerA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
 
 void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cmp "
-	<< GetRegisterName(reg) << L", " << imm << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [cmp " << GetRegisterName(reg) << L", " << imm << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xe3500000;
+  if(imm <= 255 && imm >= -256) {
+    uint32_t op_code = 0xe3500000;
+    
+    uint32_t op_dest = reg << 16;
+    op_code |= op_dest;
   
-  uint32_t op_dest = reg << 20;
-  op_code |= op_dest;
+    op_code |= imm;
   
-  op_code |= imm;
-  
-  AddMachineCode(op_code);
+    AddMachineCode(op_code);
+  }
+  else {
+    RegisterHolder* src_holder = GetRegister();
+    move_imm_reg(imm, src_holder->GetRegister());
+    cmp_reg_reg(src_holder->GetRegister(), reg);
+    ReleaseRegister(src_holder);
+  }
 }
 
 void JitCompilerA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
@@ -2783,7 +2785,7 @@ void JitCompilerA32::cmp_reg_reg(Register src, Register dest) {
 #endif
   uint32_t op_code = 0xe1500000;
   
-  uint32_t op_dest = dest << 20;
+  uint32_t op_dest = dest << 16;
   op_code |= op_dest;
   
   op_code |= src;
@@ -2858,14 +2860,9 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
   if(instr_index >= method->GetInstructionCount()) {
     return false;
   }
-
+  
   StackInstr* next_instr = method->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
-#ifdef _DEBUG
-    std::wcout << L"JMP: id=" << next_instr->GetOperand() << L", regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
-#endif
-    AddMachineCode(0x0f);
-
     //
     // jump if true
     //
@@ -2875,14 +2872,14 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-	AddMachineCode(0xba000000);
+	      AddMachineCode(0xba000000);
         break;
 
       case GTR_INT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-	AddMachineCode(0xca000000);
+	      AddMachineCode(0xca000000);
         break;
 
       case EQL_INT:
@@ -2890,7 +2887,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
 #endif
-	AddMachineCode(0x0a000000);
+	      AddMachineCode(0x0a000000);
         break;
 
       case NEQL_INT:
@@ -2898,37 +2895,37 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
 #endif
-	AddMachineCode(0x1a000000);
+	      AddMachineCode(0x1a000000);
         break;
 
       case LES_EQL_INT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
-	AddMachineCode(0xda000000);
+	      AddMachineCode(0xda000000);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
-	AddMachineCode(0xaa000000);
+	      AddMachineCode(0xaa000000);
         break;
 
       case LES_FLOAT:
-        AddMachineCode(0x87);
+        assert(false);
         break;
 				
       case GTR_FLOAT:
-        AddMachineCode(0x87);
+        assert(false);
         break;
 
       case LES_EQL_FLOAT:
-        AddMachineCode(0x83);
+        assert(false);
         break;
 				
       case GTR_EQL_FLOAT:
-        AddMachineCode(0x83);
+        assert(false);
         break;
 				
       default:
@@ -2944,14 +2941,14 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
-	AddMachineCode(0xaa000000);
+	      AddMachineCode(0xaa000000);
         break;
 
       case GTR_INT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
-	AddMachineCode(0xda000000);
+	      AddMachineCode(0xda000000);
         break;
 
       case EQL_INT:
@@ -2959,7 +2956,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
 #endif
-	AddMachineCode(0x1a000000);
+	      AddMachineCode(0x1a000000);
         break;
 
       case NEQL_INT:
@@ -2967,49 +2964,49 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
 #endif
-	AddMachineCode(0x0a000000);
+	      AddMachineCode(0x0a000000);
         break;
 
       case LES_EQL_INT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-	AddMachineCode(0xca000000);
+	      AddMachineCode(0xca000000);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-	AddMachineCode(0xba000000);
+	      AddMachineCode(0xba000000);
         break;
 
       case LES_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
-        AddMachineCode(0x86);
+        assert(false);
         break;
 				
       case GTR_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
-        AddMachineCode(0x86);
+        assert(false);
         break;
 
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
 #endif
-        AddMachineCode(0x82);
+        assert(false);
         break;
 				
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
 #endif
-        AddMachineCode(0x82);
+        assert(false);
         break;
 				
       default:
@@ -3018,10 +3015,9 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
     }    
     // store update index
     jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+    
     // temp offset
-    AddImm(0);
     skip_jump = true;
-		
     return true;
   }
   
@@ -4395,11 +4391,11 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     unordered_map<int32_t, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
       StackInstr* instr = jmp_iter->second;
-      const int32_t src_offset = jmp_iter->first;
+      const int32_t src_offset = jmp_iter->first - 1;
       const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const int32_t offset = dest_offset - src_offset - 2;
-      memcpy(&code[src_offset], &offset, 3);
+      code[src_offset] = code[src_offset] |= offset;
 #ifdef _DEBUG
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
