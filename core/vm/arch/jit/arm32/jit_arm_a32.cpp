@@ -1474,14 +1474,14 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
     if(i < non_params) {
       switch(left->GetType()) {
       case REG_INT:
-	move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, FP);
+	      move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, FP);
         dirty_regs.push(reg_offset);
         regs.push(left);
         reg_offset -= 4;
         break;
 
       case REG_FLOAT:
-	move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, FP);
+	      move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, FP);
         dirty_xmms.push(xmm_offset);
         xmms.push(left);
         xmm_offset -= 8;
@@ -2446,7 +2446,7 @@ void JitCompilerA32::math_xreg_xreg(Register src, Register dest, InstructionType
   }
 }
 
-// TODO
+// TODO -- WIP
 void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
   assert(false); // TODO: implement
 }
