@@ -251,17 +251,22 @@ namespace Runtime {
       if(size > PAGE_SIZE) {
         factor = size / PAGE_SIZE + 1;
       }
-      available = factor * PAGE_SIZE / sizeof(uint32_t);
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, available * sizeof(uint32_t))) {
+      
+      const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+      const int flags = MAP_PRIVATE | MAP_ANON;
+      
+      buffer = (uint32_t*)mmap(NULL, PAGE_SIZE, prot, flags, -1, 0);
+      if(buffer == MAP_FAILED) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-      if(mprotect(buffer, available * sizeof(uint32_t), PROT_WRITE | PROT_EXEC) < 0) {
+      
+      if(mprotect(buffer, PAGE_SIZE, prot) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
       
-      bzero(buffer, available * sizeof(uint32_t));
+      available = PAGE_SIZE;
     }
 
     ~PageHolder() {
@@ -270,7 +275,7 @@ namespace Runtime {
     }
 
     inline bool CanAddCode(int32_t size) {
-      if(available - size >= 0) {
+      if(available - size * sizeof(uint32_t) > 0) {
         return true;
       }
 
@@ -278,10 +283,11 @@ namespace Runtime {
     }
     
     inline uint32_t* AddCode(uint32_t* code, int32_t size) {
+      const uint32_t byte_size = size * sizeof(uint32_t);
       uint32_t* temp = buffer + size;
-      memcpy(temp, code, size * sizeof(uint32_t));
+      memcpy(temp, code, byte_size);
       index += size;
-      available -= size;
+      available -= byte_size;
       return temp;
     }
   };
@@ -371,13 +377,13 @@ namespace Runtime {
     
     // Add byte code to buffer
     inline void AddMachineCode(uint32_t i) {
-      if(code_index == code_buf_max) {
-        code = (uint32_t*)realloc(code, code_buf_max * sizeof(uint32_t) * 2); 
+      if(code_index * sizeof(uint32_t) >= code_buf_max) {
+        code_buf_max *= 2;
+        code = (uint32_t*)realloc(code, code_buf_max); 
         if(!code) {
-          wcerr << L"Unable to allocate memory!" << endl;
+          wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
         }
-        code_buf_max *= 2;
       }
       code[code_index++] = i;
     }

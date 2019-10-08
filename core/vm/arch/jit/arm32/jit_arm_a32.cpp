@@ -4421,9 +4421,9 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
 #endif
 
     code = (uint32_t*)malloc(BUFFER_SIZE);
-    code_buf_max = BUFFER_SIZE / sizeof(uint32_t*);
+    code_buf_max = BUFFER_SIZE;
     
-    if(posix_memalign((void**)& floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+    if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
     }
@@ -4452,10 +4452,6 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
     
-    Prolog();
-    Epilog();
-    
-    /*
     // process offsets
     ProcessIndices();
     // setup
@@ -4470,7 +4466,6 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     ProcessParameters(method->GetParamCount());
     // tranlsate program
     ProcessInstructions();
-    */
     
     if(!compile_success) {
       delete[] floats;
@@ -4562,6 +4557,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   // note: pointers to jit_memand jit_offset are updated by JIT code
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+                                          
   
 #ifdef _DEBUG
   wcout << L"JIT return=: " << rtrn_value << endl;

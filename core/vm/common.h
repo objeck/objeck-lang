@@ -248,12 +248,18 @@ class NativeCode
     }
   
   ~NativeCode() {
+#if defined(_WIN64) || defined(_X64)
 #ifdef _WIN64
     VirtualFree(floats, 0, MEM_RELEASE);
-#elif _X64
-    free(floats); 
 #else
+    free(floats); 
+#endif
+#else  
+#ifdef _WIN32
     delete[] floats;
+#else
+    free(floats);
+#endif
 #endif
     floats = nullptr;
   }
