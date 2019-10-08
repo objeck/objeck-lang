@@ -288,7 +288,7 @@ namespace Runtime {
     }
 
     inline bool CanAddCode(int32_t size) {
-      if(available - size >= 0) {
+      if(available - size > 0) {
         return true;
       }
 
@@ -390,12 +390,12 @@ namespace Runtime {
     // Add byte code to buffer
     inline void AddMachineCode(unsigned char b) {
       if(code_index == code_buf_max) {
-        code = (unsigned char*)realloc(code, code_buf_max * 2); 
+        code_buf_max *= 2;
+        code = (unsigned char*)realloc(code, code_buf_max); 
         if(!code) {
           wcerr << L"Unable to allocate memory!" << endl;
           exit(1);
         }
-        code_buf_max *= 2;
       }
       code[code_index++] = b;
     }

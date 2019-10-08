@@ -292,7 +292,7 @@ namespace Runtime {
     }
 
     inline bool CanAddCode(int32_t size) {
-      if(available - size >= 0) {
+      if(available - size > 0) {
         return true;
       }
 
