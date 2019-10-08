@@ -67,6 +67,7 @@ namespace Runtime {
 #define TMP_REG_5 -68
 
 #define MAX_DBLS 64
+#define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
   
   // register type
@@ -250,29 +251,17 @@ namespace Runtime {
       if(size > PAGE_SIZE) {
         factor = size / PAGE_SIZE + 1;
       }
-      available = factor * PAGE_SIZE;
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
+      available = factor * PAGE_SIZE / sizeof(uint32_t);
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, available * sizeof(uint32_t))) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-      if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+      if(mprotect(buffer, available * sizeof(uint32_t), PROT_WRITE | PROT_EXEC) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-    }
-
-    PageHolder() {
-      index = 0;
-      available = PAGE_SIZE;
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
-        exit(1);
-      }
-
-      if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
-        exit(1);
-      }
+      
+      bzero(buffer, available * sizeof(uint32_t));
     }
 
     ~PageHolder() {
@@ -289,12 +278,10 @@ namespace Runtime {
     }
     
     inline uint32_t* AddCode(uint32_t* code, int32_t size) {
-      const uint32_t byte_size = size * sizeof(uint32_t);
-      uint32_t* temp = buffer + byte_size;
-      memcpy(temp, code, byte_size);
-      index += byte_size;
-      available -= byte_size;
-
+      uint32_t* temp = buffer + size;
+      memcpy(temp, code, size * sizeof(uint32_t));
+      index += size;
+      available -= size;
       return temp;
     }
   };
@@ -385,14 +372,11 @@ namespace Runtime {
     // Add byte code to buffer
     inline void AddMachineCode(uint32_t i) {
       if(code_index == code_buf_max) {
-        uint32_t* tmp;	
-        if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * sizeof(uint32_t) * 2)) {
-          wcerr << L"Unable to reallocate JIT memory!" << endl;
+        code = (uint32_t*)realloc(code, code_buf_max * sizeof(uint32_t) * 2); 
+        if(!code) {
+          wcerr << L"Unable to allocate memory!" << endl;
           exit(1);
         }
-        memcpy(tmp, code, code_index);
-        free(code);
-        code = tmp;
         code_buf_max *= 2;
       }
       code[code_index++] = i;
