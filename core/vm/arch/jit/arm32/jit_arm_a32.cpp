@@ -3456,70 +3456,86 @@ RegisterHolder* JitCompilerA32::call_xfunc2(double(*func_ptr)(double, double), R
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper) {
-  // set register to 0; if eflag than set to 1
   move_imm_reg(0, reg);
-  RegisterHolder* true_holder = GetRegister();
-  move_imm_reg(1, true_holder->GetRegister());
+  
+  switch(oper) {
+  case LES_INT:	
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cmovl %" << GetRegisterName(reg) << L", %" 
-        << GetRegisterName(true_holder->GetRegister()) << L" ]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(0x0f);
-  switch(oper) {    
-  case GTR_INT:
-    AddMachineCode(0x4f);
+    AddMachineCode(0xaa000000);
     break;
 
-  case LES_INT:
-    AddMachineCode(0x4c);
+  case GTR_INT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
+#endif
+    AddMachineCode(0xda000000);
     break;
-    
+
   case EQL_INT:
   case EQL_FLOAT:
-    AddMachineCode(0x44);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
+#endif
+    AddMachineCode(0x1a000000);
     break;
 
   case NEQL_INT:
   case NEQL_FLOAT:
-    AddMachineCode(0x45);
-    break;
-    
-  case LES_FLOAT:
-    AddMachineCode(0x47);
-    break;
-    
-  case GTR_FLOAT:
-    AddMachineCode(0x47);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+#endif
+    AddMachineCode(0x0a000000);
     break;
 
   case LES_EQL_INT:
-    AddMachineCode(0x4e);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+#endif
+    AddMachineCode(0xca000000);
     break;
-
+        
   case GTR_EQL_INT:
-    AddMachineCode(0x4d);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
+#endif
+    AddMachineCode(0xba000000);
     break;
-    
+
+  case LES_FLOAT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
+#endif
+    assert(false);
+    break;
+				
+  case GTR_FLOAT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
+#endif
+    assert(false);
+    break;
+
   case LES_EQL_FLOAT:
-    AddMachineCode(0x43);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
+#endif
+    assert(false);
     break;
-
+				
   case GTR_EQL_FLOAT:
-    AddMachineCode(0x43);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
+#endif
+    assert(false);
     break;
-
+				
   default:
-    wcerr << L">>> Unknown compare! <<<" << endl;
-    exit(1);
     break;
   }
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, reg);
-  // RegisterEncode3(code, 5, true_holder->GetRegister());
-  AddMachineCode(code);
-  ReleaseRegister(true_holder);
+  
+  move_imm_reg(1, reg);
 }
     
 // --- push/pop cpu stack ---
@@ -4439,9 +4455,6 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
     
-    //// TESTING ///
-    move_xreg_xreg(D5, D2);
-
     // process offsets
     ProcessIndices();
     // setup
@@ -4513,7 +4526,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       code[src_offset] = code[src_offset] |= offset;
     }
     
-    const uint32_t code_size_bytes = code_index * sizeof(uint32_t);
+    const uint32_t code_size_bytes = code_index;
 #ifdef _DEBUG
     wcout << L"Caching JIT code: actual=" << code_size_bytes << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
