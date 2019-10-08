@@ -53,7 +53,7 @@ void JitCompilerA32::Prolog() {
   
   uint32_t setup_code[] = {
 		0xe52db004,						      // push  {fp}
-		0xe92d00f0,						      // push {r4-r7} ?
+		0xe92d00f0,						      // push {r4-r7}
 		0xe28db000,						      // add fp, sp, #0
 		0xe24dd024 + local_space,		// sub sp, sp, #local_space
 		0xe50b0008,						      // str r0, [fp, #-8]
@@ -4420,11 +4420,8 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       << method->GetParamCount() << L" ----------" << endl;
 #endif
 
-    code_buf_max = PAGE_SIZE / sizeof(uint32_t);
-    if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max * sizeof(uint32_t))) {
-      wcerr << L"Unable to allocate JIT memory!" << endl;
-      exit(1);
-    }
+    code = (uint32_t*)malloc(BUFFER_SIZE);
+    code_buf_max = BUFFER_SIZE / sizeof(uint32_t*);
     
     if(posix_memalign((void**)& floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -4455,6 +4452,10 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
     
+    Prolog();
+    Epilog();
+    
+    /*
     // process offsets
     ProcessIndices();
     // setup
@@ -4469,6 +4470,8 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     ProcessParameters(method->GetParamCount());
     // tranlsate program
     ProcessInstructions();
+    */
+    
     if(!compile_success) {
       delete[] floats;
       floats = nullptr;
@@ -4525,13 +4528,12 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       AddImm(const_value);
       code[src_offset] = code[src_offset] |= offset;
     }
-    
-    const uint32_t code_size_bytes = code_index;
+        
 #ifdef _DEBUG
-    wcout << L"Caching JIT code: actual=" << code_size_bytes << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+    wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
     
     free(code);
     code = nullptr;
