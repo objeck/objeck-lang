@@ -250,7 +250,7 @@ namespace Runtime {
       if(size > PAGE_SIZE) {
         factor = size / PAGE_SIZE + 1;
       }
-      available = factor *  PAGE_SIZE;
+      available = factor * PAGE_SIZE;
       if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -287,17 +287,18 @@ namespace Runtime {
 
       return false;
     }
-
+    
     inline uint32_t* AddCode(uint32_t* code, int32_t size) {
-      uint32_t* temp = buffer + index;
-      memcpy(temp, code, size);
-      index += size;
-      available -= size;
+      const uint32_t byte_size = size * sizeof(uint32_t);
+      uint32_t* temp = buffer + byte_size;
+      memcpy(temp, code, byte_size);
+      index += byte_size;
+      available -= byte_size;
 
       return temp;
     }
   };
-
+  
   class PageManager {
     vector<PageHolder*> holders;
     
