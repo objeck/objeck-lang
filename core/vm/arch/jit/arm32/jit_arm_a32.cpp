@@ -4550,14 +4550,14 @@ void JitExecutor::Initialize(StackProgram* p) {
 int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code,
                                         const int32_t code_size, size_t* op_stack, long* stack_pos,
                                         StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
+                                            
+                                          
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-
-  // execute
-  // note: pointers to jit_memand jit_offset are updated by JIT code
+  
+  // execute                                          
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
-                                          
   
 #ifdef _DEBUG
   wcout << L"JIT return=: " << rtrn_value << endl;

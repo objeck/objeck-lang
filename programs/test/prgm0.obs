@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		GoF(75.49)->PrintLine();
-#		GoI(9)->PrintLine();
+		GoI(9)->PrintLine();
 	}
 
 	function : native : GoI(a : Int) ~ Int {
