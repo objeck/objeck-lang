@@ -265,7 +265,7 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-      
+            
       available = PAGE_SIZE;
     }
 
@@ -285,7 +285,11 @@ namespace Runtime {
     inline uint32_t* AddCode(uint32_t* code, int32_t size) {
       const uint32_t byte_size = size * sizeof(uint32_t);
       uint32_t* temp = buffer + size;
+      
+      // copy and flush instruction cache
       memcpy(temp, code, byte_size);
+      __clear_cache(temp, temp + byte_size);
+      
       index += size;
       available -= byte_size;
       return temp;
