@@ -42,6 +42,10 @@
 
 using namespace std;
 
+extern "C" {
+  void __clear_cache(char *beg, char *end);
+}
+
 namespace Runtime {
   // offsets for Intel (IA-32) addresses
 #define CLS_ID -8
@@ -335,7 +339,7 @@ namespace Runtime {
     StackMethod* method;
     int32_t instr_count;
 	  uint32_t* code;
-    int32_t code_index;
+    uint32_t code_index;
     int32_t epilog_index;
     double* floats;     
     int32_t floats_index;
