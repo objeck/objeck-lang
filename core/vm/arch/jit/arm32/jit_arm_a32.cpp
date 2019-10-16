@@ -2732,7 +2732,7 @@ void JitCompilerA32::add_imm_reg(int32_t imm, Register reg) {
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
   
-  uint32_t op_code = op_code = 0xe2800000;
+  uint32_t op_code = 0xe2800000;
   
   uint32_t op_src = reg << 16;
   op_code |= op_src;
@@ -2799,7 +2799,7 @@ void JitCompilerA32::sub_imm_reg(int32_t imm, Register reg) {
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
   
-  uint32_t op_code = op_code = 0xe2400000;
+  uint32_t op_code = 0xe2400000;
   
   uint32_t op_src = reg << 16;
   op_code |= op_src;
@@ -2828,7 +2828,7 @@ void JitCompilerA32::shl_imm_reg(int32_t value, Register dest) {
 	<< GetRegisterName(dest) << L", #" << value << L"]" << endl;
 #endif
                                  
-  uint32_t op_code = op_code = 0xe1a00000;
+  uint32_t op_code = 0xe1a00000;
       
   uint32_t op_dest = dest << 12;
   op_code |= op_dest;
