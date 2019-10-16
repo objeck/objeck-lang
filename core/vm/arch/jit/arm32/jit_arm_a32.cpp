@@ -4481,7 +4481,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const int32_t offset = dest_offset - src_offset - 2;
-      code[src_offset] = code[src_offset] |= offset;
+      code[src_offset] |= offset;
 #ifdef _DEBUG
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
@@ -4521,9 +4521,9 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       }
       
       AddImm(const_value);
-      code[src_offset] = code[src_offset] |= offset;
+      code[src_offset] |= offset;
     }
-        
+    
 #ifdef _DEBUG
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
