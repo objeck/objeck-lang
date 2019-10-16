@@ -42,10 +42,6 @@
 
 using namespace std;
 
-extern "C" {
-  void __clear_cache(void *beg, void *end);
-}
-
 namespace Runtime {
   // offsets for Intel (IA-32) addresses
 #define CLS_ID -8
