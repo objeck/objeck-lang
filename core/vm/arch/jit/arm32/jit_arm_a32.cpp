@@ -1536,7 +1536,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   
   // call function
   RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)JitCompilerA32::StackCallback, call_holder->GetRegister());
+  move_imm_reg((uint32_t)JitCompilerA32::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   add_imm_reg(40, SP);
   ReleaseRegister(call_holder);
@@ -3391,17 +3391,11 @@ void JitCompilerA32::loop(int32_t offset)
 // --- function calls ---
 void JitCompilerA32::call_reg(Register reg) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [bl %" << GetRegisterName(reg) << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [blx %" << GetRegisterName(reg) << L"]" << endl;
 #endif
-
-  uint32_t op_code = 0xeb000000;
-
-  /*
-  uint32_t op_dest = dest << 20;
-  op_code |= op_dest;
   
-  op_code |= src;
-  */
+  uint32_t op_code = 0xe12fff30;
+  op_code |= reg;
   
   AddMachineCode(op_code);
 }
