@@ -1535,11 +1535,11 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   move_imm_reg(instr_id, R0);
   
   // call function
-  RegisterHolder* call_holder = GetRegister(); // TODO unique register...
-  move_imm_reg((uint32_t)JitCompilerA32::StackCallback, call_holder->GetRegister());
-  call_reg(call_holder->GetRegister());
+  //   RegisterHolder* call_holder = GetRegister(); // TODO unique register...
+  move_imm_reg((uint32_t)JitCompilerA32::StackCallback, R4);
+  call_reg(R4);
   add_imm_reg(40, SP);
-  ReleaseRegister(call_holder);
+  //   ReleaseRegister(call_holder);
 
   // restore register values
   while(!dirty_regs.empty()) {
