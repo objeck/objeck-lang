@@ -94,7 +94,7 @@ void JitCompilerA32::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
   // get to the first local variale
-  const int32_t offset = local_space + TMP_REG_5 - 8;
+  const int32_t offset = local_space + TMP_REG_6 - 8;
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
 
@@ -102,7 +102,7 @@ void JitCompilerA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  int index = ((offset + TMP_REG_5) >> 2) + 6;
+  int index = ((offset + TMP_REG_6) >> 2) + 6;
   if(index > 0) {
     move_imm_reg(index, R4);
     move_imm_mem(0, 0, holder->GetRegister());
@@ -1535,11 +1535,11 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   move_imm_reg(instr_id, R0);
   
   // call function
-  RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)JitCompilerA32::StackCallback, call_holder->GetRegister());
-  call_reg(call_holder->GetRegister());
-  add_imm_reg(40, SP);
-  ReleaseRegister(call_holder);
+  //   RegisterHolder* call_holder = GetRegister(); // TODO unique register...
+  move_imm_reg((uint32_t)JitCompilerA32::StackCallback, R4);
+  call_reg(R4);
+  // add_imm_reg(40, SP);
+  //   ReleaseRegister(call_holder);
 
   // restore register values
   while(!dirty_regs.empty()) {
@@ -3391,19 +3391,16 @@ void JitCompilerA32::loop(int32_t offset)
 // --- function calls ---
 void JitCompilerA32::call_reg(Register reg) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [bl %" << GetRegisterName(reg) << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [blx %" << GetRegisterName(reg) << L"]" << endl;
 #endif
-
-  uint32_t op_code = 0xeb000000;
-
-  /*
-  uint32_t op_dest = dest << 20;
-  op_code |= op_dest;
   
-  op_code |= src;
-  */
-  
+  uint32_t op_code = 0xe12fff30;
+  op_code |= reg;
+
+  move_reg_mem(R14, TMP_REG_6, FP),
   AddMachineCode(op_code);
+  move_mem_reg(TMP_REG_6, FP, R14);
+
 }
  
 RegisterHolder* JitCompilerA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
@@ -4347,7 +4344,7 @@ void Runtime::JitCompilerA32::ProcessIndices()
     }
   }
 
-  int32_t index = TMP_REG_5;
+  int32_t index = TMP_REG_6;
   int32_t last_id = -1;
   multimap<int32_t, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
@@ -4394,7 +4391,7 @@ void Runtime::JitCompilerA32::ProcessIndices()
     }
 #endif
   }
-  local_space = -(index + TMP_REG_5);
+  local_space = -(index + TMP_REG_6);
 
 #ifdef _DEBUG
   wcout << L"Local space required: " << (local_space + 8) << L" byte(s)" << endl;

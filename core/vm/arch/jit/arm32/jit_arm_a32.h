@@ -42,12 +42,8 @@
 
 using namespace std;
 
-extern "C" {
-  void __clear_cache(void *beg, void *end);
-}
-
 namespace Runtime {
-  // offsets for Intel (IA-32) addresses
+  // offsets for ARM32 (A1 encoding) addresses
 #define CLS_ID -8
 #define MTHD_ID -12
 #define CLASS_MEM -16
@@ -69,6 +65,8 @@ namespace Runtime {
 #define TMP_REG_3 -60
 #define TMP_REG_4 -64
 #define TMP_REG_5 -68
+  // holds $lr for callbacks
+#define TMP_REG_6 -72 
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
