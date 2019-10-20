@@ -65,6 +65,8 @@ namespace Runtime {
 #define TMP_REG_3 -60
 #define TMP_REG_4 -64
 #define TMP_REG_5 -68
+  // holds $lr for callbacks
+#define TMP_REG_6 -72 
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
