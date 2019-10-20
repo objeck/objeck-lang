@@ -1,7 +1,8 @@
 TODO
 ===
-A8.6 - Listing (A1)
-* Basic support for doubles (add/mul/sub/div)
-* Return and pass in doubles
-* Callbacks
+* array indexes (int/float)
+* conversions (float/int)
+* 1-byte operations
 * Register root
+---
+A8.6 - Listing (A1)

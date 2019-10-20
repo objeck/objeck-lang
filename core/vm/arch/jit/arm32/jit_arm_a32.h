@@ -98,7 +98,7 @@ namespace Runtime {
     FP, 
     R12,
     SP,
-    R14,
+    LR,
     R15,
     D0 = 0,
     D1,
