@@ -43,7 +43,7 @@
 using namespace std;
 
 namespace Runtime {
-  // offsets for Intel (IA-32) addresses
+  // offsets for ARM32 (A1 encoding) addresses
 #define CLS_ID -8
 #define MTHD_ID -12
 #define CLASS_MEM -16
