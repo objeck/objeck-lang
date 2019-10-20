@@ -1,0 +1,20 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		GoI2(9)->Size()->PrintLine();
+	}
+
+	function : native : GoI(a : Int) ~ Int {
+		b := 13;
+		return b - a;
+	}
+
+	function : native : GoI2(a : Int) ~ Int[] {
+		b := Int->New[a];
+		return b;
+	}
+
+	function : native : GoF(a : Float) ~ Float {
+		b := 25.43;
+		return a + b;
+	}
+}
