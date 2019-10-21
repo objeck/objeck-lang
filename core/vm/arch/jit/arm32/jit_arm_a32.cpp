@@ -76,6 +76,21 @@ void JitCompilerA32::Epilog() {
   
   epilog_index = code_index;
   
+  // nominal
+  AddMachineCode(0xea000005);
+  
+  // nullptr deref
+  move_imm_reg(-1, R0);
+  AddMachineCode(0xea000004);
+
+  // under bounds
+  move_imm_reg(-2, R0);
+  AddMachineCode(0xea000002);
+
+  // over bounds
+  move_imm_reg(-3, R0);
+  AddMachineCode(0xea000000);
+    
   move_imm_reg(0, R0);
   uint32_t teardown_code[] = {
     0xe24bd000, // sub sp, fp, #0
@@ -4416,14 +4431,12 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const int32_t index = bounds_less_offsets[i] - 1;
       int32_t offset = epilog_index - index - 2;
-      // memcpy(&code[index], &offset, 4);
       code[index] |= offset;
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const int32_t index = bounds_greater_offsets[i]  - 1;
       int32_t offset = epilog_index - index - 2;
-      // memcpy(&code[index], &offset, 4);
       code[index] |= offset;
     }
     
