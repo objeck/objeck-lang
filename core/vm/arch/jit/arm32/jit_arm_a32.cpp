@@ -120,7 +120,6 @@ void JitCompilerA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  
   int index = ((offset + TMP_REG_6) >> 2) + 6;
   if(index > 0) {
     RegisterHolder* loop_holder = GetRegister();
@@ -134,14 +133,12 @@ void JitCompilerA32::RegisterRoot() {
     ReleaseRegister(loop_holder);
   }
   
-  
   move_mem_reg(JIT_OFFSET, FP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
   
   // clean up
-  ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
-  
+  ReleaseRegister(holder);
 }
 
 void JitCompilerA32::ProcessParameters(int32_t params) {
@@ -4500,7 +4497,6 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   // execute                                          
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
-                                          
   
 #ifdef _DEBUG
   wcout << L"JIT return: " << rtrn_value << endl;
