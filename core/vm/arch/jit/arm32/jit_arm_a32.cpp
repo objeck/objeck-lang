@@ -120,14 +120,14 @@ void JitCompilerA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  int index = ((offset + TMP_REG_6) >> 2) + 6;
+  int index = ((offset + TMP_REG_6) >> 2) + 7;
   if(index > 0) {
     RegisterHolder* loop_holder = GetRegister();
     move_imm_reg(index, loop_holder->GetRegister());
     cmp_imm_reg(0, loop_holder->GetRegister());
     AddMachineCode(0x0a000004);
     move_imm_mem(0, 0, holder->GetRegister());
-    add_imm_reg(sizeof(int32_t), holder->GetRegister());
+    sub_imm_reg(sizeof(int32_t), holder->GetRegister());
     sub_imm_reg(1, loop_holder->GetRegister());
     AddMachineCode(0xeafffff8);
     ReleaseRegister(loop_holder);
