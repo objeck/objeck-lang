@@ -4430,13 +4430,13 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
 
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const int32_t index = bounds_less_offsets[i] - 1;
-      int32_t offset = epilog_index - index - 2;
+      int32_t offset = epilog_index - index - 2 + 5;
       code[index] |= offset;
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const int32_t index = bounds_greater_offsets[i]  - 1;
-      int32_t offset = epilog_index - index - 2;
+      int32_t offset = epilog_index - index - 2 + 3;
       code[index] |= offset;
     }
     
