@@ -4125,7 +4125,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
     exit(1);
     break;
   }
-  CheckNilDereference(array_holder->GetRegister());
+// TODO: CheckNilDereference(array_holder->GetRegister());
 
   /* Algorithm:
      int32_t index = PopInt();
@@ -4221,7 +4221,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
   default:
     break;
   }
-  CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+// TODO: CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
   ReleaseRegister(bounds_holder);
 
   // skip first 2 integers (size and dimension) and all dimension indices
@@ -4403,11 +4403,11 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
 #endif
     }
     
-    // update return codes
+    // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const int32_t index = deref_offsets[i];
-      int32_t offset = epilog_index - index + 1;
-      memcpy(&code[index], &offset, 4);
+      const int32_t offset = epilog_index - index - 2;
+      code[index] |= offset;
     }
 
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {

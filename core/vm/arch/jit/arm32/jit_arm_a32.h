@@ -422,26 +422,19 @@ namespace Runtime {
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      assert(false);
-      /*
       // less than zero
       cmp_imm_reg(0, reg);
-      AddMachineCode(0x0f);
-      AddMachineCode(0x8c);
+      AddMachineCode(0xaa000000);
       bounds_less_offsets.push_back(code_index);
-      AddImm(0);
       // jump to exit
 
-      // greater than max
+      // greater-equal than max
       cmp_reg_reg(max_reg, reg);
-      AddMachineCode(0x0f);
-      AddMachineCode(0x8d);
+      AddMachineCode(0xba000000);
       bounds_greater_offsets.push_back(code_index);
-      AddImm(0);
       // jump to exit
-      */
     }
-
+    
     /***********************************
      * Gets an avaiable register from
      ***********************************/

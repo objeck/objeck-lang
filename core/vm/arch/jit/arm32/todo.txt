@@ -4,5 +4,6 @@ TODO
 * conversions (float/int)
 * 1-byte operations
 * Register root
+* CheckNilDereference
 ---
 A8.6 - Listing (A1)
