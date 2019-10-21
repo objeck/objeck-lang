@@ -107,15 +107,13 @@ void JitCompilerA32::Epilog() {
 }
 
 void JitCompilerA32::RegisterRoot() {
-  /*
-  // caculate root address
+  // get to local variables
   RegisterHolder* holder = GetRegister();
-  // note: -8 is the offset requried to 
-  // get to the first local variale
-  const int32_t offset = local_space + TMP_REG_6 - 8;
+  const int32_t offset = local_space + TMP_REG_0 - 4;
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
-
+  
+  /*
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
@@ -4395,7 +4393,6 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     move_imm_mem(cls_id, CLS_ID, FP);
     move_imm_mem(mthd_id, MTHD_ID, FP);
     // register root
-// TODO    
     RegisterRoot();
     // translate parameters
     ProcessParameters(method->GetParamCount());

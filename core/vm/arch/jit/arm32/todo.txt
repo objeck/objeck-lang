@@ -15,6 +15,10 @@ A8.6 - Listing (A1)
 
 === SCRATCH ===
 
+p /x *((size_t)$r0-8)	<- cls_id
+p /x *((size_t)$r0-12)	<- mthod_id
+
+
 --- RegisterRoot logic ---
 0000023EEAEE0032  mov         rax,rbp  						<- copy fp
 0000023EEAEE0035  sub         rax,60h  						<- subtract to get to locals
