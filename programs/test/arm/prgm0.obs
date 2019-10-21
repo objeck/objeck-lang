@@ -1,6 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		GoI2(9)->Size()->PrintLine();
+		v := GoI2(9);
+		v[1]->PrintLine();
 	}
 
 	function : native : GoI(a : Int) ~ Int {
@@ -9,12 +10,14 @@ class Test {
 	}
 
 	function : native : GoI2(a : Int) ~ Int[] {
-		b := Int->New[a];
+#		b := Int->New[a];
+		b : Int[];
+		b[11] := 13;
 		return b;
 	}
 
 	function : native : GoF(a : Float) ~ Float {
-		b := 25.43;
+		b := Float->Sin(75.5);
 		return a + b;
 	}
 }
