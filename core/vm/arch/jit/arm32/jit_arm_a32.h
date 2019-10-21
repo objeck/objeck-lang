@@ -424,13 +424,13 @@ namespace Runtime {
     inline void CheckArrayBounds(Register reg, Register max_reg) {
       // less than zero
       cmp_imm_reg(0, reg);
-      AddMachineCode(0xaa000000);
+      AddMachineCode(0xba000000);
       bounds_less_offsets.push_back(code_index);
       // jump to exit
 
       // greater-equal than max
       cmp_reg_reg(max_reg, reg);
-      AddMachineCode(0xba000000);
+      AddMachineCode(0xaa000000);
       bounds_greater_offsets.push_back(code_index);
       // jump to exit
     }

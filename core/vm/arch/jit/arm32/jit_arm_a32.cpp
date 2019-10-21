@@ -4494,7 +4494,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
   
 #ifdef _DEBUG
-  wcout << L"JIT return=: " << rtrn_value << endl;
+  wcout << L"JIT return: " << rtrn_value << endl;
 #endif  
   
   return rtrn_value;
