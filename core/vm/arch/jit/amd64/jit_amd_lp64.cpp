@@ -152,10 +152,12 @@ void JitCompilerIA64::RegisterRoot() {
 #else
   const long offset = org_local_space + RED_ZONE + TMP_REG_5;
 #endif
+  // get to stack locals
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
 
+  // set JIT memory to stack locals
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());

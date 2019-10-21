@@ -406,16 +406,11 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      assert(false);
-      /*
-      // is zero
+      // less than zero
       cmp_imm_reg(0, reg);
-      AddMachineCode(0x0f);
-      AddMachineCode(0x84);
+      AddMachineCode(0x0a000000);
       deref_offsets.push_back(code_index);
-      AddImm(0);
       // jump to exit
-      */
     }
 
     /***********************************
