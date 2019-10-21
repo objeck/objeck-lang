@@ -107,6 +107,7 @@ void JitCompilerA32::Epilog() {
 }
 
 void JitCompilerA32::RegisterRoot() {
+  /*
   // caculate root address
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
@@ -132,6 +133,7 @@ void JitCompilerA32::RegisterRoot() {
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
+  */
 }
 
 void JitCompilerA32::ProcessParameters(int32_t params) {
@@ -4142,8 +4144,8 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
     exit(1);
     break;
   }
-// TODO: CheckNilDereference(array_holder->GetRegister());
-
+  CheckNilDereference(array_holder->GetRegister());
+  
   /* Algorithm:
      int32_t index = PopInt();
      const int32_t dim = instr->GetOperand();
@@ -4394,7 +4396,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     move_imm_mem(mthd_id, MTHD_ID, FP);
     // register root
 // TODO    
-//    RegisterRoot();
+    RegisterRoot();
     // translate parameters
     ProcessParameters(method->GetParamCount());
     // tranlsate program
@@ -4423,9 +4425,8 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const int32_t index = deref_offsets[i] - 1;
-      //int32_t offset = epilog_index - index - 2;
-      // memcpy(&code[index], &offset, 4);
-      code[index] |= 113;
+      int32_t offset = epilog_index - index - 2 + 1;
+      code[index] |= offset;
     }
 
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {

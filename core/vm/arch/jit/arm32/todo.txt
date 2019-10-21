@@ -1,9 +1,28 @@
 TODO
 ===
-* array indexes (int/float)
+* int array (DONE)
+	- indexes
+	- bound checking
+* float array
+	- indexes
+	- bound checking
+* RegisterRoot (WIP)
+* CheckNilDereference (WIP)	 
 * conversions (float/int)
 * 1-byte operations
-* Register root
-* CheckNilDereference
 ---
 A8.6 - Listing (A1)
+
+=== SCRATCH ===
+
+--- RegisterRoot logic ---
+0000023EEAEE0032  mov         rax,rbp  						<- copy fp
+0000023EEAEE0035  sub         rax,60h  						<- subtract to get to locals
+0000023EEAEE003C  mov         rbx,qword ptr [rbp+50h]  		<- load jit mem
+0000023EEAEE0043  mov         qword ptr [rbx],rax  			<- set jit mem to stack locals
+0000023EEAEE004A  mov         rcx,8  						<- zero out local + spill mem
+0000023EEAEE0054  mov         qword ptr [rax],0  			<-
+0000023EEAEE005F  add         rax,8  						<-
+0000023EEAEE0066  loop        0000023EEAEE0054  			<-
+0000023EEAEE0068  mov         rbx,qword ptr [rbp+58h]  		<- load jit offset
+0000023EEAEE006F  mov         qword ptr [rbx],18h 			<- set const value
