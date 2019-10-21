@@ -4500,6 +4500,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   // execute                                          
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+                                          
   
 #ifdef _DEBUG
   wcout << L"JIT return: " << rtrn_value << endl;
