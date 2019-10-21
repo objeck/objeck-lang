@@ -1,15 +1,15 @@
 TODO
 ===
-* int array (DONE)
+* int array [DONE]
 	- indexes
 	- bound checking
-* float array
+* float array [NOT STARTED]
 	- indexes
 	- bound checking
-* RegisterRoot (WIP)
-* CheckNilDereference (WIP)	 
-* conversions (float/int)
-* 1-byte operations
+* RegisterRoot [TESTING]
+* CheckNilDereference [TESTING]	 
+* conversions (float/int) [NOT STARTED]
+* 1-byte operations [NOT STARTED]
 ---
 A8.6 - Listing (A1)
 
