@@ -107,31 +107,41 @@ void JitCompilerA32::Epilog() {
 }
 
 void JitCompilerA32::RegisterRoot() {
+  move_imm_mem(99, TMP_REG_6, FP);
+  
   // get to local variables
   RegisterHolder* holder = GetRegister();
-  const int32_t offset = local_space + TMP_REG_0 - 4;
+  const int32_t offset = local_space + TMP_REG_6 - 4;
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   
-  /*
+  // set JIT memory pointer to stack
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
-
+  
+  
   int index = ((offset + TMP_REG_6) >> 2) + 6;
   if(index > 0) {
-    move_imm_reg(index, R4);
+    RegisterHolder* loop_holder = GetRegister();
+    move_imm_reg(index, loop_holder->GetRegister());
+    cmp_imm_reg(0, loop_holder->GetRegister());
+    AddMachineCode(0x0a000004);
     move_imm_mem(0, 0, holder->GetRegister());
     add_imm_reg(sizeof(int32_t), holder->GetRegister());
-    loop(-18);
+    sub_imm_reg(1, loop_holder->GetRegister());
+    AddMachineCode(0xeafffff8);
+    ReleaseRegister(loop_holder);
   }
+  
+  
   move_mem_reg(JIT_OFFSET, FP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
-
+  
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
-  */
+  
 }
 
 void JitCompilerA32::ProcessParameters(int32_t params) {
