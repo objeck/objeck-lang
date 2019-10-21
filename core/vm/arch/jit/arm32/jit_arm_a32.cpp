@@ -74,6 +74,8 @@ void JitCompilerA32::Epilog() {
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
   
+  epilog_index = code_index;
+  
   move_imm_reg(0, R0);
   uint32_t teardown_code[] = {
     0xe24bd000, // sub sp, fp, #0
@@ -4221,7 +4223,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
   default:
     break;
   }
-// TODO: CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+  CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
   ReleaseRegister(bounds_holder);
 
   // skip first 2 integers (size and dimension) and all dimension indices
@@ -4405,21 +4407,24 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
-      const int32_t index = deref_offsets[i];
-      const int32_t offset = epilog_index - index - 2;
-      code[index] |= offset;
+      const int32_t index = deref_offsets[i] - 1;
+      //int32_t offset = epilog_index - index - 2;
+      // memcpy(&code[index], &offset, 4);
+      code[index] |= 113;
     }
 
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
-      const int32_t index = bounds_less_offsets[i];
-      int32_t offset = epilog_index - index + 11;
-      memcpy(&code[index], &offset, 4);
+      const int32_t index = bounds_less_offsets[i] - 1;
+      int32_t offset = epilog_index - index - 2;
+      // memcpy(&code[index], &offset, 4);
+      code[index] |= offset;
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
-      const int32_t index = bounds_greater_offsets[i];
-      int32_t offset = epilog_index - index + 21;
-      memcpy(&code[index], &offset, 4);
+      const int32_t index = bounds_greater_offsets[i]  - 1;
+      int32_t offset = epilog_index - index - 2;
+      // memcpy(&code[index], &offset, 4);
+      code[index] |= offset;
     }
     
     // update consts pools
