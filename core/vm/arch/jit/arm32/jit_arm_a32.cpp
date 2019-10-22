@@ -1197,13 +1197,11 @@ void JitCompilerA32::ProcessFloatToInt(StackInstr* instr) {
     
   case MEM_FLOAT:
   case MEM_INT:
-    vcvt_mem_reg(left->GetOperand(), 
-		FP, holder->GetRegister());
+    vcvt_mem_reg(left->GetOperand(), FP, holder->GetRegister());
     break;
 
   case REG_FLOAT:
-    vcvt_xreg_reg(left->GetRegister()->GetRegister(), 
-                 holder->GetRegister());
+    vcvt_xreg_reg(left->GetRegister()->GetRegister(), holder->GetRegister());
     ReleaseXmmRegister(left->GetRegister());
     break;
 
@@ -3649,49 +3647,33 @@ void JitCompilerA32::vcvt_reg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerA32::vcvt_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cvtsi2sd " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x2a);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  // copy address of imm value
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  vcvt_reg_xreg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder);
 }
 
-void JitCompilerA32::vcvt_xreg_reg(Register src, Register dest) {
+void JitCompilerA32::vcvt_xreg_reg(Register src, Register dest) {  
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cvtsd2si %" << GetRegisterName(src) 
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [vcvt.s32.f64 " << GetRegisterName(dest) 
+       << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x2c);
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, dest);
-  // RegisterEncode3(code, 5, src);
-  AddMachineCode(code);
+  uint32_t op_code = 0xeefd7bc0;
+  op_code |= src;
+  AddMachineCode(op_code);
+  
+  op_code = 0xee170a90;
+  const uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA32::vcvt_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cvtsd2si " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x2c);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  RegisterHolder* mem_holder = GetXmmRegister();
+  move_mem_xreg(offset, src, mem_holder->GetRegister());
+  vcvt_xreg_reg(mem_holder->GetRegister(), dest);
+  ReleaseXmmRegister(mem_holder);
 }
 
 //====================================================================
