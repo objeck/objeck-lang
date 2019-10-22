@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the x86 architecture.
+ * JIT compiler for the ARM32 architecture.
  *
  * Copyright (c) 2019, Randy Hollines
  * All rights reserved.
@@ -82,7 +82,7 @@ namespace Runtime {
     MEM_FLOAT,
   };
   
-  // general and SSE (x86) registers
+  // general and float registers
   enum Register { 
     R0 = 0, 
     R1, 
@@ -645,12 +645,12 @@ namespace Runtime {
     void round_imm_xreg(RegInstr* instr, Register reg, bool is_floor);
     void round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor);
     void round_xreg_xreg(Register src, Register dest, bool is_floor);
-    void cvt_xreg_reg(Register src, Register dest);
-    void cvt_imm_reg(RegInstr* instr, Register reg);
-    void cvt_mem_reg(int32_t offset, Register src, Register dest);
-    void cvt_reg_xreg(Register src, Register dest);
-    void cvt_imm_xreg(RegInstr* instr, Register reg);
-    void cvt_mem_xreg(int32_t offset, Register src, Register dest);
+    void vcvt_xreg_reg(Register src, Register dest);
+    void vcvt_imm_reg(RegInstr* instr, Register reg);
+    void vcvt_mem_reg(int32_t offset, Register src, Register dest);
+    void vcvt_reg_xreg(Register src, Register dest);
+    void vcvt_imm_xreg(RegInstr* instr, Register reg);
+    void vcvt_mem_xreg(int32_t offset, Register src, Register dest);
 
     // function call instruction
     void call_reg(Register reg);
