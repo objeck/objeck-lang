@@ -3631,20 +3631,17 @@ void JitCompilerA32::vcvt_imm_xreg(RegInstr* instr, Register reg) {
 }
 
 void JitCompilerA32::vcvt_reg_xreg(Register src, Register dest) {
-  src = R7;
-  dest = R9;
-  
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
-  uint32_t op_code = 0xee170a90;
+  uint32_t op_code = 0xee070a90;
   uint32_t op_dest = src << 12;
   op_code |= op_dest;
   AddMachineCode(op_code);
   
   op_code = 0xeeb80be7;
-  op_dest = src << 16; // TODO: FIX ME...
+  op_dest = dest << 12;
   op_code |= op_dest; 
   AddMachineCode(op_code);
 }
