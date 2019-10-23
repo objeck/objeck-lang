@@ -2200,7 +2200,7 @@ void JitCompilerA32::move_mem8_reg(int32_t offset, Register src, Register dest) 
   uint32_t op_code;
   if (offset >= 0) {
     // forward
-    op_code = 0xe5db0000;   // TODO: fix me
+    op_code = 0xe5db0000;
   }
   else {
     // backward
@@ -2525,10 +2525,9 @@ void JitCompilerA32::math_xreg_xreg(Register src, Register dest, InstructionType
   }
 }
 
-// TODO -- WIP
 void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [mov.f64 " << GetRegisterName(dest) 
+  wcout << L"  " << (++instr_count) << L": [vmov.f64 " << GetRegisterName(dest) 
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
@@ -3545,7 +3544,6 @@ void JitCompilerA32::pop_reg(Register reg) {
   throw runtime_error("Method 'push_imm(..)' not implemented for ARM32 target");
 }
 
-// TODO: conversions VCVT, VCVTR
 void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
@@ -3579,7 +3577,6 @@ void JitCompilerA32::vcvt_reg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerA32::vcvt_mem_xreg(int32_t offset, Register src, Register dest) {
-  // copy address of imm value
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
   vcvt_reg_xreg(mem_holder->GetRegister(), dest);
@@ -3632,68 +3629,47 @@ void JitCompilerA32::fsqrt() {
   throw runtime_error("Method 'fsqrt(..)' not implemented for ARM32 target");
 }
 
-//====================================================================
-//=============================== OLD ================================
-//====================================================================
- 
 void JitCompilerA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  round_mem_xreg(0, imm_holder->GetRegister(), reg, is_floor);
+  round_xreg_xreg(imm_holder->GetRegister(), reg, is_floor);
   ReleaseRegister(imm_holder);
 }
 
 void JitCompilerA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
-        << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
-#endif
-  
-  AddMachineCode(0x66);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x3a);
-  AddMachineCode(0x0b);
-  // memory
-  // AddMachineCode(ModRM(src, dest));
-  AddImm(offset);
-  // mode
-  if(is_floor) {
-    AddMachineCode(0x03);
-  }
-  else {
-    AddMachineCode(0x05);
-  }
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  round_xreg_xreg(mem_holder->GetRegister(), dest, is_floor);
+  ReleaseRegister(mem_holder);
 }
 
 void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
-        << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
+  throw runtime_error("Method 'round_xreg_xreg(..)' not implemented for ARM32 target");
+  /*
+  if(src != D0) {
+    move_xreg_mem(D0, TMP_D_0, FP);  
+  }
+  move_reg_mem(R0, TMP_REG_0, FP);
   
-  AddMachineCode(0x66);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x3a);
-  AddMachineCode(0x0b);
-  // registers
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, dest);
-  // RegisterEncode3(code, 5, src);
-  // mode
+  double(*func_ptr)(double);
   if(is_floor) {
-    AddMachineCode(0x03);
+    func_ptr = floor;    
   }
   else {
-    AddMachineCode(0x05);
+    func_ptr = ceil;
   }
+  
+  move_imm_reg((uint32_t)func_ptr, R0);
+  call_reg(R0);
+  move_xreg_xreg(D0, dest);
+  
+  move_mem_reg(TMP_REG_0, FP, R0);
+  if(src != D0) {
+    move_mem_xreg(TMP_D_0, FP, D0);  
+  }
+  */
 }
-
-//====================================================================
-//=============================== OLD END ================================
-//====================================================================
 
 //
 // Get register name

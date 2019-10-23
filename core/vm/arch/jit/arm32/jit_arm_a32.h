@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the ARM32 architecture.
+ * JIT compiler for the ARM A32 architecture using A1 encoding.
  *
  * Copyright (c) 2019, Randy Hollines
  * All rights reserved.
@@ -43,7 +43,7 @@
 using namespace std;
 
 namespace Runtime {
-  // offsets for ARM32 (A1 encoding) addresses
+  // offsets for ARM A32 addresses
 #define CLS_ID -8
 #define MTHD_ID -12
 #define CLASS_MEM -16
