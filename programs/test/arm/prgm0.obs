@@ -1,7 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := GoI2(9);
-		v[1]->PrintLine();
+		b := Byte->New[3];
+		b[1] := 13;
+		v := GoB(b);
+		v->PrintLine();
 	}
 
 	function : native : GoI(a : Int) ~ Int {
@@ -10,14 +12,21 @@ class Test {
 	}
 
 	function : native : GoI2(a : Int) ~ Int[] {
-#		b := Int->New[a];
-		b : Int[];
-		b[11] := 13;
+		b := Int->New[a];
+#		b : Int[];
+		b[5] := 13;
 		return b;
 	}
 
 	function : native : GoF(a : Float) ~ Float {
-		b := Float->Sin(75.5);
-		return a + b;
+		b := 75.5;
+		c := b->As(Int);
+		return 13;
 	}
+
+	function : native : GoB(a : Byte[]) ~ Byte {
+		b : Byte := 0xab;
+		a[0] := b;
+		return a[0];
+	}	
 }
