@@ -2161,6 +2161,72 @@ void JitCompilerA32::move_mem_reg(int32_t offset, Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
+// --- 8-bit operations ---
+void JitCompilerA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src) 
+	      << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+#endif
+    
+  uint32_t op_code;
+  if (offset >= 0) {
+    // forward
+    op_code = 0xe5cb0000;
+  }
+  else {
+    // backward
+    op_code = 0xe54b0000;
+  }
+  
+  uint32_t op_dest = dest << 16;
+  op_code |= op_dest;
+  
+  uint32_t op_src = src << 12;
+  op_code |= op_src;
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA32::move_mem8_reg(int32_t offset, Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest) 
+	      << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+#endif
+    
+  uint32_t op_code;
+  if (offset >= 0) {
+    // forward
+    op_code = 0xe5db0000;   // TODO: fix me
+  }
+  else {
+    // backward
+    op_code = 0xe55b0000;    
+  }
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+    
+void JitCompilerA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(imm, imm_holder->GetRegister());
+  move_reg_mem8(imm_holder->GetRegister(), offset, dest);
+  ReleaseRegister(imm_holder); 
+}
+
 void JitCompilerA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) { 
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
@@ -3479,140 +3545,6 @@ void JitCompilerA32::pop_reg(Register reg) {
   throw runtime_error("Method 'push_imm(..)' not implemented for ARM32 target");
 }
 
-// --- x87 ---
-
-void JitCompilerA32::fld_mem(int32_t offset, Register src) {  
-  throw runtime_error("Method 'fld_mem(..)' not implemented for ARM32 target");
-}
-
-void JitCompilerA32::fstp_mem(int32_t offset, Register src) {
-  throw runtime_error("Method 'fstp_mem(..)' not implemented for ARM32 target");
-}
-
-void JitCompilerA32::fsin() {
-  throw runtime_error("Method 'fsin(..)' not implemented for ARM32 target");
-}
-
-void JitCompilerA32::fcos() {
-  throw runtime_error("Method 'fcos(..)' not implemented for ARM32 target");
-}
-
-void JitCompilerA32::ftan() {
-  throw runtime_error("Method 'ftan(..)' not implemented for ARM32 target");
-}
-
-void JitCompilerA32::fsqrt() {
-  throw runtime_error("Method 'fsqrt(..)' not implemented for ARM32 target");
-}
-
-//====================================================================
-//=============================== OLD ================================
-//====================================================================
-
-// --- 8-bit operations ---
-void JitCompilerA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movb %" << GetRegisterName(src) 
-        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
-        << endl;
-#endif
-  // encode
-  AddMachineCode(0x88);
-  // AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
-}
-
-void JitCompilerA32::move_mem8_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movb " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
-        << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0x0f);
-  AddMachineCode(0xb6);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
-}
-    
-void JitCompilerA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movb $" << imm << L", " << offset 
-        << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xc6);
-  unsigned char code = 0x80;
-  // RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  // write value
-  AddImm(offset);
-  AddMachineCode(imm);
-}
-
-void JitCompilerA32::loop(int32_t offset)
-{
-  AddMachineCode(0xe2);
-  AddMachineCode(offset);
-}
- 
-void JitCompilerA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  round_mem_xreg(0, imm_holder->GetRegister(), reg, is_floor);
-  ReleaseRegister(imm_holder);
-}
-
-void JitCompilerA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
-        << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
-#endif
-  
-  AddMachineCode(0x66);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x3a);
-  AddMachineCode(0x0b);
-  // memory
-  // AddMachineCode(ModRM(src, dest));
-  AddImm(offset);
-  // mode
-  if(is_floor) {
-    AddMachineCode(0x03);
-  }
-  else {
-    AddMachineCode(0x05);
-  }
-}
-
-void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
-        << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  AddMachineCode(0x66);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x3a);
-  AddMachineCode(0x0b);
-  // registers
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, dest);
-  // RegisterEncode3(code, 5, src);
-  // mode
-  if(is_floor) {
-    AddMachineCode(0x03);
-  }
-  else {
-    AddMachineCode(0x05);
-  }
-}
-
 // TODO: conversions VCVT, VCVTR
 void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
@@ -3674,6 +3606,89 @@ void JitCompilerA32::vcvt_mem_reg(int32_t offset, Register src, Register dest) {
   move_mem_xreg(offset, src, mem_holder->GetRegister());
   vcvt_xreg_reg(mem_holder->GetRegister(), dest);
   ReleaseXmmRegister(mem_holder);
+}
+
+void JitCompilerA32::fld_mem(int32_t offset, Register src) {  
+  throw runtime_error("Method 'fld_mem(..)' not implemented for ARM32 target");
+}
+
+void JitCompilerA32::fstp_mem(int32_t offset, Register src) {
+  throw runtime_error("Method 'fstp_mem(..)' not implemented for ARM32 target");
+}
+
+void JitCompilerA32::fsin() {
+  throw runtime_error("Method 'fsin(..)' not implemented for ARM32 target");
+}
+
+void JitCompilerA32::fcos() {
+  throw runtime_error("Method 'fcos(..)' not implemented for ARM32 target");
+}
+
+void JitCompilerA32::ftan() {
+  throw runtime_error("Method 'ftan(..)' not implemented for ARM32 target");
+}
+
+void JitCompilerA32::fsqrt() {
+  throw runtime_error("Method 'fsqrt(..)' not implemented for ARM32 target");
+}
+
+//====================================================================
+//=============================== OLD ================================
+//====================================================================
+ 
+void JitCompilerA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
+  // copy address of imm value
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
+  round_mem_xreg(0, imm_holder->GetRegister(), reg, is_floor);
+  ReleaseRegister(imm_holder);
+}
+
+void JitCompilerA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
+        << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
+        << L"]" << endl;
+#endif
+  
+  AddMachineCode(0x66);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x3a);
+  AddMachineCode(0x0b);
+  // memory
+  // AddMachineCode(ModRM(src, dest));
+  AddImm(offset);
+  // mode
+  if(is_floor) {
+    AddMachineCode(0x03);
+  }
+  else {
+    AddMachineCode(0x05);
+  }
+}
+
+void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
+        << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  AddMachineCode(0x66);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x3a);
+  AddMachineCode(0x0b);
+  // registers
+  unsigned char code = 0xc0;
+  // write value
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
+  // mode
+  if(is_floor) {
+    AddMachineCode(0x03);
+  }
+  else {
+    AddMachineCode(0x05);
+  }
 }
 
 //====================================================================
@@ -4434,7 +4449,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       const int32_t src_offset = int_pool_iter->second;
       const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
       
-      // 12-bit max for 'ldr' offset
+      // 12-bit max for ldr offset
       if(offset >= PAGE_SIZE) {
         delete[] floats;
         floats = nullptr;
