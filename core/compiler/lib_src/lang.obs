@@ -918,7 +918,7 @@ bundle System {
 		@ignore-params
 		@return floor value
 		~#
-		function : Floor(f : Float) ~ Float {
+		function : native : Floor(f : Float) ~ Float {
 			FLOR_FLOAT;
 		}
 		
@@ -927,7 +927,7 @@ bundle System {
 		@ignore-params
 		@return ceiling value
 		~#
-		function : Ceiling(f : Float) ~ Float {
+		function : native : Ceiling(f : Float) ~ Float {
 			CEIL_FLOAT;
 		}
 		
