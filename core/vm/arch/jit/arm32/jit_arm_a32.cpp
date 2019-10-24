@@ -2807,7 +2807,7 @@ void JitCompilerA32::add_reg_reg(Register src, Register dest) {
 void JitCompilerA32::add_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(reg) << L", "
-	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
+	      << GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
   
   uint32_t op_code = 0xe2800000;
@@ -3202,7 +3202,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
       }  
     }    
     // store update index
-    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+//    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
     
     // temp offset
     skip_jump = true;
@@ -3605,6 +3605,7 @@ void JitCompilerA32::vcvt_mem_reg(int32_t offset, Register src, Register dest) {
   ReleaseXmmRegister(mem_holder);
 }
 
+// NOTE: floating-point functions are callbacks
 void JitCompilerA32::fld_mem(int32_t offset, Register src) {  
   throw runtime_error("Method 'fld_mem(..)' not implemented for ARM32 target");
 }
@@ -4393,7 +4394,12 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const int32_t offset = dest_offset - src_offset - 2;
-      code[src_offset] |= offset;
+      if(offset < 0) {
+        code[src_offset] |= offset & 0x00ffffff;
+      }
+      else {
+        code[src_offset] |= offset;
+      }
 #ifdef _DEBUG
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
