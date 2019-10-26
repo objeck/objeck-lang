@@ -3202,7 +3202,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
       }  
     }    
     // store update index
-//    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
     
     // temp offset
     skip_jump = true;

@@ -8,7 +8,7 @@
       <LocalDirForAbsolutePaths>$(ToolchainDir)</LocalDirForAbsolutePaths>
     </CustomSourceDirectories>
     <DeploymentHost>
-      <HostName>192.168.0.101</HostName>
+      <HostName>192.168.0.10</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
@@ -99,7 +99,7 @@
         <CMakeTargetSpecificSettings>
           <TargetID>obr</TargetID>
           <Debug>
-            <Arguments>../compiler/a.obe 8</Arguments>
+            <Arguments>../compiler/a.obe</Arguments>
             <WorkingDirectory />
           </Debug>
           <Deployment>
