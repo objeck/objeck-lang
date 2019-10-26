@@ -1,0 +1,13 @@
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		Run();
+	}
+
+	function : native : Run() ~ Nil {		
+# function : Run() ~ Nil {		
+		i := 5;
+		while(--i <> 0) {
+			i->PrintLine();
+		};
+	}
+}

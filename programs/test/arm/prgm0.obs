@@ -1,8 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := Byte->New[3];
-		b[1] := 13;
-		v := GoB(b);
+		Foo();
+	}
+
+	function : Foo() ~ Nil {
+		v := GoF2(2.98);
 		v->PrintLine();
 	}
 
@@ -22,6 +24,11 @@ class Test {
 		b := 75.5;
 		c := b->As(Int);
 		return 13;
+	}
+
+	function : native : GoF2(a : Float) ~ Float {
+		b := a->Floor();
+		return b * .75;
 	}
 
 	function : native : GoB(a : Byte[]) ~ Byte {
