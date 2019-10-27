@@ -896,7 +896,7 @@ namespace Runtime {
     // method.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type);
 
-    // Caculates the indices for
+    // Calculates the indices for
     // memory references.
     void ProcessIndices();
 

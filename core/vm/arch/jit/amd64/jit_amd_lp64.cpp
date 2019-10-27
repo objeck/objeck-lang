@@ -4580,7 +4580,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
   case LOAD_ARY_SIZE: {
     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
     if(!array) {
-      wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4731,7 +4731,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
   case THREAD_JOIN: {
     size_t* instance = inst;
     if(!instance) {
-      wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4764,7 +4764,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
   case THREAD_MUTEX: {
     size_t* instance = inst;
     if(!instance) {
-      wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4779,7 +4779,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
   case CRITICAL_START: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
-      wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4794,7 +4794,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
   case CRITICAL_END: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
-      wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4808,14 +4808,14 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
 
     // ---------------- memory copy ----------------
   case CPY_BYTE_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);;
-    const long src_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;
+    long length = (long)PopInt(op_stack, stack_pos);
+    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
+    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4835,14 +4835,14 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     break;
 
   case CPY_CHAR_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);;
-    const long src_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;
+    long length = (long)PopInt(op_stack, stack_pos);
+    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
+    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4863,14 +4863,14 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     break;
 
   case CPY_INT_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);;
-    const long src_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;
+    long length = (long)PopInt(op_stack, stack_pos);
+    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
+    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
@@ -4890,14 +4890,14 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     break;
 
   case CPY_FLOAT_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);;
-    const long src_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);;
-    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;
+    long length = (long)PopInt(op_stack, stack_pos);
+    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
+    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }

@@ -323,7 +323,7 @@ class IPSocket {
     memcpy(&host_addr, host_info->h_addr, host_info->h_length);
 
     struct sockaddr_in ip_addr;
-    ip_addr.sin_addr.s_addr = host_addr;;
+    ip_addr.sin_addr.s_addr = host_addr;
     ip_addr.sin_port=htons(port);
     ip_addr.sin_family = AF_INET;
 

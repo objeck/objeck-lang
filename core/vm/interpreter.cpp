@@ -686,7 +686,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
 #endif
   size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -716,7 +716,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
 
   size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -770,7 +770,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
     }
   }
   else {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -796,7 +796,7 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
     PushFloat(value, op_stack, stack_pos);
   }
   else {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -894,7 +894,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
 #endif      
   size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1173,7 +1173,7 @@ void StackInterpreter::LoadArySize(size_t* &op_stack, long* &stack_pos)
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1197,7 +1197,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1232,7 +1232,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1267,7 +1267,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1302,7 +1302,7 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1378,7 +1378,7 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
   StackClass* impl_class = MemoryManager::GetClass(instance);
   if(!impl_class) {
     PopFrame();
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1409,7 +1409,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
 #endif
   size_t* instance = (size_t*)(*frame)->mem[0];
   if(!instance) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1450,7 +1450,7 @@ void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
 #endif
   size_t* instance = (size_t*)(*frame)->mem[0];
   if(!instance) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1473,7 +1473,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, long* &stack_pos)
 #endif
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(!instance) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1496,7 +1496,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
 #endif
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(!instance) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1530,7 +1530,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -1562,7 +1562,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
   } else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -1594,7 +1594,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -1626,7 +1626,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -1657,7 +1657,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
   } else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -2040,7 +2040,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
     if(!impl_class) {
       PopFrame();
-      wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -2126,7 +2126,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   if(status < 0) {
     switch(status) {
     case -1:
-      wcerr << L">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
       break;
     case -2:
     case -3:
@@ -2179,7 +2179,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2206,7 +2206,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
 
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2233,7 +2233,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2260,7 +2260,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2287,7 +2287,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2314,7 +2314,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2341,7 +2341,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2369,7 +2369,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
