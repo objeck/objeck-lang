@@ -2235,7 +2235,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
   const wstring out = BytesToUnicode((char*)(array + 3));
@@ -2271,7 +2271,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
   const string out = UnicodeToBytes((wchar_t*)(array + 3));
@@ -2303,7 +2303,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
 
@@ -2332,7 +2332,7 @@ bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
   const long size = (long)array[2];
@@ -2351,7 +2351,7 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
   const long size = (long)array[0];
@@ -2376,7 +2376,7 @@ bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &o
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
   const long size = (long)array[0];
@@ -2400,7 +2400,7 @@ bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* 
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
   const long size = (long)array[0];
@@ -2648,7 +2648,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
   wcout << L"  STD_ERR_FLOAT" << endl;
 #endif
 
-  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);;
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
   const wstring precision = program->GetProperty(L"precision");
   if(precision.size() > 0) {
     ios_base::fmtflags flags(wcout.flags());
@@ -3484,7 +3484,7 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if (!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
 
@@ -3522,7 +3522,7 @@ bool TrapProcessor::CRC32Bytes(StackProgram* program, size_t* inst, size_t* &op_
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
 
@@ -3541,7 +3541,7 @@ bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t*
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
 

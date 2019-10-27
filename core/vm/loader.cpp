@@ -85,7 +85,7 @@ void Loader::Load()
   }
 
   // read string id
-  string_cls_id = ReadInt();;
+  string_cls_id = ReadInt();
 
   int i;
   // read float strings
