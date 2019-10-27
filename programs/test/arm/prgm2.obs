@@ -6,8 +6,10 @@ class Test {
 	function : native : Run() ~ Nil {		
 # function : Run() ~ Nil {		
 		i := 5;
+		x := 5.33;
 		while(--i <> 0) {
-			i->PrintLine();
+			x += 0.66;	
+			x->PrintLine();
 		};
 	}
 }
