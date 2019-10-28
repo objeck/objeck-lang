@@ -4308,7 +4308,12 @@ void Runtime::JitCompilerA32::ProcessIndices()
     }
 #endif
   }
+  
+  // calculate local space
   local_space = -(index + TMP_REG_6);
+  while(local_space % 8 != 0) {
+    local_space += 4;
+  }
 
 #ifdef _DEBUG
   wcout << L"Local space required: " << (local_space + 8) << L" byte(s)" << endl;

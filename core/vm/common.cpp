@@ -2497,8 +2497,6 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
   else {
     wcout << setprecision(6) << value;
   }
-
-  
   
   return true;
 }
