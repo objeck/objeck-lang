@@ -678,9 +678,9 @@ namespace Runtime {
     }
 
     // Process call backs from ASM code
-    static void StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
-                              const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t *stack_pos, 
-                              StackFrame** call_stack, long* call_stack_pos, const int32_t ip); 
+    static void JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
+                                const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t *stack_pos, 
+                                StackFrame** call_stack, long* call_stack_pos, const int32_t ip); 
     
     // Calculates array element offset. 
     // Note: this code must match up 

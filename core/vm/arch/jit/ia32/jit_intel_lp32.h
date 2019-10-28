@@ -724,7 +724,7 @@ namespace Runtime {
     }
 
     // Process call backs from ASM code
-    static void StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
+    static void JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
                               const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t *stack_pos, 
                               StackFrame** call_stack, long* call_stack_pos, const int32_t ip); 
     
@@ -735,7 +735,7 @@ namespace Runtime {
     // JIT code.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type);
 
-    // Caculates the indices for
+    // Calculates the indices for
     // memory references.
     void ProcessIndices();
 

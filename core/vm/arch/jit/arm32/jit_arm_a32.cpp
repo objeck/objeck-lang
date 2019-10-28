@@ -1551,7 +1551,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   move_imm_reg((int32_t)instr, R1);
   move_imm_reg(instr_id, R0);
   
-  move_imm_reg((uint32_t)JitCompilerA32::StackCallback, R4);
+  move_imm_reg((uint32_t)JitCompilerA32::JitStackCallback, R4);
   call_reg(R4);
   
   // restore register values
@@ -3675,7 +3675,7 @@ void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor)
 //
 // Get register name
 //
-std::wstring Runtime::JitCompilerA32::GetRegisterName(Register reg)
+std::wstring JitCompilerA32::GetRegisterName(Register reg)
 {
 	switch(reg) {
 	case R0:
@@ -3733,7 +3733,7 @@ std::wstring Runtime::JitCompilerA32::GetRegisterName(Register reg)
 //
 // callback to stack interpreter
 //
-void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
+void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
 {
 #ifdef _DEBUG
   wcout << L"Stack Call: instr=" << instr_id
@@ -4097,7 +4097,7 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
 //
 // calculate array index
 //
-Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, MemoryType type)
+RegisterHolder* JitCompilerA32::ArrayIndex(StackInstr* instr, MemoryType type)
 {
   RegInstr* holder = working_stack.front();
   working_stack.pop_front();
@@ -4233,7 +4233,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
   return array_holder;
 }
 
-void Runtime::JitCompilerA32::ProcessIndices()
+void JitCompilerA32::ProcessIndices()
 {
 #ifdef _DEBUG
   wcout << L"Calculating indices for variables..." << endl;
@@ -4323,7 +4323,7 @@ void Runtime::JitCompilerA32::ProcessIndices()
 //
 // translate bytecode to machine code
 //
-bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
+bool JitCompilerA32::Compile(StackMethod* cm)
 {
   compile_success = true;
 
@@ -4489,14 +4489,14 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   return rtrn_value;
 }
 
-Runtime::PageManager::PageManager()
+PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
     holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
   }
 }
 
-Runtime::PageManager::~PageManager()
+PageManager::~PageManager()
 {
   while(!holders.empty()) {
     PageHolder* tmp = holders.front();
@@ -4507,7 +4507,7 @@ Runtime::PageManager::~PageManager()
   }
 }
 
-uint32_t* Runtime::PageManager::GetPage(uint32_t* code, int32_t size)
+uint32_t* PageManager::GetPage(uint32_t* code, int32_t size)
 {
   bool placed = false;
 
