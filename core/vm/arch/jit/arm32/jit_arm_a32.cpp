@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for 32-bit ARM32 architectures (Windows and Linux).
+ * JIT compiler for 32-bit ARM32 architecture
  *
  * Copyright (c) 2019-2020, Randy Hollines
  * All rights reserved.
