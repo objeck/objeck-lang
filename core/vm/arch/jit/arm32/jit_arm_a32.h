@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the ARM A32 architecture using A1 encoding.
+ * JIT compiler for the ARM A32 architecture (A1 encoding)
  *
  * Copyright (c) 2019, Randy Hollines
  * All rights reserved.
