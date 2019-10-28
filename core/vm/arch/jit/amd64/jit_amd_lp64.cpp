@@ -1614,7 +1614,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
 
   // call function
   sub_imm_reg(32, RSP);
-  move_imm_reg((size_t)JitCompilerIA64::StackCallback, R10);
+  move_imm_reg((size_t)JitCompilerIA64::JitStackCallback, R10);
   call_reg(R10);
   add_imm_reg(80, RSP);
 #else
@@ -1637,7 +1637,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   push_mem(STACK_POS, RBP);
   
   // call function
-  move_imm_reg((long)JitCompilerIA64::StackCallback, R15);
+  move_imm_reg((long)JitCompilerIA64::JitStackCallback, R15);
   call_reg(R15);
   add_imm_reg(32, RSP);
   
@@ -4555,7 +4555,7 @@ void Runtime::JitCompilerIA64::RegisterEncode3(unsigned char& code, long offset,
 //
 // Stack call
 //
-void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* instr, const long cls_id, const long mthd_id, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, const long ip)
+void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id, const long mthd_id, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
 #ifdef _DEBUG
   wcout << L"Stack Call: instr=" << instr_id

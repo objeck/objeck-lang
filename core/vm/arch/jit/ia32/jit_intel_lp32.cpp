@@ -1583,7 +1583,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
   
   // call function
   RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)JitCompilerIA32::StackCallback, call_holder->GetRegister());
+  move_imm_reg((int32_t)JitCompilerIA32::JitStackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   add_imm_reg(40, ESP);
   ReleaseRegister(call_holder);
@@ -4014,7 +4014,7 @@ void JitCompilerIA32::fsqrt() {
   AddMachineCode(0xfa);
 }
 
-unsigned Runtime::JitCompilerIA32::ModRM(Register eff_adr, Register mod_rm)
+unsigned JitCompilerIA32::ModRM(Register eff_adr, Register mod_rm)
 {
   unsigned byte = 0;
 
@@ -4109,7 +4109,7 @@ unsigned Runtime::JitCompilerIA32::ModRM(Register eff_adr, Register mod_rm)
   return byte;
 }
 
-std::wstring Runtime::JitCompilerIA32::GetRegisterName(Register reg)
+std::wstring JitCompilerIA32::GetRegisterName(Register reg)
 {
   switch(reg) {
   case EAX:
@@ -4164,7 +4164,7 @@ std::wstring Runtime::JitCompilerIA32::GetRegisterName(Register reg)
   return L"unknown";
 }
 
-void Runtime::JitCompilerIA32::RegisterEncode3(unsigned char& code, int32_t offset, Register reg)
+void JitCompilerIA32::RegisterEncode3(unsigned char& code, int32_t offset, Register reg)
 {
 #ifdef _DEBUG
   assert(offset == 2 || offset == 5);
@@ -4224,7 +4224,7 @@ void Runtime::JitCompilerIA32::RegisterEncode3(unsigned char& code, int32_t offs
   code = code | reg_id;
 }
 
-void Runtime::JitCompilerIA32::StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
+void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
 {
 #ifdef _DEBUG
   wcout << L"Stack Call: instr=" << instr_id
@@ -4609,7 +4609,7 @@ void Runtime::JitCompilerIA32::StackCallback(const int32_t instr_id, StackInstr*
   }
 }
 
-Runtime::RegisterHolder* Runtime::JitCompilerIA32::ArrayIndex(StackInstr* instr, MemoryType type)
+RegisterHolder* JitCompilerIA32::ArrayIndex(StackInstr* instr, MemoryType type)
 {
   RegInstr* holder = working_stack.front();
   working_stack.pop_front();
@@ -4752,7 +4752,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerIA32::ArrayIndex(StackInstr* instr,
   return array_holder;
 }
 
-void Runtime::JitCompilerIA32::ProcessIndices()
+void JitCompilerIA32::ProcessIndices()
 {
 #ifdef _DEBUG
   wcout << L"Calculating indices for variables..." << endl;
@@ -4834,7 +4834,7 @@ void Runtime::JitCompilerIA32::ProcessIndices()
 #endif
 }
 
-bool Runtime::JitCompilerIA32::Compile(StackMethod* cm)
+bool JitCompilerIA32::Compile(StackMethod* cm)
 {
   compile_success = true;
 
@@ -4976,14 +4976,14 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   return rtrn_value;
 }
 
-Runtime::PageManager::PageManager()
+PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
     holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
   }
 }
 
-Runtime::PageManager::~PageManager()
+PageManager::~PageManager()
 {
   while(!holders.empty()) {
     PageHolder* tmp = holders.front();
@@ -4994,7 +4994,7 @@ Runtime::PageManager::~PageManager()
   }
 }
 
-unsigned char* Runtime::PageManager::GetPage(unsigned char* code, int32_t size)
+unsigned char* PageManager::GetPage(unsigned char* code, int32_t size)
 {
   bool placed = false;
 
