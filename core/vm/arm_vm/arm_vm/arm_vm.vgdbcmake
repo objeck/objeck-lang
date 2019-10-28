@@ -192,7 +192,7 @@
       <WorkingDirectory>$(SelectedCMakeTargetLaunchDir)</WorkingDirectory>
     </LaunchGDBSettings>
     <GenerateCtrlBreakInsteadOfCtrlC>false</GenerateCtrlBreakInsteadOfCtrlC>
-    <DeploymentTargetPath>$(DeployPath)/$(TargetFileName)</DeploymentTargetPath>
+    <DeploymentTargetPath>$(DeployPath)</DeploymentTargetPath>
     <X11WindowMode>Local</X11WindowMode>
     <KeepConsoleAfterExit>false</KeepConsoleAfterExit>
     <RunGDBUnderSudo>false</RunGDBUnderSudo>
