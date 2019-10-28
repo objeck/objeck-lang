@@ -4311,7 +4311,7 @@ void JitCompilerA32::ProcessIndices()
   
   // calculate local space
   local_space = -(index + TMP_REG_6);
-  while(local_space % 8 != 0) {
+  if(local_space % 8 != 0) {
     local_space += 4;
   }
 
