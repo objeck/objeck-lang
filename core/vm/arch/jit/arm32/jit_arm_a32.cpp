@@ -107,8 +107,6 @@ void JitCompilerA32::Epilog() {
 }
 
 void JitCompilerA32::RegisterRoot() {
-  move_imm_mem(99, TMP_REG_6, FP);
-  
   // get to local variables
   RegisterHolder* holder = GetRegister();
   const int32_t offset = local_space + TMP_REG_6 - 4;
