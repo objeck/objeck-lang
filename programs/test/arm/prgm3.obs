@@ -1,0 +1,10 @@
+class Test {		
+	function : Main(args : System.String[]) ~ Nil {
+		Run(args)->PrintLine();
+	}
+
+#	function : native : Run(args : String[]) ~ Int {		
+	function : Run(args : String[]) ~ Int {		
+		return args->Size();
+	}
+}
