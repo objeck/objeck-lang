@@ -1,9 +1,9 @@
 class Test {
 	function : Main(args : System.String[]) ~ Nil {
-		Run();
+		Run()->PrintLine();
 	}
 
-	function : native : Run() ~ Nil {		
+	function : native : Run() ~ Int {		
 # function : Run() ~ Nil {		
 		i := 5;
 		x := 5.33;
@@ -11,5 +11,6 @@ class Test {
 			x += 0.66;	
 			x->PrintLine();
 		};
+		return x;
 	}
 }
