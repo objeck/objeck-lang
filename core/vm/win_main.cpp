@@ -78,6 +78,8 @@ int main(const int argc, const char* argv[])
     usage += L" (x86_64 macOS)";
 #elif _X64
     usage += L" (x86_64 Linux)";
+#elif _ARM32
+    usage += L" (ARMv7 Linux)";
 #else
     usage += L" (x86 Linux)";
 #endif 
