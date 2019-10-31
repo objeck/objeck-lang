@@ -3,8 +3,8 @@ class Test {
 		Run(args)->PrintLine();
 	}
 
-#	function : native : Run(args : String[]) ~ Int {		
-	function : Run(args : String[]) ~ Float {		
+	function : native : Run(args : String[]) ~ Float {		
+#	function : Run(args : String[]) ~ Float {		
 		return 3.289->Sin();
 	}
 }
