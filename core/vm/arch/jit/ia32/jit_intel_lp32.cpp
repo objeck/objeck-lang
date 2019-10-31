@@ -890,7 +890,10 @@ void JitCompilerIA32::ProcessJump(StackInstr* instr) {
         break;
       }
 
-      // 1 byte compare with register
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
+#endif
+      // compare with register
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
       
