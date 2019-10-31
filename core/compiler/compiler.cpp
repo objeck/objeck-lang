@@ -67,6 +67,8 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
     wcout << VERSION_STRING << L" Objeck (x86-64 macOS)" << endl;
 #elif _X64
     wcout << VERSION_STRING << L" Objeck (x86-64 Linux)" << endl;
+#elif _ARM32
+    wcout << VERSION_STRING << L" Objeck (ARMv7 Linux)" << endl;
 #else
     wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
 #endif 

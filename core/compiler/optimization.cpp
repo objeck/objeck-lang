@@ -95,6 +95,8 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstrin
   can_inline.insert(L"System.$Byte:Max:b,b,");
   can_inline.insert(L"System.$Byte:Min:b,b,");
   can_inline.insert(L"System.$Byte:Abs:b,");
+  // built-in types
+  can_inline.insert(L"System.$BaseArray:Size:o.System.Base*,");
 }
 
 void ItermediateOptimizer::Optimize()
@@ -514,7 +516,6 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
 bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*>& inlined_mthds, set<int>& lbl_jmp_offsets)
 {
   // don't inline the same method more then once, since you'll have label/jump conflicts
-
   set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
   if(found != inlined_mthds.end()) {
     return false;
@@ -538,11 +539,13 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
     };
   }
 
+  /* Covered below...
   // methods are in the same class, such that instance and class
   // offset will not have to be adjusted 
   if(mthd_called->GetClass() != current_method->GetClass()) {
     return false;
   }
+  */
 
   if(current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
     return false;

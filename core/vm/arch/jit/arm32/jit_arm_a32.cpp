@@ -721,6 +721,15 @@ void JitCompilerA32::ProcessInstructions() {
       ProcessReturnParameters(INT_TYPE);
     }
       break;
+
+    case LOAD_ARY_SIZE: {
+#ifdef _DEBUG
+      wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
+      ProcessReturnParameters(INT_TYPE);
+    }
+      break;
       
     case LOAD_BYTE_ARY_ELM:
 #ifdef _DEBUG
