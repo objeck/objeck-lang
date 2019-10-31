@@ -99,7 +99,7 @@
         <CMakeTargetSpecificSettings>
           <TargetID>obr</TargetID>
           <Debug>
-            <Arguments>../compiler/a.obe xyz abc</Arguments>
+            <Arguments>../compiler/a.obe</Arguments>
             <WorkingDirectory />
           </Debug>
           <Deployment>

@@ -3521,7 +3521,81 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 
 void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
 {
-  throw runtime_error("Method 'ProcessFloatOperation(..)' not implemented for ARM32 target");
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+
+  InstructionType type = instruction->GetType();
+#ifdef _DEBUG
+  assert(left->GetType() == MEM_FLOAT);
+#endif
+  
+  // save D0, if needed
+  RegisterHolder* holder = GetXmmRegister();
+  if(holder->GetRegister() != D0) { 
+    move_xreg_mem(D0, TMP_D_0, FP);
+  }
+  
+  // load D0
+  move_mem_xreg(left->GetOperand(), FP, D0);
+  
+  // choose function
+  double(*func_ptr)(double);
+  switch (type) {
+  case SIN_FLOAT:
+    func_ptr = sin;
+    break;
+    
+  case COS_FLOAT:
+    func_ptr = cos;
+    break;
+
+  case TAN_FLOAT:
+    func_ptr = tan;
+    break;
+
+  case SQRT_FLOAT:
+    func_ptr = sqrt;
+    break;
+
+  case ASIN_FLOAT:
+    func_ptr = asin;
+    break;
+
+  case ACOS_FLOAT:
+    func_ptr = acos;
+    break;
+
+  case LOG_FLOAT:
+    func_ptr = log;
+    break;
+    
+  case ATAN2_FLOAT:
+  case POW_FLOAT:
+    throw runtime_error("ATAN2_FLOAT and POW_FLOAT to be implemented");
+    break;
+    
+  default:
+#ifdef _DEBUG
+    assert(false);
+#endif
+    break;
+  }
+  
+  // call function
+  move_reg_mem(R4, TMP_REG_0, FP);
+  move_imm_reg((uint32_t)func_ptr, R4);
+  call_reg(R4);
+  move_mem_reg(TMP_REG_0, FP, R4);
+  
+  // get return and restore D0, if needed
+  if(holder->GetRegister() != D0) {
+    move_xreg_xreg(D0, holder->GetRegister());
+    move_mem_xreg(TMP_D_0, FP, D0);
+  }
+  working_stack.push_front(new RegInstr(holder));  
+  
+  delete left;
+  left = nullptr;
 }
 
 RegisterHolder* JitCompilerA32::call_xfunc(double(*func_ptr)(double), RegInstr* left)
