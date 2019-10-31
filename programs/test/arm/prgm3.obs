@@ -4,7 +4,7 @@ class Test {
 	}
 
 #	function : native : Run(args : String[]) ~ Int {		
-	function : Run(args : String[]) ~ Int {		
-		return args->Size();
+	function : Run(args : String[]) ~ Float {		
+		return 3.289->Sin();
 	}
 }
