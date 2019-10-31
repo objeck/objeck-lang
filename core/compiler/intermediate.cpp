@@ -4671,7 +4671,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
         // note: localized hack for edge case
-        else if(is_nested && lib_method->GetLibraryClass()->GetName() == L"System.$BaseArray") {
+        else if(is_nested && lib_method->GetLibraryClass()->GetName() == BASE_ARRAY_CLASS_ID) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
       } 

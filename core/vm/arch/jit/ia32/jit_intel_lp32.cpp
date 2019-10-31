@@ -740,6 +740,15 @@ void JitCompilerIA32::ProcessInstructions() {
       ProcessReturnParameters(INT_TYPE);
     }
       break;
+
+    case LOAD_ARY_SIZE: {
+#ifdef _DEBUG
+      wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
+      ProcessReturnParameters(INT_TYPE);
+    }
+      break;
       
     case LOAD_BYTE_ARY_ELM:
 #ifdef _DEBUG
@@ -4239,7 +4248,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (size_t*)inst, true);
   }
-                      break;
+    break;
 
   case LOAD_ARY_SIZE: {
     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -4250,7 +4259,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     }
     PushInt(op_stack, stack_pos, array[2]);
   }
-                      break;
+    break;
 
   case NEW_BYTE_ARY: {
     size_t indices[8];
@@ -4352,7 +4361,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     memcpy(mem + 2, indices, dim * sizeof(int32_t));
     PushInt(op_stack, stack_pos, (int32_t)mem);
   }
-                      break;
+    break;
 
   case NEW_OBJ_INST: {
 #ifdef _DEBUG
@@ -4395,7 +4404,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     }
     PushInt(op_stack, stack_pos, result);
   }
-                      break;
+    break;
 
                       //----------- threads -----------
 
@@ -4459,7 +4468,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     pthread_mutex_lock((pthread_mutex_t*)& instance[1]);
 #endif
   }
-                       break;
+     break;
 
   case CRITICAL_END: {
     int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
@@ -4584,7 +4593,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
       PushInt(op_stack, stack_pos, 0);
     }
   }
-                      break;
+    break;
 
   case TRAP:
   case TRAP_RTRN: {
