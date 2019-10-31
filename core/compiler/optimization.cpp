@@ -62,6 +62,7 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstrin
   }
 
   // primitive 'Float'
+  can_inline.insert(L"System.$Float:Size:f*,");
   can_inline.insert(L"System.$Float:Sin:f,");
   can_inline.insert(L"System.$Float:Cos:f,");
   can_inline.insert(L"System.$Float:Tan:f,");
@@ -79,15 +80,18 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstrin
   can_inline.insert(L"System.$Float:Pi:");
   can_inline.insert(L"System.$Float:E:");
   // primitive 'Int'
+  can_inline.insert(L"System.$Int:Size:i*,");
   can_inline.insert(L"System.$Int:Max:i,i,");
   can_inline.insert(L"System.$Int:Min:i,i,");
   can_inline.insert(L"System.$Int:Factorial:i,");
   can_inline.insert(L"System.$Int:Abs:i,");
   // primitive 'Char'
+  can_inline.insert(L"System.$Char:Size:c*,");
   can_inline.insert(L"System.$Char:Max:c,c,");
   can_inline.insert(L"System.$Char:Min:c,c,");
   can_inline.insert(L"System.$Char:Abs:c,");
   // primitive 'Byte'
+  can_inline.insert(L"System.$Byte:Size:b*,");
   can_inline.insert(L"System.$Byte:Max:b,b,");
   can_inline.insert(L"System.$Byte:Min:b,b,");
   can_inline.insert(L"System.$Byte:Abs:b,");
