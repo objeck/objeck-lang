@@ -3571,7 +3571,7 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
     
   case ATAN2_FLOAT:
   case POW_FLOAT:
-    throw runtime_error("ATAN2_FLOAT and POW_FLOAT to be implemented");
+    throw runtime_error("ATAN2_FLOAT/POW_FLOAT to be implemented");
     break;
     
   default:
