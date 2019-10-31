@@ -1,5 +1,6 @@
 /***************************************************************************
  * JIT compiler for 32-bit x86 architectures (Windows and Linux).
+ * JIT compiler for 32-bit x86 architectures (Windows and Linux).
  *
  * Copyright (c) 2008-2018, Randy Hollines
  * All rights reserved.
