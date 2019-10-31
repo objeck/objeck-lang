@@ -874,15 +874,16 @@ void JitCompilerA32::ProcessJump(StackInstr* instr) {
         exit(1);
         break;
       }
-      
-      // clean up
-      delete left;
-      left = nullptr;
 
+      // compare with register
 #ifdef _DEBUG
       std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
 #endif
       AddMachineCode(0x0a000000);
+      
+      // clean up
+      delete left;
+      left = nullptr;
     }
     
     // store update index
