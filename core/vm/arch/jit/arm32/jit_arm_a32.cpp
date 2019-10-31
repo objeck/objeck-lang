@@ -878,6 +878,11 @@ void JitCompilerA32::ProcessJump(StackInstr* instr) {
       // clean up
       delete left;
       left = nullptr;
+
+#ifdef _DEBUG
+      std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+#endif
+      AddMachineCode(0x0a000000);
     }
     
     // store update index
@@ -1305,12 +1310,6 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
     }
     else {      
       move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
-      /*
-      // mark static reference
-      if(instr->GetOperand2() == CLS) {
-      ProcessAddStaticMemory(holder->GetRegister());
-      }
-      */
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
