@@ -361,6 +361,7 @@ namespace Runtime {
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessFloatOperation(StackInstr* instruction);
+    void ProcessFloatOperation2(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
