@@ -408,13 +408,19 @@ void JitCompilerA32::ProcessInstructions() {
     case SQRT_FLOAT:
     case ASIN_FLOAT:
     case ACOS_FLOAT:
-    case ATAN2_FLOAT:
-    case POW_FLOAT:
     case LOG_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
+      break;
+      
+    case ATAN2_FLOAT:
+    case POW_FLOAT:
+#ifdef _DEBUG
+      wcout << L"POW/ATAN2: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessFloatOperation2(instr);
       break;
       
     case LES_FLOAT:
@@ -3568,12 +3574,7 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   case LOG_FLOAT:
     func_ptr = log;
     break;
-    
-  case ATAN2_FLOAT:
-  case POW_FLOAT:
-    throw runtime_error("ATAN2_FLOAT/POW_FLOAT to be implemented");
-    break;
-    
+      
   default:
 #ifdef _DEBUG
     assert(false);
@@ -3596,6 +3597,17 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   
   delete left;
   left = nullptr;
+}
+
+void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
+{
+  /*
+   case ATAN2_FLOAT:
+   case POW_FLOAT:
+    throw runtime_error("ATAN2_FLOAT/POW_FLOAT to be implemented");
+    break;
+  */
+  throw runtime_error("Need to implement");
 }
 
 RegisterHolder* JitCompilerA32::call_xfunc(double(*func_ptr)(double), RegInstr* left)
