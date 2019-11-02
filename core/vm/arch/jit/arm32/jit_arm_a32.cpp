@@ -3535,12 +3535,9 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   assert(left->GetType() == MEM_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder* holder = GetXmmRegister();
-  if(holder->GetRegister() != D0) { 
-    move_xreg_mem(D0, TMP_D_0, FP);
-  }
-  
+  // save D0, if needed  
+  move_xreg_mem(D0, TMP_D_0, FP);
+   
   // load D0
   move_mem_xreg(left->GetOperand(), FP, D0);
   
@@ -3589,8 +3586,9 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   move_mem_reg(TMP_REG_0, FP, R4);
   
   // get return and restore D0, if needed
+  RegisterHolder* holder = GetXmmRegister();
+  move_xreg_xreg(D0, holder->GetRegister());
   if(holder->GetRegister() != D0) {
-    move_xreg_xreg(D0, holder->GetRegister());
     move_mem_xreg(TMP_D_0, FP, D0);
   }
   working_stack.push_front(new RegInstr(holder));  
@@ -3601,13 +3599,63 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
 
 void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
 {
-  /*
-   case ATAN2_FLOAT:
-   case POW_FLOAT:
-    throw runtime_error("ATAN2_FLOAT/POW_FLOAT to be implemented");
-    break;
-  */
-  throw runtime_error("Need to implement");
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+  
+  RegInstr* right = working_stack.front();
+  working_stack.pop_front();
+
+  InstructionType type = instruction->GetType();
+#ifdef _DEBUG
+  assert(left->GetType() == MEM_FLOAT);
+#endif
+  
+  // save D0, if needed  
+  move_xreg_mem(D0, TMP_D_0, FP);
+  move_xreg_mem(D1, TMP_D_1, FP);
+   
+  // load D0
+  move_mem_xreg(left->GetOperand(), FP, D0);
+  move_mem_xreg(right->GetOperand(), FP, D1);
+  
+  // choose function
+  double(*func_ptr)(double, double);
+  switch (type) {
+    case ATAN2_FLOAT:
+      func_ptr = atan2;
+      break;
+    
+    case POW_FLOAT:
+      func_ptr = pow;
+      break;
+      
+    default:
+#ifdef _DEBUG
+      assert(false);
+#endif
+      break;
+  }
+  
+  // call function
+  move_reg_mem(R4, TMP_REG_0, FP);
+  move_imm_reg((uint32_t)func_ptr, R4);
+  call_reg(R4);
+  move_mem_reg(TMP_REG_0, FP, R4);
+  
+  // get return and restore D0, if needed
+  RegisterHolder* holder = GetXmmRegister();
+  move_xreg_xreg(D0, holder->GetRegister());
+  move_mem_xreg(TMP_D_1, FP, D1);
+  if(holder->GetRegister() != D0) {
+    move_mem_xreg(TMP_D_0, FP, D0);
+  }
+  working_stack.push_front(new RegInstr(holder));  
+  
+  delete left;
+  left = nullptr;
+  
+  delete right;
+  right = nullptr;
 }
 
 RegisterHolder* JitCompilerA32::call_xfunc(double(*func_ptr)(double), RegInstr* left)
