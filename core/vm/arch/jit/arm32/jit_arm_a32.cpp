@@ -3662,16 +3662,6 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   right = nullptr;
 }
 
-RegisterHolder* JitCompilerA32::call_xfunc(double(*func_ptr)(double), RegInstr* left)
-{
-  throw runtime_error("Method 'call_xfunc(..)' not implemented for ARM32 target");
-}
-
-RegisterHolder* JitCompilerA32::call_xfunc2(double(*func_ptr)(double, double), RegInstr* left)
-{
-  throw runtime_error("Method 'call_xfunc2(..)' not implemented for ARM32 target");
-}
-
 // --- push/pop cpu stack ---
 void JitCompilerA32::push_mem(int32_t offset, Register dest) {
   throw runtime_error("Method 'push_mem(..)' not implemented for ARM32 target");
