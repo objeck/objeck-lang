@@ -3535,9 +3535,12 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   assert(left->GetType() == MEM_FLOAT);
 #endif
   
-  // save D0, if needed  
-  move_xreg_mem(D0, TMP_D_0, FP);
-   
+  // save D0, if needed
+  RegisterHolder *holder = GetXmmRegister();
+  if(holder->GetRegister() != D0) {
+    move_xreg_mem(D0, TMP_D_0, FP);
+  }
+  
   // load D0
   move_mem_xreg(left->GetOperand(), FP, D0);
   
@@ -3586,7 +3589,6 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   move_mem_reg(TMP_REG_0, FP, R4);
   
   // get return and restore D0, if needed
-  RegisterHolder* holder = GetXmmRegister();
   move_xreg_xreg(D0, holder->GetRegister());
   if(holder->GetRegister() != D0) {
     move_mem_xreg(TMP_D_0, FP, D0);
@@ -3610,13 +3612,16 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   assert(left->GetType() == MEM_FLOAT);
 #endif
   
-  // save D0, if needed  
-  move_xreg_mem(D0, TMP_D_0, FP);
+  // save D0, if needed
+  RegisterHolder *holder = GetXmmRegister();
+  if(holder->GetRegister() != D0) {
+    move_xreg_mem(D0, TMP_D_0, FP);
+  }
   move_xreg_mem(D1, TMP_D_1, FP);
    
   // load D0
-  move_mem_xreg(left->GetOperand(), FP, D0);
-  move_mem_xreg(right->GetOperand(), FP, D1);
+  move_mem_xreg(right->GetOperand(), FP, D0);
+  move_mem_xreg(left->GetOperand(), FP, D1);
   
   // choose function
   double(*func_ptr)(double, double);
@@ -3643,7 +3648,6 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   move_mem_reg(TMP_REG_0, FP, R4);
   
   // get return and restore D0, if needed
-  RegisterHolder* holder = GetXmmRegister();
   move_xreg_xreg(D0, holder->GetRegister());
   move_mem_xreg(TMP_D_1, FP, D1);
   if(holder->GetRegister() != D0) {
