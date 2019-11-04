@@ -3058,7 +3058,8 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
     //
     if(next_instr->GetOperand2() == 1) {
       switch(type) {
-      case LES_INT:	
+      case LES_INT:
+      case LES_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
@@ -3066,6 +3067,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
         break;
 
       case GTR_INT:
+      case GTR_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
@@ -3089,6 +3091,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
         break;
 
       case LES_EQL_INT:
+      case LES_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
@@ -3096,26 +3099,11 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
         break;
         
       case GTR_EQL_INT:
+      case GTR_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
         AddMachineCode(0xaa000000);
-        break;
-
-      case LES_FLOAT:
-        assert(false);
-        break;
-				
-      case GTR_FLOAT:
-        assert(false);
-        break;
-
-      case LES_EQL_FLOAT:
-        assert(false);
-        break;
-				
-      case GTR_EQL_FLOAT:
-        assert(false);
         break;
 				
       default:
@@ -3127,7 +3115,8 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
     //
     else {
       switch(type) {
-      case LES_INT:	
+      case LES_INT:
+      case LES_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
@@ -3135,6 +3124,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
         break;
 
       case GTR_INT:
+      case GTR_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
@@ -3158,6 +3148,7 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
         break;
 
       case LES_EQL_INT:
+      case LES_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
@@ -3165,38 +3156,11 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
         break;
         
       case GTR_EQL_INT:
+      case GTR_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
         AddMachineCode(0xba000000);
-        break;
-
-      case LES_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
-#endif
-        assert(false);
-        break;
-				
-      case GTR_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
-#endif
-        assert(false);
-        break;
-
-      case LES_EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
-#endif
-        assert(false);
-        break;
-				
-      case GTR_EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
-#endif
-        assert(false);
         break;
 				
       default:
@@ -3435,7 +3399,8 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
   move_imm_reg(0, reg);
   
   switch (oper) {
-  case LES_INT:	
+  case LES_INT:
+  case LES_FLOAT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
@@ -3443,6 +3408,7 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     break;
 
   case GTR_INT:
+  case GTR_FLOAT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
@@ -3466,6 +3432,7 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     break;
 
   case LES_EQL_INT:
+  case LES_EQL_FLOAT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
@@ -3473,13 +3440,13 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     break;
         
   case GTR_EQL_INT:
+  case GTR_EQL_FLOAT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
     AddMachineCode(0xba000000);
     break;
-
-  case LES_FLOAT:
+  
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
@@ -3488,28 +3455,7 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 #endif
     AddMachineCode(0xaa000000);
     break;
-				
-  case GTR_FLOAT:
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
-#endif
-    assert(false);
-    break;
-
-  case LES_EQL_FLOAT:
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
-#endif
-    assert(false);
-    break;
-				
-  case GTR_EQL_FLOAT:
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
-#endif
-    assert(false);
-    break;
-				
+    
   default:
     break;
   }
