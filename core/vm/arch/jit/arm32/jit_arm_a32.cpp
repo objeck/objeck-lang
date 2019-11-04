@@ -2408,6 +2408,8 @@ void JitCompilerA32::math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, Instru
   case GTR_EQL_FLOAT:
     cmp_imm_xreg(instr, reg->GetRegister());
     if(!cond_jmp(type)) {
+      ReleaseXmmRegister(reg);
+      reg = GetRegister();
       cmov_reg(reg->GetRegister(), type);
     }
     break;
