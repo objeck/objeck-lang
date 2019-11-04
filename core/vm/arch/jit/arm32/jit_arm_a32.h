@@ -1,7 +1,7 @@
 /***************************************************************************
- * JIT compiler for the ARM A32 architecture (A1 encoding)
+ * JIT compiler for ARMv7 architecture (A1 instruction encoding)
  *
- * Copyright (c) 2019, Randy Hollines
+ * Copyright (c) 2019-2020, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
