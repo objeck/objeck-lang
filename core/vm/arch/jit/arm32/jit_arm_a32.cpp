@@ -1884,21 +1884,13 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case IMM_FLOAT: {
       RegisterHolder* left_holder = GetXmmRegister();
       move_imm_xreg(left, left_holder->GetRegister());      
+      
       RegisterHolder* right_holder = GetXmmRegister();
       move_imm_xreg(right, right_holder->GetRegister());      
       
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(), 
-                       instruction->GetType());
-        ReleaseXmmRegister(left_holder);
-        working_stack.push_front(new RegInstr(right_holder));
-      }
-      else {
-        math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), 
-                       instruction->GetType());
-        ReleaseXmmRegister(right_holder);
-        working_stack.push_front(new RegInstr(left_holder));
-      }
+      math_xreg_xreg(right_holder->GetRegister(), left_holder, instruction->GetType());
+      ReleaseXmmRegister(right_holder);
+      working_stack.push_front(new RegInstr(left_holder));
     }
       break;
       
@@ -1906,16 +1898,9 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(left, imm_holder->GetRegister());
       
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(imm_holder->GetRegister(), right->GetRegister()->GetRegister(), type);
-        ReleaseXmmRegister(imm_holder);
-        working_stack.push_front(new RegInstr(right->GetRegister()));
-      }
-      else {
-        math_xreg_xreg(right->GetRegister()->GetRegister(), imm_holder->GetRegister(), type);
-        ReleaseXmmRegister(right->GetRegister());
-        working_stack.push_front(new RegInstr(imm_holder));
-      }
+      math_xreg_xreg(right->GetRegister()->GetRegister(), imm_holder, type);
+      ReleaseXmmRegister(right->GetRegister());
+      working_stack.push_front(new RegInstr(imm_holder));
     }
       break;
 
@@ -1927,16 +1912,9 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(left, imm_holder->GetRegister());
 
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(imm_holder->GetRegister(), holder->GetRegister(), type);
-        ReleaseXmmRegister(imm_holder);
-        working_stack.push_front(new RegInstr(holder));
-      }
-      else {
-        math_xreg_xreg(holder->GetRegister(), imm_holder->GetRegister(), type);
-        ReleaseXmmRegister(holder);
-        working_stack.push_front(new RegInstr(imm_holder));
-      }
+      math_xreg_xreg(holder->GetRegister(), imm_holder, type);
+      ReleaseXmmRegister(holder);
+      working_stack.push_front(new RegInstr(imm_holder));
     }
       break;
 
@@ -1953,48 +1931,26 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
       RegisterHolder* right_holder = GetXmmRegister();
       move_imm_xreg(right, right_holder->GetRegister());
       
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
-        ReleaseXmmRegister(left_holder);      
-        working_stack.push_front(new RegInstr(right_holder));
-      }
-      else {
-        math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), instruction->GetType());
-        ReleaseXmmRegister(right_holder);      
-        working_stack.push_front(new RegInstr(left_holder));
-      }
+      math_xreg_xreg(right_holder->GetRegister(), left_holder, instruction->GetType());
+      ReleaseXmmRegister(right_holder);      
+      working_stack.push_front(new RegInstr(left_holder));
     }
       break;
 
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(left->GetRegister()->GetRegister(), holder->GetRegister(), instruction->GetType());
-        working_stack.push_front(new RegInstr(holder));
-        ReleaseXmmRegister(left->GetRegister());
-      }
-      else {
-        math_xreg_xreg(holder->GetRegister(), left->GetRegister()->GetRegister(), instruction->GetType());
-        working_stack.push_front(new RegInstr(left->GetRegister()));
-        ReleaseXmmRegister(holder);
-      }
+      RegisterHolder* temp = left->GetRegister();
+      math_xreg_xreg(holder->GetRegister(), temp, instruction->GetType());
+      working_stack.push_front(new RegInstr(temp));
+      ReleaseXmmRegister(holder);
     }
       break;
       
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* holder = left->GetRegister();
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        RegisterHolder* right_holder = GetXmmRegister();
-	move_mem_xreg(right->GetOperand(), FP, right_holder->GetRegister());
-        math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
-        ReleaseXmmRegister(holder);
-        working_stack.push_front(new RegInstr(right_holder));
-      }
-      else {
-        math_mem_xreg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
-        working_stack.push_front(new RegInstr(holder));
-      }
+      math_mem_xreg(right->GetOperand(), holder, instruction->GetType());
+      working_stack.push_front(new RegInstr(holder));
     }
       break;
 
@@ -2012,32 +1968,19 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
       
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(right, imm_holder->GetRegister());
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(holder->GetRegister(), imm_holder->GetRegister(), type);
-        ReleaseXmmRegister(holder);
-        working_stack.push_front(new RegInstr(imm_holder));
-      }
-      else {
-        math_xreg_xreg(imm_holder->GetRegister(), holder->GetRegister(), type);
-        ReleaseXmmRegister(imm_holder);
-        working_stack.push_front(new RegInstr(holder));
-      }
+      math_xreg_xreg(imm_holder->GetRegister(), holder, type);
+      ReleaseXmmRegister(imm_holder);
+      working_stack.push_front(new RegInstr(holder));
     }
       break;
       
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_mem_xreg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
-        working_stack.push_front(new RegInstr(holder));
-      }
-      else {
-        RegisterHolder* right_holder = GetXmmRegister();
-	      move_mem_xreg(left->GetOperand(), FP, right_holder->GetRegister());
-        math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
-        ReleaseXmmRegister(holder);
-        working_stack.push_front(new RegInstr(right_holder));
-      }
+      RegisterHolder* right_holder = GetXmmRegister();
+	    move_mem_xreg(left->GetOperand(), FP, right_holder->GetRegister());
+      math_xreg_xreg(holder->GetRegister(), right_holder, instruction->GetType());
+      ReleaseXmmRegister(holder);
+      working_stack.push_front(new RegInstr(right_holder));
     }
       break;
       
@@ -2048,18 +1991,9 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
 
       RegisterHolder* right_holder = GetXmmRegister();
       move_mem_xreg(right->GetOperand(), FP, right_holder->GetRegister());
-      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(),  
-                       instruction->GetType());
-        ReleaseXmmRegister(left_holder);
-        working_stack.push_front(new RegInstr(right_holder));
-      }
-      else {
-        math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(),  
-                       instruction->GetType());	
-        ReleaseXmmRegister(right_holder);
-        working_stack.push_front(new RegInstr(left_holder));
-      }
+      math_xreg_xreg(right_holder->GetRegister(), left_holder, instruction->GetType());	
+      ReleaseXmmRegister(right_holder);
+      working_stack.push_front(new RegInstr(left_holder));
     }
       break;
 
@@ -2448,22 +2382,22 @@ void JitCompilerA32::mul_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type) {
+void JitCompilerA32::math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
-    add_imm_xreg(instr, reg);
+    add_imm_xreg(instr, reg->GetRegister());
     break;
 
   case SUB_FLOAT:
-    sub_imm_xreg(instr, reg);
+    sub_imm_xreg(instr, reg->GetRegister());
     break;
 
   case MUL_FLOAT:
-    mul_imm_xreg(instr, reg);
+    mul_imm_xreg(instr, reg->GetRegister());
     break;
 
   case DIV_FLOAT:
-    div_imm_xreg(instr, reg);
+    div_imm_xreg(instr, reg->GetRegister());
     break;
     
   case LES_FLOAT:
@@ -2472,9 +2406,9 @@ void JitCompilerA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionTyp
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_imm_xreg(instr, reg);
+    cmp_imm_xreg(instr, reg->GetRegister());
     if(!cond_jmp(type)) {
-      cmov_reg(reg, type);
+      cmov_reg(reg->GetRegister(), type);
     }
     break;
 		
@@ -2483,29 +2417,29 @@ void JitCompilerA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionTyp
   }
 }
 
-void JitCompilerA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
+void JitCompilerA32::math_mem_xreg(int32_t offset, RegisterHolder* &dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, FP, holder->GetRegister());
   math_xreg_xreg(holder->GetRegister(), dest, type);
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerA32::math_xreg_xreg(Register src, Register dest, InstructionType type) {
+void JitCompilerA32::math_xreg_xreg(Register src, RegisterHolder *&dest, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
-    add_xreg_xreg(src, dest);
+    add_xreg_xreg(src, dest->GetRegister());
     break;
 
   case SUB_FLOAT:
-    sub_xreg_xreg(src, dest);
+    sub_xreg_xreg(src, dest->GetRegister());
     break;
 
   case MUL_FLOAT:
-    mul_xreg_xreg(src, dest);
+    mul_xreg_xreg(src, dest->GetRegister());
     break;
 
   case DIV_FLOAT:
-    div_xreg_xreg(src, dest);
+    div_xreg_xreg(src, dest->GetRegister());
     break;
     
   case LES_FLOAT:
@@ -2514,9 +2448,11 @@ void JitCompilerA32::math_xreg_xreg(Register src, Register dest, InstructionType
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_xreg_xreg(src, dest);
+    cmp_xreg_xreg(src, dest->GetRegister());
     if(!cond_jmp(type)) {
-      cmov_reg(dest, type);
+      ReleaseXmmRegister(dest);
+      dest = GetRegister();
+      cmov_reg(dest->GetRegister(), type);
     }
     break;
 		
@@ -3397,17 +3333,31 @@ void JitCompilerA32::call_reg(Register reg) {
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 {
-  move_imm_reg(0, reg);
-  
-  switch (oper) {
+  // move_imm_reg(0, reg);
+
+  uint32_t op_code, op_dest;
+
+  switch (oper)
+  {
   case LES_INT:
   case LES_FLOAT:
 #ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
+    wcout << L"  " << (++instr_count) << L": [movmi " << GetRegisterName(reg) << L", #1]" << endl;
 #endif
-    AddMachineCode(0xaa000000);
-    break;
+    op_code = 0x43a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
 
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [movpl " << GetRegisterName(reg) << L", #0]" << endl;
+#endif
+    op_code = 0x53a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+    
   case GTR_INT:
   case GTR_FLOAT:
 #ifdef _DEBUG
@@ -3447,21 +3397,12 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 #endif
     AddMachineCode(0xba000000);
     break;
-  
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
-#endif
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
-#endif
-    AddMachineCode(0xaa000000);
-    break;
     
   default:
     break;
   }
   
-  move_imm_reg(1, reg);
+  // move_imm_reg(1, reg);
 }
 
 void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
@@ -3717,29 +3658,6 @@ void JitCompilerA32::round_mem_xreg(int32_t offset, Register src, Register dest,
 
 void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
   throw runtime_error("Method 'round_xreg_xreg(..)' not implemented for ARM32 target");
-  /*
-  if(src != D0) {
-    move_xreg_mem(D0, TMP_D_0, FP);  
-  }
-  move_reg_mem(R0, TMP_REG_0, FP);
-  
-  double(*func_ptr)(double);
-  if(is_floor) {
-    func_ptr = floor;    
-  }
-  else {
-    func_ptr = ceil;
-  }
-  
-  move_imm_reg((uint32_t)func_ptr, R0);
-  call_reg(R0);
-  move_xreg_xreg(D0, dest);
-  
-  move_mem_reg(TMP_REG_0, FP, R0);
-  if(src != D0) {
-    move_mem_xreg(TMP_D_0, FP, D0);  
-  }
-  */
 }
 
 //

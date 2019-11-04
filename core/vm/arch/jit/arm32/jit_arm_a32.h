@@ -552,12 +552,12 @@ namespace Runtime {
 
     // math instructions
     void math_imm_reg(int32_t imm, Register reg, InstructionType type);    
-    void math_imm_xreg(RegInstr* instr, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
-    void math_xreg_xreg(Register src, Register dest, InstructionType type);
     void math_mem_reg(int32_t offset, Register reg, InstructionType type);
-    void math_mem_xreg(int32_t offset, Register reg, InstructionType type);
-
+    void math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, InstructionType type);
+    void math_mem_xreg(int32_t offset, RegisterHolder *&reg, InstructionType type);
+    void math_xreg_xreg(Register src, RegisterHolder *&dest, InstructionType type);
+    
     // logical
     void and_imm_reg(int32_t imm, Register reg);
     void and_reg_reg(Register src, Register dest);
@@ -615,9 +615,11 @@ namespace Runtime {
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(int32_t offset, Register src, Register dest);
     void cmp_imm_reg(int32_t imm, Register reg);
+    
     void cmp_xreg_xreg(Register src, Register dest);
     void cmp_mem_xreg(int32_t offset, Register src, Register dest);
     void cmp_imm_xreg(RegInstr* instr, Register reg);
+    
     void cmov_reg(Register reg, InstructionType oper);
 
     // inc/dec instructions
