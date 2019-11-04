@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for 32-bit ARM32 architecture
+ * JIT compiler for ARMv7 architecture (A1 instruction encoding)
  *
  * Copyright (c) 2019-2020, Randy Hollines
  * All rights reserved.
