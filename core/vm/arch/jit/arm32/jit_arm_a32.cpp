@@ -429,6 +429,7 @@ void JitCompilerA32::ProcessInstructions() {
     case GTR_EQL_FLOAT:
     case EQL_FLOAT:
     case NEQL_FLOAT:
+
 #ifdef _DEBUG
       wcout << L"FLOAT LES/GTR/EQL/NEQL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
