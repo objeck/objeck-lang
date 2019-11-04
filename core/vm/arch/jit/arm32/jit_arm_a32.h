@@ -206,9 +206,7 @@ namespace Runtime {
         break;
 
       default:
-#ifdef _DEBUG
-        assert(false);
-#endif
+        throw runtime_error("Invalid load instruction!");
         break;
       }
       instr = si;

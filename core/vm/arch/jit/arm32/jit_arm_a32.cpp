@@ -428,25 +428,11 @@ void JitCompilerA32::ProcessInstructions() {
     case LES_EQL_FLOAT:
     case GTR_EQL_FLOAT:
     case EQL_FLOAT:
-    case NEQL_FLOAT: {
+    case NEQL_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOAT LES/GTR/EQL/NEQL: regs=" << aval_regs.size() << L"," 
-            << aux_regs.size() << endl;
+      wcout << L"FLOAT LES/GTR/EQL/NEQL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
-
-      RegInstr* left = working_stack.front();
-      working_stack.pop_front(); // pop invalid xmm register
-      ReleaseXmmRegister(left->GetRegister());
-
-      delete left; 
-      left = nullptr;
-      
-      RegisterHolder* holder = GetRegister();
-      cmov_reg(holder->GetRegister(), instr->GetType());
-      working_stack.push_front(new RegInstr(holder));
-      
-    }
       break;
       
     case RTRN:
@@ -2570,6 +2556,12 @@ void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {
   
   // encode
   AddMachineCode(op_code);
+
+  // update flags
+#ifdef _DEBUG
+      wcout << L"  " << (++instr_count) << L": [vmrs APSR_nzcv, fpscr]" << endl;
+#endif
+  AddMachineCode(0xeef1fa10);
 }
 
 void JitCompilerA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
@@ -2721,9 +2713,6 @@ void JitCompilerA32::shr_imm_reg(int32_t value, Register dest) {
 
 void JitCompilerA32::shr_reg_reg(Register src, Register dest)
 {
-  // e1a03352
-  // assert(false);
-  
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [asr " << GetRegisterName(dest) 
        << L", " << GetRegisterName(src) << L"]" << endl;
@@ -3494,7 +3483,10 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
-    assert(false);
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
+#endif
+    AddMachineCode(0xaa000000);
     break;
 				
   case GTR_FLOAT:
@@ -3576,9 +3568,7 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
     break;
       
   default:
-#ifdef _DEBUG
-    assert(false);
-#endif
+    throw runtime_error("Invalid function call!");
     break;
   }
   
@@ -3635,9 +3625,7 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
       break;
       
     default:
-#ifdef _DEBUG
-      assert(false);
-#endif
+      throw runtime_error("Invalid function call!");
       break;
   }
   
