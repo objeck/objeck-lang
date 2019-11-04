@@ -8,7 +8,7 @@
       <LocalDirForAbsolutePaths>$(ToolchainDir)</LocalDirForAbsolutePaths>
     </CustomSourceDirectories>
     <DeploymentHost>
-      <HostName>192.168.4.25</HostName>
+      <HostName>192.168.4.72</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
@@ -31,7 +31,7 @@
     <MainSourceDirectoryForLocalBuilds>$(ProjectDir)</MainSourceDirectoryForLocalBuilds>
     <AlternateSysrootSource>
       <Host>
-        <HostName>192.168.4.25</HostName>
+        <HostName>192.168.4.72</HostName>
         <Transport>SSH</Transport>
         <UserName>pi</UserName>
       </Host>
