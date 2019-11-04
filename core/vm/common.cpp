@@ -277,9 +277,7 @@ const wstring StackMethod::ParseName(const wstring& name) const
         break;
 
       default:
-#ifdef _DEBUG
-        assert(false);
-#endif
+        throw runtime_error("Invalid method signature!");
         break;
       }
 
@@ -1141,9 +1139,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
         break;
 
       default:
-#ifdef _DEBUG
-        assert(false);
-#endif
+        throw runtime_error("Invalid method signature!");
         break;
     }
 
