@@ -568,14 +568,6 @@ namespace Runtime {
     void xor_imm_reg(int32_t imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
     void xor_mem_reg(int32_t offset, Register src, Register dest);
-
-    // float functions
-    void fld_mem(int32_t offset, Register src);
-    void fstp_mem(int32_t offset, Register src);
-    void fsin();
-    void fcos();
-    void ftan();
-    void fsqrt();
     
     // add instructions
     void add_imm_mem(int32_t imm, int32_t offset, Register dest);    
