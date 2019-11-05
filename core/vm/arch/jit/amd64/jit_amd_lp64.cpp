@@ -1941,8 +1941,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     case IMM_INT: {
       RegisterHolder* holder = GetRegister();
       move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
-      math_imm_reg(right->GetOperand(), holder->GetRegister(),
-                   instruction->GetType());
+      math_imm_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -3469,9 +3468,7 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
 
 void JitCompilerIA64::mul_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [imuq %" 
-        << GetRegisterName(src) << L", %"<< GetRegisterName(dest) 
-        << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [imuq %" << GetRegisterName(src) << L", %"<< GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(ROB(src, dest));
@@ -3506,8 +3503,7 @@ void JitCompilerIA64::div_imm_reg(long imm, Register reg, bool is_mod) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::div_mem_reg(long offset, Register src,
-                Register dest, bool is_mod) {
+void JitCompilerIA64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
   if(is_mod) {
     if(dest != RDX) {
       move_reg_mem(RDX, TMP_REG_1, RBP);
@@ -5020,8 +5016,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerIA64::ArrayIndex(StackInstr* instr,
   const long dim = instr->GetOperand();
   for(int i = 1; i < dim; ++i) {
     // index *= array[i];
-    mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(),
-                index_holder->GetRegister());
+    mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());
     if(holder) {
       delete holder;
       holder = nullptr;
@@ -5035,8 +5030,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerIA64::ArrayIndex(StackInstr* instr,
       break;
 
     case REG_INT:
-      add_reg_reg(holder->GetRegister()->GetRegister(),
-                  index_holder->GetRegister());
+      add_reg_reg(holder->GetRegister()->GetRegister(), index_holder->GetRegister());
       break;
 
     case MEM_INT:
@@ -5367,13 +5361,13 @@ void JitExecutor::Initialize(StackProgram* p) {
 }
 
 long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
-                   size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
+                                     size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
 {
   // create function
   // notes: pointers to jit_memand jit_offset are updated by JIT code
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
-            stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+                              stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 
 #ifdef _DEBUG
   wcout << L"JIT return=: " << status << endl;
