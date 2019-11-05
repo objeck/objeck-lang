@@ -177,13 +177,10 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
        instr->GetType() == STOR_CLS_INST_INT_VAR) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());  
-      move_mem_reg(0, stack_pos_holder->GetRegister(), 
-                   stack_pos_holder->GetRegister());
+      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
       shl_imm_reg(2, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(),
-                  op_stack_holder->GetRegister());
-      move_mem_reg(0, op_stack_holder->GetRegister(), 
-                   dest_holder->GetRegister());
+      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store int
       ProcessStore(instr);
@@ -191,13 +188,10 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
     else if(instr->GetType() == STOR_FUNC_VAR) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());  
-      move_mem_reg(0, stack_pos_holder->GetRegister(), 
-                   stack_pos_holder->GetRegister());
+      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
       shl_imm_reg(2, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(),
-                  op_stack_holder->GetRegister());
-      move_mem_reg(0, op_stack_holder->GetRegister(), 
-                   dest_holder->GetRegister());
+      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
       move_mem_reg(-(long)(sizeof(int32_t)), op_stack_holder->GetRegister(), 
@@ -1872,8 +1866,7 @@ void JitCompilerIA32::ProcessIntCalculation(StackInstr* instruction) {
     case IMM_INT: {
       RegisterHolder* holder = GetRegister();
       move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-      math_imm_reg(right->GetOperand(), holder->GetRegister(),
-                   instruction->GetType());
+      math_imm_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -3328,8 +3321,7 @@ void JitCompilerIA32::div_imm_reg(int32_t imm, Register reg, bool is_mod) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::div_mem_reg(int32_t offset, Register src,
-                                  Register dest, bool is_mod) {
+void JitCompilerIA32::div_mem_reg(int32_t offset, Register src, Register dest, bool is_mod) {
   if(is_mod) {
     if(dest != EDX) {
       move_reg_mem(EDX, TMP_REG_1, EBP);
@@ -4303,8 +4295,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     }
 
     size++;
-    int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)),
-                                                          CHAR_ARY_TYPE, op_stack, *stack_pos);
+    int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), CHAR_ARY_TYPE, op_stack, *stack_pos);
     mem[0] = size - 1;
     mem[1] = dim;
     memcpy(mem + 2, indices, dim * sizeof(int32_t));
@@ -4370,17 +4361,14 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
 #ifdef _DEBUG
     wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
-    int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(),
-                                                           op_stack, *stack_pos);
+    int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
     PushInt(op_stack, stack_pos, (int32_t)mem);
   }
                      break;
 
   case OBJ_TYPE_OF: {
     size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
-    size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-                                                    program->GetHierarchy(),
-                                                    program->GetInterfaces());
+    size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
     if(result) {
       PushInt(op_stack, stack_pos, 1);
     }
@@ -4396,8 +4384,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
 #ifdef _DEBUG
     wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl;
 #endif	
-    int32_t result = (int32_t)MemoryManager::ValidObjectCast((size_t*)mem, to_id,
-                                                             program->GetHierarchy(), program->GetInterfaces());
+    int32_t result = (int32_t)MemoryManager::ValidObjectCast((size_t*)mem, to_id, program->GetHierarchy(), program->GetInterfaces());
     if(!result && mem) {
       StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);
       wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
@@ -4688,8 +4675,7 @@ RegisterHolder* JitCompilerIA32::ArrayIndex(StackInstr* instr, MemoryType type)
   const int32_t dim = instr->GetOperand();
   for(int i = 1; i < dim; ++i) {
     // index *= array[i];
-    mul_mem_reg((i + 2) * sizeof(int32_t), array_holder->GetRegister(),
-                index_holder->GetRegister());
+    mul_mem_reg((i + 2) * sizeof(int32_t), array_holder->GetRegister(), index_holder->GetRegister());
     if(holder) {
       delete holder;
       holder = nullptr;
@@ -4703,8 +4689,7 @@ RegisterHolder* JitCompilerIA32::ArrayIndex(StackInstr* instr, MemoryType type)
       break;
 
     case REG_INT:
-      add_reg_reg(holder->GetRegister()->GetRegister(),
-                  index_holder->GetRegister());
+      add_reg_reg(holder->GetRegister()->GetRegister(), index_holder->GetRegister());
       break;
 
     case MEM_INT:

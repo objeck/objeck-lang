@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM stack machine.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -106,9 +106,8 @@ void StackInterpreter::Initialize(StackProgram* p)
 }
 
 /********************************
- * Main VM execution method. This
- * function is used by callbacks 
- * from native code for the C API
+ * Main VM execution loop. Method 
+ * also used for C API callbacks.
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called)
 {
@@ -1329,9 +1328,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
 {
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
   if(mem) {
-    size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-                                                    program->GetHierarchy(),
-                                                    program->GetInterfaces());
+    size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
     if(result) {
       PushInt(1, op_stack, stack_pos);
     }
@@ -1349,9 +1346,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
 void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
-  size_t result = (size_t)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-                                                         program->GetHierarchy(),
-                                                         program->GetInterfaces());
+  const size_t result = (size_t)MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
 #ifdef _DEBUG
   wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << L", to=" << instr->GetOperand() << endl;
 #endif
@@ -1513,8 +1508,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
 }
 
 /********************************
- * Processes a load function
- * variable instruction.
+ * Processes a load function variable instruction.
  ********************************/
 void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
@@ -1545,8 +1539,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
 }
 
 /********************************
- * Processes a load float
- * variable instruction.
+ * Processes a load float variable instruction.
  ********************************/
 void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
@@ -1577,8 +1570,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
 }
 
 /********************************
- * Processes a store function
- * variable instruction.
+ * Processes a store function variable instruction.
  ********************************/
 void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
@@ -1697,9 +1689,6 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
 
   long size = (long)instr->GetOperand();
 #if defined(_WIN64) || defined(_X64)
-  // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
-  // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
-  // memory for floats (a.k.a double) than needed.
   size *= 2;
 #endif
 
@@ -1708,8 +1697,7 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
 }
 
 /********************************
- * Processes a new array instance
- * request.
+ * Processes a new array instance request.
  ********************************/
 void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float)
 {
@@ -1748,8 +1736,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
 }
 
 /********************************
- * Processes a new byte array instance
- * request.
+ * Processes a new byte array instance request.
  ********************************/
 void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
@@ -1777,8 +1764,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
 }
 
 /********************************
- * Processes a new char array instance
- * request.
+ * Processes a new char array instance request.
  ********************************/
 void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
@@ -1806,9 +1792,8 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 }
 
 /********************************
- * Processes a return instruction.
- * This instruction modifies the
- * call stack.
+ * Processes a return instruction, 
+ * this modifies the call stack.
  ********************************/
 void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
 {
@@ -1836,8 +1821,7 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
 }
 
 /********************************
- * Processes a asynchronous
- * method call.
+ * Processes a asynchronous method call.
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param)
 {
@@ -1895,8 +1879,7 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
 
   HANDLE vm_thread;
-  DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
-                  &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
+  DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
 #ifdef _DEBUG
   wcout << L"# Starting thread=" << vm_thread << L" #" << endl;
@@ -1973,8 +1956,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 #endif
 
 /********************************
- * Processes a synchronous
- * dynamic method call.
+ * Processes a synchronous dynamic method call.
  ********************************/
 void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
@@ -2020,8 +2002,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 }
 
 /********************************
- * Processes a synchronous method
- * call.
+ * Processes a synchronous method call.
  ********************************/
 void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
@@ -2779,7 +2760,7 @@ long Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, con
     }
   }
   else {
-    // interger array
+    // integer array
     if(index < 0 || index >= size) {
       wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
       StackErrorUnwind();
