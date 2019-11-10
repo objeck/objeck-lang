@@ -3544,8 +3544,7 @@ void JitCompilerA32::push_reg(Register reg) {
   move_reg_mem(reg, 0, R0);
 
   move_mem_reg(STACK_POS, FP, R1);
-  move_mem_reg(0, R1, R1);
-  add_imm_reg(1, R1);
+  add_imm_mem(1, 0, R1);
 
   move_mem_reg(TMP_REG_1, FP, R1);
   move_mem_reg(TMP_REG_0, FP, R0);
@@ -3562,6 +3561,8 @@ void JitCompilerA32::pop_reg(Register reg) {
   move_reg_mem(R1, TMP_REG_1, FP);
 
   move_mem_reg(STACK_POS, FP, R1);
+  sub_imm_mem(1, 0, R1);
+  
   move_mem_reg(0, R1, R1);
   sub_imm_reg(1, R1);
   shl_imm_reg(2, R1);
