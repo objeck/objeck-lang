@@ -3310,14 +3310,16 @@ void JitCompilerA32::call_reg(Register reg) {
 #endif
   
   // TODO: push to stack
-  move_reg_mem(LR, TMP_REG_6, FP);
-  
+  // move_reg_mem(LR, TMP_REG_6, FP);
+  push_reg(LR);
+
   uint32_t op_code = 0xe12fff30;
   op_code |= reg;
   AddMachineCode(op_code);
   
   // TODO: pop from stack
-  move_mem_reg(TMP_REG_6, FP, LR);
+  // move_mem_reg(TMP_REG_6, FP, LR);
+  pop_reg(LR);
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
@@ -3528,8 +3530,27 @@ void JitCompilerA32::push_mem(int32_t offset, Register dest) {
   throw runtime_error("Method 'push_mem(..)' not implemented for ARM32 target");
 }
 
-void JitCompilerA32::push_reg(Register reg) {  
-  throw runtime_error("Method 'push_reg(..)' not implemented for ARM32 target");
+void JitCompilerA32::push_reg(Register reg) {
+  move_reg_mem(R0, TMP_REG_0, FP);
+  move_reg_mem(R1, TMP_REG_1, FP);
+    
+  move_mem_reg(STACK_POS, FP, R1);
+  move_mem_reg(0, R1, R1);
+  shl_imm_reg(2, R1);
+
+  move_mem_reg(OP_STACK, FP, R0);
+  add_reg_reg(R1, R0);
+  
+  move_reg_mem(reg, 0, R0);
+
+  move_mem_reg(STACK_POS, FP, R1);
+  move_mem_reg(0, R1, R1);
+  add_imm_reg(1, R1);
+
+  move_mem_reg(TMP_REG_1, FP, R1);
+  move_mem_reg(TMP_REG_0, FP, R0);
+
+  
 }
 
 void JitCompilerA32::push_imm(int32_t value) {
@@ -3537,7 +3558,21 @@ void JitCompilerA32::push_imm(int32_t value) {
 }
 
 void JitCompilerA32::pop_reg(Register reg) {
-  throw runtime_error("Method 'push_imm(..)' not implemented for ARM32 target");
+  move_reg_mem(R0, TMP_REG_0, FP);
+  move_reg_mem(R1, TMP_REG_1, FP);
+
+  move_mem_reg(STACK_POS, FP, R1);
+  move_mem_reg(0, R1, R1);
+  sub_imm_reg(1, R1);
+  shl_imm_reg(2, R1);
+
+  move_mem_reg(OP_STACK, FP, R0);
+  add_reg_reg(R1, R0);
+  
+  move_mem_reg(0, R0, reg);
+  
+  move_mem_reg(TMP_REG_1, FP, R1);
+  move_mem_reg(TMP_REG_0, FP, R0);
 }
 
 void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {

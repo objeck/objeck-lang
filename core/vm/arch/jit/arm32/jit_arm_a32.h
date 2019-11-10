@@ -265,8 +265,8 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-            
-      available = PAGE_SIZE;
+
+      available = PAGE_SIZE / sizeof(uint32_t);
     }
 
     ~PageHolder() {
@@ -275,10 +275,11 @@ namespace Runtime {
     }
 
     inline bool CanAddCode(int32_t size) {
-      if(available - size * sizeof(uint32_t) > 0) {
+      const int32_t size_diff = available - size * sizeof(uint32_t);
+      if(size_diff > 0) {
         return true;
       }
-
+      
       return false;
     }
     
