@@ -3309,13 +3309,15 @@ void JitCompilerA32::call_reg(Register reg) {
   wcout << L"  " << (++instr_count) << L": [blx %" << GetRegisterName(reg) << L"]" << endl;
 #endif
   
+  // TODO: push to stack
+  move_reg_mem(LR, TMP_REG_6, FP);
+  
   uint32_t op_code = 0xe12fff30;
   op_code |= reg;
-
-  move_reg_mem(LR, TMP_REG_6, FP),
   AddMachineCode(op_code);
+  
+  // TODO: pop from stack
   move_mem_reg(TMP_REG_6, FP, LR);
-
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
