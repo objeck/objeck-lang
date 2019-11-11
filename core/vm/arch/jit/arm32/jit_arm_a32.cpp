@@ -3531,25 +3531,24 @@ void JitCompilerA32::push_mem(int32_t offset, Register dest) {
 }
 
 void JitCompilerA32::push_reg(Register reg) {
-  move_reg_mem(R0, TMP_REG_0, FP);
-  move_reg_mem(R1, TMP_REG_1, FP);
-    
-  move_mem_reg(STACK_POS, FP, R1);
-  move_mem_reg(0, R1, R1);
-  shl_imm_reg(2, R1);
+  RegisterHolder* op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
 
-  move_mem_reg(OP_STACK, FP, R0);
-  add_reg_reg(R1, R0);
+  RegisterHolder* stack_pos_holder = GetRegister();
+  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
   
-  move_reg_mem(reg, 0, R0);
+  // copy value to stack
+  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  shl_imm_reg(2, stack_pos_holder->GetRegister());
+  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+  move_reg_mem(reg, 0, op_stack_holder->GetRegister());
 
-  move_mem_reg(STACK_POS, FP, R1);
-  add_imm_mem(1, 0, R1);
-
-  move_mem_reg(TMP_REG_1, FP, R1);
-  move_mem_reg(TMP_REG_0, FP, R0);
-
+  // increment stack position
+  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  inc_mem(0, stack_pos_holder->GetRegister());
   
+  ReleaseRegister(stack_pos_holder);
+  ReleaseRegister(op_stack_holder);
 }
 
 void JitCompilerA32::push_imm(int32_t value) {
@@ -3557,23 +3556,24 @@ void JitCompilerA32::push_imm(int32_t value) {
 }
 
 void JitCompilerA32::pop_reg(Register reg) {
-  move_reg_mem(R0, TMP_REG_0, FP);
-  move_reg_mem(R1, TMP_REG_1, FP);
+  RegisterHolder *op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
 
-  move_mem_reg(STACK_POS, FP, R1);
-  sub_imm_mem(1, 0, R1);
-  
-  move_mem_reg(0, R1, R1);
-  sub_imm_reg(1, R1);
-  shl_imm_reg(2, R1);
+  RegisterHolder *stack_pos_holder = GetRegister();
+  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
 
-  move_mem_reg(OP_STACK, FP, R0);
-  add_reg_reg(R1, R0);
+  // decrement stack position
+  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  dec_mem(0, stack_pos_holder->GetRegister());
+
+  // copy value from stack
+  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  shl_imm_reg(2, stack_pos_holder->GetRegister());
+  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+  move_reg_mem(reg, 0, op_stack_holder->GetRegister());
   
-  move_mem_reg(0, R0, reg);
-  
-  move_mem_reg(TMP_REG_1, FP, R1);
-  move_mem_reg(TMP_REG_0, FP, R0);
+  ReleaseRegister(stack_pos_holder);
+  ReleaseRegister(op_stack_holder);
 }
 
 void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {
@@ -3945,7 +3945,7 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
     }
     pthread_mutex_unlock((pthread_mutex_t*)& instance[1]);
   }
-     break;
+    break;
 
     // ---------------- memory copy ----------------
   case CPY_BYTE_ARY: {
@@ -3973,7 +3973,7 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
       PushInt(op_stack, stack_pos, 0);
     }
   }
-     break;
+    break;
 
   case CPY_CHAR_ARY: {
     long length = PopInt(op_stack, stack_pos);;
@@ -4066,7 +4066,7 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
       exit(1);
     }
   }
-                  break;
+     break;
 
 #ifdef _DEBUG
   default:
@@ -4457,8 +4457,6 @@ void JitExecutor::Initialize(StackProgram* p) {
 int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code,
                                         const int32_t code_size, size_t* op_stack, long* stack_pos,
                                         StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
-                                            
-                                          
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
