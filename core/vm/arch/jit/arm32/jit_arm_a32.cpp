@@ -152,7 +152,7 @@ void JitCompilerA32::ProcessParameters(int32_t params) {
     instr->SetOffset(code_index);  
 
     RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+    move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
       
     if(instr->GetType() == STOR_LOCL_INT_VAR || 
        instr->GetType() == STOR_CLS_INST_INT_VAR) {
@@ -177,7 +177,7 @@ void JitCompilerA32::ProcessParameters(int32_t params) {
       RegisterHolder* dest_holder2 = GetRegister();
       move_mem_reg(-(long)(sizeof(int32_t)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
       
-      move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+      move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
       dec_mem(0, stack_pos_holder->GetRegister());      
       
       working_stack.push_front(new RegInstr(dest_holder2));
@@ -212,7 +212,7 @@ void JitCompilerA32::ProcessIntCallParameter() {
   move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
   
   RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
   
   dec_mem(0, stack_pos_holder->GetRegister());  
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
@@ -233,7 +233,7 @@ void JitCompilerA32::ProcessFunctionCallParameter() {
   move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
   
   RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
   
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
 
@@ -262,7 +262,7 @@ void JitCompilerA32::ProcessFloatCallParameter() {
   move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
   
   RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
   
   RegisterHolder* dest_holder = GetXmmRegister();
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
@@ -1523,7 +1523,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   move_mem_reg(CALL_STACK, FP, reg_holder->GetRegister());
   move_reg_mem(reg_holder->GetRegister(), 12, SP);
   
-  move_mem_reg(STACK_POS, FP, reg_holder->GetRegister());
+  move_mem_reg(OP_STACK_POS, FP, reg_holder->GetRegister());
   move_reg_mem(reg_holder->GetRegister(), 8, SP);
   
   move_mem_reg(OP_STACK, FP, reg_holder->GetRegister());
@@ -1566,7 +1566,7 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
     move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
     
     RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());    
+    move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());    
     move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
     shl_imm_reg(2, stack_pos_holder->GetRegister());
     add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
@@ -1591,7 +1591,7 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
         i++;
       }
       else {
-        move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());            
+        move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());            
         switch(left->GetType()) {
         case IMM_INT:
           move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
@@ -3310,16 +3310,16 @@ void JitCompilerA32::call_reg(Register reg) {
 #endif
   
   // TODO: push to stack
-  // move_reg_mem(LR, TMP_REG_6, FP);
-  push_reg(LR);
+  move_reg_mem(LR, TMP_REG_6, FP);
+  // push_reg(LR);
 
   uint32_t op_code = 0xe12fff30;
   op_code |= reg;
   AddMachineCode(op_code);
   
   // TODO: pop from stack
-  // move_mem_reg(TMP_REG_6, FP, LR);
-  pop_reg(LR);
+  move_mem_reg(TMP_REG_6, FP, LR);
+  // pop_reg(LR);
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
@@ -3531,6 +3531,7 @@ void JitCompilerA32::push_mem(int32_t offset, Register dest) {
 }
 
 void JitCompilerA32::push_reg(Register reg) {
+  /*
   // RegisterHolder* op_stack_holder = GetRegister();
   // RegisterHolder* stack_pos_holder = GetRegister();
 
@@ -3540,8 +3541,8 @@ void JitCompilerA32::push_reg(Register reg) {
   move_reg_mem(op_stack_reg, TMP_REG_0, FP);
   move_reg_mem(stack_pos_reg, TMP_REG_1, FP);
 
-  move_mem_reg(OP_STACK, FP, op_stack_reg);
-  move_mem_reg(STACK_POS, FP, stack_pos_reg);
+  move_mem_reg(LR_STACK, FP, op_stack_reg);
+  move_mem_reg(LR_STACK_POS, FP, stack_pos_reg);
   
   // copy value to stack
   move_mem_reg(0, stack_pos_reg, stack_pos_reg);
@@ -3550,7 +3551,7 @@ void JitCompilerA32::push_reg(Register reg) {
   move_reg_mem(reg, 0, op_stack_reg);
   
   // increment stack position
-  move_mem_reg(STACK_POS, FP, stack_pos_reg);
+  move_mem_reg(LR_STACK_POS, FP, stack_pos_reg);
   Register mem_reg = R4;
   const int offset = 0;
   move_mem_reg(offset, stack_pos_reg, mem_reg);
@@ -3562,6 +3563,7 @@ void JitCompilerA32::push_reg(Register reg) {
   
   // ReleaseRegister(stack_pos_holder);
   // ReleaseRegister(op_stack_holder);
+  */
 }
 
 void JitCompilerA32::push_imm(int32_t value) {
@@ -3569,16 +3571,17 @@ void JitCompilerA32::push_imm(int32_t value) {
 }
 
 void JitCompilerA32::pop_reg(Register reg) {
+  /*
   RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
+  move_mem_reg(LR_STACK, FP, op_stack_holder->GetRegister());
 
   // decrement stack position
   RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  move_mem_reg(LR_STACK_POS, FP, stack_pos_holder->GetRegister());
   dec_mem(0, stack_pos_holder->GetRegister());
 
   // copy value from stack
-  move_mem_reg(STACK_POS, FP, stack_pos_holder->GetRegister());
+  move_mem_reg(LR_STACK_POS, FP, stack_pos_holder->GetRegister());
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(2, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
@@ -3586,6 +3589,7 @@ void JitCompilerA32::pop_reg(Register reg) {
   
   ReleaseRegister(stack_pos_holder);
   ReleaseRegister(op_stack_holder);
+  */
 }
 
 void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {
@@ -4374,6 +4378,16 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     // method information
     move_imm_mem(cls_id, CLS_ID, FP);
     move_imm_mem(mthd_id, MTHD_ID, FP);
+
+    /*
+    uint32_t *foo = (uint32_t*)calloc(16, sizeof(uint32_t));
+    move_imm_mem((uint32_t)foo, LR_STACK, FP);
+    
+    uint32_t* bar = new uint32_t;
+    *bar = 0;
+    move_imm_mem((uint32_t)bar, LR_STACK_POS, FP);
+    */
+    
     // register root
     RegisterRoot();
     // translate parameters

@@ -49,7 +49,7 @@ namespace Runtime {
 #define CLASS_MEM -16
 #define INSTANCE_MEM -20
 #define OP_STACK 20
-#define STACK_POS 24
+#define OP_STACK_POS 24
 #define CALL_STACK 28
 #define CALL_STACK_POS 32
 #define JIT_MEM 36
@@ -66,9 +66,12 @@ namespace Runtime {
 #define TMP_REG_4 -64
 #define TMP_REG_5 -68
   // holds $lr for callbacks
+#define TMP_REG_6 -72
+  /*
 #define LR_STACK -72
 #define LR_STACK_POS -76
 #define TMP_REG_6 -80
+*/
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
