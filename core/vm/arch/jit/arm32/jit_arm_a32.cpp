@@ -3309,17 +3309,13 @@ void JitCompilerA32::call_reg(Register reg) {
   wcout << L"  " << (++instr_count) << L": [blx %" << GetRegisterName(reg) << L"]" << endl;
 #endif
   
-  // TODO: push to stack
   move_reg_mem(LR, TMP_REG_6, FP);
-  // push_reg(LR);
 
   uint32_t op_code = 0xe12fff30;
   op_code |= reg;
   AddMachineCode(op_code);
   
-  // TODO: pop from stack
   move_mem_reg(TMP_REG_6, FP, LR);
-  // pop_reg(LR);
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
@@ -3531,39 +3527,7 @@ void JitCompilerA32::push_mem(int32_t offset, Register dest) {
 }
 
 void JitCompilerA32::push_reg(Register reg) {
-  /*
-  // RegisterHolder* op_stack_holder = GetRegister();
-  // RegisterHolder* stack_pos_holder = GetRegister();
-
-  Register op_stack_reg = R4;
-  Register stack_pos_reg = R5;
-
-  move_reg_mem(op_stack_reg, TMP_REG_0, FP);
-  move_reg_mem(stack_pos_reg, TMP_REG_1, FP);
-
-  move_mem_reg(LR_STACK, FP, op_stack_reg);
-  move_mem_reg(LR_STACK_POS, FP, stack_pos_reg);
-  
-  // copy value to stack
-  move_mem_reg(0, stack_pos_reg, stack_pos_reg);
-  shl_imm_reg(2, stack_pos_reg);
-  add_reg_reg(stack_pos_reg, op_stack_reg);
-  move_reg_mem(reg, 0, op_stack_reg);
-  
-  // increment stack position
-  move_mem_reg(LR_STACK_POS, FP, stack_pos_reg);
-  Register mem_reg = R4;
-  const int offset = 0;
-  move_mem_reg(offset, stack_pos_reg, mem_reg);
-  add_imm_reg(1, mem_reg);
-  move_reg_mem(mem_reg, offset, stack_pos_reg);
-  
-  move_mem_reg(TMP_REG_0, FP, op_stack_reg);
-  move_mem_reg(TMP_REG_1, FP, stack_pos_reg);
-  
-  // ReleaseRegister(stack_pos_holder);
-  // ReleaseRegister(op_stack_holder);
-  */
+  throw runtime_error("Method 'push_reg(..)' not implemented for ARM32 target");
 }
 
 void JitCompilerA32::push_imm(int32_t value) {
@@ -3571,25 +3535,7 @@ void JitCompilerA32::push_imm(int32_t value) {
 }
 
 void JitCompilerA32::pop_reg(Register reg) {
-  /*
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(LR_STACK, FP, op_stack_holder->GetRegister());
-
-  // decrement stack position
-  RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(LR_STACK_POS, FP, stack_pos_holder->GetRegister());
-  dec_mem(0, stack_pos_holder->GetRegister());
-
-  // copy value from stack
-  move_mem_reg(LR_STACK_POS, FP, stack_pos_holder->GetRegister());
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(2, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-  move_mem_reg(0, op_stack_holder->GetRegister(), reg);
-  
-  ReleaseRegister(stack_pos_holder);
-  ReleaseRegister(op_stack_holder);
-  */
+  throw runtime_error("Method 'pop_reg(..)' not implemented for ARM32 target");
 }
 
 void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {
