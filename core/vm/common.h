@@ -1370,6 +1370,7 @@ class TrapProcessor {
   //
   static inline size_t PopInt(size_t* op_stack, long* stack_pos) {    
 #ifdef _DEBUG
+    assert((*stack_pos) - 1 > -1);
     size_t v = op_stack[--(*stack_pos)];
     wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
     << (size_t*)v << L")]" << endl;
@@ -1385,6 +1386,7 @@ class TrapProcessor {
   //
   static inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
+    assert((*stack_pos) < 128);
     wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
     << (size_t*)v << L")]" << endl;
 #endif

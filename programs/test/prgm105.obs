@@ -1,30 +1,5 @@
-
 class Foo {
-	function : Calc2(foo : \Func->Matrix) ~ Nil {
-		foo[1,1] := 13;
-		foo[1,1]->PrintLine();
-
-		a := 10;
-		select(a) {
-			label 9 {
-				"nine"->PrintLine();
-			}
-
-			label 10 {
-				"nine"->PrintLine();
-			}			
-		};
+	function : Main(a : String[]) ~ Nil {
+		"foo bar"->PrintLine();
 	}
-
-	function : Calc(calc : \Func->Calc) ~ Nil {
-#	function : Calc(calc : (FloatHolder, FloatHolder) ~ FloatHolder) ~ Nil {
-		f : \Func->Calc := calc;
-		calc(3.5, 5.5)->PrintLine();
-		f(3.5, 5.5)->PrintLine();
-	}
-}
-
-alias Func {
-	Calc : (FloatHolder, FloatHolder) ~ FloatHolder,
-	Matrix : Int[,]
 }
