@@ -154,8 +154,7 @@ void JitCompilerA32::ProcessParameters(int32_t params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
       
-    if(instr->GetType() == STOR_LOCL_INT_VAR || 
-       instr->GetType() == STOR_CLS_INST_INT_VAR) {
+    if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
