@@ -289,10 +289,11 @@ namespace Runtime {
     }
     
     inline uint32_t* AddCode(uint32_t* code, int32_t size) {
-      const uint32_t byte_size = size * sizeof(uint32_t);
+      // get index into buffer
       uint32_t* temp = buffer + index;
       
       // copy and flush instruction cache
+      const uint32_t byte_size = size * sizeof(uint32_t);
       memcpy(temp, code, byte_size);
       __clear_cache(temp, temp + byte_size);
       
