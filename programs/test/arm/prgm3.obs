@@ -5,6 +5,6 @@ class Test {
 
 	function : native : Run(args : String[]) ~ Float {		
 #	function : Run(args : String[]) ~ Float {		
-		return 3.289->Sin();
+		return Float->Power(2.0, 3.0);
 	}
 }
