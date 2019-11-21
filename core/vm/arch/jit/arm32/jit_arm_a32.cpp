@@ -1743,9 +1743,7 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
   case IMM_INT:
     switch(right->GetType()) {
     case IMM_INT:
-      working_stack.push_front(ProcessIntFold(left->GetOperand(), 
-                                              right->GetOperand(), 
-                                              instruction->GetType()));
+      working_stack.push_front(ProcessIntFold(left->GetOperand(), right->GetOperand(), instruction->GetType()));
       break;
       
     case REG_INT: {
@@ -1997,10 +1995,6 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
   delete right;
   right = nullptr;
 }
-
-//====================================================================
-//============================== NEW WIP =============================
-//====================================================================
 
 void JitCompilerA32::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
@@ -4146,7 +4140,7 @@ RegisterHolder* JitCompilerA32::ArrayIndex(StackInstr* instr, MemoryType type)
   RegisterHolder* bounds_holder = GetRegister();
   move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister());
 
-  // ajust indices
+  // adjust indices
   switch(type) {
   case BYTE_ARY_TYPE:
     break;
@@ -4324,15 +4318,6 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     // method information
     move_imm_mem(cls_id, CLS_ID, FP);
     move_imm_mem(mthd_id, MTHD_ID, FP);
-
-    /*
-    uint32_t *foo = (uint32_t*)calloc(16, sizeof(uint32_t));
-    move_imm_mem((uint32_t)foo, LR_STACK, FP);
-    
-    uint32_t* bar = new uint32_t;
-    *bar = 0;
-    move_imm_mem((uint32_t)bar, LR_STACK_POS, FP);
-    */
     
     // register root
     RegisterRoot();
