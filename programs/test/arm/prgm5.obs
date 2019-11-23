@@ -1,5 +1,29 @@
 class Test {		
 	function : Main(args : System.String[]) ~ Nil {
-		"foo bar"->PrintLine();
+		Go();
+	}
+
+	function : native : Go() ~ Nil {
+		select(3) {
+			label 0 {
+				"One"->PrintLine();
+			}
+
+			label 3 {
+				"Three"->PrintLine();
+			}
+
+			label 2 {
+				"Two"->PrintLine();
+			}
+
+			label 4 {
+				"Four"->PrintLine();
+			}
+
+			label 8 {
+				"Eight"->PrintLine();
+			}
+		};
 	}
 }
