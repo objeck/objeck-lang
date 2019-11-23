@@ -1,0 +1,32 @@
+class Test {		
+	function : Main(args : System.String[]) ~ Nil {
+		Go();
+	}
+
+	function : native : Go() ~ Nil {
+		for(i := 0; i < 13; i += 1;) {
+			select(i) {
+				label 4 {
+					"Four"->PrintLine();
+				}
+
+				label 8 {
+					"Eight"->PrintLine();
+				}
+#~
+				label 5 {
+					"Five"->PrintLine();
+				}
+~#
+
+				label 3 {
+					"Three"->PrintLine();
+				}
+
+				label 1 {
+					"One"->PrintLine();
+				}
+			};
+		};
+	}
+}

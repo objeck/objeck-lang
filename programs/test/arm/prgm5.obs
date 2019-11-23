@@ -4,26 +4,28 @@ class Test {
 	}
 
 	function : native : Go() ~ Nil {
-		select(3) {
-			label 0 {
-				"One"->PrintLine();
-			}
+		for(i := 0; i < 10; i += 1;) {
+			select(i) {
+				label 0 {
+					"One"->PrintLine();
+				}
 
-			label 3 {
-				"Three"->PrintLine();
-			}
+				label 3 {
+					"Three"->PrintLine();
+				}
 
-			label 2 {
-				"Two"->PrintLine();
-			}
+				label 2 {
+					"Two"->PrintLine();
+				}
 
-			label 4 {
-				"Four"->PrintLine();
-			}
+				label 4 {
+					"Four"->PrintLine();
+				}
 
-			label 8 {
-				"Eight"->PrintLine();
-			}
+				label 8 {
+					"Eight"->PrintLine();
+				}
+			};
 		};
 	}
 }
