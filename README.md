@@ -28,8 +28,9 @@ Notable features:
   * Lambda expressions
   * Closures
 * Supported platforms (with JIT support)
-  * Windows, macOS and Linux (64-bit)
-  * Windows and Linux (32-bit)  
+  * Windows, macOS and Linux (x86-64)
+  * Windows and Linux (x86)
+  * Linux (ARMv7) [Alpha Testing]
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
   * Collections (vectors, queues, trees, hashes, etc.)
