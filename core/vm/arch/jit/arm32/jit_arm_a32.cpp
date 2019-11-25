@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for ARMv7 architecture (A1 instruction encoding)
+ * JIT compiler for ARMv7 architecture (A1 encoding)
  *
  * Copyright (c) 2019-2020, Randy Hollines
  * All rights reserved.
@@ -1321,12 +1321,6 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
       left2 = nullptr;
     }
     else {
-      /*
-      // mark static reference
-      if(instr->GetOperand2() == CLS) {
-      ProcessAddStaticMemory(holder->GetRegister());
-      }
-      */
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
@@ -1472,8 +1466,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   int32_t xmm_offset = TMP_D_0;
   
   int32_t i = 0;     
-  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
-      iter != working_stack.rend(); ++iter) {
+  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
       switch(left->GetType()) {
@@ -1582,8 +1575,7 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
 #endif
     
     int32_t i = 0;     
-    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
-        iter != working_stack.rend(); ++iter) {
+    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
       if(i < non_params) {
@@ -1662,6 +1654,7 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
       default:
         break;
       }
+      
       // clean up
       delete left;
       left = nullptr;
