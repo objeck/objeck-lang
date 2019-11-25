@@ -1,6 +1,5 @@
 /***************************************************************************
  * JIT compiler for 32-bit x86 architectures (Windows and Linux).
- * JIT compiler for 32-bit x86 architectures (Windows and Linux).
  *
  * Copyright (c) 2008-2018, Randy Hollines
  * All rights reserved.
@@ -1531,8 +1530,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
   int32_t xmm_offset = TMP_XMM_0;
   
   int32_t i = 0;     
-  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
-      iter != working_stack.rend(); ++iter) {
+  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
       switch(left->GetType()) {
