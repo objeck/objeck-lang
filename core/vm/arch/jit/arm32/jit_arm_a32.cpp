@@ -55,7 +55,7 @@ void JitCompilerA32::Prolog() {
 		0xe52db004,						      // push  {fp}
 		0xe92d00f0,						      // push {r4-r7}
 		0xe28db000,						      // add fp, sp, #0
-		0xe24dd024 + local_space,		// sub sp, sp, #local_space
+		0xe24dd024 + local_space,   // sub sp, sp, #local_space
 		0xe50b0008,						      // str r0, [fp, #-8]
 		0xe50b100c,						      // str r1, [fp, #-12]
 		0xe50b2010,						      // str r2, [fp, #-16]
@@ -2920,17 +2920,27 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
 
 void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cmp " << GetRegisterName(reg) << L", " << imm << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << endl;
 #endif
   
-  if(imm <= 255 && imm >= -256) {
+  if (imm < 0 && imm >= -256) {
+    uint32_t op_code = 0xe3730000;
+    
+    uint32_t op_dest = reg << 16;
+    op_code |= op_dest;
+  
+    op_code |= abs(imm);
+  
+    AddMachineCode(op_code);
+  }
+  else if(imm <= 255 && imm >= 0) {
     uint32_t op_code = 0xe3500000;
     
     uint32_t op_dest = reg << 16;
     op_code |= op_dest;
   
-    op_code |= imm;
-  
+    op_code |= abs(imm);
+    
     AddMachineCode(op_code);
   }
   else {
