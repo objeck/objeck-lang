@@ -1461,8 +1461,8 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   stack<int32_t> dirty_regs;
   int32_t reg_offset = TMP_REG_0;  
 
-  stack<RegInstr*> xmms;
-  stack<int32_t> dirty_xmms;
+  stack<RegInstr*> fp_regs;
+  stack<int32_t> dirty_fp_regs;
   int32_t xmm_offset = TMP_D_0;
   
   int32_t i = 0;     
@@ -1479,8 +1479,8 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
 
       case REG_FLOAT:
 	      move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, FP);
-        dirty_xmms.push(xmm_offset);
-        xmms.push(left);
+        dirty_fp_regs.push(xmm_offset);
+        fp_regs.push(left);
         xmm_offset -= 8;
         break;
 
@@ -1497,7 +1497,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   assert(xmm_offset >= TMP_D_2);
 #endif
 
-  if(dirty_regs.size() > 6 || dirty_xmms.size() > 3 ) {
+  if(dirty_regs.size() > 6 || dirty_fp_regs.size() > 3 ) {
     compile_success = false;
   }
 
@@ -1543,12 +1543,12 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
     dirty_regs.pop();
   }
   
-  while(!dirty_xmms.empty()) {
-    RegInstr* left = xmms.top();
-    move_mem_xreg(dirty_xmms.top(), FP, left->GetRegister()->GetRegister());
+  while(!dirty_fp_regs.empty()) {
+    RegInstr* left = fp_regs.top();
+    move_mem_xreg(dirty_fp_regs.top(), FP, left->GetRegister()->GetRegister());
     // update
-    xmms.pop();
-    dirty_xmms.pop();
+    fp_regs.pop();
+    dirty_fp_regs.pop();
   }
 }
 
@@ -2155,8 +2155,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
   }
   else if(imm <= 255 && imm >= 0) {
 #ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg)
-	  << L", #" << imm << L"]" << endl;
+    wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
     uint32_t op_code = 0xe3a00000;
     
@@ -4329,8 +4328,12 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     ProcessInstructions();
     
     if(!compile_success) {
+      free(code);
+      code = nullptr;
+      
       delete[] floats;
       floats = nullptr;
+      
       return false;
     }
 
@@ -4380,14 +4383,18 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
       
       // 12-bit max for ldr offset
-      if(offset >= PAGE_SIZE) {
+      if(offset >= PAGE_SIZE * sizeof(uint32_t)) {
+        free(code);
+        code = nullptr;
+
         delete[] floats;
         floats = nullptr;
+
         return false;
       }
       
       AddImm(const_value);
-      code[src_offset] |= offset;
+      code[src_offset] |= offset >> 2;
     }
     
 #ifdef _DEBUG
@@ -4433,7 +4440,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
 PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
-    holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
+    holders.push_back(new PageHolder(2048 * i));
   }
 }
 

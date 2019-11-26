@@ -242,20 +242,20 @@ namespace Runtime {
    ********************************/
   class PageHolder {
     uint32_t* buffer;
-    int32_t available, index;
+    uint32_t available, index;
 
   public:
     PageHolder(int32_t size) {
       index = 0;
-      int factor = 1;
-      if(size > PAGE_SIZE) {
-        factor = size / PAGE_SIZE + 1;
-      }
-      
+
+      const uint32_t byte_size = size * sizeof(uint32_t);
+      int factor = byte_size / PAGE_SIZE + 1;
+      const uint32_t alloc_size = PAGE_SIZE * factor;
+
       const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
       const int flags = MAP_PRIVATE | MAP_ANON;
-      
-      buffer = (uint32_t*)mmap(NULL, PAGE_SIZE, prot, flags, -1, 0);
+
+      buffer = (uint32_t*)mmap(NULL, alloc_size, prot, flags, -1, 0);
       if(buffer == MAP_FAILED) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -266,7 +266,7 @@ namespace Runtime {
         exit(1);
       }
 
-      available = PAGE_SIZE / sizeof(uint32_t);
+      available = alloc_size;
     }
 
     ~PageHolder() {
