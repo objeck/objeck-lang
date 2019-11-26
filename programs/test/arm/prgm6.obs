@@ -11,13 +11,18 @@ class Test {
 				}
 
 				label 8 {
-					"Eight"->PrintLine();
+					for(j := 7; j > -1; j--;) {
+						"Eight"->PrintLine();
+					};
 				}
-#~
+
+				label 0 {
+					"Zero"->PrintLine();
+				}
+
 				label 5 {
 					"Five"->PrintLine();
 				}
-~#
 
 				label 3 {
 					"Three"->PrintLine();
