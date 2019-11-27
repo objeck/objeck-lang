@@ -53,7 +53,7 @@ void JitCompilerA32::Prolog() {
   
   uint32_t setup_code[] = {
 		0xe52db004,						      // push  {fp}
-		0xe92d00f0,						      // push {r4-r7}
+		0xe92d00f0,						      // push {r4-r7} // PUSH: R8
 		0xe28db000,						      // add fp, sp, #0
 		0xe24dd024 + local_space,   // sub sp, sp, #local_space
 		0xe50b0008,						      // str r0, [fp, #-8]
