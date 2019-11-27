@@ -54,6 +54,7 @@ namespace Runtime {
 #define CALL_STACK_POS 32
 #define JIT_MEM 36
 #define JIT_OFFSET 40
+#define INTS 44
   // float temps
 #define TMP_D_0 -28
 #define TMP_D_1 -36
@@ -68,6 +69,7 @@ namespace Runtime {
   // holds $lr for callbacks
 #define TMP_REG_6 -72
 
+#define MAX_INTS 512
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
@@ -313,7 +315,8 @@ namespace Runtime {
    * Prototype for jit function
    ********************************/
   typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, 
-                                 long* stack_pos, StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
+                                 long* stack_pos, StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, 
+                                 long* offset, int32_t* ints);
   
   /********************************
    * JitCompilerA32 class
@@ -339,6 +342,7 @@ namespace Runtime {
 	  uint32_t* code;
     uint32_t code_index;
     int32_t epilog_index;
+    int32_t* ints;
     double* floats;     
     int32_t floats_index;
     int32_t instr_index;
@@ -766,8 +770,9 @@ namespace Runtime {
     StackMethod* method;
     uint32_t* code;
     int32_t code_index; 
+    int32_t* ints;
     double* floats;
-
+    
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code, 
                                const int32_t code_size, size_t* op_stack, long* stack_pos,
                                StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
@@ -798,6 +803,7 @@ namespace Runtime {
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
+      ints = native_code->GetInts();
       floats = native_code->GetFloats();
       
       // execute

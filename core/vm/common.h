@@ -229,6 +229,7 @@ class NativeCode
 {
 #ifdef _ARM32
   uint32_t* code;
+  int32_t* ints;
 #else
   unsigned char* code;
 #endif  
@@ -237,15 +238,20 @@ class NativeCode
   
  public:
 #ifdef _ARM32
-  NativeCode(uint32_t* c, long s, FLOAT_VALUE* f)
+  NativeCode(uint32_t* c, long s, int32_t* i, FLOAT_VALUE* f) {
+    code = c;
+    size = s;
+    ints = i;
+    floats = f;
+  }
 #else
-    NativeCode(unsigned char* c, long s, FLOAT_VALUE* f)
+  NativeCode(unsigned char* c, long s, FLOAT_VALUE* f) {
+    code = c;
+    size = s;
+    floats = f;
+  }
 #endif
-    {
-      code = c;
-      size = s;
-      floats = f;
-    }
+
   
   ~NativeCode() {
 #if defined(_WIN64) || defined(_X64)
@@ -265,13 +271,18 @@ class NativeCode
   }
 
 #ifdef _ARM32
-  uint32_t* GetCode() const
-#else
-    unsigned char* GetCode() const
-#endif
-  {
+  uint32_t* GetCode() const {
     return code;
   }
+  
+  int32_t* GetInts() const {
+    return ints;
+  }
+#else
+  unsigned char* GetCode() const {
+    return code;
+  }
+#endif
   
   long GetSize() {
     return size;
