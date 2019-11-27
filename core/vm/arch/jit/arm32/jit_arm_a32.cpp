@@ -4394,7 +4394,10 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       }
       
       AddImm(const_value);
-      code[src_offset] |= offset >> 2;
+#ifdef _DEBUG
+      assert(offset < 4096);
+#endif
+      code[src_offset] |= offset;
     }
     
 #ifdef _DEBUG
