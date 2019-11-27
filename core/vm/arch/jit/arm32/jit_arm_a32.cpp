@@ -1531,8 +1531,8 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   move_imm_reg((int32_t)instr, R1);
   move_imm_reg(instr_id, R0);
   
-  move_imm_reg((uint32_t)JitCompilerA32::JitStackCallback, R4);
-  call_reg(R4);
+  move_imm_reg((uint32_t)JitCompilerA32::JitStackCallback, R8);
+  call_reg(R8);
   
   // restore register values
   while(!dirty_regs.empty()) {
@@ -2166,10 +2166,11 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
     AddMachineCode(op_code);
   }
   else {
+    move_mem_reg(INTS, FP, R8);
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
-    uint32_t op_code = 0xe59f0000;
+    uint32_t op_code = 0xe5980000;
     
     uint32_t op_dest = reg << 12;
     op_code |= op_dest;
@@ -3439,10 +3440,10 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(R4, TMP_REG_0, FP);
-  move_imm_reg((uint32_t)func_ptr, R4);
-  call_reg(R4);
-  move_mem_reg(TMP_REG_0, FP, R4);
+  move_reg_mem(R8, TMP_REG_0, FP);
+  move_imm_reg((uint32_t)func_ptr, R8);
+  call_reg(R8);
+  move_mem_reg(TMP_REG_0, FP, R8);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
@@ -3496,10 +3497,10 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(R4, TMP_REG_0, FP);
-  move_imm_reg((uint32_t)func_ptr, R4);
-  call_reg(R4);
-  move_mem_reg(TMP_REG_0, FP, R4);
+  move_reg_mem(R8, TMP_REG_0, FP);
+  move_imm_reg((uint32_t)func_ptr, R8);
+  call_reg(R8);
+  move_mem_reg(TMP_REG_0, FP, R8);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
@@ -4381,11 +4382,12 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     }
     
     // update consts pools
+    int foo = 0;
     multimap<int32_t, int32_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
-      const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
+      const int32_t offset = foo++ * sizeof(int32_t); // (code_index - src_offset - 2) * sizeof(int32_t);
       
       // 12-bit max for ldr offset
       if(offset >= PAGE_SIZE * sizeof(uint32_t)) {
@@ -4399,9 +4401,8 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       }
 
 #ifdef _DEBUG
-      assert(offset < 4096);  // TODO: create const pool and pass in as variable
+      assert(offset < 4096);  // TODO: create const pool and pass in as variable; use r8 for transfers?
 #endif
-      
       AddImm(const_value);
       code[src_offset] |= offset;
     }
