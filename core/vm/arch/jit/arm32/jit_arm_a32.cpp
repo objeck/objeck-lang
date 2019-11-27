@@ -4397,11 +4397,12 @@ bool JitCompilerA32::Compile(StackMethod* cm)
 
         return false;
       }
+
+#ifdef _DEBUG
+      assert(offset < 4096);  // TODO: create const pool and pass in as variable
+#endif
       
       AddImm(const_value);
-#ifdef _DEBUG
-      // assert(offset < 4096); // TODO: create const pool and pass in as variable
-#endif
       code[src_offset] |= offset;
     }
     
