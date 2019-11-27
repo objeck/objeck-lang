@@ -4283,6 +4283,11 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     code = (uint32_t*)malloc(BUFFER_SIZE);
     code_buf_max = BUFFER_SIZE;
     
+    if(posix_memalign((void**)&ints, PAGE_SIZE, sizeof(double) * MAX_INTS)) {
+      wcerr << L"Unable to allocate JIT memory!" << endl;
+      exit(1);
+    }
+    
     if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
@@ -4395,7 +4400,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       
       AddImm(const_value);
 #ifdef _DEBUG
-      assert(offset < 4096); // TODO: create const pool and pass in as variable
+      // assert(offset < 4096); // TODO: create const pool and pass in as variable
 #endif
       code[src_offset] |= offset;
     }
@@ -4404,7 +4409,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, ints, floats));
     
     free(code);
     code = nullptr;
@@ -4431,7 +4436,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   
   // execute                                          
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
-                                     stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+                                     stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), ints);
   
 #ifdef _DEBUG
   wcout << L"JIT return: " << rtrn_value << endl;
