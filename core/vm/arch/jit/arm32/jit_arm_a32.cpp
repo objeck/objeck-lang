@@ -4395,7 +4395,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       
       AddImm(const_value);
 #ifdef _DEBUG
-      assert(offset < 4096);
+      assert(offset < 4096); // TODO: create const pool and pass in as variable
 #endif
       code[src_offset] |= offset;
     }
@@ -4440,6 +4440,9 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   return rtrn_value;
 }
 
+/********************************
+ * PageManager class
+ ********************************/
 PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
