@@ -4382,12 +4382,12 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     }
     
     // update consts pools
-    int foo = 0;
+    int ints_index = 0;
     multimap<int32_t, int32_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
-      const int32_t offset = foo++ * sizeof(int32_t); // (code_index - src_offset - 2) * sizeof(int32_t);
+      const int32_t offset = ints_index * sizeof(int32_t);
       
       // 12-bit max for ldr offset
       if(offset >= PAGE_SIZE * sizeof(uint32_t)) {
@@ -4401,9 +4401,11 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       }
 
 #ifdef _DEBUG
-      assert(offset < 4096);  // TODO: create const pool and pass in as variable; use r8 for transfers?
+      assert(ints_index < MAX_INTS);
+      assert(offset < 4096);
 #endif
-      AddImm(const_value);
+      // AddImm(const_value);
+      ints[ints_index++] = const_value;
       code[src_offset] |= offset;
     }
     

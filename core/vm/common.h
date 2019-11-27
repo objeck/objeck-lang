@@ -225,8 +225,7 @@ class StackInstr
 /********************************
  * JIT compile code
  ********************************/
-class NativeCode 
-{
+class NativeCode {
 #ifdef _ARM32
   uint32_t* code;
   int32_t* ints;
@@ -254,6 +253,10 @@ class NativeCode
 
   
   ~NativeCode() {
+#ifdef _ARM32
+    free(ints);
+    ints = nullptr;
+#else
 #if defined(_WIN64) || defined(_X64)
 #ifdef _WIN64
     VirtualFree(floats, 0, MEM_RELEASE);
