@@ -3678,10 +3678,10 @@ std::wstring JitCompilerA32::GetRegisterName(Register reg)
 void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
 {
 #ifdef _DEBUG
-  wcout << L"Stack Call: instr=" << instr_id
-    << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2()
-    << L", oper_3=" << instr->GetOperand3() << L", self=" << inst << L"(" << (size_t)inst << L"), stack="
-    << op_stack << L", stack_addr=" << stack_pos << L", stack_pos=" << (*stack_pos) << endl;
+  wcout << L"Stack Call: instr=" << instr_id << L", oper_1=" << instr->GetOperand() << L", oper_2=" 
+        << instr->GetOperand2()<< L", oper_3=" << instr->GetOperand3() << L", self=" << inst 
+        << L"(" << (size_t)inst << L"), stack=" << op_stack << L", stack_addr=" << stack_pos 
+        << L", stack_pos=" << (*stack_pos) << endl;
 #endif
   switch(instr_id) {
   case MTHD_CALL:
@@ -4386,7 +4386,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     
     // update consts pools
     int ints_index = 0;
-    map<int32_t, int32_t> int_pool_cache;
+    unordered_map<int32_t, int32_t> int_pool_cache;
     multimap<int32_t, int32_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
@@ -4412,7 +4412,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       assert(offset < 4096); // max that can addressed in 12-bits
 #endif
       
-      map<int32_t, int32_t>::iterator int_pool_found = int_pool_cache.find(const_value);
+      unordered_map<int32_t, int32_t>::iterator int_pool_found = int_pool_cache.find(const_value);
       if(int_pool_found != int_pool_cache.end()) {
         code[src_offset] |= int_pool_found->second;
       }
