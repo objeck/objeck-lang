@@ -4284,7 +4284,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     code = (uint32_t*)malloc(BUFFER_SIZE);
     code_buf_max = BUFFER_SIZE;
     
-    if(posix_memalign((void**)&ints, PAGE_SIZE, sizeof(double) * MAX_INTS)) {
+    if(posix_memalign((void**)&ints, PAGE_SIZE, sizeof(int32_t) * MAX_INTS)) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
     }
@@ -4337,6 +4337,9 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       free(code);
       code = nullptr;
       
+      delete[] ints;
+      ints = nullptr;
+      
       delete[] floats;
       floats = nullptr;
       
@@ -4383,6 +4386,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     
     // update consts pools
     int ints_index = 0;
+    map<int32_t, int32_t> int_pool_cache;
     multimap<int32_t, int32_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
@@ -4393,6 +4397,9 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       if(offset >= PAGE_SIZE * sizeof(uint32_t)) {
         free(code);
         code = nullptr;
+        
+        delete[] ints;
+        ints = nullptr;
 
         delete[] floats;
         floats = nullptr;
@@ -4402,14 +4409,24 @@ bool JitCompilerA32::Compile(StackMethod* cm)
 
 #ifdef _DEBUG
       assert(ints_index < MAX_INTS);
-      assert(offset < 4096);
+      assert(offset < 4096); // max that can addressed in 12-bits
 #endif
-      // AddImm(const_value);
-      ints[ints_index++] = const_value;
-      code[src_offset] |= offset;
+      
+      map<int32_t, int32_t>::iterator int_pool_found = int_pool_cache.find(const_value);
+      if(int_pool_found != int_pool_cache.end()) {
+        code[src_offset] |= int_pool_found->second;
+      }
+      else {
+        ints[ints_index++] = const_value;
+        code[src_offset] |= offset;
+        int_pool_cache.insert(pair<int32_t, int32_t>(const_value, offset));
+      }
     }
     
 #ifdef _DEBUG
+    wcout << L"------------------------" << endl;
+    wcout << L"int const pool: size=" << int_pool_cache.size() << L" [" 
+          << int_pool_cache.size() * sizeof(int32_t) << L" of " << sizeof(int32_t) * MAX_INTS << L" byte(s)]" << endl;
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
