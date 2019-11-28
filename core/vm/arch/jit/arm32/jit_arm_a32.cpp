@@ -50,10 +50,10 @@ void JitCompilerA32::Prolog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
-  
+
   uint32_t setup_code[] = {
-		0xe52db004,						      // push  {fp}
-		0xe92d00f0,						      // push {r4-r7} // PUSH: R8
+    0xe52db004,                 // push  {fp}
+    0xe92d01f0,						      // push {r4-r8}
 		0xe28db000,						      // add fp, sp, #0
 		0xe24dd024 + local_space,   // sub sp, sp, #local_space
 		0xe50b0008,						      // str r0, [fp, #-8]
@@ -94,7 +94,7 @@ void JitCompilerA32::Epilog() {
   move_imm_reg(0, R0);
   uint32_t teardown_code[] = {
     0xe24bd000, // sub sp, fp, #0
-    0xe8bd00f0, // pop {r4-r7}‬
+    0xe8bd01f0, // pop {r4-r7}‬
     0xe49db004, // pop {fp}
     0xe12fff1e  // bx  lr
   };
@@ -4436,9 +4436,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
                                         const int32_t code_size, size_t* op_stack, long* stack_pos,
                                         StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
   // create function
-  jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  
-  // execute                                          
+  jit_fun_ptr jit_fun = (jit_fun_ptr)code;            
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
                                      stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), ints);
   

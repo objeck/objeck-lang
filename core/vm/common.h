@@ -256,7 +256,7 @@ class NativeCode {
 #ifdef _ARM32
     free(ints);
     ints = nullptr;
-#else
+#endif
 #if defined(_WIN64) || defined(_X64)
 #ifdef _WIN64
     VirtualFree(floats, 0, MEM_RELEASE);
