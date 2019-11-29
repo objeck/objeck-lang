@@ -310,13 +310,6 @@ namespace Runtime {
 
     uint32_t* GetPage(uint32_t* code, int32_t size);
   };
-
-  /********************************
-   * Prototype for jit function
-   ********************************/
-  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, 
-                                 long* stack_pos, StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, 
-                                 long* offset, int32_t* ints);
   
   /********************************
    * JitCompilerA32 class
@@ -760,8 +753,14 @@ namespace Runtime {
     // Compiles stack code into IA-32 machine code
     //
     bool Compile(StackMethod* cm);
-  };    
+  };
 
+  /********************************
+   * Prototype for jit function
+   ********************************/
+  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, size_t *cls_mem, size_t *inst, size_t *op_stack, long *stack_pos, 
+                                 StackFrame **call_stack, long *call_stack_pos, size_t **jit_mem, long *offset, int32_t *ints);
+  
   /********************************
    * JitExecutor class
    ********************************/
@@ -773,7 +772,7 @@ namespace Runtime {
     
     // Executes machine code
     long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, 
-                        StackFrame** call_stack, long* call_stack_pos, StackFrame *frame);
+                 StackFrame** call_stack, long* call_stack_pos, StackFrame *frame);
   };
 }
 #endif
