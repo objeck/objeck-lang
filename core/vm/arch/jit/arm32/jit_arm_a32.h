@@ -793,9 +793,8 @@ namespace Runtime {
       int32_t mthd_id = method->GetId();
 
 #ifdef _DEBUG
-      wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id 
-            << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (size_t)inst 
-            << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
+      wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName() << L"'; self=" 
+            << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
             << method->GetParamCount() << L" ===" << endl;
       assert((*stack_pos) >= method->GetParamCount());
 #endif
