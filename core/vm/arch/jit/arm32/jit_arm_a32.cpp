@@ -4456,8 +4456,8 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
 {
   const int32_t cls_id = method->GetClass()->GetId();
   const int32_t mthd_id = method->GetId();
-  NativeCode *native_code = method->GetNativeCode();
-  int32_t *int_consts = native_code->GetInts();
+  NativeCode* native_code = method->GetNativeCode();
+  int32_t* int_consts = native_code->GetInts();
 
 #ifdef _DEBUG
   wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
