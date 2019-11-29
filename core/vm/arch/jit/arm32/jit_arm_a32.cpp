@@ -4445,21 +4445,36 @@ bool JitCompilerA32::Compile(StackMethod* cm)
  * JitExecutor class
  ********************************/
 StackProgram* JitExecutor::program;
-void JitExecutor::Initialize(StackProgram* p) {
+
+void JitExecutor::Initialize(StackProgram* p) 
+{
   program = p;
 }
 
-int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code,
-                                        const int32_t code_size, size_t* op_stack, long* stack_pos,
-                                        StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
-  // create function
-  jit_fun_ptr jit_fun = (jit_fun_ptr)code;            
-  const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
-                                     stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), ints);
+// Executes machine code
+long JitExecutor::Execute(StackMethod *method, size_t *inst, size_t *op_stack, long *stack_pos, StackFrame **call_stack, long *call_stack_pos, StackFrame *frame)
+{
+  const int32_t cls_id = method->GetClass()->GetId();
+  const int32_t mthd_id = method->GetId();
+  NativeCode* native_code = method->GetNativeCode();
+  int32_t* int_consts = native_code->GetInts();
   
 #ifdef _DEBUG
+  wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
+        << L"'; self=" << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos="
+        << (*stack_pos) << L"; params=" << method->GetParamCount() << L"; code=" << (size_t*)native_code->GetCode() << L"; code_index="
+        << native_code->GetSize() << L" ===" << endl;
+  assert((*stack_pos) >= method->GetParamCount());
+#endif
+  
+  // execute
+  jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
+  const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos, 
+                                     call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), int_consts);
+
+#ifdef _DEBUG
   wcout << L"JIT return: " << rtrn_value << endl;
-#endif  
+#endif
   
   return rtrn_value;
 }

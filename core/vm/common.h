@@ -251,7 +251,6 @@ class NativeCode {
   }
 #endif
 
-  
   ~NativeCode() {
 #ifdef _ARM32
     free(ints);
@@ -274,24 +273,24 @@ class NativeCode {
   }
 
 #ifdef _ARM32
-  uint32_t* GetCode() const {
+  inline uint32_t* GetCode() const {
     return code;
   }
   
-  int32_t* GetInts() const {
+  inline int32_t* GetInts() const {
     return ints;
   }
 #else
-  unsigned char* GetCode() const {
+  inline unsigned char* GetCode() const {
     return code;
   }
 #endif
   
-  long GetSize() {
+  inline long GetSize() {
     return size;
   }
 
-  FLOAT_VALUE* GetFloats() const {
+  inline FLOAT_VALUE* GetFloats() const {
     return floats;
   }
 };
@@ -429,7 +428,7 @@ class StackMethod {
     native_code = c;
   }
 
-  NativeCode* GetNativeCode() const {
+  inline NativeCode* GetNativeCode() const {
     return native_code;
   }
 

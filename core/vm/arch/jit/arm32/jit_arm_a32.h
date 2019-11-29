@@ -767,47 +767,13 @@ namespace Runtime {
    ********************************/
   class JitExecutor {
     static StackProgram* program;
-    StackMethod* method;
-    uint32_t* code;
-    int32_t code_index; 
-    int32_t* ints;
-    double* float_consts;
-    
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code, 
-                               const int32_t code_size, size_t* op_stack, long* stack_pos,
-                               StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
 
   public:
     static void Initialize(StackProgram* p);
-
-    JitExecutor() {
-    }
-
-    ~JitExecutor() {
-    }    
     
     // Executes machine code
-    inline long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
-      method = cm;
-      int32_t cls_id = method->GetClass()->GetId();
-      int32_t mthd_id = method->GetId();
-
-#ifdef _DEBUG
-      wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName() << L"'; self=" 
-            << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
-            << method->GetParamCount() << L" ===" << endl;
-      assert((*stack_pos) >= method->GetParamCount());
-#endif
-      
-      NativeCode* native_code = method->GetNativeCode();
-      code = native_code->GetCode();
-      code_index = native_code->GetSize();
-      ints = native_code->GetInts();
-      float_consts = native_code->GetFloats();
-      
-      // execute
-      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, call_stack, call_stack_pos, frame);
-    }
+    long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, 
+                        StackFrame** call_stack, long* call_stack_pos, StackFrame *frame);
   };
 }
 #endif
