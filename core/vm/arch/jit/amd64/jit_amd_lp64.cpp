@@ -361,8 +361,8 @@ void JitCompilerIA64::ProcessInstructions() {
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      floats[floats_index] = instr->GetFloatOperand();
-      working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
+      float_consts[floats_index] = instr->GetFloatOperand();
+      working_stack.push_front(new RegInstr(instr, &float_consts[floats_index++]));
       break;
       
       // load self
@@ -5194,16 +5194,16 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
     code_buf_max = BUFFER_SIZE;
     code = (unsigned char*)malloc(code_buf_max);
 
-    // floats memory
+    // float_consts memory
 #ifdef _WIN64
 
-    floats = (double*)VirtualAlloc(nullptr, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_READWRITE);
-    if(!floats) {
-      wcerr << L"Unable to allocate JIT memory for floats!" << endl;
+    float_consts = (double*)VirtualAlloc(nullptr, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_READWRITE);
+    if(!float_consts) {
+      wcerr << L"Unable to allocate JIT memory for float_consts!" << endl;
       exit(1);
     }
 #else
-    if(posix_memalign((void**)& floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+    if(posix_memalign((void**)& float_consts, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       wcerr << L"Unable to reallocate JIT memory!" << endl;
       exit(1);
     }
@@ -5289,11 +5289,11 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
     ProcessInstructions();
     if(!compile_success) {
 #ifdef _WIN64
-      VirtualFree(floats, 0, MEM_RELEASE);
+      VirtualFree(float_consts, 0, MEM_RELEASE);
 #else
-      free(floats);
+      free(float_consts);
 #endif
-      floats = nullptr;
+      float_consts = nullptr;
 
       return false;
     }
@@ -5336,7 +5336,7 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
       << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts));
 
     free(code);
     code = nullptr;

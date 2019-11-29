@@ -70,7 +70,7 @@ namespace Runtime {
 #define TMP_REG_4 -44
 #define TMP_REG_5 -48
 
-#define MAX_DBLS 64
+#define MAX_DBLS 256
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
 
@@ -345,7 +345,7 @@ namespace Runtime {
     unsigned char* code;
     int32_t code_index;
     int32_t epilog_index;
-    double* floats;     
+    double* float_consts;     
     int32_t floats_index;
     int32_t instr_index;
     int32_t code_buf_max;
@@ -819,7 +819,7 @@ namespace Runtime {
     StackMethod* method;
     unsigned char* code;
     int32_t code_index; 
-    double* floats;
+    double* float_consts;
 
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, unsigned char* code, 
                                const int32_t code_size, size_t* op_stack, long* stack_pos,
@@ -851,7 +851,7 @@ namespace Runtime {
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
-      floats = native_code->GetFloats();
+      float_consts = native_code->GetFloats();
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, call_stack, call_stack_pos, frame);

@@ -94,7 +94,7 @@ namespace Runtime {
 #define RED_ZONE -128 
 #endif
 
-#define MAX_DBLS 64
+#define MAX_DBLS 256
 #define BUFFER_SIZE 512
 
 #ifndef I386_PGBYTES
@@ -352,7 +352,7 @@ namespace Runtime {
     unsigned char* code;
     long code_index;
     long epilog_index;
-    double* floats;
+    double* float_consts;
     long floats_index;
     long instr_index;
     long code_buf_max;
@@ -980,7 +980,7 @@ namespace Runtime {
     StackMethod* method;
     unsigned char* code;
     long code_index;
-    double* floats;
+    double* float_consts;
 
     long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size, 
           size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
@@ -1004,7 +1004,7 @@ namespace Runtime {
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
-      floats = native_code->GetFloats();
+      float_consts = native_code->GetFloats();
 
 #ifdef _DEBUG
       wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id

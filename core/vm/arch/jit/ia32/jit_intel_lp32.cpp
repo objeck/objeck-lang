@@ -320,8 +320,8 @@ void JitCompilerIA32::ProcessInstructions() {
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      floats[floats_index] = instr->GetFloatOperand();
-      working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
+      float_consts[floats_index] = instr->GetFloatOperand();
+      working_stack.push_front(new RegInstr(instr, &float_consts[floats_index++]));
       break;
       
       // load self
@@ -4782,7 +4782,7 @@ void JitCompilerIA32::ProcessIndices()
     // instance reference
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
       // note: all instance variables are allocated in 4-byte blocks,
-      // for floats the assembler allocates 2 4-byte blocks
+      // for float_consts the assembler allocates 2 4-byte blocks
       instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
     }
     // local reference
@@ -4846,9 +4846,9 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
     code_buf_max = BUFFER_SIZE;
     code = (unsigned char*)malloc(code_buf_max);
 #ifdef _WIN32
-    floats = new double[MAX_DBLS];
+    float_consts = new double[MAX_DBLS];
 #else
-    if(posix_memalign((void**)& floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+    if(posix_memalign((void**)& float_consts, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
     }
@@ -4891,8 +4891,8 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
     // translate program
     ProcessInstructions();
     if(!compile_success) {
-      delete[] floats;
-      floats = nullptr;
+      delete[] float_consts;
+      float_consts = nullptr;
 
       return false;
     }
@@ -4933,7 +4933,7 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts));
     free(code);
     code = nullptr;
 

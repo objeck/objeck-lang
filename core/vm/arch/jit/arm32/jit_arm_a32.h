@@ -54,7 +54,7 @@ namespace Runtime {
 #define CALL_STACK_POS 36
 #define JIT_MEM 40
 #define JIT_OFFSET 44
-#define INTS 48
+#define INT_CONSTS 48
   // float temps
 #define TMP_D_0 -28
 #define TMP_D_1 -36
@@ -67,10 +67,10 @@ namespace Runtime {
 #define TMP_REG_4 -64
 #define TMP_REG_5 -68
   // holds $lr for callbacks
-#define TMP_REG_6 -72
+#define TMP_REG_LR -72
 
 #define MAX_INTS 1024
-#define MAX_DBLS 64
+#define MAX_DBLS 256
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
   
@@ -343,7 +343,7 @@ namespace Runtime {
     uint32_t code_index;
     int32_t epilog_index;
     int32_t* ints;
-    double* floats;     
+    double* float_consts;     
     int32_t floats_index;
     int32_t instr_index;
     int32_t code_buf_max;
@@ -771,7 +771,7 @@ namespace Runtime {
     uint32_t* code;
     int32_t code_index; 
     int32_t* ints;
-    double* floats;
+    double* float_consts;
     
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code, 
                                const int32_t code_size, size_t* op_stack, long* stack_pos,
@@ -804,7 +804,7 @@ namespace Runtime {
       code = native_code->GetCode();
       code_index = native_code->GetSize();
       ints = native_code->GetInts();
-      floats = native_code->GetFloats();
+      float_consts = native_code->GetFloats();
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, call_stack, call_stack_pos, frame);

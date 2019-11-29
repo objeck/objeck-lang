@@ -109,7 +109,7 @@ void JitCompilerA32::Epilog() {
 void JitCompilerA32::RegisterRoot() {
   // get to local variables
   RegisterHolder* holder = GetRegister();
-  const int32_t offset = local_space + TMP_REG_6 - 4;
+  const int32_t offset = local_space + TMP_REG_LR - 4;
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   
@@ -118,7 +118,7 @@ void JitCompilerA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  int index = ((offset + TMP_REG_6) >> 2) + 7;
+  int index = ((offset + TMP_REG_LR) >> 2) + 7;
   if(index > 0) {
     RegisterHolder* loop_holder = GetRegister();
     move_imm_reg(index, loop_holder->GetRegister());
@@ -297,8 +297,8 @@ void JitCompilerA32::ProcessInstructions() {
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      floats[floats_index] = instr->GetFloatOperand();
-      working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
+      float_consts[floats_index] = instr->GetFloatOperand();
+      working_stack.push_front(new RegInstr(instr, &float_consts[floats_index++]));
       break;
       
       // load self
@@ -2166,7 +2166,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
     AddMachineCode(op_code);
   }
   else {
-    move_mem_reg(INTS, FP, R8);
+    move_mem_reg(INT_CONSTS, FP, R8);
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -3305,13 +3305,13 @@ void JitCompilerA32::call_reg(Register reg) {
   wcout << L"  " << (++instr_count) << L": [blx %" << GetRegisterName(reg) << L"]" << endl;
 #endif
   
-  move_reg_mem(LR, TMP_REG_6, FP);
+  move_reg_mem(LR, TMP_REG_LR, FP);
 
   uint32_t op_code = 0xe12fff30;
   op_code |= reg;
   AddMachineCode(op_code);
   
-  move_mem_reg(TMP_REG_6, FP, LR);
+  move_mem_reg(TMP_REG_LR, FP, LR);
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
@@ -4203,7 +4203,7 @@ void JitCompilerA32::ProcessIndices()
     }
   }
 
-  int32_t index = TMP_REG_6;
+  int32_t index = TMP_REG_LR;
   int32_t last_id = -1;
   multimap<int32_t, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
@@ -4212,7 +4212,7 @@ void JitCompilerA32::ProcessIndices()
     // instance reference
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
       // note: all instance variables are allocated in 4-byte blocks,
-      // for floats the assembler allocates 2 4-byte blocks
+      // for float_consts the assembler allocates 2 4-byte blocks
       instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
     }
     // local reference
@@ -4252,7 +4252,7 @@ void JitCompilerA32::ProcessIndices()
   }
   
   // calculate local space (adjust for alignment)
-  local_space = -(index + TMP_REG_6);
+  local_space = -(index + TMP_REG_LR);
   if(local_space % 8 == 0) {
     local_space += 4;
   }
@@ -4289,7 +4289,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       exit(1);
     }
     
-    if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+    if(posix_memalign((void**)&float_consts, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
     }
@@ -4340,8 +4340,8 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       delete[] ints;
       ints = nullptr;
       
-      delete[] floats;
-      floats = nullptr;
+      delete[] float_consts;
+      float_consts = nullptr;
       
       return false;
     }
@@ -4401,8 +4401,8 @@ bool JitCompilerA32::Compile(StackMethod* cm)
         delete[] ints;
         ints = nullptr;
 
-        delete[] floats;
-        floats = nullptr;
+        delete[] float_consts;
+        float_consts = nullptr;
 
         return false;
       }
@@ -4430,7 +4430,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, ints, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, ints, float_consts));
     
     free(code);
     code = nullptr;
