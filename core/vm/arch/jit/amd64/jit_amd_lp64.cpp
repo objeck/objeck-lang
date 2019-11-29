@@ -5356,16 +5356,29 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
  * JitExecutor class
  ********************************/
 StackProgram* JitExecutor::program;
+
 void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
-                                     size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
-{
+// Executes machine code
+long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
+  const long cls_id = method->GetClass()->GetId();
+  const long mthd_id = method->GetId();
+  NativeCode* native_code = method->GetNativeCode();
+
+#ifdef _DEBUG
+  wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
+        << L"'; self=" << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos="
+        << (*stack_pos) << L"; params=" << method->GetParamCount() << L"; code=" << (size_t*)native_code->GetCode() << L"; code_index="
+        << native_code->GetSize() << L" ===" << endl;
+  assert((*stack_pos) >= method->GetParamCount());
+#endif
+
   // create function
-  // notes: pointers to jit_memand jit_offset are updated by JIT code
-  jit_fun_ptr jit_fun = (jit_fun_ptr)code;
+  jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
+
+  // execute
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
                               stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 

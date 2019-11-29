@@ -322,13 +322,7 @@ namespace Runtime {
 
     unsigned char* GetPage(unsigned char* code, int32_t size);
   };
-
-  /********************************
-   * Prototype for JIT function
-   ********************************/
-  typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long *stack_pos,
-           StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
-
+  
   /********************************
    * JitCompilerIA64 class
    ********************************/
@@ -973,51 +967,23 @@ namespace Runtime {
   };
 
   /********************************
+ * Prototype for JIT function
+ ********************************/
+  typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long* stack_pos, 
+                             StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
+
+  /********************************
    * JitExecutor class
    ********************************/
   class JitExecutor {
     static StackProgram* program;
-    StackMethod* method;
-    unsigned char* code;
-    long code_index;
-    double* float_consts;
-
-    long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size, 
-          size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
-
+    
   public:
     static void Initialize(StackProgram* p);
 
-    JitExecutor() {
-    }
-
-    ~JitExecutor() {
-    }
-
     // Executes machine code
-    long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos,
-                 StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
-      method = cm;
-      long cls_id = method->GetClass()->GetId();
-      long mthd_id = method->GetId();
-
-      NativeCode* native_code = method->GetNativeCode();
-      code = native_code->GetCode();
-      code_index = native_code->GetSize();
-      float_consts = native_code->GetFloats();
-
-#ifdef _DEBUG
-      wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id
-        << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (size_t)inst
-        << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params="
-        << method->GetParamCount() << L"; code=" << (size_t*)code << L"; code_index="
-        << code_index << L" ===" << endl;
-      assert((*stack_pos) >= method->GetParamCount());
-#endif
-
-      // execute
-      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack,  stack_pos, call_stack, call_stack_pos, frame);
-    }
+    long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, 
+                 StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
   };
 }
 #endif
