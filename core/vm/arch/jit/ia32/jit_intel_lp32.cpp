@@ -4948,12 +4948,14 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
  ********************************/
 StackProgram* JitExecutor::program;
 
-void JitExecutor::Initialize(StackProgram* p) {
+void JitExecutor::Initialize(StackProgram* p) 
+{
   program = p;
 }
 
 // Executes machine code
-long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
+long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
+{
   const long cls_id = method->GetClass()->GetId();
   const long mthd_id = method->GetId();
   NativeCode* native_code = method->GetNativeCode();
