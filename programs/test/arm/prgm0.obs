@@ -1,6 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo();
+		Bar();
+	}
+
+	function : native : Bar() ~ Nil {
+		a := 3.145;
+		(a * 7.5)->PrintLine();
 	}
 
 	function : Foo() ~ Nil {
