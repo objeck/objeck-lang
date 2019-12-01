@@ -1,0 +1,13 @@
+use Collection.Generic;
+
+class FirstClass {
+   function : Main(args : String[]) ~ Nil {
+      tree := Map->New()<String,IntHolder>;
+      tree->Insert("One", 1);
+      tree->Insert("Two", 2);
+      tree->Insert("Three", 3);
+
+      tree->Size()->PrintLine();
+      tree->Find("One")->PrintLine();
+   }
+}
