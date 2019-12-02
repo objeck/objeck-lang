@@ -3316,11 +3316,28 @@ void JitCompilerA32::call_reg(Register reg) {
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 {
+  // TODO: update with correct move code, compares differ bewtween int and fp
   uint32_t op_code, op_dest;
-
-  switch (oper)
-  {
+  
+  switch (oper) {
   case LES_INT:
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [movle " << GetRegisterName(reg) << L", #1]" << endl;
+#endif
+    op_code = 0xd3a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [movgt " << GetRegisterName(reg) << L", #0]" << endl;
+#endif
+    op_code = 0xc3a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+    
   case LES_FLOAT:
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [movmi " << GetRegisterName(reg) << L", #1]" << endl;
@@ -3338,6 +3355,8 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     op_code |= op_dest;
     AddMachineCode(op_code);
     break;
+   
+    // ------------- TODO: Update code...
     
   case GTR_INT:
   case GTR_FLOAT:
@@ -4460,6 +4479,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   int32_t* int_consts = native_code->GetInts();
 
 #ifdef _DEBUG
+  const long code_index = native_code->GetSize();
   wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
         << L"'; self=" << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos="
         << (*stack_pos) << L"; params=" << method->GetParamCount() << L"; code=" << (size_t *)native_code->GetCode() << L"; code_index="
