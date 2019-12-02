@@ -45,7 +45,7 @@ void JitCompilerIA32::Initialize(StackProgram* p) {
   page_manager = new PageManager;
 }
 
-// setup of stackframe
+// setup of stack frame
 void JitCompilerIA32::Prolog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
