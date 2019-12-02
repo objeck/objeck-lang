@@ -3355,49 +3355,138 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     op_code |= op_dest;
     AddMachineCode(op_code);
     break;
-   
-    // ------------- TODO: Update code...
     
   case GTR_INT:
   case GTR_FLOAT:
 #ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
+    wcout << L"  " << (++instr_count) << L": [movgt " << GetRegisterName(reg) << L", #1]" << endl;
 #endif
-    AddMachineCode(0xda000000);
-    break;
+    op_code = 0xc3a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
 
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [movle " << GetRegisterName(reg) << L", #0]" << endl;
+#endif
+    op_code = 0xd3a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+    
   case EQL_INT:
   case EQL_FLOAT:
 #ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [moveq]" << std::endl;
 #endif
-    AddMachineCode(0x1a000000);
-    break;
+    op_code = 0x03a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
 
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movne]" << std::endl;
+#endif
+    op_code = 0x13a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+        
   case NEQL_INT:
   case NEQL_FLOAT:
 #ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [movne]" << std::endl;
 #endif
-    AddMachineCode(0x0a000000);
-    break;
+    op_code = 0x13a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
 
-  case LES_EQL_INT:
-  case LES_EQL_FLOAT:
 #ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [moveq]" << std::endl;
 #endif
-    AddMachineCode(0xca000000);
-    break;
-        
-  case GTR_EQL_INT:
-  case GTR_EQL_FLOAT:
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
-#endif
-    AddMachineCode(0xba000000);
+    op_code = 0x03a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
     break;
     
+  case LES_EQL_INT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movle]" << std::endl;
+#endif
+    op_code = 0xd3a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movgt]" << std::endl;
+#endif
+    op_code = 0xc3a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+
+  case LES_EQL_FLOAT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movls]" << std::endl;
+#endif
+    op_code = 0x93a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movhi]" << std::endl;
+#endif
+    op_code = 0x83a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+    
+    // -----------------------
+    
+  case GTR_EQL_INT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movgt]" << std::endl;
+#endif
+    op_code = 0xc3a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movle]" << std::endl;
+#endif
+    op_code = 0xd3a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+
+  case GTR_EQL_FLOAT:
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movge]" << std::endl;
+#endif
+    op_code = 0xa3a00001;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+
+#ifdef _DEBUG
+    std::wcout << L"  " << (++instr_count) << L": [movlt]" << std::endl;
+#endif
+    op_code = 0xb3a00000;
+    op_dest = reg << 12;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+    break;
+
   default:
     break;
   }
@@ -4487,8 +4576,10 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   assert((*stack_pos) >= method->GetParamCount());
 #endif
 
-  // execute
+  // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
+
+  // execute
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
                                      call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), int_consts);
 
