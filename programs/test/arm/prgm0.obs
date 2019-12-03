@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Bar();
+		GoF2(9.56)->PrintLine();
 	}
 
 	function : native : Bar() ~ Nil {
@@ -31,8 +31,9 @@ class Test {
 		return 13;
 	}
 
-	function : native : GoF2(a : Float) ~ Float {
-		b := a->Floor();
+#	function : native : GoF2(a : Float) ~ Float {
+	function : GoF2(a : Float) ~ Float {
+		b := a->Sin();
 		return b * .75;
 	}
 
