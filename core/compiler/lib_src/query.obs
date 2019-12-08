@@ -155,7 +155,7 @@ bundle Query.Structured {
 				value := row->Get(index);
 				
 				if(value->TypeOf(IntHolder)) {
-					sum += value->As(IntHolder)->Get()->As(Float);
+					sum += value->As(IntHolder)->Get();
 				}
 				else if(value->TypeOf(FloatHolder)) {
 					sum += value->As(FloatHolder)->Get();
@@ -186,7 +186,7 @@ bundle Query.Structured {
 				value := row->Get(index);
 				
 				if(value->TypeOf(IntHolder)) {
-					sum += value->As(IntHolder)->Get()->As(Float);
+					sum += value->As(IntHolder)->Get();
 				}
 				else if(value->TypeOf(FloatHolder)) {
 					sum += value->As(FloatHolder)->Get();
