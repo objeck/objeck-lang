@@ -2917,7 +2917,7 @@ void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
 #endif
   
   if (imm < 0 && imm >= -256) {
-    uint32_t op_code = 0xe3730000;
+    uint32_t op_code = 0xe3700000;
     
     uint32_t op_dest = reg << 16;
     op_code |= op_dest;
