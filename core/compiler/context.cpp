@@ -1799,16 +1799,18 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     // associate variable and entry
     if(!variable->GetEvalType()) {
       Type* entry_type = entry->GetType();
-
       Expression* expression = variable;
+
       while(expression->GetMethodCall()) {
         AnalyzeExpressionMethodCall(expression, depth + 1);
         expression = expression->GetMethodCall();
       }
 
-      if(expression->GetCastType() && entry_type && entry_type->GetType() == CLASS_TYPE && !HasProgramLibraryEnum(entry_type->GetName())) {
+      Type* cast_type = expression->GetCastType();
+      if(cast_type && cast_type->GetType() == CLASS_TYPE && entry_type && entry_type->GetType() == CLASS_TYPE && !HasProgramLibraryEnum(entry_type->GetName())) {
         AnalyzeClassCast(expression->GetCastType(), entry_type, expression, false, depth + 1);
       }
+
       variable->SetTypes(entry_type);
       variable->SetEntry(entry);
       entry->AddVariable(variable);
