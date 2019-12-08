@@ -599,7 +599,9 @@ bundle Query.Structured {
 				
 				if(value <> Nil) {
 					if(value->TypeOf(IntHolder)) {
-						buffer += value->As(IntHolder)->ToString();
+"--- IntHolder ---"->PrintLine();
+			
+						buffer += "Hiya!"; # value->As(IntHolder)->ToString();
 					}
 					else if(value->TypeOf(FloatHolder)) {
 						buffer += value->As(FloatHolder)->ToString();
@@ -608,6 +610,7 @@ bundle Query.Structured {
 						buffer += value->As(Date)->ToString();
 					}
 					else if(value->TypeOf(String)) {
+"--- String ---"->PrintLine();						
 						buffer += value->As(String);
 					}
 					else {
@@ -615,7 +618,7 @@ bundle Query.Structured {
 					};
 				}
 				else {
-						buffer += "<Nil>";
+					buffer += "<Nil>";
 				};	
 					
 				if(i + 1 < @values->Size()) {
