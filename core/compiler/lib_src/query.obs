@@ -599,10 +599,10 @@ bundle Query.Structured {
 				
 				if(value <> Nil) {
 					if(value->TypeOf(IntHolder)) {
-						buffer += value->As(IntHolder)->Get()->ToString();
+						buffer += value->As(IntHolder)->ToString();
 					}
 					else if(value->TypeOf(FloatHolder)) {
-						buffer += value->As(FloatHolder)->Get()->ToString();
+						buffer += value->As(FloatHolder)->ToString();
 					}
 					else if(value->TypeOf(Date)) {
 						buffer += value->As(Date)->ToString();
