@@ -11,11 +11,7 @@ class RegExUrls {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() <> 1) { return; };
 		
-		lines := HttpsClient->New()->Get(args[0]);
-		input := "";
-		each(i : lines) {
-			input->Append(lines->Get(i));
-		};
+		input := HttpsClient->New()->GetAll(args[0]);
 		input->PrintLine();
 		
 		"running regex..."->PrintLine();		
