@@ -10,26 +10,20 @@ use Query.RegEx;
 class RegExUrls {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			file := args[0];
+			input := args[0];
 
-			input := System.IO.File.FileReader->ReadFile(file);
+			output := HttpsClient->New()->GetAll(input);
+			output_len := output->Size();
+			"Read: {$input}, write: {$output_len} character(s)"->PrintLine();
+
 			"running regex..."->PrintLine();		
 			expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
 			
-			found := RegEx->New(expr)->Find(input);
+			found := RegEx->New(expr)->Find(output);
 			"---"->PrintLine();
 			each(i : found) {
 				found->Get(i)->PrintLine();
 			};
-		}
-		else if(args->Size() = 2) {
-			input := args[0];
-			file := args[1];
-
-			output := HttpsClient->New()->GetAll(input);
-			output_len := output->Size();
-			System.IO.File.FileWriter->WriteFile(file, output);
-			"Read: {$input}, write: {$output_len} character(s)"->PrintLine();
 		};
 	}
 }
