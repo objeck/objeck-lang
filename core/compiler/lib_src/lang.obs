@@ -283,6 +283,7 @@ bundle System {
 			each(i : b) {
 				buffer := Char->New[16];
 				Number->IntToString(b[i]->As(Int), 16, buffer);
+"-0-"->PrintLine();
 				out->Append(buffer);
 			};
 			
