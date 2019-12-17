@@ -1,7 +1,10 @@
-use Query.RegEx;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		RegEx->New(".*(ab)+c")->Find("xxxabababc")->Each(\^(v) => v->PrintLine());
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		"0xaa"->PrintLine();
+		13->ToString()->PrintLine();
 	}
 }
