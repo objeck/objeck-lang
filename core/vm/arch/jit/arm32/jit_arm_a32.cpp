@@ -685,6 +685,21 @@ void JitCompilerA32::ProcessInstructions() {
 #endif
       ProcessIntToFloat(instr);
       break;
+
+    case I2S:
+#ifdef _DEBUG
+      wcout << L"I2S: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(I2S, instr, instr_index, 3);
+      break;
+
+    case S2I:
+#ifdef _DEBUG
+      wcout << L"S2I: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(S2I, instr, instr_index, 2);
+      ProcessReturnParameters(INT_TYPE);
+      break;
       
     case OBJ_TYPE_OF: {
 #ifdef _DEBUG
@@ -3924,6 +3939,85 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
     PushInt(op_stack, stack_pos, (int32_t)mem);
   }
    break;
+
+  case I2S: {
+    size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    if (str_ptr) {
+      wchar_t* str = (wchar_t*)(str_ptr + 3);
+      const size_t base = PopInt(op_stack, stack_pos);
+      const long value = (long)PopInt(op_stack, stack_pos);
+
+      wstringstream stream;
+      if (base == 16) {
+        stream << std::hex << value;
+        wstring conv(stream.str());
+        const size_t max = conv.size() < 16 ? conv.size() : 16;
+#ifdef _WIN32
+        wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+#else
+        wcsncpy(str, conv.c_str(), max);
+#endif
+      }
+      else {
+        stream << value;
+        wstring conv(stream.str());
+        const size_t max = conv.size() < 16 ? conv.size() : 16;
+#ifdef _WIN32
+        wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+#else
+        wcsncpy(str, conv.c_str(), max);
+#endif
+      }
+    }
+  }
+    break;
+
+  case S2I: {
+#ifdef _DEBUG
+    wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
+#endif
+
+    size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    long base = (long)PopInt(op_stack, stack_pos);
+    if (str_ptr) {
+      wchar_t* str = (wchar_t*)(str_ptr + 3);
+      try {
+        if (wcslen(str) > 2) {
+          switch (str[1]) {
+            // binary
+          case 'b':
+            PushInt(op_stack, stack_pos, stoi(str + 2, nullptr, 2));
+            return;
+
+            // octal
+          case 'o':
+            PushInt(op_stack, stack_pos, stoi(str + 2, nullptr, 8));
+            return;
+
+            // hexadecimal
+          case 'x':
+            PushInt(op_stack, stack_pos, stoi(str + 2, nullptr, 16));
+            return;
+
+          default:
+            break;
+          }
+        }
+        PushInt(op_stack, stack_pos, stoi(str, nullptr, base));
+      }
+      catch (std::invalid_argument & e) {
+#ifdef _WIN32    
+        UNREFERENCED_PARAMETER(e);
+#endif
+        PushInt(op_stack, stack_pos, 0);
+      }
+    }
+    else {
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
+      exit(1);
+    }
+  }
+    break;
 
   case OBJ_TYPE_OF: {
     size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
