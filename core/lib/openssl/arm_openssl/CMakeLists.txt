@@ -4,5 +4,5 @@
 cmake_minimum_required(VERSION 2.7)
 project(arm_openssl)
 set(LIBRARIES_FROM_REFERENCES "")
-add_library(libobjk_openssl SHARED ../openssl.cpp)
-target_link_libraries(libobjk_openssl "${LIBRARIES_FROM_REFERENCES}")
+add_library(objk_openssl SHARED ../openssl.cpp)
+target_link_libraries(objk_openssl "${LIBRARIES_FROM_REFERENCES}")
