@@ -107,7 +107,7 @@
         <CMakeTargetSpecificSettings>
           <TargetID>obr</TargetID>
           <Debug>
-            <Arguments>../compiler/a.obe https://www.google.com</Arguments>
+            <Arguments>../compiler/a.obe </Arguments>
             <WorkingDirectory />
           </Debug>
           <Deployment>

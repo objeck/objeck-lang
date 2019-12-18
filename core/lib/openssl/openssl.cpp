@@ -31,9 +31,9 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include <openssl/aes.h>
+#include "../../vm/lib_api.h"
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
-#include "../../vm/lib_api.h"
 
 using namespace std;
 
