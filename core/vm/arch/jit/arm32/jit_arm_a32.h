@@ -330,6 +330,7 @@ namespace Runtime {
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
     int32_t local_space;
+    bool realign_stack;
     StackMethod* method;
     int32_t instr_count;
 	  uint32_t* code;

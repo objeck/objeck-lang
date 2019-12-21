@@ -107,7 +107,7 @@
         <CMakeTargetSpecificSettings>
           <TargetID>obr</TargetID>
           <Debug>
-            <Arguments>../compiler/a.obe </Arguments>
+            <Arguments>../compiler/prgm8.obe </Arguments>
             <WorkingDirectory />
           </Debug>
           <Deployment>

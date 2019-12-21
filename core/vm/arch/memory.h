@@ -35,20 +35,19 @@
 #include "../common.h"
 
 // basic VM tuning parameters
-/* FOR DEBUGGING ONLY
 #if defined(_WIN64) || defined(_X64)
 #define MEM_MAX 256 * 3
 #else
 #define MEM_MAX 256 * 2
 #endif
-*/
 
-
+/* FOR DEBUGGING ONLY
 #if defined(_WIN64) || defined(_X64)
 #define MEM_MAX 1048576 * 3
 #else
 #define MEM_MAX 1048576 * 2
 #endif
+*/
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29

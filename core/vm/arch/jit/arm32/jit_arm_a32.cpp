@@ -107,9 +107,14 @@ void JitCompilerA32::Epilog() {
 }
 
 void JitCompilerA32::RegisterRoot() {
-  // get to local variables
   RegisterHolder* holder = GetRegister();
-  const int32_t offset = local_space + TMP_REG_LR - 4;
+  
+  // offset required to get to the first local variable
+  int32_t offset = local_space + TMP_REG_LR;
+  if(realign_stack) {
+    local_space -= 4;
+  }
+  
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   
@@ -4455,8 +4460,10 @@ void JitCompilerA32::ProcessIndices()
   
   // calculate local space (adjust for alignment)
   local_space = -(index + TMP_REG_LR);
+  realign_stack = false;
   if(local_space % 8 != 0) {
     local_space += 4;
+    realign_stack = true;
   }
     
 #ifdef _DEBUG
