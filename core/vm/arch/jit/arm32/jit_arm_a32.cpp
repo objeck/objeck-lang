@@ -118,7 +118,7 @@ void JitCompilerA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  int index = ((offset + TMP_REG_LR) >> 2) + 6;
+  int index = ((offset + TMP_REG_LR) >> 2) + 7;
   if(index > 0) {
     RegisterHolder* loop_holder = GetRegister();
     move_imm_reg(index, loop_holder->GetRegister());
