@@ -112,7 +112,7 @@ void JitCompilerA32::RegisterRoot() {
   // offset required to get to the first local variable
   int32_t offset = local_space + TMP_REG_LR;
   if(realign_stack) {
-    local_space -= 4;
+    offset -= 4;
   }
   
   move_reg_reg(FP, holder->GetRegister());
