@@ -38,9 +38,9 @@
 
 /* FOR DEBUGGING ONLY
 #if defined(_WIN64) || defined(_X64)
-#define MEM_MAX 4096 * 3
+#define MEM_MAX 256 * 3
 #else
-#define MEM_MAX 4096 * 2
+#define MEM_MAX 384 * 2
 #endif
 */
 

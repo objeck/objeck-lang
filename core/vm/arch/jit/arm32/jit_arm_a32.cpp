@@ -123,6 +123,15 @@ void JitCompilerA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
+  // TODO: rewrite as loop
+  move_imm_mem(0, TMP_REG_5, FP);
+  move_imm_mem(0, TMP_REG_4, FP);
+  move_imm_mem(0, TMP_REG_3, FP);
+  move_imm_mem(0, TMP_REG_2, FP);
+  move_imm_mem(0, TMP_REG_1, FP);
+  move_imm_mem(0, TMP_REG_0, FP);
+  
+  /*
   int index = ((offset + TMP_REG_5) >> 2) + 6;
   if(index > 0) {
     RegisterHolder* loop_holder = GetRegister();
@@ -135,6 +144,7 @@ void JitCompilerA32::RegisterRoot() {
     AddMachineCode(0xeafffff8);
     ReleaseRegister(loop_holder);
   }
+  */
   
   move_mem_reg(JIT_OFFSET, FP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
