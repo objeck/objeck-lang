@@ -296,16 +296,18 @@ void IntermediateEmitter::EmitStrings()
   
   Linker* linker = parsed_program->GetLinker();
   if(linker && !is_lib) {
-    map<const wstring, Library*> libraries = linker->GetAllLibraries();
-    map<const wstring, Library*>::iterator iter;
+    vector<Library*> libraries = linker->GetAllUsedLibraries();
     
     // create master list of library strings
     vector<wstring> lib_char_string_values;
     vector<IntStringHolder*> lib_int_string_values;
     vector<FloatStringHolder*> lib_float_string_values;
-    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+
+    for(size_t i = 0; i < libraries.size(); ++i) {
+      Library* library = libraries[i];
+
       // char wstring processing
-      vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
+      vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         // check for duplicate
         bool found = false;
@@ -320,7 +322,7 @@ void IntermediateEmitter::EmitStrings()
         }
       }      
       // int wstring processing
-      vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
+      vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         // check for duplicates
         bool found = false;
@@ -335,7 +337,7 @@ void IntermediateEmitter::EmitStrings()
         }
       }
       // float wstring processing
-      vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
+      vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         // check for duplicates
         bool found = false;
@@ -393,9 +395,11 @@ void IntermediateEmitter::EmitStrings()
     }
     
     // update indices
-    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+    for(size_t i = 0; i < libraries.size(); ++i) {
+      Library* library = libraries[i];
+
       // char wstring processing
-      vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
+      vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         bool found = false;
         for(size_t j = 0; !found && j < char_string_values.size(); ++j) {
@@ -412,7 +416,7 @@ void IntermediateEmitter::EmitStrings()
 #endif
       }
       // int string processing
-      vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
+      vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         bool found = false;
         for(size_t j = 0; !found && j < int_string_values.size(); ++j) {
@@ -429,7 +433,7 @@ void IntermediateEmitter::EmitStrings()
 #endif
       }
       // float wstring processing
-      vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
+      vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         bool found = false;
         for(size_t j = 0; !found && j < float_string_values.size(); ++j) {
