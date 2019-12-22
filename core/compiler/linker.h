@@ -997,6 +997,9 @@ class Linker {
     return libraries;
   }
 
+  // get all used libraries
+  vector<Library*> GetAllUsedLibraries();
+
   // returns all aliases including duplicates
   unordered_map<std::wstring, LibraryAlias*> GetAllAliasesMap();
 

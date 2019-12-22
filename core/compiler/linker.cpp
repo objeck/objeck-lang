@@ -219,6 +219,30 @@ unordered_map<std::wstring, LibraryAlias*> Linker::GetAllAliasesMap()
   return all_aliases_map;
 }
 
+// get all libraries
+vector<Library*> Linker::GetAllUsedLibraries()
+{
+  vector<Library*> used_libraries;
+
+  for(map<const wstring, Library*>::iterator iter = libraries.begin(); iter != libraries.end(); ++iter) {
+    Library* library = iter->second;
+    vector<LibraryClass*> classes = library->GetClasses();
+
+    bool add_library = false;
+    for(size_t i = 0; !add_library && i < classes.size(); ++i) {
+      if(classes[i]->GetCalled()) {
+        add_library = true;
+      }
+    }
+
+    if(add_library) {
+      used_libraries.push_back(library);
+    }
+  }
+
+  return used_libraries;
+}
+
 vector<LibraryAlias*> Linker::GetAllAliases()
 {
   if(all_aliases.empty()) {
