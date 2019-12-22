@@ -946,7 +946,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       // NOTE: this marks temporary variables that are stored in JIT memory
       // during some method calls. there are 6 integer temp addresses
 #ifdef _ARM32
-      for(int i = 1; i < 7; ++i) {
+      // for ARM32, skip the link register
+      for(int i = 1; i <= 6; ++i) {
 #else
       for(int i = 0; i < 6; ++i) {
 #endif
