@@ -124,8 +124,9 @@ void JitCompilerA32::RegisterRoot() {
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
   // TODO: rewrite me!
-  for(int32_t addr = TMP_REG_0 ; addr >= -offset ; addr -= 4) {
-    move_imm_mem(0, addr, FP);  
+  const int32_t end_addr = -offset;
+  for(int32_t start_addr = TMP_REG_0; start_addr >=  end_addr; start_addr -= 4) {
+    move_imm_mem(0, start_addr, FP);  
   }
   
   /*
