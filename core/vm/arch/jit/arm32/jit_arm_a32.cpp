@@ -2232,7 +2232,15 @@ void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xed100b00;
+  uint32_t op_code;
+  if(offset >= 0) {
+    // forward
+    op_code = 0xed900b00;
+  }
+  else {
+    // backward
+    op_code = 0xed100b00;    
+  }
     
   uint32_t op_dest = src << 16;
   op_code |= op_dest;
@@ -2254,7 +2262,15 @@ void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) 
         << endl;
 #endif 
   
-  uint32_t op_code = 0xed000b00;
+  uint32_t op_code;
+  if(offset >= 0) {
+    // forward
+    op_code = 0xed800b00;
+  }
+  else {
+    // backward
+    op_code = 0xed000b00;
+  }
   
   uint32_t op_dest = dest << 16;
   op_code |= op_dest;
