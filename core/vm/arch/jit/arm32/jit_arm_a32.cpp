@@ -2102,7 +2102,7 @@ void JitCompilerA32::move_reg_mem8(Register src, int32_t offset, Register dest) 
 #endif
     
   uint32_t op_code;
-  if (offset >= 0) {
+  if(offset >= 0) {
     // forward
     op_code = 0xe5c00000;
   }
@@ -2131,7 +2131,7 @@ void JitCompilerA32::move_mem8_reg(int32_t offset, Register src, Register dest) 
 #endif
     
   uint32_t op_code;
-  if (offset >= 0) {
+  if(offset >= 0) {
     // forward
     op_code = 0xe5d00000;
   }
