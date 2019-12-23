@@ -4,9 +4,8 @@
 cmake_minimum_required(VERSION 2.7)
 project(arm_vm)
 set(LIBRARIES_FROM_REFERENCES "-lssl -lcrypto -ldl -lz -pthread")
-# set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG -D_GC_SERIAL")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -D_GC_SERIAL")
-# set(CMAKE_CXX_FLAGS_DEBUG "-g")
+# set(CMAKE_CXX_FLAGS_DEBUG "-g -D_GC_SERIAL")
+set(CMAKE_CXX_FLAGS_DEBUG "-O3")
 set(GCC_COVERAGE_COMPILE_FLAGS "-D_ARM32 -Wall -pthread")
 # -fsanitize=address -static-libasan"
 add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
