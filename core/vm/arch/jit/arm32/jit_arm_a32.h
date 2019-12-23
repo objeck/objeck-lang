@@ -263,7 +263,7 @@ namespace Runtime {
         exit(1);
       }
       
-      if(mprotect(buffer, PAGE_SIZE, prot) < 0) {
+      if(mprotect(buffer, alloc_size, prot) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
