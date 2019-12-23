@@ -69,8 +69,8 @@ namespace Runtime {
   // holds $lr for callbacks
 #define TMP_REG_LR -72
 
-#define MAX_INTS 1024
-#define MAX_DBLS 256
+#define MAX_INTS 256
+#define MAX_DBLS 128
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
   

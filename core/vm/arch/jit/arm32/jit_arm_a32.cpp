@@ -4501,15 +4501,8 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     code = (uint32_t*)malloc(BUFFER_SIZE);
     code_buf_max = BUFFER_SIZE;
     
-    if(posix_memalign((void**)&ints, PAGE_SIZE, sizeof(int32_t) * MAX_INTS)) {
-      wcerr << L"Unable to allocate JIT memory!" << endl;
-      exit(1);
-    }
-    
-    if(posix_memalign((void**)&float_consts, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
-      wcerr << L"Unable to allocate JIT memory!" << endl;
-      exit(1);
-    }
+    ints = new int32_t[MAX_INTS];
+    float_consts = new double[MAX_DBLS];
     
     floats_index = instr_index = code_index = instr_count = 0;
     // general use registers
