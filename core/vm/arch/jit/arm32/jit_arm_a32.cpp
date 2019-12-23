@@ -4484,6 +4484,15 @@ void JitCompilerA32::ProcessIndices()
 //
 bool JitCompilerA32::Compile(StackMethod* cm)
 {
+  const int cls_id = cm->GetClass()->GetId();
+  const int mthd_id = cm->GetId();
+  if(
+     (cls_id == 67 && mthd_id == 8)
+//     false
+     ) {
+    return false;
+  }
+  
   compile_success = true;
 
   if(!cm->GetNativeCode()) {
