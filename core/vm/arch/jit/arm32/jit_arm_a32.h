@@ -259,8 +259,7 @@ namespace Runtime {
         exit(1);
       }
       
-      const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-      if(mprotect(buffer, alloc_size, prot) < 0) {
+      if(mprotect(buffer, alloc_size, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
@@ -269,7 +268,7 @@ namespace Runtime {
     }
 
     ~PageHolder() {
-      munmap(buffer, PAGE_SIZE);
+      free(buffer);
       buffer = nullptr;
     }
 
