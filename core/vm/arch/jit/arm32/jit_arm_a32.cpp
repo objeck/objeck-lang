@@ -4697,15 +4697,6 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
   
-  /////////////////// TODO: CRAP ///////////////////
-  if(
-     (cls_id == 67 && mthd_id == 8)
-//     false) {
-    ) {
-    wcout << L"Foo Bar" << endl;
-  }
-  /////////////////// TODO: END CRAP ///////////////////
-
   // execute
   const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
                                      call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), int_consts);
