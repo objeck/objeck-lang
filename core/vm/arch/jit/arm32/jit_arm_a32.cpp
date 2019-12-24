@@ -4620,7 +4620,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       const int32_t offset = ints_index * sizeof(int32_t);
       
       // 12-bit max for ldr offset
-      if(offset >= PAGE_SIZE * sizeof(uint32_t)) {
+      if(offset >= PAGE_SIZE * (int32_t)sizeof(uint32_t)) {
         free(code);
         code = nullptr;
         
