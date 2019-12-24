@@ -378,7 +378,7 @@ namespace Runtime {
     
     // Add byte code to buffer
     inline void AddMachineCode(uint32_t i) {
-      if(code_index * sizeof(uint32_t) >= code_buf_max) {
+      if(code_index * sizeof(uint32_t) >= (uint32_t)code_buf_max) {
         code_buf_max *= 2;
         code = (uint32_t*)realloc(code, code_buf_max); 
         if(!code) {
