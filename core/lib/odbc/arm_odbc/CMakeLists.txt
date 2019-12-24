@@ -4,5 +4,5 @@
 cmake_minimum_required(VERSION 2.7)
 project(arm_odbc)
 set(LIBRARIES_FROM_REFERENCES "")
-add_library(objk_odbc arm_odbc.cpp ../odbc.cpp)
+add_library(objk_odbc SHARED arm_odbc.cpp ../odbc.cpp)
 target_link_libraries(objk_odbc "${LIBRARIES_FROM_REFERENCES}")
