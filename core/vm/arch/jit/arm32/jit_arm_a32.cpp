@@ -133,37 +133,40 @@ void JitCompilerA32::RegisterRoot() {
   
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
+  RegisterHolder* end_reg = GetRegister();
+  RegisterHolder* cur_reg = GetRegister();
+  
+  // set start
   move_reg_reg(FP, start_reg->GetRegister());
   sub_imm_reg(-TMP_REG_0, start_reg->GetRegister());
   
-  RegisterHolder* end_reg = GetRegister();
+  // set end
   move_reg_reg(FP, end_reg->GetRegister());
   sub_imm_reg(offset, end_reg->GetRegister());
   
-  RegisterHolder* addr_reg = GetRegister();
+  // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
-  
 #ifdef _DEBUG
   std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
   AddMachineCode(0xca000004);
   
-  move_reg_reg(end_reg->GetRegister(), addr_reg->GetRegister());
-  move_imm_mem(0, 0, addr_reg->GetRegister());
-               
-  add_imm_reg(4, end_reg->GetRegister());
+  // zero out address and advance
+  move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
+  move_imm_mem(0, 0, cur_reg->GetRegister());               
+  sub_imm_reg(4, start_reg->GetRegister());
   
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
 #endif
-  AddMachineCode(0xaafffff8);
+  AddMachineCode(0xeafffff8);
   
-  ReleaseRegister(addr_reg);
+  ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
   
   /*
-  // TODO: rewrite me!
+  // NOTE: rewritten above in machine code
   const int32_t end_addr = -offset;
   for(int32_t start_addr = TMP_REG_0; start_addr >=  end_addr; start_addr -= 4) {
     move_imm_mem(0, start_addr, FP);  
