@@ -8327,7 +8327,7 @@
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{9CA3D1F5-E25A-4885-B2AD-A76425439EEF}"
         "PackageCode" = "8:{5C6B9A79-0C47-4153-B37B-AC52A5E83467}"
-        "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
+        "UpgradeCode" = "8:{5747D5BB-0CCA-4812-BD82-A56E7A6C6CE4}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
