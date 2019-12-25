@@ -3,7 +3,9 @@
 
 cmake_minimum_required(VERSION 2.7)
 project(arm_sdl)
-set(LIBRARIES_FROM_REFERENCES "")
+set(LIBRARIES_FROM_REFERENCES "-lSDL2_ttf -lSDL2_mixer -lSDL2_image -lSDL2 -lSDL2main")
 include_directories("../include")
+set(GCC_COVERAGE_COMPILE_FLAGS "-Wno-unused-function -Wall -std=c++11 -fPIC")
+set(CMAKE_EXE_LINKER_FLAGS " -Wl,-soname,objk_sdl.so.1")
 add_library(objk_sdl SHARED arm_sdl.cpp ../sdl.cpp ../SDL2_framerate.c ../SDL2_gfxPrimitives.c ../SDL2_imageFilter.c ../SDL2_rotozoom.c)
 target_link_libraries(objk_sdl "${LIBRARIES_FROM_REFERENCES}")
