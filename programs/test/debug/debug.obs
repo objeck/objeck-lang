@@ -1,17 +1,18 @@
-class Fred {
-   function : Main(args : String[]) ~ Nil {
-      Sally();
-   } 
+#~
+# compile: obc -src https_1.obs -lib collect.obl -dest https.obe
+# run: obr https.obe
+~#
 
-   function : native : Sally() ~ Nil {
-      i : Int;
-      while(i < 10) {
-         i += 1;
-         if(i == 6) {
-            continue;
-         }
-         v = i * i;
-         v -> PrintLine();
+use Web.HTTP;
+
+class HttpsTest {
+   function : Main(args : String[]) ~ Nil {
+      html := HttpsClient->New()->GetAll("https://www.nasa.gov");
+      if(html = Nil) {
+         "--- Unable to fetch URL ---"->ErrorLine();
       }
+      else {
+         html->PrintLine();
+      };
    }
 }
