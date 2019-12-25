@@ -108,7 +108,8 @@ void JitCompilerA32::Epilog() {
 
 void JitCompilerA32::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
-  
+  RegisterHolder* mem_holder = GetRegister();
+    
   // offset required to get to the first local variable
   int32_t offset = local_space + TMP_REG_5 - 4;
   if(realign_stack) {
@@ -119,37 +120,55 @@ void JitCompilerA32::RegisterRoot() {
   sub_imm_reg(offset, holder->GetRegister());
   
   // set JIT memory pointer to stack
-  RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, FP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  // TODO: rewrite me!
-  const int32_t end_addr = -offset;
-  for(int32_t start_addr = TMP_REG_0; start_addr >=  end_addr; start_addr -= 4) {
-    move_imm_mem(0, start_addr, FP);  
-  }
-  
-  /*
-  int index = ((offset + TMP_REG_5) >> 2) + 6;
-  if(index > 0) {
-    RegisterHolder* loop_holder = GetRegister();
-    move_imm_reg(index, loop_holder->GetRegister());
-    cmp_imm_reg(0, loop_holder->GetRegister());
-    AddMachineCode(0x0a000004);
-    move_imm_mem(0, 0, holder->GetRegister());
-    sub_imm_reg(sizeof(int32_t), holder->GetRegister());
-    sub_imm_reg(1, loop_holder->GetRegister());
-    AddMachineCode(0xeafffff8);
-    ReleaseRegister(loop_holder);
-  }
-  */
-  
+  // set JIT offset to 0
   move_mem_reg(JIT_OFFSET, FP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
   
   // clean up
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
+  
+  // zero out memory
+  RegisterHolder* start_reg = GetRegister();
+  move_reg_reg(FP, start_reg->GetRegister());
+  sub_imm_reg(-TMP_REG_0, start_reg->GetRegister());
+  
+  RegisterHolder* end_reg = GetRegister();
+  move_reg_reg(FP, end_reg->GetRegister());
+  sub_imm_reg(offset, end_reg->GetRegister());
+  
+  RegisterHolder* addr_reg = GetRegister();
+  cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
+  
+#ifdef _DEBUG
+  std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+#endif
+  AddMachineCode(0xca000004);
+  
+  move_reg_reg(end_reg->GetRegister(), addr_reg->GetRegister());
+  move_imm_mem(0, 0, addr_reg->GetRegister());
+               
+  add_imm_reg(4, end_reg->GetRegister());
+  
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
+#endif
+  AddMachineCode(0xaafffff8);
+  
+  ReleaseRegister(addr_reg);
+  ReleaseRegister(end_reg);
+  ReleaseRegister(start_reg);
+  
+  /*
+  // TODO: rewrite me!
+  const int32_t end_addr = -offset;
+  for(int32_t start_addr = TMP_REG_0; start_addr >=  end_addr; start_addr -= 4) {
+    move_imm_mem(0, start_addr, FP);  
+  }
+  */
 }
 
 void JitCompilerA32::ProcessParameters(int32_t params) {
