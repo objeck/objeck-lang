@@ -14,7 +14,7 @@ class RegExUrls {
 
 			output := HttpsClient->New()->GetAll(input);
 			output_len := output->Size();
-			"Read: {$input}, write: {$output_len} character(s)"->PrintLine();
+			"URL: {$input}, read: {$output_len} character(s)"->PrintLine();
 
 			"running regex..."->PrintLine();		
 			expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";

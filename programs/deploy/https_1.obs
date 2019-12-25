@@ -7,8 +7,7 @@ use Web.HTTP;
 
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
-		client := HttpsClient->New();
-		html := client->GetAll("https://www.nasa.gov");
+		html := HttpsClient->New()->GetAll("https://www.nasa.gov");
 		if(html = Nil) {
 			"--- Unable to fetch URL ---"->ErrorLine();
 		}
