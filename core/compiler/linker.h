@@ -957,6 +957,14 @@ class Linker {
     return str.str();
   }
 
+  bool EndsWith(wstring const &str, wstring const &ending) {
+    if(str.length() >= ending.length()) {
+      return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
+    }
+
+    return false;
+  }
+
  public:
   Linker(const wstring &p) {
     master_path = p;
