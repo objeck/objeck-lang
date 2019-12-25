@@ -11,7 +11,7 @@ class Example {
 		if(table <> Nil) {
 			results := table->Query("from files");
 			if(results <> Nil) {
-				results->ToString();
+				results->ToString()->PrintLine();
 			}
 			else {
 				table->GetError()->PrintLine();
