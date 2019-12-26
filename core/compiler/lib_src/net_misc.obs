@@ -927,26 +927,15 @@ bundle Web.HTTP {
 								size_line := "0x";
 								size_line->Append(socket->ReadString());
 								chunk_size := size_line->ToInt();
-								buffer := Byte->New[chunk_size];
+								line := "";
 								if(chunk_size > 0) {
 									for(i := 0; i < chunk_size; i += 1;) {
-										buffer[i] := socket->ReadByte();
+										line->Append(socket->ReadByte());
 									};
-									# add line
-									line := String->New(buffer);
+									socket->ReadString();
 									content->AddBack(line);
-# line->PrintLine();																	
-									# read '\r'
-									socket->ReadByte(); 
-									# read ''\n'
-									socket->ReadByte();
-									
 								}
 								else {
-									# read '\r'
-									socket->ReadByte(); 
-									# read ''\n'
-									socket->ReadByte();						
 									done := true;
 								};
 							}
@@ -1158,33 +1147,17 @@ bundle Web.HTTP {
 						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
-							buffer_size := 2048;
-							buffer := Char->New[buffer_size];
-
 							do {
 								size_line := "0x";
 								size_line->Append(socket->ReadString());
 								chunk_size := size_line->ToInt();
-								total_read := 0;
+								line := "";
 								if(chunk_size > 0) {
-									do {
-										read := socket->ReadBuffer(0, buffer_size, buffer);
-										total_read += read;
-										if(read > 1) {
-											cr := buffer[read - 2];										
-											nl := buffer[read - 1];
-											
-											line : String;
-											if(cr = '\r' & nl = '\n') {
-												line := String->New(buffer, 0, read - 2);
-											}
-											else {
-												line := String->New(buffer, 0, read);
-											};
-											content->AddBack(line);
-										};		
-									}
-									while(total_read < chunk_size);
+									for(i := 0; i < chunk_size; i += 1;) {
+										line->Append(socket->ReadByte());
+									};
+									socket->ReadString();
+									content->AddBack(line);
 								}
 								else {
 									done := true;
@@ -1356,33 +1329,17 @@ bundle Web.HTTP {
 						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
-							buffer_size := 2048;
-							buffer := Char->New[buffer_size];
-
 							do {
 								size_line := "0x";
 								size_line->Append(socket->ReadString());
 								chunk_size := size_line->ToInt();
-								total_read := 0;
+								line := "";
 								if(chunk_size > 0) {
-									do {
-										read := socket->ReadBuffer(0, buffer_size, buffer);
-										total_read += read;
-										if(read > 1) {										
-											cr := buffer[read - 2];										
-											nl := buffer[read - 1];
-											
-											line : String;
-											if(cr = '\r' & nl = '\n') {	
-												line := String->New(buffer, 0, read - 2);
-											}
-											else {
-												line := String->New(buffer, 0, read);
-											};
-											content->AddBack(line);
-										};		
-									}
-									while(total_read < chunk_size);
+									for(i := 0; i < chunk_size; i += 1;) {
+										line->Append(socket->ReadByte());
+									};
+									socket->ReadString();
+									content->AddBack(line);
 								}
 								else {
 									done := true;
