@@ -1,3 +1,8 @@
+#~
+# compile: obc -src first_class_18.obs -lib gen_collect -dest first_class_18.obe
+# run: obr first_class_18.obe
+~#
+
 use Collection.Generic;
 
 alias Func {
