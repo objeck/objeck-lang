@@ -1,12 +1,12 @@
 #~~
 SDL2 wrapper
-Copyright (c) 2017-2019 Randy Hollines
+Copyright (c) 2017-2020 Randy Hollines
 ~~#
 
 use System.API;
 
 #~
-SDL2 wrapper (sdl2.obl)
+General SDL2 wrapper (-lib sdl2)
 ~#
 bundle Game.SDL2 {
 	class Proxy {

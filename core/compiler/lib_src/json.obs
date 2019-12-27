@@ -1,12 +1,12 @@
 #~~
 # JSON parsing library
-# Copyright (c) 2012,2019 Randy Hollines
+# Copyright (c) 2012,2020 Randy Hollines
 ~~#
 
 use Collection.Generic;
 
 #~
-Support for paring JSON strings and documents (json.obl)
+Support for paring JSON strings and documents (-lib json.obl)
 ~#
 bundle Data.JSON {
 	#~

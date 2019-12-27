@@ -1,13 +1,13 @@
 #~~
 Objeck 2D gaming support
-Copyright (c) 2018-2019 Randy Hollines
+Copyright (c) 2018-2020 Randy Hollines
 ~~#
 
 use Game.SDL2;
 use Collection.Generic;
 
 #~
-Wrapper around SDL2 graphic libraries (sdl_game.obl)
+2D gaming framework that uses SDL2 (-lib sdl_game)
 ~#
 bundle Game.Framework {
 	#~

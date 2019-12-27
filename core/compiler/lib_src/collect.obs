@@ -8,7 +8,7 @@
 ~~#	
 
 #~
-Collection classes (collect.obl)
+Collection classes (-lib collect)
 ~#
 bundle Collection {
 	#~
