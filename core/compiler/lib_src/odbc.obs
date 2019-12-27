@@ -2,7 +2,7 @@ use Collection;
 use System.API;
 
 #~
-Database access support via ODBC (odbc.obl)
+Database access support via ODBC (-lib odbc)
 ~#
 bundle Database.ODBC {
 	class Proxy {

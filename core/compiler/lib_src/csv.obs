@@ -1,11 +1,11 @@
 #~~
 # CSV library
-# Copyright (c) 2016-2019 Randy Hollines
+# Copyright (c) 2016-2020 Randy Hollines
 ~~#
 use Collection.Generic;
 
 #~
-Process and perform calculations on CSV files (csv.obl)
+Process and perform calculations on CSV files (-lib csv.obl)
 ~#
 bundle Data.CSV {
 	#~

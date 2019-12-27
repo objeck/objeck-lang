@@ -1,6 +1,6 @@
 #~~
 Tabular query and web libraries
-Copyright (c) 2017-2019 Randy Hollines
+Copyright (c) 2017-2020 Randy Hollines
 ~~#
 
 use Collection.Generic;
@@ -10,7 +10,7 @@ use System.IO.File;
 use Data.XML;
 
 #~
-Supports processing of semi-structured data (query.obl)
+Supports processing of semi-structured data (-lib query)
 ~#
 bundle Query.Structured {
 	#~

@@ -1,13 +1,13 @@
 #~~
 # Regular expression engine
 #
-# Copyright (c) 2014-2019 Randy Hollines
+# Copyright (c) 2014-2020 Randy Hollines
 ~~#
 
 use Collection.Generic;
 
 #~
-Regular expression engine (regex.obl)
+Regular expression engine (-lib regex.obl)
 ~#
 bundle Query.RegEx {
 	#~
