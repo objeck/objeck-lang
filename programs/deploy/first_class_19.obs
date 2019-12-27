@@ -1,3 +1,8 @@
+#~
+# compile: obc -src first_class_19.obs -lib gen_collect -dest first_class_19.obs
+# run: obr first_class_19.obe
+~#
+
 use Collection.Generic;
 
 class FirstClass {
@@ -19,7 +24,7 @@ class FirstClass {
 			v := numlist->Get(i); vi := numlisti->Get(i);
 			mult := Multiplier(v, vi);
 			r := mult(0.5);
-			"{$v} * {$vi} * 0.5 = {$r}"->PrintLine();
+			""->PrintLine();
 		};
 	}
 	
