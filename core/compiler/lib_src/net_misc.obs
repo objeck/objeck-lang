@@ -1200,7 +1200,7 @@ bundle Web.HTTP {
 			};
 			
 			each(i : lines) {
-				document->Append(lines->Get(i)->As(String));
+				document->Append(lines->Get(i));
 			};
 
 			return document;
@@ -1348,7 +1348,7 @@ bundle Web.HTTP {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("content-length")->As(String);
+							length_header : String := @headers->Find("content-length");
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
