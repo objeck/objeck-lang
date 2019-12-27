@@ -1,9 +1,10 @@
 #~
-# compile: obc -src rss_https_xml_15.obs -lib xml.obl,gen_collect.obl,net_misc.obl -dest rss_https_xml_15.obe
+# compile: obc -src rss_https_xml_15.obs -lib xml,gen_collect,rss,net -dest rss_https_xml_15.obe
 # run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml" <filename>
 ~#
 
 use Web.HTTP;
+use Web.RSS;
 use Collection.Generic;
 use System.IO.File;
 

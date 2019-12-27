@@ -14,6 +14,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <link rel=colorSchemeMapping href="readme_files/colorschememapping.xml">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
+  <w:View>Print</w:View>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -1478,8 +1479,8 @@ div.WordSection1
 	{page:WordSection1;}
  /* List Definitions */
  @list l0
-	{mso-list-id:893852286;
-	mso-list-template-ids:910746030;}
+	{mso-list-id:397477544;
+	mso-list-template-ids:-233529298;}
 @list l1
 	{mso-list-id:997923853;
 	mso-list-template-ids:-1210407094;}
@@ -1618,7 +1619,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v5.3.0 (December 25, 2019)</span><span
+minor-latin;mso-bidi-theme-font:minor-latin'>v5.3.1 (December 27, 2019)</span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></p>
 
@@ -1639,7 +1640,7 @@ mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Raspberry
-Pi support and updated code examples.<o:p></o:p></span></p>
+Pi support and general updates.<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
@@ -1657,8 +1658,8 @@ Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;
 mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Native Raspberry
-Pi 3/4 support (with new ARMv7 JIT compiler) [new]<o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Native
+Raspberry Pi 3/4 support (with new ARMv7 JIT compiler) [new]<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;margin-bottom:.0001pt;text-indent:-.25in;line-height:
@@ -1668,8 +1669,8 @@ Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;
 mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>2.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>More
-efficient handoff between interpreted and JIT generated machine code [new]<o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>More efficient
+handoff between interpreted and JIT generated machine code [new]<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;margin-bottom:.0001pt;text-indent:-.25in;line-height:
@@ -1690,8 +1691,19 @@ Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;
 mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>4.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Overall size
+of “*.obe” binaries has been reduced [new]<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+0in;margin-left:.75in;margin-bottom:.0001pt;text-indent:-.25in;line-height:
+normal;mso-list:l2 level1 lfo2'><![if !supportLists]><span style='font-family:
+"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-font-family:
+Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;
+mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>5.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
+style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Fixed
-“Https-&gt;Get()” bug that affected Posix targets [bug]<o:p></o:p></span></p>
+“Https-&gt;Get()” and “Https-&gt;Post()” bugs that affected Posix targets [bug]<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
@@ -1797,9 +1809,9 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>In
-order to compile programs outside of the “bin” directory the “OBJECK_LIB_PATH” environment
-variable must be set. When this variable is set all library files must be in
-the directory specified. <o:p></o:p></span></p>
+order to compile programs outside of the “bin” directory the “OBJECK_LIB_PATH”
+environment variable must be set. When this variable is set all library files
+must be in the directory specified. <o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
@@ -1839,8 +1851,8 @@ style='font-size:7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>set
-PATH=%PATH%;C:\ Users\&lt;account&gt;\ objeck-lang\bin; C:\ Users\&lt;account&gt;\
-objeck-lang\lib\sdl<o:p></o:p></span></p>
+PATH=%PATH%;C:\ Users\&lt;account&gt;\ objeck-lang\bin; C:\
+Users\&lt;account&gt;\ objeck-lang\lib\sdl<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
@@ -1936,8 +1948,8 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&n
 normal'><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>For
 OS X (10.9 or greater), you’ll need to install OpenSSL in order to use
-encryption APIs as well as iODBC to enable database support. Please refer to the
-following <a href="http://mac-dev-env.patrickbougie.com/openssl"><span
+encryption APIs as well as iODBC to enable database support. Please refer to
+the following <a href="http://mac-dev-env.patrickbougie.com/openssl"><span
 class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>link</span></span></a>
 for OpenSSL directions and this <a
@@ -2044,7 +2056,8 @@ minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
 7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>git clone https://github.com/objeck/objeck-lang.git<o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>git clone
+https://github.com/objeck/objeck-lang.git<o:p></o:p></span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
@@ -2108,8 +2121,8 @@ minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
 7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>All unit tests
-executed successfully but I'm sure there’s bugs. Send an <a
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>All unit
+tests executed successfully but I'm sure there’s bugs. Send an <a
 href="mailto:objeck@gmail.com"><span class=InternetLink><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>e-mail</span></span></a> I’ll get
