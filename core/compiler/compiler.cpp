@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point of the language compiler
  *
- * Copyright (c) 2008-2019, Randy Hollines
+ * Copyright (c) 2008-2020, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,7 +73,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
     wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
 #endif 
     wcout << L"---" << endl;
-    wcout << L"Copyright(c) 2008-2019, Randy Hollines" << endl;
+    wcout << L"Copyright(c) 2008-2020, Randy Hollines" << endl;
     wcout << L"This is free software; see the source for copying conditions.There is NO" << endl;
     wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
     argument_options.remove(L"ver");

@@ -1,7 +1,7 @@
 /***************************************************************************
  * Static logger
  *
- * Copyright (c) 2018-2019, Randy Hollines
+ * Copyright (c) 2018-2020, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
