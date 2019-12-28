@@ -1,7 +1,7 @@
 /***************************************************************************
  * Platform independent language optimizer.
  *
- * Copyright (c) 2008-2019, Randy Hollines
+ * Copyright (c) 2008-2020, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,12 +32,7 @@
 #ifndef __OPTIMIZE_H__
 #define __OPTIMIZE_H__
 
-#ifdef _SCRIPTER
-#include "../scripter/loader.h"
-#else
 #include "emit.h"
-#endif
-
 #include <deque>
 
 using namespace backend;

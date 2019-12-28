@@ -39,11 +39,7 @@
 #include "context.h"
 #include "intermediate.h"
 #include "optimization.h"
-#ifdef _SCRIPTER
-#include "..\scripter\loader.h"
-#else
 #include "emit.h"
-#endif
 
 #include <list>
 #include <vector>
