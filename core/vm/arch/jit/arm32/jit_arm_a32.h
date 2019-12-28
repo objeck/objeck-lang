@@ -483,7 +483,7 @@ namespace Runtime {
 
     // Gets an avaiable register from
     // the pool of registers
-    RegisterHolder* GetXmmRegister() {
+    RegisterHolder* GetFpRegister() {
       RegisterHolder* holder;
       if(aval_xregs.empty()) {
         compile_success = false;
@@ -509,7 +509,7 @@ namespace Runtime {
     }
 
     // Returns a register to the pool
-    void ReleaseXmmRegister(RegisterHolder* h) {
+    void ReleaseFpRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->IsDouble());
       for(size_t i = 0; i < aval_xregs.size(); ++i) {
