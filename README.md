@@ -30,7 +30,7 @@ Notable features:
 * Supported platforms (with JIT support)
   * Windows, macOS and Linux (x86-64)
   * Windows and Linux (x86)
-  * Linux (ARMv7 - alpha testing)
+  * Linux (ARMv7)
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
   * Collections (vectors, queues, trees, hashes, etc.)
