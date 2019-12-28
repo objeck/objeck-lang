@@ -50,7 +50,7 @@ REM copy examples
 mkdir deploy_arm\examples\
 mkdir deploy_arm\examples\doc\
 mkdir deploy_arm\examples\tiny\
-set ZIP_BIN="D:\Program Files\7-Zip"
+set ZIP_BIN="\Program Files\7-Zip"
 
 mkdir deploy_arm\examples\media\
 del  /s /q ..\..\programs\*.obe
