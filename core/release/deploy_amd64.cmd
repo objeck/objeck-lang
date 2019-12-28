@@ -67,7 +67,7 @@ call code_doc64.cmd
 
 REM finished
 if [%1] NEQ [deploy] goto end
-	set ZIP_BIN="D:\Program Files\7-Zip"
+	set ZIP_BIN="\Program Files\7-Zip"
 	rmdir /q /s deploy64\examples\doc
 	rmdir /q /s "%USERPROFILE%\Desktop\objeck-lang-win64"
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64"
