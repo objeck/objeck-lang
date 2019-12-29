@@ -6,5 +6,23 @@ JIT compilers favor translation speed vs. code optimization. Compilers iterate o
 
 Machine code is generated for general runtime error checking such as Nil deferences and array bounds checks. JIT compilers callback to interpreted code as needed.
 
+    --------------
+    |   Prolog   |
+    --------------
+    |  Register  |
+    |   Memory   |
+    |  Manager   |
+    --------------
+    | Generated  |
+    |    Code    |
+    --------------
+    |     ...    |
+    --------------
+    |   Error    |
+    |  Handling  |
+    --------------
+    |   Epilog   |
+    --------------
+
 ### Implementation
 C++ using the STL.
