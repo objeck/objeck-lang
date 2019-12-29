@@ -16,10 +16,9 @@ Machine code is generated for general runtime error checking such as Nil deferen
     |    Store   | 
     | local vars |
     --------------
-    | Generated  |
+    |  Generate  |
     |    Code    |
-    --------------
-    |     ...    |
+    |   ......   |
     --------------
     |   Error    |
     |  Handling  |
