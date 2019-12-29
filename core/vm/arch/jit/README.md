@@ -10,8 +10,11 @@ Machine code is generated for general runtime error checking such as Nil deferen
     |   Prolog   |
     --------------
     |  Register  |
-    |   Memory   |
+    | w/ Memory  |
     |  Manager   |
+    --------------
+    |    Store   | 
+    | local vars |
     --------------
     | Generated  |
     |    Code    |
