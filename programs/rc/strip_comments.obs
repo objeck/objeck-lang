@@ -1,0 +1,79 @@
+use Collection;
+
+class StripComments {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			input := System.IO.File.FileReader->ReadFile(args[0]);
+			if(input <> Nil) {
+				comments := FindComments("/*", "*/", input);
+				StripComments(comments, input)->PrintLine();
+			};
+		};
+	}
+
+	function : StripComments(comments : List<Tuple>, input : String) ~ String {
+		output := "";
+
+		add := true;
+		each(i : input) {
+			comment := comments->Get()->As(Tuple);
+			if(comment <> Nil) {
+				if(i = comment->Start()) {
+					add := false;
+				}
+				else if(i = comment->End()) {
+					add := true;
+					if(comments->More()) {
+						comments->Next();
+						comment := comments->Get();
+					}
+					else {
+						comment := Nil;
+					};
+				};
+			};
+
+			if(add) {
+				output += input->Get(i);
+			};
+		};
+
+		return output;
+	}
+
+	function : FindComments(head : String, tail : String, input : String) ~ List<Tuple> {
+		comments := List->New()<Tuple>;
+
+		start : Int;
+		do {
+			start := input->Find(start, head);
+			if(start > -1) {
+				start += 2;
+				end := input->Find(start, tail);
+				comments->AddBack(Tuple->New(start - 2, end + 2));
+				start := end;
+			};
+		}
+		while(start <> -1);
+
+		return comments;
+	}
+}
+
+class Tuple {
+	@start : Int;
+	@end : Int;
+
+	New(start : Int, end : Int) {
+		@start := start;
+		@end := end;
+	}
+
+	method : public : Start() ~ Int {
+		return @start;
+	}
+
+	method : public : End() ~ Int {
+		return @end;
+	}
+}
