@@ -7,16 +7,25 @@ class StripComments {
 			if(input <> Nil) {
 				comments := FindComments("/*", "*/", input);
 				StripComments(comments, input)->PrintLine();
+				
+				comments->Size()->PrintLine();
+				comments->Rewind();
+				while(comments->More()) {
+					comment := comments->Get()->As(Comment);
+					text := comment->Comment();
+					"|{$text}|"->PrintLine();
+					comments->Next();
+				};
 			};
 		};
 	}
 
-	function : StripComments(comments : List<Tuple>, input : String) ~ String {
+	function : StripComments(comments : List<Comment>, input : String) ~ String {
 		output := "";
 
 		add := true;
 		each(i : input) {
-			comment := comments->Get()->As(Tuple);
+			comment := comments->Get()->As(Comment);
 			if(comment <> Nil) {
 				if(i = comment->Start()) {
 					add := false;
@@ -41,16 +50,16 @@ class StripComments {
 		return output;
 	}
 
-	function : FindComments(head : String, tail : String, input : String) ~ List<Tuple> {
-		comments := List->New()<Tuple>;
+	function : FindComments(head : String, tail : String, input : String) ~ List<Comment> {
+		comments := List->New()<Comment>;
 
 		start : Int;
 		do {
 			start := input->Find(start, head);
 			if(start > -1) {
-				start += 2;
-				end := input->Find(start, tail);
-				comments->AddBack(Tuple->New(start - 2, end + 2));
+				end := input->Find(start + 2, tail);
+				comment := input->SubString(start, end - start + 2);
+				comments->AddBack(Comment->New(comment, start, end + 2));
 				start := end;
 			};
 		}
@@ -60,13 +69,19 @@ class StripComments {
 	}
 }
 
-class Tuple {
+class Comment {
+	@comment : String;
 	@start : Int;
 	@end : Int;
 
-	New(start : Int, end : Int) {
+	New(comment : String, start : Int, end : Int) {
+		@comment := comment;
 		@start := start;
 		@end := end;
+	}
+
+	method : public : Comment() ~ String {
+		return @comment;
 	}
 
 	method : public : Start() ~ Int {
