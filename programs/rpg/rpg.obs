@@ -4,6 +4,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		npc := NPC->New(3);
 		npc->ToString()->PrintLine();
+
+		npc->Attack(Weapon->New(2, 1), Nil);
 	}
 }
 
@@ -35,11 +37,12 @@ class Character {
 		# damage: 
 		damage : Int;
 		if(weapon <> Nil) {
-			damage := weapon->GetDamage() * (@strength * 0.5) + @stamina;
+			damage := weapon->GetDamage() * @strength + @stamina;
 		}
 		else {
-			damage := (@strength * 0.5) + @stamina;
+			damage := @strength + @stamina;
 		};
+"damage={$damage}"->PrintLine();		
 
 		# defense: 
 
