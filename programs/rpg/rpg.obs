@@ -31,7 +31,7 @@ class Character {
 	}
 
 	method : public : Attack(opponent : Character) ~ Int {
-		return false;
+		return -1;
 	}
 
 	method : public : Defend(opponent : Character) ~ Bool {
