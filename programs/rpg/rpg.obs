@@ -2,10 +2,17 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		npc := NPC->New(3);
-		npc->ToString()->PrintLine();
+		slime_weapon := Weapon->New(1, 1);
+		slime_armor := Armor->New(3);
+		slime := NPC->New(3);
+		slime->ToString()->PrintLine();
+		slime_attack := slime->Attack(slime_weapon);
 
-		npc->Attack(Weapon->New(2, 1), Nil);
+		rat_weapon := Weapon->New(2, 1);
+		rat_armor := Armor->New(2);
+		rat := NPC->New(4);
+		rat->ToString()->PrintLine();
+		rat_defense := rat->Defend(rat_armor);
 	}
 }
 
@@ -13,10 +20,19 @@ class Character {
 	@name : String;
 	@type : Type;
 	@level : Int; # 1-20
+	
 	@hit_points : Int;
+	
 	@strength : Int; # 1-50
 	@stamina : Int; # 1-50
+
 	@endurance : Int; # 1-50
+	@agility : Int; # 1-50
+
+	enum Type {
+		FIGTHER,
+		MAGE
+	}
 
 	New(name : String, type : Type, level : Int) {
 		@name := name;
@@ -24,14 +40,15 @@ class Character {
 		@level := level;
 	}
 
-	method : public : Set(hit_points : Int, strength : Int, stamina : Int, endurance : Int) ~ Nil {
+	method : public : Set(hit_points : Int, strength : Int, stamina : Int, endurance : Int, agility : Int) ~ Nil {
 		@hit_points := hit_points;
 		@strength := strength;
 		@stamina := stamina;
 		@endurance := endurance;
+		@agility := agility;
 	}
 
-	method : public : Attack(weapon : Weapon, opponent : Character) ~ Bool {
+	method : public : Attack(weapon : Weapon) ~ Int {
 		# damage vs. defense: 
 
 		# damage: 
@@ -43,16 +60,22 @@ class Character {
 			damage := @strength + @stamina;
 		};
 "damage={$damage}"->PrintLine();		
-
-		# defense: 
-
-		# miss: attack vs. defend speed factor in agility
-
-		return false;
+		
+		return damage;
 	}
 
-	method : public : Defend(shield : Shield, opponent : Character) ~ Bool {
-		return false;		
+	method : public : Defend(armor : Armor) ~ Int {
+		# defense: 
+		defense : Int;
+		if(armor <> Nil) {
+			defense := armor->GetDefense() * @endurance / 4  + @agility;
+		}
+		else {
+			defense := @endurance / 4 + @agility;
+		};
+"defense={$defense}"->PrintLine();		
+		
+		return defense;
 	}
 
 	method : public : IsAlive() ~ Bool {
@@ -102,8 +125,9 @@ class NPC from Character {
 		strength := Int->Random(1, ability_max);
 		stamina := Int->Random(1, ability_max);
 		endurance := Int->Random(1, ability_max);
+		agility := Int->Random(1, ability_max);
 		
-		Set(hit_points, strength, stamina, endurance);
+		Set(hit_points, strength, stamina, endurance, agility);
 	}
 }
 
@@ -131,19 +155,25 @@ class Weapon {
 	}
 }
 
-class Shield {
+class Armor {
 	@defense : Int;
-	@speed : Int;
+	@type : Type;
 
-	New() {
+	enum Type {
+		FIGTHER,
+		MAGE
+	}
+
+	New(defense : Int) {
+		@defense := defense;
 	}
 
 	method : public : GetDefense() ~ Int {
 		return @defense;
 	}
 
-	method : public : GetSpeed() ~ Int {
-		return @speed;
+	method : public : GetType() ~ Type {
+		return @type;
 	}
 }
 
@@ -153,9 +183,4 @@ class Location {
 
 	New() {
 	}
-}
-
-enum Type {
-	FIGTHER,
-	MAGE
 }
