@@ -10,31 +10,45 @@ class Test {
 class Character {
 	@name : String;
 	@type : Type;
-	@level : Int;
+	@level : Int; # 1-20
 	@hit_points : Int;
-	@strength : Int;
-	@stamina : Int;
-	@endurance : Int;
+	@strength : Int; # 1-50
+	@stamina : Int; # 1-50
+	@endurance : Int; # 1-50
 
-	New() {
-	}
-
-	method : public : Set(name : String, type : Type, level : Int, hit_points : Int, 
-			strength : Int, stamina : Int, endurance : Int) ~ Nil {
+	New(name : String, type : Type, level : Int) {
 		@name := name;
 		@type := type;
 		@level := level;
+	}
+
+	method : public : Set(hit_points : Int, strength : Int, stamina : Int, endurance : Int) ~ Nil {
 		@hit_points := hit_points;
-		@strength :=strength;
+		@strength := strength;
 		@stamina := stamina;
 		@endurance := endurance;
 	}
 
-	method : public : Attack(opponent : Character) ~ Int {
-		return -1;
+	method : public : Attack(weapon : Weapon, opponent : Character) ~ Bool {
+		# damage vs. defense: 
+
+		# damage: 
+		damage : Int;
+		if(weapon <> Nil) {
+			damage := weapon->GetDamage() * (@strength * 0.5) + @stamina;
+		}
+		else {
+			damage := (@strength * 0.5) + @stamina;
+		};
+
+		# defense: 
+
+		# miss: attack vs. defend speed factor in agility
+
+		return false;
 	}
 
-	method : public : Defend(opponent : Character) ~ Bool {
+	method : public : Defend(shield : Shield, opponent : Character) ~ Bool {
 		return false;		
 	}
 
@@ -46,14 +60,28 @@ class Character {
 		return false;
 	}
 
+	method : public : GetType() ~ String {
+		select(@type) {
+			label Type->FIGTHER {
+				return "Fighter";
+			}
+
+			label Type->MAGE {
+				return "Mage";
+			}
+
+			other {
+				return "Unknown";
+			}
+		};
+	}
+
 	method : public : ToString() ~ String {
 		buffer := "";
 
-		buffer += "name={$@name}, ";
-		type := @type->As(Int);
-		buffer += "type={$type}, ";
-		level := @level->As(Int);
-		buffer += "level={$level}, ";
+		buffer += "name='{$@name}', ";
+		type := GetType();
+		buffer += "level={$@level}, ";
 		buffer += "hit_points={$@hit_points}, ";
 		buffer += "strength={$@strength}, ";
 		buffer += "stamina={$@stamina}, ";
@@ -65,23 +93,54 @@ class Character {
 
 class NPC from Character {	
 	New(ability_max : Int) {
-		Parent();
+		Parent("Slime", Type->FIGTHER, 1);
 
-		name := "Monster";
-		type := Type->FIGTHER;
-		level := 2;
 		hit_points := Int->Random(7, 9);
 		strength := Int->Random(1, ability_max);
 		stamina := Int->Random(1, ability_max);
 		endurance := Int->Random(1, ability_max);
 		
-		Set(name, type, level, hit_points, strength, stamina, endurance);
+		Set(hit_points, strength, stamina, endurance);
 	}
 }
 
 class User from Character {
 	New() {
 		Parent();
+	}
+}
+
+class Weapon {
+	@damage : Int;
+	@speed : Int;
+
+	New(damage : Int, speed : Int) {
+		@damage := damage;
+		@speed := speed;
+	}
+
+	method : public : GetDamage() ~ Int {
+		return @damage;
+	}
+
+	method : public : GetSpeed() ~ Int {
+		return @speed;
+	}
+}
+
+class Shield {
+	@defense : Int;
+	@speed : Int;
+
+	New() {
+	}
+
+	method : public : GetDefense() ~ Int {
+		return @defense;
+	}
+
+	method : public : GetSpeed() ~ Int {
+		return @speed;
 	}
 }
 
