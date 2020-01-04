@@ -4772,3 +4772,20 @@ uint32_t* PageManager::GetPage(uint32_t* code, int32_t size)
 
   return temp;
 }
+
+/********************************
+ * PageHolder class
+ ********************************/
+uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
+  // get index into buffer
+  uint32_t* temp = buffer + index;
+  
+  // copy and flush instruction cache
+  const uint32_t byte_size = size * sizeof(uint32_t);
+  memcpy(temp, code, byte_size);
+  __clear_cache(temp, temp + byte_size);
+  
+  index += size;
+  available -= byte_size;
+  return temp;
+}
