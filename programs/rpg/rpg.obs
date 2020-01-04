@@ -1,0 +1,99 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		npc := NPC->New(3);
+		npc->ToString()->PrintLine();
+	}
+}
+
+class Character {
+	@name : String;
+	@type : Type;
+	@level : Int;
+	@hit_points : Int;
+	@strength : Int;
+	@stamina : Int;
+	@endurance : Int;
+
+	New() {
+	}
+
+	method : public : Set(name : String, type : Type, level : Int, hit_points : Int, 
+			strength : Int, stamina : Int, endurance : Int) ~ Nil {
+		@name := name;
+		@type := type;
+		@level := level;
+		@hit_points := hit_points;
+		@strength :=strength;
+		@stamina := stamina;
+		@endurance := endurance;
+	}
+
+	method : public : Attack(opponent : Character) ~ Int {
+		return false;
+	}
+
+	method : public : Defend(opponent : Character) ~ Bool {
+		return false;		
+	}
+
+	method : public : IsAlive() ~ Bool {
+		return false;
+	}
+
+	method : public : Move(location : Location) ~ Bool {
+		return false;
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		buffer += "name={$@name}, ";
+		type := @type->As(Int);
+		buffer += "type={$type}, ";
+		level := @level->As(Int);
+		buffer += "level={$level}, ";
+		buffer += "hit_points={$@hit_points}, ";
+		buffer += "strength={$@strength}, ";
+		buffer += "stamina={$@stamina}, ";
+		buffer += "endurance={$@endurance}";
+
+		return buffer;
+	}
+}
+
+class NPC from Character {	
+	New(ability_max : Int) {
+		Parent();
+
+		name := "Monster";
+		type := Type->FIGTHER;
+		level := 2;
+		hit_points := Int->Random(7, 9);
+		strength := Int->Random(1, ability_max);
+		stamina := Int->Random(1, ability_max);
+		endurance := Int->Random(1, ability_max);
+		
+		Set(name, type, level, hit_points, strength, stamina, endurance);
+	}
+}
+
+class User from Character {
+	New() {
+		Parent();
+	}
+}
+
+class Location {
+	@x : Int;
+	@y : Int;
+
+	New() {
+	}
+}
+
+enum Type {
+	FIGTHER,
+	MAGE
+}
