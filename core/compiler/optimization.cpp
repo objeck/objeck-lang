@@ -539,14 +539,6 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
     };
   }
 
-  /* Covered below...
-  // methods are in the same class, such that instance and class
-  // offset will not have to be adjusted
-  if(mthd_called->GetClass() != current_method->GetClass()) {
-    return false;
-  }
-  */
-
   if (current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
     return false;
   }
@@ -567,7 +559,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
 
   // check instructions
   vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
-  if (mthd_called_blocks.size() == 0) {
+  if (mthd_called_blocks.empty()) {
     return false;
   }
 
