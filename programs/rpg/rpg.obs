@@ -11,9 +11,7 @@ class Test {
 		round := 1;
 		while(slime->IsAlive() & rat->IsAlive()) {			
 			if(round % 2 = 0) {
-				slime_attack := slime->Attack();
-				rat_defense := rat->Defend();
-				attack := slime_attack - rat_defense;
+				attack := slime->Attack() - rat->Defend();
 				if(attack > 0) {
 					rat->SubtractHitPoints(attack);
 					status := rat->ToString();
@@ -25,9 +23,7 @@ class Test {
 				};
 			}
 			else {
-				rat_attack := rat->Attack();
-				slime_defense := slime->Defend();
-				attack := rat_attack - slime_defense;
+				attack := rat->Attack() - slime->Defend();
 				if(attack > 0) {
 					slime->SubtractHitPoints(attack);
 					status := slime->ToString();
