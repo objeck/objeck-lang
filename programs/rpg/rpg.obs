@@ -1,18 +1,13 @@
-use Collection;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		slime_weapon := Weapon->New(1, 1);
-		slime_armor := Armor->New(3);
-		slime := NPC->New(3);
+		slime := Slime->New(3);
 		slime->ToString()->PrintLine();
-		slime_attack := slime->Attack(slime_weapon);
+		slime_attack := slime->Attack();
 
-		rat_weapon := Weapon->New(2, 1);
-		rat_armor := Armor->New(2);
-		rat := NPC->New(4);
+		
+		rat := Rat->New(4);
 		rat->ToString()->PrintLine();
-		rat_defense := rat->Defend(rat_armor);
+		rat_defense := rat->Defend();
 	}
 }
 
@@ -48,13 +43,13 @@ class Character {
 		@agility := agility;
 	}
 
-	method : public : Attack(weapon : Weapon) ~ Int {
+	method : public : Attack() ~ Int {
 		# damage vs. defense: 
 
 		# damage: 
 		damage : Int;
-		if(weapon <> Nil) {
-			damage := weapon->GetDamage() * @strength + @stamina;
+		if(GetWeapon() <> Nil) {
+			damage := GetWeapon()->GetDamage() * @strength + @stamina;
 		}
 		else {
 			damage := @strength + @stamina;
@@ -64,11 +59,11 @@ class Character {
 		return damage;
 	}
 
-	method : public : Defend(armor : Armor) ~ Int {
+	method : public : Defend() ~ Int {
 		# defense: 
 		defense : Int;
-		if(armor <> Nil) {
-			defense := armor->GetDefense() * @endurance / 4  + @agility;
+		if(GetArmor() <> Nil) {
+			defense := GetArmor()->GetDefense() * @endurance / 4  + @agility;
 		}
 		else {
 			defense := @endurance / 4 + @agility;
@@ -77,6 +72,10 @@ class Character {
 		
 		return defense;
 	}
+
+	method : virtual : public : GetWeapon() ~ Weapon;
+
+	method : virtual : public : GetArmor() ~ Armor;
 
 	method : public : IsAlive() ~ Bool {
 		return false;
@@ -114,26 +113,6 @@ class Character {
 		buffer += "endurance={$@endurance}";
 
 		return buffer;
-	}
-}
-
-class NPC from Character {	
-	New(ability_max : Int) {
-		Parent("Slime", Type->FIGTHER, 1);
-
-		hit_points := Int->Random(7, 9);
-		strength := Int->Random(1, ability_max);
-		stamina := Int->Random(1, ability_max);
-		endurance := Int->Random(1, ability_max);
-		agility := Int->Random(1, ability_max);
-		
-		Set(hit_points, strength, stamina, endurance, agility);
-	}
-}
-
-class User from Character {
-	New() {
-		Parent();
 	}
 }
 
@@ -182,5 +161,69 @@ class Location {
 	@y : Int;
 
 	New() {
+	}
+}
+
+# ------
+
+class Slime from Character {
+	@weapon : Weapon;
+	@armor : Armor;
+
+	New(ability_max : Int) {
+		Parent("Slime", Type->FIGTHER, 1);
+
+		@weapon := Weapon->New(1, 1);
+		@armor := Armor->New(3);
+
+		hit_points := Int->Random(7, 9);
+		strength := Int->Random(1, ability_max);
+		stamina := Int->Random(1, ability_max);
+		endurance := Int->Random(1, ability_max);
+		agility := Int->Random(1, ability_max);
+		
+		Set(hit_points, strength, stamina, endurance, agility);
+	}
+
+	method : public : GetWeapon() ~ Weapon {
+		return @weapon;
+	}
+
+	method : public : GetArmor() ~ Armor {
+		return @armor;
+	}
+}
+
+class Rat from Character {
+	@weapon : Weapon;
+	@armor : Armor;
+
+	New(ability_max : Int) {
+		Parent("Rat", Type->FIGTHER, 1);
+
+		@weapon := Weapon->New(2, 1);
+		@armor := Armor->New(2);
+
+		hit_points := Int->Random(7, 9);
+		strength := Int->Random(1, ability_max);
+		stamina := Int->Random(1, ability_max);
+		endurance := Int->Random(1, ability_max);
+		agility := Int->Random(1, ability_max);
+		
+		Set(hit_points, strength, stamina, endurance, agility);
+	}
+
+	method : public : GetWeapon() ~ Weapon {
+		return @weapon;
+	}
+
+	method : public : GetArmor() ~ Armor {
+		return @armor;
+	}
+}
+
+class User from Character {
+	New() {
+		Parent();
 	}
 }
