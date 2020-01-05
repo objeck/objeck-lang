@@ -1,3 +1,7 @@
+use Collection.Generic;
+
+# ------
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		slime := Slime->New(3);
@@ -9,33 +13,35 @@ class Test {
 		"---"->PrintLine();
 
 		round := 1;
+		ties := 1;
 		while(slime->IsAlive() & rat->IsAlive()) {			
 			if(round % 2 = 0) {
 				slime_attack := slime->Attack();
 				rat_defense := rat->Defend();
+				
 				attack := slime_attack - rat_defense;
-				if(attack > 0) {
-					rat->SubtractHitPoints(attack);
-					status := rat->ToString();
-					
-					"[{$round}: slime attack rat for {$attack}] => {$status}"->PrintLine();
-				}
-				else {
-					"[{$round}: rat takes no damage]"->PrintLine();
+				if(attack <= 0) {
+					attack := 1 + ties % 3;
+					ties += 1;
 				};
+				rat->SubtractHitPoints(attack);
+				
+				status := rat->ToString();
+				"[{$round}: slime attack rat for {$attack}] => {$status}"->PrintLine();
 			}
 			else {
 				rat_attack := rat->Attack();
 				slime_defense := slime->Defend();
+				
 				attack := rat_attack - slime_defense;
-				if(attack > 0) {
-					slime->SubtractHitPoints(attack);
-					status := slime->ToString();
-					"[{$round}: rat attack for {$attack}] => {$status}"->PrintLine();
-				}
-				else {
-					"[{$round}: slime takes no damage]"->PrintLine();
+				if(attack <= 0) {
+					attack := 1 + ties % 3;
+					ties += 1;
 				};
+				slime->SubtractHitPoints(attack);
+				
+				status := slime->ToString();
+				"[{$round}: rat attack for {$attack}] => {$status}"->PrintLine();
 			};
 
 			round += 1;
@@ -51,6 +57,8 @@ class Test {
 	}
 }
 
+# ------
+
 class Character {
 	@name : String;
 	@type : Type;
@@ -64,6 +72,9 @@ class Character {
 	@endurance : Int; # 1-50
 	@agility : Int; # 1-50
 
+	@weapon : Weapon;
+	@armor : Vector<Armor>;
+
 	enum Type {
 		FIGTHER,
 		MAGE
@@ -73,6 +84,8 @@ class Character {
 		@name := name;
 		@type := type;
 		@level := level;
+
+		@armor := Vector->New()<Armor>;
 	}
 
 	method : public : Set(hit_points : Int, strength : Int, stamina : Int, endurance : Int, agility : Int) ~ Nil {
@@ -95,36 +108,37 @@ class Character {
 	}
 
 	method : public : Attack() ~ Int {
-		# damage vs. defense: 
-
-		# damage: 
 		damage : Int;
-		if(GetWeapon() <> Nil) {
-			damage := GetWeapon()->GetDamage() * @strength + @stamina;
+		if(@weapon <> Nil) {
+			damage := @weapon->GetDamage() * @strength / 2 + (@stamina * 0.75 * @agility);
 		}
 		else {
-			damage := @strength + @stamina;
+			damage := @strength / 2 + (@stamina * 0.75 * @agility);
 		};
+"\tdamage={$damage}"->PrintLine();
 		
 		return damage;
 	}
 
 	method : public : Defend() ~ Int {
-		# defense: 
-		defense : Int;
-		if(GetArmor() <> Nil) {
-			defense := GetArmor()->GetDefense() * @endurance / 4  + @agility;
-		}
-		else {
-			defense := @endurance / 4 + @agility;
+		armor := 0;
+		each(i : @armor) {
+			armor += @armor->Get(i)->GetDefense();
 		};
-		
+
+		defense := armor * @endurance / 3 + @agility;
+"\tdefense={$defense}"->PrintLine();
+
 		return defense;
 	}
 
-	method : virtual : public : GetWeapon() ~ Weapon;
+	method : public : SetWeapon(@weapon : Weapon) ~ Nil {
+		@weapon := @weapon;
+	}
 
-	method : virtual : public : GetArmor() ~ Armor;
+	method : public : AddArmor(armor : Armor) ~ Nil {
+		@armor->AddBack(armor);
+	}
 
 	method : public : IsAlive() ~ Bool {
 		return @hit_points > 0;
@@ -153,11 +167,13 @@ class Character {
 	method : public : ToString() ~ String {
 		buffer := "";
 
-		buffer += "name='{$@name}', ";
+		buffer += "name='{$@name}': ";
 		type := GetType();
 		buffer += "level={$@level}, ";
+		buffer += "type='{$type}', ";
 		buffer += "hit_points={$@hit_points}, ";
 		buffer += "strength={$@strength}, ";
+		buffer += "agility={$@agility}, ";
 		buffer += "stamina={$@stamina}, ";
 		buffer += "endurance={$@endurance}";
 
@@ -167,19 +183,13 @@ class Character {
 
 class Weapon {
 	@damage : Int;
-	@speed : Int;
 
-	New(damage : Int, speed : Int) {
+	New(damage : Int) {
 		@damage := damage;
-		@speed := speed;
 	}
 
 	method : public : GetDamage() ~ Int {
 		return @damage;
-	}
-
-	method : public : GetSpeed() ~ Int {
-		return @speed;
 	}
 }
 
@@ -188,8 +198,8 @@ class Armor {
 	@type : Type;
 
 	enum Type {
-		FIGTHER,
-		MAGE
+		SHIELD,
+		MAIN
 	}
 
 	New(defense : Int) {
@@ -216,42 +226,24 @@ class Location {
 # ------
 
 class Slime from Character {
-	@weapon : Weapon;
-	@armor : Armor;
-
 	New(ability_max : Int) {
 		Parent("Slime", Type->FIGTHER, 1);
 
-		@weapon := Weapon->New(1, 1);
-		@armor := Armor->New(3);
-
-		hit_points := Int->Random(7, 9);
+		hit_points := Int->Random(9, 11);
 		strength := Int->Random(1, ability_max);
 		stamina := Int->Random(1, ability_max);
 		endurance := Int->Random(1, ability_max);
 		agility := Int->Random(1, ability_max);
 		
 		Set(hit_points, strength, stamina, endurance, agility);
-	}
-
-	method : public : GetWeapon() ~ Weapon {
-		return @weapon;
-	}
-
-	method : public : GetArmor() ~ Armor {
-		return @armor;
+		SetWeapon(Weapon->New(1));
+		AddArmor(Armor->New(3));
 	}
 }
 
 class Rat from Character {
-	@weapon : Weapon;
-	@armor : Armor;
-
 	New(ability_max : Int) {
 		Parent("Rat", Type->FIGTHER, 1);
-
-		@weapon := Weapon->New(2, 1);
-		@armor := Armor->New(2);
 
 		hit_points := Int->Random(7, 9);
 		strength := Int->Random(1, ability_max);
@@ -260,14 +252,8 @@ class Rat from Character {
 		agility := Int->Random(1, ability_max);
 		
 		Set(hit_points, strength, stamina, endurance, agility);
-	}
-
-	method : public : GetWeapon() ~ Weapon {
-		return @weapon;
-	}
-
-	method : public : GetArmor() ~ Armor {
-		return @armor;
+		SetWeapon(Weapon->New(2));
+		AddArmor(Armor->New(2));
 	}
 }
 
