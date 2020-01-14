@@ -164,14 +164,6 @@ void JitCompilerA32::RegisterRoot() {
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
-  
-  /*
-  // NOTE: rewritten above in machine code
-  const int32_t end_addr = -offset;
-  for(int32_t start_addr = TMP_REG_0; start_addr >=  end_addr; start_addr -= 4) {
-    move_imm_mem(0, start_addr, FP);  
-  }
-  */
 }
 
 void JitCompilerA32::ProcessParameters(int32_t params) {
@@ -3382,7 +3374,6 @@ void JitCompilerA32::call_reg(Register reg) {
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 {
-  // TODO: update with correct move code, compares differ bewtween int and fp
   uint32_t op_code, op_dest;
   
   switch (oper) {
