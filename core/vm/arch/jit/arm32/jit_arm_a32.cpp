@@ -3505,9 +3505,7 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     op_code |= op_dest;
     AddMachineCode(op_code);
     break;
-    
-    // -----------------------
-    
+        
   case GTR_EQL_INT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [movgt]" << std::endl;
