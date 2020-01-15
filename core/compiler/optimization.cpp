@@ -605,8 +605,10 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
     case instructions::LIB_MTHD_CALL:
     case instructions::LIB_OBJ_INST_CAST:
     case instructions::LIB_FUNC_DEF:
+    case instructions::S2F:
+    case instructions::F2S:      
       return false;
-
+      
     case instructions::LOAD_CLS_MEM:
       if(mthd_called->GetClass() != current_method->GetClass()) {
         return false;
