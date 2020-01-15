@@ -1,0 +1,104 @@
+use Game.SDL2;
+use Game.Framework;
+
+class Flashcards {
+	@framework : GameFramework;
+	@rec_offset : Int;
+	@card_color : Color;
+	@top_text : TextSprite;
+	@bottom_text : TextSprite;
+
+	function : Main(args : String[]) ~ Nil {
+		vibrating := Flashcards->New();
+		vibrating->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards Rectangles");
+		@framework->SetClearColor(Color->New(0, 0, 0));
+		@card_color := Color->New(213, 196, 161);
+
+		base_path := Runtime->GetProperty("install_dir");
+		base_path += "/examples";
+		font_path := String->New(base_path);
+		if(font_path = Nil) {
+			"Failed to load font!"->ErrorLine();
+		};
+		font_path += "/../lib/sdl/fonts/lazy.ttf";
+
+		font := Font->New(font_path, 128);
+		if(font->IsNull()) {
+			"Failed to load font '{$font_path}'!"->ErrorLine();
+		};
+
+		black_color := Color->New(0, 0, 0);
+		@top_text := @framework->AddTextSprite();
+		@top_text->SetFont(font);
+
+		@bottom_text := @framework->AddTextSprite();
+		@bottom_text->SetFont(font);
+	}
+	
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			e := @framework->GetEvent();
+			
+			quit := false;
+			while(<>quit) {
+				@framework->FrameStart();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+				};
+
+				Render();
+
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : Render() ~ Nil {
+		x := GameConsts->SCREEN_WIDTH * 0.25;
+		y := GameConsts->SCREEN_HEIGHT * 0.1;
+		w := GameConsts->SCREEN_WIDTH * 0.75 - x;
+		h := GameConsts->SCREEN_HEIGHT * 0.9 - y;
+
+		@top_text->RenderedText("5");
+		@bottom_text->RenderedText("+10");
+
+
+		@framework->Clear();
+
+		# card
+		renderer := @framework->GetRenderer();
+		renderer->SetDrawColor(@card_color->GetR(), @card_color->GetG(), @card_color->GetB(), 0);
+		renderer->FillRect(Rect->New(x, y, w, h));
+
+		# top text
+		@top_text->Render(x + 200, y + 20); # single
+		@bottom_text->Render(x + 65, y + 120);
+
+		# line
+		renderer->SetDrawColor(0, 0, 0, 0);
+		renderer->FillRect(Rect->New(x + 60, y + 250, 210, 3));
+
+		@framework->Show();
+	}
+}
+
+consts GameConsts {
+	SCREEN_WIDTH := 640,
+	SCREEN_HEIGHT := 480
+}
