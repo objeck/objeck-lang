@@ -27,37 +27,41 @@ class Flashcards {
 
 	@max_points : Int;
 
+	@thumbs_up_img : ImageSprite;
+	@thumbs_down_img : ImageSprite;
+	@star_img : ImageSprite;
+
 	function : Main(args : String[]) ~ Nil {
 		Flashcards->New()->Run();
 	}
 
 	New() {
-		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards Rectangles");		
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards");		
 		@framework->SetClearColor(Color->New(0, 0, 0));
 
-		font1 := LoadFont1();
+		card_font := LoadMedia();
 
 		CreateRects();
 
 		# create top text
 		@top_sprite := @framework->AddTextSprite();
-		@top_sprite->SetFont(font1);
+		@top_sprite->SetFont(card_font);
 		@top_string := "";
 
 		# create bottom text
 		@bottom_sprite := @framework->AddTextSprite();
-		@bottom_sprite->SetFont(font1);
+		@bottom_sprite->SetFont(card_font);
 		@bottom_string := "";
 
 		# create answer text
 		@answer_sprite := @framework->AddTextSprite();
-		@answer_sprite->SetFont(font1);
+		@answer_sprite->SetFont(card_font);
 		@answer_string := "";
 
 		# score text
-		font2 := LoadFont2();
+		score_font := LoadScoreFont();
 		@score_sprite := @framework->AddTextSprite();
-		@score_sprite->SetFont(font2);
+		@score_sprite->SetFont(score_font);
 	}
 
 	method : CreateRects() ~ Nil {
@@ -81,33 +85,37 @@ class Flashcards {
 		@line_rect := Rect->New(x + 60, y + 250, 210, 3);
 	}
 
-	method : LoadFont1() ~ Font {
-		base_path := Runtime->GetProperty("install_dir");
-		base_path += "/examples";
-		font_path := String->New(base_path);
-		if(font_path = Nil) {
-			"Failed to load font!"->ErrorLine();
-		};
-		font_path += "/../lib/sdl/fonts/lazy.ttf";
-
+	method : LoadMedia() ~ Font {
+		font_path :=  "./media/lazy.ttf";
 		font := Font->New(font_path, 128);
 		if(font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
+		# thumbs up png
+		thumbs_up_path := "./media/thumbs-down.png";
+		@thumbs_up_img := @framework->AddImageSprite(thumbs_up_path);
+		@thumbs_up_img->SetCenterX(GameConsts->SCREEN_WIDTH / 2);
+		@thumbs_up_img->SetCenterY(180);
+
+		# thumbs down png
+		thumbs_down_path := "./media/thumbs-down.png";
+		@thumbs_down_img := @framework->AddImageSprite(thumbs_down_path);
+		@thumbs_down_img->SetCenterX(GameConsts->SCREEN_WIDTH / 2);
+		@thumbs_down_img->SetCenterY(180);
+
+		# star png
+		star_path := "./media/star.png";
+		@star_img := @framework->AddImageSprite(star_path);
+		@star_img->SetCenterX(GameConsts->SCREEN_WIDTH / 2);
+		@star_img->SetCenterY(180);
+
 		return font;
 	}
 
-	method : LoadFont2() ~ Font {
-		base_path := Runtime->GetProperty("install_dir");
-		base_path += "/examples";
-		font_path := String->New(base_path);
-		if(font_path = Nil) {
-			"Failed to load font!"->ErrorLine();
-		};
-		font_path += "/../lib/sdl/fonts/lazy.ttf";
-
+	method : LoadScoreFont() ~ Font {
+		font_path :=  "./media/lazy.ttf";
 		font := Font->New(font_path, 56);
 		if(font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
@@ -161,73 +169,85 @@ class Flashcards {
 	            	@answer_string := "";
 	            }
 
-	            label Scancode->SDL_SCANCODE_RETURN: {
+	            label Scancode->SDL_SCANCODE_RETURN:
+	            label Scancode->SDL_SCANCODE_KP_ENTER: {
 	            	CheckProblem();
 	            	GetProblem();
 	            }
 
-	        	label Scancode->SDL_SCANCODE_0: {
+	        	label Scancode->SDL_SCANCODE_0:
+	        	label Scancode->SDL_SCANCODE_KP_0: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('0');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_1: {
+	            label Scancode->SDL_SCANCODE_1:
+	            label Scancode->SDL_SCANCODE_KP_1: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('1');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_2: {
+	            label Scancode->SDL_SCANCODE_2:
+	            label Scancode->SDL_SCANCODE_KP_2: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('2');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_3: {
+	            label Scancode->SDL_SCANCODE_3:
+	            label Scancode->SDL_SCANCODE_KP_3: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('3');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_4: {
+	            label Scancode->SDL_SCANCODE_4:
+	            label Scancode->SDL_SCANCODE_KP_4: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('4');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_5: {
+	            label Scancode->SDL_SCANCODE_5:
+	            label Scancode->SDL_SCANCODE_KP_5: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('5');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_6: {
+	            label Scancode->SDL_SCANCODE_6:
+	            label Scancode->SDL_SCANCODE_KP_6: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('6');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_7: {
+	            label Scancode->SDL_SCANCODE_7:
+	            label Scancode->SDL_SCANCODE_KP_7: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('7');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_8: {
+	            label Scancode->SDL_SCANCODE_8:
+	            label Scancode->SDL_SCANCODE_KP_8: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('8');
 	            	};
 	            }
 
-	            label Scancode->SDL_SCANCODE_9: {
+	            label Scancode->SDL_SCANCODE_9:
+	            label Scancode->SDL_SCANCODE_KP_9: {
 	            	if(@answer_string->Size() < 2) {
 	            		@answer_string->Append('9');
 	            	};
 	            }
 	        };
 	    }
-	    else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_N) {
+	    else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_RETURN |
+	            e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_KP_ENTER) {
 	    	@point_index := 0;
 	    	each(i : @score_values) {
 	    		@score_values[i] := 0;
@@ -287,10 +307,20 @@ class Flashcards {
 			};
 		};
 		wrong := @max_points - correct;
-
 		correct_precent := ((correct->As(Float) / @max_points->As(Float)) * 100.0)->As(Int);
+		
+		if(correct_precent >= 90) {			
+			@star_img->Render();
+		}
+		else if(correct_precent < 90 & correct_precent >= 70) {			
+			@thumbs_up_img->Render();
+		}
+		else {			
+			@thumbs_down_img->Render();
+		};
+
 		@score_sprite->RenderedText("{$correct}/{$@max_points} = {$correct_precent}%", Color->New(255, 255, 255, 0));
-		@score_sprite->Render(185, 280);
+		@score_sprite->Render(175, 280);
 	}
 	
 	method : RenderCard(renderer : Renderer) ~ Nil {
