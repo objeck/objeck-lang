@@ -1,6 +1,11 @@
 class Test {
-   function : Main(args : String[]) ~ Nil {
-      value := 3.5;
-      "{$value}"->PrintLine();
-   }
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		value := 3.5;
+		"{$value}"->PrintLine();
+		"13.33"->ToFloat()->PrintLine();
+	}
 }
