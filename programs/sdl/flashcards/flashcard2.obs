@@ -3,24 +3,74 @@ use Game.Framework;
 
 class Flashcards {
 	@framework : GameFramework;
-	@rec_offset : Int;
 	@card_color : Color;
-	@top_text : TextSprite;
-	@bottom_text : TextSprite;
-	@answer_text : TextSprite;
+	
+	@top_sprite : TextSprite;
+	@top_string : String;
+	@top_number : Int;
+	
+	@bottom_sprite : TextSprite;
+	@bottom_string : String;
+	@bottom_number : Int;
+	
+	@answer_sprite : TextSprite;
+	@answer_string : String;
+	
 	@card_rect : Rect;
 	@line_rect : Rect;
 
+	@score_rects : Rect[];
+	@score_values : Int[];
+	@score_index : Int;
+
 	function : Main(args : String[]) ~ Nil {
-		vibrating := Flashcards->New();
-		vibrating->Run();
+		Flashcards->New()->Run();
 	}
 
 	New() {
-		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards Rectangles");
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards Rectangles");		
 		@framework->SetClearColor(Color->New(0, 0, 0));
-		@card_color := Color->New(213, 196, 161);
 
+		font := LoadFont();
+
+		CreateRects();
+
+		# create top text
+		@top_sprite := @framework->AddTextSprite();
+		@top_sprite->SetFont(font);
+		@top_string := "";
+
+		# create bottom text
+		@bottom_sprite := @framework->AddTextSprite();
+		@bottom_sprite->SetFont(font);
+		@bottom_string := "";
+
+		# create answer text
+		@answer_sprite := @framework->AddTextSprite();
+		@answer_sprite->SetFont(font);
+		@answer_string := "";
+	}
+
+	method : CreateRects() ~ Nil {
+		offset := 430;
+		@score_rects := Rect->New[10];
+		each(i : @score_rects) {
+			@score_rects[i] := Rect->New(offset + i * 16 + i * 4, 16, 16, 16);
+		};
+		@score_values := Int->New[10];
+		@score_index := 0;
+
+		x := GameConsts->SCREEN_WIDTH * 0.25;
+		y := GameConsts->SCREEN_HEIGHT * 0.1;
+		w := GameConsts->SCREEN_WIDTH * 0.75 - x;
+		h := GameConsts->SCREEN_HEIGHT * 0.9 - y;
+		@card_color := Color->New(213, 196, 161);
+		@card_rect := Rect->New(x, y, w, h);
+
+		@line_rect := Rect->New(x + 60, y + 250, 210, 3);
+	}
+
+	method : LoadFont() ~ Font {
 		base_path := Runtime->GetProperty("install_dir");
 		base_path += "/examples";
 		font_path := String->New(base_path);
@@ -32,30 +82,17 @@ class Flashcards {
 		font := Font->New(font_path, 128);
 		if(font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
+			Runtime->Exit(1);
 		};
 
-		black_color := Color->New(0, 0, 0);
-		@top_text := @framework->AddTextSprite();
-		@top_text->SetFont(font);
-
-		@bottom_text := @framework->AddTextSprite();
-		@bottom_text->SetFont(font);
-
-		@answer_text := @framework->AddTextSprite();
-		@answer_text->SetFont(font);
-
-		x := GameConsts->SCREEN_WIDTH * 0.25;
-		y := GameConsts->SCREEN_HEIGHT * 0.1;
-		w := GameConsts->SCREEN_WIDTH * 0.75 - x;
-		h := GameConsts->SCREEN_HEIGHT * 0.9 - y;
-		@card_rect := Rect->New(x, y, w, h);
-
-		@line_rect := Rect->New(x + 60, y + 250, 210, 3);
+		return font;
 	}
-	
+
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			e := @framework->GetEvent();
+
+			GetProblem();
 			
 			quit := false;
 			while(<>quit) {
@@ -65,7 +102,81 @@ class Flashcards {
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
-					};
+					}
+					# keyboard
+					else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+				        select(e->GetKey()->GetKeysym()->GetScancode()) {
+				        	label Scancode->SDL_SCANCODE_DELETE:
+				        	label Scancode->SDL_SCANCODE_BACKSPACE: {
+				            	@answer_string := "";
+				            }
+
+				            label Scancode->SDL_SCANCODE_RETURN: {
+				            	CheckProblem();
+				            	GetProblem();
+				            }
+
+				        	label Scancode->SDL_SCANCODE_0: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('0');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_1: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('1');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_2: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('2');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_3: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('3');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_4: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('4');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_5: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('5');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_6: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('6');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_7: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('7');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_8: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('8');
+				            	};
+				            }
+
+				            label Scancode->SDL_SCANCODE_9: {
+				            	if(@answer_string->Size() < 2) {
+				            		@answer_string->Append('9');
+				            	};
+				            }
+				        };
+				    };
 				};
 
 				Render();
@@ -83,6 +194,40 @@ class Flashcards {
 		};
 	}
 
+	method : CheckProblem() ~ Nil {
+		answer := @answer_string->ToInt();
+		if(answer = @top_number + @bottom_number) {
+			@score_values[@score_index] := 1;
+		}
+		else {
+			@score_values[@score_index] := 2;
+		};
+		@score_index += 1;
+
+		if(@score_index >= 10) {
+			"Bye!"->PrintLine();
+			Runtime->Exit(0);
+		};
+	}
+
+	method : GetProblem() ~ Nil {
+		number := Int->Random(9, 18);
+
+		if(Int->Random(0, 1) = 0) {
+			@bottom_number := number;
+			@top_number := 2;
+		}
+		else {
+			@top_number := number;
+			@bottom_number := 2;
+		};
+
+		@top_string := @top_number->ToString();
+		@bottom_string := "+";
+		@bottom_string += @bottom_number->ToString();
+		@answer_string := "";
+	}
+
 	method : Render() ~ Nil {
 		@framework->Clear();
 
@@ -92,19 +237,37 @@ class Flashcards {
 		
 		renderer->FillRect(@card_rect);
 
-		# draw roblem text
+		# draw problem text
 		x := @card_rect->GetX();
 		y := @card_rect->GetY();
 		
-		DrawText("8", y + 20, @top_text);
-		DrawText("+1", y + 120, @bottom_text);
+		DrawText(@top_string, y + 20, @top_sprite);
+		DrawText(@bottom_string, y + 120, @bottom_sprite);
 
 		# draw line
 		renderer->SetDrawColor(0, 0, 0, 0);
 		renderer->FillRect(@line_rect);
 
 		# draw answer
-		DrawText("55", y + 260, @answer_text);
+		if(@answer_string->Size() > 0) {
+			DrawText(@answer_string, y + 260, @answer_sprite);
+		};
+
+		# draw score
+		
+		each(i : @score_rects) {
+			if(@score_values[i] = 0) {
+				renderer->SetDrawColor(255, 255, 255, 0);
+			}
+			else if(@score_values[i] = 1) {
+				renderer->SetDrawColor(0, 255, 0, 0);
+			}
+			else if(@score_values[i] = 2) {
+				renderer->SetDrawColor(255, 0, 0, 0);
+			};
+
+			renderer->FillRect(@score_rects[i]);
+		};
 
 		@framework->Show();
 	}

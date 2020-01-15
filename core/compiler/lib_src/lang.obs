@@ -2751,6 +2751,15 @@ bundle System {
 		}
 
 		#~
+		Clears string
+		~#
+		method : public : Clear() ~ Nil {
+			@max := 8;
+			@string := Char->New[@max];
+			@pos := 0;			
+		}
+
+		#~
 		Return the size of the string
 		@return size of the string
 		~#
