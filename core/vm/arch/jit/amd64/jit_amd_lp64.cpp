@@ -773,6 +773,21 @@ void JitCompilerIA64::ProcessInstructions() {
       ProcessReturnParameters(INT_TYPE);
       break;
 
+    case F2S:
+#ifdef _DEBUG
+      wcout << L"F2S: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(F2S, instr, instr_index, 2);
+      break;
+      
+    case S2F:
+#ifdef _DEBUG
+      wcout << L"S2F: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(S2F, instr, instr_index, 2);
+      ProcessReturnParameters(FLOAT_TYPE);
+      break;
+      
     case OBJ_TYPE_OF: {
 #ifdef _DEBUG
       wcout << L"OBJ_TYPE_OF: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
@@ -4754,6 +4769,41 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
   }
     break;
 
+  case F2S: {
+    size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    if(str_ptr) {
+      wchar_t* str = (wchar_t*)(str_ptr + 3);
+      const double value = PopFloat(op_stack, stack_pos);
+    
+      wstringstream stream;
+      stream << value;
+      wstring conv(stream.str());
+      const size_t max = conv.size() < 16 ? conv.size() : 16; 
+#ifdef _WIN32
+      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+#else
+      wcsncpy(str, conv.c_str(), max);
+#endif
+    }
+  }
+    break;
+
+  case S2F: {
+    size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    if(str_ptr) {
+      wchar_t* str = (wchar_t*)(str_ptr + 3);
+      wstringstream stream(str);
+      FLOAT_VALUE value;
+      stream >> value;
+      PushFloat(value, op_stack, stack_pos);
+    }
+    else {
+      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
+      exit(1);
+    }
+  }
+    break;
+    
   case S2I: {
 #ifdef _DEBUG
     wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
