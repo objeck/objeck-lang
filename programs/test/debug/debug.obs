@@ -1,13 +1,6 @@
-use Web.HTTP;
-
-class HttpsTest {
+class Test {
    function : Main(args : String[]) ~ Nil {
-      html := HttpsClient->New()->GetAll("https://www.google.com");
-      if(html = Nil) {
-         "--- Unable to fetch URL ---"->ErrorLine();
-      }
-      else {
-         html->PrintLine();
-      };
+      value := 3.5;
+      "{$value}"->PrintLine();
    }
 }
