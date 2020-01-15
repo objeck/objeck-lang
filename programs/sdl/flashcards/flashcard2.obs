@@ -15,13 +15,17 @@ class Flashcards {
 	
 	@answer_sprite : TextSprite;
 	@answer_string : String;
+
+	@score_sprite : TextSprite;
 	
 	@card_rect : Rect;
 	@line_rect : Rect;
 
 	@score_rects : Rect[];
 	@score_values : Int[];
-	@score_index : Int;
+	@point_index : Int;
+
+	@max_points : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		Flashcards->New()->Run();
@@ -31,34 +35,41 @@ class Flashcards {
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards Rectangles");		
 		@framework->SetClearColor(Color->New(0, 0, 0));
 
-		font := LoadFont();
+		font1 := LoadFont1();
 
 		CreateRects();
 
 		# create top text
 		@top_sprite := @framework->AddTextSprite();
-		@top_sprite->SetFont(font);
+		@top_sprite->SetFont(font1);
 		@top_string := "";
 
 		# create bottom text
 		@bottom_sprite := @framework->AddTextSprite();
-		@bottom_sprite->SetFont(font);
+		@bottom_sprite->SetFont(font1);
 		@bottom_string := "";
 
 		# create answer text
 		@answer_sprite := @framework->AddTextSprite();
-		@answer_sprite->SetFont(font);
+		@answer_sprite->SetFont(font1);
 		@answer_string := "";
+
+		# score text
+		font2 := LoadFont2();
+		@score_sprite := @framework->AddTextSprite();
+		@score_sprite->SetFont(font2);
 	}
 
 	method : CreateRects() ~ Nil {
-		offset := 430;
-		@score_rects := Rect->New[10];
+		@max_points := 12;
+
+		offset := 384;
+		@score_rects := Rect->New[@max_points];
 		each(i : @score_rects) {
 			@score_rects[i] := Rect->New(offset + i * 16 + i * 4, 16, 16, 16);
 		};
-		@score_values := Int->New[10];
-		@score_index := 0;
+		@score_values := Int->New[@max_points];
+		@point_index := 0;
 
 		x := GameConsts->SCREEN_WIDTH * 0.25;
 		y := GameConsts->SCREEN_HEIGHT * 0.1;
@@ -70,7 +81,7 @@ class Flashcards {
 		@line_rect := Rect->New(x + 60, y + 250, 210, 3);
 	}
 
-	method : LoadFont() ~ Font {
+	method : LoadFont1() ~ Font {
 		base_path := Runtime->GetProperty("install_dir");
 		base_path += "/examples";
 		font_path := String->New(base_path);
@@ -80,6 +91,24 @@ class Flashcards {
 		font_path += "/../lib/sdl/fonts/lazy.ttf";
 
 		font := Font->New(font_path, 128);
+		if(font->IsNull()) {
+			"Failed to load font '{$font_path}'!"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		return font;
+	}
+
+	method : LoadFont2() ~ Font {
+		base_path := Runtime->GetProperty("install_dir");
+		base_path += "/examples";
+		font_path := String->New(base_path);
+		if(font_path = Nil) {
+			"Failed to load font!"->ErrorLine();
+		};
+		font_path += "/../lib/sdl/fonts/lazy.ttf";
+
+		font := Font->New(font_path, 56);
 		if(font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
@@ -105,77 +134,7 @@ class Flashcards {
 					}
 					# keyboard
 					else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
-				        select(e->GetKey()->GetKeysym()->GetScancode()) {
-				        	label Scancode->SDL_SCANCODE_DELETE:
-				        	label Scancode->SDL_SCANCODE_BACKSPACE: {
-				            	@answer_string := "";
-				            }
-
-				            label Scancode->SDL_SCANCODE_RETURN: {
-				            	CheckProblem();
-				            	GetProblem();
-				            }
-
-				        	label Scancode->SDL_SCANCODE_0: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('0');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_1: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('1');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_2: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('2');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_3: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('3');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_4: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('4');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_5: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('5');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_6: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('6');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_7: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('7');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_8: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('8');
-				            	};
-				            }
-
-				            label Scancode->SDL_SCANCODE_9: {
-				            	if(@answer_string->Size() < 2) {
-				            		@answer_string->Append('9');
-				            	};
-				            }
-				        };
+				        GetInput(e);
 				    };
 				};
 
@@ -194,20 +153,98 @@ class Flashcards {
 		};
 	}
 
+	method : GetInput(e : Event) ~ Nil {
+		if(@point_index < @max_points) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
+	        	label Scancode->SDL_SCANCODE_DELETE:
+	        	label Scancode->SDL_SCANCODE_BACKSPACE: {
+	            	@answer_string := "";
+	            }
+
+	            label Scancode->SDL_SCANCODE_RETURN: {
+	            	CheckProblem();
+	            	GetProblem();
+	            }
+
+	        	label Scancode->SDL_SCANCODE_0: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('0');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_1: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('1');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_2: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('2');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_3: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('3');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_4: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('4');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_5: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('5');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_6: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('6');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_7: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('7');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_8: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('8');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_9: {
+	            	if(@answer_string->Size() < 2) {
+	            		@answer_string->Append('9');
+	            	};
+	            }
+	        };
+	    }
+	    else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_N) {
+	    	@point_index := 0;
+	    	each(i : @score_values) {
+	    		@score_values[i] := 0;
+	    	};
+	    	GetProblem();
+	    };
+	}
+
 	method : CheckProblem() ~ Nil {
 		answer := @answer_string->ToInt();
 		if(answer = @top_number + @bottom_number) {
-			@score_values[@score_index] := 1;
+			@score_values[@point_index] := 1;
 		}
 		else {
-			@score_values[@score_index] := 2;
+			@score_values[@point_index] := 2;
 		};
-		@score_index += 1;
-
-		if(@score_index >= 10) {
-			"Bye!"->PrintLine();
-			Runtime->Exit(0);
-		};
+		@point_index += 1;
 	}
 
 	method : GetProblem() ~ Nil {
@@ -231,10 +268,34 @@ class Flashcards {
 	method : Render() ~ Nil {
 		@framework->Clear();
 
-		# draw card
 		renderer := @framework->GetRenderer();
-		renderer->SetDrawColor(@card_color->GetR(), @card_color->GetG(), @card_color->GetB(), 0);
-		
+		if(@point_index < @max_points) {
+			RenderCard(renderer);
+		}
+		else {
+			RenderScore(renderer);
+		};
+
+		@framework->Show();
+	}
+
+	method : RenderScore(renderer : Renderer) ~ Nil {
+		correct := 0;
+		each(i : @score_values) {
+			if(@score_values[i] = 1) {
+				correct += 1;
+			};
+		};
+		wrong := @max_points - correct;
+
+		correct_precent := ((correct->As(Float) / @max_points->As(Float)) * 100.0)->As(Int);
+		@score_sprite->RenderedText("{$correct}/{$@max_points} = {$correct_precent}%", Color->New(255, 255, 255, 0));
+		@score_sprite->Render(185, 280);
+	}
+	
+	method : RenderCard(renderer : Renderer) ~ Nil {
+		# draw card		
+		renderer->SetDrawColor(@card_color->GetR(), @card_color->GetG(), @card_color->GetB(), 0);		
 		renderer->FillRect(@card_rect);
 
 		# draw problem text
@@ -253,8 +314,7 @@ class Flashcards {
 			DrawText(@answer_string, y + 260, @answer_sprite);
 		};
 
-		# draw score
-		
+		# draw score		
 		each(i : @score_rects) {
 			if(@score_values[i] = 0) {
 				renderer->SetDrawColor(255, 255, 255, 0);
@@ -268,8 +328,6 @@ class Flashcards {
 
 			renderer->FillRect(@score_rects[i]);
 		};
-
-		@framework->Show();
 	}
 
 	method : DrawText(msg : String, y : Int, text : TextSprite) ~ Nil {
