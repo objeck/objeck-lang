@@ -6,7 +6,7 @@ project(arm_vm)
 set(LIBRARIES_FROM_REFERENCES "-lssl -lcrypto -ldl -lz -pthread")
 set(CMAKE_CXX_FLAGS "-O3")
 # set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG -D_GC_SERIAL")
-set(GCC_COVERAGE_COMPILE_FLAGS "-D_ARM32 -Wno-unused-function -Wall -pthread")
+set(GCC_COVERAGE_COMPILE_FLAGS "-D_ARM32 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wall -pthread")
 # "-fsanitize=address -static-libasan"
 add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 add_executable(obr ../../common.cpp ../../common.h ../../interpreter.cpp ../../interpreter.h ../../lib_api.h ../../loader.cpp ../../loader.h ../../posix_main.cpp ../../vm.cpp ../../vm.h ../../arch/memory.cpp ../../arch/memory.h ../../arch/posix/posix.h ../../arch/jit/arm32/jit_arm_a32.cpp ../../arch/jit/arm32/jit_arm_a32.h ../../../shared/logger.cpp ../../../shared/logger.h)
