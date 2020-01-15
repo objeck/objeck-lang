@@ -878,11 +878,7 @@ namespace Runtime {
     }
 
     inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
-#if defined(_WIN64) || defined(_X64)
       (*stack_pos)--;
-#else
-      (*stack_pos) -= 2;
-#endif
       
 #ifdef _DEBUG
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
@@ -899,11 +895,7 @@ namespace Runtime {
             << L"]; call_pos=" << (*stack_pos) << endl;
 #endif
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-#if defined(_WIN64) || defined(_X64)
       (*stack_pos)++;
-#else
-      (*stack_pos) += 2;
-#endif
     }
 
     //
