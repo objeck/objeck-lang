@@ -679,6 +679,7 @@ namespace Runtime {
 #else
       (*stack_pos) += 2;
 #endif
+    }
 
     // Process call backs from ASM code
     static void JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
