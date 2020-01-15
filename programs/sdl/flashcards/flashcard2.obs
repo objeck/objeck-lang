@@ -7,6 +7,9 @@ class Flashcards {
 	@card_color : Color;
 	@top_text : TextSprite;
 	@bottom_text : TextSprite;
+	@answer_text : TextSprite;
+	@card_rect : Rect;
+	@line_rect : Rect;
 
 	function : Main(args : String[]) ~ Nil {
 		vibrating := Flashcards->New();
@@ -37,6 +40,17 @@ class Flashcards {
 
 		@bottom_text := @framework->AddTextSprite();
 		@bottom_text->SetFont(font);
+
+		@answer_text := @framework->AddTextSprite();
+		@answer_text->SetFont(font);
+
+		x := GameConsts->SCREEN_WIDTH * 0.25;
+		y := GameConsts->SCREEN_HEIGHT * 0.1;
+		w := GameConsts->SCREEN_WIDTH * 0.75 - x;
+		h := GameConsts->SCREEN_HEIGHT * 0.9 - y;
+		@card_rect := Rect->New(x, y, w, h);
+
+		@line_rect := Rect->New(x + 60, y + 250, 210, 3);
 	}
 	
 	method : Run() ~ Nil {
@@ -70,31 +84,44 @@ class Flashcards {
 	}
 
 	method : Render() ~ Nil {
-		x := GameConsts->SCREEN_WIDTH * 0.25;
-		y := GameConsts->SCREEN_HEIGHT * 0.1;
-		w := GameConsts->SCREEN_WIDTH * 0.75 - x;
-		h := GameConsts->SCREEN_HEIGHT * 0.9 - y;
-
-		@top_text->RenderedText("5");
-		@bottom_text->RenderedText("+10");
-
-
 		@framework->Clear();
 
-		# card
+		# draw card
 		renderer := @framework->GetRenderer();
 		renderer->SetDrawColor(@card_color->GetR(), @card_color->GetG(), @card_color->GetB(), 0);
-		renderer->FillRect(Rect->New(x, y, w, h));
+		
+		renderer->FillRect(@card_rect);
 
-		# top text
-		@top_text->Render(x + 200, y + 20); # single
-		@bottom_text->Render(x + 65, y + 120);
+		# draw roblem text
+		x := @card_rect->GetX();
+		y := @card_rect->GetY();
+		
+		DrawText("8", y + 20, @top_text);
+		DrawText("+1", y + 120, @bottom_text);
 
-		# line
+		# draw line
 		renderer->SetDrawColor(0, 0, 0, 0);
-		renderer->FillRect(Rect->New(x + 60, y + 250, 210, 3));
+		renderer->FillRect(@line_rect);
+
+		# draw answer
+		DrawText("55", y + 260, @answer_text);
 
 		@framework->Show();
+	}
+
+	method : DrawText(msg : String, y : Int, text : TextSprite) ~ Nil {
+		text->RenderedText(msg);
+		x := @card_rect->GetX();
+
+		if(msg->Size() = 1) {
+			text->Render(x + 175, y);
+		}
+		else if(msg->Size() = 2) {
+			text->Render(x + 105, y);
+		}
+		else {
+			text->Render(x + 40, y);
+		};
 	}
 }
 
