@@ -7,7 +7,7 @@ class Anagrams {
 		anagrams := StringMap->New();
 		count := 0;
 		if(lines->Size() = 1) {
-			line := lines->Get(0)->As(String);
+			line := lines->Get(0);
 			words := line->Split("\n");
 			each(i : words) {
 				word := words[i]->Trim();
