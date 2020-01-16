@@ -34,6 +34,9 @@ class Flashcards {
 	@cheer_chunk : MixChunk;
 	@aww_chunk : MixChunk;
 
+	@timer : Int;
+	@timer_text : TextSprite;
+
 	function : Main(args : String[]) ~ Nil {
 		Flashcards->New()->Run();
 	}
@@ -65,6 +68,11 @@ class Flashcards {
 		score_font := LoadScoreFont();
 		@score_sprite := @framework->AddTextSprite();
 		@score_sprite->SetFont(score_font);
+
+		@timer := GameConsts->PLAY_TIME;
+		@timer_text := @framework->AddTextSprite();
+		@timer_text->SetFont(score_font);
+		@timer_text->RenderedText("Time: {$@timer}");
 	}
 
 	method : CreateRects() ~ Nil {
@@ -130,8 +138,8 @@ class Flashcards {
 	}
 
 	method : LoadScoreFont() ~ Font {
-		font_path :=  "./media/lazy.ttf";
-		font := Font->New(font_path, 56);
+		font_path :=  "./media/hella.ttf";
+		font := Font->New(font_path, 18);
 		if(font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
@@ -162,6 +170,19 @@ class Flashcards {
 				};
 
 				Render();
+
+				frame_count += 1;
+				if(frame_count >= @framework->GetFps()) {
+					@timer -= 1;
+					if(@timer < 0) {
+						@point_index := @max_points;
+					}
+					else {
+						@timer_text->RenderedText("Time: {$@timer}", Color->New(255, 255, 0));
+					};
+
+					frame_count := 0;
+				};
 
 				@framework->FrameEnd();
 			};
@@ -266,6 +287,7 @@ class Flashcards {
 	    else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_RETURN |
 	            e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_KP_ENTER) {
 	    	@point_index := 0;
+	    	@timer := GameConsts->PLAY_TIME;
 	    	each(i : @score_values) {
 	    		@score_values[i] := 0;
 	    	};
@@ -290,6 +312,7 @@ class Flashcards {
 	}
 
 	method : GetProblem() ~ Nil {
+#~		
 		number := Int->Random(9, 18);
 
 		if(Int->Random(0, 1) = 0) {
@@ -300,6 +323,10 @@ class Flashcards {
 			@top_number := number;
 			@bottom_number := 2;
 		};
+~#
+
+		@top_number := Int->Random(7, 25);
+		@bottom_number := Int->Random(1, 17);
 
 		@top_string := @top_number->ToString();
 		@bottom_string := "+";
@@ -342,10 +369,12 @@ class Flashcards {
 		};
 
 		@score_sprite->RenderedText("{$correct}/{$@max_points} = {$correct_precent}%", Color->New(255, 255, 255, 0));
-		@score_sprite->Render(175, 280);
+		@score_sprite->Render(275, 240);
 	}
 	
 	method : RenderCard(renderer : Renderer) ~ Nil {
+		@timer_text->Render(10, 10);
+
 		# draw card		
 		renderer->SetDrawColor(@card_color->GetR(), @card_color->GetG(), @card_color->GetB(), 0);		
 		renderer->FillRect(@card_rect);
@@ -400,5 +429,6 @@ class Flashcards {
 
 consts GameConsts {
 	SCREEN_WIDTH := 640,
-	SCREEN_HEIGHT := 480
+	SCREEN_HEIGHT := 480,
+	PLAY_TIME := 45
 }
