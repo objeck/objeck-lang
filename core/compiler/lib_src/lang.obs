@@ -146,6 +146,33 @@ bundle System {
 			return r;
 		}
 
+        #~
+        Returns the Float value
+        @ignore-params
+        @return value
+        ~#
+        function : ToFloat(v : Byte) ~ Float {
+                return v->As(Float);
+        }
+
+        #~
+        Returns the Character value
+        @ignore-params
+        @return value
+        ~#
+        function : ToChar(v : Byte) ~ Char {
+                return v->As(Char);
+        }
+
+        #~
+        Returns the Int value
+        @ignore-params
+        @return value
+        ~#
+        function : ToInt(v : Byte) ~ Int {
+                return v->As(Int);
+        }
+        
 		#~
 		Returns the absolute value
 		@ignore-params
@@ -341,8 +368,32 @@ bundle System {
 			return c;
 		}
 		
-		
-		
+		#~
+        Returns the Float value
+        @ignore-params
+        @return value
+        ~#
+        function : ToFloat(v : Char) ~ Float {
+                return v->As(Float);
+        }
+
+        #~
+        Returns the Character value
+        @ignore-params
+        @return value
+        ~#
+        function : ToByte(v : Byte) ~ Byte {
+                return v->As(Byte);
+        }
+
+        #~
+        Returns the Int value
+        @ignore-params
+        @return value
+        ~#
+        function : ToInt(v : Char) ~ Int {
+                return v->As(Int);
+        }
 		
 		#~
 		Checks if the character is lower-case
@@ -654,6 +705,33 @@ bundle System {
 		}
 
 		#~
+		Returns the Float value
+		@ignore-params
+		@return value
+		~#
+		function : ToFloat(v : Int) ~ Float {
+			return v->As(Float);
+		}
+
+		#~
+		Returns the Character value
+		@ignore-params
+		@return value
+		~#
+		function : ToChar(v : Int) ~ Char {
+			return v->As(Char);
+		}
+
+		#~
+		Returns the Byte value
+		@ignore-params
+		@return value
+		~#
+		function : ToByte(v : Int) ~ Byte {
+			return v->As(Byte);
+		}
+
+		#~
 		Prints value 
 		@ignore-params
 		~#
@@ -871,6 +949,33 @@ bundle System {
 		function : native : ToDegrees(v : Float) ~ Float {
 			return v * 180.0 / 3.1415926536;
 		}
+
+        #~
+        Returns the Int value
+        @ignore-params
+        @return value
+        ~#
+        function : ToInt(v : Float) ~ Int {
+                return v->As(Int);
+        }
+
+        #~
+        Returns the Character value
+        @ignore-params
+        @return value
+        ~#
+        function : ToByte(v : Float) ~ Byte {
+                return v->As(Byte);
+        }
+
+        #~
+        Returns the Int value
+        @ignore-params
+        @return value
+        ~#
+        function : ToChar(v : Float) ~ Char {
+                return v->As(Char);
+        }
 
 		#~
 		Returns the smallest float value
