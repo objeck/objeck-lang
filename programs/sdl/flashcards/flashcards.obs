@@ -105,7 +105,7 @@ class Flashcards {
 		};
 
 		# thumbs up png
-		thumbs_up_path := "./media/thumbs-down.png";
+		thumbs_up_path := "./media/thumbs-up.png";
 		@thumbs_up_img := @framework->AddImageSprite(thumbs_up_path);
 		@thumbs_up_img->SetCenterX(GameConsts->SCREEN_WIDTH / 2);
 		@thumbs_up_img->SetCenterY(180);
@@ -287,7 +287,10 @@ class Flashcards {
 	    else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_RETURN |
 	            e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_KP_ENTER) {
 	    	@point_index := 0;
+	   	
 	    	@timer := GameConsts->PLAY_TIME;
+	    	@timer_text->RenderedText("Time: {$@timer}");
+	   	
 	    	each(i : @score_values) {
 	    		@score_values[i] := 0;
 	    	};
@@ -325,8 +328,8 @@ class Flashcards {
 		};
 ~#
 
-		@top_number := Int->Random(7, 25);
-		@bottom_number := Int->Random(1, 17);
+		@top_number := Int->Random(5, 25);
+		@bottom_number := Int->Random(7, 13);
 
 		@top_string := @top_number->ToString();
 		@bottom_string := "+";
