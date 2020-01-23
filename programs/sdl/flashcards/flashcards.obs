@@ -37,11 +37,22 @@ class Flashcards {
 	@timer : Int;
 	@timer_text : TextSprite;
 
+	@is_sound : Bool;
+
 	function : Main(args : String[]) ~ Nil {
-		Flashcards->New()->Run();
+		flash_cards : Flashcards;
+		if(args->Size() = 1) {
+			flash_cards := Flashcards->New(true);
+		}
+		else {
+			flash_cards := Flashcards->New(false);
+		};
+		flash_cards->Run();
 	}
 
-	New() {
+	New(is_sound : Bool) {
+		@is_sound := is_sound;
+
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Flashcards");		
 		@framework->SetClearColor(Color->New(0, 0, 0));
 
@@ -76,20 +87,20 @@ class Flashcards {
 	}
 
 	method : CreateRects() ~ Nil {
-		@max_points := 12;
+		@max_points := 30;
 
-		offset := 384;
+		offset := 24;
 		@score_rects := Rect->New[@max_points];
 		each(i : @score_rects) {
-			@score_rects[i] := Rect->New(offset + i * 16 + i * 4, 16, 16, 16);
+			@score_rects[i] := Rect->New(offset + i * 16 + i * 4, 32, 16, 16);
 		};
 		@score_values := Int->New[@max_points];
 		@point_index := 0;
 
 		x := GameConsts->SCREEN_WIDTH * 0.25;
-		y := GameConsts->SCREEN_HEIGHT * 0.1;
+		y := GameConsts->SCREEN_HEIGHT * 0.15;
 		w := GameConsts->SCREEN_WIDTH * 0.75 - x;
-		h := GameConsts->SCREEN_HEIGHT * 0.9 - y;
+		h := GameConsts->SCREEN_HEIGHT * 0.95 - y;
 		@card_color := Color->New(213, 196, 161);
 		@card_rect := Rect->New(x, y, w, h);
 
@@ -304,33 +315,36 @@ class Flashcards {
 		# correct
 		if(answer = @top_number + @bottom_number) {
 			@score_values[@point_index] := 1;
-			@cheer_chunk->PlayChannel(-1, 0);
+			if(@is_sound) {
+				@cheer_chunk->PlayChannel(-1, 0);
+			};
 		}
 		# wrong
 		else {
 			@score_values[@point_index] := 2;
-			@aww_chunk->PlayChannel(-1, 0);
+			if(@is_sound) {
+				@aww_chunk->PlayChannel(-1, 0);
+			};
 		};
 		@point_index += 1;
 	}
 
 	method : GetProblem() ~ Nil {
-#~		
 		number := Int->Random(9, 18);
 
 		if(Int->Random(0, 1) = 0) {
 			@bottom_number := number;
-			@top_number := 2;
+			@top_number := 3;
 		}
 		else {
 			@top_number := number;
-			@bottom_number := 2;
+			@bottom_number := 3;
 		};
-~#
 
+#~
 		@top_number := Int->Random(5, 25);
 		@bottom_number := Int->Random(7, 13);
-
+~#
 		@top_string := @top_number->ToString();
 		@bottom_string := "+";
 		@bottom_string += @bottom_number->ToString();
@@ -433,5 +447,5 @@ class Flashcards {
 consts GameConsts {
 	SCREEN_WIDTH := 640,
 	SCREEN_HEIGHT := 480,
-	PLAY_TIME := 45
+	PLAY_TIME := 120
 }
