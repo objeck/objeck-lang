@@ -1,12 +1,44 @@
-use System.IO.Net;
-
-class Socket {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		socket := TCPSocket->New("localhost", 9090);
-		if(socket->IsOpen()) {
-			buffer := Char->New[256];
-			socket->ReadBuffer(0, 255, buffer);
-			buffer->PrintLine();
-		};
+		input := [
+			[1, 2, 3]
+			[4, 5, 6]
+			[7, 8, 9]];
+
+		Show(input);
+		output := ShiftRight(input);
+		Show(output);
+
+		#~
+		7 4 1
+		8 5 2
+		9 6 3
+		~#
 	}
-}
+
+	function : ShiftRight(input : Int[,]) ~ Int[,] {
+		output := Int->New[3,3];
+		for(i := 0; i < 3; i += 1;) {
+			k := 2;
+			for(j := 0; j < 3; j += 1;) {
+				output[i,j] := input[k,i];
+				k -= 1;
+			};
+		};
+
+		return output;
+	}
+
+	function : Show(matrix : Int[,]) ~ Nil {
+		for(i := 0; i < 3; i += 1;) {
+			for(j := 0; j < 3; j += 1;) {
+				value := matrix[i,j];
+				"{$value} "->Print();
+				k -= 1;
+			};
+			"\n"->Print();
+		};
+
+		"---"->PrintLine();		
+	}
+}	
