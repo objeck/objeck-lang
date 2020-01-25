@@ -330,7 +330,8 @@ class Flashcards {
 	}
 
 	method : GetProblem() ~ Nil {
-		number := Int->Random(9, 18);
+#~		
+		number := Int->Random(8, 17);
 
 		if(Int->Random(0, 1) = 0) {
 			@bottom_number := number;
@@ -340,11 +341,11 @@ class Flashcards {
 			@top_number := number;
 			@bottom_number := 3;
 		};
+~#
 
-#~
 		@top_number := Int->Random(5, 25);
 		@bottom_number := Int->Random(7, 13);
-~#
+
 		@top_string := @top_number->ToString();
 		@bottom_string := "+";
 		@bottom_string += @bottom_number->ToString();
@@ -447,5 +448,5 @@ class Flashcards {
 consts GameConsts {
 	SCREEN_WIDTH := 640,
 	SCREEN_HEIGHT := 480,
-	PLAY_TIME := 120
+	PLAY_TIME := 90
 }
