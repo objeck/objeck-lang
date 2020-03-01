@@ -4127,6 +4127,10 @@ For* Parser::ParseEach(int depth)
     list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
   }
     break;
+
+  default:
+    ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+    break;
   }
   NextToken();
 
