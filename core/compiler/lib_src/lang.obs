@@ -355,6 +355,10 @@ bundle System {
 			return c;
 		}
 
+		function : Size(v : Char) ~ Char {
+			return v;
+		}
+
 		#~
 		Converts character to upper-case
 		@ignore-params
@@ -704,6 +708,10 @@ bundle System {
 			return v;
 		}
 
+		function : Size(v : Int) ~ Int {
+			return v;
+		}
+
 		#~
 		Returns the Float value
 		@ignore-params
@@ -922,6 +930,10 @@ bundle System {
 		~#
 		function : native : Pi() ~ Float {
 			return 3.1415926536;
+		}
+
+		function : Size(v : Float) ~ Float {
+			return v;
 		}
 
 		#~
