@@ -20,6 +20,14 @@ bundle System {
 			STD_OUT_BOOL;
 		}
 
+		function : Size(v : Bool) ~ Int {
+			if(v) {
+				return 1;
+			};
+
+			return 0;
+		}
+
 		#~
 		Prints a boolean value with a newline
 		@ignore-params
@@ -172,6 +180,10 @@ bundle System {
         function : ToInt(v : Byte) ~ Int {
                 return v->As(Int);
         }
+
+        function : Size(v : Byte) ~ Byte {
+			return v;
+		}
         
 		#~
 		Returns the absolute value
@@ -353,6 +365,10 @@ bundle System {
 			};
 
 			return c;
+		}
+
+		function : Size(v : Char) ~ Char {
+			return v;
 		}
 
 		#~
@@ -704,6 +720,10 @@ bundle System {
 			return v;
 		}
 
+		function : Size(v : Int) ~ Int {
+			return v;
+		}
+
 		#~
 		Returns the Float value
 		@ignore-params
@@ -922,6 +942,10 @@ bundle System {
 		~#
 		function : native : Pi() ~ Float {
 			return 3.1415926536;
+		}
+
+		function : Size(v : Float) ~ Float {
+			return v;
 		}
 
 		#~

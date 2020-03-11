@@ -4058,10 +4058,10 @@ CriticalSection* Parser::ParseCritical(int depth)
 /****************************
  * Parses an 'each' statement
  ****************************/
-For * Parser::ParseEach(int depth)
+For* Parser::ParseEach(int depth)
 {
   const int line_num = GetLineNumber();
-  const wstring &file_name = GetFileName();
+  const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Each", depth);
@@ -4069,13 +4069,13 @@ For * Parser::ParseEach(int depth)
 
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
-  if(!Match(TOKEN_OPEN_PAREN)) {
+  if (!Match(TOKEN_OPEN_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
   // initialization statement
-  if(!Match(TOKEN_IDENT)) {
+  if (!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
   const wstring count_ident = scanner->GetToken()->GetIdentifier();
@@ -4085,40 +4085,57 @@ For * Parser::ParseEach(int depth)
   Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
   const wstring count_scope_name = GetScopeName(count_ident);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-                                                                count_scope_name, type, false,
-                                                                current_method != nullptr);
+    count_scope_name, type, false,
+    current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
 #endif
 
   bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-  if(!was_added) {
+  if (!was_added) {
     ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
   }
   Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
   Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
   Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num,
-                                                                     count_left, count_right);
+    count_left, count_right);
   Statement* pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num,
-                                                                 entry, count_assign);
+    entry, count_assign);
 
-  if(!Match(TOKEN_COLON)) {
+  if (!Match(TOKEN_COLON)) {
     ProcessError(L"Expected ':'", TOKEN_COLON);
   }
   NextToken();
 
-  if(!Match(TOKEN_IDENT)) {
-    ProcessError(TOKEN_IDENT);
+  Expression* list_right = nullptr;
+  switch (GetToken()) {
+  case TOKEN_CHAR_LIT:
+    list_right = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, scanner->GetToken()->GetCharLit());
+    break;
+
+  case TOKEN_INT_LIT:
+    list_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, scanner->GetToken()->GetIntLit());
+    break;
+
+  case TOKEN_FLOAT_LIT:
+    list_right = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, scanner->GetToken()->GetFloatLit());
+    break;
+
+  case TOKEN_IDENT: {
+    const wstring list_ident = scanner->GetToken()->GetIdentifier();
+    list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
   }
-  const wstring list_ident = scanner->GetToken()->GetIdentifier();
+    break;
+
+  default:
+    ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+    break;
+  }
   NextToken();
 
   // conditional expression
   Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
-  ExpressionList* list_expressions = TreeFactory::Instance()->MakeExpressionList();
-  Expression* list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident,
-                                                                   L"Size", list_expressions);
   CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name,
                                                                                       line_num,
                                                                                       LES_EXPR);
