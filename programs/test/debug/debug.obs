@@ -1,5 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		13.9->ToInt()->PrintLine();
+		Foo->Bar;
 	}
+}
+
+enum Foo {
+	Bar
 }
