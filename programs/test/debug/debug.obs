@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo->Bar;
+		f := Foo->Bar;
 	}
 }
 
