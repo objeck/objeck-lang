@@ -313,7 +313,7 @@ class Flashcards {
 		answer := @answer_string->ToInt();
 
 		# correct
-		if(answer = @top_number + @bottom_number) {
+		if(answer = @top_number - @bottom_number) {
 			@score_values[@point_index] := 1;
 			if(@is_sound) {
 				@cheer_chunk->PlayChannel(-1, 0);
@@ -330,15 +330,15 @@ class Flashcards {
 	}
 
 	method : GetProblem() ~ Nil {
-		number := Int->Random(8, 17);
+		number := Int->Random(3, 18);
 
 		if(Int->Random(0, 1) = 0) {
 			@bottom_number := number;
-			@top_number := 3;
+			@top_number := 2;
 		}
 		else {
 			@top_number := number;
-			@bottom_number := 3;
+			@bottom_number := 2;
 		};
 
 #~
@@ -347,7 +347,7 @@ class Flashcards {
 ~#		
 
 		@top_string := @top_number->ToString();
-		@bottom_string := "+";
+		@bottom_string := "-";
 		@bottom_string += @bottom_number->ToString();
 		@answer_string := "";
 	}
@@ -448,5 +448,5 @@ class Flashcards {
 consts GameConsts {
 	SCREEN_WIDTH := 640,
 	SCREEN_HEIGHT := 480,
-	PLAY_TIME := 90
+	PLAY_TIME := 120
 }
