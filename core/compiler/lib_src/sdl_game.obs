@@ -158,7 +158,7 @@ bundle Game.Framework {
 
 			texture := surface->CreateTexture(@renderer);
 			if(texture->IsNull()) {
-				"Unable to create texture!"->ErrorLine();
+				"Unable to create texture '{$file}'!"->ErrorLine();
 				return false;
 			};
 
@@ -321,7 +321,7 @@ bundle Game.Framework {
 
 			texture := surface->CreateTexture(@renderer);
 			if(texture->IsNull()) {
-				"Unable to create texture!"->ErrorLine();
+				"Unable to create texture '{$file}'!"->ErrorLine();
 				return false;
 			};
 
