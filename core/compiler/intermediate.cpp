@@ -3188,6 +3188,7 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   // else-expression
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, cond));
   EmitExpression(conditional->GetElseExpression());
+  EmitCast(conditional);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
   new_char_str_count = 0;
   // expression end
