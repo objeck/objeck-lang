@@ -3181,6 +3181,7 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   int cond = ++conditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, cond, false));
   EmitExpression(conditional->GetExpression());
+  EmitCast(conditional);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
   new_char_str_count = 0;
