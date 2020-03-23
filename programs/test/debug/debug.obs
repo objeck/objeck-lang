@@ -1,9 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		f := Foo->Bar;
+		i := 10;
+		j := 30;
+		i += Int->Random(0, 1) = 0 ? j * .75 : j * .5;
+		i->PrintLine();
 	}
-}
-
-enum Foo {
-	Bar
 }
