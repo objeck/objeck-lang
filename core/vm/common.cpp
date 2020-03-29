@@ -620,7 +620,7 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
           if(!WasSerialized((size_t*)(*mem))) {
             const long array_size = (long)array[0];
 #ifdef _DEBUG
-            wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
+            wcout << L"\t" << i << L": ----- serializing object array: mem_id=" << cur_id << L", size="
               << array_size << L" byte(s) -----" << endl;
 #endif
             // write metadata
