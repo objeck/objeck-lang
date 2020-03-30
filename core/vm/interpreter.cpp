@@ -406,7 +406,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      PushFloat((long)PopInt(op_stack, stack_pos), op_stack, stack_pos);
+      PushFloat((double)PopInt(op_stack, stack_pos), op_stack, stack_pos);
       break;
 
     case F2I:
