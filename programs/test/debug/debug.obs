@@ -1,8 +1,17 @@
-class Test {
+use System.IO.File;
+use Data.CSV;
+
+class CsvData {
 	function : Main(args : String[]) ~ Nil {
-		i := 10;
-		j := 30;
-		i += Int->Random(0, 1) = 0 ? j * .75 : j * 1.5;
-		i->PrintLine();
+		if(args->Size() > 0) {
+			file_name := args[0];
+			table := CsvTable->New(FileReader->ReadFile(file_name));
+			if(table->IsParsed()) {
+				"Parsed!"->PrintLine();
+			}
+			else {
+				"Unable to Parse!"->ErrorLine();
+			};
+		};
 	}
 }
