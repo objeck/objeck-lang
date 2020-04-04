@@ -100,7 +100,7 @@ bundle Query.Structured {
 		@param pk primary key
 		@return row
 		~#
-		method : public : native : GetRow(pk : Int) ~ Row {
+		method : public : native : Get(pk : Int) ~ Row {
 			return @keys->Find(pk);
 		}
 		
@@ -382,6 +382,14 @@ bundle Query.Structured {
 		method : public : Count() ~ Int {
 			return @count;
 		}
+
+		#~
+		Count of rows
+		@return number of rows
+		~#
+		method : public : Size() ~ Int {
+			return @count;
+		}
 		
 		#~
 		String representation of table
@@ -408,6 +416,7 @@ bundle Query.Structured {
 		~#
 		function : FromCSV(table_name : String, path : String) ~ Table {
 			csv := Data.CSV.CsvTable->New(FileReader->ReadFile(path));
+			
 			if(csv->IsParsed() & csv->Size() > 1) {
 				headers := csv->Get(0);
 				columns := String->New[headers->Size()];
@@ -424,16 +433,13 @@ bundle Query.Structured {
 					};
 				};
 
-				return table->Count() > 1 ? table : table->As(Nil);
-			}
-			else {
-				"Unable to parse {$path}!"->ErrorLine();
-				
+				return table->Size() > 1 ? table : table->As(Nil);
 			};
-
+			
+			"Unable to parse {$path}!"->ErrorLine();
 			return Nil;
 		}
-		
+
 		#~
 		Loads a table from a directory file system
 		@param table_name table name
