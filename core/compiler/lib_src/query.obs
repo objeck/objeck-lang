@@ -400,6 +400,12 @@ bundle Query.Structured {
 			return buffer;
 		}
 
+		#~
+		Loads a table from a CSV file
+		@param table_name table name
+		@path path to CSV
+		@return new table
+		~#
 		function : FromCSV(table_name : String, path : String) ~ Table {
 			csv := Data.CSV.CsvTable->New(FileReader->ReadFile(path));
 			if(csv->IsParsed() & csv->Size() > 1) {
@@ -427,7 +433,13 @@ bundle Query.Structured {
 
 			return Nil;
 		}
-
+		
+		#~
+		Loads a table from a directory file system
+		@param table_name table name
+		@path path to directory
+		@return new table
+		~#
 		function : FromFilesystem(table_name : String, path : String) ~ Table {
 			table := Table->New(table_name, ["name", "path_name", "create_date", "owner", "is_dir", "is_readonly"]);
 
