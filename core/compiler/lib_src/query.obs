@@ -400,9 +400,36 @@ bundle Query.Structured {
 			return buffer;
 		}
 
+		function : FromCSV(table_name : String, path : String) ~ Table {
+			csv := Data.CSV.CsvTable->New(FileReader->ReadFile(path));
+			if(csv->IsParsed() & csv->Size() > 1) {
+				headers := csv->Get(0);
+				columns := String->New[headers->Size()];
+				each(i : headers) {	
+					columns[i] := headers->Get(i)->Trim();
+				};
 
-		function : FromFilesystem(path : String) ~ Table {
-			table := Table->New("files", ["name", "path_name", "create_date", "owner", "is_dir", "is_readonly"]);
+				table := Query.Structured.Table->New(table_name, columns);
+				for(i := 1; i < csv->Size(); i += 1;) {
+					column := csv->Get(i);
+					row := table->Insert();
+					for(j := 1; j < columns->Size(); j += 1;) {
+						row->Set(j, column->Get(j - 1));
+					};
+				};
+
+				return table->Count() > 1 ? table : table->As(Nil);
+			}
+			else {
+				"Unable to parse {$path}!"->ErrorLine();
+				
+			};
+
+			return Nil;
+		}
+
+		function : FromFilesystem(table_name : String, path : String) ~ Table {
+			table := Table->New(table_name, ["name", "path_name", "create_date", "owner", "is_dir", "is_readonly"]);
 
 			if(<>path->EndsWith('/')  <>path->EndsWith('\\')) {
 				path += '/';
