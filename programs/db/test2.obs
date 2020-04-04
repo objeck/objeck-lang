@@ -1,0 +1,56 @@
+use Collection.Generic;
+use System.IO.File;
+use Data.CSV;
+
+class CsvData {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			table := CsvData->New()->LoadTable("sales", args[0]);
+			if(table <> Nil) {
+				result := table->Query("from sales 
+					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
+					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%')");
+				if(result <> Nil) {
+					result->Count()->PrintLine();
+				}
+				else {
+					"Invalid query?"->ErrorLine();
+				};
+			};
+		}
+		else {
+			"Invalid arguments!"->ErrorLine();
+		};
+	}
+
+	New() {
+	}
+
+	method : public : LoadTable(table_name : String, file_name : String) ~ Query.Structured.Table {
+		csv := CsvTable->New(FileReader->ReadFile(file_name));
+		if(csv->IsParsed() & csv->Size() > 1) {
+			headers := csv->Get(0);
+			columns := String->New[headers->Size()];
+			each(i : headers) {	
+				columns[i] := headers->Get(i)->Trim();
+			};
+
+			table := Query.Structured.Table->New(table_name, columns);
+			for(i := 1; i < csv->Size(); i += 1;) {
+				column := csv->Get(i);
+				row := table->Insert();
+				for(j := 1; j < columns->Size(); j += 1;) {
+					row->Set(j, column->Get(j - 1));
+				};
+			};
+
+			return table->Count() > 1 ? table : table->As(Nil);
+		}
+		else {
+			"Unable to parse {$file_name}!"->ErrorLine();
+			
+		};
+
+		return Nil;
+	}
+}	
