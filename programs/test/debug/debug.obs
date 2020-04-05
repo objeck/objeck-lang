@@ -3,15 +3,28 @@ use Data.CSV;
 
 class CsvData {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() > 0) {
-			file_name := args[0];
-			table := CsvTable->New(FileReader->ReadFile(file_name));
-			if(table->IsParsed()) {
-				"Parsed!"->PrintLine();
+		Foo(2)->PrintLine();
+	}
+
+	function : Foo(value : Int) ~ String {
+		select(value) {
+			label 0 {
+				return "0";
 			}
-			else {
-				"Unable to Parse!"->ErrorLine();
-			};
+
+			label 1 {
+#				return "1";
+			}
+
+			label 2 {
+				return "2";
+			}
+
+			label 3 {
+#				return "3";
+			}
 		};
+
+		return "-1";
 	}
 }
