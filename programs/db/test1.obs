@@ -1,0 +1,656 @@
+
+use System.IO.File;
+use Query.Structured;
+
+class Rosetta {
+	function : Main(args : String[]) ~ Nil {
+#		
+		table := Table->FromFilesystem("../..");
+		if(table <> Nil) {
+			"---"->PrintLine();
+			TableMeta(table);
+			results := table->Query("select path_name, create_date from files where create_date > #02/15/18#");
+			if(results <> Nil) {
+#				results->Average("price")->PrintLine();
+				results->ToString()->PrintLine();
+			}
+			else {
+				table->GetError()->PrintLine();
+			};	
+			"---"->PrintLine();		
+		};
+		
+#~	
+		table := MakeTable3("/Users/randy/Documents/Code/objeck-lang/core/release/");
+		if(table <> Nil) {
+			"---"->PrintLine();
+			TableMeta(table);
+			results := table->Query("select name create_date from files where create_date < #12/01/17# and is_dir = true");
+			if(results <> Nil) {
+				results->ToString()->PrintLine();
+			}
+			else {
+				table->GetError()->PrintLine();
+			};	
+			"---"->PrintLine();		
+		};
+~#		
+	}
+	
+##	query := Query->New("from game where name=doom or system=wii", table);
+##	query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
+## query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
+	
+	function : TableMeta(table : Table) ~ Nil {
+		name := table->GetName();
+		rows := table->Count();
+		"*** table: name='{$name}', rows={$rows} ***"->PrintLine();
+	}
+	
+	function : MakeTable3(root : String) ~ Table {
+		table := Table->New("files", ["name", "full_name", "create_date", "owner", "is_dir", "is_readonly"]);
+
+		files := Directory->List(root);
+		each(i : files) {
+			short_name := files[i];
+			long_name := String->New(root); 
+			long_name += short_name;
+			file_owner := File->Owner(long_name);
+			create_date := File->CreateTime(long_name);
+			is_dir := Directory->Exists(long_name);
+			is_readonly := File->IsReadOnly(long_name);
+			
+			row := table->Insert();
+			row->Set("name", short_name);
+			row->Set("full_name", long_name);
+			row->Set("create_date", create_date);
+			row->Set("owner", file_owner);
+			row->Set("is_dir", is_dir ? Row->True() : Row->False());
+			row->Set("is_readonly", is_readonly ? Row->True() : Row->False());
+		};
+		
+		return table;		
+	}
+	
+	function : MakeTable2() ~ Table {
+		t := Table->New("events", ["name", "date"]);
+		
+		r := t->Insert();
+		r->Set("name", "volleyball");
+		r->Set("date", System.Time.Date->New(27, 10, 2017, false));
+		
+		r := t->Insert();
+		r->Set("name", "tennis");
+		r->Set("date", System.Time.Date->New(5, 6, 1912, false));
+		
+		r := t->Insert();
+		r->Set("name", "basketball");
+		r->Set("date", System.Time.Date->New(1, 11, 1993, false));
+		
+		r := t->Insert();
+		r->Set("name", "track");
+		r->Set("date", System.Time.Date->New(15, 11, 2016, false));
+	
+		return t;	
+	}
+	
+	function : MakeTable() ~ Table {
+		t := Table->New("game", ["name", "system", "date", "price"]);
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		r->Set("price", FloatHolder->New(79.99));
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "xbox");
+		r->Set("date", "10/27/17");
+		r->Set("price", FloatHolder->New(59.99));
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		r->Set("price", FloatHolder->New(89.99));
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		r->Set("price", FloatHolder->New(49.99));
+		
+		r := t->Insert();
+		r->Set("name", "zelda");
+		r->Set("system", "wii");
+		r->Set("date", "5/15/17");
+		r->Set("price", FloatHolder->New(59.99));
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		r->Set("price", FloatHolder->New(59.99));
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		r->Set("price", FloatHolder->New(49.99));
+
+#~		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+		
+		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "pc");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
+		r->Set("name", "xenoblade");
+		r->Set("system", "wii");
+		r->Set("date", "5/6/12");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "pc");
+		r->Set("date", "5/13/16");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "wii");
+		r->Set("date", "1/1/18");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
+~#
+		
+		return t;
+	}
+}
