@@ -853,6 +853,12 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
         }
+        else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+        }
         else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
@@ -875,6 +881,12 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
         }
         else if(SearchProgramEnums(entry->GetType()->GetName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+        }
+        else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -4830,6 +4842,12 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
+            else if (SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
+#ifdef _DEBUG
+              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+            }
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
@@ -4856,7 +4874,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-            } 
+            }
+            else if (SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
+#ifdef _DEBUG
+              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+            }
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
