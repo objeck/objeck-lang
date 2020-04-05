@@ -268,6 +268,14 @@ bundle Query.Structured {
 								};
 							};
 						}
+
+						label Conditional->Qualifier->NOT_LIKE: {
+							if(left->TypeOf(String) & right->TypeOf(String)) {
+								if(<>MatchLike(left->As(String), right->As(String))) {
+									matches->AddBack(row);
+								};
+							};
+						}
 					};
 				};
 				# next
@@ -494,7 +502,8 @@ bundle Query.Structured {
 			LESS,
 			GREATER_EQUAL,
 			LESS_EQUAL,
-			LIKE
+			LIKE,
+			NOT_LIKE
 		}
 		
 		#~
@@ -929,6 +938,14 @@ bundle Query.Structured {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LIKE, right->GetValue()));
 					};
 				}
+
+				label Token->Type->NOT_LIKE: {
+# "== not Like =="->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_LIKE, right->GetValue()));
+					};
+				}
 			};
 			
 			return Nil;
@@ -1200,7 +1217,19 @@ bundle Query.Structured {
 					term->SetValue(TokenValue());
 					NextToken();
 				}
-				
+
+				label Token->Type->NOT: {
+					NextToken();
+					if(TokenType() = Token->Type->LIKE) {
+						term := Term->New(Token->Type->NOT_LIKE);
+						term->SetValue(TokenValue());
+						NextToken();
+					}
+					else {
+						return Nil;
+					};
+				}
+
 				other: {
 					return Nil;
 				}
@@ -1261,6 +1290,7 @@ bundle Query.Structured {
 			reserved->Insert("distinct", Token->New(Token->Type->DISTINCT));
 			reserved->Insert("from", Token->New(Token->Type->FROM));
 			reserved->Insert("where", Token->New(Token->Type->WHERE));
+			reserved->Insert("not", Token->New(Token->Type->NOT));
 			reserved->Insert("like", Token->New(Token->Type->LIKE));
 			reserved->Insert("between", Token->New(Token->Type->BETWEEN));
 			reserved->Insert("in", Token->New(Token->Type->IN));
@@ -1511,6 +1541,8 @@ bundle Query.Structured {
 			FROM,
 			WHERE,
 			LIKE,
+			NOT,
+			NOT_LIKE,
 			BETWEEN,
 			IN,
 			AND,
@@ -1592,6 +1624,10 @@ bundle Query.Structured {
 
 				label Type->LIKE: {
 					buffer += "LIKE";
+				}
+
+				label Type->NOT: {
+					buffer += "NOT";
 				}
 
 				label Type->BETWEEN: {
