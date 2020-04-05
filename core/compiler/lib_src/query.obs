@@ -887,7 +887,12 @@ bundle Query.Structured {
 # "== Equal =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+ 						if(expr->GetNot()) {
+ 							return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
+ 						}
+ 						else {
+							return @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+						};
  					};
 				}
 				
@@ -932,18 +937,17 @@ bundle Query.Structured {
 				}
 				
 				label Token->Type->LIKE: {
-# "== Like =="->PrintLine();
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LIKE, right->GetValue()));
-					};
-				}
+					is_not := expr->GetNot();
+# "== Like: is_not={$is_not} =="->PrintLine();
 
-				label Token->Type->NOT_LIKE: {
-# "== not Like =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_LIKE, right->GetValue()));
+ 						if(is_not) {
+ 							return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_LIKE, right->GetValue()));
+ 						}
+ 						else {
+							return @table->Filter(Conditional->New(index, Conditional->Qualifier->LIKE, right->GetValue()));
+						};
 					};
 				}
 			};
@@ -954,39 +958,43 @@ bundle Query.Structured {
 		method : MergeAnd(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
 			merged := Vector->New()<Row>;
 			
-			each(i : right) {
-				right_value := right->Get(i);
-				
-				found := false;
-				for(j := 0; found = false & j < left->Size(); j += 1;) {
-					left_value := left->Get(j);
-					if(left_value = right_value) {
-						found := true;
+			if(left <> Nil & right <> Nil) {
+				each(i : right) {
+					right_value := right->Get(i);
+					
+					found := false;
+					for(j := 0; found = false & j < left->Size(); j += 1;) {
+						left_value := left->Get(j);
+						if(left_value = right_value) {
+							found := true;
+						};
 					};
-				};
-				
-				if(found) {
-					merged->AddBack(right_value);
+					
+					if(found) {
+						merged->AddBack(right_value);
+					};
 				};
 			};
 			
 			return merged;
 		}
 		
-		method : MergeOr(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {			
-			each(i : right) {
-				right_value := right->Get(i);
-				
-				not_found := false;
-				for(j := 0; not_found = false & j < left->Size(); j += 1;) {
-					left_value := left->Get(j);
-					if(left_value <> right_value) {
-						not_found := true;
+		method : MergeOr(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
+			if(left <> Nil & right <> Nil) {
+				each(i : right) {
+					right_value := right->Get(i);
+					
+					not_found := false;
+					for(j := 0; not_found = false & j < left->Size(); j += 1;) {
+						left_value := left->Get(j);
+						if(left_value <> right_value) {
+							not_found := true;
+						};
 					};
-				};
-				
-				if(not_found) {
-					left->AddBack(right_value);
+					
+					if(not_found) {
+						left->AddBack(right_value);
+					};
 				};
 			};
 			
@@ -1203,6 +1211,12 @@ bundle Query.Structured {
 					return Nil;
 				}
 			};
+
+			is_not := false;
+			if(TokenType() = Token->Type->NOT) {
+				is_not := true;
+				NextToken();		
+			};
 			
 			term : Term;
 			select(TokenType()) {
@@ -1215,19 +1229,8 @@ bundle Query.Structured {
 				label Token->Type->GREATER_EQUAL: {				
 					term := Term->New(TokenType());
 					term->SetValue(TokenValue());
+					term->SetNot(is_not);
 					NextToken();
-				}
-
-				label Token->Type->NOT: {
-					NextToken();
-					if(TokenType() = Token->Type->LIKE) {
-						term := Term->New(Token->Type->NOT_LIKE);
-						term->SetValue(TokenValue());
-						NextToken();
-					}
-					else {
-						return Nil;
-					};
 				}
 
 				other: {
@@ -1473,6 +1476,8 @@ bundle Query.Structured {
 		@right : Term;
 		@terms : Vector<Term>;
 		@value : Compare;
+		@is_not : Bool;
+
 		
 		New(type : Token->Type) {
 			@type := type;
@@ -1484,6 +1489,14 @@ bundle Query.Structured {
 		
 		method : public : SetType(type : Token->Type) ~ Nil {
 			@type := type;
+		}
+
+		method : public : GetNot() ~ Bool {
+			return @is_not;
+		}
+		
+		method : public : SetNot(is_not : Bool) ~ Nil {
+			@is_not := is_not;
 		}
 		
 		method : public : GetOperator() ~ Conditional->Qualifier {
@@ -1534,7 +1547,7 @@ bundle Query.Structured {
 	class Token {
 		@type : Type;
 		@value : Compare;
-		
+
 		enum Type {
 			SELECT,
 			DISTINCT,
@@ -1542,7 +1555,6 @@ bundle Query.Structured {
 			WHERE,
 			LIKE,
 			NOT,
-			NOT_LIKE,
 			BETWEEN,
 			IN,
 			AND,

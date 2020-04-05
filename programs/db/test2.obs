@@ -29,6 +29,7 @@ class CsvData {
 		@table := Query.Structured.Table->FromCsv("sales", file);
 		if(@table <> Nil) {
 			Calulate("All", Select(RegionType->ALL));
+			Calulate("Velocity", Select(RegionType->VELOCITY));
 			Calulate("Enterprise", Select(RegionType->ENTERPRISE));
 			Calulate("Strategic", Select(RegionType->STRATEGIC));
 		};
@@ -43,7 +44,10 @@ class CsvData {
 			}
 
 			label RegionType->VELOCITY {
-
+				return @table->Query("select distinct Contract from sales 
+					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
+					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
+					and 'Region' not like '%East%' and 'Region' not like '%West%' and 'Region' <> 'Strategic'");
 			}
 
 			label RegionType->ENTERPRISE {
@@ -57,7 +61,7 @@ class CsvData {
 				return @table->Query("select distinct Contract from sales 
 					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
 					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
-					and ('Region' = 'Strategic')");
+					and 'Region' = 'Strategic'");
 			}
 		};
 
