@@ -685,9 +685,7 @@ bundle Query.Structured {
 						buffer += "<Nil>";
 				};	
 					
-				if(i + 1 < @values->Size()) {
-					buffer += ", ";
-				};
+				buffer += ", ";
 			};
 			
 			return buffer;
