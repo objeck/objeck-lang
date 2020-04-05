@@ -3062,7 +3062,7 @@ bundle System {
 
 			start := 0;
 			c := @string[start];
-			while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xFEFF)) {
+			while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n')) {
 				start += 1;
 				c := @string[start];
 			};
@@ -3071,7 +3071,7 @@ bundle System {
 			do {
 				end -= 1;
 			} 
-			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n' | c = 0xFEFF));
+			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n'));
 
 			if(end < start) {
 				return "";
@@ -5866,7 +5866,7 @@ bundle System.IO.File {
 		function : ReadFile(name : String) ~ String {
 			len := File->Size(name);
 			if(len > 0) {
-				buffer := Byte->New[len + 1];
+				buffer := Char->New[len + 1];
 				in := FileReader->New(name);
 				if(in->IsOpen()) {
 					in->ReadBuffer(0, len, buffer);
