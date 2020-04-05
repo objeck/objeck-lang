@@ -4051,7 +4051,12 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     char* byte_buffer = new char[num + 1];
     const size_t max = fread(byte_buffer + offset, 1, num, file);
     byte_buffer[max] = '\0';
-    const wstring in(BytesToUnicode(byte_buffer));
+    wstring in(BytesToUnicode(byte_buffer));
+    
+    // remove file BOM UTF (8, 16, 32)
+    if(in.size() > 0 && (in[0] == 0xFEFF || in[0] == 0xFFFE || in[0] == 0xFFFE0000 || in[0] == 0xEFBBBF)) {
+      in.erase(in.begin(), in.begin() + 1);
+    }
 
     // copy
 #ifdef _WIN32
