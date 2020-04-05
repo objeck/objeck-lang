@@ -711,6 +711,7 @@ bundle Query.Structured {
 			};
 			
 			if(expr->GetType() = Token->Type->SELECT) {
+
 				results := ProcessSelect(expr);
 				if(results = Nil) {
 					@error := "*** Select error ***";
@@ -731,7 +732,7 @@ bundle Query.Structured {
 				each(i : column_names) {
 					column_names[i] := names[i + 1];
 				};
-				
+								
 				return BuildTable("<rs>", column_names, results, Nil);				
 			}
 			else {
@@ -860,6 +861,10 @@ bundle Query.Structured {
 		}
 		
 		method : ProcessTerm(expr : Term) ~ Vector<Row> {
+			if(expr = Nil) {
+				return Nil;
+			};
+
 			left := expr->GetLeft();
 			right := expr->GetRight();
 			if(left = Nil | right = Nil) {
@@ -870,14 +875,30 @@ bundle Query.Structured {
 				label Token->Type->AND: {
 # "== And =="->PrintLine();		
 					left_result := ProcessTerm(left);
+					if(left_result = Nil) {
+						return Nil;
+					};
+
 					right_result := ProcessTerm(right);
+					if(right_result = Nil) {
+						return Nil;
+					};
+
 					return MergeAnd(left_result, right_result);
 				}
 				
 				label Token->Type->OR: {
 # "== Or =="->PrintLine();		
 					left_result := ProcessTerm(left);
+					if(left_result = Nil) {
+						return Nil;
+					};
+
 					right_result := ProcessTerm(right);
+					if(right_result = Nil) {
+						return Nil;
+					};
+
 					return MergeOr(left_result, right_result);
 				}
 				
@@ -1020,7 +1041,7 @@ bundle Query.Structured {
 			NextToken();
 
 			if(TokenType() = Token->Type->SELECT) {
-				NextToken();				
+				NextToken();		
 				term := ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
@@ -1078,6 +1099,7 @@ bundle Query.Structured {
 					name->SetValue(TokenValue());
 					term->AddTerm(name);
 					NextToken();
+
 				
 					if(TokenType() = Token->Type->COMMA) {
 						NextToken();
@@ -1144,6 +1166,9 @@ bundle Query.Structured {
 					term->SetLeft(left);
 					term->SetRight(right);
 					left := term;
+				}
+				else {
+					NextToken();
 				};
 			}
 			while(TokenType() <> Token->Type->EOS);
