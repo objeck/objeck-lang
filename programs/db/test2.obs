@@ -22,12 +22,49 @@ class CsvData {
 		};
 	}
 
-	New() {
-		@attached_out := FileWriter->New("./attached_onboarding.csv");
-		@non_attached_out := FileWriter->New("./non_attached_onboarding.csv");
-	}
+	New() {}
 
 	method : public : Process(file : String) ~ Nil {
+		@table := Query.Structured.Table->FromCsv("sales", file);
+		if(@table <> Nil) {
+#			ProcessOnboarding();
+			ProcessExpert();
+		};
+	}
+
+	# --- Expert ---
+	method : ProcessExpert() ~ Nil {
+		@attached_out := FileWriter->New("./attached_expert.csv");
+
+		leaving {
+			if(@attached_out <> Nil) {
+				@attached_out->Close();
+			};
+		};
+
+		CalulateExpert("Expert", SelectExpert());
+	}
+
+	method : SelectExpert()  ~ Query.Structured.Table {
+		return @table->Query("select distinct Contract from sales 
+			where 'Product Name' like '%EXPERT%'");
+	}
+
+	method : CalulateExpert(title : String, results : Query.Structured.Table) ~ Nil {
+		if(results <> Nil) {
+			results->Size()->PrintLine();
+		}
+		else {
+			"-- Error in query! --"->ErrorLine();
+			Runtime->Exit(1);
+		};
+	}
+	
+	# --- Onboarding ---
+	method : ProcessOnboarding() ~ Nil {
+		@attached_out := FileWriter->New("./attached_onboarding.csv");
+		@non_attached_out := FileWriter->New("./non_attached_onboarding.csv");
+
 		leaving {
 			if(@attached_out <> Nil) {
 				@attached_out->Close();
@@ -38,16 +75,13 @@ class CsvData {
 			};
 		};
 
-		@table := Query.Structured.Table->FromCsv("sales", file);
-		if(@table <> Nil) {
-			Calulate("All", Select(RegionType->ALL));
-			Calulate("Velocity", Select(RegionType->VELOCITY));
-			Calulate("Enterprise", Select(RegionType->ENTERPRISE));
-			Calulate("Strategic", Select(RegionType->STRATEGIC));
-		};
+		CalulateOnboarding("All", SelectOnboarding(RegionType->ALL));
+		CalulateOnboarding("Velocity", SelectOnboarding(RegionType->VELOCITY));
+		CalulateOnboarding("Enterprise", SelectOnboarding(RegionType->ENTERPRISE));
+		CalulateOnboarding("Strategic", SelectOnboarding(RegionType->STRATEGIC));
 	}
 
-	method : Select(type : RegionType) ~ Query.Structured.Table {
+	method : SelectOnboarding(type : RegionType) ~ Query.Structured.Table {
 		select(type) {
 			label RegionType->ALL {
 				return @table->Query("select distinct Contract from sales 
@@ -80,7 +114,7 @@ class CsvData {
 		return Nil;
 	}
 
-	method : Calulate(title : String, results : Query.Structured.Table) ~ Nil {
+	method : CalulateOnboarding(title : String, results : Query.Structured.Table) ~ Nil {
 		if(results <> Nil) {
 			no_attach_contracts := Vector->New()<String>;
 			num_contracts := results->Size();
@@ -149,6 +183,7 @@ class CsvData {
 		};
 	}
 
+	# --- Write files ---
 	method : WriteAttach(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
 		none := num_contracts - bronze_count - gold_count - silver_count - platinum_count;
 		@attached_out->WriteString("{$title},\r\n");
