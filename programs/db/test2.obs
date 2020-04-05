@@ -4,7 +4,15 @@ use Data.CSV;
 
 class CsvData {
 	@table : Query.Structured.Table;
-	@attached_file_out : FileWriter;
+	@attached_file : FileWriter;
+	@non_attached_file : FileWriter;
+
+	enum RegionType {
+		ALL,
+		VELOCITY,
+		ENTERPRISE,
+		STRATEGIC
+	}
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -16,13 +24,19 @@ class CsvData {
 	}
 
 	New() {
-		@attached_file_out := FileWriter->New(".\\onboarding.csv");
+		@attached_file := FileWriter->New(".\\onboarding.csv");
+		@non_attached_file := FileWriter->New(".\\non_attached_onboarding.csv");
+
 	}
 
 	method : public : Process(file : String) ~ Nil {
 		leaving {
-			if(@attached_file_out <> Nil) {
-				@attached_file_out->Close();
+			if(@attached_file <> Nil) {
+				@attached_file->Close();
+			};
+
+			if(@non_attached_file <> Nil) {
+				@non_attached_file->Close();
 			};
 		};
 
@@ -70,8 +84,10 @@ class CsvData {
 
 	method : Calulate(title : String, results : Query.Structured.Table) ~ Nil {
 		if(results <> Nil) {
+			no_attach_contracts := Vector->New()<String>;
 			num_contracts := results->Size();
 			bronze_count := silver_count := gold_count := platinum_count := 0;
+
 			each(i : results) {
 				contract := results->Get(i)->row->Get(1)->As(String);
 				contracts := @table->Query("from sales where Contract = '{$contract}'");
@@ -97,6 +113,10 @@ class CsvData {
 						};
 					};
 				};
+
+				if(<>found) {
+					no_attach_contracts->AddBack(contract);
+				};
 			};
 
 			"[{$title}]"->PrintLine();
@@ -120,27 +140,43 @@ class CsvData {
 			"sample={$num_contracts}, {$attach_total_percent}%\n"->PrintLine();
 
 			WriteAttached(title, bronze_count, silver_count, gold_count, platinum_count, num_contracts);
+			if(title->Equals("All")) {
+				WriteNonAttach(no_attach_contracts);
+			};
 		}
 		else {
-			"Invalid query?"->ErrorLine();
+			"-- Invalid query --"->ErrorLine();
+			Runtime->Exit(1);
 		};
 	}
 
 	method : WriteAttached(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
 		none := num_contracts - bronze_count - gold_count - silver_count - platinum_count;
-		@attached_file_out->WriteString("{$title}\r\n");
-		@attached_file_out->WriteString("Package,Count,\r\n");
-		@attached_file_out->WriteString("Bronze,{$bronze_count}\r\n");
-		@attached_file_out->WriteString("Silver,{$silver_count}\r\n");
-		@attached_file_out->WriteString("Gold,{$gold_count}\r\n");
-		@attached_file_out->WriteString("Platinum,{$platinum_count}\r\n");
-		@attached_file_out->WriteString("None,{$none}\r\n");
+		@attached_file->WriteString("{$title}\r\n");
+		@attached_file->WriteString("Package,Count,\r\n");
+		@attached_file->WriteString("Bronze,{$bronze_count}\r\n");
+		@attached_file->WriteString("Silver,{$silver_count}\r\n");
+		@attached_file->WriteString("Gold,{$gold_count}\r\n");
+		@attached_file->WriteString("Platinum,{$platinum_count}\r\n");
+		@attached_file->WriteString("None,{$none}\r\n");
 	}
 
-	enum RegionType {
-		ALL,
-		VELOCITY,
-		ENTERPRISE,
-		STRATEGIC
+	method : WriteNonAttach(non_attached_contracts : Vector<String>) ~ Nil {
+		header_string := "";
+		column_names := @table->GetColumnNames();
+		each(i : column_names) {
+			header_string += column_names[i];
+			header_string += ',';
+		};
+		@non_attached_file->WriteString("{$header_string}\r\n");
+
+		each(i : non_attached_contracts) {
+			contract_id := non_attached_contracts->Get(i);			
+			contracts := @table->Query("from sales where Contract = '{$contract_id}'");
+			each(j : contracts) {
+				contract := contracts->Get(j)->ToString();
+				@non_attached_file->WriteString("{$contract}\r\n");
+			};
+		};
 	}
 }
