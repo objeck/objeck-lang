@@ -151,12 +151,12 @@ class CsvData {
 
 	method : WriteAttach(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
 		none := num_contracts - bronze_count - gold_count - silver_count - platinum_count;
-		@attached_out->WriteString("{$title}\r\n");
+		@attached_out->WriteString("{$title},\r\n");
 		@attached_out->WriteString("Package,Count,\r\n");
-		@attached_out->WriteString("Bronze,{$bronze_count}\r\n");
-		@attached_out->WriteString("Silver,{$silver_count}\r\n");
-		@attached_out->WriteString("Gold,{$gold_count}\r\n");
-		@attached_out->WriteString("Platinum,{$platinum_count}\r\n");
+		@attached_out->WriteString("Bronze,{$bronze_count},\r\n");
+		@attached_out->WriteString("Silver,{$silver_count},\r\n");
+		@attached_out->WriteString("Gold,{$gold_count},\r\n");
+		@attached_out->WriteString("Platinum,{$platinum_count},\r\n");
 		@attached_out->WriteString("None,{$none}\r\n");
 	}
 
@@ -167,14 +167,14 @@ class CsvData {
 			header_string += column_names[i];
 			header_string += ',';
 		};
-		@non_attached_out->WriteString("{$header_string}\r\n");
+		@non_attached_out->WriteString("{$header_string},\r\n");
 
 		each(i : non_attached_contracts) {
 			contract_id := non_attached_contracts->Get(i);			
 			contracts := @table->Query("from sales where Contract = '{$contract_id}'");
 			each(j : contracts) {
 				contract := contracts->Get(j)->ToString();
-				@non_attached_out->WriteString("{$contract}\r\n");
+				@non_attached_out->WriteString("{$contract},\r\n");
 			};
 		};
 	}
