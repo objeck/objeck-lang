@@ -414,7 +414,7 @@ bundle Query.Structured {
 		@path path to CSV
 		@return new table
 		~#
-		function : FromCSV(table_name : String, path : String) ~ Table {
+		function : FromCsv(table_name : String, path : String) ~ Table {
 			csv := Data.CSV.CsvTable->New(FileReader->ReadFile(path));
 			
 			if(csv->IsParsed() & csv->Size() > 1) {
