@@ -3063,7 +3063,7 @@ bundle System {
 			start := 0;
 			c := @string[start];
 			while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xa0 | c = 0x1680 | 
-					c >= 0x2000 &  c <= 0x200a | c >= 0x000a &  c <= 0x000d | c = 0x202f | 
+					c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | c = 0x202f | 
 					c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029)) {
 				start += 1;
 				c := @string[start];
@@ -3074,8 +3074,9 @@ bundle System {
 				end -= 1;
 			}
 			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n' |
-				c = 0xa0 | c = 0x1680 | c >= 0x2000 &  c <= 0x200a | c >= 0x000a &  c <= 0x000d | c = 0x202f | 
-				c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029));
+				@string[end] = 0xa0 | @string[end] = 0x1680 | @string[end] >= 0x2000 & @string[end] <= 0x200a | 
+				@string[end] >= 0x000a & @string[end] <= 0x000d | @string[end] = 0x202f | @string[end] = 0x205f | 
+				@string[end] = 0x3000 | @string[end] = 0x0085 | @string[end] = 0x2029));
 
 			if(end < start) {
 				return "";
