@@ -157,7 +157,7 @@ class CsvData {
 		@attached_out->WriteString("Silver,{$silver_count},\r\n");
 		@attached_out->WriteString("Gold,{$gold_count},\r\n");
 		@attached_out->WriteString("Platinum,{$platinum_count},\r\n");
-		@attached_out->WriteString("None,{$none}\r\n");
+		@attached_out->WriteString("None,{$none},\r\n");
 	}
 
 	method : WriteNonAttach(non_attached_contracts : Vector<String>) ~ Nil {
