@@ -3062,7 +3062,7 @@ bundle System {
 
 			start := 0;
 			c := @string[start];
-			while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n')) {
+			while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xFEFF)) {
 				start += 1;
 				c := @string[start];
 			};
@@ -3071,7 +3071,7 @@ bundle System {
 			do {
 				end -= 1;
 			} 
-			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n'));
+			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n' | c = 0xFEFF));
 
 			if(end < start) {
 				return "";
