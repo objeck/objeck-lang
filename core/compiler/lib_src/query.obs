@@ -436,8 +436,8 @@ bundle Query.Structured {
 				for(i := 1; i < csv->Size(); i += 1;) {
 					column := csv->Get(i);
 					row := table->Insert();
-					for(j := 1; j < columns->Size(); j += 1;) {
-						row->Set(j, column->Get(j - 1));
+					for(j := 0; j < columns->Size(); j += 1;) {
+						row->Set(j + 1, column->Get(j));
 					};
 				};
 
