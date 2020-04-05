@@ -24,7 +24,7 @@ class CsvData {
 	}
 
 	New() {
-		@attached_file := FileWriter->New(".\\onboarding.csv");
+		@attached_file := FileWriter->New(".\\attached_onboarding.csv");
 		@non_attached_file := FileWriter->New(".\\non_attached_onboarding.csv");
 
 	}
@@ -139,18 +139,18 @@ class CsvData {
 			"---"->PrintLine();
 			"sample={$num_contracts}, {$attach_total_percent}%\n"->PrintLine();
 
-			WriteAttached(title, bronze_count, silver_count, gold_count, platinum_count, num_contracts);
+			WriteAttach(title, bronze_count, silver_count, gold_count, platinum_count, num_contracts);
 			if(title->Equals("All")) {
 				WriteNonAttach(no_attach_contracts);
 			};
 		}
 		else {
-			"-- Invalid query --"->ErrorLine();
+			"-- Error in query! --"->ErrorLine();
 			Runtime->Exit(1);
 		};
 	}
 
-	method : WriteAttached(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
+	method : WriteAttach(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
 		none := num_contracts - bronze_count - gold_count - silver_count - platinum_count;
 		@attached_file->WriteString("{$title}\r\n");
 		@attached_file->WriteString("Package,Count,\r\n");
@@ -167,7 +167,6 @@ class CsvData {
 		each(i : column_names) {
 			column_name := column_names[i];
 			header_string += column_name;
-column_name->Get(0)->ToInt()->PrintLine();
 			header_string += ',';
 		};
 		@non_attached_file->WriteString("{$header_string}\r\n");
