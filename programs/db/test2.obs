@@ -1,11 +1,10 @@
 use Collection.Generic;
 use System.IO.File;
-use Data.CSV;
 
 class CsvData {
 	@table : Query.Structured.Table;
-	@attached_file : FileWriter;
-	@non_attached_file : FileWriter;
+	@attached_out : System.IO.File.FileWriter;
+	@non_attached_out : FileWriter;
 
 	enum RegionType {
 		ALL,
@@ -24,19 +23,18 @@ class CsvData {
 	}
 
 	New() {
-		@attached_file := FileWriter->New("./attached_onboarding.csv");
-		@non_attached_file := FileWriter->New("./non_attached_onboarding.csv");
-
+		@attached_out := FileWriter->New("./attached_onboarding.csv");
+		@non_attached_out := FileWriter->New("./non_attached_onboarding.csv");
 	}
 
 	method : public : Process(file : String) ~ Nil {
 		leaving {
-			if(@attached_file <> Nil) {
-				@attached_file->Close();
+			if(@attached_out <> Nil) {
+				@attached_out->Close();
 			};
 
-			if(@non_attached_file <> Nil) {
-				@non_attached_file->Close();
+			if(@non_attached_out <> Nil) {
+				@non_attached_out->Close();
 			};
 		};
 
@@ -120,19 +118,19 @@ class CsvData {
 			};
 
 			"[{$title}]"->PrintLine();
-			percent : Int := bronze_count = 0 ? 0.0 : 100.0 * bronze_count->As(Float) / num_contracts->As(Float);
+			percent : Int := bronze_count = 0 ? 0.0 : 100.0 * bronze_count->ToFloat() / num_contracts->ToFloat();
 			"Bronze={$bronze_count}, {$percent}%"->PrintLine();
 			attach_total_percent += percent;
 
-			percent := silver_count = 0 ? 0.0 : 100.0 * silver_count->As(Float) / num_contracts->As(Float);
+			percent := silver_count = 0 ? 0.0 : 100.0 * silver_count->ToFloat() / num_contracts->ToFloat();
 			"Silver={$silver_count}, {$percent}%"->PrintLine();
 			attach_total_percent += percent;
 			
-			percent := gold_count = 0 ? 0.0 : 100.0 * gold_count->As(Float) / num_contracts->As(Float);
+			percent := gold_count = 0 ? 0.0 : 100.0 * gold_count->ToFloat() / num_contracts->ToFloat();
 			"Gold={$gold_count}, {$percent}%"->PrintLine();
 			attach_total_percent += percent;
 
-			percent := platinum_count = 0 ? 0.0 : 100.0 * platinum_count->As(Float) / num_contracts->As(Float);
+			percent := platinum_count = 0 ? 0.0 : 100.0 * platinum_count->ToFloat() / num_contracts->ToFloat();
 			"Platinum={$platinum_count}, {$percent}%"->PrintLine();
 			attach_total_percent += percent;
 
@@ -152,13 +150,13 @@ class CsvData {
 
 	method : WriteAttach(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
 		none := num_contracts - bronze_count - gold_count - silver_count - platinum_count;
-		@attached_file->WriteString("{$title}\r\n");
-		@attached_file->WriteString("Package,Count,\r\n");
-		@attached_file->WriteString("Bronze,{$bronze_count}\r\n");
-		@attached_file->WriteString("Silver,{$silver_count}\r\n");
-		@attached_file->WriteString("Gold,{$gold_count}\r\n");
-		@attached_file->WriteString("Platinum,{$platinum_count}\r\n");
-		@attached_file->WriteString("None,{$none}\r\n");
+		@attached_out->WriteString("{$title}\r\n");
+		@attached_out->WriteString("Package,Count,\r\n");
+		@attached_out->WriteString("Bronze,{$bronze_count}\r\n");
+		@attached_out->WriteString("Silver,{$silver_count}\r\n");
+		@attached_out->WriteString("Gold,{$gold_count}\r\n");
+		@attached_out->WriteString("Platinum,{$platinum_count}\r\n");
+		@attached_out->WriteString("None,{$none}\r\n");
 	}
 
 	method : WriteNonAttach(non_attached_contracts : Vector<String>) ~ Nil {
@@ -168,14 +166,14 @@ class CsvData {
 			header_string += column_names[i];
 			header_string += ',';
 		};
-		@non_attached_file->WriteString("{$header_string}\r\n");
+		@non_attached_out->WriteString("{$header_string}\r\n");
 
 		each(i : non_attached_contracts) {
 			contract_id := non_attached_contracts->Get(i);			
 			contracts := @table->Query("from sales where Contract = '{$contract_id}'");
 			each(j : contracts) {
 				contract := contracts->Get(j)->ToString();
-				@non_attached_file->WriteString("{$contract}\r\n");
+				@non_attached_out->WriteString("{$contract}\r\n");
 			};
 		};
 	}
