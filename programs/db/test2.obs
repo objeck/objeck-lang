@@ -59,21 +59,21 @@ class CsvData {
 				return @table->Query("select distinct Contract from sales 
 					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
 					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
-					and 'Region' not like '%East%' and 'Region' not like '%West%' and 'Region' <> 'Strategic'");
+					and Region not like '%East%' and Region not like '%West%' and Region <> 'Strategic'");
 			}
 
 			label RegionType->ENTERPRISE {
 				return @table->Query("select distinct Contract from sales 
 					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
 					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
-					and ('Region' like '%East%' or 'Region' like '%West%')");
+					and (Region like '%East%' or Region like '%West%')");
 
 			}
 			label RegionType->STRATEGIC {
 				return @table->Query("select distinct Contract from sales 
 					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
 					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
-					and 'Region' = 'Strategic'");
+					and Region = 'Strategic'");
 			}
 		};
 
@@ -89,30 +89,31 @@ class CsvData {
 			each(i : results) {
 				contract := results->Get(i)->row->Get(1)->As(String);
 				contracts := @table->Query("from sales where Contract = '{$contract}'");
-				found := false;
-				for(j := 0; <>found & j < contracts->Size(); j += 1;) {
+				
+				attached := false;
+				for(j := 0; <>attached & j < contracts->Size(); j += 1;) {
 					product_name := contracts->Get(j)->Get("Product Name")->As(String);
-					if(<>found) {
+					if(<>attached) {
 						if(product_name->Has("Platinum")) {
 							platinum_count++;
-							found := true;
+							attached := true;
 						}
 						else if(product_name->Has("Gold")) {
 							gold_count++;
-							found := true;
+							attached := true;
 						}
 						else if(product_name->Has("Silver")) {
 							silver_count++;
-							found := true;
+							attached := true;
 						}
 						else if(product_name->Has("Bronze")) {
 							bronze_count++;
-							found := true;
+							attached := true;
 						};
 					};
 				};
 
-				if(<>found) {
+				if(<>attached) {
 					no_attach_contracts->AddBack(contract);
 				};
 			};
