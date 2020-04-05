@@ -3,26 +3,65 @@ use System.IO.File;
 use Data.CSV;
 
 class CsvData {
+	@table : Query.Structured.Table;
+	@attached_file_out : FileWriter;
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			table := Query.Structured.Table->FromCsv("sales", args[0]);
-			if(table <> Nil) {
-				results := Select();
-				Calulate(Calulate);
-			};
+			CsvData->New()->Process(args[0]);
 		}
 		else {
-			"Missing or too many arguments!"->ErrorLine();
+			"Invalid arguments!"->ErrorLine();
 		};
 	}
 
-	function : Calulate(results : Query.Structured.Table) ~ Nil {
+	New() {
+		@attached_file_out := FileWriter->New(".\\onboarding.csv");
+	}
+
+	method : public : Process(file : String) ~ Nil {
+		leaving {
+			if(@attached_file_out <> Nil) {
+				@attached_file_out->Close();
+			};
+		};
+
+		@table := Query.Structured.Table->FromCsv("sales", file);
+		if(@table <> Nil) {
+			Calulate("All", Select(RegionType->ALL));
+		};
+	}
+
+	method : Select(type : RegionType) ~ Query.Structured.Table {
+		select(type) {
+			label RegionType->ALL {
+				return @table->Query("select distinct Contract from sales 
+					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
+					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%')");
+			}
+
+			label RegionType->VELOCITY {
+
+			}
+
+			label RegionType->ENTERPRISE {
+
+			}
+			label RegionType->STRATEGIC {
+
+			}
+		};
+
+		return Nil;
+	}
+
+	method : Calulate(title : String, results : Query.Structured.Table) ~ Nil {
 		if(results <> Nil) {
 			num_contracts := results->Size();
 			bronze_count := silver_count := gold_count := platinum_count := 0;
 			each(i : results) {
 				contract := results->Get(i)->row->Get(1)->As(String);
-				contracts := table->Query("from sales where Contract = '{$contract}'");
+				contracts := @table->Query("from sales where Contract = '{$contract}'");
 				found := false;
 				for(j := 0; <>found & j < contracts->Size(); j += 1;) {
 					product_name := contracts->Get(j)->Get("Product Name")->As(String);
@@ -47,6 +86,7 @@ class CsvData {
 				};
 			};
 
+			"[{$title}]"->PrintLine();
 			percent : Int := bronze_count = 0 ? 0.0 : 100.0 * bronze_count->As(Float) / num_contracts->As(Float);
 			"Bronze={$bronze_count}, {$percent}%"->PrintLine();
 			attach_total_percent += percent;
@@ -65,17 +105,29 @@ class CsvData {
 
 			"---"->PrintLine();
 			"sample={$num_contracts}, {$attach_total_percent}%\n"->PrintLine();
+
+			WriteAttached(title, bronze_count, silver_count, gold_count, platinum_count, num_contracts);
 		}
 		else {
 			"Invalid query?"->ErrorLine();
 		};
 	}
 
-	function : Select() ~ Query.Structured.Table {
-		results := table->Query("select distinct Contract from sales 
-					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
-					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%')");
+	method : WriteAttached(title : String, bronze_count : Int, silver_count : Int, gold_count : Int, platinum_count : Int, num_contracts : Int) ~ Nil {		
+		none := num_contracts - bronze_count - gold_count - silver_count - platinum_count;
+		@attached_file_out->WriteString("{$title}\r\n");
+		@attached_file_out->WriteString("Package,Count,\r\n");
+		@attached_file_out->WriteString("Bronze,{$bronze_count}\r\n");
+		@attached_file_out->WriteString("Silver,{$silver_count}\r\n");
+		@attached_file_out->WriteString("Gold,{$gold_count}\r\n");
+		@attached_file_out->WriteString("Platinum,{$platinum_count}\r\n");
+		@attached_file_out->WriteString("None,{$none}\r\n");
+	}
 
-		return results;
+	enum RegionType {
+		ALL,
+		VELOCITY,
+		ENTERPRISE,
+		STRATEGIC
 	}
 }
