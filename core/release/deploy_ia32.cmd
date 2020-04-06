@@ -83,7 +83,7 @@ if [%1] NEQ [deploy] goto end
 	
 	copy /y ..\setup
 	devenv setup.sln /rebuild "Release"
-	signtool sign /f "e:\Dropbox\Personal\signing keys\2018\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.comodoca.com Release\setup.msi
+	signtool sign /f "d:\Dropbox\Personal\signing keys\2018\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.comodoca.com Release\setup.msi
 	copy Release\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win32.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release"
