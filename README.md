@@ -27,7 +27,7 @@ Notable features:
   * Type inference
   * Lambda expressions
   * Closures
-* Supported platforms (with JIT support)
+* Supported platforms (with JIT compilation)
   * x86-64: Windows, macOS and Linux
   * x86: Windows and Linux
   * ARMv7: Linux
