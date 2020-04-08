@@ -437,7 +437,50 @@ bundle Query.Structured {
 					column := csv->Get(i);
 					row := table->Insert();
 					for(j := 0; j < columns->Size(); j += 1;) {
-						row->Set(j + 1, column->Get(j)->Trim());
+						str_value := column->Get(j)->Trim();
+						# digit
+						if(str_value->Size() > 0 & str_value->Get(0)->IsDigit()) {
+							# float
+							if(str_value->Has('.')) {
+								row->Set(j + 1, FloatHolder->New(str_value->ToFloat()));
+							}
+							# int
+							else {
+								row->Set(j + 1, IntHolder->New(str_value->ToInt()));
+							};
+						}
+						# date
+						else if(str_value->Size() > 0 & str_value->Get(0) = '#') {
+							select(str_value->Size()) {
+								label 8: {
+									date := DateUtility->Parse(str_value, "MM/dd/yy", false);
+									row->Set(j + 1, date);
+								}
+								
+								label 10: {						
+									date := DateUtility->Parse(str_value, "MM/dd/yyyy", false);	
+									row->Set(j + 1, date);
+								}
+								
+								label 17: {
+									date := DateUtility->Parse(str_value, "MM/dd/yy hh:mm:ss", false);
+									row->Set(j + 1, date);
+								}
+								
+								label 19: {
+									date := DateUtility->Parse(str_value, "MM/dd/yyyy hh:mm:ss", false);
+									row->Set(j + 1, date);
+								}
+								
+								other: {
+									row->Set(j + 1, str_value);
+								}
+							};
+						}
+						# string
+						else {
+							row->Set(j + 1, str_value);
+						};
 					};
 				};
 
