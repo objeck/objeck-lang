@@ -429,7 +429,7 @@ bundle Query.Structured {
 				headers := csv->Get(0);
 				columns := String->New[headers->Size()];
 				each(i : headers) {	
-					columns[i] := headers->Get(i)->Trim();
+					columns[i] := headers->Get(i)->ReplaceAll("\"", "")->Trim();
 				};
 
 				table := Query.Structured.Table->New(table_name, columns);
@@ -437,7 +437,7 @@ bundle Query.Structured {
 					column := csv->Get(i);
 					row := table->Insert();
 					for(j := 0; j < columns->Size(); j += 1;) {
-						row->Set(j + 1, column->Get(j));
+						row->Set(j + 1, column->Get(j)->Trim());
 					};
 				};
 
@@ -902,9 +902,9 @@ bundle Query.Structured {
 					return MergeOr(left_result, right_result);
 				}
 				
-				label Token->Type->EQUAL: {					
-# "== Equal =="->PrintLine();
+				label Token->Type->EQUAL: {	
 					index := @table->GetIndex(left->GetValue()->As(String));
+# "== Equal =="->PrintLine();
  					if(index > -1) {
  						if(expr->GetNot()) {
  							return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
@@ -1222,11 +1222,28 @@ bundle Query.Structured {
 					NextToken();
 					
 					left := ParseLogic();
-					if(left = Nil | TokenType() <> Token->Type->CPRN) {
-						return Nil;
-					};
-					NextToken();
-										
+					do {
+						type := TokenType();
+						if(type = Token->Type->AND | type = Token->Type->OR) {
+							term := Term->New(type);
+							term->SetValue(TokenValue());
+							NextToken();
+							
+							right := ParseTerm();
+							if(right = Nil) {
+								return Nil;
+							};
+							
+							term->SetLeft(left);
+							term->SetRight(right);
+							left := term;
+						}
+						else {
+							NextToken();
+						};
+					}
+					while(TokenType() <> Token->Type->EOS);
+
 					return left;
 				}
 				
