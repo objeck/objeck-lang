@@ -1,0 +1,29 @@
+use Collection.Generic;
+use System.IO.File;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			Test->New()->Process(args[0]);
+		}
+		else {
+			"Invalid arguments!"->ErrorLine();
+		};
+	}
+
+	New() {
+	}
+
+	method : public : Process(file : String) ~ Nil {
+		table := Query.Structured.Table->FromCsv("Oscar", file);
+		if(table <> Nil) {
+			results := table->Query("select Year from Oscar where (Age = '30' or Age = '31' or Age = '32' or Age = '33' or Age = '35')");
+			if(results <> Nil) {
+				results->Size()->PrintLine();
+			}
+			else {
+				"No results!"->ErrorLine();
+			};
+		};
+	}
+}

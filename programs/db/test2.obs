@@ -27,8 +27,8 @@ class CsvData {
 	method : public : Process(file : String) ~ Nil {
 		@table := Query.Structured.Table->FromCsv("sales", file);
 		if(@table <> Nil) {
-#			ProcessOnboarding();
-			ProcessExpert();
+			ProcessOnboarding();
+#			ProcessExpert();
 		};
 	}
 
@@ -52,7 +52,8 @@ class CsvData {
 
 	method : CalulateExpert(title : String, results : Query.Structured.Table) ~ Nil {
 		if(results <> Nil) {
-			results->ToString()->PrintLine();
+			@attached_out->WriteString("pk, Contract, Opportunity Name, Business Type,\r\n");
+			@attached_out->WriteString(results->ToString());
 		}
 		else {
 			"-- Error in query! --"->ErrorLine();
@@ -106,7 +107,7 @@ class CsvData {
 			label RegionType->STRATEGIC {
 				return @table->Query("select distinct Contract from sales 
 					where ('Business Type' = 'New Logo' or 'Business Type' = 'New Division/Department') 
-					and ('Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
+					and ('Product Name' like '%EXPERT%' or 'Product Name' like '%Coverity%' or 'Product Name' like '%Duck Pro%') 
 					and Region = 'Strategic'");
 			}
 		};
