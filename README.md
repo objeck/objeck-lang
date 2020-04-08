@@ -36,11 +36,11 @@ Notable features:
   * Collections (vectors, queues, trees, hashes, etc.)
   * HTTP and HTTPS clients
   * RegEx
-  * JSON and XML parsers
+  * JSON, XML and CSV parsers
   * Encryption
-  * Database access
-  * Data structure querying
-  * 2D Gaming
+  * Database access (via ODBC)
+  * Query framework
+  * 2D Gaming (via SDL2)
 * Garbage collection
 * JIT support for all supported platforms
 
