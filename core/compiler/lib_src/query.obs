@@ -82,25 +82,25 @@ bundle Query.Structured {
 		}
 		
 		#~
-		Get all row
-		@return all row
+		Get all row1
+		@return all row1
 		~#
 		method : public : native : GetAll() ~ Vector<Row> {
 			matches := Vector->New()<Row>;
 			
-			row := @head;
-			while(row <> Nil) {
-				matches->AddBack(row);
-				row := row->Next();
+			row1 := @head;
+			while(row1 <> Nil) {
+				matches->AddBack(row1);
+				row1 := row1->Next();
 			};
 			
 			return matches;
 		}
 		
 		#~
-		Get row by primary key
+		Get row1 by primary key
 		@param pk primary key
-		@return row
+		@return row1
 		~#
 		method : public : native : Get(pk : Int) ~ Row {
 			return @keys->Find(pk);
@@ -165,9 +165,9 @@ bundle Query.Structured {
 			
 			sum := 0.0;
 			count := 0.0;
-			row := @head;
-			while(row <> Nil) {
-				value := row->Get(index);
+			row1 := @head;
+			while(row1 <> Nil) {
+				value := row1->Get(index);
 				
 				if(value->TypeOf(IntHolder)) {
 					sum += value->As(IntHolder)->Get();
@@ -178,7 +178,7 @@ bundle Query.Structured {
 				
 				# next
 				count += 1.0;
-				row := row->Next();
+				row1 := row1->Next();
 			};
 						
 			return sum / count;
@@ -196,9 +196,9 @@ bundle Query.Structured {
 			};
 			
 			sum := 0.0;
-			row := @head;
-			while(row <> Nil) {
-				value := row->Get(index);
+			row1 := @head;
+			while(row1 <> Nil) {
+				value := row1->Get(index);
 				
 				if(value->TypeOf(IntHolder)) {
 					sum += value->As(IntHolder)->Get();
@@ -208,7 +208,7 @@ bundle Query.Structured {
 				};
 				
 				# next
-				row := row->Next();
+				row1 := row1->Next();
 			};
 			
 			return sum;
@@ -221,52 +221,52 @@ bundle Query.Structured {
 		~#
 		method : public : native : Filter(cond : Conditional) ~ Vector<Row> {
 			matches := Vector->New()<Row>;
-			row := @head;
-			while(row <> Nil) {
-				left := row->Get(cond->GetLeft());
+			row1 := @head;
+			while(row1 <> Nil) {
+				left := row1->Get(cond->GetLeft());
 				if(left <> Nil) {
 					right := cond->GetValue();
 					select(cond->GetQualifier()) {
 						label Conditional->Qualifier->EQUAL: {
 							if(left->Compare(right) = 0) {
-								matches->AddBack(row);
+								matches->AddBack(row1);
 							};
 						}
 						
 						label Conditional->Qualifier->NOT_EQUAL: {
 							if(left->Compare(right) <> 0) {
-								matches->AddBack(row);
+								matches->AddBack(row1);
 							};
 						}
 						
 						label Conditional->Qualifier->GREATER: {
 							if(left->Compare(right) > 0) {
-								matches->AddBack(row);
+								matches->AddBack(row1);
 							};
 						}
 						
 						label Conditional->Qualifier->LESS: {
 							if(left->Compare(right) < 0) {
-								matches->AddBack(row);
+								matches->AddBack(row1);
 							};
 						}
 						
 						label Conditional->Qualifier->GREATER_EQUAL: {
 							if(left->Compare(right) >= 0) {
-								matches->AddBack(row);
+								matches->AddBack(row1);
 							};
 						}
 						
 						label Conditional->Qualifier->LESS_EQUAL: {
 							if(left->Compare(right) <= 0) {
-								matches->AddBack(row);
+								matches->AddBack(row1);
 							};
 						}
 						
 						label Conditional->Qualifier->LIKE: {
 							if(left->TypeOf(String) & right->TypeOf(String)) {
 								if(MatchLike(left->As(String), right->As(String))) {
-									matches->AddBack(row);
+									matches->AddBack(row1);
 								};
 							};
 						}
@@ -274,14 +274,14 @@ bundle Query.Structured {
 						label Conditional->Qualifier->NOT_LIKE: {
 							if(left->TypeOf(String) & right->TypeOf(String)) {
 								if(<>MatchLike(left->As(String), right->As(String))) {
-									matches->AddBack(row);
+									matches->AddBack(row1);
 								};
 							};
 						}
 					};
 				};
 				# next
-				row := row->Next();
+				row1 := row1->Next();
 			};
 			
 			return matches;
@@ -328,54 +328,54 @@ bundle Query.Structured {
 		}
 		
 		#~
-		Inserts a new row into the table. After the row 
+		Inserts a new row1 into the table. After the row1 
 		has been added it's values will need to be set.
-		@return newly inserted row
+		@return newly inserted row1
 		~#
 		method : public : native : Insert() ~ Row {
 			pk := IntHolder->New(@count);
 			values := Compare->New[@column_names->Size()];
 			values[0] := pk;
-			row := Row->New(@self, values);
-			@keys->Insert(pk->Get(), row);
+			row1 := Row->New(@self, values);
+			@keys->Insert(pk->Get(), row1);
 			@count += 1;
 			
 			if(@head = Nil) {
-				@head := row;
-				@tail := row;
+				@head := row1;
+				@tail := row1;
 			}
 			else {
-				@tail->Next(row);
-				row->Prev(@tail);
-				@tail := row;
+				@tail->Next(row1);
+				row1->Prev(@tail);
+				@tail := row1;
 			};
 			
-			return row;
+			return row1;
 		}
 		
 		#~
-		Delete row by primary key
+		Delete row1 by primary key
 		@param pk primary key
 		@return true of successful, false otherwise
 		~#
 		method : public : native : Delete(pk : Int) ~ Bool {
-			row := @keys->Find(pk);
-			if(row <> Nil) {
-				if(row = @head) {
-					@head := row->Next();
-					row->Next(Nil);
+			row1 := @keys->Find(pk);
+			if(row1 <> Nil) {
+				if(row1 = @head) {
+					@head := row1->Next();
+					row1->Next(Nil);
 					@head->Prev(Nil);
 				}
-				else if(row = @tail) {
-					@tail := row->Prev();
-					row->Prev(Nil);
+				else if(row1 = @tail) {
+					@tail := row1->Prev();
+					row1->Prev(Nil);
 					@tail->Next(Nil);
 				}
 				else {
-					row->Prev()->Next(row->Next());
-					row->Next()->Prev(row->Prev());
-					row->Next(Nil);
-					row->Prev(Nil);					
+					row1->Prev()->Next(row1->Next());
+					row1->Next()->Prev(row1->Prev());
+					row1->Next(Nil);
+					row1->Prev(Nil);					
 				};
 				
 				@keys->Remove(pk);
@@ -403,16 +403,16 @@ bundle Query.Structured {
 		
 		#~
 		String representation of table
-		@return all row as a string
+		@return all row1 as a string
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 			
-			row := @head;
-			while(row <> Nil) {
-				buffer += row->ToString();
+			row1 := @head;
+			while(row1 <> Nil) {
+				buffer += row1->ToString();
 				buffer += "\r\n";
-				row := row->Next();
+				row1 := row1->Next();
 			};
 			
 			return buffer;
@@ -437,7 +437,7 @@ bundle Query.Structured {
 				table := Query.Structured.Table->New(table_name, columns);
 				for(i := 1; i < csv->Size(); i += 1;) {
 					column := csv->Get(i);
-					row := table->Insert();
+					row1 := table->Insert();
 					for(j := 0; j < columns->Size(); j += 1;) {
 						# clean up value
 						str_value := column->Get(j);
@@ -446,11 +446,11 @@ bundle Query.Structured {
 						if(str_value->Size() > 0 & str_value->Get(0)->IsDigit()) {
 							# float
 							if(str_value->Has('.')) {
-								row->Set(j + 1, FloatHolder->New(str_value->ToFloat()));
+								row1->Set(j + 1, FloatHolder->New(str_value->ToFloat()));
 							}
 							# int
 							else {
-								row->Set(j + 1, IntHolder->New(str_value->ToInt()));
+								row1->Set(j + 1, IntHolder->New(str_value->ToInt()));
 							};
 						}
 						# date
@@ -459,32 +459,32 @@ bundle Query.Structured {
 							select(str_value->Size()) {
 								label 8: {
 									date := DateUtility->Parse(str_value, "MM/dd/yy", false);
-									row->Set(j + 1, date);
+									row1->Set(j + 1, date);
 								}
 								
 								label 10: {						
 									date := DateUtility->Parse(str_value, "MM/dd/yyyy", false);	
-									row->Set(j + 1, date);
+									row1->Set(j + 1, date);
 								}
 								
 								label 17: {
 									date := DateUtility->Parse(str_value, "MM/dd/yy hh:mm:ss", false);
-									row->Set(j + 1, date);
+									row1->Set(j + 1, date);
 								}
 								
 								label 19: {
 									date := DateUtility->Parse(str_value, "MM/dd/yyyy hh:mm:ss", false);
-									row->Set(j + 1, date);
+									row1->Set(j + 1, date);
 								}
 								
 								other: {
-									row->Set(j + 1, str_value);
+									row1->Set(j + 1, str_value);
 								}
 							};
 						}
 						# string
 						else {
-							row->Set(j + 1, str_value);
+							row1->Set(j + 1, str_value);
 						};
 					};
 				};
@@ -519,13 +519,13 @@ bundle Query.Structured {
 				is_dir := Directory->Exists(long_name);
 				is_readonly := File->IsReadOnly(long_name);
 				
-				row := table->Insert();
-				row->Set("name", short_name);
-				row->Set("path_name", long_name);
-				row->Set("create_date", create_date);
-				row->Set("owner", file_owner);
-				row->Set("is_dir", is_dir ? Row->True() : Row->False());
-				row->Set("is_readonly", is_readonly ? Row->True() : Row->False());
+				row1 := table->Insert();
+				row1->Set("name", short_name);
+				row1->Set("path_name", long_name);
+				row1->Set("create_date", create_date);
+				row1->Set("owner", file_owner);
+				row1->Set("is_dir", is_dir ? Row->True() : Row->False());
+				row1->Set("is_readonly", is_readonly ? Row->True() : Row->False());
 			};
 			
 			return table;	
@@ -703,8 +703,8 @@ bundle Query.Structured {
 		}
 		
 		#~
-		String representation of row
-		@return row as string
+		String representation of row1
+		@return row1 as string
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
@@ -871,19 +871,19 @@ bundle Query.Structured {
 				if(order_index > -1) {
 					ordered_values := Map->New()<Compare, Row>;
 					each(i : from_results) {
-						row := from_results->Get(i);
-						ordered_values->Insert(row->Get(order_index), row);
+						row1 := from_results->Get(i);
+						ordered_values->Insert(row1->Get(order_index), row1);
 					};
 					from_results := ordered_values->GetValues()<Row>;
 				};
 			};
 			
 			each(i : from_results) {
-				row := from_results->Get(i);
+				row1 := from_results->Get(i);
 				result_row := table->Insert();
 				each(j : column_names) {
 					column_name := column_names[j];
-					result_row->Set(column_name, row->Get(column_name));
+					result_row->Set(column_name, row1->Get(column_name));
 				};
 			};
 
