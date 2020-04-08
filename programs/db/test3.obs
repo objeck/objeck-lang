@@ -17,7 +17,7 @@ class Test {
 	method : public : Process(file : String) ~ Nil {
 		table := Query.Structured.Table->FromCsv("Oscar", file);
 		if(table <> Nil) {
-			results := table->Query("select Year from Oscar where (Age = '30' or Age = '31' or Age = '32' or Age = '33' or Age = '35')");
+			results := table->Query("select Year from Oscar where (Age = '30' or Age = '31' or Age = '32' or Age = '33' or Age = '35') and Year = '2002'");
 			if(results <> Nil) {
 				results->Size()->PrintLine();
 			}
