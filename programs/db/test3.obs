@@ -17,18 +17,13 @@ class Test {
 	method : public : Process(file : String) ~ Nil {
 		table := Query.Structured.Table->FromCsv("Data", file);
 		if(table <> Nil) {
-			row := table->Get(9007);
-			row->ToString()->PrintLine();
-#~			
-			results := table->Query("from Data where pk = 9007");
-#			results := table->Query("from Oscar where Index = 3 or Index = 1");
+			results := table->Query("from Data where Industry_code_NZSIOC = 'AA'");
 			if(results <> Nil) {
 				results->Size()->PrintLine();
 			}
 			else {
 				"No results!"->ErrorLine();
 			};
-~#			
 		};
 	}
 }
