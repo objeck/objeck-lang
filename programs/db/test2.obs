@@ -42,7 +42,7 @@ class CsvData {
 			};
 		};
 
-		CalulateExpert("Expert", SelectExpert());
+		CalculateExpert("Expert", SelectExpert());
 	}
 
 	method : SelectExpert()  ~ Query.Structured.Table {
@@ -50,7 +50,7 @@ class CsvData {
 			where 'Product Name' like '%EXPERT%'");
 	}
 
-	method : CalulateExpert(title : String, results : Query.Structured.Table) ~ Nil {
+	method : CalculateExpert(title : String, results : Query.Structured.Table) ~ Nil {
 		if(results <> Nil) {
 			@attached_out->WriteString("pk, Contract, Opportunity Name, Business Type,\r\n");
 			@attached_out->WriteString(results->ToString());
@@ -76,10 +76,10 @@ class CsvData {
 			};
 		};
 
-		CalulateOnboarding("All", SelectOnboarding(RegionType->ALL));
-		CalulateOnboarding("Velocity", SelectOnboarding(RegionType->VELOCITY));
-		CalulateOnboarding("Enterprise", SelectOnboarding(RegionType->ENTERPRISE));
-		CalulateOnboarding("Strategic", SelectOnboarding(RegionType->STRATEGIC));
+		CalculateOnboarding("All", SelectOnboarding(RegionType->ALL));
+		CalculateOnboarding("Velocity", SelectOnboarding(RegionType->VELOCITY));
+		CalculateOnboarding("Enterprise", SelectOnboarding(RegionType->ENTERPRISE));
+		CalculateOnboarding("Strategic", SelectOnboarding(RegionType->STRATEGIC));
 	}
 
 	method : SelectOnboarding(type : RegionType) ~ Query.Structured.Table {
@@ -115,7 +115,7 @@ class CsvData {
 		return Nil;
 	}
 
-	method : CalulateOnboarding(title : String, results : Query.Structured.Table) ~ Nil {
+	method : CalculateOnboarding(title : String, results : Query.Structured.Table) ~ Nil {
 		if(results <> Nil) {
 			no_attach_contracts := Vector->New()<String>;
 			num_contracts := results->Size();
