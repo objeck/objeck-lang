@@ -2764,6 +2764,27 @@ bundle System {
 			
 			return result;
 		}
+
+		#~
+		Replaces all occurrences the search string
+		@param find character to search for
+		@param replace character to replace with
+		@return new string instance
+		~#
+		method : public : native : ReplaceAll(find : Char, replace : Char) ~ String {
+			buffer := "";
+
+			for(i := 0; i < @pos; i += 1;) {
+				if(@string[i] = find) {
+					buffer->AddBack(replace);
+				}
+				else {
+					buffer->AddBack(@string[i]);
+				};
+			};
+
+			return buffer;
+		}
 		
 		#~
 		Replaces the first occurrence the search string
