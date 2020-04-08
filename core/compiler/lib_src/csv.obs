@@ -213,7 +213,7 @@ bundle Data.CSV {
 			buffer := "";
 			
 			each(i : @columns) {
-				buffer->Append(@columns->Get(i)->ReplaceAll("ˑ", "\"\""));
+				buffer->Append(@columns->Get(i)->ReplaceAll('ˑ', '"'));
 				if(i + 1 < @columns->Size()) {
 					buffer->Append(",");
 				};
@@ -530,9 +530,9 @@ bundle Data.CSV {
 					token := row->SubString(start, index - start);
 					index += 1;
 					if(token <> Nil) {
-						columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
+						columns->AddBack(token->ReplaceAll('ˑ', '"'));
 					};
-# IO.Console->Print("quoted = |")->Print(token->ReplaceAll("ˑ", "\"\""))->PrintLine("|");
+# IO.Console->Print("quoted = |")->Print(token->ReplaceAll('ˑ', '"'))->PrintLine("|");
 				}
 				else {
 					start := index;
@@ -543,8 +543,8 @@ bundle Data.CSV {
 					if(token = Nil) {
 						token := "";
 					};
-					columns->AddBack(token->ReplaceAll("ˑ", "\"\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll("ˑ", "\"\""))->PrintLine("|");					
+					columns->AddBack(token->ReplaceAll('ˑ', '"')->Trim());
+# IO.Console->Print("normal = |")->Print(token->ReplaceAll('ˑ', '"'))->PrintLine("|");					
 				};
 			
 				if(row->Get(index) = ',') {

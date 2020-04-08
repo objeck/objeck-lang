@@ -2776,10 +2776,10 @@ bundle System {
 
 			for(i := 0; i < @pos; i += 1;) {
 				if(@string[i] = find) {
-					buffer->AddBack(replace);
+					buffer->Append(replace);
 				}
 				else {
-					buffer->AddBack(@string[i]);
+					buffer->Append(@string[i]);
 				};
 			};
 
