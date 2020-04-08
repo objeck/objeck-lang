@@ -439,7 +439,7 @@ bundle Data.XML {
 		# define whitespce
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : native : WhiteSpace(c : Char) ~ Bool {
-			if(c = ' ' | c = '\t' | c = '\r' | c = '\n') {
+			if(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\f' | c = '\v') {
 				return true;
 			};
 			
