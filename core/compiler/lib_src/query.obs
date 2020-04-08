@@ -429,7 +429,7 @@ bundle Query.Structured {
 				headers := csv->Get(0);
 				columns := String->New[headers->Size()];
 				each(i : headers) {	
-					columns[i] := headers->Get(i)->ReplaceAll("\"", "")->Trim();
+					columns[i] := headers->Get(i);
 				};
 
 				table := Query.Structured.Table->New(table_name, columns);
@@ -438,7 +438,7 @@ bundle Query.Structured {
 					row := table->Insert();
 					for(j := 0; j < columns->Size(); j += 1;) {
 						# clean up value
-						str_value := column->Get(j)->ReplaceAll("\"", "")->Trim();
+						str_value := column->Get(j);
 
 						# digit
 						if(str_value->Size() > 0 & str_value->Get(0)->IsDigit()) {

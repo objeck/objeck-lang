@@ -515,6 +515,10 @@ bundle Data.CSV {
 			
 			index := 0;
 			while(index < row->Size()) {
+				while(index < row->Size() & (row->Get(index) = ' ' | row->Get(index) = '\t')) {
+					index += 1;
+				};
+
 				if(row->Get(index) = '"') {
 					index += 1;
 					start := index;
