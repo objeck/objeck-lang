@@ -539,11 +539,11 @@ bundle Data.CSV {
 					while(index < row->Size() & row->Get(index) <> ',') {
 						index += 1;
 					};
-					token := row->SubString(start, index - start)->Trim();
+					token := row->SubString(start, index - start);
 					if(token = Nil) {
 						token := "";
 					};
-					columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
+					columns->AddBack(token->ReplaceAll("ˑ", "\"\"")->Trim());
 # IO.Console->Print("normal = |")->Print(token->ReplaceAll("ˑ", "\"\""))->PrintLine("|");					
 				};
 			
