@@ -437,7 +437,9 @@ bundle Query.Structured {
 					column := csv->Get(i);
 					row := table->Insert();
 					for(j := 0; j < columns->Size(); j += 1;) {
-						str_value := column->Get(j)->Trim();
+						# clean up value
+						str_value := column->Get(j)->ReplaceAll("\"", "")->Trim();
+
 						# digit
 						if(str_value->Size() > 0 & str_value->Get(0)->IsDigit()) {
 							# float
@@ -450,7 +452,8 @@ bundle Query.Structured {
 							};
 						}
 						# date
-						else if(str_value->Size() > 0 & str_value->Get(0) = '#') {
+						else if(str_value->StartsWith('#') & str_value->EndsWith('#')) {
+							str_value := str_value->SubString(1, str_value->Size() - 2);
 							select(str_value->Size()) {
 								label 8: {
 									date := DateUtility->Parse(str_value, "MM/dd/yy", false);

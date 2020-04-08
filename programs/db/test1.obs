@@ -9,7 +9,7 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select path_name, create_date from files where create_date > #02/15/18#");
+			results := table->Query("select path_name, create_date from files where create_date = #01/01/02#");
 			if(results <> Nil) {
 #				results->Average("price")->PrintLine();
 				results->ToString()->PrintLine();
