@@ -34,10 +34,11 @@ bundle Query.Structured {
 		New(name : String, column_names : String[]) {
 			@column_map := Map->New()<String, IntHolder>;
 			@keys := Map->New()<IntHolder, Row>;
-		
 			@name := name;
+
 			@column_names := String->New[column_names->Size() + 1];
 			@column_names[0] := "pk";
+			@column_map->Insert(@column_names[0], 0);
 			each(i : column_names) {
 				@column_names[i + 1] := column_names[i];
 				@column_map->Insert(@column_names[i + 1], i + 1);
@@ -47,10 +48,11 @@ bundle Query.Structured {
 		New(name : String, column_names : Vector<String>) {
 			@column_map := Map->New()<String, IntHolder>;
 			@keys := Map->New()<IntHolder, Row>;
-		
 			@name := name;
+			
 			@column_names := String->New[column_names->Size() + 1];
 			@column_names[0] := "pk";
+			@column_map->Insert(@column_names[0], 0);
 			each(i : column_names) {
 				@column_names[i + 1] := column_names->Get(i);
 				@column_map->Insert(@column_names[i + 1], i + 1);
