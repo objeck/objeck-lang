@@ -916,6 +916,12 @@ void Scanner::ParseToken(int index)
           NextChar();
           return;
 
+        case L'v':
+          tokens[index]->SetType(TOKEN_CHAR_LIT);
+          tokens[index]->SetCharLit(L'\v');
+          NextChar();
+          NextChar();
+          return;
 
         case L'\\':
           tokens[index]->SetType(TOKEN_CHAR_LIT);

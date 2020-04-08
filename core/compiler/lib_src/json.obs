@@ -222,7 +222,7 @@ bundle Data.JSON {
 				while(index < input->Size()) {
 					# skip whitespace
 					while(index < input->Size() & (input[index] = '\r' | input[index] = '\n' |
-						input[index] = '\t' | input[index] = ' ')) {
+						input[index] = '\t' | input[index] = ' ' | input[index] = '\f' | input[index] = '\v')) {
 						# update
 						index += 1;
 					};

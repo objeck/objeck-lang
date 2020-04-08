@@ -516,7 +516,8 @@ bundle Data.CSV {
 			index := 0;
 			while(index < row->Size()) {
 				# stripe white space
-				while(index < row->Size() & (row->Get(index) = ' ' | row->Get(index) = '\t')) {
+				while(index < row->Size() & (row->Get(index) = ' ' | row->Get(index) = '\t' | 
+						index = '\f' | row->Get(index) = '\v')) {
 					index += 1;
 				};
 
