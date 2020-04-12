@@ -489,7 +489,7 @@ bundle Query.Structured {
 					};
 				};
 
-				return table->Size() > 1 ? table : table->As(Nil);
+				return table->Size() > 1 ? table : Nil;
 			};
 			
 			"Unable to parse {$path}!"->ErrorLine();
