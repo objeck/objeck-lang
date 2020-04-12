@@ -3462,14 +3462,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    // check method call and variable cast
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR && !static_cast<MethodCall*>(expression)->GetVariable()) {
-      AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
-    }
-    else if(cast_type->GetType() == CLASS_TYPE && expression->GetExpressionType() == VAR_EXPR &&
-            !static_cast<Variable*>(expression)->GetIndices()) {
-      AnalyzeClassCast(cast_type, expression, depth + 1);
-    }
+    AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
   }
   // typeof check
   else if(expression->GetTypeOf()) {
@@ -6106,7 +6099,7 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
   }
 
   Type* type;
-  if(expression->GetCastType()) {
+  if(expression->GetCastType() && !(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) ) {
     type = expression->GetCastType();
   }
   else {

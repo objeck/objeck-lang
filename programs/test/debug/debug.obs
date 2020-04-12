@@ -1,30 +1,18 @@
-use System.IO.File;
-use Data.CSV;
-
-class CsvData {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo(2)->PrintLine();
+#		x := String->New();
+#		a := x->As(Int);
+
+		a := Bar()->As(Int[]);
+		a->PrintLine();
+
 	}
 
-	function : Foo(value : Int) ~ String {
-		select(value) {
-			label 0 {
-				return "0";
-			}
+	function : Bar() ~ Byte[] {
+		return Nil;
+	}
 
-			label 1 {
-#				return "1";
-			}
-
-			label 2 {
-				return "2";
-			}
-
-			label 3 {
-#				return "3";
-			}
-		};
-
-		return "-1";
+	enum Foo {
+		BAR
 	}
 }
