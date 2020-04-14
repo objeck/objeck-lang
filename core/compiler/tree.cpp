@@ -427,7 +427,7 @@ wstring Method::EncodeUserType(Type* type) {
       break;
 
     case CLASS_TYPE:
-      name = type->GetName();
+      name = ReplaceSubstring(type->GetName(), L"#", L"->");
       if(type->HasGenerics()) {
         const vector<frontend::Type*> generic_types = type->GetGenerics();
         name += L'<';
