@@ -787,9 +787,12 @@ void* MemoryManager::CheckJitRoots(void* arg)
   
   for(size_t i = 0; i < jit_frames.size(); ++i) {
     StackFrame* frame = jit_frames[i];
-    size_t* mem = frame->jit_mem;
-    size_t* self = (size_t*)frame->mem[0];
     StackMethod* method = frame->method;
+    size_t* mem = frame->jit_mem;
+    if(method->HasAndOr()) {
+      --mem;
+    }
+    size_t* self = (size_t*)frame->mem[0];
     const long dclrs_num = method->GetNumberDeclarations();
 
 #ifdef _DEBUG
