@@ -38,7 +38,7 @@ unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
 
-vector<size_t*> MemoryManager::allocated_memory;
+set<size_t*> MemoryManager::allocated_memory;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -95,9 +95,20 @@ void MemoryManager::Initialize(StackProgram* p)
 // if return true, trace memory otherwise do not
 inline bool MemoryManager::MarkMemory(size_t* mem)
 {
-  if(mem && ((size_t)mem) > MEM_START) {
+  if(!mem) {
+    return false;
+  }
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+  set<size_t*>::iterator found = allocated_memory.find(mem);
+  if(found != allocated_memory.end()) {
     // check if memory has been marked
     if(mem[MARKED_FLAG]) {
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
       return false;
     }
 
@@ -110,20 +121,28 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
     MUTEX_UNLOCK(&marked_lock);     
 #endif
 
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
     return true;
   }
 
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&allocated_lock);
+#endif
   return false;
 }
 
 // if return true, trace memory otherwise do not
 inline bool MemoryManager::MarkValidMemory(size_t* mem)
 {
-  if(mem && ((size_t)mem) > MEM_START) {
+  if(mem) {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
+    set<size_t*>::iterator found = allocated_memory.find(mem);
+    if(found != allocated_memory.end()) {
+    // if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -262,7 +281,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     MUTEX_LOCK(&allocated_lock);
  #endif
     allocation_size += size;
-    allocated_memory.push_back(mem);
+    allocated_memory.insert(mem);
  #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
  #endif
@@ -332,7 +351,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   MUTEX_LOCK(&allocated_lock);
 #endif
   allocation_size += calc_size;
-  allocated_memory.push_back(mem);
+  allocated_memory.insert(mem);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -472,6 +491,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
   CollectionInfo* info = (CollectionInfo*)arg;
 
+  /*
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
 #endif
@@ -479,6 +499,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
+  */
 
 #ifdef _DEBUG
   size_t start = allocation_size;
@@ -600,9 +621,12 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
 
 #endif
-  vector<size_t*> live_memory;
-  for(size_t i = 0; i < allocated_memory.size(); ++i) {
-    size_t* mem = allocated_memory[i];
+  set<size_t*> live_memory;
+
+  // for(size_t i = 0; i < allocated_memory.size(); ++i) {
+  for (set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+    // size_t* mem = allocated_memory[i];
+    size_t* mem = *iter;
 
     // check dynamic memory
     bool found = false;
@@ -613,7 +637,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
     // live
     if(found) {
-      live_memory.push_back(mem);
+      live_memory.insert(mem);
     }
     // will be collected
     else {
@@ -798,7 +822,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       << L"; num=" << method->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
-    if(mem && ((size_t)mem) > MEM_START) {
+    if(mem) {
       // check self
       if(!method->IsLambda()) {
         CheckObject(self, true, 1);
@@ -1290,7 +1314,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  if(mem && ((size_t)mem) > MEM_START) {
+  if(mem) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
