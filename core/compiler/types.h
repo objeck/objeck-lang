@@ -501,7 +501,7 @@ namespace backend {
 #ifdef _DEBUG
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
-        int index = has_and_or ? 1 : 0;
+        size_t index = has_and_or ? 1 : 0;
         GetLogger() << L"memory types:" << endl;
         if(has_and_or) {
           GetLogger() << L"  0: INT_PARM" << endl;

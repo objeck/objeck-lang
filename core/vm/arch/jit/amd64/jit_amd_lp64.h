@@ -398,6 +398,7 @@ namespace Runtime {
           wcerr << L"Unable to allocate memory!" << endl;
           exit(1);
         }
+
         code_buf_max *= 2;
       }
       code[code_index++] = b;
@@ -582,7 +583,7 @@ namespace Runtime {
      **********************************/
     inline void CheckNilDereference(Register reg) {
       cmp_imm_reg(0, reg);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
 #endif
       // jump not equal
@@ -600,7 +601,7 @@ namespace Runtime {
 
       // less than zero
       cmp_imm_reg(0, reg);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"  " << (++instr_count) << L": [jl <err>]" << endl;
 #endif
       // jump not equal
@@ -612,7 +613,7 @@ namespace Runtime {
 
       // greater than max
       cmp_reg_reg(max_reg, reg);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"  " << (++instr_count) << L": [jge <err>]" << endl;
 #endif
       // jump not equal
@@ -634,7 +635,7 @@ namespace Runtime {
         }
         else {
           compile_success = false;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
           aux_regs.push(rax_reg);
@@ -662,7 +663,7 @@ namespace Runtime {
         << L" *" << endl;
 #endif
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       assert(h->GetRegister() < XMM0);
       for(size_t i = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
@@ -684,7 +685,7 @@ namespace Runtime {
       RegisterHolder* holder;
       if(aval_xregs.empty()) {
         compile_success = false;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         wcout << L">>> No XMM registers avaiable! <<<" << endl;
 #endif
         aval_xregs.push_back(new RegisterHolder(XMM0));
@@ -707,7 +708,7 @@ namespace Runtime {
 
     // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       assert(h->GetRegister() >= XMM0);
       for(size_t i = 0; i < aval_xregs.size(); ++i) {
         assert(h != aval_xregs[i]);
@@ -863,7 +864,7 @@ namespace Runtime {
 
     static size_t PopInt(size_t* op_stack, long *stack_pos) {
       const size_t value = op_stack[--(*stack_pos)];
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
 
@@ -872,7 +873,7 @@ namespace Runtime {
 
     static void PushInt(size_t* op_stack, long *stack_pos, size_t value) {
       op_stack[(*stack_pos)++] = value;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
     }
@@ -880,7 +881,7 @@ namespace Runtime {
     inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
       (*stack_pos)--;
       
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << endl;
       return v;
@@ -890,7 +891,7 @@ namespace Runtime {
     }
 
     inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; call_pos=" << (*stack_pos) << endl;
 #endif
