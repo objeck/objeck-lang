@@ -95,7 +95,7 @@ void MemoryManager::Initialize(StackProgram* p)
 // if return true, trace memory otherwise do not
 inline bool MemoryManager::MarkMemory(size_t* mem)
 {
-  if(mem) {
+  if(mem && ((size_t)mem) > MEM_START) {
     // check if memory has been marked
     if(mem[MARKED_FLAG]) {
       return false;
@@ -119,7 +119,7 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 // if return true, trace memory otherwise do not
 inline bool MemoryManager::MarkValidMemory(size_t* mem)
 {
-  if(mem) {
+  if(mem && ((size_t)mem) > MEM_START) {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
@@ -798,7 +798,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       << L"; num=" << method->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
-    if(mem) {
+    if(mem && ((size_t)mem) > MEM_START) {
       // check self
       if(!method->IsLambda()) {
         CheckObject(self, true, 1);
@@ -1290,7 +1290,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  if(mem) {
+  if(mem && ((size_t)mem) > MEM_START) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);

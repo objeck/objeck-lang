@@ -52,7 +52,7 @@ void JitCompilerIA64::Prolog() {
 
   local_space += 16;
   while(local_space % 16 != 0) {
-    local_space++;
+    local_space += 8;
   }
   local_space += 8;
   
@@ -148,8 +148,9 @@ void JitCompilerIA64::RegisterRoot() {
   // note: the offset required to 
   // get to the first local variable
 #ifdef _WIN64
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 16; // TODO: align 16-byte boundary
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 8;
 #else
+  // TODO: validate on Linux and macOS
   const long offset = org_local_space + RED_ZONE + TMP_REG_5;
 #endif
   // get to stack locals
