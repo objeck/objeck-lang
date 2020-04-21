@@ -673,8 +673,7 @@ void Scanner::ReadFile()
   buffer = LoadFileBuffer(filename, buffer_size);
   
 #ifdef _DEBUG
-  GetLogger() << L"---------- Source ---------" << endl;
-  GetLogger() << buffer << endl;
+  GetLogger() << L"---------- Source: '" << filename << L"' ---------" << endl;
 #endif
 }
 

@@ -443,25 +443,14 @@ namespace backend {
       return blocks;
     }
 
-    void SetBlocks(vector<IntermediateBlock*> b) {
+    void SetBlocks(vector<IntermediateBlock*> &b) {
       blocks = b;
     }
 
-    void Write(bool emit_lib, bool is_debug, OutputStream& out_stream);
+    void Write(bool emit_lib, bool is_debug, OutputStream &out_stream);
 
 #ifdef _DEBUG
-    void Debug() {
-      GetLogger() << L"---------------------------------------------------------" << endl;
-      GetLogger() << L"Method: id=" << id << L"; name='" << name << L"'; return='" << rtrn_name
-        << L"';\n  blocks=" << blocks.size() << L"; is_function=" << is_function << L"; num_params="
-        << params << L"; mem_size=" << space << endl;
-      GetLogger() << L"---------------------------------------------------------" << endl;
-      entries->Debug(has_and_or);
-      GetLogger() << L"---------------------------------------------------------" << endl;
-      for(size_t i = 0; i < blocks.size(); ++i) {
-        blocks[i]->Debug();
-      }
-    }
+    void Debug();
 #endif
   };
 

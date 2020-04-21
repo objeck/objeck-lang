@@ -308,6 +308,19 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   }
 }
 
+void IntermediateMethod::Debug() {
+  GetLogger() << L"---------------------------------------------------------" << endl;
+  GetLogger() << L"Method: id=" << klass->GetId() << L"," << id << L"; name='" << name << L"'; return='" << rtrn_name
+    << L"';\n  blocks=" << blocks.size() << L"; is_function=" << is_function << L"; num_params="
+    << params << L"; mem_size=" << space << endl;
+  GetLogger() << L"---------------------------------------------------------" << endl;
+  entries->Debug(has_and_or);
+  GetLogger() << L"---------------------------------------------------------" << endl;
+  for (size_t i = 0; i < blocks.size(); ++i) {
+    blocks[i]->Debug();
+  }
+}
+
 /****************************
 * IntermediateBlock class
 ****************************/
@@ -424,8 +437,10 @@ void IntermediateInstruction::Debug() {
     GetLogger() << L"LOAD_INT_LIT: value=" << operand << endl;
     break;
 
-  case LOAD_CHAR_LIT:
-    GetLogger() << L"LOAD_CHAR_LIT value='" << (wchar_t)operand << L"'" << endl;
+  case LOAD_CHAR_LIT: {
+    const bool is_print = iswprint((wchar_t)operand);
+    GetLogger() << L"LOAD_CHAR_LIT value='" << (is_print ? (wchar_t)operand : L'?') << L"'" << endl;
+  }
     break;
 
   case DYN_MTHD_CALL:
