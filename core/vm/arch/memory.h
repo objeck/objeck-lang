@@ -45,10 +45,12 @@
 */
 
 #if defined(_WIN64) || defined(_X64)
-#define MEM_MAX 4096 * 256 * 2
+#define MEM_MAX 4096 * 256 * 8
 #else
 #define MEM_MAX 4096 * 256 * 4
 #endif
+
+#define MEM_START 4096 * 256
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
