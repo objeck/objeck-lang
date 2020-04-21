@@ -45,12 +45,10 @@
 */
 
 #if defined(_WIN64) || defined(_X64)
-#define MEM_MAX 4096 * 256 * 8
+#define MEM_MAX 4096 * 256 * 2
 #else
 #define MEM_MAX 4096 * 256 * 4
 #endif
-
-#define MEM_START 4096 * 256
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
@@ -92,7 +90,7 @@ class MemoryManager {
   static unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static unordered_set<StackFrame**> pda_frames;
   static vector<StackFrame*> jit_frames; // deleted elsewhere
-  static vector<size_t*> allocated_memory;
+  static set<size_t*> allocated_memory;
 
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -147,11 +145,15 @@ class MemoryManager {
 #endif
 
   static inline StackClass* GetClassMapping(size_t* mem) {
+    if(!mem) {
+      return nullptr;
+    }
+
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-       mem[TYPE] == NIL_TYPE) {
+    set<size_t*>::iterator found = allocated_memory.find(mem);
+    if(found != allocated_memory.end() && mem[TYPE] == NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -172,6 +174,7 @@ class MemoryManager {
     mem_logger.close();
 #endif
 
+    /*
     while(!allocated_memory.empty()) {
       size_t* mem = allocated_memory.back();
       allocated_memory.pop_back();
@@ -179,6 +182,7 @@ class MemoryManager {
       free(mem);
       mem = nullptr;
     }
+    */
     allocated_memory.clear();
 
 #ifdef _WIN32

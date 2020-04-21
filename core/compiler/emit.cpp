@@ -308,6 +308,7 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   }
 }
 
+#ifdef _DEBUG
 void IntermediateMethod::Debug() {
   GetLogger() << L"---------------------------------------------------------" << endl;
   GetLogger() << L"Method: id=" << klass->GetId() << L"," << id << L"; name='" << name << L"'; return='" << rtrn_name
@@ -320,6 +321,7 @@ void IntermediateMethod::Debug() {
     blocks[i]->Debug();
   }
 }
+#endif
 
 /****************************
 * IntermediateBlock class
