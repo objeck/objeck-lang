@@ -37,8 +37,10 @@ StackProgram* MemoryManager::prgm;
 unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
-
 set<size_t*> MemoryManager::allocated_memory;
+
+unordered_map<size_t, list<size_t*>*> MemoryManager::free_memory_cache;
+size_t MemoryManager::free_memory_cache_size;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -74,6 +76,7 @@ void MemoryManager::Initialize(StackProgram* p)
   allocation_size = 0;
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
+  free_memory_cache_size = 0;
 
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
@@ -142,7 +145,6 @@ inline bool MemoryManager::MarkValidMemory(size_t* mem)
 #endif
     set<size_t*>::iterator found = allocated_memory.find(mem);
     if(found != allocated_memory.end()) {
-    // if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -271,7 +273,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
-    mem = (size_t*)calloc(alloc_size, sizeof(char));
+    mem = GetMemory(alloc_size);
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
@@ -300,16 +302,16 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   return mem;
 }
 
-size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  size_t* op_stack, long stack_pos, bool collect)
+size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
 {
-  if(size < 0) {
+  if (size < 0) {
     wcerr << L">>> Invalid allocation size: " << size << L" <<<" << endl;
     exit(1);
   }
 
   size_t calc_size;
   size_t* mem;
-  switch(type) {
+  switch (type) {
   case BYTE_ARY_TYPE:
     calc_size = size * sizeof(char);
     break;
@@ -332,7 +334,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   }
 
   // collect memory
-  if(collect && allocation_size + calc_size > mem_max_size) {
+  if (collect && allocation_size + calc_size > mem_max_size) {
     CollectAllMemory(op_stack, stack_pos);
   }
 
@@ -341,8 +343,8 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   bool is_cached = false;
 #endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
-  
-  mem = (size_t*)calloc(alloc_size, sizeof(char));
+
+  mem = GetMemory(alloc_size);
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
@@ -361,12 +363,233 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 #endif
 
 #ifdef _DEBUG
-  wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem 
-        << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size 
-        << L" byte(s) #" << endl;
+  wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem
+    << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size
+    << L" byte(s) #" << endl;
 #endif
 
   return mem;
+}
+
+size_t* MemoryManager::GetMemory(size_t size) {
+  size_t* mem = GetFreeMemory(size);
+  if(mem) {
+    return mem;
+  }
+
+  size_t alloc_size = size + sizeof(size_t);
+  size_t* raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
+  raw_mem[0] = size;
+  return raw_mem + 1;
+}
+
+void MemoryManager::AddFreeMemory(size_t* raw_mem) {
+  if(free_memory_cache_size > mem_max_size) {
+    ClearFreeMemory();
+  }
+
+  const size_t size = raw_mem[0];
+  if(size > 0 && size <= 8) {
+    AddFreeCache(8, raw_mem);
+  }
+  else if(size > 8 && size <= 16) {
+    AddFreeCache(16, raw_mem);
+  }
+  else if(size > 16 && size <= 32) {
+    AddFreeCache(32, raw_mem);
+  }
+  else if(size > 32 && size <= 64) {
+    AddFreeCache(64, raw_mem);
+  }
+  else if(size > 64 && size <= 128) {
+    AddFreeCache(128, raw_mem);
+  }
+  else if(size > 128 && size <= 256) {
+    AddFreeCache(256, raw_mem);
+  }
+  else if(size > 256 && size <= 512) {
+    AddFreeCache(512, raw_mem);
+  }
+  else if(size > 512 && size <= 1024) {
+    AddFreeCache(1024, raw_mem);
+  }
+  else if(size > 1024 && size <= 2048) {
+    AddFreeCache(2048, raw_mem);
+  }
+  else if(size > 2048 && size <= 4096) {
+    AddFreeCache(4096, raw_mem);
+  }
+  else if(size > 4096 && size <= 8192) {
+    AddFreeCache(8192, raw_mem);
+  }
+  else if(size > 8192 && size <= 16384) {
+    AddFreeCache(16384, raw_mem);
+  }
+  else if(size > 16384 && size <= 32768) {
+    AddFreeCache(32768, raw_mem);
+  }
+  else if(size > 32768 && size <= 65536) {
+    AddFreeCache(65536, raw_mem);
+  }
+  else if(size > 65536 && size <= 131072) {
+    AddFreeCache(131072, raw_mem);
+  }
+  else if(size > 131072 && size <= 262144) {
+    AddFreeCache(262144, raw_mem);
+  }
+  else if(size > 262144 && size <= 524288) {
+    AddFreeCache(524288, raw_mem);
+  }
+  else if(size > 524288 && size <= 1048576) {
+    AddFreeCache(1048576, raw_mem);
+  }
+  else if(size > 1048576 && size <= 2097152) {
+    AddFreeCache(2097152, raw_mem);
+  }
+  else if(size > 2097152 && size <= 4194304) {
+    AddFreeCache(4194304, raw_mem);
+  }
+  // > 4MB
+  else {
+    free(raw_mem);
+    raw_mem = nullptr;
+  }
+}
+
+void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
+  const size_t mem_size = raw_mem[0];
+  free_memory_cache_size += mem_size;
+
+  unordered_map<size_t, list<size_t*>*>::iterator result = free_memory_cache.find(pool);
+  if(result == free_memory_cache.end()) {
+    list<size_t*>* pool_list = new list<size_t*>;
+    pool_list->push_front(raw_mem);
+    free_memory_cache.insert(pair<size_t, list<size_t*>*>(pool, pool_list));
+  }
+  else {
+    result->second->push_front(raw_mem);
+  }
+}
+
+size_t* MemoryManager::GetFreeMemory(size_t size) {
+  size_t cache_size;
+  if(size > 0 && size <= 8) {
+    cache_size = 8;
+  }
+  else if(size > 8 && size <= 16) {
+    cache_size = 16;
+  }
+  else if(size > 16 && size <= 32) {
+    cache_size = 32;
+  }
+  else if(size > 32 && size <= 64) {
+    cache_size = 64;
+  }
+  else if(size > 64 && size <= 128) {
+    cache_size = 128;
+  }
+  else if(size > 128 && size <= 256) {
+    cache_size = 256;
+  }
+  else if(size > 256 && size <= 512) {
+    cache_size = 512;
+  }
+  else if(size > 512 && size <= 1024) {
+    cache_size = 1024;
+  }
+  else if(size > 1024 && size <= 2048) {
+    cache_size = 2048;
+  }
+  else if(size > 2048 && size <= 4096) {
+    cache_size = 4096;
+  }
+  else if(size > 4096 && size <= 8192) {
+    cache_size = 8192;
+  }
+  else if(size > 8192 && size <= 16384) {
+    cache_size = 16384;
+  }
+  else if(size > 16384 && size <= 32768) {
+    cache_size = 32768;
+  }
+  else if(size > 32768 && size <= 65536) {
+    cache_size = 65536;
+  }
+  else if(size > 65536 && size <= 131072) {
+    cache_size = 131072;
+  }
+  else if(size > 131072 && size <= 262144) {
+    cache_size = 262144;
+  }
+  else if(size > 262144 && size <= 524288) {
+    cache_size = 524288;
+  }
+  else if(size > 524288 && size <= 1048576) {
+    cache_size = 1048576;
+  }
+  else if(size > 1048576 && size <= 2097152) {
+    cache_size = 2097152;
+  }
+  else if(size > 2097152 && size <= 4194304) {
+    cache_size = 4194304;
+  }
+  // > 4MB
+  else {
+    return nullptr;
+  }
+
+  unordered_map<size_t, list<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
+  if(result != free_memory_cache.end() && !result->second->empty()) {
+    bool found = false;
+    list<size_t*>* free_cache = result->second;
+
+    std::list<size_t*>::iterator iter = free_cache->begin();
+    for(; !found && iter != free_cache->end(); ++iter) {
+      size_t* check_mem = *iter;
+      const size_t check_size = check_mem[0];
+      if(check_size >= size) {
+        found = true;
+      }
+    }
+
+    if(found) {
+      --iter;
+      size_t* raw_mem = *iter;
+      free_cache->erase(iter);
+
+      const size_t mem_size = raw_mem[0];
+      free_memory_cache_size -= mem_size;
+      memset(raw_mem + 1, 0, mem_size);
+      return raw_mem + 1;
+    }
+  }
+
+  return nullptr;
+}
+
+void MemoryManager::ClearFreeMemory(bool all) {
+  unordered_map<size_t, list<size_t*>*>::iterator iter = free_memory_cache.begin();
+  for(; iter != free_memory_cache.end(); ++iter) {
+    list<size_t*>* free_cache = iter->second;
+
+    while(!free_cache->empty()) {
+      size_t* raw_mem = free_cache->front();
+      free_cache->pop_front();
+
+      const size_t size = raw_mem[0];
+      free_memory_cache_size -= size;
+
+      free(raw_mem);
+      raw_mem = nullptr;
+    }
+
+    if(all) {
+      delete free_cache;
+      free_cache = nullptr;
+
+      free_memory_cache.clear();
+    }
+  }
 }
 
 size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
@@ -490,16 +713,6 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
 
   CollectionInfo* info = (CollectionInfo*)arg;
-
-  /*
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
-  std::sort(allocated_memory.begin(), allocated_memory.end());
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&allocated_lock);
-#endif
-  */
 
 #ifdef _DEBUG
   size_t start = allocation_size;
@@ -672,8 +885,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
-      free(tmp);
-      tmp = nullptr;
+      ReleaseMemory(tmp);
 #ifdef _DEBUG
       wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;

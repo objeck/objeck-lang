@@ -91,6 +91,8 @@ class MemoryManager {
   static unordered_set<StackFrame**> pda_frames;
   static vector<StackFrame*> jit_frames; // deleted elsewhere
   static set<size_t*> allocated_memory;
+  static unordered_map<size_t, list<size_t*>*> free_memory_cache;
+  static size_t free_memory_cache_size;
 
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -166,6 +168,16 @@ class MemoryManager {
     return nullptr;
   }
 
+  static size_t* GetMemory(size_t alloc_size);
+
+  static void ReleaseMemory(size_t* mem) {
+    AddFreeMemory(mem - 1);
+  }
+  static void AddFreeMemory(size_t* raw_mem);
+  void static inline AddFreeCache(size_t pool, size_t* raw_mem);  
+  static size_t* GetFreeMemory(size_t size);
+  static void ClearFreeMemory(bool all = false);
+
  public:
   static void Initialize(StackProgram* p);
 
@@ -174,15 +186,14 @@ class MemoryManager {
     mem_logger.close();
 #endif
 
-    /*
-    while(!allocated_memory.empty()) {
-      size_t* mem = allocated_memory.back();
-      allocated_memory.pop_back();
+    ClearFreeMemory(true);
+
+    for(set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+      size_t* mem = *iter;
       mem -= EXTRA_BUF_SIZE;
       free(mem);
       mem = nullptr;
     }
-    */
     allocated_memory.clear();
 
 #ifdef _WIN32
