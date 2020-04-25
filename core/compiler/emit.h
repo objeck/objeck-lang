@@ -443,7 +443,7 @@ namespace backend {
       return blocks;
     }
 
-    void SetBlocks(vector<IntermediateBlock*> &b) {
+    void SetBlocks(vector<IntermediateBlock*> b) {
       blocks = b;
     }
 
