@@ -4249,6 +4249,11 @@ Select* Parser::ParseSelect(int depth)
         NextToken();
         labels->AddExpression(ParseSimpleExpression(depth + 1));
 
+        while(Match(TOKEN_COMMA) && !Match(TOKEN_END_OF_STREAM)) {
+          NextToken();
+          labels->AddExpression(ParseSimpleExpression(depth + 1));
+        }
+
         if(Match(TOKEN_COLON)) {
           NextToken();
         }

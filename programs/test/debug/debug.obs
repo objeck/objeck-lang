@@ -1,18 +1,19 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		x := String->New();
-#		a := x->As(Int);
-
-		a := Bar()->As(Int[]);
-		a->PrintLine();
-
-	}
-
-	function : Bar() ~ Byte[] {
-		return Nil;
-	}
-
-	enum Foo {
-		BAR
+		a := 51;
+		select(a) {
+			label 1, 2, 3 {
+				"1, 2, 3"->PrintLine();
+			}
+			label 5, 6, 7 {
+				"5, 6, 7"->PrintLine();
+			}
+			label 51, 16, 17 {
+				"51, 16, 17"->PrintLine();
+			}
+			other {
+				"other"->PrintLine();
+			}
+		};
 	}
 }
