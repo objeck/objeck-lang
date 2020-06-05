@@ -61,6 +61,21 @@ bundle Game.Framework {
 		method : public : AddClip(clip : Rect) ~ Nil {
 			@clips->AddBack(clip);
 		}
+		
+		#~
+		Adds clips
+		@param num_x_clips number of x-clips
+		@param x_clip_size x size of clips
+		@param num_y_clips number of y-clips
+		@param y_clip_size y size of clips
+		~#
+		method : public : AddClips(num_x_clips : Int, x_clip_size : Int, num_y_clips : Int, y_clip_size : Int) ~ Nil {
+			for(i := 0; i < num_y_clips; i += 1;) {
+				for(j := 0; j < num_x_clips; j += 1;) {
+					@clips->AddBack(Rect->New(j * x_clip_size, i * y_clip_size, x_clip_size, x_clip_size));
+				};
+			};
+		}
 
 		#~
 		Get number of clips used in the sprite sheet
