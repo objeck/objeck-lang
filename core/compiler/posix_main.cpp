@@ -109,8 +109,8 @@ int main(int argc, char* argv[])
     OpenLogger("debug.dat");
 #endif
 
-    // compile source
-    status = Compile(arguments, argument_options, usage);
+    // compile source with options
+    status = OptionsCompile(arguments, argument_options, usage);
 
 #ifdef _DEBUG
     CloseLogger();

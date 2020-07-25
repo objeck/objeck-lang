@@ -48,7 +48,8 @@
 
 extern "C"
 {
-  int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_options, const wstring usage);
+  int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argument_options, const wstring usage);
+  int Compile(map<const wstring, wstring>& arguments, wstring &run_string, wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug);
 }
 
 #endif

@@ -43,136 +43,22 @@ using namespace std;
 #define CONTEXT_ERROR 3
 
 /****************************
- * Starts the compilation
- * process.
+ * Starts the compilation process
  ****************************/
-int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_options, const wstring usage)
-{
-  // set UTF-8 environment
-#ifdef _WIN32
-  _setmode(_fileno(stdout), _O_U8TEXT);
-#else
-  setlocale(LC_ALL, "");
-  setlocale(LC_CTYPE, "UTF-8");
-#endif
-  
-  // check for optimize flag
-  map<const wstring, wstring>::iterator result = arguments.find(L"ver");
-  if(result != arguments.end()) {
-#if defined(_WIN64) && defined(_WIN32)
-    wcout << VERSION_STRING << L" Objeck (x86-64 Windows)" << endl;
-#elif _WIN32
-    wcout << VERSION_STRING << L" Objeck (x86 Windows)" << endl;
-#elif _OSX
-    wcout << VERSION_STRING << L" Objeck (x86-64 macOS)" << endl;
-#elif _X64
-    wcout << VERSION_STRING << L" Objeck (x86-64 Linux)" << endl;
-#elif _ARM32
-    wcout << VERSION_STRING << L" Objeck (ARMv7 Linux)" << endl;
-#else
-    wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
-#endif 
-    wcout << L"---" << endl;
-    wcout << L"Copyright(c) 2008-2020, Randy Hollines" << endl;
-    wcout << L"This is free software; see the source for copying conditions.There is NO" << endl;
-    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
-    argument_options.remove(L"ver");
-    exit(0);
-  }
-  
-  // check source input
-  wstring run_string;
-  result = arguments.find(L"src");
-  if(result == arguments.end()) {
-    result = arguments.find(L"in");
-    if(result == arguments.end()) {
-      wcerr << usage << endl << endl;
-      return COMMAND_ERROR;
-    }
-    run_string = L"bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
-    run_string += arguments[L"in"];
-    run_string += L"} } }";
-    argument_options.remove(L"in");
-  }
-  else {
-    argument_options.remove(L"src");
-  }
-  
-  // check program output
-  result = arguments.find(L"dest");
-  if(result == arguments.end()) {
-    wcerr << usage << endl << endl;
-    return COMMAND_ERROR;
-  }
-  argument_options.remove(L"dest");
-  
-  // check program libraries path
-  wstring sys_lib_path = L"lang.obl";  
-  result = arguments.find(L"lib");
-  if(result != arguments.end()) {
-    sys_lib_path += L"," + result->second;
-    argument_options.remove(L"lib");
-  }
-  
-  // check for optimize flag
-  wstring optimize;
-  result = arguments.find(L"opt");
-  if(result != arguments.end()) {
-    optimize = result->second;
-    if(optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
-      wcerr << usage << endl << endl;
-      return COMMAND_ERROR;
-    }
-    argument_options.remove(L"opt");
-  }
-  
-  // check program libraries path
-  wstring target;
-  result = arguments.find(L"tar");
-  if(result != arguments.end()) {
-    target = result->second;
-    if(target != L"lib" && target != L"web" && target != L"exe") {
-      wcerr << usage << endl << endl;
-      return COMMAND_ERROR;
-    }
-    argument_options.remove(L"tar");
-  }
-
-  // use alternate syntax
-  bool alt_syntax = false;
-  result = arguments.find(L"alt");
-  if(result != arguments.end()) {
-    alt_syntax = true;
-    argument_options.remove(L"alt");
-  }
-  
-  // check for debug flag
-  bool is_debug = false;
-  result = arguments.find(L"debug");
-  if(result != arguments.end()) {
-    is_debug = true;
-    argument_options.remove(L"debug");
-  }
-  
-  if(argument_options.size() != 0) {
-    wcerr << usage << endl << endl;
-    return COMMAND_ERROR;
-  }
-  
+int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug) {
   // parse source code  
   Parser parser(arguments[L"src"], alt_syntax, run_string);
-  if(parser.Parse()) {
+  if (parser.Parse()) {
     bool is_lib = false;
     bool is_web = false;
-    
-    if(target == L"lib") {
+
+    if (target == L"lib") {
       is_lib = true;
     }
-    
-    if(target == L"web") {
+
+    if (target == L"web") {
       is_web = true;
     }
-  
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
     ContextAnalyzer analyzer(program, sys_lib_path, is_lib, is_web);
@@ -193,7 +79,125 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
       return CONTEXT_ERROR;
     }
   }
-  else {
-    return PARSE_ERROR;
+  
+  return PARSE_ERROR;
+}
+
+/****************************
+ * Processes compilation options
+ ****************************/
+int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argument_options, const wstring usage)
+{
+  // set UTF-8 environment
+#ifdef _WIN32
+  _setmode(_fileno(stdout), _O_U8TEXT);
+#else
+  setlocale(LC_ALL, "");
+  setlocale(LC_CTYPE, "UTF-8");
+#endif
+
+  // check for optimize flag
+  map<const wstring, wstring>::iterator result = arguments.find(L"ver");
+  if (result != arguments.end()) {
+#if defined(_WIN64) && defined(_WIN32)
+    wcout << VERSION_STRING << L" Objeck (x86-64 Windows)" << endl;
+#elif _WIN32
+    wcout << VERSION_STRING << L" Objeck (x86 Windows)" << endl;
+#elif _OSX
+    wcout << VERSION_STRING << L" Objeck (x86-64 macOS)" << endl;
+#elif _X64
+    wcout << VERSION_STRING << L" Objeck (x86-64 Linux)" << endl;
+#elif _ARM32
+    wcout << VERSION_STRING << L" Objeck (ARMv7 Linux)" << endl;
+#else
+    wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
+#endif 
+    wcout << L"---" << endl;
+    wcout << L"Copyright(c) 2008-2020, Randy Hollines" << endl;
+    wcout << L"This is free software; see the source for copying conditions.There is NO" << endl;
+    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
+    argument_options.remove(L"ver");
+    exit(0);
   }
+
+  // check source input
+  wstring run_string;
+  result = arguments.find(L"src");
+  if (result == arguments.end()) {
+    result = arguments.find(L"in");
+    if (result == arguments.end()) {
+      wcerr << usage << endl << endl;
+      return COMMAND_ERROR;
+    }
+    run_string = L"bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
+    run_string += arguments[L"in"];
+    run_string += L"} } }";
+    argument_options.remove(L"in");
+  }
+  else {
+    argument_options.remove(L"src");
+  }
+
+  // check program output
+  result = arguments.find(L"dest");
+  if (result == arguments.end()) {
+    wcerr << usage << endl << endl;
+    return COMMAND_ERROR;
+  }
+  argument_options.remove(L"dest");
+
+  // check program libraries path
+  wstring sys_lib_path = L"lang.obl";
+  result = arguments.find(L"lib");
+  if (result != arguments.end()) {
+    sys_lib_path += L"," + result->second;
+    argument_options.remove(L"lib");
+  }
+
+  // check for optimize flag
+  wstring optimize;
+  result = arguments.find(L"opt");
+  if (result != arguments.end()) {
+    optimize = result->second;
+    if (optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
+      wcerr << usage << endl << endl;
+      return COMMAND_ERROR;
+    }
+    argument_options.remove(L"opt");
+  }
+
+  // check program libraries path
+  wstring target;
+  result = arguments.find(L"tar");
+  if (result != arguments.end()) {
+    target = result->second;
+    if (target != L"lib" && target != L"web" && target != L"exe") {
+      wcerr << usage << endl << endl;
+      return COMMAND_ERROR;
+    }
+    argument_options.remove(L"tar");
+  }
+
+  // use alternate syntax
+  bool alt_syntax = false;
+  result = arguments.find(L"alt");
+  if (result != arguments.end()) {
+    alt_syntax = true;
+    argument_options.remove(L"alt");
+  }
+
+  // check for debug flag
+  bool is_debug = false;
+  result = arguments.find(L"debug");
+  if (result != arguments.end()) {
+    is_debug = true;
+    argument_options.remove(L"debug");
+  }
+
+  if (argument_options.size() != 0) {
+    wcerr << usage << endl << endl;
+    return COMMAND_ERROR;
+  }
+
+  return Compile(arguments, run_string, sys_lib_path, target, alt_syntax, is_debug);
 }
