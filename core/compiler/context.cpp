@@ -6979,9 +6979,6 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
           if(method_call->GetEntry()) {
             const vector<Type*> real_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
-              Type* rtrn_candidate_type = candidate_types[i];
-              ResolveClassEnumType(rtrn_candidate_type);
-              
               if(klass && method_call->GetEvalType()) {
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
@@ -6997,8 +6994,10 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   Type* map_type = map_types[i];
                   const int map_type_index = lib_klass->GenericIndex(map_type->GetName());
                   if(map_type_index > -1 && map_type_index < (int)real_types.size()) {
+                    Type* candidate_type = candidate_types[i];
+                    ResolveClassEnumType(candidate_type);
                     Type* concrete_type = real_types[map_type_index];
-                    if(rtrn_candidate_type->GetName() != concrete_type->GetName()) {
+                    if(candidate_type->GetName() != concrete_type->GetName()) {
                       ProcessError(static_cast<Expression*>(method_call), L"Invalid concrete type '" + concrete_type->GetName() + L"'");
                     }
                   }
