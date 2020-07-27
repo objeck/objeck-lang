@@ -2485,8 +2485,8 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
     else {
       if(expression->GetEvalType()) {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-		     expression->GetEvalType()->GetName() +
-		     L"'\n\tIf external reference to generic ensure it has been typed");
+         expression->GetEvalType()->GetName() +
+         L"'\n\tIf external reference to generic ensure it has been typed");
       }
       else {
         ProcessError(static_cast<Expression*>(method_call),
@@ -6998,7 +6998,8 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     ResolveClassEnumType(candidate_type);
                     Type* concrete_type = real_types[map_type_index];
                     if(candidate_type->GetName() != concrete_type->GetName()) {
-                      ProcessError(static_cast<Expression*>(method_call), L"Invalid concrete type '" + concrete_type->GetName() + L"' for generic");
+                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete mapping: '" + concrete_type->GetName()
+                                   +  L"' to '" + candidate_type->GetName() + L"'");
                     }
                   }
                   else {
