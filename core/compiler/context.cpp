@@ -6998,7 +6998,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     ResolveClassEnumType(candidate_type);
                     Type* concrete_type = real_types[map_type_index];
                     if(candidate_type->GetName() != concrete_type->GetName()) {
-                      ProcessError(static_cast<Expression*>(method_call), L"Invalid concrete type '" + concrete_type->GetName() + L"'");
+                      ProcessError(static_cast<Expression*>(method_call), L"Invalid concrete type '" + concrete_type->GetName() + L"' for generic");
                     }
                   }
                   else {
