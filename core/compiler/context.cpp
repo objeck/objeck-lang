@@ -6977,7 +6977,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
           const vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
-            const vector<Type*> real_types = method_call->GetEntry()->GetType()->GetGenerics();
+            const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
@@ -6993,13 +6993,16 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                 if(i < map_types.size()) {
                   Type* map_type = map_types[i];
                   const int map_type_index = lib_klass->GenericIndex(map_type->GetName());
-                  if(map_type_index > -1 && map_type_index < (int)real_types.size()) {
+                  if(map_type_index > -1 && map_type_index < (int)concrete_types.size()) {
                     Type* candidate_type = candidate_types[i];
                     ResolveClassEnumType(candidate_type);
-                    Type* concrete_type = real_types[map_type_index];
+                    
+                    Type* concrete_type = concrete_types[map_type_index];
+                    ResolveClassEnumType(concrete_type);
+
                     if(candidate_type->GetName() != concrete_type->GetName()) {
-                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete mapping: '" + concrete_type->GetName()
-                                   +  L"' to '" + candidate_type->GetName() + L"'");
+                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete mapping: '" + 
+                                   concrete_type->GetName() + L"' to '" + candidate_type->GetName() + L"'");
                     }
                   }
                   else {
