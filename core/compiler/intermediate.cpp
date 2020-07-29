@@ -306,7 +306,7 @@ void IntermediateEmitter::EmitStrings()
     for(size_t i = 0; i < libraries.size(); ++i) {
       Library* library = libraries[i];
 
-      // char wstring processing
+      // char string processing
       vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         // check for duplicate
@@ -321,7 +321,7 @@ void IntermediateEmitter::EmitStrings()
           lib_char_string_values.push_back(char_str_insts[i]->value);
         }
       }      
-      // int wstring processing
+      // int string processing
       vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         // check for duplicates
@@ -336,7 +336,7 @@ void IntermediateEmitter::EmitStrings()
           lib_int_string_values.push_back(int_str_insts[i]->value);
         }
       }
-      // float wstring processing
+      // float string processing
       vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         // check for duplicates
@@ -398,7 +398,7 @@ void IntermediateEmitter::EmitStrings()
     for(size_t i = 0; i < libraries.size(); ++i) {
       Library* library = libraries[i];
 
-      // char wstring processing
+      // char string processing
       vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         bool found = false;
@@ -432,7 +432,7 @@ void IntermediateEmitter::EmitStrings()
         assert(found);
 #endif
       }
-      // float wstring processing
+      // float string processing
       vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         bool found = false;
@@ -640,8 +640,9 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     }
   }
   imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(), method->IsVirtual(), 
-              method->HasAndOr(), method->IsLambda(), method->GetEncodedReturn(),  method->GetMethodType(),
-              method->IsNative(), method->IsStatic(), space, num_params, entries, imm_klass);
+                                      method->HasAndOr(), method->IsLambda(), method->GetEncodedReturn(),  
+                                      method->GetMethodType(), method->IsNative(), method->IsStatic(), 
+                                      space, num_params, entries, imm_klass);
 
   if(!method->IsVirtual()) {
     // block
