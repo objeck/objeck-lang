@@ -3228,7 +3228,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
             ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_method->GetLibraryClass()->GetName() +
                          L"' between generic types: '" + ReplaceSubstring(concretate_type->GetName(), L"#", L"->") +
                          L"' and '" + ReplaceSubstring(generic_type->GetName(), L"#", L"->") + L"'");
-          };
+          }
         }
       }
       else {
