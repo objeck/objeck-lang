@@ -3213,6 +3213,28 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       eval_type = ResolveGenericType(eval_type, method_call, nullptr, lib_klass, true);
       method_call->SetEvalType(eval_type, false);
     }
+    else if(lib_method->GetReturn()->HasGenerics()) {
+      vector<Type*> concretate_types = method_call->GetConcreteTypes();
+      vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
+      if(concretate_types.size() == generic_types.size()) {
+        for(size_t i = 0; i < concretate_types.size(); ++i) {
+          Type* concretate_type = concretate_types[i];
+          ResolveClassEnumType(concretate_type);
+
+          Type* generic_type = generic_types[i];
+          ResolveClassEnumType(generic_type);
+
+          if(concretate_type->GetName() != generic_type->GetName()) {
+            ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_method->GetLibraryClass()->GetName() +
+                         L"' between generic types: '" + ReplaceSubstring(concretate_type->GetName(), L"#", L"->") +
+                         L"' and '" + ReplaceSubstring(generic_type->GetName(), L"#", L"->") + L"'");
+          };
+        }
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call), L"Generic to concrete size mismatch");
+      }
+    }
 
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
@@ -6992,6 +7014,8 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
                   Type* map_type = map_types[i];
+                  ResolveClassEnumType(map_type);
+
                   const int map_type_index = lib_klass->GenericIndex(map_type->GetName());
                   if(map_type_index > -1 && map_type_index < (int)concrete_types.size()) {
                     Type* candidate_type = candidate_types[i];
@@ -7008,7 +7032,6 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   else {
                     ProcessError(static_cast<Expression*>(method_call), L"Invalid generic type '" + map_type->GetName() + L"'");
                   }
-                  ResolveClassEnumType(map_type);
                 }
                 else {
                   ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
