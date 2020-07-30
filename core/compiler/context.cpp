@@ -3232,7 +3232,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
         }
       }
       else {
-        ProcessError(static_cast<Expression*>(method_call), L"Generic to concrete size mismatch");
+        ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
       }
     }
 
@@ -7025,7 +7025,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     ResolveClassEnumType(concrete_type);
 
                     if(candidate_type->GetName() != concrete_type->GetName()) {
-                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete mapping: '" + 
+                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
                                    concrete_type->GetName() + L"' to '" + candidate_type->GetName() + L"'");
                     }
                   }
