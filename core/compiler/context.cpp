@@ -3214,8 +3214,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       method_call->SetEvalType(eval_type, false);
     }
     else if(lib_method->GetReturn()->HasGenerics()) {
-      vector<Type*> concretate_types = method_call->GetConcreteTypes();
-      vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
+      const vector<Type*> concretate_types = method_call->GetConcreteTypes();
+      const vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
       if(concretate_types.size() == generic_types.size()) {
         for(size_t i = 0; i < concretate_types.size(); ++i) {
           Type* concretate_type = concretate_types[i];
