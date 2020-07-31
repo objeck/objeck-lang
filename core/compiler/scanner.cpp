@@ -805,32 +805,14 @@ void Scanner::ParseToken(int index)
         NextChar();
         switch(cur_char) {
         case L'"':
-          break;
-
         case L'\\':
-          break;
-
         case L'n':
-          break;
-
         case L'r':
-          break;
-
         case L'b':
-          break;
-
         case L'a':
-          break;
-
         case L'f':
-          break;
-
         case L't':
-          break;
-
         case L'0':
-          break;
-
         case L'$':
           break;
 
