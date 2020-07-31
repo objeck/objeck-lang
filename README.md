@@ -1,8 +1,6 @@
 # Objeck
 Objeck is an object-oriented computer language with functional features. The language has ties with Java, Scheme and UML. In this language all data types, except for higher-order functions, are treated as objects.
 
-![alt text](images/design2.png "Compiler & VM")
-
 Objeck is a general-purpose programming language with an emphasis placed on simplicity. The programming environment consists of a compiler, virtual machine and command line debugger.
 
 ```ruby
@@ -43,6 +41,8 @@ Notable features:
   * 2D Gaming (via SDL2)
 * Garbage collection
 * JIT support for all supported platforms
+
+![alt text](images/design2.png "Compiler & VM")
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
