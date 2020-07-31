@@ -45,11 +45,11 @@ Notable features:
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
-## Building
-Architecture:
+## Development 
+###Architecture:
 ![alt text](images/design2.png "Compiler & VM")
 
-Building on Linux:
+###Building on Linux:
 *  Install required libraries: "sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev"
 *  cd to "objeck-lang/core/release" and run "./deploy.sh" with the parameter 32 or 64 representing the bit version of Linux
 *  Build output with binaries and documentation will be located in "objeck-lang/core/release/deploy"
