@@ -3,4 +3,4 @@ v5.3.7
 Bug fix
 
 Highlights:
-1. Fixed a type checking bug for generic structures contaning generics (bug)
+1. Fixed type checking bugs for generics (bug)
