@@ -18,4 +18,4 @@ The lists of code blocks are passed to the *optimizer* which performs to followi
 Lastly, the code is organized and *emitted* to a single file along with supporting metadata. The resulting *executable* prunes all unnecessary code and is the single file needed by the VM to execute the code.
 
 ### Implementation
-C++ using the STL.
+C++ using the STL

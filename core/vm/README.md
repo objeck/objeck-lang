@@ -15,4 +15,4 @@ The VM supports the following targets:
 5. Linux 32-bit (POSIX, IA-32)
 
 ### Implementation
-C++ using STL and machine code
+C++ using STL with machine code generation
