@@ -45,7 +45,7 @@ Notable features:
 * JIT support for all supported platforms
 
 ## Documentation
-Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
+Please refer to the programmer's guide [documentation](https://www.objeck.org/documentation/) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
 ## Building
 Building on Linux:
