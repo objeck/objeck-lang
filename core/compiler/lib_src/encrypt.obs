@@ -201,7 +201,7 @@ bundle Encryption {
 
 		#~
 		Decrypts input using Base64
-		@in input bytes to decrypted
+		@param in input bytes to decrypted
 		@return decrypted bytes
 		~#
 		function : native : Base64(in : String) ~ String {
