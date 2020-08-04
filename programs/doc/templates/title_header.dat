@@ -9,7 +9,7 @@ body {
 	font-size: 15px;
 	line-height: 1;
 	color: #F8F8F8;
-	background-color: #505050;
+	background-color: #383838;
 	-webkit-font-smoothing: antialiased;
 }
 	
