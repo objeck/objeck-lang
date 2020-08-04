@@ -6,13 +6,18 @@
 <style>
 body {
 	font-family: sans-serif;
-	font-size: 13px;
+	font-size: 15px;
 	line-height: 1;
-	color: #404041;
-	background-color: #f1f1f2;
+	color: #F8F8F8;
+	background-color: #505050;
 	-webkit-font-smoothing: antialiased;
 }
 	
+
+h1 {
+	font-size: 36px;
+}
+
 ul {
 	font-size: 14px;
 	list-style-type: square;
@@ -21,8 +26,10 @@ ul {
 .doc-table {
 	font-family: sans-serif;
 	-webkit-font-smoothing: antialiased;
-	margin: auto;
-    width: calc(100% - 40px);
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
 }
 
 .doc-table th {
