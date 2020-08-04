@@ -66,11 +66,20 @@ class HtmlMaker {
 			return false;
 		};
 
+		title_css_path := String->New(@css_path);
+		title_css_path += '/';
+		title_css_path += "title_header.dat";
+		title_header := FileReader->ReadFile(title_css_path);
+		if(title_header = Nil) {
+			"--- Unable load title CSS template ---"->ErrorLine();
+			return false;
+		};
+
 		## create class list doc
 		CreateClassIndexHtml(@parser->GetBundles(), classes_header);
 		
 		## create bundle doc
-		CreateBundleIndexHtml(@parser->GetBundles(), bundle_header);
+		CreateBundleIndexHtml(@parser->GetBundles(), title_header, bundle_header);
 	
 		## bundles
 		bundles := @parser->GetBundles();
@@ -105,12 +114,18 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateBundleIndexHtml(bundles : Map<String, BundleSnippet>, class_header : String) ~ Nil {
-		html := String->New(class_header);
-		html += "<div class='header'><h1>Objeck</h1><strong>a programming language</strong>";
-		html += "<p><small>v{$@version}</small></p></div><hr/>";
-		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
+	method : CreateBundleIndexHtml(bundles : Map<String, BundleSnippet>, title_header : String, class_header : String) ~ Nil {
+		title := String->New(title_header);
+		title += "<div class='title'><h1>Objeck</h1><strong>a programming language</strong>";
+		title += "<p><small>v{$@version}</small></div>";
+		title += "</body></html>";
+		file_name := "../html/title.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(title);
+		out->Close();
 
+		html := String->New(class_header);
+		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			bundle_block := bundles->Find(bundle_keys->Get(i));
@@ -222,7 +237,7 @@ class HtmlMaker {
 		##  class description
 		html := String->New(header);
 		
-		html += "<a href='index.html' target='_parent'>Home</a><hr/>";
+		html += "<a href='index.html' target='_parent'>Bundles</a><hr/>";
 		
 		sec_b : String;
 		if(class_block->IsInterface()) {
