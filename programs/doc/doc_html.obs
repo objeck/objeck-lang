@@ -235,9 +235,8 @@ class HtmlMaker {
 	~#
 	method : CreateClassHtml(class_block : ClassSnippet, header : String) ~ Nil {
 		##  class description
-		html := String->New(header);
-		
-		html += "<a href='index.html' target='_parent'>Bundles</a><hr/>";
+		html := String->New(header);		
+		html += "<a href='index.html' target='_parent'>All Bundles</a><hr/>";
 		
 		sec_b : String;
 		if(class_block->IsInterface()) {
