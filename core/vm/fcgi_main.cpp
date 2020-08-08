@@ -66,12 +66,6 @@ int main(const int argc, const char* argv[])
   std::wcout.imbue(lollocale);
 #endif
 
-#ifdef _WIN32
-  // Initialize OpenSSL
-  CRYPTO_malloc_init();
-  SSL_library_init();
-#endif
-
   Loader loader(program_path.c_str());
   loader.Load();
 
