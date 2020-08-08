@@ -39,10 +39,13 @@
     <ClInclude Include="..\..\arch\jit\ia32\jit_intel_lp32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arch\win32\memory.h">
+    <ClInclude Include="..\..\arch\memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arch\win32\windows.h">
+    <ClInclude Include="..\..\arch\win32\win32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\shared\sys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,7 +65,7 @@
     <ClCompile Include="..\..\arch\jit\ia32\jit_intel_lp32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\arch\win32\memory.cpp">
+    <ClCompile Include="..\..\arch\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
