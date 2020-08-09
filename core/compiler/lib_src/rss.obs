@@ -75,7 +75,7 @@ bundle Web.RSS {
 		method : GetPosts(parser : XmlParser) ~ Vector<RSSPost> {
 			posts := Vector->New()<RSSPost>;
 
-			items := parser->FindElements("/rss/channel/item");
+			items := parser->FindElements("/rss/channel/item")<XmlElement>;
 			each(i : items) {
 				item := items->Get(i);
 				title := GetContent(item->GetFirstChild("title"));
@@ -95,7 +95,7 @@ bundle Web.RSS {
 		}
 
 		method : GetMatch(path : String, parser : XmlParser) ~ String {
-			matches := parser->FindElements(path);
+			matches := parser->FindElements(path)<XmlElement>;
 			if(matches->Size() > 0) {			
 				return GetContent(matches->Get(0));
 			};
