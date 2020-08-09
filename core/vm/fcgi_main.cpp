@@ -59,11 +59,14 @@ int main(const int argc, const char* argv[])
     exit(1);
   }
 #else
-  // enable UTF-8 environment
-  char* locale = setlocale(LC_ALL, ""); 
+#ifdef _X64
+  char* locale = setlocale(LC_ALL, "");
   std::locale lollocale(locale);
-  setlocale(LC_ALL, locale); 
-  std::wcout.imbue(lollocale);
+  setlocale(LC_ALL, locale);
+  wcout.imbue(lollocale);
+#else    
+  setlocale(LC_ALL, "en_US.utf8");
+#endif
 #endif
 
   Loader loader(program_path.c_str());
