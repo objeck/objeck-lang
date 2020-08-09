@@ -895,7 +895,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
     // web program
     else if(is_web) {
-      const wstring web_str = current_class->GetName() + L":Request:o.FastCgi.Request,o.FastCgi.Response,";
+      const wstring web_str = current_class->GetName() + L":Request:o.Web.FastCgi.Request,o.Web.FastCgi.Response,";
       if(method->GetEncodedName() == web_str) {
         if(web_found) {
           ProcessError(method, L"The 'Request(args)' function has already been defined");
