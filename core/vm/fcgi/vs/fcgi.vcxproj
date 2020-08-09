@@ -69,12 +69,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TargetName>obr_fcgi</TargetName>
     <IncludePath>..\..\..\lib\openssl\win\include;..\..\..\lib\zlib\win\include;..\..\..\lib\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>..\..\..\lib\fcgi\windows\lib\;..\..\..\lib\openssl\win\x86;..\..\..\lib\zlib\win\x86;..\..\..\lib\fcgi\windows\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\lib\fcgi\windows\lib\x86\;..\..\..\lib\openssl\win\x86;..\..\..\lib\zlib\win\x86;..\..\..\lib\fcgi\windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>obr_fcgi</TargetName>
     <IncludePath>..\..\..\lib\openssl\win\include;..\..\..\lib\zlib\win\include;..\..\..\lib\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>..\..\..\lib\fcgi\windows\lib\;..\..\..\lib\openssl\win\x64;..\..\..\lib\zlib\win\x64;..\..\..\lib\fcgi\windows\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\lib\fcgi\windows\lib\x64\;..\..\..\lib\openssl\win\x64;..\..\..\lib\zlib\win\x64;..\..\..\lib\fcgi\windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetName>obf</TargetName>
