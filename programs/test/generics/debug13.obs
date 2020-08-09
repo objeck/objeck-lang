@@ -1,0 +1,36 @@
+use Web.HTTP;
+use Collection.Generic;
+
+class Foo<A,B> {
+	@a : A;
+	@b : B;
+
+	New(a : A, b : B) {
+		@a := a;
+		@b := b;
+	}
+
+	method : public : GetA() ~ A {
+		return @a;
+	}
+
+	method : public : GetB() ~ B {
+		return @b;
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		client := HttpsClient->New();
+		headers : Hash<String, String> := client->GetHeaders()<String, String>;
+#		headers := client->GetHeaders()<String, String>;
+#		map := Map->New()<String, IntHolder>;
+#		keys := map->GetKeys()<String>;
+		foo := Foo->New(13, 3.145)<IntHolder, FloatHolder>;
+		a := foo->GetA();
+		b := foo->GetB();
+
+		a->PrintLine();
+		b->PrintLine();
+	}
+}
