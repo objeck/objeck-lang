@@ -65,6 +65,8 @@
     <IncludePath>..\openssl\win\include;..\zlib\win\include;..\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>..\openssl\win\x86;..\zlib\win\x86;..\fcgi\windows\lib\x86;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_fcgi</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -77,6 +79,8 @@
     <TargetName>libobjk_fcgi</TargetName>
     <IncludePath>..\openssl\win\include;..\zlib\win\include;..\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>..\fcgi\windows\lib\x86;..\openssl\win\x86;;..\zlib\win\x86;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

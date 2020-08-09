@@ -70,6 +70,8 @@
     <TargetName>obr_fcgi</TargetName>
     <IncludePath>..\..\..\lib\openssl\win\include;..\..\..\lib\zlib\win\include;..\..\..\lib\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>..\..\..\lib\fcgi\windows\lib\x86\;..\..\..\lib\openssl\win\x86;..\..\..\lib\zlib\win\x86;..\..\..\lib\fcgi\windows\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>obr_fcgi</TargetName>
@@ -80,9 +82,13 @@
     <TargetName>obr_fcgi</TargetName>
     <IncludePath>..\..\..\lib\openssl\win\include;..\..\..\lib\zlib\win\include;..\..\..\lib\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>..\..\..\lib\fcgi\windows\lib\x86\;..\..\..\lib\openssl\win\x86;..\..\..\lib\zlib\win\x86;..\..\..\lib\fcgi\windows\lib;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>obr_fcgi</TargetName>
+    <IncludePath>..\..\..\lib\openssl\win\include;..\..\..\lib\zlib\win\include;..\..\..\lib\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>..\..\..\lib\fcgi\windows\lib\x64\;..\..\..\lib\openssl\win\x64;..\..\..\lib\zlib\win\x64;..\..\..\lib\fcgi\windows\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -162,7 +168,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>..\..\..\lib\fcgi\windows\lib\libfcgi.lib;..\..\..\lib\openssl\win32\lib\libeay32.lib;..\..\..\lib\openssl\win32\lib\ssleay32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcrypto.lib;libssl.lib;crypt32.lib;libz-static.lib;libfcgi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
     </Link>
