@@ -62,12 +62,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\openssl\win\include;..\zlib\win\include;..\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>..\openssl\win\x86;..\zlib\win\x86;..\fcgi\windows\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\openssl\win\x86;..\zlib\win\x86;..\fcgi\windows\lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\openssl\win\include;..\zlib\win\include;..\fcgi\windows\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>..\openssl\win\x64;..\zlib\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\fcgi\windows\lib\x64;..\openssl\win\x64;;..\zlib\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
