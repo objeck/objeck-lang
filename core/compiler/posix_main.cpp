@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
     }
     
 #ifdef _DEBUG
-    OpenLogger("debug.dat");
+    OpenLogger("debug.log");
 #endif
 
     // compile source with options

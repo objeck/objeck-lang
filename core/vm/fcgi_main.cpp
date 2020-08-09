@@ -39,7 +39,7 @@ int main(const int argc, const char* argv[])
   wstring program_path;
   const char* raw_program_path = FCGX_GetParam("FCGI_CONFIG_PATH", environ);
   if(!raw_program_path) {
-    wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
+    wcout << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
     exit(1);
   }
   else {
@@ -55,7 +55,7 @@ int main(const int argc, const char* argv[])
   WSADATA data;
   int version = MAKEWORD(2, 2);
   if(WSAStartup(version, &data)) {
-    wcerr << L"Unable to load Winsock 2.2!" << endl;
+    wcout << L"Unable to load Winsock 2.2!" << endl;
     exit(1);
   }
 #else
@@ -74,7 +74,7 @@ int main(const int argc, const char* argv[])
 
   // ignore web applications
   if(!loader.IsWeb()) {
-    wcerr << L"Please recompile the code to be a web application." << endl;
+    wcout << L"Please recompile the code to be a web application." << endl;
     exit(1);
   }
 
@@ -85,12 +85,12 @@ int main(const int argc, const char* argv[])
   // locate starting class and method
   StackMethod* mthd = loader.GetStartMethod();
   if(!mthd) {
-    wcerr << L"Unable to locate the 'Request(...)' function." << endl;
+    wcout << L"Unable to locate the 'Request(...)' function." << endl;
     exit(1);
   }
 
 #ifdef _DEBUG
-  wcerr << L"### Loaded method: " << mthd->GetName() << L" ###" << endl;
+  wcout << L"### Loaded method: " << mthd->GetName() << L" ###" << endl;
 #endif
 
   Runtime::StackInterpreter intpr(Loader::GetProgram());
@@ -106,8 +106,8 @@ int main(const int argc, const char* argv[])
 
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // create request and response
-    size_t* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request",  op_stack, *stack_pos, false);
-    size_t* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", op_stack, *stack_pos, false);
+    size_t* req_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Request",  op_stack, *stack_pos, false);
+    size_t* res_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Response", op_stack, *stack_pos, false);
 
     if(req_obj && res_obj) {
       req_obj[0] = (size_t)in;
@@ -125,7 +125,7 @@ int main(const int argc, const char* argv[])
       intpr.Execute(op_stack, stack_pos, 0, mthd, NULL, false);
     }
     else {
-      wcerr << L">>> Shared library call: Unable to allocate FastCgi.Request or FastCgi.Response <<<" << endl;
+      wcout << L">>> Shared library call: Unable to allocate Web.FastCgi.Request or Web.FastCgi.Response <<<" << endl;
       return 1;
     }
 
@@ -151,6 +151,7 @@ int main(const int argc, const char* argv[])
   delete stack_pos;
   stack_pos = NULL;
 
+  
   return 0;
 }
 
