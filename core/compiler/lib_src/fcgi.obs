@@ -1,6 +1,6 @@
 use System.IO;
 use System.API;
-use Collection;
+use Collection.Generic;
 use Web.HTTP;
  
 #~
@@ -43,11 +43,11 @@ bundle Web.FastCgi {
 	class Request {
 		@native_in : Int;
 		@native_envp : Int;
-		@cookies : StringMap;
+		@cookies : Map<String, String>;
 		@query : String;
-		@query_values : StringMap;
+		@query_values : Map<String, String>;
 		@data : String;
-		@data_values : StringMap;
+		@data_values : Map<String, String>;
 		
 		#~
 		Gets the request protocol
@@ -122,7 +122,7 @@ bundle Web.FastCgi {
 		}
 
 		method : ProcessCookies(string : String) ~ Nil {
-			@cookies := StringMap->New();
+			@cookies := Map->New()<String, String>;
 			name_values := string->Split(";");
 			if(name_values <> Nil & name_values->Size() > 0) {
 				each(i : name_values) {
@@ -236,8 +236,8 @@ bundle Web.FastCgi {
 			return @data_values->Find(name)->As(String);
 		}
 		
-		function : ParseNameValues(params : String) ~ StringMap {
-			parameters := StringMap->New();
+		function : ParseNameValues(params : String) ~ Map<String, String> {
+			parameters := Map->New()<String, String>;
 			if(params <> Nil & params->Size() > 0) {
 				name_values := params->Split("&");
 				if(name_values->Size() > 0) {

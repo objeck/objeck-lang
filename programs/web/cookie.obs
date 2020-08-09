@@ -1,5 +1,5 @@
-use FastCgi;
-use HTTP;
+use Web.FastCgi;
+use Web.HTTP;
 
 class FastCgiModule {
 	function : Forward(req : Request, res : Response) ~ Nil {}
@@ -44,7 +44,7 @@ class FastCgiModule {
 		name := req->GetQueryValue("dog");
 		if(name <> Nil) {
 			res->AddBody("<pre>");
-			res->AddBody(UrlUtility->Decode(name));
+			res->AddBody(Url->Decode(name));
 			res->AddBody("</pre>");
 		};	
 
