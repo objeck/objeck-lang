@@ -217,6 +217,9 @@ bundle Data.CSV {
 				buffer->Append(@columns->Get(i)->ReplaceAll("ˑ", "\"\""));
 				if(i + 1 < @columns->Size()) {
 					buffer->Append("\",");
+				}
+				else {			
+					buffer->Append("\"");
 				};
 			};
 			
