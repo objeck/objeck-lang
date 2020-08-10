@@ -99,12 +99,14 @@ int main(const int argc, const char* argv[])
   FCGX_Stream*in; FCGX_Stream* out; FCGX_Stream* err;
   FCGX_ParamArray envp;
 
-  // execute method
-  size_t* op_stack = new size_t[OP_STACK_SIZE];
-  long* stack_pos = new long;
-  (*stack_pos) = 0;
+  
 
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
+    // execute method
+    size_t* op_stack = new size_t[OP_STACK_SIZE];
+    long* stack_pos = new long;
+    (*stack_pos) = 0;
+
     // create request and response
     size_t* req_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Request",  op_stack, *stack_pos, false);
     size_t* res_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Response", op_stack, *stack_pos, false);
@@ -142,16 +144,15 @@ int main(const int argc, const char* argv[])
     PrintEnv(out, "Request environment", envp);
     PrintEnv(out, "Initial environment", environ);
 #endif
+
+    // clean up
+    delete[] op_stack;
+    op_stack = NULL;
+
+    delete stack_pos;
+    stack_pos = NULL;
   }
 
-  // clean up
-  delete[] op_stack;
-  op_stack = NULL;
-
-  delete stack_pos;
-  stack_pos = NULL;
-
-  
   return 0;
 }
 
