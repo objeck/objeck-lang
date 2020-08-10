@@ -93,14 +93,10 @@ int main(const int argc, const char* argv[])
   wcout << L"### Loaded method: " << mthd->GetName() << L" ###" << endl;
 #endif
 
-  Runtime::StackInterpreter intpr(Loader::GetProgram());
+  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
 
-  // go into accept loop...
-  FCGX_Stream*in; FCGX_Stream* out; FCGX_Stream* err;
-  FCGX_ParamArray envp;
-
-  
-
+  // enter 'accept' loop
+  FCGX_Stream*in; FCGX_Stream* out; FCGX_Stream* err; FCGX_ParamArray envp;
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // execute method
     size_t* op_stack = new size_t[OP_STACK_SIZE];
@@ -124,23 +120,21 @@ int main(const int argc, const char* argv[])
       *stack_pos = 2;
 
       // execute method
-      intpr.Execute(op_stack, stack_pos, 0, mthd, NULL, false);
+      intpr->Execute(op_stack, stack_pos, 0, mthd, NULL, false);
     }
     else {
-      wcout << L">>> Shared library call: Unable to allocate Web.FastCgi.Request or Web.FastCgi.Response <<<" << endl;
+      FCGX_FPrintF(out, ">>> Shared library call: Unable to allocate Web.FastCgi.Request or Web.FastCgi.Response <<<\r\n");
       return 1;
     }
 
 #ifdef _DEBUG
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    FCGX_FPrintF(out, "# final stack: pos=%i #\r\n", *stack_pos);
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << (size_t)(*stack_pos) << endl;
+        FCGX_FPrintF(out, "dump: value=%i #\r\n", op_stack[i]);
       }
     }
-#endif
 
-#ifdef _DEBUG
     PrintEnv(out, "Request environment", envp);
     PrintEnv(out, "Initial environment", environ);
 #endif
@@ -152,6 +146,12 @@ int main(const int argc, const char* argv[])
     delete stack_pos;
     stack_pos = NULL;
   }
+
+  Runtime::StackInterpreter::RemoveThread(intpr);
+  Runtime::StackInterpreter::HaltAll();
+
+  delete intpr;
+  intpr = nullptr;
 
   return 0;
 }

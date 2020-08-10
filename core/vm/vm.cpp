@@ -65,11 +65,11 @@ int Execute(const int argc, const char* argv[])
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << (size_t)(*stack_pos) << endl;
-      } 
+        wcout << L"dump: value=" << op_stack[i] << endl;
+      }
     }
 #endif
-    
+
     // clean up
     delete[] op_stack;
     op_stack = nullptr;
@@ -80,6 +80,11 @@ int Execute(const int argc, const char* argv[])
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
+#ifdef _SANITIZE
+    Runtime::StackInterpreter::Clear();
+    MemoryManager::Clear();
+#endif
+
     delete intpr;
     intpr = nullptr;
 
@@ -87,12 +92,12 @@ int Execute(const int argc, const char* argv[])
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
-      } 
+        wcout << L"dump: value=" << *(stack_pos + 1) << endl;
+      }
     }
-    
+
     Runtime::StackInterpreter::Clear();
-    MemoryManager::Clear();    
+    MemoryManager::Clear();
 #endif
     
 #ifdef _TIMING    
