@@ -213,9 +213,10 @@ bundle Data.CSV {
 			buffer := "";
 			
 			each(i : @columns) {
+				buffer->Append("\"");
 				buffer->Append(@columns->Get(i)->ReplaceAll("ˑ", "\"\""));
 				if(i + 1 < @columns->Size()) {
-					buffer->Append(",");
+					buffer->Append("\",");
 				};
 			};
 			
