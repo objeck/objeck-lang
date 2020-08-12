@@ -830,7 +830,7 @@ bundle Data.XML {
 		@return attribute namespace
 		~#
 		method : public : GetNamespace() ~ String {
-			return @namespace->Trim();;
+			return @namespace->Trim();
 		}
 		
 		#~
@@ -1140,6 +1140,7 @@ bundle Data.XML {
 		~#
 		method : public : native : GetChildren(name : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
+			
 			if(@children <> Nil) {
 				each(i : @children) {
 					element : XmlElement := @children->Get(i);
@@ -1159,6 +1160,7 @@ bundle Data.XML {
 		~#
 		method : public : native : GetFirstChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
+
 			if(filtered->Size() > 0) {
 				return filtered->Get(0);
 			};
@@ -1173,6 +1175,7 @@ bundle Data.XML {
 		~#
 		method : public : native : GetLastChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
+			
 			if(filtered->Size() > 0) {
 				return filtered->Get(filtered->Size() - 1);
 			};
@@ -1188,6 +1191,7 @@ bundle Data.XML {
 		~#
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
+			
 			each(i : @children) {
 				element : XmlElement := @children->Get(i);
 				if(element->GetName()->Equals(name) & element->GetAttribute(attrib) <> Nil) {
@@ -1206,6 +1210,7 @@ bundle Data.XML {
 		~#
 		method : public : native : GetChildren(name : String, max : Int) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
+
 			if(max > 0) {
 				found := 0;
 				for(i := 0; i < @children->Size() & found < max; i += 1;) {
@@ -1225,7 +1230,11 @@ bundle Data.XML {
 		@return child elements
 		~#
 		method : public : GetChildren() ~ Vector<XmlElement> {
-			return @children;
+			if(@children <> Nil) {
+				return @children;
+			};
+			
+			return Vector->New()<XmlElement>; 
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
