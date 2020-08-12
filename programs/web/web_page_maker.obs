@@ -1,0 +1,76 @@
+use System.IO.File;
+use Data.XML;
+
+class PageMaker {
+	@parser : XmlParser;
+	@html_buffer : String;
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			maker := PageMaker->New(args[0]);
+			maker->Make();
+		};
+	}
+
+	New(file : String) {
+		@parser := XmlParser->New(FileReader->ReadFile(file));
+		@html_buffer := "";
+	}
+
+	method : Make() ~ Nil {
+		if(@parser->Parse()) {
+			PrintStart();
+			TraverseTag(@parser->GetRoot());
+			PrintEnd();
+		}
+		else {
+			"-- Unable to Parse! --"->PrintLine();
+		};
+	}
+
+	method : TraverseTag(element : XmlElement) ~ Nil {
+		name := element->GetName();
+		if(name->Equals("code")) {
+			PrintHtml();
+			
+			@html_buffer := "";
+			content := element->GetContent();
+			if(content <> Nil & content->Size() > 0) {
+				content->PrintLine();
+			};
+		}
+		else {
+			PrintTag(element);
+		};
+	}
+
+	method : PrintTag(element : XmlElement) ~ Nil {
+		name := element->GetName();
+		@html_buffer += "<{$name}>";
+		
+		content := element->GetContent();
+		if(content <> Nil & content->Size() > 0) {
+			@html_buffer += content;
+		};
+		
+		children := element->GetChildren()<XmlElement>;
+		each(i : children) {
+			TraverseTag(children->Get(i));
+		};
+		@html_buffer += "</{$name}>";
+	}
+
+	method : PrintStart() ~ Nil {
+
+	}
+
+	method : PrintHtml() ~ Nil {
+		"resp->AddBody(\""->Print();
+		@html_buffer->Print();
+		"\");"->PrintLine();
+	}
+
+	method : PrintEnd() ~ Nil {
+		PrintHtml();
+	}
+}
