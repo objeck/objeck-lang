@@ -190,10 +190,8 @@ bundle Data.XML {
 			# add declaration
 			out := String->New();
 			out->Append("<?xml version=\"");
-#			out->Append(GetVersion());
 			out->Append("1.0");
 			out->Append("\" encoding=\"");
-#			out->Append(GetVersion());
 			out->Append("iso-8859-1");
 			out->Append("\"?>");
 			
@@ -800,7 +798,7 @@ bundle Data.XML {
 		@return attribute name
 		~#
 		method : public : GetName() ~ String {
-			return String->New(@name);
+			return @name->Trim();
 		}
 
 		#~
@@ -816,7 +814,7 @@ bundle Data.XML {
 		@return attribute value
 		~#
 		method : public : GetValue() ~ String {
-			return String->New(@value);
+			return @value->Trim();
 		}
 
 		#~
@@ -832,7 +830,7 @@ bundle Data.XML {
 		@return attribute namespace
 		~#
 		method : public : GetNamespace() ~ String {
-			return String->New(@namespace);
+			return @namespace->Trim();;
 		}
 		
 		#~
@@ -927,7 +925,7 @@ bundle Data.XML {
 		@return element name
 		~#
 		method : public : GetName() ~ String {
-			return String->New(@name);
+			return @name->Trim();
 		}
 		
 		#~
@@ -943,7 +941,7 @@ bundle Data.XML {
 		@return element namespace
 		~#
 		method : public : GetNamespace() ~ String {
-			return String->New(@namespace);
+			return @namespace->Trim();
 		}
 
 		#~
@@ -975,7 +973,7 @@ bundle Data.XML {
 		@return element content
 		~#
 		method : public : GetContent() ~ String {
-			return String->New(@content);
+			return @content->Trim();
 		}
 		
 		#~
