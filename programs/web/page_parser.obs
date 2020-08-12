@@ -137,10 +137,10 @@ class PageParser  {
 			each(i : @blocks) {
 				block := @blocks->Get(i)->As(Block);
 				if(block->GetType() = Block->BlockType->HTML) {
-# Console->Print("html='")->Print(block->GetText())->PrintLine("'");
+System.IO.Console->Print("html='")->Print(block->GetText())->PrintLine("'");
 				}
 				else if(block->GetType() = Block->BlockType->META) {
-# Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
+System.IO.Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
 
 					attribs := block->GetText()->Split(" ");
 					each(j : attribs) {
@@ -148,15 +148,15 @@ class PageParser  {
 						if(name_values->Size() = 2) {
 							# todo add to map
 							@meta_values->Insert(name_values[0]->Trim(), name_values[1]->Trim());
-# IO.Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
+System.IO.Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
 						};
 					};
 				}
 				else {
-# Console->Print("code='")->Print(block->GetText())->PrintLine("'");
+System.IO.Console->Print("code='")->Print(block->GetText())->PrintLine("'");
 				};
 			};
-# "OK"->PrintLine();
+"OK"->PrintLine();
 		}
 		else {
 			"mismatched tags"->PrintLine();
