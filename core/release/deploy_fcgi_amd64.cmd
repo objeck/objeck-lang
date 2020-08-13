@@ -40,5 +40,7 @@ if [%1] NEQ [deploy] goto end
 	set ZIP_BIN="\Program Files\7-Zip"
 	mkdir "%USERPROFILE%\Desktop\Release64\"
 	del "%USERPROFILE%\Desktop\Release64\objeck-lang-fcgi-win64.zip" 
-	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-lang-fcgi-win64.zip" "objeck_fcgi64\*"
+	rmdir /s /q objeck_fcgi
+	rename objeck_fcgi64 objeck_fcgi
+	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-lang-fcgi-win64.zip" "objeck_fcgi\*"
 :end
