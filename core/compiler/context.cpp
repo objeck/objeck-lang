@@ -251,7 +251,7 @@ bool ContextAnalyzer::Analyze()
   }
 
   if(is_web && !web_found) {
-    ProcessError(program->GetFileName(), L"The 'Request(args)' function was not defined");
+    ProcessError(program->GetFileName(), L"The 'Action(args)' function was not defined");
   }
 
   return CheckErrors();
@@ -895,10 +895,10 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
     // web program
     else if(is_web) {
-      const wstring web_str = current_class->GetName() + L":Request:o.Web.FastCgi.Request,o.Web.FastCgi.Response,";
+      const wstring web_str = current_class->GetName() + L":Action:o.Web.FastCgi.Request,o.Web.FastCgi.Response,";
       if(method->GetEncodedName() == web_str) {
         if(web_found) {
-          ProcessError(method, L"The 'Request(args)' function has already been defined");
+          ProcessError(method, L"The 'Action(args)' function has already been defined");
         }
         else if(method->IsStatic()) {
           current_class->SetCalled(true);
@@ -907,7 +907,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
         }
 
         if(web_found && (is_lib | main_found)) {
-          ProcessError(method, L"Web applications may not be define a 'Main(args)' function or be compiled as a library");
+          ProcessError(method, L"Web applications may not define a 'Main(args)' function or be compiled as a library");
         }
       }
     }

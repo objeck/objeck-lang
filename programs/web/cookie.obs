@@ -2,9 +2,7 @@ use Web.FastCgi;
 use Web.HTTP;
 
 class FastCgiModule {
-	function : Forward(req : Request, res : Response) ~ Nil {}
-
-	function : Request(req : Request, res : Response) ~ Nil {
+	function : Action(req : Request, res : Response) ~ Nil {
 		res->AddBody("<html>");
 		res->AddBody("<form method=\"post\">");
 		res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");

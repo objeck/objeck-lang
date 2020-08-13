@@ -60,7 +60,7 @@ class PageMaker {
 	}
 
 	method : PrintStart() ~ Nil {
-		@html_buffer += "use Web.FastCgi; use Web.HTTP;	class FastCgiModule { function : Forward(req : Request, res : Response) ~ Nil {} function : Request(req : Request, res : Response) ~ Nil { ";
+		@html_buffer += "use Web.FastCgi; use Web.HTTP;	class FastCgiModule { function : Action(req : Request, res : Response) ~ Nil { ";
 		@html_buffer->Print();
 		@html_buffer := "";
 	}
