@@ -94,13 +94,15 @@ int main(const int argc, const char* argv[])
 #endif
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+  Runtime::StackInterpreter::AddThread(intpr);
+
+  size_t* op_stack = new size_t[OP_STACK_SIZE];
+  long* stack_pos = new long;
 
   // enter 'accept' loop
   FCGX_Stream*in; FCGX_Stream* out; FCGX_Stream* err; FCGX_ParamArray envp;
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // execute method
-    size_t* op_stack = new size_t[OP_STACK_SIZE];
-    long* stack_pos = new long;
     (*stack_pos) = 0;
 
     // create request and response
@@ -120,7 +122,7 @@ int main(const int argc, const char* argv[])
       *stack_pos = 2;
 
       // execute method
-      intpr->Execute(op_stack, stack_pos, 0, mthd, NULL, false);
+      intpr->Execute(op_stack, stack_pos, 0, mthd, nullptr, false);
     }
     else {
       FCGX_FPrintF(out, ">>> Shared library call: Unable to allocate Web.FastCgi.Request or Web.FastCgi.Response <<<\r\n");
@@ -139,13 +141,15 @@ int main(const int argc, const char* argv[])
     PrintEnv(out, "Initial environment", environ);
 #endif
 
-    // clean up
-    delete[] op_stack;
-    op_stack = NULL;
-
-    delete stack_pos;
-    stack_pos = NULL;
+    
   }
+
+  // clean up
+  delete[] op_stack;
+  op_stack = NULL;
+
+  delete stack_pos;
+  stack_pos = NULL;
 
   Runtime::StackInterpreter::RemoveThread(intpr);
   Runtime::StackInterpreter::HaltAll();
