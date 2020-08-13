@@ -1,0 +1,1 @@
+obc -src %1.obs -lib fcgi,gen_collect,net -tar web -dest %1.obw
