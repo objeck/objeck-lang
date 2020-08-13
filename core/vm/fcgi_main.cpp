@@ -146,10 +146,10 @@ int main(const int argc, const char* argv[])
 
   // clean up
   delete[] op_stack;
-  op_stack = NULL;
+  op_stack = nullptr;
 
   delete stack_pos;
-  stack_pos = NULL;
+  stack_pos = nullptr;
 
   Runtime::StackInterpreter::RemoveThread(intpr);
   Runtime::StackInterpreter::HaltAll();
@@ -166,7 +166,7 @@ int main(const int argc, const char* argv[])
 void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 {
   FCGX_FPrintF(out, "\n", label, "\r\n");
-  for(; *envp != NULL; envp++) {
+  for(; *envp != nullptr; envp++) {
     FCGX_FPrintF(out, "\t", *envp, "\r\n");
   }
 }
