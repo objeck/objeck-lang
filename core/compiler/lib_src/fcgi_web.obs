@@ -6,7 +6,7 @@ use Web.HTTP;
 #~
 TODO (fcgi_web.obl) 
 ~#
-bundle Web.FastCgi {
+bundle Web.Framework {
 	class Session {
 		function : GetUser(req : Request, res : Response) ~ User {
 			return Nil;
