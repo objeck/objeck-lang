@@ -1,0 +1,19 @@
+use System.IO;
+use System.API;
+use Collection.Generic;
+use Web.HTTP;
+ 
+#~
+TODO (fcgi_web.obl) 
+~#
+bundle Web.FastCgi {
+	class Session {
+		function : GetUser(res : Response) ~ User {
+			return Nil;
+		}
+	}
+
+	class User {
+		New() {}
+	}
+}

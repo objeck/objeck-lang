@@ -5,64 +5,21 @@ class FastCgiModule {
 	init : static : Bool;
 
 	function : Action(req : Request, res : Response) ~ Nil {
-		if(init) {
-			res->AddBody("<html>");
-			res->AddBody("<body>");
-			res->AddBody("All Called");
-			res->AddBody("</body>");
-			res->AddBody("</html>");
+		if(<>init) {
+			res->AddBody("<html><body>");
+			user_id := res->CreateUUID();
+			expire_date := System.Time.Date->New(true);
+			expire_date->AddHours(1);
+			res->AddCookie("user-id", user_id, expire_date);
+			res->AddBody("Set: {$user_id}");
+			res->AddBody("</body></html>");
+			init := true;
 		}
 		else {
-			res->AddBody("<html>");
-			res->AddBody("<form method=\"post\">");
-			res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
-			res->AddBody("Last name: <input type=\"text\" name=\"lname\" /><br />");
-			res->AddBody("<input type=\"submit\" value=\"Submit\" />");
-			res->AddBody("<textarea NAME=dog ROWS=13 COLS=13/></textarea>");
-			res->AddBody("</form>"); 
-			
-			res->AddBody("<i>name={$init}, "); 			
-			name := req->GetQueryValue("lname");
-			if(name <> Nil) {
-				res->AddBody(name);
-			};
-			res->AddBody("</i><br/>"); 
-
-			res->AddBody("<i>cookie value="); 			
-			cookie := req->GetCookie("name3");
-			if(cookie <> Nil) {
-				res->AddBody(cookie);
-			};
-			
-			cookie := req->GetCookie("name2");
-			if(cookie <> Nil) {
-				res->AddBody("; cookie value="); 			
-				res->AddBody(cookie);
-			};
-			res->AddBody("</i>"); 
-
-			res->AddBody(res->CreateUUID());
-			
-			res->AddBody("<p>"); 
-			res->AddBody(req->GetClientAddress());
-			res->AddBody("</br>"); 
-			res->AddBody(req->GetRequestMethod());
-			res->AddBody("<p/>"); 
-
-			name := req->GetQueryValue("dog");
-			if(name <> Nil) {
-				res->AddBody("<pre>");
-				res->AddBody(Url->Decode(name));
-				res->AddBody("</pre>");
-			};	
-
-			res->AddBody("<html>");
-
-			future := Time.Date->New();
-			future->AddDays(1);
-			res->AddCookie("name3", "foo", future);
-
-			init := true;
+			res->AddBody("<html><body>");
+			user_id := req->GetCookie("user-id");
+			res->AddBody("Get: {$user_id}");
+			res->AddBody("</body></html>");
 		};
 
 		res->Submit();
