@@ -8,7 +8,7 @@ TODO (fcgi_web.obl)
 ~#
 bundle Web.FastCgi {
 	class Session {
-		function : GetUser(res : Response) ~ User {
+		function : GetUser(req : Request, res : Response) ~ User {
 			return Nil;
 		}
 	}
