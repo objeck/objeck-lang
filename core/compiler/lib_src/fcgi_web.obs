@@ -2,6 +2,7 @@ use System.IO;
 use System.API;
 use Collection.Generic;
 use Web.HTTP;
+use Web.FastCgi;
 
 #~
 TODO (fcgi_web.obl) 
@@ -9,15 +10,24 @@ TODO (fcgi_web.obl)
 bundle Web.Framework {
 	class Session {
 		function : GetUser(req : Request, res : Response) ~ User {
+			user_id := req->GetCookie("user-id");
+			if(user_id = Nil | user_id->Size() = 0) {
+				user_id := res->CreateUUID();
+				expire_date := System.Time.Date->New(true);
+				expire_date->AddHours(1);
+			};
+
 			return Nil;
 		}
 	}
 
 	class User {
 		@id : String;
+		@date : System.Time.Date;
 
-		New(id : String) {
+		New(id : String, date : System.Time.Date) {
 			@id := id;
+			@date := date;
 		}
 	}
 }
