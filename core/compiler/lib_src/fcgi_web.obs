@@ -20,7 +20,7 @@ bundle Web.Framework {
 				Initialize();
 			};
 
-			# this wrong, but getting closer. cookies are client side
+			# this is wrong, but getting closer. cookies are client side
 			user_id := req->GetCookie("user-id");
 			if(user_id = Nil | user_id->Size() = 0) {
 				user_id := res->CreateUUID();
