@@ -1,4 +1,4 @@
-set WSCP="D:\Program Files (x86)\WinSCP\WinSCP.exe"
+set WSCP="\Program Files (x86)\WinSCP\WinSCP.exe"
 obc -src ..\..\core\compiler\lib_src\fcgi.obs -lib gen_collect,net,misc -tar lib -opt s3 -dest ..\..\core\lib\fcgi.obl
 obc -src ..\..\core\compiler\lib_src\fcgi_web.obs -lib fcgi,gen_collect,net,misc -tar lib -opt s3 -dest ..\..\core\lib\fcgi_web.obl
 copy /y ..\..\core\lib\fcgi.obl ..\..\core\release\deploy64\lib\
