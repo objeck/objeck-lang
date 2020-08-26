@@ -57,6 +57,7 @@ class Parser {
   wstring src_path;
   wstring run_prgm;
   unsigned int anonymous_class_id;
+  bool expand_generic_def;
 
   // gets the scanner token
   inline void NextToken() {
@@ -169,6 +170,7 @@ class Parser {
     current_class = nullptr;
     current_method = prev_method = nullptr;
     anonymous_class_id = 0;
+    expand_generic_def = false;
   }
 
   ~Parser() {

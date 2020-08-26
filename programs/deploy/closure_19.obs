@@ -7,7 +7,7 @@ use Collection.Generic;
 
 class Capture {
 	function : Main(args : String[]) ~ Nil {
-		 funcs := Vector->New()<FuncHolder<IntHolder> >;
+		 funcs : Vector<FuncHolder<IntHolder>> := Vector->New()<FuncHolder<IntHolder>>;
 		 
 		 for(i := 0; i < 10; i += 1;) {
 		 	funcs->AddBack(FuncHolder->New(\() ~ IntHolder : () => i * i)<IntHolder>);
