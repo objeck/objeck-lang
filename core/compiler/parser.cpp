@@ -2631,7 +2631,17 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
         NextToken();
       }
       else if(!Match(TOKEN_GTR)) {
-        ProcessError(L"Expected ',' or '>'");
+        if(expand_generic_def) {
+          expand_generic_def = false;
+        }
+        else if(Match(TOKEN_SHR)) {
+          expand_generic_def = true;
+          NextToken();
+        }
+        else {
+          ProcessError(L"Expected ',' or '>'");
+        }
+
         return generic_types;
       }
     }
@@ -2692,7 +2702,16 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
         NextToken();
       }
       else if(!Match(TOKEN_GTR)) {
-        ProcessError(L"Expected ',' or '>'");
+        if(expand_generic_def) {
+          expand_generic_def = false;
+        }
+        else if(Match(TOKEN_SHR)) {
+          expand_generic_def = true;
+          NextToken();
+        }
+        else {
+          ProcessError(L"Expected ',' or '>'");
+        }
       }
     }
 
