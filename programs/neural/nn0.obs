@@ -31,6 +31,7 @@ class BasicAi {
 		a_dims := a->Size();
 		a_rows := a_dims[0];
 		a_cols := a_dims[1];
+		
 
 		b_dims := b->Size();
 		b_rows := b_dims[0];
