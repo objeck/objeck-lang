@@ -2639,6 +2639,7 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
           NextToken();
         }
         else {
+          expand_generic_def = false;
           ProcessError(L"Expected ',' or '>'");
         }
 
@@ -2710,6 +2711,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
           NextToken();
         }
         else {
+          expand_generic_def = false;
           ProcessError(L"Expected ',' or '>'");
         }
       }
