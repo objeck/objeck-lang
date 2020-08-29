@@ -10,7 +10,7 @@ class Capture {
 		 funcs := Vector->New()<FuncHolder<IntHolder>>;
 		 
 		 for(i := 0; i < 10; i += 1;) {
-		 	funcs->AddBack(FuncHolder->New(\() ~ IntHolder : () => i->Factorial() * i)<IntHolder>);
+		 	funcs->AddBack(FuncHolder->New(\() ~ IntHolder : () => i->Factorial() * funcs->Size())<IntHolder>);
 		 };
 
 		 each(i : funcs) {
