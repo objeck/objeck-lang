@@ -2029,7 +2029,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     // static check
     const wstring variable_name = method_call->GetVariableName();
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
-    if(entry && InvalidStatic(entry) && current_method && !current_method->IsLambda()) {
+    if(entry && InvalidStatic(entry) && !current_method->IsLambda()) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance variable from this context");
     }
     else if(method_call->GetVariable()) {
