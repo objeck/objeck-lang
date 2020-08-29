@@ -2029,13 +2029,13 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     // static check
     const wstring variable_name = method_call->GetVariableName();
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
-    if(entry && InvalidStatic(entry) && !current_method->IsLambda()) {
+    if(entry && InvalidStatic(entry) && !capture_lambda) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance variable from this context");
     }
     else if(method_call->GetVariable()) {
       AnalyzeVariable(method_call->GetVariable(), depth + 1);
     }
-    else if(current_method->IsLambda()) {
+    else if(capture_lambda) {
       Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
                                                                  static_cast<Expression*>(method_call)->GetLineNumber(),
                                                                  variable_name);
