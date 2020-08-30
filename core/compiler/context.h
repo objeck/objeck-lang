@@ -566,8 +566,10 @@ class ContextAnalyzer {
     holder_types.insert(L"System.CharHolder");
     holder_types.insert(L"System.IntHolder");
     holder_types.insert(L"System.FloatHolder");
+
     capture_method = nullptr;
     capture_table = nullptr;
+    capture_lambda = nullptr;
   }
 
   ~ContextAnalyzer() {
