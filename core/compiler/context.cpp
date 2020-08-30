@@ -2036,14 +2036,17 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       AnalyzeVariable(method_call->GetVariable(), depth + 1);
     }
     else if(capture_lambda) {
-      Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
-                                                                 static_cast<Expression*>(method_call)->GetLineNumber(),
-                                                                 variable_name);
-      AnalyzeVariable(variable, depth + 1);
-      method_call->SetVariable(variable);
-      entry = GetEntry(method_call, variable_name, depth);
+      const wstring full_class_name = GetProgramLibraryClassName(variable_name);
+      if(!HasProgramLibraryEnum(full_class_name) && !HasProgramLibraryClass(full_class_name)) {
+	Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
+								   static_cast<Expression*>(method_call)->GetLineNumber(),
+								   full_class_name);
+	AnalyzeVariable(variable, depth + 1);
+	method_call->SetVariable(variable);
+	entry = GetEntry(method_call, full_class_name, depth);
+      }
     }
-
+    
     wstring encoding;
     // local call
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
