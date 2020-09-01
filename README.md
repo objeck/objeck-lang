@@ -51,8 +51,15 @@ Get the latest [binaries](https://sourceforge.net/projects/objeck-lang/).
 ## Development 
 ![alt text](images/design2.png "Compiler & VM")
 
-Building on Linux or macOS:
+Building on Linux and macOS:
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev</code>
 *  cd to <code>objeck-lang/core/release</code> and run <code>./deploy.sh</code> with the parameter 32, 64 or osx representing the bit version of Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
-*  Reference <code>objeck-lang/docs/readme.html</code> to set paths
+*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
+
+Building on Windows:
+*  With Visual Studio 2019 or later open <code>objeck-lang/care/release/objeck.sln</code>
+*  Ensure build completes successfully
+*  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
+*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
+*  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to set paths and find examples
