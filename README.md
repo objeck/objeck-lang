@@ -55,3 +55,4 @@ Building on Linux:
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev</code>
 *  cd to <code>objeck-lang/core/release</code> and run <code>./deploy.sh</code> with the parameter 32 or 64 representing the bit version of Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
+*  Read <code>objeck-lang/docs/readme.html</code> to set paths
