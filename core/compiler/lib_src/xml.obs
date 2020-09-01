@@ -772,8 +772,8 @@ bundle Data.XML {
 
 		#~
 		Constructor 
-		@parma name attribute name
-		@parma value attribute value
+		@param name attribute name
+		@param value attribute value
 		~#
 		New(name : String, value : String) {
 			SetNames(name);
