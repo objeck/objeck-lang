@@ -104,7 +104,7 @@ hInst = hInstance;
   const int closeButtonWidth = 80;
   HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
                                       WS_CHILD | WS_VISIBLE,
-                                      wndWidth / 2 - closeButtonWidth / 2, 235 + 82, closeButtonWidth, 30,
+                                      wndWidth / 2 - closeButtonWidth / 2, 235 + 84, closeButtonWidth, 24,
                                       hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
 
   if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
