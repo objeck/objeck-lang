@@ -3,6 +3,12 @@
 
 #define MAX_LOADSTRING 100
 
+#define CMD_BUTTON 201
+#define API_BUTTON 202 
+#define EXAMPLE_BUTTON 203
+#define README_BUTTON 204
+#define CLOSE_BUTTON 205
+
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -78,28 +84,28 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt",
                                      BS_DEFCOMMANDLINK | WS_CHILD | WS_VISIBLE,
                                      10, 10, wndWidth - padding, 64,
-                                     hWnd, (HMENU)1001, hInstance, nullptr);
+                                     hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
 
    HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation",
                                      BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
                                      10, 85, wndWidth - padding, 64,
-                                     hWnd, (HMENU)1001, hInstance, nullptr);
+                                     hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
 
    HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples",
                                           BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
                                           10, 160, wndWidth - padding, 64,
-                                          hWnd, (HMENU)1001, hInstance, nullptr);
+                                          hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
 
    HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me",
                                         BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
                                         10, 235, wndWidth - padding, 64,
-                                        hWnd, (HMENU)1001, hInstance, nullptr);
+                                        hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
 
    const int closeButtonWidth = 80;
    HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
                                        WS_CHILD | WS_VISIBLE,
                                        wndWidth / 2 - closeButtonWidth / 2, 235 + 82, closeButtonWidth, 30,
-                                       hWnd, (HMENU)1001, hInstance, nullptr);
+                                       hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
 
    if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
       return FALSE;
@@ -108,7 +114,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HINSTANCE hDll = LoadLibrary(L"SHELL32.dll");
 
    // hWndCmdButton
-   SendMessage(hWndCmdButton, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(L"Command prompt with the Objeck binaries in path."));
+   SendMessage(hWndCmdButton, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(L"Command prompt for Objeck binaries."));
    HICON hIcon = LoadIcon(hDll, MAKEINTRESOURCE(242));
    SendMessageW(hWndCmdButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
    
@@ -118,7 +124,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    SendMessageW(hWndApiButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
    
    // hWndExamplesButton
-   SendMessage(hWndExamplesButton, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(L"Directory of code examples."));
+   SendMessage(hWndExamplesButton, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(L"Directory of code examples, copy locally and modify"));
    hIcon = LoadIcon(hDll, MAKEINTRESOURCE(147));
    SendMessageW(hWndExamplesButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
 
@@ -141,10 +147,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       const int wmId = LOWORD(wParam);
       // Parse the menu selections:
       switch(wmId) {
-      case 1001:
-        ShellExecute(nullptr, L"open", L"D:/Code/objeck-lang/core/release/deploy64/bin", nullptr, nullptr, SW_SHOWDEFAULT);
+      case CMD_BUTTON:
+        ShellExecute(nullptr, L"open", L"cmd.exe", L"/k \"D:/Code/objeck-lang/core/release/WindowsLauncher/AppLauncher/ob_cmd.bat\"", nullptr, SW_SHOWDEFAULT);
         break;
 
+      case API_BUTTON:
+        ShellExecute(nullptr, L"open", L"\"D:/Code/objeck-lang/core/release/deploy64/doc/api/index.html\"", nullptr, nullptr, SW_SHOWDEFAULT);
+        break;
+
+      case EXAMPLE_BUTTON:
+        ShellExecute(nullptr, L"open", L"\"D:/Code/objeck-lang/core/release/deploy64/examples\"", nullptr, nullptr, SW_SHOWDEFAULT);
+        break;
+
+      case README_BUTTON:
+        break;
+
+      case CLOSE_BUTTON:
       case IDM_EXIT:
         DestroyWindow(hWnd);
         break;

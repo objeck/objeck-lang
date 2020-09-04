@@ -156,10 +156,8 @@
     <ResourceCompile Include="AppLauncher.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\Gear.ico" />
-    <Image Include="D:\Code\objeck-lang\images\gear.ico" />
-    <Image Include="small.ico" />
-    <Image Include="AppLauncher.ico" />
+    <Image Include="..\..\..\..\images\Gear.ico" />
+    <Image Include="Gear.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
