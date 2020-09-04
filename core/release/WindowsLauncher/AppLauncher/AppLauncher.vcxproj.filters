@@ -39,16 +39,10 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="small.ico">
+    <Image Include="..\..\..\..\images\Gear.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\Gear.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="D:\Code\objeck-lang\images\gear.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="AppLauncher.ico">
+    <Image Include="Gear.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

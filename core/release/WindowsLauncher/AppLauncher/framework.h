@@ -15,6 +15,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
+#include <shlobj_core.h>
+#include <string>
 
 // C RunTime Header Files
 #include <stdlib.h>
