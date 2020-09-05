@@ -7,6 +7,7 @@ name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "Wininet.lib")
 
 #pragma once
 
@@ -21,6 +22,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <shlwapi.h>
 #include <string>
 #include <iostream>
+#include <wininet.h>
 #include "../../../shared/sys.h"
 
 // C RunTime Header Files

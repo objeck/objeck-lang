@@ -16,6 +16,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 std::wstring applicationPath;                        // application path
 std::wstring programDataPath;                        // program data path
+BOOL newVersion;
 
 // Forward declarations of functions included in this code module:
 ATOM RegisterWndClass(HINSTANCE hInstance);
@@ -23,6 +24,8 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 BOOL InitEnvironment();
 BOOL WriteLineToFile(HANDLE file, std::wstring text);
+int GetLatestVersion();
+int GetLocalVersion();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR    lpCmdLine, _In_ int nCmdShow)
 {
@@ -37,6 +40,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
   // Perform application initialization:
   if(!InitInstance (hInstance, nCmdShow)) {
       return FALSE;
+  }
+
+  // check for updates
+  newVersion = FALSE;
+  const int latestVersion = GetLatestVersion();
+  if(latestVersion > 0) {
+    const int localVersion = GetLocalVersion();
+    if(localVersion < latestVersion) {
+      newVersion = TRUE;
+    }
   }
 
   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSTEST));
@@ -260,11 +273,68 @@ BOOL InitEnvironment()
   return TRUE;
 }
 
+BOOL GetLatestVersion()
+{
+  const int bufferSize = 4096;
+
+  HANDLE hInit = InternetOpen(L"Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+  if(!hInit) {
+    InternetCloseHandle(hInit);
+    return -1;
+  }
+
+  HANDLE hOpen = InternetOpenUrl(hInit, L"https://www.objeck.org/doc/api/version.txt", 0, 0, INTERNET_FLAG_RAW_DATA, 0);
+  if(!hOpen) {
+    InternetCloseHandle(hInit);
+    InternetCloseHandle(hInit);
+    return -1;
+  }
+
+  CHAR buffer[bufferSize];
+  ZeroMemory(&buffer, bufferSize);
+  
+  DWORD bytesRead;
+  if(!InternetReadFile(hOpen, (LPVOID)buffer, bufferSize, &bytesRead)) {
+    InternetCloseHandle(hOpen);
+    InternetCloseHandle(hInit);
+    return -1;
+  }
+
+  InternetCloseHandle(hOpen);
+  InternetCloseHandle(hInit);
+
+  return atoi(buffer);
+}
+
+int GetLocalVersion()
+{
+  const int bufferSize = 4096;
+
+  std::wstring command = applicationPath + L"\\..\\doc\\api\\version.txt";
+  HANDLE hFile = CreateFile(command.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if(hFile == INVALID_HANDLE_VALUE) {
+    return -1;
+  }
+
+  CHAR buffer[bufferSize];
+  ZeroMemory(&buffer, bufferSize);
+
+  DWORD readBytes;
+  if(!ReadFile(hFile, buffer, bufferSize - 1, &readBytes, nullptr)) {
+    CloseHandle(hFile);
+    return -1;
+  }
+
+  CloseHandle(hFile);
+
+  return atoi(buffer);
+}
+
 BOOL WriteLineToFile(HANDLE file, std::wstring text)
 {
   text += L"\r\n";
-  DWORD written;
+  DWORD writtenBytes;
   std::string asciiText = UnicodeToBytes(text);
-  WriteFile(file, asciiText.c_str(), (DWORD)asciiText.size(), &written, nullptr);
-  return written = (DWORD)asciiText.size();
+  WriteFile(file, asciiText.c_str(), (DWORD)asciiText.size(), &writtenBytes, nullptr);
+  return writtenBytes = (DWORD)asciiText.size();
 }
