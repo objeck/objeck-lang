@@ -327,6 +327,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_2AD94EA9BDCD479192B50F78B159C25A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_2B39256D655C4A688649CD81F8A0E20F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1797,6 +1803,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_F14591F3CA0C4B2DBC41A537B12B8629"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_F2403B2533EB4D4BA17E9ACB185E7EDC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -3001,6 +3013,26 @@
             "TargetName" = "8:SDL2_mixer.dll"
             "Tag" = "8:"
             "Folder" = "8:_5CA05ED0B1BC49F2BC08F7FEB7EAB04C"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2AD94EA9BDCD479192B50F78B159C25A"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\app\\AppLauncher.exe"
+            "TargetName" = "8:AppLauncher.exe"
+            "Tag" = "8:"
+            "Folder" = "8:_AB28D67314044A2F925039A486CD5FE8"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -7895,6 +7927,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F14591F3CA0C4B2DBC41A537B12B8629"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\app\\set_ob_env.cmd"
+            "TargetName" = "8:set_ob_env.cmd"
+            "Tag" = "8:"
+            "Folder" = "8:_AB28D67314044A2F925039A486CD5FE8"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F2403B2533EB4D4BA17E9ACB185E7EDC"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\api\\collection-floatvector.html"
@@ -8190,17 +8242,6 @@
             "Property" = "8:ProgramMenuFolder"
                 "Folders"
                 {
-                    "{9EF0B969-E518-4E46-987F-47570745A589}:_B2F81F9212A3458C9610859D4110C49D"
-                    {
-                    "Name" = "8:Objeck"
-                    "AlwaysCreate" = "11:FALSE"
-                    "Condition" = "8:"
-                    "Transitive" = "11:FALSE"
-                    "Property" = "8:_5191E609C4804D298E14E2D5ACDD5E79"
-                        "Folders"
-                        {
-                        }
-                    }
                 }
             }
             "{3C67513D-01DD-4637-8A68-80971EB9504F}:_8EB462F2784A421E99849541CC462494"
@@ -8275,6 +8316,17 @@
                     "Condition" = "8:"
                     "Transitive" = "11:FALSE"
                     "Property" = "8:_BD10674BA4D54238AA1F52DAEC3F4461"
+                        "Folders"
+                        {
+                        }
+                    }
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_AB28D67314044A2F925039A486CD5FE8"
+                    {
+                    "Name" = "8:app"
+                    "AlwaysCreate" = "11:FALSE"
+                    "Condition" = "8:"
+                    "Transitive" = "11:FALSE"
+                    "Property" = "8:_F99DC3D0032340C9B7A741455322E8F6"
                         "Folders"
                         {
                         }
@@ -8582,58 +8634,16 @@
         {
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_58CB9A92F58045489699672F55422F93"
             {
-            "Name" = "8:API Guide"
+            "Name" = "8:Objeck"
             "Arguments" = "8:"
             "Description" = "8:"
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_15C84234A09A432599BA036B66CC97B3"
-            "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
-            "WorkingFolder" = "8:"
-            "Icon" = "8:_00A10725DD084CC1A847E1476BB0E215"
-            "Feature" = "8:"
-            }
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_85E8B274633F424FAC91249F69ADD95F"
-            {
-            "Name" = "8:Examples"
-            "Arguments" = "8:"
-            "Description" = "8:"
-            "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
-            "Transitive" = "11:FALSE"
-            "Target" = "8:_D9FF94F563C345B6AF470AA465C2A3D5"
-            "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
-            "WorkingFolder" = "8:_8EB462F2784A421E99849541CC462494"
-            "Icon" = "8:_B2434EA88D474790B84E144525D25F72"
-            "Feature" = "8:"
-            }
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_946E8ABAB6184CC1B9BA4D0BAC9CD533"
-            {
-            "Name" = "8:Readme"
-            "Arguments" = "8:"
-            "Description" = "8:"
-            "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
-            "Transitive" = "11:FALSE"
-            "Target" = "8:_7D0DC76865164EB8A0C498ABC83E67D7"
-            "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
-            "WorkingFolder" = "8:_8EB462F2784A421E99849541CC462494"
-            "Icon" = "8:_494CC4E70A1C4BFA9DB764C33F37528E"
-            "Feature" = "8:"
-            }
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_A529142543C840EDA15194B27163547F"
-            {
-            "Name" = "8:Toolchain"
-            "Arguments" = "8:"
-            "Description" = "8:"
-            "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
-            "Transitive" = "11:FALSE"
-            "Target" = "8:_5AC8681C79944E3592E8CF6237AEBECC"
-            "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
-            "WorkingFolder" = "8:_8EB462F2784A421E99849541CC462494"
-            "Icon" = "8:_F7B2EDC4400B4CAD84DC89AEC194E95D"
+            "Target" = "8:_2AD94EA9BDCD479192B50F78B159C25A"
+            "Folder" = "8:_5A9EBD748DA546DBB2FF6CCF939DD67C"
+            "WorkingFolder" = "8:_AB28D67314044A2F925039A486CD5FE8"
+            "Icon" = "8:_E868B667BFB046F990FD5255C2E74A32"
             "Feature" = "8:"
             }
         }
