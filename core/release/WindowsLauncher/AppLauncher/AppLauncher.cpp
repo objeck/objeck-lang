@@ -21,7 +21,10 @@ BOOL newVersion;
 // Forward declarations of functions included in this code module:
 ATOM RegisterWndClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
+
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+
 BOOL InitEnvironment();
 BOOL WriteLineToFile(HANDLE file, std::wstring text);
 int GetLatestVersion();
@@ -157,9 +160,45 @@ hInst = hInstance;
   return InitEnvironment();
 }
 
+INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+  UNREFERENCED_PARAMETER(lParam);
+
+  switch(message) {
+  case WM_INITDIALOG:
+    return (INT_PTR)TRUE;
+
+  case WM_NOTIFY:
+    if(((LPNMHDR)lParam)->code == NM_CLICK) {
+      ShellExecute(nullptr, L"open", L"https://www.objeck.org", nullptr, nullptr, SW_SHOWDEFAULT);
+      return (INT_PTR)TRUE;
+    }
+    break;
+
+  case WM_COMMAND:
+    if(LOWORD(wParam) == IDOK) {
+      EndDialog(hDlg, LOWORD(wParam));
+      return (INT_PTR)TRUE;
+    }
+    else if(LOWORD(wParam) == IDC_CHECK1) {
+      if(HIWORD(wParam) == BN_CLICKED) {
+        if(SendDlgItemMessage(hDlg, IDC_CHECK1, BM_GETCHECK, 0, 0)) {
+          MessageBox(NULL, L"Checkbox Selected", L"Success", MB_OK | MB_ICONINFORMATION);
+        }
+        else {
+          MessageBox(NULL, L"Checkbox Unselected", L"Success", MB_OK | MB_ICONINFORMATION);
+        }
+      }
+      return (INT_PTR)TRUE;
+    }
+    break;
+  }
+
+  return (INT_PTR)FALSE;
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  
   switch (message) {
   case WM_COMMAND: {
     const int wmId = LOWORD(wParam);
@@ -178,6 +217,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       command += applicationPath + L"\\..\\doc\\api\\index.html";
       command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+
+      DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
+
+      
     }
       break;
       
@@ -215,6 +258,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   default:
     return DefWindowProc(hWnd, message, wParam, lParam);
   }
+
   return 0;
 }
 
