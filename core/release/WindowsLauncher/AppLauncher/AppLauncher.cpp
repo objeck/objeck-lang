@@ -78,7 +78,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 hInst = hInstance;
 
   const int wndWidth = 450; 
-  const int wndHeight = 400;
+  const int wndHeight = 420;
 
   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_SYSMENU,
                             CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
@@ -87,28 +87,28 @@ hInst = hInstance;
   const int padding = 35;
   HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt",
                                     BS_DEFCOMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                    10, 10, wndWidth - padding, 64,
+                                    10, 10, wndWidth - padding, 72,
                                     hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
 
   HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation",
                                     BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                    10, 85, wndWidth - padding, 64,
+                                    10, 93, wndWidth - padding, 72,
                                     hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
 
   HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples",
                                         BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                        10, 160, wndWidth - padding, 64,
+                                        10, 176, wndWidth - padding, 72,
                                         hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
 
   HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me",
                                       BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                      10, 235, wndWidth - padding, 64,
+                                      10, 259, wndWidth - padding, 72,
                                       hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
 
   const int closeButtonWidth = 80;
   HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
                                       WS_CHILD | WS_VISIBLE,
-                                      wndWidth / 2 - closeButtonWidth / 2, 235 + 84, closeButtonWidth, 24,
+                                      wndWidth / 2 - closeButtonWidth / 2, 344, closeButtonWidth, 24,
                                       hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
 
   if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
@@ -118,12 +118,12 @@ hInst = hInstance;
   HINSTANCE hShellDll = LoadLibrary(L"SHELL32.dll");
 
   // hWndCmdButton
-  SendMessage(hWndCmdButton, BCM_SETNOTE, 0, (LPARAM)L"Command prompt for Objeck binaries.");
+  SendMessage(hWndCmdButton, BCM_SETNOTE, 0, (LPARAM)L"Command prompt for Objeck binaries.\r\n(Alt+Shift+C)");
   HICON hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(242));
   SendMessageW(hWndCmdButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
    
   // hWndApiButton
-  SendMessage(hWndApiButton, BCM_SETNOTE, 0, (LPARAM)L"Documentation for bundles and supporting classes.");
+  SendMessage(hWndApiButton, BCM_SETNOTE, 0, (LPARAM)L"Documentation for bundles and supporting classes.\r\n(Alt+Shift+D)");
   hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(134));
   SendMessageW(hWndApiButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
    
