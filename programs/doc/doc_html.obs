@@ -114,7 +114,19 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateBundleIndexHtml(bundles : Map<String, BundleSnippet>, title_header : String, class_header : String) ~ Nil {
+	method : CreateBundleIndexHtml(bundles : Map<String, BundleSnippet>, title_header : String, class_header : String) ~ Nil {		
+		temp := "";
+		each(i : @version) {
+			c := @version->Get(i);
+			if(c->IsDigit()) {
+				temp += c;
+			};
+		};
+		file_name := "../html/version.txt";
+		out := FileWriter->New(file_name);
+		out->WriteString(temp);
+		out->Close();
+
 		title := String->New(title_header);
 		title += "<div class='title'><h1>Objeck</h1><strong>a programming language</strong>";
 		title += "<p><small>v{$@version}</small></div>";
