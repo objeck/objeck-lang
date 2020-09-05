@@ -42,6 +42,14 @@ copy lib\fonts\*.ttf ..\..\Release\deploy64\lib\sdl\fonts
 copy lib\x64\*.dll ..\..\Release\deploy64\lib\sdl
 cd ..\..\Release
 
+REM app
+mkdir deploy64\app
+cd WindowsLauncher
+devenv AppLauncher.sln /rebuild "Release|x64"
+copy x64\Release\*.exe ..\deploy64\app
+copy AppLauncher\set_ob_env.cmd ..\deploy64\app
+cd ..
+
 REM copy examples
 mkdir deploy64\examples\
 mkdir deploy64\examples\doc\
