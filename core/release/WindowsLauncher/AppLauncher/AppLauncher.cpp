@@ -1,7 +1,7 @@
 #include "framework.h"
 #include "AppLauncher.h"
 
-#define MAX_LOADSTRING 100
+#define MAX_LOADSTRING 256
 
 #define CMD_BUTTON 201
 #define API_BUTTON 202 
@@ -14,10 +14,15 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
+std::wstring applicationPath;                        // application path
+std::wstring programDataPath;                        // program data path
+
 // Forward declarations of functions included in this code module:
 ATOM RegisterWndClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+BOOL InitEnvironment();
+BOOL WriteLineToFile(HANDLE file, std::wstring text);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR    lpCmdLine, _In_ int nCmdShow)
 {
@@ -36,9 +41,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSTEST));
 
-  MSG msg;
-
   // Main message loop:
+  MSG msg;
   while (GetMessage(&msg, nullptr, 0, 0)) {
       if(!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
           TranslateMessage(&msg);
@@ -137,52 +141,45 @@ hInst = hInstance;
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
 
-  return TRUE;
+  return InitEnvironment();
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  std::wstring currentPath;
-#ifdef _DEBUG
-  currentPath = L"\"..\\..\\deploy64";
-#else
-  WCHAR prefixPath[MAX_PATH];
-  GetCurrentDirectory(MAX_PATH - 1, prefixPath);
-  currentPath = L"\"";
-  currentPath += prefixPath;
-  currentPath += L"\\..";
-#endif
-
+  
   switch (message) {
   case WM_COMMAND: {
     const int wmId = LOWORD(wParam);
     // Parse the menu selections:
     switch(wmId) {
     case CMD_BUTTON: {
-      std::wstring command = L"/k ";
-      command += currentPath;
-      command += L"\\app\\set_ob_env.cmd\"";
+      std::wstring command = L"/k \""; // start
+      command += programDataPath + L"\\SetObjEnv.cmd";
+      command += L"\"";             // end
       ShellExecute(nullptr, L"open", L"cmd.exe", command.c_str(), nullptr, SW_SHOWDEFAULT);
     }
       break;
 
     case API_BUTTON: {
-      std::wstring command = currentPath;
-      command += L"\\doc\\api\\index.html\"";
+      std::wstring command = L"\""; // start
+      command += applicationPath + L"\\..\\doc\\api\\index.html";
+      command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
-
+      
     case EXAMPLE_BUTTON: {
-      std::wstring command = currentPath;
-      command += L"\\examples\"";
+      std::wstring command = L"\""; // start
+      command += applicationPath + L"\\..\\examples";
+      command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
 
     case README_BUTTON: {
-      std::wstring command = currentPath;
-      command += L"\\readme.html\"";
+      std::wstring command = L"\""; // start
+      command += applicationPath + L"\\..\\readme.html";
+      command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
@@ -206,4 +203,68 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, message, wParam, lParam);
   }
   return 0;
+}
+
+BOOL InitEnvironment()
+{
+  WCHAR buffer[MAX_PATH];
+
+  // get current directory
+  if(!GetCurrentDirectory(MAX_PATH - 1, buffer)) {
+    return FALSE;
+  }
+  applicationPath = buffer;
+
+  // get program data directory
+  if(SHGetFolderPath(NULL, CSIDL_COMMON_APPDATA, NULL, 0, buffer) != S_OK) {
+    return FALSE;
+  }
+  programDataPath = buffer;
+  programDataPath += L"\\Objeck";
+
+  // check for cmd file in program data directory
+  if(!PathFileExists(programDataPath.c_str())) {
+    if(!CreateDirectory(programDataPath.c_str(), nullptr)) {
+      return FALSE;
+    }
+
+    // create cmd file
+    std::wstring programCmdFile = programDataPath + L"\\SetObjEnv.cmd";
+    HANDLE cmdFile = CreateFile(programCmdFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+                                nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if(cmdFile == INVALID_HANDLE_VALUE) {
+      return FALSE;
+    }
+
+    // write to file
+    std::wstring pathText;
+
+    pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt(obc, obr, obd)\r\n@echo Copyright(c) 2008-2020, Randy Hollines\r\n@echo =========================================";
+    WriteLineToFile(cmdFile, pathText);
+
+    pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
+    WriteLineToFile(cmdFile, pathText);
+
+    pathText = L"set OBJECK_LIB_PATH=" + applicationPath + L"\\..\\lib";
+    WriteLineToFile(cmdFile, pathText);
+
+    pathText = L"cd ..";
+    WriteLineToFile(cmdFile, pathText);
+
+    // close file
+    CloseHandle(cmdFile);
+  }
+  else {
+
+  }
+  return TRUE;
+}
+
+BOOL WriteLineToFile(HANDLE file, std::wstring text)
+{
+  text += L"\r\n";
+  DWORD written;
+  std::string asciiText = UnicodeToBytes(text);
+  WriteFile(file, asciiText.c_str(), (DWORD)asciiText.size(), &written, nullptr);
+  return written = (DWORD)asciiText.size();
 }

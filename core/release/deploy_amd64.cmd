@@ -47,7 +47,6 @@ mkdir deploy64\app
 cd WindowsLauncher
 devenv AppLauncher.sln /rebuild "Release|x64"
 copy x64\Release\*.exe ..\deploy64\app
-copy AppLauncher\set_ob_env.cmd ..\deploy64\app
 cd ..
 
 REM copy examples

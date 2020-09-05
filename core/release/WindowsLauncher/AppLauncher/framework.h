@@ -6,6 +6,8 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+#pragma comment(lib, "Shlwapi.lib")
+
 #pragma once
 
 #include "targetver.h"
@@ -16,7 +18,10 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <commctrl.h>
 #include <shellapi.h>
 #include <shlobj_core.h>
+#include <shlwapi.h>
 #include <string>
+#include <iostream>
+#include "../../../shared/sys.h"
 
 // C RunTime Header Files
 #include <stdlib.h>
