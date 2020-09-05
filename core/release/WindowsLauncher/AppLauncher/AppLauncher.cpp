@@ -47,7 +47,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
   const int latestVersion = GetLatestVersion();
   if(latestVersion > 0) {
     const int localVersion = GetLocalVersion();
-    if(localVersion < latestVersion) {
+    if(localVersion > 0 && localVersion < latestVersion) {
       newVersion = TRUE;
     }
   }
@@ -63,7 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
       }
   }
 
-  return (int) msg.wParam;
+  return (int)msg.wParam;
 }
 
 ATOM RegisterWndClass(HINSTANCE hInstance)
