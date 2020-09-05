@@ -1803,12 +1803,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_F14591F3CA0C4B2DBC41A537B12B8629"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_F2403B2533EB4D4BA17E9ACB185E7EDC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -7927,26 +7921,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F14591F3CA0C4B2DBC41A537B12B8629"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\app\\set_ob_env.cmd"
-            "TargetName" = "8:set_ob_env.cmd"
-            "Tag" = "8:"
-            "Folder" = "8:_AB28D67314044A2F925039A486CD5FE8"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F2403B2533EB4D4BA17E9ACB185E7EDC"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\api\\collection-floatvector.html"
@@ -8560,22 +8534,6 @@
                         }
                         "Values"
                         {
-                            "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_997A87606D994AEA9B413B40A35EA929"
-                            {
-                            "Name" = "8:OBJECK_LIB_PATH"
-                            "Condition" = "8:"
-                            "Transitive" = "11:FALSE"
-                            "ValueTypes" = "3:1"
-                            "Value" = "8:[TARGETDIR]lib"
-                            }
-                            "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_D717C098ADDE4F86A6E58164298546D7"
-                            {
-                            "Name" = "8:PATH"
-                            "Condition" = "8:"
-                            "Transitive" = "11:FALSE"
-                            "ValueTypes" = "3:1"
-                            "Value" = "8:%PATH%;[TARGETDIR]bin;[TARGETDIR]lib\\sdl"
-                            }
                         }
                     }
                     "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_AC9E4A8091674B56BA9E7ED0C5CE87E2"
