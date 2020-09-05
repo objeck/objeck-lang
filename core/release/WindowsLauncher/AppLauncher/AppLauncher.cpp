@@ -142,13 +142,16 @@ hInst = hInstance;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+  std::wstring currentPath;
 #ifdef _DEBUG
-  const LPCWCHAR currentPath = L"\"..\\..\\deploy64\\";
+  currentPath = L"\"..\\..\\deploy64";
 #else
-  WCHAR currentPath[MAX_PATH];
-  GetCurrentDirectory(MAX_PATH - 1, currentPath);
+  WCHAR prefixPath[MAX_PATH];
+  GetCurrentDirectory(MAX_PATH - 1, prefixPath);
+  currentPath = L"\"";
+  currentPath += prefixPath;
+  currentPath += L"\\..";
 #endif
-
 
   switch (message) {
   case WM_COMMAND: {
@@ -158,28 +161,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case CMD_BUTTON: {
       std::wstring command = L"/k ";
       command += currentPath;
-      command += L"app\\set_ob_env.cmd\"";
+      command += L"\\app\\set_ob_env.cmd\"";
       ShellExecute(nullptr, L"open", L"cmd.exe", command.c_str(), nullptr, SW_SHOWDEFAULT);
     }
       break;
 
     case API_BUTTON: {
       std::wstring command = currentPath;
-      command += L"doc\\api\\index.html\"";
+      command += L"\\doc\\api\\index.html\"";
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
 
     case EXAMPLE_BUTTON: {
       std::wstring command = currentPath;
-      command += L"examples\"";
+      command += L"\\examples\"";
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
 
     case README_BUTTON: {
       std::wstring command = currentPath;
-      command += L"readme.html\"";
+      command += L"\\readme.html\"";
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
