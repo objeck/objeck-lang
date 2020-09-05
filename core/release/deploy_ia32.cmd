@@ -45,6 +45,14 @@ copy lib\fonts\*.ttf ..\..\Release\deploy\lib\sdl\fonts
 copy lib\x86\*.dll ..\..\Release\deploy\lib\sdl
 cd ..\..\Release
 
+REM app
+mkdir deploy\app
+cd WindowsLauncher
+devenv AppLauncher.sln /rebuild "Release|x86"
+copy win32\Release\*.exe ..\deploy\app
+copy AppLauncher\set_ob_env.cmd ..\deploy\app
+cd ..
+
 REM copy examples
 mkdir deploy\examples\
 mkdir deploy\examples\doc\
