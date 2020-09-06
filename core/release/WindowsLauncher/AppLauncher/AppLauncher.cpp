@@ -311,9 +311,7 @@ BOOL InitEnvironment()
     // close file
     CloseHandle(cmdFile);
   }
-  else {
 
-  }
   return TRUE;
 }
 
