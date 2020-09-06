@@ -140,7 +140,7 @@ hInst = hInstance;
   HINSTANCE hShellDll = LoadLibrary(L"SHELL32.dll");
 
   // hWndCmdButton
-  SendMessage(hWndCmdButton, BCM_SETNOTE, 0, (LPARAM)L"Command prompt for Objeck binaries.\r\n(Alt+Shift+C)");
+  SendMessage(hWndCmdButton, BCM_SETNOTE, 0, (LPARAM)L"Objeck command prompt environment.\r\n(Alt+Shift+C)");
   HICON hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(242));
   SendMessageW(hWndCmdButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
    
@@ -150,12 +150,12 @@ hInst = hInstance;
   SendMessageW(hWndApiButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
    
   // hWndExamplesButton
-  SendMessage(hWndExamplesButton, BCM_SETNOTE, 0, (LPARAM)L"Directory of code examples, copy locally and modify");
+  SendMessage(hWndExamplesButton, BCM_SETNOTE, 0, (LPARAM)L"Sample code examples, copy locally to modify");
   hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(147));
   SendMessageW(hWndExamplesButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
 
   // hWndReadmeButton
-  SendMessage(hWndReadmeButton, BCM_SETNOTE, 0, (LPARAM)L"Information about the release and getting started.");
+  SendMessage(hWndReadmeButton, BCM_SETNOTE, 0, (LPARAM)L"Information about this release and getting started.");
   hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(1001));
   SendMessageW(hWndReadmeButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
 
