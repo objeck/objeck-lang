@@ -17,7 +17,6 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 std::wstring applicationPath;                   // application path
 std::wstring programDataPath;                   // program data path
-BOOL newVersion;
 
 // Forward declarations of functions included in this code module:
 ATOM RegisterWndClass(HINSTANCE hInstance);
@@ -49,16 +48,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
   // Perform application initialization:
   if(!InitInstance (hInstance, nCmdShow)) {
       return FALSE;
-  }
-
-  // check for updates
-  newVersion = FALSE;
-  const int latestVersion = GetLatestVersion();
-  if(latestVersion > 0) {
-    const int localVersion = GetLocalVersion();
-    if(localVersion > 0 && localVersion < latestVersion) {
-      newVersion = TRUE;
-    }
   }
 
   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSTEST));
@@ -130,7 +119,7 @@ hInst = hInstance;
   const int closeButtonWidth = 80;
   HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
                                       WS_CHILD | WS_VISIBLE,
-                                      wndWidth / 2 - closeButtonWidth / 2, 344, closeButtonWidth, 24,
+                                      wndWidth / 2 - closeButtonWidth / 2, 346, closeButtonWidth, 24,
                                       hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
 
   if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
@@ -188,7 +177,7 @@ INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
     break;
 
   case WM_COMMAND:
-    if(LOWORD(wParam) == IDOK) {
+    if(LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
       EndDialog(hDlg, LOWORD(wParam));
       return (INT_PTR)TRUE;
     }
@@ -213,10 +202,21 @@ INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 
 VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTime)
 {
+  // check for updates
+  BOOL newVersion = FALSE;
+  const int latestVersion = GetLatestVersion();
+  if(latestVersion > 0) {
+    const int localVersion = GetLocalVersion();
+    if(localVersion > 0 && localVersion < latestVersion) {
+      newVersion = TRUE;
+    }
+  }
+
   if(newVersion) {
     DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
     newVersion = FALSE;
   }
+
   KillTimer(hWnd, VERSION_TIMER);
 }
 
