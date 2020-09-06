@@ -725,12 +725,7 @@ class Player {
 		# reposition x-axis
 		@rect->SetCenterX(@loc->GetX());
 		collides := @level->PlatformCollisions(@self);
-
-		if(collides->Size() > 0 #~ & @hanging_platform <> Nil ~#) {
-			foo := @hanging_platform <> Nil;
-"--- Hit Platform while Hanging hanging hanging={$foo}, Should Fall! ---"->PrintLine();
-		};
-
+		
         each(i : collides) {
         	platform := collides->Get(i)->As(StaticPlatform);
 			if(@player_dir = 1) {
