@@ -8,14 +8,15 @@
 #define EXAMPLE_BUTTON 203
 #define README_BUTTON 204
 #define CLOSE_BUTTON 205
+#define VERSION_TIMER 206
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-std::wstring applicationPath;                        // application path
-std::wstring programDataPath;                        // program data path
+std::wstring applicationPath;                   // application path
+std::wstring programDataPath;                   // program data path
 BOOL newVersion;
 
 // Forward declarations of functions included in this code module:
@@ -24,6 +25,11 @@ BOOL InitInstance(HINSTANCE, int);
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+VOID CALLBACK VersionCheckProc(
+  HWND hwnd,        // handle to window for timer messages 
+  UINT message,     // WM_TIMER message 
+  UINT idTimer,     // timer identifier 
+  DWORD dwTime);     // current system time 
 
 BOOL InitEnvironment();
 BOOL WriteLineToFile(HANDLE file, std::wstring text);
@@ -153,6 +159,12 @@ hInst = hInstance;
   hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(1001));
   SendMessageW(hWndReadmeButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
 
+  // 30-second timer
+  UINT_PTR uResult = SetTimer(hWnd, VERSION_TIMER, 30000, (TIMERPROC)VersionCheckProc);
+  if(!uResult) {
+    return FALSE;
+  }
+
   // show window
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
@@ -180,6 +192,7 @@ INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
       EndDialog(hDlg, LOWORD(wParam));
       return (INT_PTR)TRUE;
     }
+/*
     else if(LOWORD(wParam) == IDC_CHECK1) {
       if(HIWORD(wParam) == BN_CLICKED) {
         if(SendDlgItemMessage(hDlg, IDC_CHECK1, BM_GETCHECK, 0, 0)) {
@@ -191,10 +204,19 @@ INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
       }
       return (INT_PTR)TRUE;
     }
+*/
     break;
   }
 
   return (INT_PTR)FALSE;
+}
+
+VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTime)
+{
+  if(newVersion) {
+    DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
+  }
+  KillTimer(hWnd, VERSION_TIMER);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -217,10 +239,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       command += applicationPath + L"\\..\\doc\\api\\index.html";
       command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
-
-      // DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
-
-      
     }
       break;
       
