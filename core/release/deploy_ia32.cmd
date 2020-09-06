@@ -85,7 +85,6 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\images\setup_icons\*.ico "%USERPROFILE%\Desktop\objeck-lang-win32\doc\icons"
 	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win32\doc\icons"
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win32\doc"
-	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\objeck-lang-win32\doc"
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win32\doc"
 	
 	copy /y ..\setup
