@@ -1,6 +1,6 @@
 use Game.SDL2;
 use Game.Framework;
-use Collection;
+use Collection.Generic;
 
 class Demo {
 	@framework : GameFramework;
@@ -12,7 +12,7 @@ class Demo {
 	}
 
 	New() {
-		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Scroll Test");
 		@framework->SetClearColor(Color->New(0, 0, 255));
 	}
 
@@ -110,7 +110,7 @@ class Player {
 	@rect : Rectangle;
 	@change_x : Float;
 	@change_y : Float;
-	@platforms : Vector;
+	@platforms : Vector<StaticPlatform>;
 
 	New(rect : Rectangle) {
 		@rect := rect;
@@ -140,7 +140,7 @@ class Player {
 	}
 
 	method : public : SetLevel(level : Level)  ~ Nil {
-		@platforms := level->GetPlatforms();
+		@platforms := level->GetPlatforms()<StaticPlatform>;
 	}
 
 	method : public : ChangeLeft()  ~ Int {
@@ -177,7 +177,7 @@ class Player {
 
         collides := Level->Collisions(@self, @platforms);
         each(i : collides) {
-        	platform := collides->Get(i)->As(StaticPlatform);
+        	platform := collides->Get(i);
 			if(@change_x > 0) {
     			@rect->SetRight(platform->GetLeft());
             }
@@ -190,7 +190,7 @@ class Player {
 		# Move up/down
         @rect->AddY(@change_y);
 		each(i : @platforms) {
-        	platform := @platforms->Get(i)->As(StaticPlatform);
+        	platform := @platforms->Get(i);
         	if(platform->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
@@ -334,12 +334,12 @@ class MovingPlatform from StaticPlatform {
 
 class Level {
 	@player : Player;
-	@platforms : Vector;
+	@platforms : Vector<StaticPlatform>;
 	@shift_x : Int;
 
 	New(player : Player, framework : GameFramework) {
 		@player := player;
-		@platforms := Vector->New();
+		@platforms := Vector->New()<StaticPlatform>;
 
 		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
 		@platforms->AddBack(StaticPlatform->New(600, 500, framework->AddRectangle(100, 50)));	
@@ -353,9 +353,9 @@ class Level {
 		@player->SetLevel(@self);
 	}
 
-	function : Collides(player : Player, obstacles : Vector) ~ Bool {
+	function : Collides(player : Player, obstacles : Vector<StaticPlatform>) ~ Bool {
 		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(StaticPlatform);
+        	obstacle := obstacles->Get(i);
         	if(obstacle->Collides(player->GetRect())) {
         		return true;
         	};
@@ -364,11 +364,11 @@ class Level {
         return false;
 	}
 
-	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
-		collides := Vector->New();
+	function : Collisions(player : Player, obstacles : Vector<StaticPlatform>) ~ Vector<StaticPlatform> {
+		collides := Vector->New()<StaticPlatform>;
 
 		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(StaticPlatform);
+        	obstacle := obstacles->Get(i);
         	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
@@ -385,12 +385,12 @@ class Level {
 		@shift_x += shift_x;
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(StaticPlatform);
+			platform := @platforms->Get(i);
 			platform->AddX(shift_x);
 		};
 	}
 
-	method : public : GetPlatforms() ~ Vector {
+	method : public : GetPlatforms() ~ Vector<StaticPlatform> {
 		return @platforms;
 	}
 
@@ -405,7 +405,7 @@ class Level {
 
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
-			@platforms->Get(i)->As(StaticPlatform)->Draw();
+			@platforms->Get(i)->Draw();
 		};
 	}
 }
