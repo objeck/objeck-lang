@@ -1701,6 +1701,20 @@ int main(int argc, char** argv)
   usage += L"  -src: source directory path\n\n";
   usage += L"example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
   usage += VERSION_STRING;
+
+#if defined(_WIN64) && defined(_WIN32)
+ usage += L" Objeck (x86-64 Windows)";
+#elif _WIN32
+ usage += L" Objeck (x86 Windows)";
+#elif _OSX
+ usage += L" Objeck (x86-64 macOS)";
+#elif _X64
+ usage += L" Objeck (x86-64 Linux)";
+#elif _ARM32
+ usage += L" Objeck (ARMv7 Linux)";
+#else
+ usage += L" Objeck (x86 Linux)";
+#endif 
   
   if(argc >= 3) {
 #ifdef _WIN32
