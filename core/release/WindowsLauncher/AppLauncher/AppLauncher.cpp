@@ -7,8 +7,9 @@
 #define API_BUTTON 202 
 #define EXAMPLE_BUTTON 203
 #define README_BUTTON 204
-#define CLOSE_BUTTON 205
-#define VERSION_TIMER 206
+#define EDITOR_BUTTON 205
+#define CLOSE_BUTTON 206
+#define VERSION_TIMER 207
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -115,7 +116,7 @@ hInst = hInstance;
   HWND hWndEditorButton = CreateWindow(WC_BUTTON, L"Text Editor Support",
                                        BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
                                        10, buttonHeight * 3 + 10 * 4, wndWidth - padding, buttonHeight,
-                                       hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
+                                       hWnd, (HMENU)EDITOR_BUTTON, hInstance, nullptr);
 
   HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me",
                                       BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
@@ -125,7 +126,7 @@ hInst = hInstance;
   const int closeButtonWidth = 80;
   HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
                                       WS_CHILD | WS_VISIBLE,
-                                      wndWidth / 2 - closeButtonWidth / 2, 478, closeButtonWidth, 24,
+                                      wndWidth / 2 - closeButtonWidth / 2, 480, closeButtonWidth, 24,
                                       hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
 
   if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
@@ -261,6 +262,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
       break;
+
+    case EDITOR_BUTTON: {
+      std::wstring command = L"\""; // start
+      command += applicationPath + L"\\..\\doc\\syntax\\howto.html";
+      command += L"\"";             // end
+      ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+    }
+                      break;
 
     case README_BUTTON: {
       std::wstring command = L"\""; // start
