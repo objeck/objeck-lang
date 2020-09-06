@@ -1,19 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := 51;
-		select(a) {
-			label 1, 2, 3 {
-				"1, 2, 3"->PrintLine();
-			}
-			label 5, 6, 7 {
-				"5, 6, 7"->PrintLine();
-			}
-			label 51, 16, 17 {
-				"51, 16, 17"->PrintLine();
-			}
-			other {
-				"other"->PrintLine();
-			}
-		};
+		a : Float := -6;
+		a->PrintLine();
+
+		b : Int := 6.999;
+		b->PrintLine();
 	}
 }
