@@ -215,6 +215,7 @@ VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTi
 {
   if(newVersion) {
     DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
+    newVersion = FALSE;
   }
   KillTimer(hWnd, VERSION_TIMER);
 }
