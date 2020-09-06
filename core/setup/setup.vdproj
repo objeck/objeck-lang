@@ -8325,7 +8325,7 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{DA7CE1EF-2CDA-4229-A7F3-C73A2CEE2FDB}"
+        "ProductCode" = "8:{2BBD7369-3F3C-4238-93C5-D603D4A582BF}"
         "PackageCode" = "8:{09C778F7-237F-46A9-ACE7-AF841FCEC85B}"
         "UpgradeCode" = "8:{A35AE9F4-6D9D-4254-811F-27267E71A484}"
         "AspNetVersion" = "8:"
