@@ -1491,12 +1491,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_CCC58DA385AB47588348ADA9F8C54B64"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_CE02BB0BDA4342F3A15A02CF92051765"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1958,20 +1952,6 @@
     {
         "CustomAction"
         {
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_E3F16D1E2E7845C884F2524B996CA8FA"
-            {
-            "Name" = "8:uninstall.vbs"
-            "Condition" = "8:"
-            "Object" = "8:_CCC58DA385AB47588348ADA9F8C54B64"
-            "FileType" = "3:4"
-            "InstallAction" = "3:1"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_D3DF651A_C52D_47FB_A08F_DBE6A6CCA012"
-            "InstallerClass" = "11:FALSE"
-            "CustomActionData" = "8:"
-            }
         }
         "DefaultFeature"
         {
@@ -6907,26 +6887,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CCC58DA385AB47588348ADA9F8C54B64"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\uninstall.vbs"
-            "TargetName" = "8:uninstall.vbs"
-            "Tag" = "8:"
-            "Folder" = "8:_377B8872FDE4437388DF8E6C6B927D0A"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CE02BB0BDA4342F3A15A02CF92051765"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\syntax\\objeck.xml"
@@ -8481,8 +8441,8 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{77A018B2-6409-48BC-8731-FCFE0E59A347}"
-        "PackageCode" = "8:{755CB01B-4B5C-4F1B-ABB6-4678B908F2FE}"
+        "ProductCode" = "8:{A77A6103-C3F8-4B66-8AED-C0DE2C78D446}"
+        "PackageCode" = "8:{CD8B8763-6EBD-4816-BC26-9B7EC19202A4}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"

@@ -261,12 +261,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_25695CCDDD9C4ED1A5D2DCAAE1DF548F"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_2672A012BAA04FD3BE6F5EAAABB86504"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1922,20 +1916,6 @@
     {
         "CustomAction"
         {
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_B2880DF33B114B58B01E2BD4EE92EFAF"
-            {
-            "Name" = "8:uninstall.vbs"
-            "Condition" = "8:"
-            "Object" = "8:_25695CCDDD9C4ED1A5D2DCAAE1DF548F"
-            "FileType" = "3:4"
-            "InstallAction" = "3:1"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_6333DEF8_6F0A_4F68_88DD_153174AD7F89"
-            "InstallerClass" = "11:FALSE"
-            "CustomActionData" = "8:"
-            }
         }
         "DefaultFeature"
         {
@@ -2737,26 +2717,6 @@
             "TargetName" = "8:emitter.obs"
             "Tag" = "8:"
             "Folder" = "8:_B671D979154F46879D5F433E51F73C6E"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_25695CCDDD9C4ED1A5D2DCAAE1DF548F"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\uninstall.vbs"
-            "TargetName" = "8:uninstall.vbs"
-            "Tag" = "8:"
-            "Folder" = "8:_8CF21EC4591F49859A2DC3BC372C6159"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
