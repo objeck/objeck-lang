@@ -225,12 +225,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_20C39C79C7FC4E5DB2BFBEAF2723D723"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_20CBD7506C764972ADC1837C655616C1"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -250,12 +244,6 @@
         "Entry"
         {
         "MsmKey" = "8:_230621BF2CF34B2FB3D16612DF96B221"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_23651F8A776C4118A44D9CB517DC7B9A"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -346,6 +334,12 @@
         "Entry"
         {
         "MsmKey" = "8:_2F0A6DFC1AC8481FAADC03CF3EE9B9E6"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_2F2F4A2449E440A68F48235ABDC0BF79"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -453,6 +447,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_44442E1537ED4FC2B7F72DF43CC28E69"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_44CC2ECDF0A4413792DC28A80B1E4D71"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -496,6 +496,12 @@
         "Entry"
         {
         "MsmKey" = "8:_4B42D681DDD74BA99818E426F71C866D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_4B70901F37DB4979AEC388800415609A"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -633,6 +639,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_60C2BAE704644E62A0A59190F0782E10"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_61FB3A1321874897B7B41F5C519D65C0"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -669,7 +681,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_67047510B5C344CAB2EE11F0028E7BA1"
+        "MsmKey" = "8:_66BD9391F0894D66BB000FD92C8A1BDD"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -682,12 +694,6 @@
         "Entry"
         {
         "MsmKey" = "8:_676A6189AB0F4069985CF946CD99A9BD"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_6870E985E9934896858759702C47F0C4"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -706,12 +712,6 @@
         "Entry"
         {
         "MsmKey" = "8:_69BBC158B48D4020BCD9B0131A0A497F"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_6B1125B92C8F4BB2BFAE9F06FF6FF729"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -760,12 +760,6 @@
         "Entry"
         {
         "MsmKey" = "8:_70EB20DC6C554684A67A429D7A52410B"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_71493DFF9FEE45FE9291FDC4C2EF5B45"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -970,6 +964,12 @@
         "Entry"
         {
         "MsmKey" = "8:_93752AB4B2254111832A12890B94C540"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_941A6F3FB64446BEAEE01728EB6F9954"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1191,13 +1191,13 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_B08A9A7CE23F4392B7CB9039BB66F048"
+        "MsmKey" = "8:_B0F41186EDEA4FEA840818C4315424C8"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
-        "MsmKey" = "8:_B0F41186EDEA4FEA840818C4315424C8"
+        "MsmKey" = "8:_B1A1B158693543A89A01540E828E7B4B"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1683,6 +1683,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_ED2C814D9A52449F9A3D993B1FD504E3"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_EDF2EDACF4A14F8E8B4C47B6300C69A1"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1792,12 +1798,6 @@
         "Entry"
         {
         "MsmKey" = "8:_FB9B77BC7E6E4477ADF5C48A45BB7EA3"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_FBBE247A72244330A1FF7C873EFCCB53"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -2631,26 +2631,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_20C39C79C7FC4E5DB2BFBEAF2723D723"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.plist"
-            "TargetName" = "8:objeck.plist"
-            "Tag" = "8:"
-            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_20CBD7506C764972ADC1837C655616C1"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\json_3.obs"
@@ -2717,26 +2697,6 @@
             "TargetName" = "8:game.sdl2-mousewheeldirection.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_23651F8A776C4118A44D9CB517DC7B9A"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.tmPreferences"
-            "TargetName" = "8:objeck.tmPreferences"
-            "Tag" = "8:"
-            "Folder" = "8:_893B2256FFE74F35B75D98D734DBB394"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -3037,6 +2997,26 @@
             "TargetName" = "8:database.odbc-timestamp.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2F2F4A2449E440A68F48235ABDC0BF79"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-build"
+            "TargetName" = "8:objeck.sublime-build"
+            "Tag" = "8:"
+            "Folder" = "8:_BF03A701BFC349B99411CBE67FDD98FD"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -3391,6 +3371,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_44442E1537ED4FC2B7F72DF43CC28E69"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck-syntax.php"
+            "TargetName" = "8:objeck-syntax.php"
+            "Tag" = "8:"
+            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_44CC2ECDF0A4413792DC28A80B1E4D71"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-list_h_.html"
@@ -3537,6 +3537,26 @@
             "TargetName" = "8:game.sdl2-joyaxisevent.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4B70901F37DB4979AEC388800415609A"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.plist"
+            "TargetName" = "8:objeck.plist"
+            "Tag" = "8:"
+            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -3991,6 +4011,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_60C2BAE704644E62A0A59190F0782E10"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.xml"
+            "TargetName" = "8:objeck.xml"
+            "Tag" = "8:"
+            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_61FB3A1321874897B7B41F5C519D65C0"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libvorbis-0.dll"
@@ -4111,10 +4151,10 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_67047510B5C344CAB2EE11F0028E7BA1"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_66BD9391F0894D66BB000FD92C8A1BDD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.xml"
-            "TargetName" = "8:objeck.xml"
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\howto.html"
+            "TargetName" = "8:howto.html"
             "Tag" = "8:"
             "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
             "Condition" = "8:"
@@ -4157,26 +4197,6 @@
             "TargetName" = "8:game.sdl2-hardwareflags.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6870E985E9934896858759702C47F0C4"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-syntax"
-            "TargetName" = "8:objeck.sublime-syntax"
-            "Tag" = "8:"
-            "Folder" = "8:_893B2256FFE74F35B75D98D734DBB394"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4237,26 +4257,6 @@
             "TargetName" = "8:game.sdl2-joybuttonevent.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6B1125B92C8F4BB2BFAE9F06FF6FF729"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.lang"
-            "TargetName" = "8:objeck.lang"
-            "Tag" = "8:"
-            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4417,26 +4417,6 @@
             "TargetName" = "8:phoenix.t"
             "Tag" = "8:"
             "Folder" = "8:_CCF4855D518049249E54D0630220EC7D"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_71493DFF9FEE45FE9291FDC4C2EF5B45"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-build"
-            "TargetName" = "8:objeck.sublime-build"
-            "Tag" = "8:"
-            "Folder" = "8:_893B2256FFE74F35B75D98D734DBB394"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -5117,6 +5097,26 @@
             "TargetName" = "8:system-byteholder.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_941A6F3FB64446BEAEE01728EB6F9954"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.lang"
+            "TargetName" = "8:objeck.lang"
+            "Tag" = "8:"
+            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -5851,12 +5851,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B08A9A7CE23F4392B7CB9039BB66F048"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B0F41186EDEA4FEA840818C4315424C8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck-syntax.php"
-            "TargetName" = "8:objeck-syntax.php"
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-chararrayholder.html"
+            "TargetName" = "8:system-chararrayholder.html"
             "Tag" = "8:"
-            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
+            "Folder" = "8:_486F8E796DE54228954285F575600B2B"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -5871,12 +5871,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B0F41186EDEA4FEA840818C4315424C8"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B1A1B158693543A89A01540E828E7B4B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-chararrayholder.html"
-            "TargetName" = "8:system-chararrayholder.html"
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.tmPreferences"
+            "TargetName" = "8:objeck.tmPreferences"
             "Tag" = "8:"
-            "Folder" = "8:_486F8E796DE54228954285F575600B2B"
+            "Folder" = "8:_BF03A701BFC349B99411CBE67FDD98FD"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -7491,6 +7491,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ED2C814D9A52449F9A3D993B1FD504E3"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-syntax"
+            "TargetName" = "8:objeck.sublime-syntax"
+            "Tag" = "8:"
+            "Folder" = "8:_BF03A701BFC349B99411CBE67FDD98FD"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EDF2EDACF4A14F8E8B4C47B6300C69A1"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\https_1.obs"
@@ -7857,26 +7877,6 @@
             "TargetName" = "8:system.io-console.html"
             "Tag" = "8:"
             "Folder" = "8:_486F8E796DE54228954285F575600B2B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FBBE247A72244330A1FF7C873EFCCB53"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\howto.rtf"
-            "TargetName" = "8:howto.rtf"
-            "Tag" = "8:"
-            "Folder" = "8:_202B16D8930C4FAA8A6AC6E5D2F69839"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -8259,13 +8259,13 @@
                             "Property" = "8:_D7E71CABB3B54A2397DBD5EDB51D671B"
                                 "Folders"
                                 {
-                                    "{9EF0B969-E518-4E46-987F-47570745A589}:_893B2256FFE74F35B75D98D734DBB394"
+                                    "{9EF0B969-E518-4E46-987F-47570745A589}:_BF03A701BFC349B99411CBE67FDD98FD"
                                     {
                                     "Name" = "8:sublime"
                                     "AlwaysCreate" = "11:FALSE"
                                     "Condition" = "8:"
                                     "Transitive" = "11:FALSE"
-                                    "Property" = "8:_1AFCD39CCBBA4FBDA75449ED44206523"
+                                    "Property" = "8:_69C5CCC478EC4FEDB735F56EBA03F079"
                                         "Folders"
                                         {
                                         }
