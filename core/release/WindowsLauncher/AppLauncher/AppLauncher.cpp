@@ -89,7 +89,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 hInst = hInstance;
 
   const int wndWidth = 450; 
-  const int wndHeight = 420;
+  const int wndHeight = 560;
+  const int buttonHeight = 82;
 
   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_SYSMENU,
                             CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
@@ -98,28 +99,33 @@ hInst = hInstance;
   const int padding = 35;
   HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt",
                                     BS_DEFCOMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                    10, 10, wndWidth - padding, 72,
+                                    10, 10, wndWidth - padding, buttonHeight,
                                     hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
 
   HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation",
                                     BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                    10, 93, wndWidth - padding, 72,
+                                    10, buttonHeight * 1 + 10 * 2, wndWidth - padding, buttonHeight,
                                     hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
 
   HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples",
                                         BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                        10, 176, wndWidth - padding, 72,
+                                        10, buttonHeight * 2 + 10 * 3, wndWidth - padding, buttonHeight,
                                         hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
+
+  HWND hWndEditorButton = CreateWindow(WC_BUTTON, L"Text Editor Support",
+                                       BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
+                                       10, buttonHeight * 3 + 10 * 4, wndWidth - padding, buttonHeight,
+                                       hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
 
   HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me",
                                       BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                      10, 259, wndWidth - padding, 72,
+                                      10, buttonHeight * 4 + 10 * 5, wndWidth - padding, buttonHeight,
                                       hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
 
   const int closeButtonWidth = 80;
   HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
                                       WS_CHILD | WS_VISIBLE,
-                                      wndWidth / 2 - closeButtonWidth / 2, 346, closeButtonWidth, 24,
+                                      wndWidth / 2 - closeButtonWidth / 2, 478, closeButtonWidth, 24,
                                       hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
 
   if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
@@ -142,6 +148,11 @@ hInst = hInstance;
   SendMessage(hWndExamplesButton, BCM_SETNOTE, 0, (LPARAM)L"Sample code examples, copy locally to modify");
   hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(147));
   SendMessageW(hWndExamplesButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
+
+  // hWndEditorButton
+  SendMessage(hWndEditorButton, BCM_SETNOTE, 0, (LPARAM)L"Text editor support for syntax highlighting and compiling code.");
+  hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(133));
+  SendMessageW(hWndEditorButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
 
   // hWndReadmeButton
   SendMessage(hWndReadmeButton, BCM_SETNOTE, 0, (LPARAM)L"Information about this release and getting started.");
