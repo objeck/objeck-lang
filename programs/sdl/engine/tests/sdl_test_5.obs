@@ -56,7 +56,7 @@ class Demo {
 					};
 		        };
 
-		        if(@player->GetLeft() <= 120) {
+				if(@player->GetLeft() <= 120) {
 					diff := 120 - @player->GetLeft();
 					@player->SetLeft(120);
 					if(shift < 0) {
