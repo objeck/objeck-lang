@@ -1,3 +1,10 @@
+#~
+# 2D smooth scrolling
+# 
+# compiler: obc -src sdl_test_5.obs -lib collect.obl,sdl_game.obl,sdl2.obl -dest sdl_test_5.obe
+# run: obr game2d.obe
+~#
+
 use Game.SDL2;
 use Game.Framework;
 use Collection.Generic;
