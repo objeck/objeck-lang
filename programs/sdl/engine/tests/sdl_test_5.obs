@@ -171,9 +171,9 @@ class Player {
 		bottom := Level->Collides(@self, @platforms);
         @rect->AddY(-2);
  
-        if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
+ 		if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
 			@change_y := -10;
-        };
+		};
 	}
 
 	method : public : native : Update()  ~ Nil {
@@ -188,8 +188,8 @@ class Player {
 			if(@change_x > 0) {
     			@rect->SetRight(platform->GetLeft());
             }
-    		# moving left
-            else if(@change_x < 0) {
+			# moving left
+			else if(@change_x < 0) {
             	@rect->SetLeft(platform->GetRight());
             };
         };
@@ -209,7 +209,7 @@ class Player {
 	            };
 
 	            # Stop our vertical movement
-            	@change_y := 0;
+				@change_y := 0;
 
 	            if(platform->TypeOf(MovingPlatform)) {
 	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
@@ -333,9 +333,9 @@ class MovingPlatform from StaticPlatform {
 		};
 
 		cur_pos := @rect->GetLeft() - @level->GetShiftLeft();
-        if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+		if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
 			@change_x *= -1;
-        };
+		};
 	}
 }
 
