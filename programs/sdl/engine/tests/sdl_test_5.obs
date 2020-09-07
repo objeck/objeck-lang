@@ -85,31 +85,31 @@ class Demo {
 
 	method : public : ProcessInput(e : Event) ~ Nil {
 		if(e->GetType() = EventType->SDL_KEYDOWN) {
-	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
-	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@player->GoLeft();
-	            }
+			select(e->GetKey()->GetKeysym()->GetScancode()) {		
+				label Scancode->SDL_SCANCODE_LEFT: {
+					@player->GoLeft();
+				}
 
-	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player->GoRight();
-	            }
+				label Scancode->SDL_SCANCODE_RIGHT: {
+					@player->GoRight();
+				}
 
-	            label Scancode->SDL_SCANCODE_UP: {
-	            	@player->Jump();
-	            }
-	        };
-	    }
-	    else if(e->GetType() = EventType->SDL_KEYUP) {
-	       	code := e->GetKey()->GetKeysym()->GetScancode();
-	       	
-	       	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeLeft() < 0) {
-	       		@player->Stop();
-	        };
+				label Scancode->SDL_SCANCODE_UP: {
+					@player->Jump();
+				}
+			};
+		}
+		else if(e->GetType() = EventType->SDL_KEYUP) {
+		   	code := e->GetKey()->GetKeysym()->GetScancode();
+		   	
+		   	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeLeft() < 0) {
+		   		@player->Stop();
+			};
 
-	        if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeLeft() > 0) {
-	        	@player->Stop();
-	        };
-	    };
+			if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeLeft() > 0) {
+				@player->Stop();
+			};
+		};
 	}
 }
 
@@ -169,7 +169,7 @@ class Player {
 	method : public : Jump()  ~ Nil {
 		@rect->AddY(2);
 		bottom := Level->Collides(@self, @platforms);
-        @rect->AddY(-2);
+		@rect->AddY(-2);
  
  		if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
 			@change_y := -10;
@@ -180,41 +180,41 @@ class Player {
 		Gravity();
 
 		# Move left/right
-        @rect->AddX(@change_x);
+		@rect->AddX(@change_x);
 
-        collides := Level->Collisions(@self, @platforms);
-        each(i : collides) {
-        	platform := collides->Get(i);
+		collides := Level->Collisions(@self, @platforms);
+		each(i : collides) {
+			platform := collides->Get(i);
 			if(@change_x > 0) {
-    			@rect->SetRight(platform->GetLeft());
-            }
+				@rect->SetRight(platform->GetLeft());
+			}
 			# moving left
 			else if(@change_x < 0) {
-            	@rect->SetLeft(platform->GetRight());
-            };
-        };
+				@rect->SetLeft(platform->GetRight());
+			};
+		};
 				
 		# Move up/down
 		@rect->AddY(@change_y);
 		each(i : @platforms) {
-        	platform := @platforms->Get(i);
-        	if(platform->Collides(@rect)) {
-        		# moving right
-        		if(@change_y > 0) {
-        			@rect->SetBottom(platform->GetTop());
-                }
-        		# moving left
-                else if(@change_y < 0) {
-                	@rect->SetTop(platform->GetBottom());
-	            };
+			platform := @platforms->Get(i);
+			if(platform->Collides(@rect)) {
+				# moving right
+				if(@change_y > 0) {
+					@rect->SetBottom(platform->GetTop());
+				}
+				# moving left
+				else if(@change_y < 0) {
+					@rect->SetTop(platform->GetBottom());
+				};
 
-	            # Stop our vertical movement
+				# Stop our vertical movement
 				@change_y := 0;
 
-	            if(platform->TypeOf(MovingPlatform)) {
-	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
-	            };
-        	};
+				if(platform->TypeOf(MovingPlatform)) {
+					@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
+				};
+			};
 		};				
 	}
 
@@ -223,18 +223,18 @@ class Player {
 	}
 
 	method : public : Gravity()  ~ Nil {
-        if(@change_y = 0) {
-            @change_y := 1;
-        }
-        else {
-            @change_y += .35;
-        };
+		if(@change_y = 0) {
+			@change_y := 1;
+		}
+		else {
+			@change_y += .35;
+		};
 
-        # See if we are on the ground.
-        if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
-            @change_y := 0;
-            @rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
-        };
+		# See if we are on the ground.
+		if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
+			@change_y := 0;
+			@rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
+		};
 	}
 }
 
@@ -279,13 +279,13 @@ class StaticPlatform {
 
 class MovingPlatform from StaticPlatform {
 	@change_x : Int;
-    @change_y : Int;
-    @boundary_top : Int;
-    @boundary_bottom : Int;
-    @boundary_left : Int;
-    @boundary_right : Int;
-    @player : Player;
-    @level : Level;
+	@change_y : Int;
+	@boundary_top : Int;
+	@boundary_bottom : Int;
+	@boundary_left : Int;
+	@boundary_right : Int;
+	@player : Player;
+	@level : Level;
 
 	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
 		Parent(x, y, rect);
@@ -294,8 +294,8 @@ class MovingPlatform from StaticPlatform {
 		@level := level;
 
 		@boundary_top := 75;
-    	@boundary_bottom := 550;
-    	@change_y := 1;
+		@boundary_bottom := 550;
+		@change_y := 1;
 	}
 
 	method : public : GetChangeLeft() ~ Int {
@@ -311,17 +311,17 @@ class MovingPlatform from StaticPlatform {
 
 		if(Collides(@player->GetRect())) {
 			if(@change_x < 0) {
-                @player->GetRect()->SetRight(@rect->GetLeft());
-            }
-            else {
-            	@player->GetRect()->SetLeft(@rect->GetRight());
+				@player->GetRect()->SetRight(@rect->GetLeft());
+			}
+			else {
+				@player->GetRect()->SetLeft(@rect->GetRight());
  			};
 		};
 
 		@rect->AddY(@change_y);
 		if(Collides(@player->GetRect())) { 
 			if(@change_y < 0) {
-                @player->GetRect()->SetBottom(@rect->GetTop());
+				@player->GetRect()->SetBottom(@rect->GetTop());
 			}
 			else {
 				@player->GetRect()->SetTop(@rect->GetBottom());
@@ -362,27 +362,27 @@ class Level {
 
 	function : Collides(player : Player, obstacles : Vector<StaticPlatform>) ~ Bool {
 		each(i : obstacles) {
-        	obstacle := obstacles->Get(i);
-        	if(obstacle->Collides(player->GetRect())) {
-        		return true;
-        	};
-        };
+			obstacle := obstacles->Get(i);
+			if(obstacle->Collides(player->GetRect())) {
+				return true;
+			};
+		};
 
-        return false;
+		return false;
 	}
 
 	function : Collisions(player : Player, obstacles : Vector<StaticPlatform>) ~ Vector<StaticPlatform> {
 		collides := Vector->New()<StaticPlatform>;
 
 		each(i : obstacles) {
-        	obstacle := obstacles->Get(i);
-        	if(obstacle->Collides(player->GetRect())) {
-        		collides->AddBack(obstacle);
-        	};
-        };
+			obstacle := obstacles->Get(i);
+			if(obstacle->Collides(player->GetRect())) {
+				collides->AddBack(obstacle);
+			};
+		};
 
-        return collides;
-    }
+		return collides;
+	}
 
 	method : public : GetShiftLeft() ~ Int {
 		return @shift_x;
