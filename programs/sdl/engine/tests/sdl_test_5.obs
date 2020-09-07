@@ -54,7 +54,7 @@ class Demo {
 					if(shift > -1500) {
 						@level->ShiftWorld(-1 * diff);
 					};
-		        };
+				};
 
 				if(@player->GetLeft() <= 120) {
 					diff := 120 - @player->GetLeft();
@@ -195,7 +195,7 @@ class Player {
         };
 				
 		# Move up/down
-        @rect->AddY(@change_y);
+		@rect->AddY(@change_y);
 		each(i : @platforms) {
         	platform := @platforms->Get(i);
         	if(platform->Collides(@rect)) {
@@ -215,7 +215,7 @@ class Player {
 	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
 	            };
         	};
-        };				
+		};				
 	}
 
 	method : public : Draw()  ~ Nil {
@@ -323,9 +323,9 @@ class MovingPlatform from StaticPlatform {
 			if(@change_y < 0) {
                 @player->GetRect()->SetBottom(@rect->GetTop());
 			}
-            else {
+			else {
 				@player->GetRect()->SetTop(@rect->GetBottom());
-            };
+			};
 		};
 
 		if(@rect->GetBottom() > @boundary_bottom | @rect->GetTop() < @boundary_top) {
