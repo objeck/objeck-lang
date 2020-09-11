@@ -1,0 +1,171 @@
+use Collection.Generic;
+
+class Tracking {
+	function : Main(args : String[]) ~ Nil {
+		grid := Char->New[4,4];
+
+		#start and end
+		start := Point->New(0, 1);
+		grid[start->GetX(),start->GetY()] := 'S';
+		
+		end := Point->New(3, 2);
+		grid[end->GetX(),end->GetY()] := 'E';
+
+		Distance(start, end);
+
+		# obstacles
+		grid[2,0] := 'X';
+		grid[1,1] := 'X';
+		grid[1,2] := 'X';
+		grid[3,3] := 'X';
+
+		Print(grid);
+
+		start->ToString()->PrintLine();
+
+		pt := Find(start, end, grid);
+		while(pt <> Nil) {
+			pt->ToString()->PrintLine();
+			pt := Find(pt, end, grid);
+		};
+
+		end->ToString()->PrintLine();
+	}
+
+	function : Find(pos : Point, end : Point, grid : Char[,]) ~ Point {
+		x := pos->GetX();
+		y := pos->GetY();
+
+		dims := grid->Size();
+		x_max := dims[0];
+		y_max := dims[1];
+
+		dir : Point;
+		if(x > -1 & y > -1 & x < x_max & y < y_max) {
+			"=====\npos: {$x}, {$y}"->PrintLine();
+
+			# TODO: obstacles
+
+			# check left/right
+			can_move_left := x - 1 > -1;
+			can_move_right := x + 1 < x_max;
+
+			# check up/down
+			can_move_up := y - 1 > -1;
+			can_move_down := y + 1 < y_max;
+
+			# pick best move
+			min_dist := (x_max * y_max)->ToFloat();
+			
+			if(can_move_left) {
+				pt := Point->New(x - 1, y);
+				test := Distance(pt, end);
+"left: {$min_dist} to {$test}"->PrintLine();
+				if(test < min_dist) {
+					min_dist := test;
+					dir := pt;
+				};
+			};
+
+			if(can_move_right) {
+				pt := Point->New(x + 1, y);
+				test := Distance(pt, end);
+"right: {$min_dist} to {$test}"->PrintLine();				
+				if(test < min_dist) {
+					min_dist := test;
+					dir := pt;
+				};
+			};
+
+			if(can_move_up) {
+				pt := Point->New(x, y - 1);
+				test := Distance(pt, end);
+"up: {$min_dist} to {$test}"->PrintLine();				
+				if(test < min_dist) {
+					min_dist := test;
+					dir := pt;
+				};
+			};
+
+			if(can_move_down) {
+				pt := Point->New(x, y + 1);
+				test := Distance(pt, end);
+"down: {$min_dist} to {$test}"->PrintLine();				
+				if(test < min_dist) {
+					min_dist := test;
+					dir := pt;
+				};
+			};
+
+			if(dir <> Nil) {
+				return dir->Equals(end) ? Nil : dir;
+			};
+
+			# "move: left={$move_left}, right={$move_right}, up={$move_up}, down={$move_down}"->PrintLine();
+		};
+
+		return dir;
+	}
+
+	function : Distance(a : Point, b : Point) ~ Float {
+		x_norm := Float->Power(a->GetX()->ToFloat() - b->GetX()->ToFloat(), 2.0);
+		y_norm := Float->Power(a->GetY()->ToFloat() - b->GetY()->ToFloat(), 2.0);
+
+		return (x_norm + y_norm)->SquareRoot();
+	}
+
+	function : Print(grid : Char[,]) ~ Nil {
+		dims := grid->Size();
+
+		for(i := 0; i < dims[1]; i +=1;) {
+			for(j := 0; j < dims[0]; j +=1;) {
+				value := grid[j,i];
+				if(value = '\0') {
+					"-, "->Print();
+				}
+				else {
+					"{$value}, "->Print();
+				};
+			};
+			'\n'->Print();
+		};
+	}
+}
+
+class Point {
+	@x : Int;
+	@y : Int;
+
+	New(x : Int, y : Int) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Int {
+		return @x;
+	}
+
+	method : public : SetX(x : Int) ~ Nil {
+		@x := x;
+	}
+
+	method : public : GetY() ~ Int {
+		return @y;
+	}
+
+	method : public : SetY(y : Int) ~ Nil {
+		@y := y;
+	}
+
+	method : public : Equals(pt : Point) ~ Bool {
+		if(pt->GetX() = @x & pt->GetY() = @y) {
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : ToString() ~ String {
+		return "[{$@x}, {$@y}]";
+	}
+}
