@@ -689,6 +689,19 @@ h1
 	mso-fareast-theme-font:minor-fareast;
 	color:#2F5496;
 	font-weight:normal;}
+a:link, span.MsoHyperlink
+	{mso-style-priority:99;
+	color:#0563C1;
+	mso-themecolor:hyperlink;
+	text-decoration:underline;
+	text-underline:single;}
+a:visited, span.MsoHyperlinkFollowed
+	{mso-style-noshow:yes;
+	mso-style-priority:99;
+	color:#954F72;
+	mso-themecolor:followedhyperlink;
+	text-decoration:underline;
+	text-underline:single;}
 span.Heading1Char
 	{mso-style-name:"Heading 1 Char";
 	mso-style-priority:9;
@@ -774,23 +787,27 @@ div.WordSection1
  </o:shapelayout></xml><![endif]-->
 </head>
 
-<body lang=EN-US style='tab-interval:.5in;text-justify-trim:punctuation'>
+<body lang=EN-US link="#0563C1" vlink="#954F72" style='tab-interval:.5in;
+text-justify-trim:punctuation'>
 
 <div class=WordSection1>
 
 <h1><span style='mso-fareast-font-family:"Times New Roman"'>Text Editor Support<o:p></o:p></span></h1>
 
-<p class=MsoNormal>&nbsp;</p>
+<p class=MsoNormal><o:p>&nbsp;</o:p></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>The
-following outlines how to enable code syntax highlighting for various editors. Preferred
-editor is Sublime, which is cross platform, and provides both syntax
+following outlines how to enable code syntax highlighting for various editors.
+Preferred editor is Sublime, which is cross platform, and provides both syntax
 highlighting and build support.</span></p>
 
-<p class=MsoNormal><b><span style='font-size:11.0pt;font-family:"Times New Roman",serif'>&nbsp;</span></b></p>
+<p class=MsoNormal><o:p>&nbsp;</o:p></p>
 
-<p class=MsoNormal style='margin-top:2.0pt'><span style='font-size:11.0pt;
-font-family:"Helvetica",sans-serif;color:#2E74B5'>Sublime (Windows/Linux/Mac)</span></p>
+<p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
+font-family:"Helvetica",sans-serif;color:#2E74B5'><a
+href="https://www.sublimetext.com/"><span style='text-decoration:none;
+text-underline:none'>Sublime</span></a></span></b><span style='font-size:11.0pt;
+font-family:"Helvetica",sans-serif;color:#2E74B5'> (Windows/Linux/macOS)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
@@ -821,7 +838,7 @@ the application</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>&nbsp;</span></p>
 
-<p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Mac</span></u><span
+<p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>macOS</span></u><span
 style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the <span
 class=SpellE><span class=GramE>objeck.sublime</span></span>-syntax, <span
 class=SpellE>objeck.tmPreferences</span> and <span class=SpellE>objeck.sublime</span>-build
@@ -860,7 +877,8 @@ background:silver;mso-highlight:silver;mso-shading:yellow'>&nbsp;&nbsp;&nbsp;&nb
 &quot;<span class=SpellE>cmd</span>&quot;: [<span style='background:silver;
 mso-highlight:silver;mso-shading:yellow'>&quot;&lt;<span class=SpellE>install_path</span>&gt;/bin/<span
 class=SpellE>obc</span>&quot;</span>, &quot;-<span class=SpellE>src</span>&quot;,
-&quot;$file&quot;, &quot;-lib&quot;, &quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
+&quot;$file&quot;, &quot;-lib&quot;,
+&quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
 &quot;-<span class=SpellE>dest</span>&quot;, &quot;$<span class=SpellE>file_base_name.obe</span>&quot;],</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
@@ -875,7 +893,7 @@ class=SpellE>obc</span>&quot;</span>, &quot;-<span class=SpellE>src</span>&quot;
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>For
-<u>Linux</u> and <u>Mac</u>: </span></p>
+<u>Linux</u> and <u>macOS</u>: </span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>{</span></p>
 
@@ -904,7 +922,8 @@ yellow'>},</span></p>
 &quot;<span class=SpellE>cmd</span>&quot;: [<span style='background:silver;
 mso-highlight:silver;mso-shading:yellow'>&quot;<span class=SpellE>obc</span>&quot;</span>,
 &quot;-<span class=SpellE>src</span>&quot;, &quot;$file&quot;,
-&quot;-lib&quot;, &quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
+&quot;-lib&quot;,
+&quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
 &quot;-<span class=SpellE>dest</span>&quot;, &quot;$<span class=SpellE>file_base_name.obe</span>&quot;],</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
@@ -918,8 +937,11 @@ mso-highlight:silver;mso-shading:yellow'>&quot;<span class=SpellE>obc</span>&quo
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Times New Roman",serif'>&nbsp;</span></p>
 
-<p class=MsoNormal style='margin-top:2.0pt'><span style='font-size:11.0pt;
-font-family:"Helvetica",sans-serif;color:#2E74B5'>Notepad++ (Windows)</span></p>
+<p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
+font-family:"Helvetica",sans-serif;color:#2E74B5'><a
+href="https://notepad-plus-plus.org/"><span style='text-decoration:none;
+text-underline:none'>Notepad++</span></a></span></b><span style='font-size:
+11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'> (Windows)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
@@ -936,9 +958,11 @@ the application </span></p>
 
 <p class=MsoNormal><b><span style='font-size:11.0pt;font-family:"Times New Roman",serif'>&nbsp;</span></b></p>
 
-<p class=MsoNormal style='margin-top:2.0pt'><span style='font-size:11.0pt;
-font-family:"Helvetica",sans-serif;color:#2E74B5'>BBEdit and Text Wrangler
-(Mac)</span></p>
+<p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
+font-family:"Helvetica",sans-serif;color:#2E74B5'><a
+href="https://www.barebones.com/products/bbedit/"><span style='text-decoration:
+none;text-underline:none'>BBEdit</span></a> </span></b><span style='font-size:
+11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(macOS)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
@@ -958,10 +982,11 @@ you may need to create this directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Times New Roman",serif'>&nbsp;</span></p>
 
-<p class=MsoNormal style='margin-top:2.0pt'><span class=SpellE><span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>gEdit</span></span><span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>
-(Linux)</span></p>
+<p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
+font-family:"Helvetica",sans-serif;color:#2E74B5'><a
+href="https://wiki.gnome.org/Apps/Gedit"><span class=SpellE><span
+style='text-decoration:none;text-underline:none'>gEdit</span></span></a></span></b><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'> (Linux)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
