@@ -144,7 +144,7 @@ class PathFinder {
 		if(@grid[x, y] = 'X') {
 			return false;
 		};
-		
+
 		each(i : @path) {
 			pt := @path->Get(i);
 			if(pt->Equals(x, y)) {
@@ -155,8 +155,7 @@ i->PrintLine();
 
 		return true;
 	}
-
-
+	
 	method : UpdatePath(@path : Vector<Point>) ~ Nil {
 		step := '0';
 		for(i := 1; i < @path->Size(); i += 1;) {
