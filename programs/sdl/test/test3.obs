@@ -21,7 +21,7 @@ class PathFinder {
 		start := Point->New(0, 1);
 		@grid[start->GetX(),start->GetY()] := 'S';
 		
-		end := Point->New(3, 2);
+		end := Point->New(3, 1);
 		@grid[end->GetX(),end->GetY()] := 'E';
 
 		Distance(start, end);
@@ -34,9 +34,9 @@ class PathFinder {
 
 		# show initial grid
 		PrintGrid();
-
 		start->ToString()->PrintLine();
 
+		@path->AddBack(start);
 		pt := Find(start, end);
 		while(pt <> Nil) {
 pt->ToString()->PrintLine();
@@ -60,7 +60,7 @@ pt->ToString()->PrintLine();
 
 		dir : Point;
 		if(x > -1 & y > -1 & x < x_max & y < y_max) {
-# "=====\npos: {$x}, {$y}"->PrintLine();
+# "pos: {$x}, {$y}"->PrintLine();
 
 			# TODO: obstacles
 
@@ -70,7 +70,9 @@ pt->ToString()->PrintLine();
 
 			# check up/down
 			can_move_up := CheckMove(x, y - 1); # y - 1 > -1 & @grid[x, y - 1] <> 'X';
-			can_move_down :=  CheckMove(x, y + 1); # y + 1 < y_max & @grid[x, y + 1] <> 'X';
+			can_move_down := CheckMove(x, y + 1); # y + 1 < y_max & @grid[x, y + 1] <> 'X';
+
+# "move: left={$can_move_left}, right={$can_move_right}, up={$can_move_up}, down={$can_move_down}"->PrintLine();
 
 			# pick best move
 			min_dist := (x_max * y_max)->ToFloat();
@@ -115,11 +117,12 @@ pt->ToString()->PrintLine();
 				};
 			};
 
+# "-------------"->PrintLine();
+
 			if(dir <> Nil) {
 				return dir->Equals(end) ? Nil : dir;
 			};
 
-# "move: left={$move_left}, right={$move_right}, up={$move_up}, down={$move_down}"->PrintLine();
 		};
 
 		return dir;
@@ -139,6 +142,12 @@ pt->ToString()->PrintLine();
 		};
 
 
+		each(i : @path) {
+			pt := @path->Get(i);
+			if(pt->Equals(x, y)) {
+				return false;
+			};
+		};
 
 		return true;
 	}
@@ -202,6 +211,15 @@ class Point {
 
 	method : public : SetY(y : Int) ~ Nil {
 		@y := y;
+	}
+
+	method : public : Equals(x : Int, y : Int) ~ Bool {
+		if(@x = x & @y = y) {
+"Equals: {$x}, {$y}"->PrintLine();
+			return true;
+		};
+
+		return false;
 	}
 
 	method : public : Equals(pt : Point) ~ Bool {
