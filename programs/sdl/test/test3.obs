@@ -17,18 +17,19 @@ class PathFinder {
 	}
 
 	method : Run() ~ Nil {
-		#start and end
-		start := Point->New(0, 1);
-		@grid[start->GetX(),start->GetY()] := 'S';
-		
-		end := Point->New(7, 2);
-		@grid[end->GetX(),end->GetY()] := 'E';
-
-		Distance(start, end);
-
 		dims := @grid->Size();
 		x_max := dims[0];
 		y_max := dims[1];
+
+		#start and end
+		start := Point->New(Int->Random(0, 2),Int->Random(0, 2));
+		@grid[start->GetX(),start->GetY()] := 'S';
+		
+		end := Point->New(x_max - Int->Random(1, 2), y_max - Int->Random(1, 2));
+		@grid[end->GetX(),end->GetY()] := 'E';
+
+		Distance(start, end);
+		
 		for(i := 0; i < (x_max * y_max) / 4; i += 1;) {
 			x := Int->Random(0, x_max - 1);
 			y := Int->Random(0, y_max - 1);
@@ -175,7 +176,7 @@ i->PrintLine();
 	}
 
 	method : PrintGrid() ~ Nil {
-		"================="->PrintLine();
+		"=============================="->PrintLine();
 		dims := @grid->Size();
 
 		for(i := 0; i < dims[1]; i +=1;) {
@@ -191,7 +192,7 @@ i->PrintLine();
 			'\n'->Print();
 		};
 
-		"================="->PrintLine();
+		"=============================="->PrintLine();
 	}
 }
 
