@@ -4117,12 +4117,6 @@ For* Parser::ParseEach(int depth)
   if (!was_added) {
     ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
   }
-  Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
-  Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
-  Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num,
-    count_left, count_right);
-  Statement* pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num,
-    entry, count_assign);
 
   if (!Match(TOKEN_COLON)) {
     ProcessError(L"Expected ':'", TOKEN_COLON);
@@ -4155,11 +4149,15 @@ For* Parser::ParseEach(int depth)
   }
   NextToken();
 
+  // pre-condition
+  Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+  Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
+  Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, count_left, count_right);
+  Statement* pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, count_assign);
+
   // conditional expression
   Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
-  CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name,
-                                                                                      line_num,
-                                                                                      LES_EXPR);
+  CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
   cond_expr->SetLeft(list_left);
   cond_expr->SetRight(list_right);
   symbol_table->CurrentParseScope()->NewParseScope();
@@ -4167,9 +4165,7 @@ For* Parser::ParseEach(int depth)
   // update statement
   Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
   Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1);
-  Statement* update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num,
-                                                                            update_left, update_right,
-                                                                            ADD_ASSIGN_STMT);
+  Statement* update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, update_left, update_right, ADD_ASSIGN_STMT);
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }

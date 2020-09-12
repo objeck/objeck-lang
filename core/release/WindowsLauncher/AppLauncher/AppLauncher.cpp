@@ -93,7 +93,7 @@ hInst = hInstance;
   const int wndHeight = 560;
   const int buttonHeight = 82;
 
-  HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_SYSMENU,
+  HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                             CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
                             nullptr, hInstance, nullptr);
 

@@ -6,11 +6,11 @@ class PathFinder {
 	@path : Vector<Point>;
 
 	New() {
-		@grid := Char->New[4,4];
+		@grid := Char->New[8,8];
 		@path := Vector->New()<Point>;
 		@not_found := Point->New(-1, -1);
 	}
-	
+
 	function : Main(args : String[]) ~ Nil {
 		pf := PathFinder->New();
 		pf->Run();
@@ -21,23 +21,21 @@ class PathFinder {
 		start := Point->New(0, 1);
 		@grid[start->GetX(),start->GetY()] := 'S';
 		
-		end := Point->New(3, 2);
+		end := Point->New(7, 2);
 		@grid[end->GetX(),end->GetY()] := 'E';
 
 		Distance(start, end);
 
-		@grid[1,0] := 'X';
-#		@grid[1,1] := 'X';
-		@grid[1,2] := 'X';
-		@grid[1,3] := 'X';
-
-#~
-		# obstacles
-		@grid[2,0] := 'X';
-		@grid[1,1] := 'X';
-		@grid[1,2] := 'X';
-		@grid[3,3] := 'X';
-~#
+		dims := @grid->Size();
+		x_max := dims[0];
+		y_max := dims[1];
+		for(i := 0; i < 16; i += 1;) {
+			x := Int->Random(0, x_max - 1);
+			y := Int->Random(0, y_max - 1);
+			if(<>start->Equals(x,y) & <>end->Equals(x,y)) {
+				@grid[x, y] := 'X';
+			};
+		};
 
 		# show initial grid
 		PrintGrid();
@@ -46,7 +44,7 @@ class PathFinder {
 		@path->AddBack(start);
 		pt := Find(start, end);
 		while(pt <> Nil & pt->GetX() <> -1) {
-pt->ToString()->PrintLine();
+# pt->ToString()->PrintLine();
 			@path->AddBack(pt);
 			pt := Find(pt, end);
 		};
@@ -57,7 +55,7 @@ pt->ToString()->PrintLine();
 
 		PrintGrid();
 
-		if(pt <> Nil & pt->GetX() < 0) {
+		if(pt = @not_found) {
 			"\n*** No Solution ***"->PrintLine();
 		};
 	}
@@ -74,21 +72,16 @@ pt->ToString()->PrintLine();
 		if(x > -1 & y > -1 & x < x_max & y < y_max) {
 # "pos: {$x}, {$y}"->PrintLine();
 
-			# TODO: obstacles
-
-			# check left/right
-			can_move_left := CheckMove(x - 1, y); # x - 1 > -1 & @grid[x - 1, y] <> 'X';
-			can_move_right := CheckMove(x + 1, y); # x + 1 < x_max & @grid[x + 1, y] <> 'X';
-
-			# check up/down
-			can_move_up := CheckMove(x, y - 1); # y - 1 > -1 & @grid[x, y - 1] <> 'X';
-			can_move_down := CheckMove(x, y + 1); # y + 1 < y_max & @grid[x, y + 1] <> 'X';
+			# check left/right/up/down
+			can_move_left := CheckMove(x - 1, y);
+			can_move_right := CheckMove(x + 1, y);
+			can_move_up := CheckMove(x, y - 1);
+			can_move_down := CheckMove(x, y + 1);
 
 # "move: left={$can_move_left}, right={$can_move_right}, up={$can_move_up}, down={$can_move_down}"->PrintLine();
-
-			# pick best move
-			min_dist := (x_max * y_max)->ToFloat();
 			
+			# find best move
+			min_dist := (x_max * y_max)->ToFloat();
 			if(can_move_left) {
 				pt := Point->New(x - 1, y);
 				test := Distance(pt, end);
@@ -134,7 +127,6 @@ pt->ToString()->PrintLine();
 			if(dir <> Nil) {
 				return dir->Equals(end) ? Nil : dir;
 			};
-
 		};
 
 		return @not_found;
@@ -152,11 +144,11 @@ pt->ToString()->PrintLine();
 		if(@grid[x, y] = 'X') {
 			return false;
 		};
-
-
+		
 		each(i : @path) {
 			pt := @path->Get(i);
 			if(pt->Equals(x, y)) {
+i->PrintLine();				
 				return false;
 			};
 		};
@@ -166,9 +158,13 @@ pt->ToString()->PrintLine();
 
 
 	method : UpdatePath(@path : Vector<Point>) ~ Nil {
-		each(i : @path) {
+		step := '0';
+		for(i := 1; i < @path->Size(); i += 1;) {
 			pt := @path->Get(i);
-			@grid[pt->GetX(), pt->GetY()] := '#';
+			@grid[pt->GetX(), pt->GetY()] := step++;
+			if(step = '9') {
+				step := '0';
+			};
 		};
 	}
 
@@ -227,7 +223,6 @@ class Point {
 
 	method : public : Equals(x : Int, y : Int) ~ Bool {
 		if(@x = x & @y = y) {
-"Equals: {$x}, {$y}"->PrintLine();
 			return true;
 		};
 
