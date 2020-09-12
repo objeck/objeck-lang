@@ -2,18 +2,18 @@ use Collection.Generic;
 
 class PathFinder {
 	@grid : Char[,];
+	@not_found : Point;
 	@path : Vector<Point>;
-
-	function : Main(args : String[]) ~ Nil {
-		pf := PathFinder->New();
-		pf->Run();
-	}
 
 	New() {
 		@grid := Char->New[4,4];
 		@path := Vector->New()<Point>;
-
-		
+		@not_found := Point->New(-1, -1);
+	}
+	
+	function : Main(args : String[]) ~ Nil {
+		pf := PathFinder->New();
+		pf->Run();
 	}
 
 	method : Run() ~ Nil {
@@ -27,8 +27,8 @@ class PathFinder {
 		Distance(start, end);
 
 		@grid[1,0] := 'X';
-		@grid[1,1] := 'X';
-#		@grid[1,2] := 'X';
+#		@grid[1,1] := 'X';
+		@grid[1,2] := 'X';
 		@grid[1,3] := 'X';
 
 #~
@@ -137,7 +137,7 @@ pt->ToString()->PrintLine();
 
 		};
 
-		return Point->New(-1, -1);
+		return @not_found;
 	}
 
 	method : CheckMove(x : Int, y : Int) ~ Bool {
