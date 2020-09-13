@@ -4,7 +4,7 @@
 ~#
 
 use System.Concurrency;
-use Collection;
+use Collection.Generic;
 use Game.SDL2;
 use Game.Framework;
 
@@ -553,7 +553,7 @@ class Player {
 		framework := game->GetFramework();
 		base_path := game->GetBasePath();
 
-		clips := Vector->New();
+		clips := Vector->New()<Rect>;
 		clips->AddBack(Rect->New(0, 0, 32, 52));
 		clips->AddBack(Rect->New(32, 0, 32, 52));
 		clips->AddBack(Rect->New(64, 0, 32, 52));
@@ -1149,7 +1149,7 @@ class Level {
 		gems_path := String->New(base_path);
 		gems_path += "/media/gems.png";
 
-		clips := Vector->New();
+		clips := Vector->New()<Rect>;
 		clips->AddBack(Rect->New(0, 0, 32, 32));
 		clips->AddBack(Rect->New(32, 0, 32, 32));
 		clips->AddBack(Rect->New(64, 0, 32, 32));
