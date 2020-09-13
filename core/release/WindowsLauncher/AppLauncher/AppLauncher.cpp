@@ -98,7 +98,7 @@ hInst = hInstance;
                             nullptr, hInstance, nullptr);
 
   const int padding = 35;
-  HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt",
+  HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"<b>Command Prompt</b>",
                                     BS_DEFCOMMANDLINK | WS_CHILD | WS_VISIBLE,
                                     10, 10, wndWidth - padding, buttonHeight,
                                     hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
