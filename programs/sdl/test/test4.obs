@@ -12,6 +12,7 @@ use Collection.Generic;
 class Demo {
 	@framework : GameFramework;
 	@player : Player;
+	@enemy : Enemy;
 	@level : Level;
 
 	function : Main(args : String[]) ~ Nil {
@@ -25,8 +26,9 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework->AddRectangle(30, 30));
-			@level := Level->New(@player, @framework);
+			@player := Player->New(@framework->AddRectangle(30, 30), Color->New(255, 0, 0), 120, Game->SCREEN_HEIGHT / 2);
+			@enemy := Enemy->New(@framework->AddRectangle(30, 30));
+			@level := Level->New(@player, @enemy, @framework);
 
 			quit := false;
 			e := @framework->GetEvent();
@@ -45,6 +47,7 @@ class Demo {
 
 				# update
 				@player->Update();
+				@enemy->Update();
 				@level->Update();
 
 				shift := @level->GetShiftX();
@@ -66,6 +69,7 @@ class Demo {
 				
 				# draw
 				@player->Draw();
+				@enemy->Draw();
 				@level->Draw();
 
 				# show
@@ -125,11 +129,15 @@ class Demo {
 	}
 }
 
+class Enemy from Player {
+	New(rect : Rectangle) {
+		Parent(rect, Color->New(255, 255, 255), 400, Game->SCREEN_HEIGHT / 2);
+	}
+}
+
 class Player {
 	@rect : Rectangle;
 		
-	@platforms : Vector<Barrier>;	
-	
 	@change_x : Float;
 	@vel_x : Vector2;
 	@acc_x : Vector2;
@@ -138,12 +146,14 @@ class Player {
 	@vel_y : Vector2;
 	@acc_y : Vector2;
 
-	New(rect : Rectangle) {
+	@barriers : Vector<Barrier>;
+
+	New(rect : Rectangle, color : Color, start_x : Int, start_y : Int) {
 		@rect := rect;
 		@rect->SetFill(true);
-		@rect->SetColor(Color->New(255, 0, 0));
-		@rect->SetLeft(120);
-		@rect->SetCenterY(Game->SCREEN_HEIGHT / 2);
+		@rect->SetColor(color);
+		@rect->SetLeft(start_x);
+		@rect->SetCenterY(start_y);
 
 		@vel_x := Vector2->New();
 		@acc_x := Vector2->New();
@@ -173,7 +183,7 @@ class Player {
 	}
 
 	method : public : SetLevel(level : Level)  ~ Nil {
-		@platforms := level->GetBarriers()<Barrier>;
+		@barriers := level->GetBarriers()<Barrier>;
 	}
 
 	method : public : ChangeEastWest()  ~ Int {
@@ -205,8 +215,6 @@ class Player {
 	}
 
 	method : public : native : Update()  ~ Nil {
-#		Gravity();
-
 		# move east/west
 		@acc_x->SetX(@change_x * 0.195);
 		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
@@ -214,7 +222,7 @@ class Player {
 		@rect->AddX(@vel_x->GetX());
 		@acc_x->Zero();
 
-		collides := Level->Collisions(@self, @platforms);
+		collides := Level->Collisions(@self, @barriers);
 		each(i : collides) {
 			# move east
 			platform := collides->Get(i);
@@ -243,8 +251,8 @@ class Player {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
 		};
 
-		each(i : @platforms) {
-			platform := @platforms->Get(i);
+		each(i : @barriers) {
+			platform := @barriers->Get(i);
 			if(platform->Collides(@rect)) {
 				# moving south
 				if(@vel_y->GetY() > 0) {
@@ -260,21 +268,6 @@ class Player {
 
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
-	}
-
-	method : public : Gravity()  ~ Nil {
-		if(@change_y = 0) {
-			@change_y := 1;
-		}
-		else {
-			@change_y += 0.35;
-		};
-
-		# check if we are on the ground
-		if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
-			@change_y := 0;
-			@rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
-		};
 	}
 }
 
@@ -319,19 +312,22 @@ class Barrier {
 
 class Level {
 	@player : Player;
-	@platforms : Vector<Barrier>;
+	@enemy : Enemy;
+	@barriers : Vector<Barrier>;
 	@shift_x : Int;
 
-	New(player : Player, framework : GameFramework) {
+	New(player : Player, enemy : Enemy, framework : GameFramework) {
 		@player := player;
+		@enemy := enemy;
 
-		@platforms := Vector->New()<Barrier>;		
-		@platforms->AddBack(Barrier->New(300, 50, framework->AddRectangle(50, 80)));	
-		@platforms->AddBack(Barrier->New(600, 400, framework->AddRectangle(50, 140)));	
-		@platforms->AddBack(Barrier->New(400, 300, framework->AddRectangle(50, 120)));	
-		@platforms->AddBack(Barrier->New(1005, 200, framework->AddRectangle(50, 100)));
+		@barriers := Vector->New()<Barrier>;		
+		@barriers->AddBack(Barrier->New(300, 50, framework->AddRectangle(50, 80)));	
+		@barriers->AddBack(Barrier->New(600, 400, framework->AddRectangle(50, 140)));	
+		@barriers->AddBack(Barrier->New(400, 300, framework->AddRectangle(50, 120)));	
+		@barriers->AddBack(Barrier->New(1005, 200, framework->AddRectangle(50, 100)));
 
 		@player->SetLevel(@self);
+		@enemy->SetLevel(@self);
 	}
 
 	function : Collides(player : Player, obstacles : Vector<Barrier>) ~ Bool {
@@ -365,25 +361,28 @@ class Level {
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 
-		each(i : @platforms) {
-			platform := @platforms->Get(i);
+# TODO		
+#		@enemy->SetLeft(100);
+
+		each(i : @barriers) {
+			platform := @barriers->Get(i);
 			platform->AddX(shift_x);
 		};
 	}
 
 	method : public : GetBarriers() ~ Vector<Barrier> {
-		return @platforms;
+		return @barriers;
 	}
 
 	method : public : Update()  ~ Nil {
-		each(i : @platforms) {
-			platform := @platforms->Get(i);
+		each(i : @barriers) {
+			platform := @barriers->Get(i);
 		};
 	}
 
 	method : public : Draw()  ~ Nil {
-		each(i : @platforms) {
-			@platforms->Get(i)->Draw();
+		each(i : @barriers) {
+			@barriers->Get(i)->Draw();
 		};
 	}
 }
