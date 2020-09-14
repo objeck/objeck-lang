@@ -123,6 +123,7 @@ void Scanner::LoadKeywords()
   ident_map[L"consts"] = TOKEN_CONSTS_ID;
   ident_map[L"for"] = TOKEN_FOR_ID;
   ident_map[L"each"] = TOKEN_EACH_ID;
+  ident_map[L"reverse"] = TOKEN_REVERSE_ID;
   ident_map[L"label"] = TOKEN_LABEL_ID;
   ident_map[L"return"] = TOKEN_RETURN_ID;
   ident_map[L"leaving"] = TOKEN_LEAVING_ID;
@@ -330,6 +331,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_CONSTS_ID:
     case TOKEN_FOR_ID:
     case TOKEN_EACH_ID:
+    case TOKEN_REVERSE_ID:
     case TOKEN_SELECT_ID:
     case TOKEN_LABEL_ID:
     case TOKEN_NATIVE_ID:

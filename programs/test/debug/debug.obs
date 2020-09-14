@@ -1,9 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a : Float := -6;
-		a->PrintLine();
-
-		b : Int := 6.999;
-		b->PrintLine();
+		a := [2,3,6,8,10,12,13];
+		reverse(i : a) {
+			a[i]->PrintLine();
+		};
 	}
 }
