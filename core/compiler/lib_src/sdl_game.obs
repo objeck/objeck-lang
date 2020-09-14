@@ -997,15 +997,13 @@ bundle Game.Framework {
 			};
 		}
 	}
-
+	
 	#~
 	Shape position
 	~#
 	class Position {
 		@rect : Rect;
-		@x : Int;
-		@y : Int;
-
+		
 		#~
 		Creates a new rectangle with given size
 		@param rect position
@@ -1022,9 +1020,7 @@ bundle Game.Framework {
 		@param h height
 		~#
 		New(x : Int, y : Int, w : Int, h : Int) {
-			@x := x;
-			@y := y;
-			@rect := Rect->New(0, 0, w, h);
+			@rect := Rect->New(x, y, w, h);
 		}
 
 		#~
@@ -1050,8 +1046,8 @@ bundle Game.Framework {
 		@param y y-position
 		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
-			@x := x;
-			@y := y;
+			@rect->SetX(x);
+			@rect->SetY(y);
 		}
 
 		#~
@@ -1069,7 +1065,7 @@ bundle Game.Framework {
 		@param x x-position
 		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
-			@x := x - @rect->GetW() / 2;
+			@rect->SetX(x - @rect->GetW() / 2);
 		}
 		
 		#~
@@ -1077,7 +1073,7 @@ bundle Game.Framework {
 		@param y y-position
 		~#
 		method : public : SetCenterY(y : Int) ~ Nil {
-			@y := y - @rect->GetH() / 2;
+			@rect->SetY(y - @rect->GetH() / 2);
 		}
 
 		#~
@@ -1085,7 +1081,7 @@ bundle Game.Framework {
 		@param x x-position
 		~#
 		method : public : SetLeft(x : Int) ~ Nil {
-			@x := x;
+			@rect->SetX(x);
 		}
 
 		#~
@@ -1093,7 +1089,7 @@ bundle Game.Framework {
 		@param y top position
 		~#
 		method : public : SetTop(y : Int) ~ Nil {
-			@y := y;
+			@rect->SetY(y);
 		}
 
 		#~
@@ -1101,7 +1097,7 @@ bundle Game.Framework {
 		@param x increment to the current x-position
 		~#
 		method : public : AddX(x : Int) ~ Nil {
-			@x += x;
+			@rect->AddX(x);
 		}
 
 		#~
@@ -1109,7 +1105,7 @@ bundle Game.Framework {
 		@param y increment to the current y-position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
-			@y += y;
+			@rect->AddY(y);
 		}
 
 		#~
@@ -1117,7 +1113,7 @@ bundle Game.Framework {
 		@param x2 right position
 		~#
 		method : public : SetRight(x2 : Int) ~ Nil {
-			@x := x2 - @rect->GetW();
+			@rect->SetX(x2 - @rect->GetW());
 		}
 
 		#~
@@ -1125,7 +1121,7 @@ bundle Game.Framework {
 		@param y2 bottom position
 		~#
 		method : public : SetBottom(y2 : Int) ~ Nil {
-			@y := y2 - @rect->GetH();
+			@rect->SetY(y2 - @rect->GetH());
 		}
 
 		#~
@@ -1133,7 +1129,7 @@ bundle Game.Framework {
 		@return left position
 		~#
 		method : public : GetLeft() ~ Int {
-			return @x;
+			return @rect->GetX();
 		}
 
 		#~
@@ -1141,7 +1137,7 @@ bundle Game.Framework {
 		@return right position
 		~#
 		method : public : GetRight() ~ Int {
-			return @x + @rect->GetW();
+			return @rect->GetX() + @rect->GetW();
 		}
 
 		#~
@@ -1149,7 +1145,7 @@ bundle Game.Framework {
 		@return center x-position
 		~#
 		method : public : GetCenterX() ~ Int {
-			return @x + @rect->GetW() / 2;
+			return @rect->GetX() + @rect->GetW() / 2;
 		}
 
 		#~
@@ -1157,7 +1153,7 @@ bundle Game.Framework {
 		@return top position
 		~#
 		method : public : GetTop() ~ Int {
-			return @y;
+			return @rect->GetY();
 		}
 
 		#~
@@ -1165,7 +1161,7 @@ bundle Game.Framework {
 		@return bottom position
 		~#
 		method : public : GetBottom() ~ Int {
-			return @y + @rect->GetH();
+			return @rect->GetY() + @rect->GetH();
 		}
 
 		#~
@@ -1173,7 +1169,7 @@ bundle Game.Framework {
 		@return center y-position
 		~#
 		method : public : GetCenterY() ~ Int {
-			return @y + @rect->GetH() / 2;
+			return @rect->GetY() + @rect->GetH() / 2;
 		}
 
 		#~
