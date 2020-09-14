@@ -1,8 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := [2,3,6,8,10,12,13];
-		reverse(i : a) {
-			a[i]->PrintLine();
+		a := Collection.Generic.Vector->New()<IntHolder>;
+		a->AddBack(3);
+		a->AddBack(11);
+		a->AddBack(45);
+		a->AddBack(101);
+
+		reverse(i : 'a') {
+			i->ToChar()->PrintLine();
 		};
 	}
 }
