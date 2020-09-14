@@ -47,7 +47,7 @@ class Demo {
 
 				# update
 				@player->Update();
-				@enemy->Update();
+				@enemy->Update(@player);
 				@level->Update();
 
 				shift := @level->GetShiftX();
@@ -131,11 +131,33 @@ class Demo {
 
 class Enemy from Player {
 	New(rect : Rectangle) {
-		Parent(rect, Color->New(255, 255, 255), 400, Game->SCREEN_HEIGHT / 2);
+		Parent(rect, Color->New(255, 255, 255), 320, Game->SCREEN_HEIGHT / 2);
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
 		@rect->AddX(x);
+	}
+
+	method : public : Update(player : Player)  ~ Nil {
+		rect := GetRect();
+
+		test := Position->New(GetRect()->GetPosition()->GetRect());
+		test->AddY(-6);
+		up := Level->Distance(player->GetRect()->GetPosition(), test);
+
+		test := Position->New(GetRect()->GetPosition()->GetRect());
+		test->AddY(6);
+		down := Level->Distance(player->GetRect()->GetPosition(), test);
+
+		test := Position->New(GetRect()->GetPosition()->GetRect());
+		test->AddX(-6);
+		left := Level->Distance(player->GetRect()->GetPosition(), test);
+
+		test := Position->New(GetRect()->GetPosition()->GetRect());
+		test->AddX(6);
+		right := Level->Distance(player->GetRect()->GetPosition(), test);
+
+		
 	}
 }
 
@@ -386,6 +408,13 @@ class Level {
 		each(i : @barriers) {
 			@barriers->Get(i)->Draw();
 		};
+	}
+
+	function : Distance(a : Position, b : Position) ~ Float {
+		x_norm := Float->Power(a->GetCenterX()->ToFloat() - b->GetCenterX()->ToFloat(), 2.0);
+		y_norm := Float->Power(a->GetCenterY()->ToFloat() - b->GetCenterY()->ToFloat(), 2.0);
+
+		return (x_norm + y_norm)->SquareRoot();
 	}
 }
 
