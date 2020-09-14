@@ -22,6 +22,9 @@
  * 
  * 2019/6/24 (v0.0.3)
  *  -  Added keywords: 'lambdas'. 
+ * 
+ * 2020/9/14 (v0.0.4)
+ *  -  Added keywords: 'reverse'. 
  *************************************************************************************
  *
  *     This file is part of GeSHi.
@@ -49,7 +52,7 @@ $language_data = array(
     'CASE_KEYWORDS' => GESHI_CAPS_NO_CHANGE,
     'QUOTEMARKS' => array('"'),
     'ESCAPE_CHAR' => '\\',
-    'KEYWORDS' => array(1 => array('virtual', 'leaving', 'lambdas', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'break', 'continue', 'static', 'public', 'private', 'class', 'function', 'method', 'select', 'other', 'consts', 'enum', 'for', 'each', 'label', 'return', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
+    'KEYWORDS' => array(1 => array('virtual', 'leaving', 'lambdas', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'break', 'continue', 'static', 'public', 'private', 'class', 'function', 'method', 'select', 'other', 'consts', 'enum', 'for', 'each', 'reverse', 'label', 'return', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
         ),
     'SYMBOLS' => array(
         1 => array(

@@ -158,6 +158,7 @@
                     <keyword>enum</keyword>
                     <keyword>for</keyword>
                     <keyword>each</keyword>
+                    <keyword>reverse</keyword>
                     <keyword>label</keyword>
                     <keyword>return</keyword>
                     <keyword>critical</keyword>

@@ -36,6 +36,7 @@
 		<string>enum</string>
 		<string>for</string>
 		<string>each</string>
+		<string>reverse</string>
 		<string>label</string>
 		<string>return</string>
 		<string>Byte</string>

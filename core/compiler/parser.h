@@ -144,6 +144,7 @@ class Parser {
   For* ParseFor(int depth);
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
+  For* ParseEach(bool reverse, int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
   Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);

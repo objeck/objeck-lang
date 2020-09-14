@@ -1484,7 +1484,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_EACH_ID:
-      statement = ParseEach(depth + 1);
+      statement = ParseEach(false, depth + 1);
+      break;
+
+    case TOKEN_REVERSE_ID:
+      statement = ParseEach(true, depth + 1);
       break;
 
     case TOKEN_CRITICAL_ID:
@@ -4079,13 +4083,13 @@ CriticalSection* Parser::ParseCritical(int depth)
 /****************************
  * Parses an 'each' statement
  ****************************/
-For* Parser::ParseEach(int depth)
+For* Parser::ParseEach(bool reverse, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG
-  Debug(L"Each", depth);
+  Debug(L"Each/Reverse", depth);
 #endif
 
   NextToken();
@@ -4105,9 +4109,7 @@ For* Parser::ParseEach(int depth)
   // add entry
   Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
   const wstring count_scope_name = GetScopeName(count_ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-    count_scope_name, type, false,
-    current_method != nullptr);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, count_scope_name, type, false, current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
@@ -4123,61 +4125,127 @@ For* Parser::ParseEach(int depth)
   }
   NextToken();
 
-  Expression* list_right = nullptr;
-  switch (GetToken()) {
-  case TOKEN_CHAR_LIT:
-    list_right = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, scanner->GetToken()->GetCharLit());
-    break;
+  Statement* pre_stmt = nullptr;
+  CalculatedExpression* cond_expr = nullptr;
+  Statement* update_stmt = nullptr;
+  StatementList* statements = nullptr;
 
-  case TOKEN_INT_LIT:
-    list_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, scanner->GetToken()->GetIntLit());
-    break;
+  // reverse iterator 
+  if(reverse) {
+    Expression* list_right = nullptr;
+    switch(GetToken()) {
+    case TOKEN_CHAR_LIT:
+      list_right = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, scanner->GetToken()->GetCharLit());
+      break;
 
-  case TOKEN_FLOAT_LIT:
-    list_right = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, scanner->GetToken()->GetFloatLit());
-    break;
+    case TOKEN_INT_LIT:
+      list_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, scanner->GetToken()->GetIntLit());
+      break;
 
-  case TOKEN_IDENT: {
-    const wstring list_ident = scanner->GetToken()->GetIdentifier();
-    list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+    case TOKEN_FLOAT_LIT:
+      list_right = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, scanner->GetToken()->GetFloatLit());
+      break;
+
+    case TOKEN_IDENT: {
+      const wstring list_ident = scanner->GetToken()->GetIdentifier();
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+    }
+      break;
+
+    default:
+      ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+      break;
+    }
+    NextToken();
+
+    // pre-condition
+    Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);    
+    CalculatedExpression* pre_right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SUB_EXPR);
+    pre_right->SetLeft(list_right);
+    pre_right->SetRight(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1));
+    Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, count_left, pre_right);
+    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, count_assign);
+
+    // conditional expression
+    Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
+    Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+    cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, GTR_EQL_EXPR);
+    cond_expr->SetLeft(list_left);
+    cond_expr->SetRight(count_right);
+    symbol_table->CurrentParseScope()->NewParseScope();
+
+    // update statement
+    Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+    Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1);
+    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, update_left, update_right, SUB_ASSIGN_STMT);
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+    }
+    NextToken();
+
+    // statement list
+    statements = ParseStatementList(depth + 1);
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+    symbol_table->CurrentParseScope()->PreviousParseScope();
   }
-    break;
+  // forward iterator 
+  else {
+    Expression* list_right = nullptr;
+    switch(GetToken()) {
+    case TOKEN_CHAR_LIT:
+      list_right = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, scanner->GetToken()->GetCharLit());
+      break;
 
-  default:
-    ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
-    break;
+    case TOKEN_INT_LIT:
+      list_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, scanner->GetToken()->GetIntLit());
+      break;
+
+    case TOKEN_FLOAT_LIT:
+      list_right = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, scanner->GetToken()->GetFloatLit());
+      break;
+
+    case TOKEN_IDENT: {
+      const wstring list_ident = scanner->GetToken()->GetIdentifier();
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+    }
+                    break;
+
+    default:
+      ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+      break;
+    }
+    NextToken();
+
+    // pre-condition
+    Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+    Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
+    Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, count_left, count_right);
+    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, count_assign);
+
+    // conditional expression
+    Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+    cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
+    cond_expr->SetLeft(list_left);
+    cond_expr->SetRight(list_right);
+    symbol_table->CurrentParseScope()->NewParseScope();
+
+    // update statement
+    Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+    Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1);
+    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, update_left, update_right, ADD_ASSIGN_STMT);
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+    }
+    NextToken();
+
+    // statement list
+    statements = ParseStatementList(depth + 1);
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+    
   }
-  NextToken();
 
-  // pre-condition
-  Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
-  Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
-  Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, count_left, count_right);
-  Statement* pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, count_assign);
-
-  // conditional expression
-  Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
-  CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
-  cond_expr->SetLeft(list_left);
-  cond_expr->SetRight(list_right);
-  symbol_table->CurrentParseScope()->NewParseScope();
-
-  // update statement
-  Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
-  Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1);
-  Statement* update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, update_left, update_right, ADD_ASSIGN_STMT);
-  if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
-  }
-  NextToken();
-
-  // statement list
-  StatementList* statements = ParseStatementList(depth + 1);
-  symbol_table->CurrentParseScope()->PreviousParseScope();
-  symbol_table->CurrentParseScope()->PreviousParseScope();
-
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, pre_stmt,
-                                          cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, pre_stmt, cond_expr, update_stmt, statements);
 }
 
 /****************************
@@ -4218,8 +4286,7 @@ For * Parser::ParseFor(int depth)
   symbol_table->CurrentParseScope()->PreviousParseScope();
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, pre_stmt, cond_expr,
-                                          update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, pre_stmt, cond_expr, update_stmt, statements);
 }
 
 /****************************
