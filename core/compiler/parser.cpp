@@ -4125,10 +4125,8 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
   NextToken();
 
-  Statement* pre_stmt = nullptr;
-  CalculatedExpression* cond_expr = nullptr;
-  Statement* update_stmt = nullptr;
-  StatementList* statements = nullptr;
+  Statement* pre_stmt = nullptr; CalculatedExpression* cond_expr = nullptr;
+  Statement* update_stmt = nullptr; StatementList* statements = nullptr;
 
   // reverse iterator 
   if(reverse) {
@@ -4242,7 +4240,6 @@ For* Parser::ParseEach(bool reverse, int depth)
     statements = ParseStatementList(depth + 1);
     symbol_table->CurrentParseScope()->PreviousParseScope();
     symbol_table->CurrentParseScope()->PreviousParseScope();
-    
   }
 
   return TreeFactory::Instance()->MakeFor(file_name, line_num, pre_stmt, cond_expr, update_stmt, statements);
