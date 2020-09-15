@@ -138,26 +138,46 @@ class Enemy from Player {
 		@rect->AddX(x);
 	}
 
+	method : public : AddY(y : Int)  ~ Nil {
+		@rect->AddY(y);
+	}
+
 	method : public : Update(player : Player)  ~ Nil {
+#		dist := Level->Distance(GetRect(), player->GetRect());
+#		dist->PrintLine();
+		
 		rect := GetRect();
 
-		test := Position->New(GetRect()->GetPosition()->GetRect());
-		test->AddY(-6);
-		up := Level->Distance(player->GetRect()->GetPosition(), test);
-
-		test := Position->New(GetRect()->GetPosition()->GetRect());
-		test->AddY(6);
-		down := Level->Distance(player->GetRect()->GetPosition(), test);
-
-		test := Position->New(GetRect()->GetPosition()->GetRect());
-		test->AddX(-6);
-		left := Level->Distance(player->GetRect()->GetPosition(), test);
-
-		test := Position->New(GetRect()->GetPosition()->GetRect());
-		test->AddX(6);
-		right := Level->Distance(player->GetRect()->GetPosition(), test);
-
+		dists := Float->New[4];
+		# east
+		dists[0] := Level->Distance(rect->GetCenterX() - 6, rect->GetCenterY(), player->GetRect());
+		# west
+		dists[1] := Level->Distance(rect->GetCenterX() + 6, rect->GetCenterY(), player->GetRect());
+		# north
+		dists[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - 6, player->GetRect());
+		# south
+		dists[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + 6, player->GetRect());
 		
+		shorest_index := 0;
+		each(i : dists) {
+			if(dists[shorest_index] < dists[i]) {
+				shorest_index := i;
+			};
+		};
+
+		dist := (dists[shorest_index] / 500.0)->Ceiling();
+		if(shorest_index = 0) {
+			AddX(dist);
+		}
+		else if(shorest_index = 1) {
+			AddX(-1 * dist);
+		}
+		else if(shorest_index = 2) {
+			AddY(dist);
+		}
+		else if(shorest_index = 3) {
+			AddY(-1 * dist);
+		};	
 	}
 }
 
@@ -410,11 +430,10 @@ class Level {
 		};
 	}
 
-	function : Distance(a : Position, b : Position) ~ Float {
-		x_norm := Float->Power(a->GetCenterX()->ToFloat() - b->GetCenterX()->ToFloat(), 2.0);
-		y_norm := Float->Power(a->GetCenterY()->ToFloat() - b->GetCenterY()->ToFloat(), 2.0);
-
-		return (x_norm + y_norm)->SquareRoot();
+	function : Distance(a_x : Int, a_y : Int, b : Rectangle) ~ Int {
+		x_norm := a_x->ToFloat() - b->GetCenterX()->ToFloat();
+		y_norm := a_y->ToFloat() - b->GetCenterY()->ToFloat();
+		return (x_norm * x_norm + y_norm * y_norm)->SquareRoot();
 	}
 }
 
