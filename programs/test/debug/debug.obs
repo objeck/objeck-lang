@@ -9,5 +9,9 @@ class Test {
 		reverse(i : 'a') {
 			i->ToChar()->PrintLine();
 		};
+
+		reverse(i : 5.3) {
+			i->PrintLine();
+		};
 	}
 }
