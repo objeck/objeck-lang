@@ -130,8 +130,11 @@ class Demo {
 }
 
 class Enemy from Player {
+	@dist : Float[];
+
 	New(rect : Rectangle) {
 		Parent(rect, Color->New(255, 255, 255), 320, Game->SCREEN_HEIGHT / 2);
+		@dist := Float->New[4];
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -145,18 +148,17 @@ class Enemy from Player {
 	method : public : Update(player : Player)  ~ Nil {
 		# find "best" move
 		rect := GetRect();
-
-		dists := Float->New[4];
+		
 		# east/west
-		dists[0] := Level->Distance(rect->GetCenterX() - 6, rect->GetCenterY(), player->GetRect());
-		dists[1] := Level->Distance(rect->GetCenterX() + 6, rect->GetCenterY(), player->GetRect());
+		@dist[0] := Level->Distance(rect->GetCenterX() - 6, rect->GetCenterY(), player->GetRect());
+		@dist[1] := Level->Distance(rect->GetCenterX() + 6, rect->GetCenterY(), player->GetRect());
 		# north/south
-		dists[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - 6, player->GetRect());
-		dists[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + 6, player->GetRect());
+		@dist[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - 6, player->GetRect());
+		@dist[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + 6, player->GetRect());
 		
 		shorest_index := 0;
-		each(i : dists) {
-			if(dists[shorest_index] < dists[i]) {
+		each(i : @dist) {
+			if(@dist[shorest_index] < @dist[i]) {
 				shorest_index := i;
 			};
 		};
