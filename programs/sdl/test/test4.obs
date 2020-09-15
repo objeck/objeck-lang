@@ -143,19 +143,15 @@ class Enemy from Player {
 	}
 
 	method : public : Update(player : Player)  ~ Nil {
-#		dist := Level->Distance(GetRect(), player->GetRect());
-#		dist->PrintLine();
-		
+		# find "best" move
 		rect := GetRect();
 
 		dists := Float->New[4];
-		# east
+		# east/west
 		dists[0] := Level->Distance(rect->GetCenterX() - 6, rect->GetCenterY(), player->GetRect());
-		# west
 		dists[1] := Level->Distance(rect->GetCenterX() + 6, rect->GetCenterY(), player->GetRect());
-		# north
+		# north/south
 		dists[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - 6, player->GetRect());
-		# south
 		dists[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + 6, player->GetRect());
 		
 		shorest_index := 0;
@@ -165,19 +161,68 @@ class Enemy from Player {
 			};
 		};
 
-		dist := (dists[shorest_index] / 500.0)->Ceiling();
+		# move east/west
 		if(shorest_index = 0) {
-			AddX(dist);
+			GoEast();
 		}
 		else if(shorest_index = 1) {
-			AddX(-1 * dist);
-		}
-		else if(shorest_index = 2) {
-			AddY(dist);
+			GoWest();
+		};
+		@acc_x->SetX(@change_x * 0.025);
+		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
+		@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
+		@rect->AddX(@vel_x->GetX());
+		@acc_x->Zero();
+
+		# collisions
+		collides := Level->Collisions(@self, @barriers);
+		each(i : collides) {
+			# move east
+			platform := collides->Get(i);
+			if(shorest_index = 0) {
+				SetRight(platform->GetLeft());
+			}
+			# moving west
+			else if(shorest_index = 1) {
+				@rect->SetLeft(platform->GetRight());
+			};
+		};
+
+		# move north/south
+		if(shorest_index = 2) {
+			GoSouth();
 		}
 		else if(shorest_index = 3) {
-			AddY(-1 * dist);
-		};	
+			GoNorth();
+		};
+		@acc_y->SetY(@change_y * 0.025);
+		@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
+		@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
+		@rect->AddY(@vel_y->GetY());
+		@acc_y->Zero();
+
+		# check north and south bounds
+		if(@rect->GetTop() < 0) {
+			@rect->SetTop(0);
+		};
+
+		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
+			@rect->SetBottom(Game->SCREEN_HEIGHT);
+		};
+
+		each(i : @barriers) {
+			platform := @barriers->Get(i);
+			if(platform->Collides(@rect)) {
+				# moving south
+				if(shorest_index = 2) {
+					@rect->SetBottom(platform->GetTop());
+				}
+				# moving north
+				else if(shorest_index = 3) {
+					@rect->SetTop(platform->GetBottom());
+				};
+			};
+		};
 	}
 }
 
