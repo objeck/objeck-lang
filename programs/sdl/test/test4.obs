@@ -140,7 +140,7 @@ class Enemy from Player {
 	method : public : AddX(x : Int)  ~ Nil {
 		@rect->AddX(x);
 	}
-	
+
 	method : public : Update(player : Player)  ~ Nil {
 		# find "best" move
 		rect := GetRect();
@@ -179,10 +179,24 @@ class Enemy from Player {
 			platform := collides->Get(i);
 			if(shorest_index = 0) {
 				SetRight(platform->GetLeft());
+#~
+				@acc_x->SetX(-5.0);
+				@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
+				@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
+				@rect->AddX(@vel_x->GetX());
+				@acc_x->Zero();
+~#				
 			}
 			# moving west
 			else if(shorest_index = 1) {
 				@rect->SetLeft(platform->GetRight());
+#~
+				@acc_x->SetX(5.0);
+				@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
+				@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
+				@rect->AddX(@vel_x->GetX());
+				@acc_x->Zero();
+~#				
 			};
 		};
 
@@ -208,16 +222,31 @@ class Enemy from Player {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
 		};
 
+		# collisions
 		each(i : @barriers) {
 			platform := @barriers->Get(i);
 			if(platform->Collides(@rect)) {
 				# moving south
 				if(shorest_index = 2) {
 					@rect->SetBottom(platform->GetTop());
+#~
+					@acc_y->SetY(-5.0);
+					@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
+					@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
+					@rect->AddY(@vel_y->GetY());
+					@acc_y->Zero();
+~#					
 				}
 				# moving north
 				else if(shorest_index = 3) {
 					@rect->SetTop(platform->GetBottom());
+#~
+					@acc_y->SetY(5.0);
+					@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
+					@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
+					@rect->AddY(@vel_y->GetY());
+					@acc_y->Zero();
+~#					
 				};
 			};
 		};
