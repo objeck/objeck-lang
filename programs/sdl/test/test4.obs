@@ -140,15 +140,11 @@ class Enemy from Player {
 	method : public : AddX(x : Int)  ~ Nil {
 		@rect->AddX(x);
 	}
-
-	method : public : AddY(y : Int)  ~ Nil {
-		@rect->AddY(y);
-	}
-
+	
 	method : public : Update(player : Player)  ~ Nil {
 		# find "best" move
 		rect := GetRect();
-		
+
 		# east/west
 		@dist[0] := Level->Distance(rect->GetCenterX() - 6, rect->GetCenterY(), player->GetRect());
 		@dist[1] := Level->Distance(rect->GetCenterX() + 6, rect->GetCenterY(), player->GetRect());
