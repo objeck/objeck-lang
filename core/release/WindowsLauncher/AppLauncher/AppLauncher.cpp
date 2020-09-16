@@ -85,6 +85,42 @@ ATOM RegisterWndClass(HINSTANCE hInstance)
   return RegisterClassExW(&wcex);
 }
 
+DWORD FindProcessId(const wchar_t* processname)
+{
+  HANDLE hProcessSnap;
+  PROCESSENTRY32 pe32;
+  DWORD result = NULL;
+
+  // Take a snapshot of all processes in the system.
+  hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if(INVALID_HANDLE_VALUE == hProcessSnap) return(FALSE);
+
+  pe32.dwSize = sizeof(PROCESSENTRY32); // <----- IMPORTANT
+
+  // Retrieve information about the first process,
+  // and exit if unsuccessful
+  if(!Process32First(hProcessSnap, &pe32))
+  {
+    CloseHandle(hProcessSnap);          // clean the snapshot object
+    printf("!!! Failed to gather information on system processes! \n");
+    return(NULL);
+  }
+
+  do
+  {
+    printf("Checking process %ls\n", pe32.szExeFile);
+    if(0 == wcscmp(processname, pe32.szExeFile))
+    {
+      result = pe32.th32ProcessID;
+      break;
+    }
+  } while(Process32Next(hProcessSnap, &pe32));
+
+  CloseHandle(hProcessSnap);
+
+  return result;
+}
+
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 hInst = hInstance;
@@ -92,6 +128,11 @@ hInst = hInstance;
   const int wndWidth = 450; 
   const int wndHeight = 560;
   const int buttonHeight = 82;
+
+  DWORD id = FindProcessId(L"AppLauncher.exe");
+  if(id != 0) {
+
+  }
 
   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                             CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
