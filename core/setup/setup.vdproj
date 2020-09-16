@@ -153,12 +153,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_15BDAD0BB4294C828D7C0BB05E8087FF"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_1659E0B8DEC3412DADF5BB58B60C88B6"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1557,6 +1551,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_DA8D7BEB907E414C8CCB467070916CB7"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_DABC9B8BE762439FB861C757BA139E35"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2357,26 +2357,6 @@
             "TargetName" = "8:libmpg123-0.dll"
             "Tag" = "8:"
             "Folder" = "8:_D9E3C284BBD14108A09800CC2C78C75E"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_15BDAD0BB4294C828D7C0BB05E8087FF"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\app\\AppLauncher.exe"
-            "TargetName" = "8:AppLauncher.exe"
-            "Tag" = "8:"
-            "Folder" = "8:_22274901068E448D90CE8FC5C2CF4913"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -7051,6 +7031,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DA8D7BEB907E414C8CCB467070916CB7"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\app\\ObLauncher.exe"
+            "TargetName" = "8:ObLauncher.exe"
+            "Tag" = "8:"
+            "Folder" = "8:_22274901068E448D90CE8FC5C2CF4913"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DABC9B8BE762439FB861C757BA139E35"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-textureaccess.html"
@@ -8285,15 +8285,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{2BBD7369-3F3C-4238-93C5-D603D4A582BF}"
-        "PackageCode" = "8:{09C778F7-237F-46A9-ACE7-AF841FCEC85B}"
+        "ProductCode" = "8:{38C59C5D-3D15-4ABA-AE59-4671ED99879F}"
+        "PackageCode" = "8:{83D2DB8D-2A3A-4D41-B144-D9279D394F8E}"
         "UpgradeCode" = "8:{A35AE9F4-6D9D-4254-811F-27267E71A484}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:5.4.0"
+        "ProductVersion" = "8:5.4.1"
         "Manufacturer" = "8:Randy Hollines"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -8428,7 +8428,7 @@
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_15BDAD0BB4294C828D7C0BB05E8087FF"
+            "Target" = "8:_DA8D7BEB907E414C8CCB467070916CB7"
             "Folder" = "8:_5A9EBD748DA546DBB2FF6CCF939DD67C"
             "WorkingFolder" = "8:_22274901068E448D90CE8FC5C2CF4913"
             "Icon" = "8:_6EDFFA531CC94119ACFDC8A42330A712"

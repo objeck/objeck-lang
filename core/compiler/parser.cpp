@@ -4206,7 +4206,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
     }
-                    break;
+      break;
 
     default:
       ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);

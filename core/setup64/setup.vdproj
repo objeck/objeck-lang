@@ -327,12 +327,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_2AD94EA9BDCD479192B50F78B159C25A"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_2AE18FA6A10043A3954CC53D86D648CF"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1492,6 +1486,12 @@
         "Entry"
         {
         "MsmKey" = "8:_CE02BB0BDA4342F3A15A02CF92051765"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_CED36E6503AC4D4B903A0FD589200BC1"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -2993,26 +2993,6 @@
             "TargetName" = "8:SDL2_mixer.dll"
             "Tag" = "8:"
             "Folder" = "8:_5CA05ED0B1BC49F2BC08F7FEB7EAB04C"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2AD94EA9BDCD479192B50F78B159C25A"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\app\\AppLauncher.exe"
-            "TargetName" = "8:AppLauncher.exe"
-            "Tag" = "8:"
-            "Folder" = "8:_AB28D67314044A2F925039A486CD5FE8"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -6907,6 +6887,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CED36E6503AC4D4B903A0FD589200BC1"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\app\\ObLauncher.exe"
+            "TargetName" = "8:ObLauncher.exe"
+            "Tag" = "8:"
+            "Folder" = "8:_AB28D67314044A2F925039A486CD5FE8"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CF689AE32E024B84A579F4502C558C92"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\api\\query.structured-qualifier.html"
@@ -8441,15 +8441,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{A77A6103-C3F8-4B66-8AED-C0DE2C78D446}"
-        "PackageCode" = "8:{CD8B8763-6EBD-4816-BC26-9B7EC19202A4}"
+        "ProductCode" = "8:{E8D10350-4B61-4F80-9F33-D90D663EB131}"
+        "PackageCode" = "8:{10239736-995B-4E27-8EC1-596309155E05}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:5.4.0"
+        "ProductVersion" = "8:5.4.1"
         "Manufacturer" = "8:Randy Hollines"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -8584,7 +8584,7 @@
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_2AD94EA9BDCD479192B50F78B159C25A"
+            "Target" = "8:_CED36E6503AC4D4B903A0FD589200BC1"
             "Folder" = "8:_5A9EBD748DA546DBB2FF6CCF939DD67C"
             "WorkingFolder" = "8:_AB28D67314044A2F925039A486CD5FE8"
             "Icon" = "8:_E868B667BFB046F990FD5255C2E74A32"
