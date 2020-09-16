@@ -89,36 +89,43 @@ DWORD FindProcessId(const wchar_t* processname)
 {
   HANDLE hProcessSnap;
   PROCESSENTRY32 pe32;
-  DWORD result = NULL;
 
-  // Take a snapshot of all processes in the system.
+  DWORD result = 0;
   hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if(INVALID_HANDLE_VALUE == hProcessSnap) return(FALSE);
-
-  pe32.dwSize = sizeof(PROCESSENTRY32); // <----- IMPORTANT
-
-  // Retrieve information about the first process,
-  // and exit if unsuccessful
-  if(!Process32First(hProcessSnap, &pe32))
-  {
-    CloseHandle(hProcessSnap);          // clean the snapshot object
-    printf("!!! Failed to gather information on system processes! \n");
-    return(NULL);
+  if(INVALID_HANDLE_VALUE == hProcessSnap) {
+    return FALSE;
   }
 
-  do
-  {
-    printf("Checking process %ls\n", pe32.szExeFile);
-    if(0 == wcscmp(processname, pe32.szExeFile))
-    {
+  pe32.dwSize = sizeof(PROCESSENTRY32);
+  if(!Process32First(hProcessSnap, &pe32)) {
+    CloseHandle(hProcessSnap);
+    return 0;
+  }
+
+  do {
+    if(!wcscmp(processname, pe32.szExeFile)) {
       result = pe32.th32ProcessID;
       break;
     }
-  } while(Process32Next(hProcessSnap, &pe32));
+  } 
+  while(Process32Next(hProcessSnap, &pe32));
 
   CloseHandle(hProcessSnap);
-
   return result;
+}
+
+void GetWindowsFromProcessId(DWORD pId, std::vector <HWND>& hWnds)
+{
+  HWND curWnd = nullptr;
+  do {
+    curWnd = FindWindowEx(nullptr, curWnd, nullptr, nullptr);
+    DWORD checkId = 0;
+    GetWindowThreadProcessId(curWnd, &checkId);
+    if(checkId == pId) {
+      hWnds.push_back(curWnd);
+    }
+  } 
+  while(curWnd != nullptr);
 }
 
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
@@ -129,10 +136,21 @@ hInst = hInstance;
   const int wndHeight = 560;
   const int buttonHeight = 82;
 
-  DWORD id = FindProcessId(L"AppLauncher.exe");
-  if(id != 0) {
+  // check for an existing instance
+  std::vector <HWND> hWnds;
+  GetWindowsFromProcessId(FindProcessId(L"ObLauncher.exe"), hWnds);
+  if(hWnds.size()) {
+    for(size_t i = 0; i < hWnds.size(); ++i) {
+      HWND hOtherWnd = hWnds[i];
+      SetForegroundWindow(hOtherWnd);
+      if(IsIconic(hOtherWnd)) {
+        ShowWindow(hOtherWnd, SW_RESTORE);
+      }
+    }
 
+    return FALSE;
   }
+ 
 
   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                             CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
