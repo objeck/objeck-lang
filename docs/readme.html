@@ -14,8 +14,9 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <link rel=colorSchemeMapping href="readme_files/colorschememapping.xml">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
-  <w:Zoom>120</w:Zoom>
   <w:DontDisplayPageBoundaries/>
+  <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -113,7 +114,8 @@ xmlns="http://www.w3.org/TR/REC-html40">
    Name="footer"/>
   <w:LsdException Locked="false" SemiHidden="true" UnhideWhenUsed="true"
    Name="index heading"/>
-  <w:LsdException Locked="false" Priority="35" QFormat="true" Name="caption"/>
+  <w:LsdException Locked="false" Priority="35" SemiHidden="true"
+   UnhideWhenUsed="true" QFormat="true" Name="caption"/>
   <w:LsdException Locked="false" SemiHidden="true" UnhideWhenUsed="true"
    Name="table of figures"/>
   <w:LsdException Locked="false" SemiHidden="true" UnhideWhenUsed="true"
@@ -626,13 +628,6 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--
  /* Font Definitions */
  @font-face
-	{font-family:Wingdings;
-	panose-1:5 0 0 0 0 0 0 0 0 0;
-	mso-font-charset:2;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:0 268435456 0 0 -2147483648 0;}
-@font-face
 	{font-family:"Cambria Math";
 	panose-1:2 4 5 3 5 4 6 3 2 4;
 	mso-font-charset:0;
@@ -654,12 +649,12 @@ xmlns="http://www.w3.org/TR/REC-html40">
 	mso-font-pitch:variable;
 	mso-font-signature:647 0 0 0 159 0;}
 @font-face
-	{font-family:"Liberation Sans";
-	mso-font-alt:Arial;
-	mso-font-charset:1;
+	{font-family:"Segoe UI";
+	panose-1:2 11 5 2 4 2 4 2 2 3;
+	mso-font-charset:0;
 	mso-generic-font-family:swiss;
 	mso-font-pitch:variable;
-	mso-font-signature:0 0 0 0 0 0;}
+	mso-font-signature:-469750017 -1073683329 9 0 511 0;}
  /* Style Definitions */
  p.MsoNormal, li.MsoNormal, div.MsoNormal
 	{mso-style-unhide:no;
@@ -714,51 +709,6 @@ h2
 	mso-fareast-theme-font:minor-fareast;
 	color:#9D3511;
 	font-weight:normal;}
-p.MsoCaption, li.MsoCaption, div.MsoCaption
-	{mso-style-priority:35;
-	mso-style-unhide:no;
-	mso-style-qformat:yes;
-	margin-top:6.0pt;
-	margin-right:0in;
-	margin-bottom:6.0pt;
-	margin-left:0in;
-	line-height:105%;
-	mso-pagination:widow-orphan;
-	font-size:12.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";
-	font-style:italic;}
-p.MsoList, li.MsoList, div.MsoList
-	{mso-style-noshow:yes;
-	mso-style-priority:99;
-	margin-top:0in;
-	margin-right:0in;
-	margin-bottom:7.0pt;
-	margin-left:0in;
-	line-height:115%;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
-p.MsoBodyText, li.MsoBodyText, div.MsoBodyText
-	{mso-style-noshow:yes;
-	mso-style-priority:99;
-	mso-style-link:"Body Text Char";
-	margin-top:0in;
-	margin-right:0in;
-	margin-bottom:7.0pt;
-	margin-left:0in;
-	line-height:115%;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
 p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	{mso-style-priority:11;
 	mso-style-unhide:no;
@@ -786,24 +736,9 @@ a:link, span.MsoHyperlink
 a:visited, span.MsoHyperlinkFollowed
 	{mso-style-noshow:yes;
 	mso-style-priority:99;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";
 	color:#96A9A9;
 	text-decoration:underline;
 	text-underline:single;}
-p.MsoNoSpacing, li.MsoNoSpacing, div.MsoNoSpacing
-	{mso-style-priority:1;
-	mso-style-unhide:no;
-	mso-style-qformat:yes;
-	margin:0in;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
 p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
 	{mso-style-priority:34;
 	mso-style-unhide:no;
@@ -852,21 +787,6 @@ p.msonormal0, li.msonormal0, div.msonormal0
 	font-family:"Times New Roman",serif;
 	mso-fareast-font-family:"Times New Roman";
 	mso-fareast-theme-font:minor-fareast;}
-span.BodyTextChar
-	{mso-style-name:"Body Text Char";
-	mso-style-noshow:yes;
-	mso-style-priority:99;
-	mso-style-unhide:no;
-	mso-style-locked:yes;
-	mso-style-link:"Body Text";
-	mso-ansi-font-size:11.0pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
 span.SubtitleChar
 	{mso-style-name:"Subtitle Char";
 	mso-style-priority:11;
@@ -879,77 +799,6 @@ span.SubtitleChar
 	mso-bidi-font-family:"Times New Roman";
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
-p.msolistparagraphcxspfirst, li.msolistparagraphcxspfirst, div.msolistparagraphcxspfirst
-	{mso-style-name:msolistparagraphcxspfirst;
-	mso-style-unhide:no;
-	margin-top:0in;
-	margin-right:0in;
-	margin-bottom:0in;
-	margin-left:.5in;
-	line-height:105%;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
-p.msolistparagraphcxspmiddle, li.msolistparagraphcxspmiddle, div.msolistparagraphcxspmiddle
-	{mso-style-name:msolistparagraphcxspmiddle;
-	mso-style-unhide:no;
-	margin-top:0in;
-	margin-right:0in;
-	margin-bottom:0in;
-	margin-left:.5in;
-	line-height:105%;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
-p.msolistparagraphcxsplast, li.msolistparagraphcxsplast, div.msolistparagraphcxsplast
-	{mso-style-name:msolistparagraphcxsplast;
-	mso-style-unhide:no;
-	margin-top:0in;
-	margin-right:0in;
-	margin-bottom:8.0pt;
-	margin-left:.5in;
-	line-height:105%;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
-p.Heading, li.Heading, div.Heading
-	{mso-style-name:Heading;
-	mso-style-unhide:no;
-	margin-top:12.0pt;
-	margin-right:0in;
-	margin-bottom:6.0pt;
-	margin-left:0in;
-	line-height:105%;
-	mso-pagination:widow-orphan;
-	page-break-after:avoid;
-	font-size:14.0pt;
-	font-family:"Liberation Sans",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
-p.Index, li.Index, div.Index
-	{mso-style-name:Index;
-	mso-style-unhide:no;
-	margin-top:0in;
-	margin-right:0in;
-	margin-bottom:8.0pt;
-	margin-left:0in;
-	line-height:105%;
-	mso-pagination:widow-orphan;
-	font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
 p.msochpdefault, li.msochpdefault, div.msochpdefault
 	{mso-style-name:msochpdefault;
 	mso-style-unhide:no;
@@ -958,11 +807,10 @@ p.msochpdefault, li.msochpdefault, div.msochpdefault
 	mso-margin-bottom-alt:auto;
 	margin-left:0in;
 	mso-pagination:widow-orphan;
-	font-size:12.0pt;
-	font-family:"Century Gothic",sans-serif;
+	font-size:10.0pt;
+	font-family:"Times New Roman",serif;
 	mso-fareast-font-family:"Times New Roman";
-	mso-fareast-theme-font:minor-fareast;
-	mso-bidi-font-family:"Times New Roman";}
+	mso-fareast-theme-font:minor-fareast;}
 span.InternetLink
 	{mso-style-name:"Internet Link";
 	mso-style-unhide:no;
@@ -973,506 +821,18 @@ span.InternetLink
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
-span.UnresolvedMention1
-	{mso-style-name:"Unresolved Mention1";
-	mso-style-unhide:no;
-	color:#605E5C;
-	background:#E1DFDD;}
-span.ListLabel1
-	{mso-style-name:"ListLabel 1";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel2
-	{mso-style-name:"ListLabel 2";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel3
-	{mso-style-name:"ListLabel 3";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel4
-	{mso-style-name:"ListLabel 4";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel5
-	{mso-style-name:"ListLabel 5";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel6
-	{mso-style-name:"ListLabel 6";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel7
-	{mso-style-name:"ListLabel 7";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel8
-	{mso-style-name:"ListLabel 8";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel9
-	{mso-style-name:"ListLabel 9";
-	mso-style-unhide:no;
-	font-family:"Calibri",sans-serif;
-	mso-ascii-font-family:Calibri;
-	mso-hansi-font-family:Calibri;
-	mso-bidi-font-family:Calibri;}
-span.ListLabel10
-	{mso-style-name:"ListLabel 10";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel11
-	{mso-style-name:"ListLabel 11";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel12
-	{mso-style-name:"ListLabel 12";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel13
-	{mso-style-name:"ListLabel 13";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel14
-	{mso-style-name:"ListLabel 14";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel15
-	{mso-style-name:"ListLabel 15";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel16
-	{mso-style-name:"ListLabel 16";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel17
-	{mso-style-name:"ListLabel 17";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel18
-	{mso-style-name:"ListLabel 18";
-	mso-style-unhide:no;
-	font-family:"Calibri",sans-serif;
-	mso-ascii-font-family:Calibri;
-	mso-hansi-font-family:Calibri;
-	mso-bidi-font-family:Calibri;}
-span.ListLabel19
-	{mso-style-name:"ListLabel 19";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel20
-	{mso-style-name:"ListLabel 20";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel21
-	{mso-style-name:"ListLabel 21";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel22
-	{mso-style-name:"ListLabel 22";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel23
-	{mso-style-name:"ListLabel 23";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel24
-	{mso-style-name:"ListLabel 24";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel25
-	{mso-style-name:"ListLabel 25";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel26
-	{mso-style-name:"ListLabel 26";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel27
-	{mso-style-name:"ListLabel 27";
-	mso-style-unhide:no;
-	font-family:"Calibri",sans-serif;
-	mso-ascii-font-family:Calibri;
-	mso-hansi-font-family:Calibri;
-	mso-bidi-font-family:Calibri;}
-span.ListLabel28
-	{mso-style-name:"ListLabel 28";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel29
-	{mso-style-name:"ListLabel 29";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel30
-	{mso-style-name:"ListLabel 30";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel31
-	{mso-style-name:"ListLabel 31";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel32
-	{mso-style-name:"ListLabel 32";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel33
-	{mso-style-name:"ListLabel 33";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel34
-	{mso-style-name:"ListLabel 34";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel35
-	{mso-style-name:"ListLabel 35";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel36
-	{mso-style-name:"ListLabel 36";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel37
-	{mso-style-name:"ListLabel 37";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel38
-	{mso-style-name:"ListLabel 38";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel39
-	{mso-style-name:"ListLabel 39";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel40
-	{mso-style-name:"ListLabel 40";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel41
-	{mso-style-name:"ListLabel 41";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel42
-	{mso-style-name:"ListLabel 42";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel43
-	{mso-style-name:"ListLabel 43";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel44
-	{mso-style-name:"ListLabel 44";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel45
-	{mso-style-name:"ListLabel 45";
-	mso-style-unhide:no;
-	font-family:"Courier New";
-	mso-ascii-font-family:"Courier New";
-	mso-hansi-font-family:"Courier New";
-	mso-bidi-font-family:"Courier New";}
-span.ListLabel46
-	{mso-style-name:"ListLabel 46";
-	mso-style-unhide:no;
-	font-family:"Courier New";
-	mso-ascii-font-family:"Courier New";
-	mso-hansi-font-family:"Courier New";
-	mso-bidi-font-family:"Courier New";}
-span.ListLabel47
-	{mso-style-name:"ListLabel 47";
-	mso-style-unhide:no;
-	font-family:"Courier New";
-	mso-ascii-font-family:"Courier New";
-	mso-hansi-font-family:"Courier New";
-	mso-bidi-font-family:"Courier New";}
-span.ListLabel48
-	{mso-style-name:"ListLabel 48";
-	mso-style-unhide:no;
-	font-family:"Courier New";
-	mso-ascii-font-family:"Courier New";
-	mso-hansi-font-family:"Courier New";
-	mso-bidi-font-family:"Courier New";}
-span.ListLabel49
-	{mso-style-name:"ListLabel 49";
-	mso-style-unhide:no;
-	font-family:"Courier New";
-	mso-ascii-font-family:"Courier New";
-	mso-hansi-font-family:"Courier New";
-	mso-bidi-font-family:"Courier New";}
-span.ListLabel50
-	{mso-style-name:"ListLabel 50";
-	mso-style-unhide:no;
-	font-family:"Courier New";
-	mso-ascii-font-family:"Courier New";
-	mso-hansi-font-family:"Courier New";
-	mso-bidi-font-family:"Courier New";}
-span.ListLabel51
-	{mso-style-name:"ListLabel 51";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel52
-	{mso-style-name:"ListLabel 52";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel53
-	{mso-style-name:"ListLabel 53";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel54
-	{mso-style-name:"ListLabel 54";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel55
-	{mso-style-name:"ListLabel 55";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel56
-	{mso-style-name:"ListLabel 56";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel57
-	{mso-style-name:"ListLabel 57";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel58
-	{mso-style-name:"ListLabel 58";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel59
-	{mso-style-name:"ListLabel 59";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel60
-	{mso-style-name:"ListLabel 60";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel61
-	{mso-style-name:"ListLabel 61";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel62
-	{mso-style-name:"ListLabel 62";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel63
-	{mso-style-name:"ListLabel 63";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel64
-	{mso-style-name:"ListLabel 64";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel65
-	{mso-style-name:"ListLabel 65";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel66
-	{mso-style-name:"ListLabel 66";
-	mso-style-unhide:no;
-	font-family:"Times New Roman",serif;
-	mso-ascii-font-family:"Times New Roman";
-	mso-hansi-font-family:"Times New Roman";
-	mso-bidi-font-family:"Times New Roman";}
-span.ListLabel67
-	{mso-style-name:"ListLabel 67";
-	mso-style-unhide:no;
-	font-family:"Calibri",sans-serif;
-	mso-ascii-font-family:Calibri;
-	mso-hansi-font-family:Calibri;
-	mso-bidi-font-family:Calibri;}
-span.ListLabel68
-	{mso-style-name:"ListLabel 68";
-	mso-style-unhide:no;
-	font-family:"Calibri",sans-serif;
-	mso-ascii-font-family:Calibri;
-	mso-hansi-font-family:Calibri;
-	mso-bidi-font-family:Calibri;}
-span.ListLabel69
-	{mso-style-name:"ListLabel 69";
-	mso-style-unhide:no;
-	font-family:"Calibri",sans-serif;
-	mso-ascii-font-family:Calibri;
-	mso-hansi-font-family:Calibri;
-	mso-bidi-font-family:Calibri;}
-span.NumberingSymbols
-	{mso-style-name:"Numbering Symbols";
-	mso-style-unhide:no;}
+span.SpellE
+	{mso-style-name:"";
+	mso-spl-e:yes;}
+span.GramE
+	{mso-style-name:"";
+	mso-gram-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
 	font-size:10.0pt;
 	mso-ansi-font-size:10.0pt;
-	mso-bidi-font-size:10.0pt;
-	font-family:"Century Gothic",sans-serif;
-	mso-ascii-font-family:"Century Gothic";
-	mso-hansi-font-family:"Century Gothic";}
+	mso-bidi-font-size:10.0pt;}
 @page WordSection1
 	{size:8.5in 11.0in;
 	margin:1.0in 1.0in 1.0in 1.0in;
@@ -1483,114 +843,8 @@ div.WordSection1
 	{page:WordSection1;}
  /* List Definitions */
  @list l0
-	{mso-list-id:997923853;
-	mso-list-template-ids:-1210407094;}
-@list l0:level1
-	{mso-level-tab-stop:.5in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level2
-	{mso-level-tab-stop:1.0in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level3
-	{mso-level-tab-stop:1.5in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level4
-	{mso-level-tab-stop:2.0in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level5
-	{mso-level-tab-stop:2.5in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level6
-	{mso-level-tab-stop:3.0in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level7
-	{mso-level-tab-stop:3.5in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level8
-	{mso-level-tab-stop:4.0in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l0:level9
-	{mso-level-tab-stop:4.5in;
-	mso-level-number-position:left;
-	text-indent:-.25in;}
-@list l1
-	{mso-list-id:1195994411;
-	mso-list-template-ids:-1077651682;}
-@list l2
-	{mso-list-id:1692148114;
-	mso-list-type:hybrid;
-	mso-list-template-ids:810597092 67698689 67698691 67698693 67698689 67698691 67698693 67698689 67698691 67698693;}
-@list l2:level1
-	{mso-level-number-format:bullet;
-	mso-level-text:\F0B7;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:Symbol;}
-@list l2:level2
-	{mso-level-number-format:bullet;
-	mso-level-text:o;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:"Courier New";}
-@list l2:level3
-	{mso-level-number-format:bullet;
-	mso-level-text:\F0A7;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:Wingdings;}
-@list l2:level4
-	{mso-level-number-format:bullet;
-	mso-level-text:\F0B7;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:Symbol;}
-@list l2:level5
-	{mso-level-number-format:bullet;
-	mso-level-text:o;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:"Courier New";}
-@list l2:level6
-	{mso-level-number-format:bullet;
-	mso-level-text:\F0A7;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:Wingdings;}
-@list l2:level7
-	{mso-level-number-format:bullet;
-	mso-level-text:\F0B7;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:Symbol;}
-@list l2:level8
-	{mso-level-number-format:bullet;
-	mso-level-text:o;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:"Courier New";}
-@list l2:level9
-	{mso-level-number-format:bullet;
-	mso-level-text:\F0A7;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	text-indent:-.25in;
-	font-family:Wingdings;}
+	{mso-list-id:356273482;
+	mso-list-template-ids:-1411595780;}
 ol
 	{margin-bottom:0in;}
 ul
@@ -1611,7 +865,7 @@ ul
 	mso-para-margin:0in;
 	mso-pagination:widow-orphan;
 	font-size:10.0pt;
-	font-family:"Century Gothic",sans-serif;}
+	font-family:"Times New Roman",serif;}
 </style>
 <![endif]--><!--[if gte mso 9]><xml>
  <o:shapedefaults v:ext="edit" spidmax="1026"/>
@@ -1626,493 +880,370 @@ ul
 <div class=WordSection1>
 
 <h1><span style='font-size:24.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Objeck
-Programming Language</span><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h1>
+mso-fareast-font-family:"Times New Roman"'>Objeck Programming Language</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h1>
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v5.4.1 (September 16, 2020)<o:p></o:p></span></p>
+"Calibri",sans-serif'>v5.4.1 (September 18, 2020)</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Release notes</span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:minor-latin;
-mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Release notes</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Enhancements
-and tweaks<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>Enhancements and tweaks</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p>&nbsp;</o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Highlights:<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>Highlights:</span></p>
 
-<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
-line-height:normal;mso-list:l2 level1 lfo2'><![if !supportLists]><span
-style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added support for reverse iteration via the ‘reverse’ keyword (new)<o:p></o:p></span></p>
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+0in;margin-left:.25in;text-indent:-.25in;line-height:normal'><span
+style='font-family:Symbol'>·</span><span style='font-size:7.0pt;font-family:
+"Times New Roman",serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='font-family:"Calibri",sans-serif'>Added support for reverse iteration
+via the ‘reverse’ keyword (new)</span></p>
 
-<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
-line-height:normal;mso-list:l2 level1 lfo2'><![if !supportLists]><span
-style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Made tweaks the to the SDL gaming engine (new)<o:p></o:p></span></p>
+<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
+0in;margin-left:.25in;text-indent:-.25in;line-height:normal'><span
+style='font-family:Symbol'>·</span><span style='font-size:7.0pt;font-family:
+"Times New Roman",serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='font-family:"Calibri",sans-serif'>Made tweaks the to the SDL gaming
+engine (new)</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p>&nbsp;</o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
-<p class=MsoNormal><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Please
-refer to the <a href="http://www.objeck.org/"><span class=InternetLink><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>project
-website</span></span></a> for additional information about the language. The
-Programmer’s Guide is located the “doc” directory. Additional examples are
-available on the <a href="http://rosettacode.org/wiki/Category:Objeck"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Rosetta
-Code website</span></span></a>. Please submit bugs to <a
-href="mailto:objeck@gmail.com"><span class=InternetLink><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>objeck@gmail.com</span></span></a><a
+<p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>Please refer
+to the <a href="http://www.objeck.org/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>project website</span></span></a> for
+additional information about the language. The Programmer’s Guide is located
+the “doc” directory. Additional examples are available on the <a
+href="http://rosettacode.org/wiki/Category:Objeck"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>Rosetta Code website</span></span></a>.
+Please submit bugs to <a href="mailto:objeck@gmail.com"><span
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>objeck@gmail.com</span></span></a><a
 href="mailto:objeck@gmail.com"><span style='color:windowtext;text-decoration:
-none;text-underline:none'>, bug reports are greatly appreciated!</span></a><o:p></o:p></span></p>
+none;text-underline:none'>, bug reports are greatly appreciated!</span></a></span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Getting
-Started</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Getting Started</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
-<p class=MsoNormal><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>New
-developers please refer to <a href="https://www.objeck.org/getting_started.html">getting
-starting guide</a>.<o:p></o:p></span></p>
+<p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>New developers
+please refer to <a href="https://www.objeck.org/getting_started.html">getting
+starting guide</a>.</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Package
-directories</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Package directories</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>app/ –
-Windows launcher (optional)<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>app/ – Windows launcher (optional)</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>bin/ –
-compiler, debugger and VM <o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>bin/ – compiler, debugger and VM </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>doc/ –
-general documentation<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>doc/ – general documentation</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>doc/api/ –
-class library documentation<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>doc/<span class=SpellE>api</span>/ –
+class library documentation</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>doc/syntax –
-files to enable syntax highlighting for supported editors<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>doc/syntax – files to enable syntax
+highlighting for supported editors</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>examples/ –
-source code examples including a 2D game<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>examples/ – source code examples
+including a 2D game</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>examples/doc
-– source code for self-documentation system<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>examples/doc – source code for
+self-documentation system</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>examples/tiny
-– “tiny” language compiler and VM<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>examples/tiny – “tiny” language compiler
+and VM</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>lib/ –
-supporting language libraries <o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>lib/ – supporting language libraries </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>lib/native/ –
-native OS shared libraries <o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>lib/native/ – native OS shared
+libraries </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>lib/sdl/ –
-host SDL shared libraries<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>lib/<span class=SpellE>sdl</span>/ –
+host SDL shared libraries</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Windows
-launcher</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Windows launcher</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Convenient
-way to run programs and access documentation. On Windows, configuration
-information is stored in the “%programdata%\Objeck” directory and build the first
-time the app runs. If you move the location of the install delete the
-“%programdata%\Objeck” directory and rerun the launcher.<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>Convenient way to run programs and access
+documentation. On Windows, configuration information is stored in the “%<span
+class=SpellE>programdata</span>%\Objeck” directory and build the first time the
+app runs. If you move the location of the install delete the “%<span
+class=SpellE>programdata</span>%\Objeck” directory and rerun the launcher.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p>&nbsp;</o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Compiling and
-executing programs</span><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Compiling and executing programs</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>In order to
-compile programs outside of the “bin” directory the “OBJECK_LIB_PATH” environment
-variable must be set. When this variable is set all library files must be in
-the directory specified. <o:p></o:p></span></p>
+class=GramE><span style='font-family:"Calibri",sans-serif'>In order to</span></span><span
+style='font-family:"Calibri",sans-serif'> compile programs outside of the “bin”
+directory the “OBJECK_LIB_PATH” environment variable must be set. When this
+variable is set all library files must be in the directory specified. </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>If the
-Windows installer is used these variables will be automatically set after the
-system is restarted. For Debian and Ubuntu the location of the files is fixed
-by the installer so no variables are needed.<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>If the Windows installer is used these
+variables will be automatically set after the system is restarted. For Debian
+and <span class=GramE>Ubuntu</span> the location of the files is fixed by the
+installer so no variables are needed.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>To manually
-setting the environment paths in Windows:<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>To manually setting the environment
+paths in Windows:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
-7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>set <a
-name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=C:\Users\&lt;account&gt;\objeck-lang\lib<o:p></o:p></span></p>
+"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-family:"Calibri",sans-serif'>set <a
+name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=C:\Users\&lt;account&gt;\<span
+class=SpellE>objeck</span>-lang\lib</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>2.</span><span style='font-size:
-7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>set
-PATH=%PATH%;C:\ Users\&lt;account&gt;\ objeck-lang\bin; C:\ Users\&lt;account&gt;\
-objeck-lang\lib\sdl<o:p></o:p></span></p>
+"Calibri",sans-serif'>2.</span><span style='font-size:7.0pt;font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-family:"Calibri",sans-serif'>set PATH=%PATH<span
+class=GramE>%;C:\</span> Users\&lt;account&gt;\ <span class=SpellE>objeck</span>-lang\bin;
+C:\ Users\&lt;account&gt;\ <span class=SpellE>objeck</span>-lang\lib\<span
+class=SpellE>sdl</span></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>To manually
-setting the environment paths in macOS and Linux:<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>To manually setting the environment
+paths in macOS and Linux:</span></p>
 
 <ol style='margin-top:0in' start=1 type=1>
- <li class=MsoNormal style='margin-bottom:0in;line-height:normal;mso-list:l0 level1 lfo5;
+ <li class=MsoNormal style='margin-bottom:0in;line-height:normal;mso-list:l0 level1 lfo1;
      tab-stops:list .5in'><span style='font-family:"Calibri",sans-serif;
-     mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-     mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>export
-     PATH=$PATH:/home/&lt;account&gt;/objeck-lang/bin<o:p></o:p></span></li>
- <li class=MsoNormal style='margin-bottom:0in;line-height:normal;mso-list:l0 level1 lfo5;
+     mso-fareast-font-family:"Times New Roman"'>export
+     PATH=$PATH:/home/&lt;account&gt;/<span class=SpellE>objeck</span>-lang/bin</span><span
+     style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></li>
+ <li class=MsoNormal style='margin-bottom:0in;line-height:normal;mso-list:l0 level1 lfo1;
      tab-stops:list .5in'><span style='font-family:"Calibri",sans-serif;
-     mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-     mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>export
-     OBJECK_LIB_PATH=/home/&lt;account&gt;/objeck-lang/lib<o:p></o:p></span></li>
+     mso-fareast-font-family:"Times New Roman"'>export
+     OBJECK_LIB_PATH=/home/&lt;account&gt;/<span class=SpellE>objeck</span>-lang/lib</span><span
+     style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></li>
 </ol>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Simple
-compile/execute:<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>Simple compile/execute:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
-7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src
-..\examples\hello.obs -dest hello.obe <o:p></o:p></span></p>
+"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span class=SpellE><span style='font-family:"Calibri",sans-serif'>obc</span></span><span
+style='font-family:"Calibri",sans-serif'> -<span class=SpellE>src</span>
+..\examples\<span class=SpellE>hello.obs</span> -<span class=SpellE>dest</span>
+<span class=SpellE>hello.obe</span> </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-–OR- <o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+–OR- </span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
-7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src
-'C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt.obl
--dest hello.obe<o:p></o:p></span></p>
+"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span class=SpellE><span style='font-family:"Calibri",sans-serif'>obc</span></span><span
+style='font-family:"Calibri",sans-serif'> -<span class=SpellE>src</span>
+'C:\Program Files\Objeck\<span class=SpellE>objeck</span>-lang\examples\<span
+class=SpellE>encrypt.obs</span>' -lib <span class=SpellE>encrypt.obl</span> -<span
+class=SpellE>dest</span> <span class=SpellE>hello.obe</span></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>2.&nbsp;&nbsp;&nbsp; obr hello.obe<o:p></o:p></span></p>
+"Calibri",sans-serif'>2.&nbsp;&nbsp;&nbsp; <span class=SpellE>obr</span> <span
+class=SpellE>hello.obe</span></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Compile/execute
-for code that has library dependencies:<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>Compile/execute for code that has
+library dependencies:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.&nbsp;&nbsp;&nbsp; obc -src
-..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe<o:p></o:p></span></p>
+"Calibri",sans-serif'>1.&nbsp;&nbsp;&nbsp; <span class=SpellE>obc</span> -<span
+class=SpellE>src</span> ..\examples\<span class=SpellE>xml_path.obs</span> -lib
+<span class=SpellE><span class=GramE>collect.obl,xml.obl</span></span> -<span
+class=SpellE>dest</span> <span class=SpellE>xml_path.obe</span></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>2.&nbsp;&nbsp;&nbsp; obr xml.obe <o:p></o:p></span></p>
+"Calibri",sans-serif'>2.&nbsp;&nbsp;&nbsp; <span class=SpellE>obr</span> <span
+class=SpellE>xml.obe</span> </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>For OS X
-(10.9 or greater), you’ll need to install OpenSSL in order to use encryption
-APIs as well as iODBC to enable database support. Please refer to the following
-<a href="http://mac-dev-env.patrickbougie.com/openssl"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>link</span></span></a>
-for OpenSSL directions and this <a
-href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>link</span></span></a>
-for about ODBC support.<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>For OS X (10.9 or greater), <span
+class=GramE>you’ll</span> need to install OpenSSL in order to use encryption
+APIs as well as <span class=SpellE>iODBC</span> to enable database support.
+Please refer to the following <a
+href="http://mac-dev-env.patrickbougie.com/openssl"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>link</span></span></a> for OpenSSL directions
+and this <a href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX"><span
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>link</span></span></a>
+for about ODBC support.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>SDL Support</span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:minor-latin;
-mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>SDL Support</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
-<p class=MsoNormal><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>The
-2D gaming framework is built around <a
-href="https://www.libsdl.org/download-2.0.php">SDL2</a> (&gt;=2.0.9). The
-Windows distributions contains required DLLs. Support for other platforms is
-below.<o:p></o:p></span></p>
+<p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>The 2D gaming
+framework is built around <a href="https://www.libsdl.org/download-2.0.php">SDL2</a>
+(&gt;=2.0.9). The Windows distributions contains required DLLs. Support for
+other platforms is below.</span></p>
 
-<p class=MsoNormal><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>For
-Linux:<o:p></o:p></span></p>
+<p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>For Linux:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
-7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>sudo apt
-install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
-libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
-libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
-libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
-libsdl-ttf2.0-dev<o:p></o:p></span></p>
+"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span class=SpellE><span style='font-family:"Calibri",sans-serif'>sudo</span></span><span
+style='font-family:"Calibri",sans-serif'> apt install libsdl1.2debian
+libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2
+libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg
+libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev
+libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;line-height:normal'><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>&nbsp;<o:p></o:p></span></p>
+margin-left:.5in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
-<p class=MsoNormal><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>For
-macOS:<o:p></o:p></span></p>
+<p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>For macOS:</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Refer to this
-<a href="http://lazyfoo.net/tutorials/SDL/01_hello_SDL/mac/index.php"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>link</span></span></a>
-for core SDL2 libraries. Ensure you download 2.0.9 or greater.<o:p></o:p></span></p>
+"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;line-height:105%;
+font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='font-family:"Calibri",sans-serif'>Refer to this <a
+href="http://lazyfoo.net/tutorials/SDL/01_hello_SDL/mac/index.php"><span
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>link</span></span></a>
+for core SDL2 libraries. Ensure you download 2.0.9 or greater.</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>2.</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Other
-libraries for <a href="https://www.libsdl.org/projects/SDL_image/"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>images</span></span></a>,
-<a href="https://www.libsdl.org/projects/SDL_ttf/"><span class=InternetLink><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>fonts</span></span></a>
-and <a href="https://www.libsdl.org/projects/SDL_mixer/"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>sound</span></span></a>
-are required. These libraries may need to be resigned for example “cd
-/Library/Frameworks/SDL2_mixer.framework; codesign -f -s - SDL2_mixer”. <o:p></o:p></span></p>
+"Calibri",sans-serif'>2.</span><span style='font-size:7.0pt;line-height:105%;
+font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='font-family:"Calibri",sans-serif'>Other libraries for <a
+href="https://www.libsdl.org/projects/SDL_image/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>images</span></span></a>, <a
+href="https://www.libsdl.org/projects/SDL_ttf/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>fonts</span></span></a> and <a
+href="https://www.libsdl.org/projects/SDL_mixer/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>sound</span></span></a> are required.
+These libraries may need to be resigned for example “cd
+/Library/Frameworks/SDL2_mixer.framework; codesign -f -s - SDL2_mixer”. </span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Source code</span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:minor-latin;
-mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Source code</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>The Objeck
-source repository is located <a href="http://github.com/objeck/objeck-lang"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>here</span></span></a>
-and the source can be fetch using the following command GIT command:<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>The Objeck source repository is
+located <a href="http://github.com/objeck/objeck-lang"><span
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>here</span></span></a>
+and the source can be fetch using the following command GIT command:</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>git clone
-https://github.com/objeck/objeck-lang.git<o:p></o:p></span></p>
+"Calibri",sans-serif'>·</span><span style='font-size:7.0pt;line-height:105%;
+font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='font-family:"Calibri",sans-serif'>git clone
+https://github.com/objeck/objeck-lang.git</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>License</span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:minor-latin;
-mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>License</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Software was
-developed under the <a href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD
-License</a>. Supporting software licenses can be found <a
-href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">here</a>.<o:p></o:p></span></p>
+"Calibri",sans-serif'>·</span><span style='font-size:7.0pt;line-height:105%;
+font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
+style='font-family:"Calibri",sans-serif'>Software was developed under the <a
+href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>.
+Supporting software licenses can be found <a
+href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">here</a>.</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:105%;font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Known bugs
-and limitations</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></h2>
+mso-fareast-font-family:"Times New Roman"'>Known bugs and limitations</span><span
+style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>On 32-bit
-Windows, the ODBC driver must be a 32-bit for <a
+Symbol'>·</span><span style='font-size:7.0pt;line-height:105%;font-family:"Times New Roman",serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-family:"Calibri",sans-serif'>On 32-bit Windows, the
+ODBC driver must be a 32-bit for <a
 href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>compatibility</span></span></a>.
-<o:p></o:p></span></p>
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>compatibility</span></span></a>.
+</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>The XML
-parser class does not support DTDs or DOCTYPE tags<o:p></o:p></span></p>
+Symbol'>·</span><span style='font-size:7.0pt;line-height:105%;font-family:"Times New Roman",serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-family:"Calibri",sans-serif'>The XML parser class does
+not support DTDs or DOCTYPE tags</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>By design,
-the regular expression class performs greedy pattern matching.<o:p></o:p></span></p>
+Symbol'>·</span><span style='font-size:7.0pt;line-height:105%;font-family:"Times New Roman",serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-family:"Calibri",sans-serif'>By design, the regular
+expression class performs greedy pattern matching.</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>·</span><span style='font-size:
-7.0pt;line-height:105%;font-family:"Calibri",sans-serif;mso-ascii-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>All unit
-tests executed successfully but I'm sure there’s bugs. Send an <a
-href="mailto:objeck@gmail.com"><span class=InternetLink><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>e-mail</span></span></a> I’ll get
-them sorted.<o:p></o:p></span></p>
+Symbol'>·</span><span style='font-size:7.0pt;line-height:105%;font-family:"Times New Roman",serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span><span style='font-family:"Calibri",sans-serif'>All unit tests executed
+successfully but <span class=GramE>I'm</span> sure there’s bugs. Send an e-mail
+<span class=GramE>I’ll</span> get them sorted.</span></p>
+
+<p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
+"Segoe UI",sans-serif;color:#212529;background:white'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
+"Segoe UI",sans-serif;color:#212529;background:white'>© 2020&nbsp;</span><a
+href="mailto:objeck@gmail.com" style='box-sizing: border-box;font-variant-ligatures: normal;
+font-variant-caps: normal;orphans: 2;widows: 2;-webkit-text-stroke-width: 0px;
+word-spacing:0px'><span style='font-size:8.5pt;line-height:105%;font-family:
+"Segoe UI",sans-serif;background:white;text-decoration:none;text-underline:
+none'>Randy Hollines</span></a><span style='font-size:8.5pt;line-height:105%;
+font-family:"Segoe UI",sans-serif;color:#212529;background:white'><span
+style='font-variant-ligatures: normal;font-variant-caps: normal;orphans: 2;
+widows: 2;-webkit-text-stroke-width: 0px;text-decoration-style: initial;
+text-decoration-color: initial;float:none;word-spacing:0px'>. All Rights
+Reserved.</span></span></p>
 
 </div>
 
