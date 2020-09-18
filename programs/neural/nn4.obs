@@ -35,9 +35,9 @@ class NeuralNetwork {
 			count := 0;
 			max := epoch * size;
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-			for(i := 0; i < 7; i += 1;) {
-				each(i : inputs) {
-					train_input := ParseInput(inputs->Get(i), value);
+			each(i : 7) {
+				each(j : inputs) {
+					train_input := ParseInput(inputs->Get(j), value);
 					number := value->Get(); 
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
