@@ -13,6 +13,7 @@ The VM supports the following targets:
 3. macOS (POSIX, AMD64)
 4. Linux 64-bit (POSIX, AMD64)
 5. Linux 32-bit (POSIX, IA-32)
+6. Linux 32-bit (POSIX, ARMv7)
 
 ### Implementation
 C++ using STL with machine code generation
