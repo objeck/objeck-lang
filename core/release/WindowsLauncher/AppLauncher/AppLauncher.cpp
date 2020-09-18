@@ -220,7 +220,7 @@ hInst = hInstance;
   SendMessageW(hWndReadmeButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
 
   // 30-second timer
-  UINT_PTR uResult = SetTimer(hWnd, VERSION_TIMER, 30000, (TIMERPROC)VersionCheckProc);
+  UINT_PTR uResult = SetTimer(hWnd, VERSION_TIMER, /*30000*/10000, (TIMERPROC)VersionCheckProc);
   if(!uResult) {
     return FALSE;
   }
@@ -271,8 +271,10 @@ INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
   return (INT_PTR)FALSE;
 }
 
-VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTime)
+unsigned int WINAPI VersionCheck(LPVOID arg)
 {
+  HWND hWnd = (HWND)arg;
+
   // check for updates
   BOOL newVersion = FALSE;
   const int latestVersion = GetLatestVersion();
@@ -287,7 +289,11 @@ VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTi
     DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
     newVersion = FALSE;
   }
+}
 
+VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTime)
+{
+  _beginthreadex(nullptr, 0, VersionCheck, hWnd, 0, nullptr);
   KillTimer(hWnd, VERSION_TIMER);
 }
 
