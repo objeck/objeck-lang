@@ -1,1 +1,0 @@
-* change POSIX AMD64 JIT code to not jump for bound checks (i.e. like the new jit code for Windows)
