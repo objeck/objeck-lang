@@ -12,7 +12,7 @@ use Collection.Generic;
 class Demo {
 	@framework : GameFramework;
 	@player : Player;
-	@enemy : Enemy;
+	@enemies : Vector<Enemy>;
 	@level : Level;
 
 	function : Main(args : String[]) ~ Nil {
@@ -27,8 +27,11 @@ class Demo {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(30, 30), Color->New(255, 0, 0), 120, Game->SCREEN_HEIGHT / 2);
-			@enemy := Enemy->New(@framework->AddRectangle(30, 30));
-			@level := Level->New(@player, @enemy, @framework);
+			@enemies := Vector->New()<Enemy>;
+			each(i : 4) {
+				@enemies->AddBack(Enemy->New(@framework->AddRectangle(30, 30)));
+			};
+			@level := Level->New(@player, @enemies, @framework);
 
 			quit := false;
 			e := @framework->GetEvent();
@@ -47,7 +50,9 @@ class Demo {
 
 				# update
 				@player->Update();
-				@enemy->Update(@player);
+				each(i : @enemies) {
+					@enemies->Get(i)->Update(@player);
+				};
 				@level->Update();
 
 				shift := @level->GetShiftX();
@@ -69,7 +74,9 @@ class Demo {
 				
 				# draw
 				@player->Draw();
-				@enemy->Draw();
+				each(i : @enemies) {
+					@enemies->Get(i)->Draw();
+				};
 				@level->Draw();
 
 				# show
@@ -133,7 +140,7 @@ class Enemy from Player {
 	@dist : Float[];
 
 	New(rect : Rectangle) {
-		Parent(rect, Color->New(255, 255, 255), 320, Game->SCREEN_HEIGHT / 2);
+		Parent(rect, Color->New(255, 255, 255), 320, Game->SCREEN_HEIGHT / 4 + Int->Random(120, 300));
 		@dist := Float->New[4];
 	}
 
@@ -146,11 +153,12 @@ class Enemy from Player {
 		rect := GetRect();
 
 		# east/west
-		@dist[0] := Level->Distance(rect->GetCenterX() - 6, rect->GetCenterY(), player->GetRect());
-		@dist[1] := Level->Distance(rect->GetCenterX() + 6, rect->GetCenterY(), player->GetRect());
+		delta := Int->Random(6, 15);
+		@dist[0] := Level->Distance(rect->GetCenterX() - delta, rect->GetCenterY(), player->GetRect());
+		@dist[1] := Level->Distance(rect->GetCenterX() + delta, rect->GetCenterY(), player->GetRect());
 		# north/south
-		@dist[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - 6, player->GetRect());
-		@dist[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + 6, player->GetRect());
+		@dist[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - delta, player->GetRect());
+		@dist[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + delta, player->GetRect());
 		
 		shorest_index := 0;
 		each(i : @dist) {
@@ -161,10 +169,12 @@ class Enemy from Player {
 
 		# move east/west
 		if(shorest_index = 0) {
-			GoEast();
+#			GoEast();
+			@change_x := delta;
 		}
 		else if(shorest_index = 1) {
-			GoWest();
+#			GoWest();
+			@change_x := -1 * delta;
 		};
 		@acc_x->SetX(@change_x * 0.025);
 		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
@@ -202,10 +212,12 @@ class Enemy from Player {
 
 		# move north/south
 		if(shorest_index = 2) {
-			GoSouth();
+#			GoSouth();
+			@change_y := delta;
 		}
 		else if(shorest_index = 3) {
-			GoNorth();
+#			GoNorth();
+			@change_y := -1 * delta;
 		};
 		@acc_y->SetY(@change_y * 0.025);
 		@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
@@ -430,13 +442,13 @@ class Barrier {
 
 class Level {
 	@player : Player;
-	@enemy : Enemy;
+	@enemies : Vector<Enemy>;
 	@barriers : Vector<Barrier>;
 	@shift_x : Int;
 
-	New(player : Player, enemy : Enemy, framework : GameFramework) {
+	New(player : Player, enemies : Vector<Enemy>, framework : GameFramework) {
 		@player := player;
-		@enemy := enemy;
+		@enemies := enemies;
 
 		@barriers := Vector->New()<Barrier>;		
 		@barriers->AddBack(Barrier->New(300, 50, framework->AddRectangle(50, 80)));	
@@ -445,7 +457,9 @@ class Level {
 		@barriers->AddBack(Barrier->New(1005, 200, framework->AddRectangle(50, 100)));
 
 		@player->SetLevel(@self);
-		@enemy->SetLevel(@self);
+		each(i : @enemies) {
+			@enemies->Get(i)->SetLevel(@self);
+		};
 	}
 
 	function : Collides(player : Player, obstacles : Vector<Barrier>) ~ Bool {
@@ -479,7 +493,9 @@ class Level {
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 		
-		@enemy->AddX(shift_x);
+		each(i : @enemies) {
+			@enemies->Get(i)->AddX(shift_x);
+		};
 		each(i : @barriers) {
 			platform := @barriers->Get(i);
 			platform->AddX(shift_x);
@@ -503,9 +519,9 @@ class Level {
 	}
 
 	function : Distance(a_x : Int, a_y : Int, b : Rectangle) ~ Int {
-		x_norm := a_x->ToFloat() - b->GetCenterX()->ToFloat();
-		y_norm := a_y->ToFloat() - b->GetCenterY()->ToFloat();
-		return (x_norm * x_norm + y_norm * y_norm)->SquareRoot();
+		x_norm := a_x - b->GetCenterX();
+		y_norm := a_y - b->GetCenterY();
+		return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
 	}
 }
 
