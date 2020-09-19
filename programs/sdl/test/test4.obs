@@ -464,6 +464,11 @@ class Level {
 		@barriers->AddBack(Barrier->New(400, 300, framework->AddRectangle(50, 120)));	
 		@barriers->AddBack(Barrier->New(1005, 200, framework->AddRectangle(50, 100)));
 
+		@barriers->AddBack(Barrier->New(300 * 2, 50, framework->AddRectangle(50, 80)));	
+		@barriers->AddBack(Barrier->New(600 * 2, 400, framework->AddRectangle(50, 140)));	
+		@barriers->AddBack(Barrier->New(400 * 2, 300, framework->AddRectangle(50, 120)));	
+		@barriers->AddBack(Barrier->New(1005, 200, framework->AddRectangle(50, 100)));
+
 		@player->SetLevel(@self, @enemies);
 		each(i : @enemies) {
 			@enemies->Get(i)->SetLevel(@self, @enemies);
