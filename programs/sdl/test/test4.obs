@@ -26,10 +26,11 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework->AddRectangle(30, 30), Color->New(255, 0, 0), 120, Game->SCREEN_HEIGHT / 2);
+			@player := Player->New(@framework->AddRectangle(16, 16), Color->New(255, 0, 0), 120, Game->SCREEN_HEIGHT / 2);
 			@enemies := Vector->New()<Enemy>;
-			each(i : 4) {
-				@enemies->AddBack(Enemy->New(@framework->AddRectangle(30, 30)));
+			each(i : 10) {
+				color := Color->New(Int->Random(0, 255), Int->Random(0, 255), 200);
+				@enemies->AddBack(Enemy->New(@framework->AddRectangle(16, 16), color));
 			};
 			@level := Level->New(@player, @enemies, @framework);
 
@@ -139,8 +140,9 @@ class Demo {
 class Enemy from Player {
 	@dist : Float[];
 
-	New(rect : Rectangle) {
-		Parent(rect, Color->New(255, 255, 255), 320, Game->SCREEN_HEIGHT / 4 + Int->Random(120, 300));
+	New(rect : Rectangle, color : Color) {
+
+		Parent(rect, color, 320, Game->SCREEN_HEIGHT / 4 + Int->Random(120, 300));
 		@dist := Float->New[4];
 	}
 
@@ -149,11 +151,12 @@ class Enemy from Player {
 	}
 
 	method : public : Update(player : Player)  ~ Nil {
+		#
 		# find "best" move
+		#
 		rect := GetRect();
 
-		# east/west
-		delta := Int->Random(6, 15);
+		delta := Int->Random(6, 12);
 		@dist[0] := Level->Distance(rect->GetCenterX() - delta, rect->GetCenterY(), player->GetRect());
 		@dist[1] := Level->Distance(rect->GetCenterX() + delta, rect->GetCenterY(), player->GetRect());
 		# north/south
@@ -167,13 +170,13 @@ class Enemy from Player {
 			};
 		};
 
+		#
 		# move east/west
+		#
 		if(shorest_index = 0) {
-#			GoEast();
 			@change_x := delta;
 		}
 		else if(shorest_index = 1) {
-#			GoWest();
 			@change_x := -1 * delta;
 		};
 		@acc_x->SetX(@change_x * 0.025);
@@ -182,41 +185,43 @@ class Enemy from Player {
 		@rect->AddX(@vel_x->GetX());
 		@acc_x->Zero();
 
-		# collisions
-		collides := Level->Collisions(@self, @barriers);
-		each(i : collides) {
+		# check east and west collisions
+		platforms := Level->Collisions(@self, @barriers);
+		each(i : platforms) {
 			# move east
-			platform := collides->Get(i);
+			platform := platforms->Get(i);
 			if(shorest_index = 0) {
-				SetRight(platform->GetLeft());
-#~
-				@acc_x->SetX(-5.0);
-				@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
-				@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
-				@rect->AddX(@vel_x->GetX());
-				@acc_x->Zero();
-~#				
+				@rect->SetRight(platform->GetLeft());
 			}
 			# moving west
 			else if(shorest_index = 1) {
 				@rect->SetLeft(platform->GetRight());
-#~
-				@acc_x->SetX(5.0);
-				@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
-				@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
-				@rect->AddX(@vel_x->GetX());
-				@acc_x->Zero();
-~#				
 			};
 		};
 
+		# check east and west collisions
+		enemies := Level->Collisions(@self, @enemies);
+		each(i : enemies) {
+			# move east
+			enemy := enemies->Get(i);
+			if(enemy <> @self) {
+				if(shorest_index = 0) {
+					@rect->SetRight(enemy->GetLeft());
+				}
+				# moving west
+				else if(shorest_index = 1) {
+					@rect->SetLeft(enemy->GetRight());
+				};
+			};
+		};
+
+		#
 		# move north/south
+		#
 		if(shorest_index = 2) {
-#			GoSouth();
 			@change_y := delta;
 		}
 		else if(shorest_index = 3) {
-#			GoNorth();
 			@change_y := -1 * delta;
 		};
 		@acc_y->SetY(@change_y * 0.025);
@@ -225,7 +230,7 @@ class Enemy from Player {
 		@rect->AddY(@vel_y->GetY());
 		@acc_y->Zero();
 
-		# check north and south bounds
+		# check top/bottom of screen
 		if(@rect->GetTop() < 0) {
 			@rect->SetTop(0);
 		};
@@ -234,31 +239,32 @@ class Enemy from Player {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
 		};
 
-		# collisions
-		each(i : @barriers) {
-			platform := @barriers->Get(i);
-			if(platform->Collides(@rect)) {
-				# moving south
+		# check north and south collisions
+		platforms := Level->Collisions(@self, @barriers);
+		each(i : platforms) {
+			# move east
+			platform := platforms->Get(i);
+			if(shorest_index = 2) {
+				@rect->SetBottom(platform->GetTop());
+			}
+			# moving west
+			else if(shorest_index = 3) {
+				@rect->SetTop(platform->GetBottom());
+			};
+		};
+
+		# check east and west collisions
+		enemies := Level->Collisions(@self, @enemies);
+		each(i : enemies) {
+			# move east
+			enemy := enemies->Get(i);
+			if(enemy <> @self) {
 				if(shorest_index = 2) {
-					@rect->SetBottom(platform->GetTop());
-#~
-					@acc_y->SetY(-5.0);
-					@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
-					@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
-					@rect->AddY(@vel_y->GetY());
-					@acc_y->Zero();
-~#					
+					@rect->SetBottom(enemy->GetTop());
 				}
-				# moving north
+				# moving west
 				else if(shorest_index = 3) {
-					@rect->SetTop(platform->GetBottom());
-#~
-					@acc_y->SetY(5.0);
-					@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
-					@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
-					@rect->AddY(@vel_y->GetY());
-					@acc_y->Zero();
-~#					
+					@rect->SetTop(enemy->GetBottom());
 				};
 			};
 		};
@@ -277,6 +283,7 @@ class Player {
 	@acc_y : Vector2;
 
 	@barriers : Vector<Barrier>;
+	@enemies : Vector<Enemy>;
 
 	New(rect : Rectangle, color : Color, start_x : Int, start_y : Int) {
 		@rect := rect;
@@ -312,8 +319,9 @@ class Player {
 		@rect->SetRight(x2);
 	}
 
-	method : public : SetLevel(level : Level)  ~ Nil {
+	method : public : SetLevel(level : Level, enemies : Vector<Enemy>)  ~ Nil {
 		@barriers := level->GetBarriers()<Barrier>;
+		@enemies := enemies;
 	}
 
 	method : public : ChangeEastWest()  ~ Int {
@@ -352,10 +360,11 @@ class Player {
 		@rect->AddX(@vel_x->GetX());
 		@acc_x->Zero();
 
-		collides := Level->Collisions(@self, @barriers);
-		each(i : collides) {
+		platforms := Level->Collisions(@self, @barriers);
+
+		each(i : platforms) {
 			# move east
-			platform := collides->Get(i);
+			platform := platforms->Get(i);
 			if(@vel_x->GetX() > 0) {
 				@rect->SetRight(platform->GetLeft());
 			}
@@ -456,21 +465,10 @@ class Level {
 		@barriers->AddBack(Barrier->New(400, 300, framework->AddRectangle(50, 120)));	
 		@barriers->AddBack(Barrier->New(1005, 200, framework->AddRectangle(50, 100)));
 
-		@player->SetLevel(@self);
+		@player->SetLevel(@self, @enemies);
 		each(i : @enemies) {
-			@enemies->Get(i)->SetLevel(@self);
+			@enemies->Get(i)->SetLevel(@self, @enemies);
 		};
-	}
-
-	function : Collides(player : Player, obstacles : Vector<Barrier>) ~ Bool {
-		each(i : obstacles) {
-			obstacle := obstacles->Get(i);
-			if(obstacle->Collides(player->GetRect())) {
-				return true;
-			};
-		};
-
-		return false;
 	}
 
 	function : Collisions(player : Player, obstacles : Vector<Barrier>) ~ Vector<Barrier> {
