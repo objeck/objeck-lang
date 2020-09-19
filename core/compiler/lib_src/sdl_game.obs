@@ -1173,6 +1173,29 @@ bundle Game.Framework {
 		}
 
 		#~
+		Calculates the distance between two points
+		@param x x-position
+		@param y y-position
+		@return distance between the two points
+		~#
+		function : Distance(x : Int, y : Int) ~ Int {
+			x_norm := x - GetCenterX();
+			y_norm := y - GetCenterY();
+			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
+		}
+		
+		#~
+		Calculates the distance between two points
+		@param pos position
+		@return distance between the two points
+		~#
+		function : Distance(pos : Position) ~ Int {
+			x_norm := pos->GetCenterX() - GetCenterX();
+			y_norm := pos->GetCenterY() - GetCenterY();
+			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
+		}
+
+		#~
 		Determines if position overlaps rectangle
 		@param pos position to test 
 		@return true of overlap, false otherwise
