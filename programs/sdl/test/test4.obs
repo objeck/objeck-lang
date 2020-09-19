@@ -21,16 +21,16 @@ class Demo {
 
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Scroll Test");
-		@framework->SetClearColor(Color->New(0, 0, 255));
+		@framework->SetClearColor(Color->New(0, 0, 120));
 	}
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework->AddRectangle(16, 16), Color->New(255, 0, 0), 120, Game->SCREEN_HEIGHT / 2);
+			@player := Player->New(@framework->AddRectangle(16, 16), Color->New(255, 0, 0), 320, Game->SCREEN_HEIGHT / 2);
 			@enemies := Vector->New()<Enemy>;
 			each(i : 10) {
 				color := Color->New(Int->Random(0, 255), Int->Random(0, 255), 200);
-				@enemies->AddBack(Enemy->New(@framework->AddRectangle(16, 16), color));
+				@enemies->AddBack(Enemy->New(i, @framework->AddRectangle(20, 20), color));
 			};
 			@level := Level->New(@player, @enemies, @framework);
 
@@ -140,9 +140,8 @@ class Demo {
 class Enemy from Player {
 	@dist : Float[];
 
-	New(rect : Rectangle, color : Color) {
-
-		Parent(rect, color, 320, Game->SCREEN_HEIGHT / 4 + Int->Random(120, 300));
+	New(id : Int, rect : Rectangle, color : Color) {
+		Parent(rect, color, 100, 10 + id * 40);
 		@dist := Float->New[4];
 	}
 
@@ -156,7 +155,7 @@ class Enemy from Player {
 		#
 		rect := GetRect();
 
-		delta := Int->Random(6, 12);
+		delta := Int->Random(8, 10);
 		@dist[0] := Level->Distance(rect->GetCenterX() - delta, rect->GetCenterY(), player->GetRect());
 		@dist[1] := Level->Distance(rect->GetCenterX() + delta, rect->GetCenterY(), player->GetRect());
 		# north/south
