@@ -8,7 +8,7 @@ make -f make/Makefile.32
 ./obc -src lib_src/gen_collect.obs -tar lib -opt s3 -dest ../lib/gen_collect.obl
 ./obc -src lib_src/misc.obs -lib gen_collect.obl -tar lib -opt s3 -dest ../lib/misc.obl
 ./obc -src lib_src/xml.obs -lib gen_collect.obl -tar lib -opt s3 -dest ../lib/xml.obl
-./obc -src lib_src/net.obs -tar lib -lib xml.obl,gen_collect.obl -opt s3 -dest ../lib/net.obl
+./obc -src lib_src/net.obs -tar lib -lib gen_collect.obl -opt s3 -dest ../lib/net.obl
 ./obc -src lib_src/rss.obs -tar lib -lib xml.obl,gen_collect.obl,net.obl -opt s3 -dest ../lib/rss.obl
 ./obc -src lib_src/json.obs -lib gen_collect.obl -tar lib -opt s3 -dest ../lib/json.obl
 ./obc -src lib_src/encrypt.obs -tar lib -opt s3 -dest ../lib/encrypt.obl
