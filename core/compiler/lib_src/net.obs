@@ -2,7 +2,6 @@ use System.IO.Net;
 use System.IO.File;
 use System.Time;
 use Collection.Generic;
-use Data.XML;
 
 #~
 Web client support (-lib net)
