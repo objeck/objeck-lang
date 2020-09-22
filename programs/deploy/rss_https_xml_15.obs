@@ -15,7 +15,7 @@ class RSS {
 			if(reader->IsOk()) {	
 				html := "<html><body>";
 				GetMetaData(html, reader->GetChannel());
-				GetPosts(html, reader->GetPosts());
+				GetPosts(html, reader->GetPosts()<RSSPost>);
 				html += "</body></html>";
 				if(args->Size() = 2) {
 					WriteHtml(html, args[1]);

@@ -18,7 +18,7 @@ class Test {
 		regex->ReplaceAll(string, " another ")->PrintLine();
 
 		regex := RegEx->New("((4\\.[0-3])|(2\\.[0-3]))");
-		found := regex->Find("Mozilla/4.0");
+		found := regex->Find("Mozilla/4.0")<String>;
 		each(i : found) {
 			found->Get(i)->PrintLine();
 		};
