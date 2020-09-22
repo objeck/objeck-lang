@@ -7041,7 +7041,21 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     }
                   }
                   else {
-                    ProcessError(static_cast<Expression*>(method_call), L"Invalid generic type '" + map_type->GetName() + L"'");
+                    const vector<Type*> from_concrete_types = concrete_types;
+                    const vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
+                    if(from_concrete_types.size() == to_concrete_types.size()) {
+                      for(size_t j = 0; j < from_concrete_types.size(); ++j) {
+                        Type* from_concrete_type = from_concrete_types[j];
+                        Type* to_concrete_type = to_concrete_types[j];
+                        if(from_concrete_type->GetName() != to_concrete_type->GetName()) {
+                          ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
+                                       from_concrete_type->GetName() + L"' to '" + to_concrete_type->GetName() + L"'");
+                        }
+                      }
+                    }
+                    else {
+                      ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+                    }
                   }
                 }
                 else {

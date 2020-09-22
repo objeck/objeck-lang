@@ -7,14 +7,13 @@ use Query.Structured;
 
 class Example {
 	function : Main(args : String[]) ~ Nil {
-		table := Table->FromFilesystem(".");
+		table := Finder->New(".");
 		if(table <> Nil) {
-			results := table->Query("from files");
+			results := table->FindFiles("from files")<String>;
 			if(results <> Nil) {
-				results->ToString()->PrintLine();
-			}
-			else {
-				table->GetError()->PrintLine();
+				each(i : results) {
+					results->Get(i)->PrintLine();
+				};
 			};
 		};
 	}

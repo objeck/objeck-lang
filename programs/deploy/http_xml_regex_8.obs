@@ -27,7 +27,7 @@ class RosettaRank {
 	function : GetLanguages() ~ Set<String> {
 		langs_xml := "";
 		client := HttpClient->New();
-		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
+		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml")<String>;
 		if(in = Nil) {
 			return Nil;
 		};
@@ -39,7 +39,7 @@ class RosettaRank {
 		parser := XmlParser->New(langs_xml);
 		if(parser->Parse()) {
 			# get first item
-			results := parser->FindElements("/api/query/categorymembers/cm");
+			results := parser->FindElements("/api/query/categorymembers/cm")<XmlElement>;
 			each(i : results) {
 				element := results->Get(i)->As(XmlElement);
 				name := element->GetAttribute("title")->GetValue();
@@ -57,7 +57,7 @@ class RosettaRank {
 	function : GetLanguageRank(langs : Set<String>) ~ Map<IntHolder, String> {
 		langs_counts := Map->New()<IntHolder, String>;
 		client := HttpClient->New();
-		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000");
+		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000")<String>;
 		each(i : html) {
 			lines := html->Get(i)->As(String);
 			html_elements := lines->Split("\n");
