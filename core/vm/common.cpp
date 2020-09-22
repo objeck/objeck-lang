@@ -3257,7 +3257,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       wchar_t* out = (wchar_t*)(array + 3);
       const long max = (long)array[2];
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), max);
+      wcsncpy_s(out, array[0], in.c_str(), max - 1);
 #else
       wcsncpy(out, in.c_str(), max);
 #endif
@@ -3942,7 +3942,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
       byte_buffer[read] = '\0';
       wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0], in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0], in.c_str(), in.size() - 1);
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif

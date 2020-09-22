@@ -962,38 +962,26 @@ bundle Web.HTTP {
 							};
 						}
 						while(line->Size() > 0);
+# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
-							buffer_size := 2048;
-							buffer := Char->New[buffer_size];
-
 							do {
 								size_line := "0x";
 								size_line->Append(socket->ReadString());
 								chunk_size := size_line->ToInt();
-								total_read := 0;
 								if(chunk_size > 0) {
-									do {
-										read := socket->ReadBuffer(0, buffer_size, buffer);
-										total_read += read;
-										if(read > 1) {
-											cr := buffer[read - 2];										
-											nl := buffer[read - 1];
-											
-											line : String;
-											if(cr = '\r' & nl = '\n') {
-												line := String->New(buffer, 0, read - 2);
-											}
-											else {
-												line := String->New(buffer, 0, read);
-											};
-											content->AddBack(line);
-										};		
-									}
-									while(total_read < chunk_size);
+									buffer := Byte->New[chunk_size];
+									for(i := 0; i < chunk_size; i += 1;) {
+										buffer[i] := socket->ReadByte();
+									};
+									line := String->New(buffer);
+									content->AddBack(line);
+									# read CRLF
+									socket->ReadByte(); 
+									socket->ReadByte();
 								}
 								else {
 									done := true;
@@ -1157,41 +1145,27 @@ bundle Web.HTTP {
 								};
 							};
 						}
-						while(line->Size() > 0);
-						
+						while(line->Size() > 0);						
 # IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
-							buffer_size := 2048;
-							buffer := Char->New[buffer_size];
-
 							do {
 								size_line := "0x";
 								size_line->Append(socket->ReadString());
 								chunk_size := size_line->ToInt();
-								total_read := 0;
 								if(chunk_size > 0) {
-									do {
-										read := socket->ReadBuffer(0, buffer_size, buffer);
-										total_read += read;
-										if(read > 1) {										
-											cr := buffer[read - 2];										
-											nl := buffer[read - 1];
-											
-											line : String;
-											if(cr = '\r' & nl = '\n') {	
-												line := String->New(buffer, 0, read - 2);
-											}
-											else {
-												line := String->New(buffer, 0, read);
-											};
-											content->AddBack(line);
-										};		
-									}
-									while(total_read < chunk_size);
+									buffer := Byte->New[chunk_size];
+									for(i := 0; i < chunk_size; i += 1;) {
+										buffer[i] := socket->ReadByte();
+									};
+									line := String->New(buffer);
+									content->AddBack(line);
+									# read CRLF
+									socket->ReadByte(); 
+									socket->ReadByte();
 								}
 								else {
 									done := true;
