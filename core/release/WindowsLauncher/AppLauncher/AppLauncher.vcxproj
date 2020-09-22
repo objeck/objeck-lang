@@ -24,6 +24,7 @@
     <ProjectGuid>{885d1c19-e679-41cd-bdec-81b3340dcc34}</ProjectGuid>
     <RootNamespace>AppLauncher</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>AppLauncher</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
