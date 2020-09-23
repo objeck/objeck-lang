@@ -3226,7 +3226,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
     else if(lib_method->GetReturn()->HasGenerics()) {
       const vector<Type*> concretate_types = method_call->GetConcreteTypes();
-      const vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
+      vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
       if(concretate_types.size() == generic_types.size()) {
         for(size_t i = 0; i < concretate_types.size(); ++i) {
           Type* concretate_type = concretate_types[i];
@@ -3236,11 +3236,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
           ResolveClassEnumType(generic_type);
 
           if(concretate_type->GetName() != generic_type->GetName()) {
-            ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_method->GetLibraryClass()->GetName() +
-                         L"' between generic types: '" + ReplaceSubstring(concretate_type->GetName(), L"#", L"->") +
-                         L"' and '" + ReplaceSubstring(generic_type->GetName(), L"#", L"->") + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + 
+                         lib_method->GetLibraryClass()->GetName() + L"' between generic types: '" + 
+                         ReplaceSubstring(concretate_type->GetName(), L"#", L"->") + L"' and '" + 
+                         ReplaceSubstring(generic_type->GetName(), L"#", L"->") + L"'");
           }
         }
+      }
+      else if(concretate_types.empty()) {
+        method_call->SetConcreteTypes(generic_types);
       }
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
@@ -7049,7 +7053,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   }
                   else {
                     const vector<Type*> from_concrete_types = concrete_types;
-                    const vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
+                    vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
                     if(from_concrete_types.size() == to_concrete_types.size()) {
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
                         Type* from_concrete_type = from_concrete_types[j];
@@ -7064,6 +7068,9 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                           }
                         }
                       }
+                    }
+                    else if(from_concrete_types.empty()) {
+                      method_call->SetConcreteTypes(to_concrete_types);
                     }
                     else {
                       ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
