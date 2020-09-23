@@ -7008,8 +7008,10 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
       if(is_rtrn) {
         Class* klass_generic = nullptr; LibraryClass* lib_klass_generic = nullptr;
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
+          vector<Type*> derived_concrete_types;
           const vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
+
             const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
@@ -7036,8 +7038,13 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     ResolveClassEnumType(concrete_type);
 
                     if(candidate_type->GetName() != concrete_type->GetName()) {
-                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
-                                   concrete_type->GetName() + L"' to '" + candidate_type->GetName() + L"'");
+                      if(lib_klass && lib_klass->GetGenericClass(candidate_type->GetName())) {
+                        derived_concrete_types.push_back(TypeFactory::Instance()->MakeType(concrete_type));
+                      }
+                      else {
+                        ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
+                                     concrete_type->GetName() + L"' to '" + candidate_type->GetName() + L"'");
+                      }
                     }
                   }
                   else {
@@ -7048,8 +7055,13 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                         Type* from_concrete_type = from_concrete_types[j];
                         Type* to_concrete_type = to_concrete_types[j];
                         if(from_concrete_type->GetName() != to_concrete_type->GetName()) {
-                          ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
-                                       from_concrete_type->GetName() + L"' to '" + to_concrete_type->GetName() + L"'");
+                          if(lib_klass && lib_klass->GetGenericClass(candidate_type->GetName())) {
+                            derived_concrete_types.push_back(TypeFactory::Instance()->MakeType(to_concrete_type));
+                          }
+                          else {
+                            ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
+                                         from_concrete_type->GetName() + L"' to '" + to_concrete_type->GetName() + L"'");
+                          }
                         }
                       }
                     }
@@ -7065,7 +7077,12 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
             }
           }
           
-          if(klass_generic && klass_generic->HasGenerics()) {
+          if(!derived_concrete_types.empty()) {
+            method_call->SetConcreteTypes(derived_concrete_types);
+            method_call->SetBaseType(TypeFactory::Instance()->MakeType(method_call->GetEvalType()));
+            method_call->GetEvalType()->SetGenerics(derived_concrete_types);
+          }
+          else if(klass_generic && klass_generic->HasGenerics()) {
             ValidateGenericConcreteMapping(candidate_types, klass_generic, static_cast<Expression*>(method_call));
             if(method_call->GetEvalType()) {
               method_call->GetEvalType()->SetGenerics(candidate_types);
