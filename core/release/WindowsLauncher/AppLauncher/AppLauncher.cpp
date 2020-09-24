@@ -409,6 +409,9 @@ BOOL InitEnvironment()
     pathText = L"set OBJECK_LIB_PATH=" + applicationPath + L"\\..\\lib";
     WriteLineToFile(cmdFile, pathText);
 
+    pathText = L"title Objeck Prompt";
+    WriteLineToFile(cmdFile, pathText);
+
     pathText = L"cd ..";
     WriteLineToFile(cmdFile, pathText);
 

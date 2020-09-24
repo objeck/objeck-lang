@@ -57,7 +57,7 @@ class RosettaRank {
 	function : GetLanguageRank(langs : Set<String>) ~ Map<IntHolder, String> {
 		langs_counts := Map->New()<IntHolder, String>;
 		client := HttpClient->New();
-		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000")<String>;
+		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=1000")<String>;
 		each(i : html) {
 			lines := html->Get(i)->As(String);
 			html_elements := lines->Split("\n");
