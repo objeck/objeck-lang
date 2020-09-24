@@ -500,10 +500,6 @@ namespace frontend {
       return base_type;
     }
 
-    void SetBaseType(Type* t) {
-      base_type = t;
-    }
-
     // used for contextual casting
     Type* GetEvalType() {
       return eval_type;
