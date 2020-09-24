@@ -32,7 +32,7 @@ class RosettaRank {
 			return Nil;
 		};
 		each(i : in) {
-			langs_xml += in->Get(i);
+			langs_xml += in->Get(i)->As(String);
 		};
 		
 		langs := Set->New()<String>;
@@ -59,7 +59,7 @@ class RosettaRank {
 		client := HttpClient->New();
 		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000")<String>;
 		each(i : html) {
-			lines := html->Get(i);
+			lines := html->Get(i)->As(String);
 			html_elements := lines->Split("\n");
 			each(j : html_elements) {
 				element := html_elements[j];					
