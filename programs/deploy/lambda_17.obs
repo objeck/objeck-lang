@@ -49,7 +49,7 @@ class Test {
 		map->Insert(9, "Nine");
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
 		
-		limit := map->GetKeys()<IntHolder>->Limit(2)<IntHolder>;
+		limit := map->GetKeys()->Limit(2)<IntHolder>;
 		limit->Size()->PrintLine();
 		each(i : limit) {
 			limit->Get(i)->PrintLine();
