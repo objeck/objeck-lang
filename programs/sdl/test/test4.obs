@@ -113,6 +113,10 @@ class Demo {
 				label Scancode->SDL_SCANCODE_DOWN: {
 					@player->GoSouth();
 				}
+
+				label Scancode->SDL_SCANCODE_SPACE: {
+					@player->Shot(@framework);
+				}
 			};
 		}
 		else if(e->GetType() = EventType->SDL_KEYUP) {
@@ -284,6 +288,8 @@ class Player {
 	@barriers : Vector<Barrier>;
 	@enemies : Vector<Enemy>;
 
+	@shots : List<Missle>;
+
 	New(rect : Rectangle, color : Color, start_x : Int, start_y : Int) {
 		@rect := rect;
 		@rect->SetFill(true);
@@ -296,6 +302,12 @@ class Player {
 
 		@vel_y := Vector2->New();
 		@acc_y := Vector2->New();
+
+		@shots := List->New()<Missle>;
+	}
+
+	method : public : Shot(framework : GameFramework) ~ Nil {
+		@shots->AddBack(Missle->New(@rect->GetCenterX(), @rect->GetCenterY(), framework->AddRectangle(4, 4)));
 	}
 
 	method : public : GetRect() ~ Rectangle {
@@ -401,10 +413,22 @@ class Player {
 					@rect->SetTop(platform->GetBottom());
 				};
 			};
-		};				
+		};
+
+		@shots->Rewind();
+		while(@shots->More()) {
+			@shots->Get()->Add(2);
+			@shots->Next();
+		};
 	}
 
 	method : public : Draw()  ~ Nil {
+		@shots->Rewind();
+		while(@shots->More()) {
+			@shots->Get()->Draw();
+			@shots->Next();
+		};
+
 		@rect->Render();
 	}
 }
@@ -447,6 +471,47 @@ class Barrier {
 		return @rect->GetPosition()->Overlaps(rect->GetPosition());
 	}
 }
+
+class Missle {
+	@rect : Rectangle;
+
+	New(x : Int, y : Int, rect : Rectangle) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(255, 255, 255));
+		@rect->Set(x, y);
+	}
+
+	method : public : Add(i : Int)  ~ Nil {
+		@rect->AddX(i);
+		@rect->AddY(i);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
 
 class Level {
 	@player : Player;
