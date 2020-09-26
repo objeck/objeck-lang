@@ -596,7 +596,7 @@ bundle Collection.Generic {
 			 		@head := @cursor;
 			 	}
 			 	else if(@cursor = @tail) {
-			 		@cursor := @cursor->GetNext();
+			 		@cursor := @cursor->GetPrevious();
 			 		@tail := @cursor;
 			 	}
 			 	else {
@@ -976,7 +976,7 @@ bundle Collection.Generic {
 			 		@head := @cursor;
 			 	}
 			 	else if(@cursor = @tail) {
-			 		@cursor := @cursor->GetNext();
+			 		@cursor := @cursor->GetPrevious();
 			 		@tail := @cursor;
 			 	}
 			 	else {
