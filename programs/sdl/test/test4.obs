@@ -168,6 +168,10 @@ class Enemy from Player {
 		@rect->AddX(x);
 	}
 
+	method : public : Explode() ~ Nil {
+		"--- Boom ---"->PrintLine();
+	}
+
 	method : public : Update(player : Player)  ~ Nil {
 		#
 		# find "best" move
@@ -449,7 +453,11 @@ class Player {
 				@missles->Remove();
 				"--- Remove ---"->PrintLine();
 			}
-			else if(<>missle->Collides(@enemies, @barriers)) {
+			else if(missle->Collides(@enemies, @barriers)) {
+				@missles->Remove();
+				"--- Remove ---"->PrintLine();
+			}
+			else {
 				missle->Add(2);
 			};
 
@@ -582,7 +590,8 @@ class Missle {
 		while(enemies->More()) {
 			enemy := enemies->Get();
 			if(enemy->Collides(@rect)) {
-				"--- Boom ---"->PrintLine();
+				enemy->Explode();
+
 			};
 			enemies->Next();
 		};
@@ -590,7 +599,7 @@ class Missle {
 		each(i : barriers) {
 			barrier := barriers->Get(i);
 			if(barrier->Collides(@rect)) {
-				"--- Hit ---"->PrintLine();
+				return true;
 			};
 		};
 
@@ -643,6 +652,19 @@ class Level {
 			};
 		};
 
+		return collides;
+	}
+
+	function : Collisions(player : Player, enemies : Vector<Enemy>) ~ Vector<Enemy> {
+		collides := Vector->New()<Enemy>;
+
+		each(i : enemies) {
+			enemy := enemies->Get(i);
+			if(enemy->Collides(player->GetRect())) {
+				collides->AddBack(enemy);
+			};
+		};
+		
 		return collides;
 	}
 
