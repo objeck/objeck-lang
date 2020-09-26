@@ -528,7 +528,7 @@ class Missle {
 			};
 		}
 		else {
-			if(@is_up) {
+			if(<>@is_up) {
 				@rect->AddX(i);
 				@rect->AddY(-i / 2);
 			}
@@ -560,6 +560,13 @@ class Missle {
 	}
 
 	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		each(i : barriers) {
+			platform := barriers->Get(i);
+			if(platform->Collides(@rect)) {
+				"--- Hit ---"->PrintLine();
+			};
+		};
+
 		return false;
 	}
 
