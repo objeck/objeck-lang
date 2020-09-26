@@ -61,7 +61,7 @@ class Demo {
 					diff := @player->GetRight() - 500;
 					@player->SetRight(500);
 					if(shift > -1500) {
-						@level->ShiftWorld(-1 * diff);
+						@level->ShiftWorld(-diff);
 					};
 				};
 
@@ -184,7 +184,7 @@ class Enemy from Player {
 			@change_x := delta;
 		}
 		else if(shorest_index = 1) {
-			@change_x := -1 * delta;
+			@change_x := -delta;
 		};
 		@acc_x->SetX(@change_x * 0.025);
 		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
@@ -229,7 +229,7 @@ class Enemy from Player {
 			@change_y := delta;
 		}
 		else if(shorest_index = 3) {
-			@change_y := -1 * delta;
+			@change_y := -delta;
 		};
 		@acc_y->SetY(@change_y * 0.025);
 		@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
@@ -292,7 +292,7 @@ class Player {
 	@barriers : Vector<Barrier>;
 	@enemies : Vector<Enemy>;
 
-	@shots : List<Missle>;
+	@missles : List<Missle>;
 	@calc_x : Float;
 
 	New(rect : Rectangle, color : Color, start_x : Int, start_y : Int) {
@@ -308,11 +308,11 @@ class Player {
 		@vel_y := Vector2->New();
 		@acc_y := Vector2->New();
 
-		@shots := List->New()<Missle>;
+		@missles := List->New()<Missle>;
 	}
 
 	method : public : Shot(framework : GameFramework, is_up : Bool) ~ Nil {
-		@shots->AddBack(Missle->New(is_up, @calc_x, @rect->GetCenterX(), @rect->GetCenterY(), framework->AddRectangle(4, 4)));
+		@missles->AddBack(Missle->New(is_up, @calc_x, @rect->GetCenterX(), @rect->GetCenterY(), framework->AddRectangle(4, 4)));
 	}
 
 	method : public : GetRect() ~ Rectangle {
@@ -422,32 +422,32 @@ class Player {
 		};
 
 		# TODO: check again barriers
-		@shots->Rewind();
-		while(@shots->More()) {
-			shot := @shots->Get();
+		@missles->Rewind();
+		while(@missles->More()) {
+			missle := @missles->Get();
 
-			if(shot->GetTop() < 0) {
-				@shots->Remove();
+			if(missle->GetTop() < 0) {
+				@missles->Remove();
 				"--- Remove ---"->PrintLine();
 			}
-			else if(shot->GetBottom() > Game->SCREEN_HEIGHT) {
-				@shots->Remove();
+			else if(missle->GetBottom() > Game->SCREEN_HEIGHT) {
+				@missles->Remove();
 				"--- Remove ---"->PrintLine();
 			}
-			else {
-				shot->Add(2);
+			else if(<>missle->Collides(@enemies, @barriers)) {
+				missle->Add(2);
 			};
 
 			# update
-			@shots->Next();
+			@missles->Next();
 		};
 	}
 
 	method : public : Draw()  ~ Nil {
-		@shots->Rewind();
-		while(@shots->More()) {
-			@shots->Get()->Draw();
-			@shots->Next();
+		@missles->Rewind();
+		while(@missles->More()) {
+			@missles->Get()->Draw();
+			@missles->Next();
 		};
 
 		@rect->Render();
@@ -519,18 +519,18 @@ class Missle {
 
 		if(@is_left) {
 			if(@is_up) {
-				@rect->AddX(-1 * i);
+				@rect->AddX(-i);
 				@rect->AddY(i / 2);
 			}
 			else {
-				@rect->AddX(-1 * i);
-				@rect->AddY(-1 * i / 2);
+				@rect->AddX(-i);
+				@rect->AddY(-i / 2);
 			};
 		}
 		else {
 			if(@is_up) {
 				@rect->AddX(i);
-				@rect->AddY(-1 * i / 2);
+				@rect->AddY(-i / 2);
 			}
 			else {
 				@rect->AddX(i);
@@ -559,7 +559,11 @@ class Missle {
 		@rect->Render();
 	}
 
-	method : public : Collides(rect : Rectangle) ~ Bool {
+	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		return false;
+	}
+
+	method : Collides(rect : Rectangle) ~ Bool {
 		return @rect->GetPosition()->Overlaps(rect->GetPosition());
 	}
 }

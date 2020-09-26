@@ -1,17 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := Collection.Generic.Vector->New()<IntHolder>;
-		a->AddBack(3);
-		a->AddBack(11);
-		a->AddBack(45);
-		a->AddBack(101);
-
-		reverse(i : 'a') {
-			i->ToChar()->PrintLine();
-		};
-
-		reverse(i : 5.3) {
-			i->PrintLine();
-		};
+		a := 13;
+		b := -a;
+		b->PrintLine();
 	}
 }
