@@ -115,11 +115,11 @@ class Demo {
 				}
 
 				label Scancode->SDL_SCANCODE_UP: {
-					@player->Shot(@framework, true);
+					@player->Shot(@framework, false);
 				}
 
 				label Scancode->SDL_SCANCODE_DOWN: {
-					@player->Shot(@framework, false);
+					@player->Shot(@framework, true);
 				}
 			};
 		}
@@ -421,9 +421,24 @@ class Player {
 			};
 		};
 
+		# TODO: check again barriers
 		@shots->Rewind();
 		while(@shots->More()) {
-			@shots->Get()->Add(2);
+			shot := @shots->Get();
+
+			if(shot->GetTop() < 0) {
+				@shots->Remove();
+				"--- Remove ---"->PrintLine();
+			}
+			else if(shot->GetBottom() > Game->SCREEN_HEIGHT) {
+				@shots->Remove();
+				"--- Remove ---"->PrintLine();
+			}
+			else {
+				shot->Add(2);
+			};
+
+			# update
 			@shots->Next();
 		};
 	}
@@ -503,25 +518,23 @@ class Missle {
 		};
 
 		if(@is_left) {
-			"--- Left -- "->PrintLine();
 			if(@is_up) {
 				@rect->AddX(-1 * i);
-				@rect->AddY(i);
+				@rect->AddY(i / 2);
 			}
 			else {
 				@rect->AddX(-1 * i);
-				@rect->AddY(-1 * i);
+				@rect->AddY(-1 * i / 2);
 			};
 		}
 		else {
-			"--- Left -- "->PrintLine();
 			if(@is_up) {
 				@rect->AddX(i);
-				@rect->AddY(-1 * i);
+				@rect->AddY(-1 * i / 2);
 			}
 			else {
 				@rect->AddX(i);
-				@rect->AddY(i);
+				@rect->AddY(i / 2);
 			};
 		};
 	}
