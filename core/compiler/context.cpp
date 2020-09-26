@@ -889,7 +889,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
         main_found = true;
       }
 
-      if(main_found && (is_lib | is_web)) {
+      if(main_found && (is_lib || is_web)) {
         ProcessError(method, L"Libraries and web applications may not define a 'Main(args)' function");
       }
     }
@@ -906,7 +906,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
           web_found = true;
         }
 
-        if(web_found && (is_lib | main_found)) {
+        if(web_found && (is_lib || main_found)) {
           ProcessError(method, L"Web applications may not define a 'Main(args)' function or be compiled as a library");
         }
       }
@@ -5617,7 +5617,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
   
-  if(current_class->HasGenerics() | left->HasGenerics() | right->HasGenerics()) {
+  if(current_class->HasGenerics() || left->HasGenerics() || right->HasGenerics()) {
     CheckGenericEqualTypes(left, right, expression);
   }
   
