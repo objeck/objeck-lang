@@ -2683,6 +2683,12 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           if(method_type->GetType() == CLASS_TYPE) {
             // calculate exact match
             if(IsClassEnumParameterMatch(calling_type, method_type)) {
+              if(calling_type->HasGenerics() || method_type->HasGenerics()) {
+                if(CheckGenericEqualTypes(calling_type, method_type, calling_param, true)) {
+                  return 0;
+                }
+                return -1;
+              }
               return 0;
             }
             // calculate relative match
@@ -5834,24 +5840,27 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   }
 }
 
-void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression* expression)
+bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only)
 {
   // note, enums and consts checked elsewhere
   Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
   if(!GetProgramLibraryClass(left, left_klass, lib_left_klass) && !current_class->GetGenericClass(left->GetName())) {
-    return;
+    return false;
   }
 
   // note, enums and consts checked elsewhere
   Class* right_klass = nullptr; LibraryClass* lib_right_klass = nullptr;
   if(!GetProgramLibraryClass(right, right_klass, lib_right_klass) && !current_class->GetGenericClass(right->GetName())) {
-    return;
+    return false;
   }
 
   if(left_klass == right_klass && lib_left_klass == lib_right_klass) {
     const vector<Type*> left_generic_types = left->GetGenerics();
     const vector<Type*> right_generic_types = right->GetGenerics();
     if(left_generic_types.size() != right_generic_types.size()) {
+      if(check_only) {
+        return false;
+      }
       ProcessError(expression, L"Concrete size mismatch");
     }
     else {
@@ -5905,11 +5914,16 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
         const wstring left_type_name = left_generic_type->GetName();
         const wstring right_type_name = right_generic_type->GetName();
         if(left_type_name != right_type_name) {
+          if(check_only) {
+            return false;
+          }
           ProcessError(expression, L"Cannot map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
   }
+
+  return true;
 }
 
 /****************************
