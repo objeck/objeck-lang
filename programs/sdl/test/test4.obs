@@ -12,7 +12,7 @@ use Collection.Generic;
 class Demo {
 	@framework : GameFramework;
 	@player : Player;
-	@enemies : Vector<Enemy>;
+	@enemies : List<Enemy>;
 	@level : Level;
 
 	function : Main(args : String[]) ~ Nil {
@@ -27,7 +27,7 @@ class Demo {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(16, 16), Color->New(255, 0, 0), 1500, Game->SCREEN_HEIGHT / 2);
-			@enemies := Vector->New()<Enemy>;
+			@enemies := List->New()<Enemy>;
 			each(i : 10) {
 				color := Color->New(Int->Random(0, 255), Int->Random(0, 255), 200);
 				@enemies->AddBack(Enemy->New(i, @framework->AddRectangle(20, 20), color));
@@ -51,8 +51,11 @@ class Demo {
 
 				# update
 				@player->Update();
-				each(i : @enemies) {
-					@enemies->Get(i)->Update(@player);
+
+				@enemies->Rewind();
+				while(@enemies->More()) {
+					@enemies->Get()->Update(@player);
+					@enemies->Next();
 				};
 				@level->Update();
 
@@ -76,8 +79,11 @@ class Demo {
 				
 				# draw
 				@player->Draw();
-				each(i : @enemies) {
-					@enemies->Get(i)->Draw();
+				
+				@enemies->Rewind();
+				while(@enemies->More()) {
+					@enemies->Get()->Draw();
+					@enemies->Next();
 				};
 				@level->Draw();
 
@@ -266,7 +272,7 @@ class Enemy from Player {
 		};
 
 		# check east and west collisions
-		enemies := Level->Collisions(@self, @enemies);
+		enemies := Level->Collisions(@self, @barriers);
 		each(i : enemies) {
 			# move east
 			enemy := enemies->Get(i);
@@ -295,7 +301,7 @@ class Player {
 	@acc_y : Vector2;
 
 	@barriers : Vector<Barrier>;
-	@enemies : Vector<Enemy>;
+	@enemies : List<Enemy>;
 
 	@missles : List<Missle>;
 	@calc_x : Float;
@@ -344,7 +350,7 @@ class Player {
 		@rect->SetRight(x2);
 	}
 
-	method : public : SetLevel(level : Level, enemies : Vector<Enemy>)  ~ Nil {
+	method : public : SetLevel(level : Level, enemies : List<Enemy>)  ~ Nil {
 		@barriers := level->GetBarriers()<Barrier>;
 		@enemies := enemies;
 	}
@@ -598,11 +604,11 @@ class Missle {
 
 class Level {
 	@player : Player;
-	@enemies : Vector<Enemy>;
+	@enemies : List<Enemy>;
 	@barriers : Vector<Barrier>;
 	@shift_x : Int;
 
-	New(player : Player, enemies : Vector<Enemy>, framework : GameFramework) {
+	New(player : Player, enemies : List<Enemy>, framework : GameFramework) {
 		@player := player;
 		@enemies := enemies;
 
@@ -618,8 +624,11 @@ class Level {
 		@barriers->AddBack(Barrier->New(800 * 2, 200, framework->AddRectangle(50, 100)));
 
 		@player->SetLevel(@self, @enemies);
-		each(i : @enemies) {
-			@enemies->Get(i)->SetLevel(@self, @enemies);
+
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			@enemies->Get()->SetLevel(@self, @enemies);
+			@enemies->Next();
 		};
 	}
 
