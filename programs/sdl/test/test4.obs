@@ -204,8 +204,7 @@ class Enemy from Player {
 		@acc_x->Zero();
 
 		# check east and west collisions
-		foo : Vector<Enemy>;
-		platforms := Level->Collisions(@self, foo);
+		platforms := Level->Collisions(@self, @barriers);
 		each(i : platforms) {
 			# move east
 			barrier := platforms->Get(i);
@@ -219,7 +218,7 @@ class Enemy from Player {
 		};
 
 		# check east and west collisions
-		enemies := Level->Collisions(@self, foo);
+		enemies := Level->Collisions(@self, @barriers);
 		each(i : enemies) {
 			# move east
 			enemy := enemies->Get(i);
@@ -634,18 +633,17 @@ class Level {
 		};
 	}
 
-	function : Collisions(player : Player, obstacles : Vector<Enemy>) ~ Vector<Barrier> {
-#~		
-		collides := List->New()<Barrier>;
+	function : Collisions(player : Player, obstacles : Vector<Barrier>) ~ Vector<Barrier> {
+		collides := Vector->New()<Barrier>;
+
 		each(i : obstacles) {
 			obstacle := obstacles->Get(i);
 			if(obstacle->Collides(player->GetRect())) {
 				collides->AddBack(obstacle);
 			};
 		};
-~#
 
-		return Nil;
+		return collides;
 	}
 
 	method : public : GetShiftX() ~ Int {
@@ -662,8 +660,10 @@ class Level {
 			missles->Next();
 		};
 		
-		each(i : @enemies) {
+		@enemies->Rewind();
+		while(@enemies->More()) {
 			@enemies->Get()->AddX(shift_x);
+			@enemies->Next();
 		};
 
 		each(i : @barriers) {
