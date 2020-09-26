@@ -5611,7 +5611,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
   
-  if(current_class->HasGenerics()) {
+  if(current_class->HasGenerics() | left->HasGenerics() | right->HasGenerics()) {
     CheckGenericEqualTypes(left, right, expression);
   }
   
@@ -5905,7 +5905,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
         const wstring left_type_name = left_generic_type->GetName();
         const wstring right_type_name = right_generic_type->GetName();
         if(left_type_name != right_type_name) {
-          ProcessError(expression, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          ProcessError(expression, L"Cannot map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
