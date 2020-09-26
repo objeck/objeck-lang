@@ -3997,7 +3997,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   }
   
   // handle generics, update entry
-  if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry()) {
+  if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry() && variable->GetEntry()->GetType()) {
     const vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
     const vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
     

@@ -578,12 +578,13 @@ class Missle {
 		@rect->Render();
 	}
 
-	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
-		each(i : enemies) {
-			enemy := enemies->Get(i);
+	method : public : Collides(enemies : List<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		while(enemies->More()) {
+			enemy := enemies->Get();
 			if(enemy->Collides(@rect)) {
 				"--- Boom ---"->PrintLine();
 			};
+			enemies->Next();
 		};
 
 		each(i : barriers) {
@@ -632,16 +633,18 @@ class Level {
 		};
 	}
 
-	function : Collisions(player : Player, obstacles : Vector<Barrier>) ~ Vector<Barrier> {
-		collides := Vector->New()<Barrier>;
+	function : Collisions(player : Player, obstacles : List<Enemy>) ~ List<Enemy> {
+		collides := List->New()<Barrier>;
 
+#~
 		each(i : obstacles) {
 			obstacle := obstacles->Get(i);
 			if(obstacle->Collides(player->GetRect())) {
 				collides->AddBack(obstacle);
 			};
 		};
-
+~#
+		
 		return collides;
 	}
 
