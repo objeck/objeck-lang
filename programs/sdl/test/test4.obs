@@ -154,6 +154,10 @@ class Enemy from Player {
 		@dist := Float->New[4];
 	}
 
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+
 	method : public : AddX(x : Int)  ~ Nil {
 		@rect->AddX(x);
 	}
@@ -569,6 +573,13 @@ class Missle {
 	}
 
 	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		each(i : enemies) {
+			enemy := enemies->Get(i);
+			if(enemy->Collides(@rect)) {
+				"--- Boom ---"->PrintLine();
+			};
+		};
+
 		each(i : barriers) {
 			barrier := barriers->Get(i);
 			if(barrier->Collides(@rect)) {
