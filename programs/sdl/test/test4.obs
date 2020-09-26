@@ -98,43 +98,47 @@ class Demo {
 	method : public : ProcessInput(e : Event) ~ Nil {
 		if(e->GetType() = EventType->SDL_KEYDOWN) {
 			select(e->GetKey()->GetKeysym()->GetScancode()) {		
-				label Scancode->SDL_SCANCODE_LEFT: {
+				label Scancode->SDL_SCANCODE_A: {
 					@player->GoWest();
 				}
 
-				label Scancode->SDL_SCANCODE_RIGHT: {
+				label Scancode->SDL_SCANCODE_D: {
 					@player->GoEast();
 				}
 
-				label Scancode->SDL_SCANCODE_UP: {
+				label Scancode->SDL_SCANCODE_W: {
 					@player->GoNorth();
 				}
 
-				label Scancode->SDL_SCANCODE_DOWN: {
+				label Scancode->SDL_SCANCODE_S: {
 					@player->GoSouth();
 				}
 
-				label Scancode->SDL_SCANCODE_SPACE: {
-					@player->Shot(@framework);
+				label Scancode->SDL_SCANCODE_UP: {
+					@player->Shot(@framework, true);
+				}
+
+				label Scancode->SDL_SCANCODE_DOWN: {
+					@player->Shot(@framework, false);
 				}
 			};
 		}
 		else if(e->GetType() = EventType->SDL_KEYUP) {
 		   	code := e->GetKey()->GetKeysym()->GetScancode();
 		   	
-		   	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeEastWest() < 0) {
+		   	if(code = Scancode->SDL_SCANCODE_A & @player->ChangeEastWest() < 0) {
 		   		@player->Stop();
 			};
 
-			if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeEastWest() > 0) {
+			if(code = Scancode->SDL_SCANCODE_D & @player->ChangeEastWest() > 0) {
 				@player->Stop();
 			};
 
-			if(code = Scancode->SDL_SCANCODE_UP & @player->ChangeNorthSouth() < 0) {
+			if(code = Scancode->SDL_SCANCODE_W & @player->ChangeNorthSouth() < 0) {
 		   		@player->Stop();
 			};
 
-			if(code = Scancode->SDL_SCANCODE_DOWN & @player->ChangeNorthSouth() > 0) {
+			if(code = Scancode->SDL_SCANCODE_S & @player->ChangeNorthSouth() > 0) {
 				@player->Stop();
 			};
 		};
@@ -289,6 +293,7 @@ class Player {
 	@enemies : Vector<Enemy>;
 
 	@shots : List<Missle>;
+	@calc_x : Float;
 
 	New(rect : Rectangle, color : Color, start_x : Int, start_y : Int) {
 		@rect := rect;
@@ -306,8 +311,8 @@ class Player {
 		@shots := List->New()<Missle>;
 	}
 
-	method : public : Shot(framework : GameFramework) ~ Nil {
-		@shots->AddBack(Missle->New(@rect->GetCenterX(), @rect->GetCenterY(), framework->AddRectangle(4, 4)));
+	method : public : Shot(framework : GameFramework, is_up : Bool) ~ Nil {
+		@shots->AddBack(Missle->New(is_up, @calc_x, @rect->GetCenterX(), @rect->GetCenterY(), framework->AddRectangle(4, 4)));
 	}
 
 	method : public : GetRect() ~ Rectangle {
@@ -368,7 +373,8 @@ class Player {
 		@acc_x->SetX(@change_x * 0.195);
 		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
 		@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
-		@rect->AddX(@vel_x->GetX());
+		@calc_x := @vel_x->GetX();
+		@rect->AddX(@calc_x);
 		@acc_x->Zero();
 
 		platforms := Level->Collisions(@self, @barriers);
@@ -474,17 +480,50 @@ class Barrier {
 
 class Missle {
 	@rect : Rectangle;
+	@is_left : Bool;
+	@is_up : Bool;
+	@vel_x : Float;
 
-	New(x : Int, y : Int, rect : Rectangle) {
+	New(is_up : Bool, vel_x : Float, x : Int, y : Int, rect : Rectangle) {
+		@is_up := is_up;
+		@vel_x := vel_x;
 		@rect := rect;
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(255, 255, 255));
 		@rect->Set(x, y);
 	}
 
+	# TODO: missle is out-of-range
 	method : public : Add(i : Int)  ~ Nil {
-		@rect->AddX(i);
-		@rect->AddY(i);
+		if(@vel_x < 0.0001) {
+			@is_left := true;
+		}
+		else if(@vel_x > 0.0001) {
+			@is_left := false;
+		};
+
+		if(@is_left) {
+			"--- Left -- "->PrintLine();
+			if(@is_up) {
+				@rect->AddX(-1 * i);
+				@rect->AddY(i);
+			}
+			else {
+				@rect->AddX(-1 * i);
+				@rect->AddY(-1 * i);
+			};
+		}
+		else {
+			"--- Left -- "->PrintLine();
+			if(@is_up) {
+				@rect->AddX(i);
+				@rect->AddY(-1 * i);
+			}
+			else {
+				@rect->AddX(i);
+				@rect->AddY(i);
+			};
+		};
 	}
 
 	method : public : GetLeft()  ~ Int {
