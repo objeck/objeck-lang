@@ -427,7 +427,7 @@ class Player {
 				@rect->SetRight(barrier->GetLeft());
 			}
 			# moving west
-			else if(@vel_x->GetX() < 0) {
+			else if(@vel_x->GetX() <= 0) {
 				@rect->SetLeft(barrier->GetRight());
 			};
 		};
@@ -440,7 +440,7 @@ class Player {
 		@acc_y->Zero();
 
 		# check north and south bounds
-		if(@rect->GetTop() < 0) {
+		if(@rect->GetTop() <= 0) {
 			@rect->SetTop(0);
 		};
 
@@ -456,17 +456,17 @@ class Player {
 					@rect->SetBottom(barrier->GetTop());
 				}
 				# moving north
-				else if(@vel_y->GetY() < 0) {
+				else if(@vel_y->GetY() <= 0) {
 					@rect->SetTop(barrier->GetBottom());
 				};
 			};
 		};
 
-		iter := @missles->GetForwardIterator()<Missle>;
+		iter := @missles->ForwardIterator()<Missle>;
 		while(iter->More()) {
 			missle := iter->Get()<Missle>;
 
-			if(missle->GetTop() < 0) {
+			if(missle->GetTop() <= 0) {
 				iter->Remove();
 			}
 			else if(missle->GetBottom() > Game->SCREEN_HEIGHT) {
@@ -476,7 +476,7 @@ class Player {
 				iter->Remove();
 			}
 			else {
-				missle->Add(2);
+				missle->Add(4);
 			};
 
 			# update
@@ -485,7 +485,7 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		iter := @missles->GetForwardIterator()<Missle>;
+		iter := @missles->ForwardIterator()<Missle>;
 		while(iter->More()) {
 			iter->Get()->Draw();
 			iter->Next();
@@ -557,7 +557,7 @@ class Missle {
 		if(@vel_x < 0.00001) {
 			if(@is_up) {
 				@rect->AddX(-i);
-				@rect->AddY(i);
+				@rect->AddY(i / 2);
 			}
 			else {
 				@rect->AddX(-i);
@@ -681,7 +681,7 @@ class Level {
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 
-		iter := @player->GetMissles()->GetForwardIterator()<Missle>;
+		iter := @player->GetMissles()->ForwardIterator()<Missle>;
 		while(iter->More()) {
 			iter->Get()->AddX(shift_x);
 			iter->Next();
