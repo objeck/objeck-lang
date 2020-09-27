@@ -598,7 +598,7 @@ class Missle {
 			enemy := enemies->Get(i);
 			if(enemy->Collides(@rect)) {
 				enemy->Explode();
-
+				return true;
 			};
 		};
 
