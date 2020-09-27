@@ -1994,7 +1994,6 @@ bundle Collection {
 				@head->SetPrevious(node);
 				node->SetNext(@head);
 				@head := node;
-				@cursor := @head;
 			};
 			@size += 1;
 		}
@@ -2247,7 +2246,6 @@ bundle Collection {
 				@head->SetPrevious(node);
 				node->SetNext(@head);
 				@head := node;
-				@cursor := @head;
 			};
 			@size += 1;
 		}

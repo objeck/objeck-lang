@@ -383,7 +383,6 @@ bundle Collection.Generic {
 				@head->SetPrevious(node);
 				node->SetNext(@head);
 				@head := node;
-				@cursor := @head;
 			};
 			@size += 1;
 		}
@@ -866,7 +865,6 @@ bundle Collection.Generic {
 				@head->SetPrevious(node);
 				node->SetNext(@head);
 				@head := node;
-				@cursor := @head;
 			};
 			@size += 1;
 		}
