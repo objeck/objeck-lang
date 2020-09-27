@@ -465,7 +465,7 @@ class Player {
 		iter := @missles->GetForwardIterator()<Missle>;
 		while(iter->More()) {
 			missle := iter->Get()<Missle>;
-
+			
 			if(missle->GetTop() < 0) {
 				iter->Remove();
 			}
