@@ -540,7 +540,6 @@ class Barrier {
 
 class Missle {
 	@rect : Rectangle;
-	@is_left : Bool;
 	@is_up : Bool;
 	@vel_x : Float;
 
@@ -560,13 +559,6 @@ class Missle {
 	# TODO: missle is out-of-range
 	method : public : Add(i : Int)  ~ Nil {
 		if(@vel_x < 0.00001) {
-			@is_left := true;
-		}
-		else if(@vel_x > 0.00001) {
-			@is_left := false;
-		};
-
-		if(@is_left) {
 			if(@is_up) {
 				@rect->AddX(-i);
 				@rect->AddY(i / 2);
@@ -576,7 +568,7 @@ class Missle {
 				@rect->AddY(-i / 2);
 			};
 		}
-		else {
+		else if(@vel_x > 0.00001) {
 			if(<>@is_up) {
 				@rect->AddX(i);
 				@rect->AddY(-i / 2);
