@@ -326,6 +326,104 @@ bundle Collection.Generic {
 	}
 
 	#~
+	Forward iterator of comparables
+	~#
+	class CompareForwardIterator<H : Compare> {
+		@node : CompareListNode<H>;
+		@list : CompareList<H>;
+		
+		New(node : CompareListNode<H>, list : CompareList<H>) {
+			@node := node;
+			@list := list;
+		}
+
+		#~
+		Advances the pointer
+		~#
+		method : public : Next() ~ Nil {
+			if(@node <> Nil) {
+				@node := @node->GetNext();
+			};
+		}
+
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
+		method : public : More() ~ Bool {
+			if(@node <> Nil) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Removes the element at the pointer position
+		~#
+	    method : public : Remove() ~ Nil {
+	    	@list->Remove(@node);
+	    }
+
+	    #~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
+		method : public : Get() ~ H {
+			return @node->Get();
+		}
+	}
+
+	#~
+	Backwards iterator of comparables
+	~#
+	class CompareBackwardsIterator<H : Compare> {
+	    @node : CompareListNode<H>;
+	    @list : CompareList<H>;
+
+	    New(node : CompareListNode<H>, list : CompareList<H>) {
+	            @node := node;
+	            @list := list;
+	    }
+
+	    #~
+		Advances the pointer backwards
+		~#
+	    method : public : Next() ~ Nil {
+	            if(@node <> Nil) {
+	                    @node := @node->GetPrevious();
+	            };
+	    }
+
+	    #~
+		Checks to see the pointer can be advanced backwards
+		@return true if pointer can be advanced, false otherwise
+		~#
+	    method : public : More() ~ Bool {
+	            if(@node <> Nil) {
+	                    return true;
+	            };
+
+	            return false;
+	    }
+
+	    #~
+		Removes the element at the pointer position
+		~#
+	    method : public : Remove() ~ Nil {
+	    	@list->Remove(@node);
+	    }
+
+	    #~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
+		method : public : Get() ~ H {
+			return @node->Get();
+		}
+	}
+
+	#~
 	List of comparable generics
 	~#
 	class CompareList<H : Compare> {
@@ -609,7 +707,7 @@ bundle Collection.Generic {
 		Removes the element at the pointer position
 		@param node node
 		~#
-		method : public : native : Remove(node : ListNode) ~ Nil {
+		method : public : native : Remove(node : CompareListNode<H>) ~ Nil {
 			if(node <> Nil) {
 				if(node->GetPrevious() <> Nil) {
 					node->GetPrevious()->SetNext(node->GetNext());
@@ -743,21 +841,31 @@ bundle Collection.Generic {
 		}
 	}
 
+	#~
+	Forward iterator
+	~#
 	class ForwardIterator<H> {
 		@node : ListNode<H>;
-		@list : ListNode<H>;
+		@list : List<H>;
 		
 		New(node : ListNode<H>, list : List<H>) {
 			@node := node;
 			@list := list;
 		}
 
+		#~
+		Advances the pointer
+		~#
 		method : public : Next() ~ Nil {
 			if(@node <> Nil) {
 				@node := @node->GetNext();
 			};
 		}
 
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
 		method : public : More() ~ Bool {
 			if(@node <> Nil) {
 				return true;
@@ -766,32 +874,47 @@ bundle Collection.Generic {
 			return false;
 		}
 
-		# TODO
+		#~
+		Removes the element at the pointer position
+		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
 	    }
 
+	    #~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
 		method : public : Get() ~ H {
-			return @node->Get()<H>;
+			return @node->Get();
 		}
 	}
 
-
+	#~
+	Backwards iterator
+	~#
 	class BackwardsIterator<H> {
 	    @node : ListNode<H>;
-	    @list : ListNode<H>;
+	    @list : List<H>;
 
 	    New(node : ListNode<H>, list : List<H>) {
 	            @node := node;
 	            @list := list;
 	    }
 
+	    #~
+		Advances the pointer backwards
+		~#
 	    method : public : Next() ~ Nil {
 	            if(@node <> Nil) {
 	                    @node := @node->GetPrevious();
 	            };
 	    }
 
+	    #~
+		Checks to see the pointer can be advanced backwards
+		@return true if pointer can be advanced, false otherwise
+		~#
 	    method : public : More() ~ Bool {
 	            if(@node <> Nil) {
 	                    return true;
@@ -800,13 +923,19 @@ bundle Collection.Generic {
 	            return false;
 	    }
 
-	    # TODO
+	    #~
+		Removes the element at the pointer position
+		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
 	    }
 
+	    #~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
 		method : public : Get() ~ H {
-			return @node->Get()<H>;
+			return @node->Get();
 		}
 	}
 
@@ -1083,6 +1212,31 @@ bundle Collection.Generic {
 			 	}
 			 	else {
 			 		@cursor := @cursor->GetNext();
+			 	};
+				@size -= 1;
+			};
+		}
+
+		method : public : native : Remove(node : ListNode<H>) ~ Nil {
+			if(node <> Nil) {
+				if(node->GetPrevious() <> Nil) {
+					node->GetPrevious()->SetNext(node->GetNext());
+				};
+				if(node = @head & node = @tail) {
+			 		node := node->GetNext();
+			 		@head := node;
+			 		@tail := node;
+			 	}
+			 	else if(node = @head) {
+			 		node := node->GetNext();
+			 		@head := node;
+			 	}
+			 	else if(node = @tail) {
+			 		node := node->GetPrevious();
+			 		@tail := node;
+			 	}
+			 	else {
+			 		node := node->GetNext();
 			 	};
 				@size -= 1;
 			};
