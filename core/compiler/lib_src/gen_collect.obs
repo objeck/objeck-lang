@@ -735,8 +735,12 @@ bundle Collection.Generic {
 			return false;
 		}
 
-		method : public : Get() ~ ListNode<H> {
-			return @node;
+		# TODO
+	    method : public : Remove() ~ Nil {
+	    }
+
+		method : public : Get() ~ <H> {
+			return @node->Get();
 		}
 	}
 
@@ -762,9 +766,13 @@ bundle Collection.Generic {
 	            return false;
 	    }
 
-	    method : public : Get() ~ ListNode<H> {
-	            return @node;
+	    # TODO
+	    method : public : Remove() ~ Nil {
 	    }
+
+	    method : public : Get() ~ <H> {
+			return @node->Get();
+		}
 	}
 
 	#~
