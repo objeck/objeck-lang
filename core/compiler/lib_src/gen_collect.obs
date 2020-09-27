@@ -440,18 +440,18 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Creates and instance of a forward iterator
+		Instance of a forward iterator
 		@return forward iterator
 		~#
-		method : public : GetForwardIterator() ~ CompareForwardIterator<H> {
+		method : public : ForwardIterator() ~ CompareForwardIterator<H> {
 			return CompareForwardIterator->New(@head, @self)<H>;
 		}
 
 		#~
-		Creates and instance of a Backward iterator
+		Instance of a backward iterator
 		@return Backward iterator
 		~#
-		method : public : GetBackwardIterator() ~ CompareBackwardIterator<H> {
+		method : public : BackwardIterator() ~ CompareBackwardIterator<H> {
 			return CompareBackwardIterator->New(@tail, @self)<H>;
 		}
 
@@ -968,18 +968,18 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Creates and instance of a forward iterator
+		Instance of a forward iterator
 		@return forward iterator
 		~#
-		method : public : GetForwardIterator() ~ ForwardIterator<H> {
+		method : public : ForwardIterator() ~ ForwardIterator<H> {
 			return ForwardIterator->New(@head, @self)<H>;
 		}
 
 		#~
-		Creates and instance of a Backward iterator
+		Instance of a backward iterator
 		@return Backward iterator
 		~#
-		method : public : GetBackwardIterator() ~ BackwardIterator<H> {
+		method : public : BackwardIterator() ~ BackwardIterator<H> {
 			return BackwardIterator->New(@tail, @self)<H>;
 		}
 
