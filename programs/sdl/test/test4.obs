@@ -52,10 +52,13 @@ class Demo {
 				# update
 				@player->Update();
 
-				@enemies->Rewind();
+z := 0;
+				@enemies->Rewind();				
 				while(@enemies->More()) {
+z->PrintLine();					
 					@enemies->Get()->Update(@player);
 					@enemies->Next();
+z += 1;					
 				};
 				@level->Update();
 
@@ -172,6 +175,14 @@ class Enemy from Player {
 		"--- Boom ---"->PrintLine();
 	}
 
+	method : public : GetTop() ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom() ~ Int {
+		return @rect->GetBottom();
+	}
+
 	method : public : Update(player : Player)  ~ Nil {
 		#
 		# find "best" move
@@ -221,8 +232,9 @@ class Enemy from Player {
 			};
 		};
 
+
 		# check east and west collisions
-		enemies := Level->Collisions(@self, @barriers);
+		enemies := Level->Collisions(@self, @enemies);
 		each(i : enemies) {
 			# move east
 			enemy := enemies->Get(i);
@@ -236,7 +248,7 @@ class Enemy from Player {
 				};
 			};
 		};
-
+		
 		#
 		# move north/south
 		#
@@ -275,8 +287,9 @@ class Enemy from Player {
 			};
 		};
 
+#~
 		# check east and west collisions
-		enemies := Level->Collisions(@self, @barriers);
+		enemies := Level->Collisions(@self, @enemies);
 		each(i : enemies) {
 			# move east
 			enemy := enemies->Get(i);
@@ -290,6 +303,7 @@ class Enemy from Player {
 				};
 			};
 		};
+~#
 	}
 }
 
@@ -587,6 +601,7 @@ class Missle {
 	}
 
 	method : public : Collides(enemies : List<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		enemies->Rewind();
 		while(enemies->More()) {
 			enemy := enemies->Get();
 			if(enemy->Collides(@rect)) {
@@ -655,16 +670,18 @@ class Level {
 		return collides;
 	}
 
-	function : Collisions(player : Player, enemies : Vector<Enemy>) ~ Vector<Enemy> {
+	function : Collisions(player : Player, enemies : List<Enemy>) ~ Vector<Enemy> {
 		collides := Vector->New()<Enemy>;
 
-		each(i : enemies) {
-			enemy := enemies->Get(i);
+		enemies->Rewind();
+		while(enemies->More()) {
+			enemy := enemies->Get();
 			if(enemy->Collides(player->GetRect())) {
 				collides->AddBack(enemy);
 			};
+			enemies->Next();
 		};
-		
+
 		return collides;
 	}
 
