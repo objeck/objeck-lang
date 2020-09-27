@@ -606,6 +606,35 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Removes the element at the pointer position
+		@param node node
+		~#
+		method : public : native : Remove(node : ListNode) ~ Nil {
+			if(node <> Nil) {
+				if(node->GetPrevious() <> Nil) {
+					node->GetPrevious()->SetNext(node->GetNext());
+				};
+				if(node = @head & node = @tail) {
+			 		node := node->GetNext();
+			 		@head := node;
+			 		@tail := node;
+			 	}
+			 	else if(node = @head) {
+			 		node := node->GetNext();
+			 		@head := node;
+			 	}
+			 	else if(node = @tail) {
+			 		node := node->GetPrevious();
+			 		@tail := node;
+			 	}
+			 	else {
+			 		node := node->GetNext();
+			 	};
+				@size -= 1;
+			};
+		}
+
+		#~
 		Checks to see if the pointer is at the front of the list
 		@return true if pointer is at the front of the list, false otherwise
 		~#
