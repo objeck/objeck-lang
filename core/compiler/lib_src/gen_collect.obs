@@ -714,6 +714,32 @@ bundle Collection.Generic {
 		}
 	}
 
+	class ForwardIterator<H> {
+		@node : <H>;
+		
+		New(node : ListNode<H>) {
+			@node := node;
+		}
+
+		method : public : Next() ~ Nil {
+			if(@node <> Nil)
+				@node := node->Next();
+			};
+		}
+
+		method : public : More() ~ Bool {
+			if(@node <> Nil)
+				return true;
+			};
+
+			return false;
+		}
+
+		method : public : Get() ~ <H> {
+			return @node;
+		}
+	}
+
 	#~
 	List of generics
 	~#
