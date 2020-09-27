@@ -462,33 +462,33 @@ class Player {
 			};
 		};
 
-		@missles->Rewind();
-		while(@missles->More()) {
-			missle := @missles->Get();
+		iter := @missles->GetForwardIterator()<Missle>;
+		while(iter->More()) {
+			missle := iter->Get()<Missle>;
 
 			if(missle->GetTop() < 0) {
-				@missles->Remove();
+				iter->Remove();
 			}
 			else if(missle->GetBottom() > Game->SCREEN_HEIGHT) {
-				@missles->Remove();
+				iter->Remove();
 			}
 			else if(missle->Collides(@enemies, @barriers)) {
-				@missles->Remove();
+				iter->Remove();
 			}
 			else {
 				missle->Add(2);
 			};
 
 			# update
-			@missles->Next();
+			iter->Next();
 		};
 	}
 
 	method : public : Draw()  ~ Nil {
-		@missles->Rewind();
-		while(@missles->More()) {
+		iter := @missles->GetForwardIterator()<Missle>;
+		while(iter->More()) {
 			@missles->Get()->Draw();
-			@missles->Next();
+			iter->Next();
 		};
 
 		@rect->Render();
@@ -683,10 +683,11 @@ class Level {
 		@shift_x += shift_x;
 
 		missles := @player->GetMissles();
-		missles->Rewind();
-		while(missles->More()) {
+		
+		iter := missles->GetForwardIterator()<Missle>;
+		while(iter->More()) {
 			missles->Get()->AddX(shift_x);
-			missles->Next();
+			iter->Next();
 		};
 		
 		each(i : @enemies) {
