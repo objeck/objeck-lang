@@ -375,9 +375,9 @@ bundle Collection.Generic {
 	}
 
 	#~
-	Backwards iterator of comparables
+	Backward iterator of comparables
 	~#
-	class CompareBackwardsIterator<H : Compare> {
+	class CompareBackwardIterator<H : Compare> {
 	    @node : CompareListNode<H>;
 	    @list : CompareList<H>;
 
@@ -387,7 +387,7 @@ bundle Collection.Generic {
 	    }
 
 	    #~
-		Advances the pointer backwards
+		Advances the pointer Backward
 		~#
 	    method : public : Next() ~ Nil {
 	            if(@node <> Nil) {
@@ -396,7 +396,7 @@ bundle Collection.Generic {
 	    }
 
 	    #~
-		Checks to see the pointer can be advanced backwards
+		Checks to see the pointer can be advanced Backward
 		@return true if pointer can be advanced, false otherwise
 		~#
 	    method : public : More() ~ Bool {
@@ -437,6 +437,22 @@ bundle Collection.Generic {
 		~#
 		New() {
 			@size := 0;
+		}
+
+		#~
+		Creates and instance of a forward iterator
+		@return forward iterator
+		~#
+		method : public : GetForwardIterator() ~ CompareForwardIterator<H> {
+			return CompareForwardIterator->New(@head, @self)<H>;
+		}
+
+		#~
+		Creates and instance of a Backward iterator
+		@return Backward iterator
+		~#
+		method : public : GetBackwardIterator() ~ CompareBackwardIterator<H> {
+			return CompareBackwardIterator->New(@tail, @self)<H>;
 		}
 
 		#~
@@ -867,11 +883,7 @@ bundle Collection.Generic {
 		@return true if pointer can be advanced, false otherwise
 		~#
 		method : public : More() ~ Bool {
-			if(@node <> Nil) {
-				return true;
-			};
-
-			return false;
+			return @node <> Nil;
 		}
 
 		#~
@@ -879,6 +891,7 @@ bundle Collection.Generic {
 		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
+	    	@node := @node->GetNext();
 	    }
 
 	    #~
@@ -891,9 +904,9 @@ bundle Collection.Generic {
 	}
 
 	#~
-	Backwards iterator
+	Backward iterator
 	~#
-	class BackwardsIterator<H> {
+	class BackwardIterator<H> {
 	    @node : ListNode<H>;
 	    @list : List<H>;
 
@@ -903,7 +916,7 @@ bundle Collection.Generic {
 	    }
 
 	    #~
-		Advances the pointer backwards
+		Advances the pointer Backward
 		~#
 	    method : public : Next() ~ Nil {
 	            if(@node <> Nil) {
@@ -912,7 +925,7 @@ bundle Collection.Generic {
 	    }
 
 	    #~
-		Checks to see the pointer can be advanced backwards
+		Checks to see the pointer can be advanced Backward
 		@return true if pointer can be advanced, false otherwise
 		~#
 	    method : public : More() ~ Bool {
@@ -955,12 +968,20 @@ bundle Collection.Generic {
 			@size := 0;
 		}
 
+		#~
+		Creates and instance of a forward iterator
+		@return forward iterator
+		~#
 		method : public : GetForwardIterator() ~ ForwardIterator<H> {
 			return ForwardIterator->New(@head, @self)<H>;
 		}
 
-		method : public : GetBackwardsIterator() ~ BackwardsIterator<H> {
-			return BackwardsIterator->New(@tail, @self)<H>;
+		#~
+		Creates and instance of a Backward iterator
+		@return Backward iterator
+		~#
+		method : public : GetBackwardIterator() ~ BackwardIterator<H> {
+			return BackwardIterator->New(@tail, @self)<H>;
 		}
 
 		#~
