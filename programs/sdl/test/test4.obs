@@ -12,7 +12,7 @@ use Collection.Generic;
 class Demo {
 	@framework : GameFramework;
 	@player : Player;
-	@enemies : List<Enemy>;
+	@enemies : Vector<Enemy>;
 	@level : Level;
 
 	function : Main(args : String[]) ~ Nil {
@@ -27,7 +27,7 @@ class Demo {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(16, 16), Color->New(255, 0, 0), 1500, Game->SCREEN_HEIGHT / 2);
-			@enemies := List->New()<Enemy>;
+			@enemies := Vector->New()<Enemy>;
 			each(i : 10) {
 				color := Color->New(Int->Random(0, 255), Int->Random(0, 255), 200);
 				@enemies->AddBack(Enemy->New(i, @framework->AddRectangle(20, 20), color));
@@ -52,13 +52,8 @@ class Demo {
 				# update
 				@player->Update();
 
-z := 0;
-				@enemies->Rewind();				
-				while(@enemies->More()) {
-z->PrintLine();					
-					@enemies->Get()->Update(@player);
-					@enemies->Next();
-z += 1;					
+				each(i :@enemies) {
+					@enemies->Get(i)->Update(@player);
 				};
 				@level->Update();
 
@@ -83,10 +78,8 @@ z += 1;
 				# draw
 				@player->Draw();
 				
-				@enemies->Rewind();
-				while(@enemies->More()) {
-					@enemies->Get()->Draw();
-					@enemies->Next();
+				each(i : @enemies) {
+					@enemies->Get(i)->Draw();
 				};
 				@level->Draw();
 
@@ -248,7 +241,7 @@ class Enemy from Player {
 				};
 			};
 		};
-		
+
 		#
 		# move north/south
 		#
@@ -319,7 +312,7 @@ class Player {
 	@acc_y : Vector2;
 
 	@barriers : Vector<Barrier>;
-	@enemies : List<Enemy>;
+	@enemies : Vector<Enemy>;
 
 	@missles : List<Missle>;
 	@calc_x : Float;
@@ -368,7 +361,7 @@ class Player {
 		@rect->SetRight(x2);
 	}
 
-	method : public : SetLevel(level : Level, enemies : List<Enemy>)  ~ Nil {
+	method : public : SetLevel(level : Level, enemies : Vector<Enemy>)  ~ Nil {
 		@barriers := level->GetBarriers()<Barrier>;
 		@enemies := enemies;
 	}
@@ -600,15 +593,13 @@ class Missle {
 		@rect->Render();
 	}
 
-	method : public : Collides(enemies : List<Enemy>, barriers : Vector<Barrier>) ~ Bool {
-		enemies->Rewind();
-		while(enemies->More()) {
-			enemy := enemies->Get();
+	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		each(i : enemies) {
+			enemy := enemies->Get(i);
 			if(enemy->Collides(@rect)) {
 				enemy->Explode();
 
 			};
-			enemies->Next();
 		};
 
 		each(i : barriers) {
@@ -629,11 +620,11 @@ class Missle {
 
 class Level {
 	@player : Player;
-	@enemies : List<Enemy>;
+	@enemies : Vector<Enemy>;
 	@barriers : Vector<Barrier>;
 	@shift_x : Int;
 
-	New(player : Player, enemies : List<Enemy>, framework : GameFramework) {
+	New(player : Player, enemies : Vector<Enemy>, framework : GameFramework) {
 		@player := player;
 		@enemies := enemies;
 
@@ -650,10 +641,8 @@ class Level {
 
 		@player->SetLevel(@self, @enemies);
 
-		@enemies->Rewind();
-		while(@enemies->More()) {
-			@enemies->Get()->SetLevel(@self, @enemies);
-			@enemies->Next();
+		each(i : @enemies) {
+			@enemies->Get(i)->SetLevel(@self, @enemies);
 		};
 	}
 
@@ -670,16 +659,14 @@ class Level {
 		return collides;
 	}
 
-	function : Collisions(player : Player, enemies : List<Enemy>) ~ Vector<Enemy> {
+	function : Collisions(player : Player, enemies : Vector<Enemy>) ~ Vector<Enemy> {
 		collides := Vector->New()<Enemy>;
 
-		enemies->Rewind();
-		while(enemies->More()) {
-			enemy := enemies->Get();
+		each(i : enemies) {
+			enemy := enemies->Get(i);
 			if(enemy->Collides(player->GetRect())) {
 				collides->AddBack(enemy);
 			};
-			enemies->Next();
 		};
 
 		return collides;
@@ -699,10 +686,8 @@ class Level {
 			missles->Next();
 		};
 		
-		@enemies->Rewind();
-		while(@enemies->More()) {
-			@enemies->Get()->AddX(shift_x);
-			@enemies->Next();
+		each(i : @enemies) {
+			@enemies->Get(i)->AddX(shift_x);
 		};
 
 		each(i : @barriers) {
