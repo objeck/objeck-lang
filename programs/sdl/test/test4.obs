@@ -57,6 +57,7 @@ class Demo {
 				};
 				@level->Update();
 
+				# correct for scrolling
 				shift := @level->GetShiftX();
 				if(@player->GetRight() >= 500) {
 					diff := @player->GetRight() - 500;
@@ -66,7 +67,6 @@ class Demo {
 					};
 				};
 
-				# correct for scrolling
 				if(@player->GetLeft() <= 120) {
 					diff := 120 - @player->GetLeft();
 					@player->SetLeft(120);
@@ -557,7 +557,7 @@ class Missle {
 		if(@vel_x < 0.00001) {
 			if(@is_up) {
 				@rect->AddX(-i);
-				@rect->AddY(i / 2);
+				@rect->AddY(i);
 			}
 			else {
 				@rect->AddX(-i);
@@ -681,11 +681,9 @@ class Level {
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 
-		missles := @player->GetMissles();	
-		iter := missles->GetForwardIterator()<Missle>;
+		iter := @player->GetMissles()->GetForwardIterator()<Missle>;
 		while(iter->More()) {
-#shift_x->PrintLine();			
-#			missles->Get()->AddX(-shift_x);
+			iter->Get()->AddX(shift_x);
 			iter->Next();
 		};
 

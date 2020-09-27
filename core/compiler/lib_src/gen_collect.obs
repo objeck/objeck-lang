@@ -891,7 +891,6 @@ bundle Collection.Generic {
 		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
-	    	@node := @node->GetNext();
 	    }
 
 	    #~
