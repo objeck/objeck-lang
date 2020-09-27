@@ -171,7 +171,6 @@ class Enemy from Player {
 
 	method : public : Explode() ~ Nil {
 		@is_dead := true;
-		"--- Boom ---"->PrintLine();
 	}
 
 	method : public : GetTop() ~ Int {
@@ -182,7 +181,7 @@ class Enemy from Player {
 		return @rect->GetBottom();
 	}
 
-	method : public : Update(player : Player)  ~ Nil {
+	method : public : native : Update(player : Player)  ~ Nil {
 		if(@is_dead) {
 			return;
 		};
@@ -469,15 +468,12 @@ class Player {
 
 			if(missle->GetTop() < 0) {
 				@missles->Remove();
-				"--- Remove ---"->PrintLine();
 			}
 			else if(missle->GetBottom() > Game->SCREEN_HEIGHT) {
 				@missles->Remove();
-				"--- Remove ---"->PrintLine();
 			}
 			else if(missle->Collides(@enemies, @barriers)) {
 				@missles->Remove();
-				"--- Remove ---"->PrintLine();
 			}
 			else {
 				missle->Add(2);
@@ -707,7 +703,7 @@ class Level {
 		return @barriers;
 	}
 
-	method : public : Update()  ~ Nil {
+	method : public : native : Update()  ~ Nil {
 		each(i : @barriers) {
 			barrier := @barriers->Get(i);
 		};
