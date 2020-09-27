@@ -745,9 +745,11 @@ bundle Collection.Generic {
 
 	class ForwardIterator<H> {
 		@node : ListNode<H>;
+		@list : ListNode<H>;
 		
-		New(node : ListNode<H>) {
+		New(node : ListNode<H>, list : List<H>) {
 			@node := node;
+			@list := list;
 		}
 
 		method : public : Next() ~ Nil {
@@ -766,6 +768,7 @@ bundle Collection.Generic {
 
 		# TODO
 	    method : public : Remove() ~ Nil {
+	    	@list->Remove(@node);
 	    }
 
 		method : public : Get() ~ H {
@@ -776,9 +779,11 @@ bundle Collection.Generic {
 
 	class BackwardsIterator<H> {
 	    @node : ListNode<H>;
+	    @list : ListNode<H>;
 
-	    New(node : ListNode<H>) {
+	    New(node : ListNode<H>, list : List<H>) {
 	            @node := node;
+	            @list := list;
 	    }
 
 	    method : public : Next() ~ Nil {
@@ -797,11 +802,12 @@ bundle Collection.Generic {
 
 	    # TODO
 	    method : public : Remove() ~ Nil {
+	    	@list->Remove(@node);
 	    }
 
-	method : public : Get() ~ H {
-		return @node->Get()<H>;
-	}
+		method : public : Get() ~ H {
+			return @node->Get()<H>;
+		}
 	}
 
 	#~
@@ -821,11 +827,11 @@ bundle Collection.Generic {
 		}
 
 		method : public : GetForwardIterator() ~ ForwardIterator<H> {
-			return ForwardIterator->New(@head)<H>;
+			return ForwardIterator->New(@head, @self)<H>;
 		}
 
 		method : public : GetBackwardsIterator() ~ BackwardsIterator<H> {
-			return BackwardsIterator->New(@tail)<H>;
+			return BackwardsIterator->New(@tail, @self)<H>;
 		}
 
 		#~
