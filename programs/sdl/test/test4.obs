@@ -150,6 +150,7 @@ class Demo {
 
 class Enemy from Player {
 	@dist : Float[];
+	@is_dead : Bool;
 
 	New(id : Int, rect : Rectangle, color : Color) {
 		Parent(rect, color, 100, 10 + id * 40);
@@ -157,6 +158,10 @@ class Enemy from Player {
 	}
 
 	method : public : Collides(rect : Rectangle) ~ Bool {
+		if(@is_dead) {
+			return false;
+		};
+
 		return @rect->GetPosition()->Overlaps(rect->GetPosition());
 	}
 
@@ -165,6 +170,7 @@ class Enemy from Player {
 	}
 
 	method : public : Explode() ~ Nil {
+		@is_dead := true;
 		"--- Boom ---"->PrintLine();
 	}
 
@@ -177,6 +183,10 @@ class Enemy from Player {
 	}
 
 	method : public : Update(player : Player)  ~ Nil {
+		if(@is_dead) {
+			return;
+		};
+
 		#
 		# find "best" move
 		#
@@ -280,7 +290,6 @@ class Enemy from Player {
 			};
 		};
 
-#~
 		# check east and west collisions
 		enemies := Level->Collisions(@self, @enemies);
 		each(i : enemies) {
@@ -296,7 +305,14 @@ class Enemy from Player {
 				};
 			};
 		};
-~#
+	}
+
+	method : public : Draw()  ~ Nil {
+		if(@is_dead) {
+			return;
+		};
+
+		@rect->Render();
 	}
 }
 
@@ -447,7 +463,6 @@ class Player {
 			};
 		};
 
-		# TODO: check again barriers
 		@missles->Rewind();
 		while(@missles->More()) {
 			missle := @missles->Get();
@@ -544,10 +559,10 @@ class Missle {
 
 	# TODO: missle is out-of-range
 	method : public : Add(i : Int)  ~ Nil {
-		if(@vel_x < 0.0001) {
+		if(@vel_x < 0.00001) {
 			@is_left := true;
 		}
-		else if(@vel_x > 0.0001) {
+		else if(@vel_x > 0.00001) {
 			@is_left := false;
 		};
 
