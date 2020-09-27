@@ -620,7 +620,6 @@ class Missle {
 	}
 }
 
-
 class Level {
 	@player : Player;
 	@enemies : Vector<Enemy>;
@@ -682,21 +681,20 @@ class Level {
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 
-		missles := @player->GetMissles();
-		
+		missles := @player->GetMissles();	
 		iter := missles->GetForwardIterator()<Missle>;
 		while(iter->More()) {
-			missles->Get()->AddX(shift_x);
+#shift_x->PrintLine();			
+#			missles->Get()->AddX(-shift_x);
 			iter->Next();
 		};
-		
+
 		each(i : @enemies) {
 			@enemies->Get(i)->AddX(shift_x);
 		};
 
 		each(i : @barriers) {
-			barrier := @barriers->Get(i);
-			barrier->AddX(shift_x);
+			@barriers->Get(i)->AddX(shift_x);
 		};
 	}
 
