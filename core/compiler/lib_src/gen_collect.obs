@@ -742,30 +742,30 @@ bundle Collection.Generic {
 
 
 	class BackwardsIterator<H> {
-                @node : ListNode<H>;
+	    @node : ListNode<H>;
 
-                New(node : ListNode<H>) {
-                        @node := node;
-                }
+	    New(node : ListNode<H>) {
+	            @node := node;
+	    }
 
-                method : public : Next() ~ Nil {
-                        if(@node <> Nil) {
-                                @node := @node->GetPrevious();
-                        };
-                }
+	    method : public : Next() ~ Nil {
+	            if(@node <> Nil) {
+	                    @node := @node->GetPrevious();
+	            };
+	    }
 
-                method : public : More() ~ Bool {
-                        if(@node <> Nil) {
-                                return true;
-                        };
+	    method : public : More() ~ Bool {
+	            if(@node <> Nil) {
+	                    return true;
+	            };
 
-                        return false;
-                }
+	            return false;
+	    }
 
-                method : public : Get() ~ ListNode<H> {
-                        return @node;
-                }
-        }
+	    method : public : Get() ~ ListNode<H> {
+	            return @node;
+	    }
+	}
 
 	#~
 	List of generics
