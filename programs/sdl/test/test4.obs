@@ -99,51 +99,71 @@ class Demo {
 	}
 
 	method : public : ProcessInput(e : Event) ~ Nil {
-		if(e->GetType() = EventType->SDL_KEYDOWN) {
-			select(e->GetKey()->GetKeysym()->GetScancode()) {		
-				label Scancode->SDL_SCANCODE_A: {
-					@player->GoWest();
-				}
+		if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
+			if(e->GetJAxis()->GetWhich() = 0 ) {
+				axis := e->GetJAxis()->GetAxis();
+				value := e->GetJAxis()->GetValue();
 
-				label Scancode->SDL_SCANCODE_D: {
-					@player->GoEast();
+				# east/west
+				if(axis = 0) {
+					if(value > 4000 & value <= 8000) {
+						@player->GoEast(1);
+					}
+					else if(value > 8000 & value <= 12000) {
+						@player->GoEast(2);
+					}
+					else if(value > 12000) {
+						@player->GoEast(3);
+					}
+					else if(value < -4000 & value >= -8000) {
+						@player->GoWest(2);
+					}
+					else if(value < -8000 & value >= -12000) {
+						@player->GoWest(2);
+					}
+					else if(value < -12000) {
+						@player->GoWest(3);
+					}
+					else if(value > -1000 & value < 1000) {
+						@player->Stop();
+					};
 				}
-
-				label Scancode->SDL_SCANCODE_W: {
-					@player->GoNorth();
-				}
-
-				label Scancode->SDL_SCANCODE_S: {
-					@player->GoSouth();
-				}
-
-				label Scancode->SDL_SCANCODE_UP: {
-					@player->Shot(@framework, false);
-				}
-
-				label Scancode->SDL_SCANCODE_DOWN: {
-					@player->Shot(@framework, true);
-				}
+				# north/south
+				else if(axis = 1) {
+					if(value > 4000 & value <= 8000) {
+						@player->GoSouth(1);
+					}
+					else if(value > 8000 & value <= 12000) {
+						@player->GoSouth(2);
+					}
+					else if(value > 12000 ) {
+						@player->GoSouth(3);
+					}
+					else if(value < -4000 & value >= -8000) {
+						@player->GoNorth(1);
+					}
+					else if(value < -8000 & value >= -12000) {
+						@player->GoNorth(2);
+					}
+					else if(value < -12000) {
+						@player->GoNorth(3);
+					}
+					else if(value > -1000 & value < 1000) {
+						@player->Stop();
+					};
+				};
 			};
 		}
-		else if(e->GetType() = EventType->SDL_KEYUP) {
-		   	code := e->GetKey()->GetKeysym()->GetScancode();
-		   	
-		   	if(code = Scancode->SDL_SCANCODE_A & @player->ChangeEastWest() < 0) {
-		   		@player->Stop();
+		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+			if(e->GetJButton()->GetButton() = 0) {
+				@player->Shot(@framework, true);
+			}
+			else if(e->GetJButton()->GetButton() = 3) {
+				@player->Shot(@framework, false);;
 			};
-
-			if(code = Scancode->SDL_SCANCODE_D & @player->ChangeEastWest() > 0) {
-				@player->Stop();
-			};
-
-			if(code = Scancode->SDL_SCANCODE_W & @player->ChangeNorthSouth() < 0) {
-		   		@player->Stop();
-			};
-
-			if(code = Scancode->SDL_SCANCODE_S & @player->ChangeNorthSouth() > 0) {
-				@player->Stop();
-			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONUP) {
+			
 		};
 	}
 }
@@ -389,24 +409,56 @@ class Player {
 		return @change_y;
 	}
 
-	method : public : GoWest()  ~ Nil {
-		@change_x := -6;
+	method : public : GoWest(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_x := -1.25;
+		}
+		else if(level = 2) {
+			@change_x := -2.75;
+		}
+		else {
+			@change_x := -6.25;
+		};
 	}
 
-	method : public : GoEast()  ~ Nil {
-		@change_x := 6;
+	method : public : GoEast(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_x := 1.25;
+		}
+		else if(level = 2) {
+			@change_x := 2.75;
+		}
+		else {
+			@change_x := 6.25;
+		};
 	}
 
 	method : public : Stop() ~ Nil {
 		@change_x := @change_y := 0;
 	}
 
-	method : public : GoNorth()  ~ Nil {
-		@change_y := -6;
+	method : public : GoNorth(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_y := -1.25;
+		}
+		else if(level = 2) {
+			@change_y := -2.75;
+		}
+		else {
+			@change_y := -6.25;
+		};
 	}
 
-	method : public : GoSouth()  ~ Nil {
-		@change_y := 6;
+	method : public : GoSouth(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_y := 1.25;
+		}
+		else if(level = 2) {
+			@change_y := 2.75;
+		}
+		else {
+			@change_y := 6.25;
+		};
 	}
 
 	method : public : native : Update()  ~ Nil {
