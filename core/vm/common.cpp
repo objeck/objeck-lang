@@ -169,8 +169,8 @@ void StackProgram::InitializeProprieties()
   const int line_max = 80;
   char buffer[line_max + 1];
   fstream config("config.prop", fstream::in);
-  config.getline(buffer, line_max);
   if(config.good()) {
+    config.getline(buffer, line_max);
     while(strlen(buffer) > 0) {
       // read line and parse
       wstring line = BytesToUnicode(buffer);
