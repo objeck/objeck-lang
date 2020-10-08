@@ -800,7 +800,7 @@ bundle Data.JSON {
 						output->Append('{');
 						keys := @map_elems->GetKeys()<String>;
 						each(i : keys) {
-							key := keys->Get(i)->As(String);
+							key := keys->Get(i);
 							value := @map_elems->Find(key);							
 							output->Append('"');
 							output->Append(key);
@@ -823,13 +823,16 @@ bundle Data.JSON {
 		~#
 		method : public : FindElements(path : String) ~ JSONElement {					
 			filters := path->Split("/");
-			if(filters->Size() > 0) { 
+			if(filters->Size() > 0) {
 				element := @self;
 				for(i := 0; i < filters->Size() & element <> Nil; i += 1;) {
-					element := FindElement(filters[i]->As(String), element);
+					element := FindElement(filters[i], element);
 				};
 				
 				return element;
+			}
+			else {
+				return FindElement(path, @self);
 			};
 			
 			return Nil;
@@ -858,6 +861,7 @@ bundle Data.JSON {
 			}
 			# object
 			else if(node->GetType() = JSONType->OBJECT) {
+"filter={$filter}"->PrintLine();
 				return node->Get(filter);
 			};
 			
