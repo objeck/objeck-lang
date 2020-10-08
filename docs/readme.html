@@ -15,6 +15,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -829,6 +830,9 @@ span.InternetLink
 span.SpellE
 	{mso-style-name:"";
 	mso-spl-e:yes;}
+span.GramE
+	{mso-style-name:"";
+	mso-gram-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
@@ -1224,12 +1228,12 @@ style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h1>
 mso-fareast-font-family:"Times New Roman"'>Release notes</span><span
 style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
-<p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif'>Minor
-enhancements and bug fixes</span></p>
+<p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif'>Bug
+fixes</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
-line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
+line-height:normal'><o:p>&nbsp;</o:p></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:8.0pt;mso-margin-bottom-alt:
 8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;line-height:normal'><span
@@ -1358,10 +1362,11 @@ style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 mso-fareast-font-family:"Times New Roman"'>Compiling and executing programs</span><span
 style='mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
-<p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif'>In
-order to compile programs outside of the “bin” directory the “OBJECK_LIB_PATH”
-environment variable must be set. When this variable is set all library files
-must be in the directory specified. </span></p>
+<p class=MsoNormal style='line-height:normal'><span class=GramE><span
+style='font-family:"Calibri",sans-serif'>In order to</span></span><span
+style='font-family:"Calibri",sans-serif'> compile programs outside of the “bin”
+directory the “OBJECK_LIB_PATH” environment variable must be set. When this
+variable is set all library files must be in the directory specified. </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
@@ -1371,8 +1376,8 @@ line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span>
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
 line-height:normal'><span style='font-family:"Calibri",sans-serif'>If the
 Windows installer is used these variables will be automatically set after the
-system is restarted. For Debian and Ubuntu the location of the files is fixed
-by the installer so no variables are needed.</span></p>
+system is restarted. For Debian and <span class=GramE>Ubuntu</span> the
+location of the files is fixed by the installer so no variables are needed.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
@@ -1394,7 +1399,7 @@ class=SpellE>objeck</span>-lang\lib</span></p>
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>2.</span><span style='font-size:7.0pt;
 font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='font-family:"Calibri",sans-serif'>set PATH=%PATH%;C:\
+style='font-family:"Calibri",sans-serif'>set PATH=%PATH<span class=GramE>%;C:\</span>
 Users\&lt;account&gt;\ <span class=SpellE>objeck</span>-lang\bin; C:\
 Users\&lt;account&gt;\ <span class=SpellE>objeck</span>-lang\lib\<span
 class=SpellE>sdl</span></span></p>
@@ -1474,7 +1479,7 @@ for code that has library dependencies:</span></p>
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>1.&nbsp;&nbsp;&nbsp; <span
 class=SpellE>obc</span> -<span class=SpellE>src</span> ..\examples\<span
-class=SpellE>xml_path.obs</span> -lib <span class=SpellE>collect.obl,xml.obl</span>
+class=SpellE>xml_path.obs</span> -lib <span class=SpellE><span class=GramE>collect.obl,xml.obl</span></span>
 -<span class=SpellE>dest</span> <span class=SpellE>xml_path.obe</span></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
@@ -1489,9 +1494,9 @@ line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span>
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
 line-height:normal'><span style='font-family:"Calibri",sans-serif'>For OS X
-(10.9 or greater), you’ll need to install OpenSSL in order to use encryption
-APIs as well as <span class=SpellE>iODBC</span> to enable database support.
-Please refer to the following <a
+(10.9 or greater), <span class=GramE>you’ll</span> need to install OpenSSL in
+order to use encryption APIs as well as <span class=SpellE>iODBC</span> to
+enable database support. Please refer to the following <a
 href="http://mac-dev-env.patrickbougie.com/openssl"><span class=InternetLink><span
 style='font-family:"Calibri",sans-serif'>link</span></span></a> for OpenSSL
 directions and this <a
@@ -1620,8 +1625,8 @@ design, the regular expression class performs greedy pattern matching.</span></p
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>All
-unit tests executed successfully but I'm sure there’s bugs. Send an e-mail I’ll
-get them sorted.</span></p>
+unit tests executed successfully but <span class=GramE>I'm</span> sure there’s
+bugs. Send an e-mail <span class=GramE>I’ll</span> get them sorted.</span></p>
 
 <p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
 "Segoe UI",sans-serif;color:#212529;background:white'><o:p>&nbsp;</o:p></span></p>
