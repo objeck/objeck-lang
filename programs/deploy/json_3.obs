@@ -8,35 +8,28 @@ use Web.HTTP;
 use System.IO.Net;
 
 class JsonWeb {
-	function : Main(args : String[]) ~ Nil {
-		Run();
-	}
-	function : native : Run() ~ Nil {
-		url := "http://api.geonames.org/citiesJSON?north=44.1&south=-9.9&east=-22.4&west=55.2&lang=de&username=objeck";
-		document := HttpClient->GetAll(url);
+	function : Main(args : String[]) ~ Nil {		
+		url := "https://sourceforge.net/projects/openofficeorg.mirror/files/stats/json?start_date=2014-10-29&end_date=2014-11-04";
+		document := HttpsClient->GetAll(url);
 		
 		parser := JSONParser->New(document);
 		root := parser->Parse();
 		if(root <> Nil & root->GetType() = JSONType->OBJECT) {
-			geonames := root->Get("geonames");
-			if(geonames <> Nil & geonames->GetType() = JSONType->ARRAY) {
-				each(i : geonames) {
-					geoname := geonames->Get(i);
-					if(geoname <> Nil & geoname->GetType() = JSONType->OBJECT) {
-						toponymName := geoname->Get("toponymName");
-						lng := geoname->Get("lng");
-						lat := geoname->Get("lat");								
-						if(toponymName <> Nil & lng <> Nil & lat <> Nil) {
-							toponymName->GetValue()->PrintLine();
-							"name={$toponymName}, lat={$lat}, lon={$lng}"->PrintLine();									
-						};
-						"-------------"->PrintLine();
-					};
+			countries := root->FindElements("countries");
+			if(countries <> Nil & countries->GetType() = JSONType->ARRAY) {
+				total := 0;
+				each(i : countries) {
+					country := countries->Get(i);
+					total += country->Get(1)->GetValue()->ToInt();
 				};
-			};						
+				"total downloads of objeck is {$total}"->PrintLine();
+			}
+			else {
+				"-- Invalid JSON! --"->ErrorLine();
+			};
 		}
 		else {
-			document->PrintLine();
+			"-- Unable to parse JSON! --"->ErrorLine();
 		};
 	}
 }
