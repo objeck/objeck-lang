@@ -1017,13 +1017,14 @@ bundle Web.HTTP {
 		method : public : GetAll(url : String) ~ String {
 			document := "";
 			
-			lines := Get(url);
+			client := HttpsClient->New();
+			lines := client->Get(url);
 			if(lines = Nil) {
 				return Nil;
 			};
-			
+
 			each(i : lines) {
-				document->Append(lines->Get(i)->As(String));
+				document->Append(lines->Get(i));
 			};
 
 			return document;
