@@ -861,7 +861,6 @@ bundle Data.JSON {
 			}
 			# object
 			else if(node->GetType() = JSONType->OBJECT) {
-"filter={$filter}"->PrintLine();
 				return node->Get(filter);
 			};
 			
