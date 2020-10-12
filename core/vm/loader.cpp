@@ -449,7 +449,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
     instrs.push_back(new StackInstr(-1, TRAP_RTRN, 3L));
 
     instrs.push_back(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
-    // note: method ID is position dependant
+    // note: method ID is position dependent
     instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
 
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)i));
