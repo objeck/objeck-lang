@@ -1189,7 +1189,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = (long)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
   const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = (long)PopInt(op_stack, stack_pos);
@@ -1224,7 +1224,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = (long)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
   const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = (long)PopInt(op_stack, stack_pos);
@@ -1259,7 +1259,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_INT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = (long)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
   const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = (long)PopInt(op_stack, stack_pos);
@@ -1294,7 +1294,7 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = (long)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
   const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = (long)PopInt(op_stack, stack_pos);
