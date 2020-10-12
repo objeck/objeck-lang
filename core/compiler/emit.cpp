@@ -445,9 +445,41 @@ void IntermediateInstruction::Debug() {
   }
     break;
 
-  case DYN_MTHD_CALL:
-    GetLogger() << L"DYN_MTHD_CALL num_params=" << operand
-      << L", rtrn_type=" << operand2 << endl;
+  case DYN_MTHD_CALL: {
+    GetLogger() << L"DYN_MTHD_CALL num_params=" << operand;
+
+    switch(operand2) {
+    case NIL_TYPE:
+      GetLogger() << L", rtrn_type=Nil";
+      break;
+
+    case BYTE_ARY_TYPE:
+      GetLogger() << L", rtrn_type=Byte[]";
+      break;
+
+    case CHAR_ARY_TYPE:
+      GetLogger() << L", rtrn_type=Char[]";
+      break;
+
+    case INT_TYPE:
+      GetLogger() << L", rtrn_type=Int";
+      break;
+
+    case FLOAT_TYPE:
+      GetLogger() << L", rtrn_type=Float";
+      break;
+
+    case FUNC_TYPE:
+      GetLogger() << L", rtrn_type=Func";
+      break;
+
+    default:
+      GetLogger() << L", rtrn_type=Unknown";
+      break;
+    }
+
+    GetLogger() << endl;
+  }
     break;
 
   case SHL_INT:
