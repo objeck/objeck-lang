@@ -64,11 +64,13 @@ void FileEmitter::Emit()
 #ifdef _DEBUG
   show_asm = true;
 #endif
-  
+ 
+#ifndef _SYSTEM 
   if(show_asm) {
     GetLogger() << L"\n--------- Emitting Target Code ---------" << endl;
     program->Debug();
   }
+#endif
 
   // library target
   if(emit_lib) {
