@@ -1,5 +1,5 @@
 #~
-# compile: obc -src calc_life_10.obs -dest calc_life_10.obe
+# compile: obc -src calc_life_10.obs -opt s3 -dest calc_life_10.obe
 # run: obr calc_life_10.obe
 ~#
 

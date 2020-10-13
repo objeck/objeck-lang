@@ -1,5 +1,5 @@
 ﻿#~
-compile: obc -src http_xml_regex_8.obs -lib net,xml,regex,gen_collect -dest http_xml_regex_8.obe
+compile: obc -src http_xml_regex_8.obs -lib net,xml,regex,gen_collect -opt s3 -dest http_xml_regex_8.obe
 run: obr http_xml_regex_8.obe
 note: may a few seconds to run as it's querying wiki pages
 ~#

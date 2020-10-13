@@ -1,5 +1,5 @@
 #~
-# compile: obc -src lambda_17.obs -lib gen_collect -dest lambda_17.obe
+# compile: obc -src lambda_17.obs -lib gen_collect -opt s3 -dest lambda_17.obe
 # run: obr lambda_17.obe
 ~#
 
