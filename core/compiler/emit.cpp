@@ -61,10 +61,10 @@ IntermediateFactory* IntermediateFactory::Instance()
  ****************************/
 void FileEmitter::Emit()
 {
-#ifdef _DEBUG
-  GetLogger() << L"\n--------- Emitting Target Code ---------" << endl;
-  program->Debug();
-#endif
+  if(show_asm) {
+    GetLogger() << L"\n--------- Emitting Target Code ---------" << endl;
+    program->Debug();
+  }
 
   // library target
   if(emit_lib) {
@@ -308,7 +308,6 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   }
 }
 
-#ifdef _DEBUG
 void IntermediateMethod::Debug() {
   GetLogger() << L"---------------------------------------------------------" << endl;
   GetLogger() << L"Method: id=" << klass->GetId() << L"," << id << L"; name='" << name << L"'; return='" << rtrn_name
@@ -321,7 +320,6 @@ void IntermediateMethod::Debug() {
     blocks[i]->Debug();
   }
 }
-#endif
 
 /****************************
 * IntermediateBlock class
@@ -420,7 +418,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   }
 }
 
-#ifdef _DEBUG
 void IntermediateInstruction::Debug() {
   switch(type) {
   case SWAP_INT:
@@ -913,7 +910,6 @@ void IntermediateInstruction::Debug() {
     break;
   }
 }
-#endif 
 
 /****************************
  * IntermediateEnumItem class

@@ -179,9 +179,7 @@ namespace backend {
       operand3 = o3;
     }
 
-#ifdef _DEBUG
     void Debug();
-#endif
 
     void Write(bool is_debug, OutputStream& out_stream);
   };
@@ -293,7 +291,6 @@ namespace backend {
 
     void Write(bool is_debug, OutputStream& out_stream);
 
-#ifdef _DEBUG
     void Debug() {
       if(instructions.size() > 0) {
         for(size_t i = 0; i < instructions.size(); ++i) {
@@ -302,7 +299,6 @@ namespace backend {
         GetLogger() << L"--" << endl;
       }
     }
-#endif
   };
 
   /****************************
@@ -449,9 +445,7 @@ namespace backend {
 
     void Write(bool emit_lib, bool is_debug, OutputStream &out_stream);
 
-#ifdef _DEBUG
     void Debug();
-#endif
   };
 
   /****************************
@@ -627,7 +621,6 @@ namespace backend {
 
     void Write(bool emit_lib, OutputStream& out_stream);
     
-#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"=========================================================" << endl;
       GetLogger() << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
@@ -653,7 +646,6 @@ namespace backend {
         methods[i]->Debug();
       }
     }
-#endif
   };
 
   /****************************
@@ -676,11 +668,9 @@ namespace backend {
 
     void Write(OutputStream& out_stream);
 
-#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"Item: name='" << name << L"'; id='" << id << endl;
     }
-#endif
   };
 
   /****************************
@@ -726,7 +716,6 @@ namespace backend {
 
     void Write(OutputStream& out_stream);
 
-#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"=========================================================" << endl;
       GetLogger() << L"Enum: name='" << name << L"'; items=" << items.size() << endl;
@@ -736,7 +725,6 @@ namespace backend {
         items[i]->Debug();
       }
     }
-#endif
   };
 
   /****************************
@@ -873,17 +861,15 @@ namespace backend {
 
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 
-#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
-        GetLogger() << L"wstring id=" << i << L", size='" << ToString((int)char_strings[i].size())
-              << L"': '" << char_strings[i] << L"'" << endl;
+        GetLogger() << L"string id=" << i << L", size=" << ToString((int)char_strings[i].size()) << endl;
       }
       GetLogger() << endl;
 
       GetLogger() << L"Program: enums=" << enums.size() << L", classes="
-            << classes.size() << L"; start=" << class_id << L"," << method_id << endl;
+            << classes.size() << L"; start_ids=" << class_id << L"," << method_id << endl;
       // enums
       for(size_t i = 0; i < enums.size(); ++i) {
         enums[i]->Debug();
@@ -893,7 +879,6 @@ namespace backend {
         classes[i]->Debug();
       }
     }
-#endif
 
     inline wstring ToString(int v) {
       wostringstream str;
@@ -911,6 +896,7 @@ namespace backend {
     bool emit_lib;
     bool is_debug;
     bool is_web;
+    bool show_asm;
 
     bool EndsWith(wstring const &str, wstring const &ending) {
       if(str.length() >= ending.length()) {
@@ -920,16 +906,39 @@ namespace backend {
       return false;
     }
 
+    string ReplaceExt(const string &org, const string &ext) {
+      string str(org);
+      
+      size_t i = str.rfind('.', str.size());
+      if(i != string::npos) {
+        str.replace(i + 1, ext.size(), ext);
+      }
+
+      return str;
+    }
+
   public:
-    FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, const wstring &n) {
+    FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, bool s, const wstring &n) {
       program = p;
       emit_lib = l;
       is_debug = d;
       is_web = w;
+      show_asm = s;
       file_name = n;
+
+#ifndef _DEBUG
+      if(show_asm) {
+        OpenLogger(ReplaceExt(UnicodeToBytes(file_name), ".obm"));
+      }
+#endif
     }
 
     ~FileEmitter() {
+#ifndef _DEBUG
+      if(show_asm) {
+        CloseLogger();
+      }
+#endif
       delete program;
       program = nullptr;
     }
