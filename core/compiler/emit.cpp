@@ -61,6 +61,10 @@ IntermediateFactory* IntermediateFactory::Instance()
  ****************************/
 void FileEmitter::Emit()
 {
+#ifdef _DEBUG
+  show_asm = true;
+#endif
+  
   if(show_asm) {
     GetLogger() << L"\n--------- Emitting Target Code ---------" << endl;
     program->Debug();
@@ -101,6 +105,8 @@ void FileEmitter::Emit()
 /****************************
  * IntermediateProgram class
  ****************************/
+IntermediateProgram* IntermediateProgram::instance;
+
 void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream) {
   // version
   WriteInt(VER_NUM, out_stream);
@@ -447,31 +453,31 @@ void IntermediateInstruction::Debug() {
 
     switch(operand2) {
     case NIL_TYPE:
-      GetLogger() << L", rtrn_type=Nil";
+      GetLogger() << L"; rtrn_type=Nil";
       break;
 
     case BYTE_ARY_TYPE:
-      GetLogger() << L", rtrn_type=Byte[]";
+      GetLogger() << L"; rtrn_type=Byte[]";
       break;
 
     case CHAR_ARY_TYPE:
-      GetLogger() << L", rtrn_type=Char[]";
+      GetLogger() << L"; rtrn_type=Char[]";
       break;
 
     case INT_TYPE:
-      GetLogger() << L", rtrn_type=Int";
+      GetLogger() << L"; rtrn_type=Int";
       break;
 
     case FLOAT_TYPE:
-      GetLogger() << L", rtrn_type=Float";
+      GetLogger() << L"; rtrn_type=Float";
       break;
 
     case FUNC_TYPE:
-      GetLogger() << L", rtrn_type=Func";
+      GetLogger() << L"; rtrn_type=Func";
       break;
 
     default:
-      GetLogger() << L", rtrn_type=Unknown";
+      GetLogger() << L"; rtrn_type=Unknown";
       break;
     }
 
@@ -492,38 +498,38 @@ void IntermediateInstruction::Debug() {
     break;
 
   case LOAD_FUNC_VAR:
-    GetLogger() << L"LOAD_FUNC_VAR: id=" << operand << L", local="
+    GetLogger() << L"LOAD_FUNC_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_INT_VAR:
-    GetLogger() << L"LOAD_INT_VAR: id=" << operand << L", local="
+    GetLogger() << L"LOAD_INT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_FLOAT_VAR:
-    GetLogger() << L"LOAD_FLOAT_VAR: id=" << operand << L", local="
+    GetLogger() << L"LOAD_FLOAT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_BYTE_ARY_ELM:
     GetLogger() << L"LOAD_BYTE_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_CHAR_ARY_ELM:
     GetLogger() << L"LOAD_CHAR_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_INT_ARY_ELM:
     GetLogger() << L"LOAD_INT_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_FLOAT_ARY_ELM:
     GetLogger() << L"LOAD_FLOAT_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_CLS_MEM:
@@ -535,58 +541,59 @@ void IntermediateInstruction::Debug() {
     break;
 
   case STOR_FUNC_VAR:
-    GetLogger() << L"STOR_FUNC_VAR: id=" << operand << L", local="
+    GetLogger() << L"STOR_FUNC_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_INT_VAR:
-    GetLogger() << L"STOR_INT_VAR: id=" << operand << L", local="
+    GetLogger() << L"STOR_INT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_FLOAT_VAR:
-    GetLogger() << L"STOR_FLOAT_VAR: id=" << operand << L", local="
+    GetLogger() << L"STOR_FLOAT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_FUNC_VAR:
-    GetLogger() << L"COPY_FUNC_VAR: id=" << operand << L", local="
+    GetLogger() << L"COPY_FUNC_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_INT_VAR:
-    GetLogger() << L"COPY_INT_VAR: id=" << operand << L", local="
+    GetLogger() << L"COPY_INT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_FLOAT_VAR:
-    GetLogger() << L"COPY_FLOAT_VAR: id=" << operand << L", local="
+    GetLogger() << L"COPY_FLOAT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_BYTE_ARY_ELM:
     GetLogger() << L"STOR_BYTE_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_CHAR_ARY_ELM:
     GetLogger() << L"STOR_CHAR_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_INT_ARY_ELM:
     GetLogger() << L"STOR_INT_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_FLOAT_ARY_ELM:
     GetLogger() << L"STOR_FLOAT_ARY_ELM: dimension=" << operand
-      << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
-  case instructions::ASYNC_MTHD_CALL:
-    GetLogger() << L"ASYNC_MTHD_CALL: class=" << operand << L", method="
-      << operand2 << L"; native=" << (operand3 ? "true" : "false") << endl;
+  case instructions::ASYNC_MTHD_CALL: {
+    IntermediateMethod* async_method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
+    GetLogger() << L"ASYNC_MTHD_CALL: method='" << async_method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
+  }
     break;
 
   case instructions::DLL_LOAD:
@@ -825,9 +832,10 @@ void IntermediateInstruction::Debug() {
     GetLogger() << L"RTRN" << endl;
     break;
 
-  case MTHD_CALL:
-    GetLogger() << L"MTHD_CALL: class=" << operand << L", method="
-      << operand2 << L"; native=" << (operand3 ? "true" : "false") << endl;
+  case MTHD_CALL: {
+    IntermediateMethod* method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
+    GetLogger() << L"MTHD_CALL: method='" << method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
+  }
     break;
 
   case LIB_NEW_OBJ_INST:
@@ -843,12 +851,11 @@ void IntermediateInstruction::Debug() {
     break;
 
   case LIB_MTHD_CALL:
-    GetLogger() << L"LIB_MTHD_CALL: class='" << operand5 << L"', method='"
-      << operand6 << L"'; native=" << (operand3 ? "true" : "false") << endl;
+    GetLogger() << L"LIB_MTHD_CALL: method='" << operand6 << L"'; native=" << (operand3 ? "true" : "false") << endl;
     break;
 
   case LIB_FUNC_DEF:
-    GetLogger() << L"LIB_FUNC_DEF: class='" << operand5 << L"', method='"
+    GetLogger() << L"LIB_FUNC_DEF: class='" << operand5 << L"'; method='"
       << operand6 << L"'" << endl;
     break;
 
@@ -890,8 +897,10 @@ void IntermediateInstruction::Debug() {
     GetLogger() << L"NEW_CHAR_ARY: dimension=" << operand << endl;
     break;
 
-  case NEW_OBJ_INST:
-    GetLogger() << L"NEW_OBJ_INST: class=" << operand << endl;
+  case NEW_OBJ_INST: {
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
+    GetLogger() << L"NEW_OBJ_INST: class=" << klass->GetName() << endl;
+  }
     break;
 
   case NEW_FUNC_INST:

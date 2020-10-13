@@ -1602,9 +1602,6 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       if(str[i] == L'{' && i + 1 < str.size() && str[i + 1] == L'$') {
         var_start = (int)i;
         const wstring token = str.substr(str_start, i - str_start);
-#ifdef _DEBUG
-        Debug(L"substring 0: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
-#endif
         char_str->AddSegment(token);
       }
 
@@ -1640,9 +1637,6 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       else if(i + 1 == str.size()) {
         var_start = (int)i;
         const wstring token = str.substr(str_start, i - str_start + 1);
-#ifdef _DEBUG
-        Debug(L"substring 1: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
-#endif
         char_str->AddSegment(token);
       }
     }

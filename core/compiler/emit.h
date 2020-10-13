@@ -731,6 +731,7 @@ namespace backend {
    * Program class
    ****************************/
   class IntermediateProgram : public Intermediate {
+    static IntermediateProgram* instance;
     int class_id;
     int method_id;
     vector<wstring> alias_encodings;
@@ -746,10 +747,18 @@ namespace backend {
     int num_lib_classes;
     int string_cls_id;
 
-  public:
     IntermediateProgram() {
       num_src_classes = num_lib_classes = 0;
       string_cls_id = -1;
+    }
+
+  public:
+    static IntermediateProgram* Instance() {
+      if(!instance) {
+        instance = new IntermediateProgram();
+      }
+
+      return instance;
     }
 
     ~IntermediateProgram() {
@@ -862,14 +871,14 @@ namespace backend {
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 
     void Debug() {
+/*
       GetLogger() << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
         GetLogger() << L"string id=" << i << L", size=" << ToString((int)char_strings[i].size()) << endl;
       }
       GetLogger() << endl;
-
-      GetLogger() << L"Program: enums=" << enums.size() << L", classes="
-            << classes.size() << L"; start_ids=" << class_id << L"," << method_id << endl;
+*/
+      GetLogger() << L"Program: enums=" << enums.size() << L", classes=" << classes.size() << L"; start_ids=" << class_id << L"," << method_id << endl;
       // enums
       for(size_t i = 0; i < enums.size(); ++i) {
         enums[i]->Debug();
