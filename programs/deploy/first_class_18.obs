@@ -1,5 +1,5 @@
 #~
-# compile: obc -src first_class_18.obs -lib gen_collect -opt s3 -dest first_class_18.obe
+# compile: obc -src first_class_18.obs -lib gen_collect' -dest first_class_18.obe
 # run: obr first_class_18.obe
 ~#
 

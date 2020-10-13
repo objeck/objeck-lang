@@ -1,5 +1,5 @@
 #~
-# compile: obc -src tic_tac_toe_16.obs -opt s3 -dest tic_tac_toe_16.obe
+# compile: obc -src tic_tac_toe_16.obs' -dest tic_tac_toe_16.obe
 # run: obr tic_tac_toe_16.obe
 ~#
 

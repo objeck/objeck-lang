@@ -1,5 +1,5 @@
 #~
-# compile: obc -src http_regex_9.obs -lib net,regex,gen_collect -opt s3 -dest http_regex_9.obe
+# compile: obc -src http_regex_9.obs -lib net,regex,gen_collect' -dest http_regex_9.obe
 # run: obr http_regex_9.obe https://www.objeck.org
 # note: takes a few seconds to run
 ~#

@@ -1,5 +1,5 @@
 ﻿#~
-# compile: obc -src json_3.obs -lib gen_collect,json,net,gen_collect -opt s3 -opt s3 -dest json_3.obe
+# compile: obc -src json_3.obs -lib gen_collect,json,net,gen_collect'' -dest json_3.obe
 # run: obr json_3.obe
 ~#
 
