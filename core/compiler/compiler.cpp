@@ -45,7 +45,7 @@ using namespace std;
 /****************************
  * Starts the compilation process
  ****************************/
-int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug) {
+int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
   // parse source code  
   Parser parser(arguments[L"src"], alt_syntax, run_string);
   if (parser.Parse()) {
@@ -70,7 +70,7 @@ int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_debug);
       optimizer.Optimize();
       // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, show_asm, arguments[L"dest"]);
       target.Emit();
 
       return SUCCESS;
@@ -194,10 +194,18 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     argument_options.remove(L"debug");
   }
 
+  // check for asm flag
+  bool show_asm = false;
+  result = arguments.find(L"asm");
+  if(result != arguments.end()) {
+    show_asm = true;
+    argument_options.remove(L"asm");
+  }
+
   if (argument_options.size() != 0) {
     wcerr << usage << endl << endl;
     return COMMAND_ERROR;
   }
 
-  return Compile(arguments, run_string, sys_lib_path, target, alt_syntax, is_debug);
+  return Compile(arguments, run_string, sys_lib_path, target, alt_syntax, is_debug, show_asm);
 }

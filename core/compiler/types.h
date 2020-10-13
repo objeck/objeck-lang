@@ -498,7 +498,6 @@ namespace backend {
       return declarations;
     }
     
-#ifdef _DEBUG
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
         size_t index = has_and_or ? 1 : 0;
@@ -560,7 +559,6 @@ namespace backend {
         GetLogger() << L"memory types: none" << endl;
       }
     }
-#endif
 
     void Write(bool is_debug, OutputStream &out_stream) {
       WriteInt((int)declarations.size(), out_stream);
