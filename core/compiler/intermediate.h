@@ -184,7 +184,7 @@ class IntermediateEmitter {
     is_debug = d;
     // note: negative numbers are used
     // for method inlining in VM
-    imm_program = new IntermediateProgram;
+    imm_program = IntermediateProgram::Instance();
     // 1,073,741,824 conditional labels
     conditional_label = -1;
     // 1,073,741,824 unconditional labels
