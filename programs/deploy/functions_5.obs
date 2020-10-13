@@ -1,5 +1,5 @@
 #~
-# compile: obc -src functions_5.obs -opt s3 -dest functions_5.obe
+# compile: obc -src functions_5.obs' -dest functions_5.obe
 # run: obr functions_5.obe
 ~#
 
