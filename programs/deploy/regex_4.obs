@@ -1,5 +1,5 @@
 #~
-# compile: obc -src regex_4.obs -lib regex,gen_collect -dest regex_4.obe
+# compile: obc -src regex_4.obs -lib regex,gen_collect -opt s3 -dest regex_4.obe
 # run: obr regex_4.obe
 ~#
 

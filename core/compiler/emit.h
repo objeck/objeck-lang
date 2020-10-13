@@ -937,7 +937,7 @@ namespace backend {
 
 #ifndef _DEBUG
       if(show_asm) {
-        OpenLogger(ReplaceExt(UnicodeToBytes(file_name), ".obm"));
+        OpenLogger(ReplaceExt(UnicodeToBytes(file_name), "obm"));
       }
 #endif
     }

@@ -8,7 +8,7 @@
 
    translated by Randy Hollines
    
-   compile: obc -src threads_6.obs -dest threads_6.obe
+   compile: obc -src threads_6.obs -opt s3 -dest threads_6.obe
    run: obr threads_6.obe
 ~#
 

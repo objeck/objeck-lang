@@ -1,5 +1,5 @@
 #~
-# compile: obc -src fs_query_12.obs -lib query,gen_collect,regex,misc -dest fs_query_12.obe
+# compile: obc -src fs_query_12.obs -lib query,gen_collect,regex,misc -opt s3 -dest fs_query_12.obe
 # run: obr fs_query_12.obe
 ~#
 
