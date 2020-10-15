@@ -354,6 +354,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     if(is_debug) {
       WriteInt(line_num, out_stream);
     }
+
     WriteInt(operand, out_stream);
     break;
 
@@ -368,6 +369,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     if(is_debug) {
       WriteInt(line_num, out_stream);
     }
+
     WriteInt(operand, out_stream);
     break;
 
@@ -382,6 +384,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     if(is_debug) {
       WriteInt(line_num, out_stream);
     }
+
     WriteInt(operand, out_stream);
     break;
 
