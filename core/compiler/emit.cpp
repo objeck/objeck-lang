@@ -342,119 +342,88 @@ void IntermediateBlock::Write(bool is_debug, OutputStream& out_stream) {
  * Instruction class
  ****************************/
 void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
+  WriteByte(type, out_stream);
+  if(is_debug) {
+    WriteInt(line_num, out_stream);
+  }
+
   switch(type) {
-  case LOAD_INT_VAR:
-    if(operand2 == LOCL) {
-      WriteByte(LOAD_LOCL_INT_VAR, out_stream);
-    }
-    else {
-      WriteByte(LOAD_CLS_INST_INT_VAR, out_stream);
-    }
-    WriteInt(operand2, out_stream);
+  case LOAD_INT_LIT:
+  case NEW_FLOAT_ARY:
+  case NEW_INT_ARY:
+  case NEW_BYTE_ARY:
+  case NEW_CHAR_ARY:
+  case NEW_OBJ_INST:
+  case NEW_FUNC_INST:
+  case OBJ_INST_CAST:
+  case OBJ_TYPE_OF:
+  case TRAP:
+  case TRAP_RTRN:
+  case LOAD_LOCL_INT_VAR:
+  case LOAD_CLS_INST_INT_VAR:
+    WriteInt(operand, out_stream);
     break;
 
+  case LOAD_CHAR_LIT:
+    WriteChar(operand, out_stream);
+    break;
+
+  case instructions::ASYNC_MTHD_CALL:
+  case MTHD_CALL:
+    WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
+    WriteInt(operand3, out_stream);
+    break;
+
+  case LIB_NEW_OBJ_INST:
+  case LIB_OBJ_INST_CAST:
+  case LIB_OBJ_TYPE_OF:
+    WriteString(operand5, out_stream);
+    break;
+
+  case LIB_MTHD_CALL:
+    WriteInt(operand3, out_stream);
+    WriteString(operand5, out_stream);
+    WriteString(operand6, out_stream);
+    break;
+
+  case LIB_FUNC_DEF:
+    WriteString(operand5, out_stream);
+    WriteString(operand6, out_stream);
+    break;
+
+  case JMP:
+  case DYN_MTHD_CALL:
+  case LOAD_FLOAT_VAR:
+  case LOAD_FUNC_VAR:
   case STOR_INT_VAR:
-    if(operand2 == LOCL) {
-      WriteByte(STOR_LOCL_INT_VAR, out_stream);
-    }
-    else {
-      WriteByte(STOR_CLS_INST_INT_VAR, out_stream);
-    }
+  case STOR_FLOAT_VAR:
+  case STOR_FUNC_VAR:
+  case COPY_INT_VAR:
+  case COPY_FLOAT_VAR:
+  case COPY_FUNC_VAR:
+  case LOAD_BYTE_ARY_ELM:
+  case LOAD_CHAR_ARY_ELM:
+  case LOAD_INT_ARY_ELM:
+  case LOAD_FLOAT_ARY_ELM:
+  case STOR_BYTE_ARY_ELM:
+  case STOR_CHAR_ARY_ELM:
+  case STOR_INT_ARY_ELM:
+  case STOR_FLOAT_ARY_ELM:
+    WriteInt(operand, out_stream);
     WriteInt(operand2, out_stream);
     break;
 
-  case COPY_INT_VAR:
-    if(operand2 == LOCL) {
-      WriteByte(COPY_LOCL_INT_VAR, out_stream);
-    }
-    else {
-      WriteByte(COPY_CLS_INST_INT_VAR, out_stream);
-    }
-    WriteInt(operand2, out_stream);
+  case LOAD_FLOAT_LIT:
+    WriteDouble(operand4, out_stream);
+    break;
+
+  case LBL:
+    WriteInt(operand, out_stream);
     break;
 
   default:
-    WriteByte(type, out_stream);
-    
-    switch(type) {
-    case LOAD_INT_LIT:
-    case NEW_FLOAT_ARY:
-    case NEW_INT_ARY:
-    case NEW_BYTE_ARY:
-    case NEW_CHAR_ARY:
-    case NEW_OBJ_INST:
-    case NEW_FUNC_INST:
-    case OBJ_INST_CAST:
-    case OBJ_TYPE_OF:
-    case TRAP:
-    case TRAP_RTRN:
-      WriteInt(operand, out_stream);
-      break;
-
-    case LOAD_CHAR_LIT:
-      WriteChar(operand, out_stream);
-      break;
-
-    case instructions::ASYNC_MTHD_CALL:
-    case MTHD_CALL:
-      WriteInt(operand, out_stream);
-      WriteInt(operand2, out_stream);
-      WriteInt(operand3, out_stream);
-      break;
-
-    case LIB_NEW_OBJ_INST:
-    case LIB_OBJ_INST_CAST:
-    case LIB_OBJ_TYPE_OF:
-      WriteString(operand5, out_stream);
-      break;
-
-    case LIB_MTHD_CALL:
-      WriteInt(operand3, out_stream);
-      WriteString(operand5, out_stream);
-      WriteString(operand6, out_stream);
-      break;
-
-    case LIB_FUNC_DEF:
-      WriteString(operand5, out_stream);
-      WriteString(operand6, out_stream);
-      break;
-
-    case JMP:
-    case DYN_MTHD_CALL:
-    case LOAD_FLOAT_VAR:
-    case LOAD_FUNC_VAR:
-    case STOR_FLOAT_VAR:
-    case STOR_FUNC_VAR:
-    case COPY_FLOAT_VAR:
-    case COPY_FUNC_VAR:
-    case LOAD_BYTE_ARY_ELM:
-    case LOAD_CHAR_ARY_ELM:
-    case LOAD_INT_ARY_ELM:
-    case LOAD_FLOAT_ARY_ELM:
-    case STOR_BYTE_ARY_ELM:
-    case STOR_CHAR_ARY_ELM:
-    case STOR_INT_ARY_ELM:
-    case STOR_FLOAT_ARY_ELM:
-      WriteInt(operand, out_stream);
-      WriteInt(operand2, out_stream);
-      break;
-
-    case LOAD_FLOAT_LIT:
-      WriteDouble(operand4, out_stream);
-      break;
-
-    case LBL:
-      WriteInt(operand, out_stream);
-      break;
-
-    default:
-      break;
-    }
     break;
-  }
-
-  if(is_debug) {
-    WriteInt(line_num, out_stream);
   }
 }
 
@@ -584,12 +553,8 @@ void IntermediateInstruction::Debug() {
     break;
 
   case STOR_INT_VAR:
-    if(operand2 == LOCL) {
-      GetLogger() << L"STOR_LOCL_INT_VAR: id=" << operand << endl;
-    }
-    else {
-      GetLogger() << L"STOR_CLS_INST_INT_VAR: id=" << operand << endl;
-    }
+    GetLogger() << L"STOR_INT_VAR: id=" << operand << L"; local="
+      << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_FLOAT_VAR:
@@ -603,12 +568,8 @@ void IntermediateInstruction::Debug() {
     break;
 
   case COPY_INT_VAR:
-    if(operand2 == LOCL) {
-      GetLogger() << L"COPY_LOCL_INT_VAR: id=" << operand << endl;
-    }
-    else {
-      GetLogger() << L"COPY_CLS_INST_INT_VAR: id=" << operand << endl;
-    }
+    GetLogger() << L"COPY_INT_VAR: id=" << operand << L"; local="
+      << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_FLOAT_VAR:
