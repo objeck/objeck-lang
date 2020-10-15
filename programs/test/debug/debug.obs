@@ -1,24 +1,6 @@
-use Collection.Generic;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		list := List->New()<IntHolder>;
-		list->AddBack(3);
-		list->AddBack(5);
-		list->AddBack(13);
-
-		iter := list->GetForwardIterator()<IntHolder>;
-		while(iter->More()) {
-			iter->Get()->PrintLine();
-#~			
-			iter2 := list->GetForwardIterator()<IntHolder>;
-			while(iter2->More()) {
-				iter2->Get()->PrintLine();
-				iter2->Next();
-			};
-~#			
-			iter->Next();
-			list->AddBack(101);
-		};
+		a := 4 * 5 + 9;
+		a->PrintLine();
 	}
 }
