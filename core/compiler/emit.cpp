@@ -538,10 +538,10 @@ void IntermediateInstruction::Debug() {
 
   case LOAD_INT_VAR:
     if(operand2 == LOCL) {
-      GetLogger() << L"LOAD_LOCL_INT_VAR: id=" << operand2 << endl;
+      GetLogger() << L"LOAD_LOCL_INT_VAR: id=" << operand << endl;
     }
     else {
-      GetLogger() << L"LOAD_CLS_INST_INT_VAR: id=" << operand2 << endl;
+      GetLogger() << L"LOAD_CLS_INST_INT_VAR: id=" << operand << endl;
     }
     break;
 
