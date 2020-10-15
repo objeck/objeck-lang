@@ -359,6 +359,8 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case OBJ_TYPE_OF:
   case TRAP:
   case TRAP_RTRN:
+  case LOAD_LOCL_INT_VAR:
+  case LOAD_CLS_INST_INT_VAR:
     WriteInt(operand, out_stream);
     break;
 
@@ -392,7 +394,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   case JMP:
   case DYN_MTHD_CALL:
-  case LOAD_INT_VAR:
   case LOAD_FLOAT_VAR:
   case LOAD_FUNC_VAR:
   case STOR_INT_VAR:
@@ -505,8 +506,12 @@ void IntermediateInstruction::Debug() {
     break;
 
   case LOAD_INT_VAR:
-    GetLogger() << L"LOAD_INT_VAR: id=" << operand << L"; local="
-      << (operand2 == LOCL ? "true" : "false") << endl;
+    if(operand2 == LOCL) {
+      GetLogger() << L"LOAD_LOCL_INT_VAR: id=" << operand << endl;
+    }
+    else {
+      GetLogger() << L"LOAD_CLS_INST_INT_VAR: id=" << operand << endl;
+    }
     break;
 
   case LOAD_FLOAT_VAR:
