@@ -343,7 +343,7 @@ void IntermediateBlock::Write(bool is_debug, OutputStream& out_stream) {
  ****************************/
 void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   if(type == LOAD_INT_VAR) {
-    if(operand2 == LOAD_LOCL_INT_VAR) {
+    if(operand2 == LOCL) {
       WriteByte(LOAD_LOCL_INT_VAR, out_stream);
     }
     else {
@@ -357,7 +357,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     WriteInt(operand, out_stream);
   }
   else if(type == STOR_INT_VAR) {
-    if(operand2 == STOR_LOCL_INT_VAR) {
+    if(operand2 == LOCL) {
       WriteByte(STOR_LOCL_INT_VAR, out_stream);
     }
     else {
@@ -371,7 +371,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     WriteInt(operand, out_stream);
   }
   else if(type == COPY_INT_VAR) {
-    if(operand2 == COPY_LOCL_INT_VAR) {
+    if(operand2 == LOCL) {
       WriteByte(COPY_LOCL_INT_VAR, out_stream);
     }
     else {
