@@ -350,10 +350,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     else {
       WriteByte(LOAD_CLS_INST_INT_VAR, out_stream);
     }
-
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
-    }
     WriteInt(operand, out_stream);
     break;
 
@@ -363,10 +359,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     }
     else {
       WriteByte(STOR_CLS_INST_INT_VAR, out_stream);
-    }
-
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
     }
     WriteInt(operand, out_stream);
     break;
@@ -378,19 +370,12 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     else {
       WriteByte(COPY_CLS_INST_INT_VAR, out_stream);
     }
-
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
-    }
     WriteInt(operand, out_stream);
     break;
 
   default:
     WriteByte(type, out_stream);
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
-    }
-
+    
     switch(type) {
     case LOAD_INT_LIT:
     case NEW_FLOAT_ARY:
@@ -466,6 +451,10 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
       break;
     }
     break;
+  }
+
+  if(is_debug) {
+    WriteInt(line_num, out_stream);
   }
 }
 
@@ -549,10 +538,10 @@ void IntermediateInstruction::Debug() {
 
   case LOAD_INT_VAR:
     if(operand2 == LOCL) {
-      GetLogger() << L"LOAD_LOCL_INT_VAR: id=" << operand << endl;
+      GetLogger() << L"LOAD_LOCL_INT_VAR: id=" << operand2 << endl;
     }
     else {
-      GetLogger() << L"LOAD_CLS_INST_INT_VAR: id=" << operand << endl;
+      GetLogger() << L"LOAD_CLS_INST_INT_VAR: id=" << operand2 << endl;
     }
     break;
 
