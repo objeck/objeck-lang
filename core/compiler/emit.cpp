@@ -349,11 +349,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     else {
       WriteByte(LOAD_CLS_INST_INT_VAR, out_stream);
     }
-
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
-    }
-
     WriteInt(operand, out_stream);
   }
   else if(type == STOR_INT_VAR) {
@@ -363,11 +358,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     else {
       WriteByte(STOR_CLS_INST_INT_VAR, out_stream);
     }
-
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
-    }
-
     WriteInt(operand, out_stream);
   }
   else if(type == COPY_INT_VAR) {
@@ -377,14 +367,10 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     else {
       WriteByte(COPY_CLS_INST_INT_VAR, out_stream);
     }
-
-    if(is_debug) {
-      WriteInt(line_num, out_stream);
-    }
-
     WriteInt(operand, out_stream);
   }
   else {
+    WriteByte(type, out_stream);
     WriteByte(type, out_stream);
     if(is_debug) {
       WriteInt(line_num, out_stream);
