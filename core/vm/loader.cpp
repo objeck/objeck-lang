@@ -544,6 +544,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+
     case COPY_CLS_INST_INT_VAR: {
       const long id = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, COPY_CLS_INST_INT_VAR, id);
