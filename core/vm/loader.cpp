@@ -497,13 +497,17 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case SHR_INT:
       mthd_instrs[i] = new StackInstr(line_num, SHR_INT);
       break;
+      break;
 
-    case LOAD_INT_VAR: {
+    case LOAD_LOCL_INT_VAR: {
       const long id = ReadInt();
-      MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, 
-              mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
-              id, mem_context);
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_LOCL_INT_VAR, id);
+    }
+      break;
+
+    case LOAD_CLS_INST_INT_VAR: {
+      const long id = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_INST_INT_VAR, id);
     }
       break;
 
@@ -521,12 +525,15 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case STOR_INT_VAR: {
+    case STOR_LOCL_INT_VAR: {
       const long id = ReadInt();
-      MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, 
-              mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
-              id, mem_context);
+      mthd_instrs[i] = new StackInstr(line_num, STOR_LOCL_INT_VAR, id);
+    }
+      break;
+
+    case STOR_CLS_INST_INT_VAR: {
+      const long id = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, STOR_CLS_INST_INT_VAR, id);
     }
       break;
 
@@ -544,12 +551,15 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case COPY_INT_VAR: {
+    case COPY_LOCL_INT_VAR: {
       const long id = ReadInt();
-      MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, 
-              mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
-              id, mem_context);
+      mthd_instrs[i] = new StackInstr(line_num, COPY_LOCL_INT_VAR, id);
+    }
+      break;
+
+    case COPY_CLS_INST_INT_VAR: {
+      const long id = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, COPY_CLS_INST_INT_VAR, id);
     }
       break;
 
