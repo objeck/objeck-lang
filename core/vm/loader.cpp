@@ -498,6 +498,15 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, SHR_INT);
       break;
 
+    case LOAD_INT_VAR: {
+      const long id = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, 
+              mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
+              id, mem_context);
+    }
+      break;
+
     case LOAD_FUNC_VAR: {
       const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -701,18 +710,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case OBJ_TYPE_OF: {
       const long check = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, check);
-    }
-      break;
-
-    case LOAD_LOCL_INT_VAR: {
-      const long id = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_LOCL_INT_VAR, id);
-    }
-      break;
-
-    case LOAD_CLS_INST_INT_VAR: {
-      const long id = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_INST_INT_VAR, id);
     }
       break;
 
