@@ -355,6 +355,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     }
 
     WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
   }
   else if(type == STOR_INT_VAR) {
     if(operand2 == LOCL) {
@@ -369,6 +370,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     }
 
     WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
   }
   else if(type == COPY_INT_VAR) {
     if(operand2 == LOCL) {
@@ -383,6 +385,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     }
 
     WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
   }
   else {
     WriteByte(type, out_stream);
