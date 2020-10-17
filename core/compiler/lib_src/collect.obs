@@ -2485,7 +2485,7 @@ bundle Collection {
 		}
 	}
 	
-	class ListNode {
+	class : private : ListNode {
 		@value : Base;
 		@next : ListNode;
 		@previous: ListNode;
@@ -2982,7 +2982,7 @@ bundle Collection {
 		}
 	}
 	
-	class TreeNode {
+	class : private : TreeNode {
 		@key : Compare;
 		@value : Base;
 		@left : TreeNode;
@@ -3034,7 +3034,7 @@ bundle Collection {
 		}
 	}
 
-	class Pair {
+	class : private : Pair {
 		@key : Compare;
 		@value : Base;
 
@@ -4198,7 +4198,7 @@ bundle Collection {
 		}
 	}
 	
-	class HashPair implements Compare {
+	class : private : HashPair implements Compare {
 		@key : Compare;
 		@value : Base;
 
