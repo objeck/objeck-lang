@@ -35,8 +35,11 @@ contexts:
     - match: '\b(if|else|do|while|static|select|break|continue|other|for|each|reverse|label|return|critical)\b'
       scope: keyword.control.objeck-obs
 
-    - match: '\b(use|leaving|virtual|bundle|Parent|from|implements)\b'
+    - match: '\b(use|leaving|virtual|Parent|from|implements)\b'
       scope: keyword.other
+
+    - match: '\b(bundle)\b'
+      scope: storage.type.trait.objeck-obs
 
     - match: '\b(Byte|Int|Float|Char|Bool|String|As)\b'
       scope: storage.type.objeck-obs
@@ -67,9 +70,6 @@ contexts:
 
     - match: \+|\-|/|%|\*
       scope: keyword.operator.arithmetic.objeck-obs
-
-    - match: ':'
-      scope: punctuation.separator.objeck-obs
 
     - match: '\b(and|or|xor)\b'
       scope: keyword.operator.bitwise.objeck-obs
