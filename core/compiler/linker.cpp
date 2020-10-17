@@ -796,8 +796,8 @@ void Library::LoadClasses()
       interface_names.push_back(ReadString());
     }
 
-    const bool is_interface = ReadInt() != 0;
-    const bool is_public = ReadInt() != 0;
+    const bool is_interface = ReadByte() != 0;
+    const bool is_public = ReadByte() != 0;
 
     // read generic names
     vector<wstring> generic_names;
@@ -806,8 +806,8 @@ void Library::LoadClasses()
       generic_names.push_back(ReadString());
     }
 
-    bool is_virtual = ReadInt() != 0;
-    bool is_debug = ReadInt() != 0;
+    bool is_virtual = ReadByte() != 0;
+    bool is_debug = ReadByte() != 0;
     wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -832,12 +832,9 @@ void Library::LoadClasses()
 
 #ifdef _DEBUG
     const wstring &msg = L"[class: name='" + name + L"'; parent='" + parent_name + 
-      L"'; interface=" + Linker::ToString(is_interface) +       
-      L"'; is_public=" + Linker::ToString(is_public) +
-      L"; virtual=" + Linker::ToString(is_virtual) + 
-      L"; class_mem_size=" + Linker::ToString(cls_space) +
-      L"; instance_mem_size=" + Linker::ToString(inst_space) + 
-      L"; is_debug=" + Linker::ToString(is_debug) + L"]";
+      L"'; interface=" + Linker::ToString(is_interface) + L"'; is_public=" + Linker::ToString(is_public) +
+      L"; virtual=" + Linker::ToString(is_virtual) + L"; class_mem_size=" + Linker::ToString(cls_space) +
+      L"; instance_mem_size=" + Linker::ToString(inst_space) + L"; is_debug=" + Linker::ToString(is_debug) + L"]";
     Linker::Debug(msg, 0, 1);
 #endif
 
@@ -859,11 +856,11 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
   for(int i = 0; i < number; ++i) {
     int id = ReadInt();
     frontend::MethodType type = (frontend::MethodType)ReadInt();
-    bool is_virtual = ReadInt() != 0;
-    bool has_and_or = ReadInt() != 0;
-    bool is_lambda = ReadInt() != 0;
-    bool is_native = ReadInt() != 0;
-    bool is_static = ReadInt() != 0;
+    bool is_virtual = ReadByte() != 0;
+    bool has_and_or = ReadByte() != 0;
+    bool is_lambda = ReadByte() != 0;
+    bool is_native = ReadByte() != 0;
+    bool is_static = ReadByte() != 0;
     const wstring &name = ReadString();
     const wstring &rtrn_name = ReadString();
     int params = ReadInt();
@@ -1039,16 +1036,16 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case MTHD_CALL: {
-      int cls_id = ReadInt();
-      int mthd_id = ReadInt();
-      int is_native = ReadInt();
+      const INT_VALUE cls_id = ReadInt();
+      const INT_VALUE mthd_id = ReadInt();
+      const INT_VALUE is_native = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
 
     case DYN_MTHD_CALL: {
-      int num_params = ReadInt();
-      int rtrn_type = ReadInt();
+      const INT_VALUE num_params = ReadInt();
+      const INT_VALUE rtrn_type = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
     }
       break;
@@ -1084,7 +1081,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
       
     case LIB_MTHD_CALL: {
-      int is_native = ReadInt();
+      const INT_VALUE is_native = ReadInt();
       const wstring &cls_name = ReadString();
       const wstring &mthd_name = ReadString();
 #ifdef _DEBUG
@@ -1428,9 +1425,9 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case ASYNC_MTHD_CALL: {
-      int cls_id = ReadInt();
-      int mthd_id = ReadInt();
-      int is_native = ReadInt();
+      const INT_VALUE cls_id = ReadInt();
+      const INT_VALUE mthd_id = ReadInt();
+      const INT_VALUE is_native = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
