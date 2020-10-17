@@ -318,24 +318,76 @@ void Parser::ParseBundle(int depth)
 #endif
   }
 
-  // parse bundle
-  if(Match(TOKEN_BUNDLE_ID)) {
-    while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
-      NextToken();
+  // parse file
+  while(!Match(TOKEN_END_OF_STREAM)) {
+    if(Match(TOKEN_BUNDLE_ID)) {
+      while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
+        NextToken();
 
-      wstring bundle_name = ParseBundleName();
-      if(bundle_name == DEFAULT_BUNDLE_NAME) {
-        bundle_name = L"";
+        wstring bundle_name = ParseBundleName();
+        if(bundle_name == DEFAULT_BUNDLE_NAME) {
+          bundle_name = L"";
+        }
+        else {
+          uses.push_back(bundle_name);
+        }
+        symbol_table = new SymbolTableManager;
+        ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
+        if(!Match(TOKEN_OPEN_BRACE)) {
+          ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+        }
+        NextToken();
+
+        current_bundle = bundle;
+#ifdef _DEBUG
+        Debug(L"bundle: '" + current_bundle->GetName() + L"'", depth);
+#endif
+
+        // parse classes, interfaces and enums
+        while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+          switch(GetToken()) {
+          case TOKEN_ENUM_ID:
+            bundle->AddEnum(ParseEnum(depth + 1));
+            break;
+
+          case TOKEN_CONSTS_ID:
+            bundle->AddEnum(ParseConsts(depth + 1));
+            break;
+
+          case TOKEN_ALIAS_ID:
+            bundle->AddLambdas(ParseLambdas(depth + 1));
+            break;
+
+          case TOKEN_CLASS_ID:
+            bundle->AddClass(ParseClass(bundle_name, depth + 1));
+            break;
+
+          case TOKEN_INTERFACE_ID:
+            bundle->AddClass(ParseInterface(bundle_name, depth + 1));
+            break;
+
+          default:
+            ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+            NextToken();
+            break;
+          }
+        }
+
+        if(!Match(TOKEN_CLOSED_BRACE)) {
+          ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+        }
+        NextToken();
+
+        program->AddBundle(bundle);
       }
-      else {
-        uses.push_back(bundle_name);
-      }
+
+      program->AddUses(uses, file_name);
+    }
+    // parse class
+    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
+      wstring bundle_name = L"";
       symbol_table = new SymbolTableManager;
       ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
-      if(!Match(TOKEN_OPEN_BRACE)) {
-        ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
-      }
-      NextToken();
 
       current_bundle = bundle;
 #ifdef _DEBUG
@@ -353,12 +405,12 @@ void Parser::ParseBundle(int depth)
           bundle->AddEnum(ParseConsts(depth + 1));
           break;
 
-        case TOKEN_ALIAS_ID:
-          bundle->AddLambdas(ParseLambdas(depth + 1));
-          break;
-
         case TOKEN_CLASS_ID:
           bundle->AddClass(ParseClass(bundle_name, depth + 1));
+          break;
+
+        case TOKEN_ALIAS_ID:
+          bundle->AddLambdas(ParseLambdas(depth + 1));
           break;
 
         case TOKEN_INTERFACE_ID:
@@ -371,72 +423,18 @@ void Parser::ParseBundle(int depth)
           break;
         }
       }
-
-      if(!Match(TOKEN_CLOSED_BRACE)) {
-        ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
-      }
-      NextToken();
-
       program->AddBundle(bundle);
-    }
 
-    // detect stray characters
-    if(!Match(TOKEN_END_OF_STREAM)) {
-      ProcessError(L"Unexpected tokens (likely related to other errors)");
-    }
-    program->AddUses(uses, file_name);
-  }
-  // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
-    wstring bundle_name = L"";
-    symbol_table = new SymbolTableManager;
-    ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
-
-    current_bundle = bundle;
-#ifdef _DEBUG
-    Debug(L"bundle: '" + current_bundle->GetName() + L"'", depth);
-#endif
-
-    // parse classes, interfaces and enums
-    while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
-      switch(GetToken()) {
-      case TOKEN_ENUM_ID:
-        bundle->AddEnum(ParseEnum(depth + 1));
-        break;
-
-      case TOKEN_CONSTS_ID:
-        bundle->AddEnum(ParseConsts(depth + 1));
-        break;
-
-      case TOKEN_CLASS_ID:
-        bundle->AddClass(ParseClass(bundle_name, depth + 1));
-        break;
-
-      case TOKEN_ALIAS_ID:
-        bundle->AddLambdas(ParseLambdas(depth + 1));
-        break;
-
-      case TOKEN_INTERFACE_ID:
-        bundle->AddClass(ParseInterface(bundle_name, depth + 1));
-        break;
-
-      default:
-        ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
-        NextToken();
-        break;
+      // detect stray characters
+      if(!Match(TOKEN_END_OF_STREAM)) {
+        ProcessError(L"Unexpected tokens (likely related to other errors)");
       }
+      program->AddUses(uses, file_name);
     }
-    program->AddBundle(bundle);
-
-    // detect stray characters
-    if(!Match(TOKEN_END_OF_STREAM)) {
-      ProcessError(L"Unexpected tokens (likely related to other errors)");
+    // error
+    else {
+      ProcessError(L"Expected 'use', 'bundle', 'class, 'interface', 'enum' or 'consts'");
     }
-    program->AddUses(uses, file_name);
-  }
-  // error
-  else {
-    ProcessError(L"Expected 'use', 'bundle', 'class, 'interface', 'enum' or 'consts'");
   }
 }
 
