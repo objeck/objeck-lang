@@ -423,6 +423,7 @@ class LibraryClass {
   backend::IntermediateDeclarations* inst_entries;
   map<wstring, backend::IntermediateDeclarations*> lib_closure_entries;
   bool is_interface;
+  bool is_public;
   bool is_virtual;
   bool is_generic;
   Library* library;
@@ -449,8 +450,8 @@ class LibraryClass {
      library = nullptr;
    }
    
-   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v, const int cs, 
-                const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, bool ip, const vector<wstring> g, 
+                bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
                 map<wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring &fn, bool d);
    
   ~LibraryClass() {   
@@ -505,6 +506,15 @@ class LibraryClass {
   const wstring &GetName() const {
     return name;
   }
+
+  wstring GetBundleName() {
+    const size_t index = name.find_last_of(L'.');
+    if(index != string::npos) {
+      return name.substr(0, index);
+    }
+
+    return L"Default";
+  }
   
   vector<wstring> GetInterfaceNames() {
     return interface_names;
@@ -520,6 +530,10 @@ class LibraryClass {
 
   bool IsInterface() {
     return is_interface;
+  }
+
+  bool IsPublic() {
+    return is_public;
   }
 
   bool HasGenerics() {

@@ -2925,15 +2925,24 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
         ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
       }
     }
+    
+    // TODO: Fix me
+    const wstring bundle_name = klass->GetBundleName();
+    if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class from this bundle scope");
+    }
+
     // static check
     if(!is_expr && InvalidStatic(method_call, method)) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
     }
+    
     // cannot create an instance of a virtual class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->IsVirtual() && current_class->GetParent() != klass) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface");
     }
+    
     // associate method
     klass->SetCalled(true);
     method_call->SetOriginalClass(klass);
@@ -3134,6 +3143,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
       encoded_name.push_back(L',');
     }
     lib_method = klass->GetMethod(encoded_name);
+  }
+
+  // TODO: Fix me
+  const wstring bundle_name = klass->GetBundleName();
+  if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
+    ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class from this bundle scope");
   }
 
   method_call->SetOriginalLibraryClass(klass);

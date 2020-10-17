@@ -2067,16 +2067,18 @@ namespace frontend {
     bool is_generic;
     bool was_called;
     bool is_interface;
+    bool is_public;
     MethodCall* anonymous_call;
     vector<wstring> interface_names;
     vector<Class*> generic_classes;
     Type* generic_interface;
 
     Class(const wstring& file_name, int line_num, const wstring& n, const wstring& p,
-          vector<wstring> &e, vector<Class*> g, bool i) : ParseNode(file_name, line_num) {
+          vector<wstring> &e, vector<Class*> g, bool s, bool i) : ParseNode(file_name, line_num) {
       name = n;
       parent_name = p;
       is_interface = i;
+      is_public = s;
       id = -1;
       lambda_id = 0;
       next_method_id = -1;
@@ -2095,6 +2097,7 @@ namespace frontend {
       name = n;
       parent_name = p;
       is_interface = false;
+      is_public = false;
       id = -1;
       lambda_id = 0;
       next_method_id = -1;
@@ -2107,10 +2110,10 @@ namespace frontend {
       generic_interface = nullptr;
     }
     
-    Class(const wstring& file_name, const int line_num, const wstring& n,
-          bool g) : ParseNode(file_name, line_num) {
+    Class(const wstring& file_name, const int line_num, const wstring& n, bool g) : ParseNode(file_name, line_num) {
       name = n;
       is_interface = !g;
+      is_public = true;
       id = -1;
       lambda_id = 0;
       next_method_id = -1;
@@ -2160,6 +2163,15 @@ namespace frontend {
       return name;
     }
 
+    wstring GetBundleName() {
+      const size_t index = name.find_last_of(L'.');
+      if(index != string::npos) {
+        return name.substr(0, index);
+      }
+
+      return L"Default";
+    }
+
     const wstring GetParentName() const {
       return parent_name;
     }
@@ -2207,6 +2219,10 @@ namespace frontend {
 
     bool IsInterface() {
       return is_interface;
+    }
+
+    bool IsPublic() {
+      return is_public;
     }
 
     bool HasGenerics() {
@@ -2830,8 +2846,8 @@ namespace frontend {
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
                      const wstring &parent_name, vector<wstring> interfaces, 
-         vector<Class*> generics, bool is_interface) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
+         vector<Class*> generics, bool is_public, bool is_interface) {
+      Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_public, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
