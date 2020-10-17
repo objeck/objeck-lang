@@ -1,26 +1,26 @@
-use Collection;
+use Collection.Generic;
 
 bundle Donut {
-	class : public : Foo {
+	class Foo {
 		New() {}
 	}
 }
 
 
-	class : private : Foo {
+	class Foo {
 		New() {}
 	}
 
 	class : public : Test {
 		function : Main(args : String[]) ~ Nil {
-			m := Map->New();
+			m := Map->New()<String, String>;
 			m->Insert("1", "One");
 
-#			n := TreeNode->New("1", "One", 0);
+			n := TreeNode->New("1", "One", 0);
 			d := Donut.Foo->New();
 		}
 
-		function : Bar() ~ Int {
+		function : native : public : Bar() ~ Int {
 			return 13;
 		}
 	}

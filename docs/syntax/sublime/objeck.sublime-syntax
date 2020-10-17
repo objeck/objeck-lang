@@ -68,11 +68,21 @@ contexts:
     - match: \+|\-|/|%|\*
       scope: keyword.operator.arithmetic.objeck-obs
 
+    - match: ':'
+      scope: punctuation.separator.objeck-obs
+
     - match: '\b(and|or|xor)\b'
       scope: keyword.operator.bitwise.objeck-obs
     
+    - match: '(class)\s+:\s+(native|public|private)\s*:\s+'
+      scope: meta.function.objeck-obs
+      captures:
+        1: storage.type.class.objeck-obs
+        2: storage.modifier.objeck-obs
+      push: func_def
+
     - match: '(class)\s+'
-      scope: entity.name.class.objeck-obs
+      scope: storage.type.class.objeck-obs
       push: cls_def
 
     - match: '(interface)\s+'
