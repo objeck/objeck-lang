@@ -320,6 +320,7 @@ void Parser::ParseBundle(int depth)
 
   // parse file
   while(!Match(TOKEN_END_OF_STREAM)) {
+    // parse bundle
     if(Match(TOKEN_BUNDLE_ID)) {
       while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
         NextToken();
