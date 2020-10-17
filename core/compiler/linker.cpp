@@ -614,7 +614,7 @@ void Library::LoadFile(const wstring &file_name)
 
   int ver_num = ReadInt();
   if(ver_num != VER_NUM) {
-    wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the toolchain.  Please recompile the libraries or link the correct version." << endl;
+    wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the tool chain.  Please recompile the libraries or link the correct version." << endl;
     exit(1);
   } 
 

@@ -1,13 +1,19 @@
 use Collection;
 
-bundle Default {
+bundle Donut {
+	class : private : Foo {
+		New() {}
+	}
+}
+
+bundle Donut {
 	class : private : Foo {
 		New() {}
 	}
 
 	class : public : Test {
 		function : Main(args : String[]) ~ Nil {
-			f := Foo->New();
+			f := Donut.Foo->New();
 		}
 
 		function : Bar() ~ Int {
