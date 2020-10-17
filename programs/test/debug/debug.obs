@@ -6,21 +6,21 @@ bundle Donut {
 	}
 }
 
-bundle Donut {
+
 	class : private : Foo {
 		New() {}
 	}
-	
+
 	class : public : Test {
 		function : Main(args : String[]) ~ Nil {
 			m := Map->New();
 			m->Insert("1", "One");
 
-			n := TreeNode->New("1", "One", 0);
+#			n := TreeNode->New("1", "One", 0);
+			d := Donut.Foo->New();
 		}
 
 		function : Bar() ~ Int {
 			return 13;
 		}
 	}
-}
