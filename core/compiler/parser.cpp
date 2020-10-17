@@ -425,15 +425,12 @@ void Parser::ParseBundle(int depth)
       }
       program->AddBundle(bundle);
 
-      // detect stray characters
-      if(!Match(TOKEN_END_OF_STREAM)) {
-        ProcessError(L"Unexpected tokens (likely related to other errors)");
-      }
       program->AddUses(uses, file_name);
     }
     // error
     else {
       ProcessError(L"Expected 'use', 'bundle', 'class, 'interface', 'enum' or 'consts'");
+      NextToken();
     }
   }
 }

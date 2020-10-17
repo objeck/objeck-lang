@@ -11,7 +11,7 @@ bundle Donut {
 		New() {}
 	}
 
-	class : public : Test {
+	class : private : Test {
 		function : Main(args : String[]) ~ Nil {
 			m := Map->New()<String, String>;
 			m->Insert("1", "One");
@@ -24,3 +24,4 @@ bundle Donut {
 			return 13;
 		}
 	}
+}
