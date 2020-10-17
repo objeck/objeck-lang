@@ -232,6 +232,7 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
       WriteString(interface_names[i], out_stream);
     }
     WriteInt(is_interface, out_stream);
+    WriteInt(is_public, out_stream);
 
     // generic names
     WriteInt((int)generic_classes.size(), out_stream);

@@ -580,10 +580,9 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
     short_file_name = file_name.substr(offset + 1);
   }
   
-  imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),  pid, parent_name, 
-                                    interface_ids, current_class->GetInterfaceNames(), current_class->IsInterface(), 
-                                    current_class->GetGenericStrings(),  current_class->IsVirtual(), cls_space, 
-                                    inst_space, cls_entries, inst_entries, short_file_name, is_debug);
+  imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),  pid, parent_name, interface_ids, current_class->GetInterfaceNames(), 
+                                    current_class->IsInterface(), current_class->IsPublic(), current_class->GetGenericStrings(),  current_class->IsVirtual(), 
+                                    cls_space, inst_space, cls_entries, inst_entries, short_file_name, is_debug);
   // block
   NewBlock();
   

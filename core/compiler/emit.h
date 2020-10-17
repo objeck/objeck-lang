@@ -469,15 +469,14 @@ namespace backend {
     map<IntermediateDeclarations*, pair<wstring, int> > closure_entries;
     bool is_lib;
     bool is_interface;
+    bool is_public;
     bool is_virtual;
     bool is_debug;
     wstring file_name;
     
   public:
-    IntermediateClass(int i, const wstring &n, int pi, const wstring &p, 
-                      vector<int> infs, vector<wstring> in, bool is_inf,
-                      vector<wstring> gen, bool is_vrtl, int cs, int is,
-                      IntermediateDeclarations* ce, IntermediateDeclarations* ie, 
+    IntermediateClass(int i, const wstring &n, int pi, const wstring &p, vector<int> infs, vector<wstring> in, bool is_inf, bool is_pub,
+                      vector<wstring> gen, bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, IntermediateDeclarations* ie, 
                       const wstring &fn, bool d) {
       id = i;
       name = n;
@@ -487,6 +486,7 @@ namespace backend {
       interface_names = in;
       generic_classes = gen;
       is_interface = is_inf;
+      is_public = is_pub;
       is_virtual = is_vrtl;
       cls_space = cs;
       inst_space = is;
@@ -506,6 +506,7 @@ namespace backend {
       parent_name = lib_klass->GetParentName();
       interface_names = lib_klass->GetInterfaceNames();
       is_interface = lib_klass->IsInterface();
+      is_public = lib_klass->IsPublic();
       is_virtual = lib_klass->IsVirtual();
       is_debug = lib_klass->IsDebug();
       cls_space = lib_klass->GetClassSpace();

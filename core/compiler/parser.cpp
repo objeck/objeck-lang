@@ -678,8 +678,28 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
+  bool is_public = true;
 
   NextToken();
+  if(Match(TOKEN_COLON)) {
+    NextToken();
+    if(Match(TOKEN_PUBLIC_ID)) {
+      NextToken();
+    }
+    else if(Match(TOKEN_PRIVATE_ID)) {
+      is_public = false;
+      NextToken();
+    }
+    else {
+      ProcessError(L"Expected 'public' or 'private'");
+    }
+
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
+    NextToken();
+  }
+
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
@@ -753,7 +773,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name,
-                                                    interface_names, generic_classes, false);
+                                                    interface_names, generic_classes, is_public, false);
   current_class = klass;
 
   // add '@self' entry

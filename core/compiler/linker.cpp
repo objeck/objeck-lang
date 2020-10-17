@@ -431,7 +431,7 @@ void Linker::Load()
 /****************************
  * LibraryClass class
  ****************************/
-LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, 
+LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, bool ip, const vector<wstring> g, 
                            bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
                            map<wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring& fn, bool d)
 {
@@ -440,6 +440,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
   interface_names = i;
   generic_name_types = g;
   is_interface = is;
+  is_public = ip;
   is_virtual = v;
   cls_space = cs;
   inst_space = in;
@@ -795,7 +796,8 @@ void Library::LoadClasses()
       interface_names.push_back(ReadString());
     }
 
-    bool is_interface = ReadInt() != 0;
+    const bool is_interface = ReadInt() != 0;
+    const bool is_public = ReadInt() != 0;
 
     // read generic names
     vector<wstring> generic_names;
@@ -831,6 +833,7 @@ void Library::LoadClasses()
 #ifdef _DEBUG
     const wstring &msg = L"[class: name='" + name + L"'; parent='" + parent_name + 
       L"'; interface=" + Linker::ToString(is_interface) +       
+      L"'; is_public=" + Linker::ToString(is_public) +
       L"; virtual=" + Linker::ToString(is_virtual) + 
       L"; class_mem_size=" + Linker::ToString(cls_space) +
       L"; instance_mem_size=" + Linker::ToString(inst_space) + 
@@ -838,7 +841,7 @@ void Library::LoadClasses()
     Linker::Debug(msg, 0, 1);
 #endif
 
-    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, generic_names, is_virtual,
+    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_public, generic_names, is_virtual,
                                          cls_space, inst_space, cls_entries, inst_entries, closure_entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);

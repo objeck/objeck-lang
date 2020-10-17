@@ -1,6 +1,17 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		a := 4 * 5 + 9;
-		a->PrintLine();
+use Collection;
+
+bundle Default {
+	class : private : Foo {
+		New() {}
+	}
+
+	class : public : Test {
+		function : Main(args : String[]) ~ Nil {
+			f := Foo->New();
+		}
+
+		function : Bar() ~ Int {
+			return 13;
+		}
 	}
 }
