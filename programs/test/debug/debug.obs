@@ -10,10 +10,13 @@ bundle Donut {
 	class : private : Foo {
 		New() {}
 	}
-
+	
 	class : public : Test {
 		function : Main(args : String[]) ~ Nil {
-			f := Donut.Foo->New();
+			m := Map->New();
+			m->Insert("1", "One");
+
+			n := TreeNode->New("1", "One", 0);
 		}
 
 		function : Bar() ~ Int {

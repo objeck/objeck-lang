@@ -2926,10 +2926,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       }
     }
     
-    // TODO: Fix me
+    // check private class scope
     const wstring bundle_name = klass->GetBundleName();
     if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class from this bundle scope");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
     }
 
     // static check
@@ -3145,10 +3145,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
     lib_method = klass->GetMethod(encoded_name);
   }
 
-  // TODO: Fix me
+  // check private class scope
   const wstring bundle_name = klass->GetBundleName();
   if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
-    ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class from this bundle scope");
+    ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
   }
 
   method_call->SetOriginalLibraryClass(klass);
