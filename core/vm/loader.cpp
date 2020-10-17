@@ -263,8 +263,8 @@ void Loader::LoadClasses()
       cls_interfaces[id] = nullptr;
     }
     
-    const bool is_virtual = ReadInt() != 0;
-    const bool is_debug = ReadInt() != 0;
+    const bool is_virtual = ReadByte() != 0;
+    const bool is_debug = ReadByte() != 0;
     wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -350,11 +350,11 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // id
     const int id = ReadInt();
     // method type
-    const bool is_virtual = ReadInt() != 0;
+    const bool is_virtual = ReadByte() != 0;
     // has and/or
-    const bool has_and_or = ReadInt() != 0;
+    const bool has_and_or = ReadByte() != 0;
     // is lambda expression
-    const bool is_lambda = ReadInt() != 0;
+    const bool is_lambda = ReadByte() != 0;
     // name
     const wstring name = ReadString();
     // return

@@ -231,8 +231,8 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
     for(size_t i = 0; i < interface_names.size(); ++i) {
       WriteString(interface_names[i], out_stream);
     }
-    WriteInt(is_interface, out_stream);
-    WriteInt(is_public, out_stream);
+    WriteByte(is_interface, out_stream);
+    WriteByte(is_public, out_stream);
 
     // generic names
     WriteInt((int)generic_classes.size(), out_stream);
@@ -241,8 +241,8 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
     }
   }
   
-  WriteInt(is_virtual, out_stream);
-  WriteInt(is_debug, out_stream);
+  WriteByte(is_virtual, out_stream);
+  WriteByte(is_debug, out_stream);
   if(is_debug) {
     WriteString(file_name, out_stream);
   }
@@ -288,13 +288,13 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
     WriteInt(type, out_stream);
   }
   
-  WriteInt(is_virtual, out_stream);
-  WriteInt(has_and_or, out_stream);
-  WriteInt(is_lambda, out_stream);
+  WriteByte(is_virtual, out_stream);
+  WriteByte(has_and_or, out_stream);
+  WriteByte(is_lambda, out_stream);
   
   if(emit_lib) {
-    WriteInt(is_native, out_stream);
-    WriteInt(is_function, out_stream);
+    WriteByte(is_native, out_stream);
+    WriteByte(is_function, out_stream);
   }
   
   WriteString(name, out_stream);
