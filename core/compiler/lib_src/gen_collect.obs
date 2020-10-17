@@ -151,7 +151,7 @@ bundle Collection.Generic {
 		}
 	}
 
-	class : public : HashPair<V> implements Compare {
+	class : private : HashPair<V> implements Compare {
 		@key : Compare;
 		@value : V;
 
@@ -823,7 +823,7 @@ bundle Collection.Generic {
 		}
 	}
 
-	class : public : CompareListNode<H : Compare> {
+	class : private : CompareListNode<H : Compare> {
 		@value : H;
 		@next : CompareListNode<H>;
 		@previous: CompareListNode<H>;
@@ -1337,7 +1337,7 @@ bundle Collection.Generic {
 		}
 	}
 
-	class : public : ListNode<H> {
+	class : private : ListNode<H> {
 		@value : H;
 		@next : ListNode<H>;
 		@previous: ListNode<H>;
@@ -2290,7 +2290,7 @@ bundle Collection.Generic {
 		}
 	}
 	
-	class : public : TreeNode<K : Compare, V> {
+	class : private : TreeNode<K : Compare, V> {
 		@key : K;
 		@value : V;
 		@left : TreeNode<K, V>;
