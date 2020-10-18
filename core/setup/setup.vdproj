@@ -297,12 +297,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_2BD96CE73C8D4B079B99E2185EA65EAA"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_2BDDFF99CA2E43899CB51D4593083CD2"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2837,26 +2831,6 @@
             "TargetName" = "8:json.obl"
             "Tag" = "8:"
             "Folder" = "8:_1427249AFA334FC59B04849813476351"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2BD96CE73C8D4B079B99E2185EA65EAA"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-conditional.html"
-            "TargetName" = "8:query.structured-conditional.html"
-            "Tag" = "8:"
-            "Folder" = "8:_486F8E796DE54228954285F575600B2B"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"

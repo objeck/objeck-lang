@@ -289,6 +289,8 @@ unsigned int WINAPI VersionCheck(LPVOID arg)
     DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, VersionProc);
     newVersion = FALSE;
   }
+
+  return 0;
 }
 
 VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTime)
