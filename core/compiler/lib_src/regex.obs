@@ -82,7 +82,7 @@ bundle Query.RegEx {
 		@return true if exact, false otherwise
 		~#
 		method : public : MatchExact(input : String) ~ Bool {
-            return Evaluate(input, 0) > -1 & @is_exact;
+			return Evaluate(input, 0) > -1 & @is_exact;
 		}
 		
 		#~
