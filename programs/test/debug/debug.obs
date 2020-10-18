@@ -13,15 +13,14 @@ bundle Donut {
 
 	class : private : Test {
 		function : Main(args : String[]) ~ Nil {
-			m := Map->New()<String, String>;
-			m->Insert("1", "One");
+			m := Map->New()<IntHolder, String>;
+			m->Insert(1, "One");
 
-			n := TreeNode->New("1", "One", 0);
+		#	n := TreeNode->New("1", "One", 0);
 			d := Donut.Foo->New();
 		}
 
-		function : native : public : Bar() ~ Int {
+		function:native:public:Bar() ~ Int {
 			return 13;
 		}
 	}
-}
