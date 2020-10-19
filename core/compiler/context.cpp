@@ -2928,7 +2928,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     
     // check private class scope
     const wstring bundle_name = klass->GetBundleName();
-    if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
+    if(!klass->IsPublic() && current_class->GetBundleName() != bundle_name) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
     }
 

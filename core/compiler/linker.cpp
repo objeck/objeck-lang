@@ -435,6 +435,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
                            bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
                            map<wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring& fn, bool d)
 {
+  id = -1;
   name = n;
   parent_name = p;
   interface_names = i;
