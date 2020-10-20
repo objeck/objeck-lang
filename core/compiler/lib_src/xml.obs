@@ -499,7 +499,7 @@ bundle Data.XML {
 			else if(Match('!')) {
 				@buffer_pos += 1;
 			
-				# comment
+				# comment (ignored)
 				if(Match('-')) {
 					@buffer_pos += 1;
 						
@@ -555,6 +555,73 @@ bundle Data.XML {
 						is_end_tag := true;
 						@buffer_pos += 1;
 					};
+				}
+				# doctype (ignored)
+				else if(Match('D')) {
+					@buffer_pos += 1;
+						
+					if(Unmatch('O')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('C')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('T')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('Y')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+
+					if(Unmatch('P')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+
+					if(Unmatch('E')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+
+					start_pos := @buffer_pos;
+					while(@buffer_pos < @buffer->Size() & Unmatch('>')) {
+						@buffer_pos += 1;
+					};
+					@buffer_pos += 1;
+
+					# rest for comment
+					IgnoreWhiteSpace();
+					if(@buffer_pos = @buffer->Size()) {
+						return Nil;
+					};
+				
+					# looks for '<'
+					if(Unmatch('<')) {
+						@error_msg := "Expected '<'...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+					IgnoreWhiteSpace();
+
+					# looks for '</'
+					is_end_tag := false;
+					if(Match('/')) {
+						is_end_tag := true;
+						@buffer_pos += 1;
+					};			
 				}
 				# cdata section
 				else if(Match('[')) {
@@ -624,11 +691,10 @@ bundle Data.XML {
 					for(i := start_pos; i < @buffer_pos - 3; i += 1;) {
 						data->Append(@buffer[i]);
 					};
-					
-# IO.Console->Print("cdata: ")->PrintLine(data);					
-						
-					return XmlElement->New(XmlElement->Type->CDATA, Nil->As(String), 
-						Nil->As(Hash<String, XmlAttribute>), data);
+
+# IO.Console->Print("cdata: ")->PrintLine(data);
+
+					return XmlElement->New(XmlElement->Type->CDATA, Nil->As(String), Nil->As(Hash<String, XmlAttribute>), data);
 				}
 				else {
 					@error_msg := "Unsupported tag...";
