@@ -3180,7 +3180,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
     }
 
-    if(!method_call->GetEntry() && !lib_method->IsStatic() && (lib_method->GetMethodType() == PUBLIC_METHOD || lib_method->GetMethodType() == PRIVATE_METHOD)) {
+    if(!method_call->GetEntry() && !method_call->GetVariable() && !lib_method->IsStatic() && 
+       (lib_method->GetMethodType() == PUBLIC_METHOD || lib_method->GetMethodType() == PRIVATE_METHOD)) {
       if(method_call->GetPreviousExpression() && method_call->GetPreviousExpression()->GetExpressionType() == METHOD_CALL_EXPR) {
         MethodCall* prev_method_call = static_cast<MethodCall*>(method_call->GetPreviousExpression());
         if(!prev_method_call->GetEntry() && prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() && !prev_method_call->GetLibraryMethod()->IsStatic()) {
