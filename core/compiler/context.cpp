@@ -3175,23 +3175,56 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
-    // public/private checks
-    if((lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !lib_method->IsStatic()) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
-    }
+    
 
-    if(!method_call->GetEntry() && !method_call->GetVariable() && !lib_method->IsStatic() && 
-       (lib_method->GetMethodType() == PUBLIC_METHOD || lib_method->GetMethodType() == PRIVATE_METHOD)) {
-      if(method_call->GetPreviousExpression() && method_call->GetPreviousExpression()->GetExpressionType() == METHOD_CALL_EXPR) {
-        MethodCall* prev_method_call = static_cast<MethodCall*>(method_call->GetPreviousExpression());
-        if(!prev_method_call->GetEntry() && prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() && !prev_method_call->GetLibraryMethod()->IsStatic()) {
+
+
+
+
+
+
+
+
+
+    //  && (lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD)
+
+
+    // public/private check
+    if(method_call->GetCallType() != NEW_INST_CALL && !lib_method->IsStatic()) {
+      if(method_call->GetPreviousExpression()) {
+        Expression* pre_expr = method_call->GetPreviousExpression();
+        if(pre_expr->GetExpressionType() == METHOD_CALL_EXPR) {
+          MethodCall* prev_method_call = static_cast<MethodCall*>(pre_expr);
+          if(prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() && 
+             !prev_method_call->GetLibraryMethod()->IsStatic() && 
+             !prev_method_call->GetEntry() && !prev_method_call->GetVariable()) {
+            ProcessError(static_cast<Expression*>(method_call), L"`Cannot reference a method from this context");
+          }
+        }
+        else if(pre_expr->GetExpressionType() == CHAR_STR_EXPR) {
+
+        }
+        else if(pre_expr->GetExpressionType() == STAT_ARY_EXPR) {
+
+        }
+        else {
           ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
         }
       }
-      else {
+      else if(!method_call->GetEntry() && !method_call->GetVariable()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
       }
     }
+
+
+
+
+
+
+
+
+
+
 
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
