@@ -3,11 +3,11 @@ class Test {
 		return 13;
 	}
 	function : Main(args : String[]) ~ Nil {
-#		foo := String->New()->Split("/");
-#		foo->Size()->PrintLine();
+		foo := String->New()->Split("/");
+		foo->Size()->PrintLine();
 
 		Data.XML.XmlElement->EncodeString("foo")->PrintLine();
 
-		Test->Foo()->PrintLine();
+#		Test->Foo()->PrintLine();
 	}
 }
