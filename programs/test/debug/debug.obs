@@ -1,26 +1,13 @@
-use Collection.Generic;
+class Test {
+	function : Foo() ~ Int {
+		return 13;
+	}
+	function : Main(args : String[]) ~ Nil {
+#		foo := String->New()->Split("/");
+#		foo->Size()->PrintLine();
 
-bundle Donut {
-	class Foo {
-		New() {}
+		Data.XML.XmlElement->EncodeString("foo")->PrintLine();
+
+		Test->Foo()->PrintLine();
 	}
 }
-
-
-	class Foo {
-		New() {}
-	}
-
-	class : private : Test {
-		function : Main(args : String[]) ~ Nil {
-			m := Map->New()<IntHolder, String>;
-			m->Insert(1, "One");
-
-		#	n := TreeNode->New("1", "One", 0);
-			d := Donut.Foo->New();
-		}
-
-		function:native:public:Bar() ~ Int {
-			return 13;
-		}
-	}

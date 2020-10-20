@@ -3175,18 +3175,30 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
-    // public/private check
-    if((lib_method->GetMethodType() == PRIVATE_METHOD ||
-       lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-       !lib_method->IsStatic()) {
+    // public/private checks
+    if((lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !lib_method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
     }
+
+    if(!method_call->GetEntry() && !lib_method->IsStatic() && (lib_method->GetMethodType() == PUBLIC_METHOD || lib_method->GetMethodType() == PRIVATE_METHOD)) {
+      if(method_call->GetPreviousExpression()) {
+        MethodCall* prev_method_call = static_cast<MethodCall*>(method_call->GetPreviousExpression());
+        if(prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() && !prev_method_call->GetLibraryMethod()->IsStatic()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
+        }
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
+      }
+    }
+
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
       ProcessError(static_cast<Expression*>(method_call),
                    L"Cannot create an instance of a virtual class or interface");
     }
+
     // associate method
     lib_method->GetLibraryClass()->SetCalled(true);
     method_call->SetLibraryMethod(lib_method);
@@ -3194,6 +3206,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     if(method_call->GetMethodCall()) {
       method_call->GetMethodCall()->SetEvalType(lib_method->GetReturn(), false);
     }
+
     // enum check
     if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
       ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
