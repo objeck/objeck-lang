@@ -3190,7 +3190,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
 
     // public/private check
-    if(method_call->GetCallType() != NEW_INST_CALL && !lib_method->IsStatic()) {
+    if(method_call->GetCallType() != NEW_INST_CALL && method_call->GetCallType() != PARENT_CALL && !lib_method->IsStatic()) {
       if(method_call->GetPreviousExpression()) {
         Expression* pre_expr = method_call->GetPreviousExpression();
         if(pre_expr->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -3205,6 +3205,9 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
         }
         else if(pre_expr->GetExpressionType() == STAT_ARY_EXPR) {
+
+        }
+        else if(pre_expr->GetExpressionType() == VAR_EXPR) {
 
         }
         else {
