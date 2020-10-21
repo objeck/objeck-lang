@@ -3179,13 +3179,16 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     if(method_call->GetCallType() != NEW_INST_CALL && method_call->GetCallType() != PARENT_CALL && !lib_method->IsStatic()) {
       if(method_call->GetPreviousExpression()) {
         Expression* pre_expr = method_call->GetPreviousExpression();
+        while(pre_expr->GetPreviousExpression()) {
+          pre_expr = pre_expr->GetPreviousExpression();
+        }
         switch(pre_expr->GetExpressionType()) {
         case METHOD_CALL_EXPR: {
           MethodCall* prev_method_call = static_cast<MethodCall*>(pre_expr);
           if(prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() &&
              !prev_method_call->GetLibraryMethod()->IsStatic() && !prev_method_call->GetEntry() && 
              !prev_method_call->GetVariable()) {
-            ProcessError(static_cast<Expression*>(method_call), L"`Cannot reference a method from this context");
+            ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
           }
         }
           break;
