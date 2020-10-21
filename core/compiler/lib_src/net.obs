@@ -686,20 +686,20 @@ bundle Web.HTTP {
 					};					
 					get->Append("\r\n");		
 					
-# IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
+IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
 					
 					socket->WriteString(get);
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-# status_line->PrintLine();					
+status_line->PrintLine();					
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-# status_code->PrintLine();					
+status_code->PrintLine();					
 					if(status_code <> 500) {
 						# get @headers
 						do {
@@ -709,14 +709,14 @@ bundle Web.HTTP {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
-# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-# IO.Console->Print("cookie=")->PrintLine(value);									
+IO.Console->Print("cookie=")->PrintLine(value);									
 								}
 								else {
 									@headers->Insert(name->ToLower(), value);
@@ -725,7 +725,7 @@ bundle Web.HTTP {
 						}
 						while(line->Size() > 0);
 						
-# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
+IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -743,7 +743,7 @@ bundle Web.HTTP {
 									# add line
 									line := String->New(buffer);
 									content->AddBack(line);
-# line->PrintLine();																	
+line->PrintLine();																	
 									# read '\r'
 									socket->ReadByte(); 
 									# read ''\n'
