@@ -3175,43 +3175,29 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
-    
-
-
-
-
-
-
-
-
-
-
-    //  && (lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD)
-
-
     // public/private check
     if(method_call->GetCallType() != NEW_INST_CALL && method_call->GetCallType() != PARENT_CALL && !lib_method->IsStatic()) {
       if(method_call->GetPreviousExpression()) {
         Expression* pre_expr = method_call->GetPreviousExpression();
-        if(pre_expr->GetExpressionType() == METHOD_CALL_EXPR) {
+        switch(pre_expr->GetExpressionType()) {
+        case METHOD_CALL_EXPR: {
           MethodCall* prev_method_call = static_cast<MethodCall*>(pre_expr);
-          if(prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() && 
-             !prev_method_call->GetLibraryMethod()->IsStatic() && 
-             !prev_method_call->GetEntry() && !prev_method_call->GetVariable()) {
+          if(prev_method_call->GetCallType() != NEW_INST_CALL && prev_method_call->GetLibraryMethod() &&
+             !prev_method_call->GetLibraryMethod()->IsStatic() && !prev_method_call->GetEntry() && 
+             !prev_method_call->GetVariable()) {
             ProcessError(static_cast<Expression*>(method_call), L"`Cannot reference a method from this context");
           }
         }
-        else if(pre_expr->GetExpressionType() == CHAR_STR_EXPR) {
+          break;
+        
+        case CHAR_STR_EXPR:
+        case STAT_ARY_EXPR:
+        case VAR_EXPR:
+          break;
 
-        }
-        else if(pre_expr->GetExpressionType() == STAT_ARY_EXPR) {
-
-        }
-        else if(pre_expr->GetExpressionType() == VAR_EXPR) {
-
-        }
-        else {
+        default:
           ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
+          break;
         }
       }
       else if(!method_call->GetEntry() && !method_call->GetVariable()) {
@@ -3219,21 +3205,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
-
-
-
-
-
-
-
-
-
-
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot create an instance of a virtual class or interface");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface");
     }
 
     // associate method

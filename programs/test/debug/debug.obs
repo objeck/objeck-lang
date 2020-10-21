@@ -3,12 +3,12 @@ class Test {
 		return 13;
 	}
 	function : Main(args : String[]) ~ Nil {
-#		rest := "dkfk/da/fkdkf";
-#		parts := rest->SubString(2, rest->Size() - 2)->Split("/")->Size();
-#		parts->PrintLine();
+		rest := "dkfk/da/fkdkf";
+		parts := rest->SubString(2, rest->Size() - 2)->Split("/")->Size();
+		parts->PrintLine();
 
 		"aaa"->PrintLine();
-		String->Split("/")->Size()->PrintLine();
+#		String->Split("/")->Size()->PrintLine();
 
 #		Data.XML.XmlElement->EncodeString("foo")->PrintLine();
 
