@@ -455,17 +455,62 @@ bundle Web.HTTP {
 		@return vector of read strings
 		~#
 		method : public : Post(url : String, data : String) ~ Vector<String> {
-			return Post(url, "text/plain", data);
+			return Post(url, data, "text/plain");
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return read strings
+		~#
+		function : PostAll(url : String, data : String) ~ String {
+			document := "";
+			
+			client := HttpClient->New();
+			lines := client->Post(url, data);
+			if(lines = Nil) {
+				return Nil;
+			};
+
+			each(i : lines) {
+				document->Append(lines->Get(i));
+			};
+
+			return document;
 		}
 		
 		#~
 		Performs a HTTP POST
 		@param url URL
-		@param content_type content type
 		@param data data to post
+		@param content_type content type
+		@return read strings
+		~#
+		function : PostAll(url : String, data : String, content_type : String) ~ String {
+			document := "";
+			
+			client := HttpClient->New();
+			lines := client->Post(url, data, content_type);
+			if(lines = Nil) {
+				return Nil;
+			};
+
+			each(i : lines) {
+				document->Append(lines->Get(i));
+			};
+
+			return document;
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
 		@return vector of read strings
 		~#
-		method : public : Post(url : String, content_type : String, data : String) ~ Vector<String> {
+		method : public : Post(url : String, data : String, content_type : String) ~ Vector<String> {
 			content := Vector->New()<String>;
 
 			if(url->StartsWith("http://")) {
@@ -501,6 +546,7 @@ bundle Web.HTTP {
 					post->Append("\r\nContent-Length: ");
 					post->Append(data->Size()->ToString());
 					post->Append("\r\n");
+					post->Append("Connection: keep-alive\r\nCache-Control: max-age=0\r\nUser-Agent: Mozilla/5.0 (compatible)\r\n");
 
 					request_keys := @headers->GetKeys()<String>;
 					each(i : request_keys) {		
@@ -663,6 +709,7 @@ bundle Web.HTTP {
 					get->Append(" HTTP/1.1\r\nHost: ");
 					get->Append(address);
 					get->Append("\r\n");
+					get->Append("Connection: keep-alive\r\nCache-Control: max-age=0\r\nUser-Agent: Mozilla/5.0 (compatible)\r\n");
 
 					request_keys := @headers->GetKeys()<String>;
 					each(i : request_keys) {		
@@ -686,20 +733,20 @@ bundle Web.HTTP {
 					};					
 					get->Append("\r\n");		
 					
-IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
+# IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
 					
 					socket->WriteString(get);
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-status_line->PrintLine();					
+# status_line->PrintLine();					
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-status_code->PrintLine();					
+# status_code->PrintLine();					
 					if(status_code <> 500) {
 						# get @headers
 						do {
@@ -709,14 +756,14 @@ status_code->PrintLine();
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
-IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-IO.Console->Print("cookie=")->PrintLine(value);									
+# IO.Console->Print("cookie=")->PrintLine(value);									
 								}
 								else {
 									@headers->Insert(name->ToLower(), value);
@@ -725,7 +772,7 @@ IO.Console->Print("cookie=")->PrintLine(value);
 						}
 						while(line->Size() > 0);
 						
-IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
+# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -743,7 +790,7 @@ IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
 									# add line
 									line := String->New(buffer);
 									content->AddBack(line);
-line->PrintLine();																	
+# line->PrintLine();																	
 									# read '\r'
 									socket->ReadByte(); 
 									# read ''\n'
@@ -855,6 +902,51 @@ line->PrintLine();
 		~#
 		method : public : SetCookie(cookie : String) ~ Nil {
 			@cookies->AddBack(cookie);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return read strings
+		~#
+		function : PostAll(url : String, data : String) ~ String {
+			document := "";
+			
+			client := HttpsClient->New();
+			lines := client->Post(url, data);
+			if(lines = Nil) {
+				return Nil;
+			};
+
+			each(i : lines) {
+				document->Append(lines->Get(i));
+			};
+
+			return document;
+		}
+		
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return read strings
+		~#
+		function : PostAll(url : String, data : String, content_type : String) ~ String {
+			document := "";
+			
+			client := HttpsClient->New();
+			lines := client->Post(url, data, content_type);
+			if(lines = Nil) {
+				return Nil;
+			};
+
+			each(i : lines) {
+				document->Append(lines->Get(i));
+			};
+
+			return document;
 		}	
 		
 		#~
@@ -864,7 +956,7 @@ line->PrintLine();
 		@return vector of read strings
 		~#
 		method : public : Post(url : String, data : String) ~ Vector<String> {
-			return Post(url, "text/plain", data);
+			return Post(url, data, "text/plain");
 		}
 		
 		#~
@@ -874,7 +966,7 @@ line->PrintLine();
 		@param data data to post
 		@return vector of read strings
 		~#
-		method : public : Post(url : String, content_type : String, data : String) ~ Vector<String> {
+		method : public : Post(url : String, data : String, content_type : String) ~ Vector<String> {
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("https://")) {
@@ -910,6 +1002,7 @@ line->PrintLine();
 					post->Append("\r\nContent-Length: ");
 					post->Append(data->Size()->ToString());
 					post->Append("\r\n");
+					post->Append("Connection: keep-alive\r\nCache-Control: max-age=0\r\nUser-Agent: Mozilla/5.0 (compatible)\r\n");
 
 					request_keys := @headers->GetKeys()<String>;
 					each(i : request_keys) {		
@@ -1014,7 +1107,7 @@ line->PrintLine();
 		@param url URL
 		@return output as one string
 		~#
-		method : public : GetAll(url : String) ~ String {
+		function : GetAll(url : String) ~ String {
 			document := "";
 			
 			client := HttpsClient->New();
@@ -1085,6 +1178,7 @@ line->PrintLine();
 					get->Append(" HTTP/1.1\r\nHost: ");
 					get->Append(address);
 					get->Append("\r\n");
+					get->Append("Connection: keep-alive\r\nCache-Control: max-age=0\r\nUser-Agent: Mozilla/5.0 (compatible)\r\n");
 
 					request_keys := @headers->GetKeys()<String>;
 					each(i : request_keys) {		
