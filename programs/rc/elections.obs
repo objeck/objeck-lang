@@ -17,7 +17,6 @@ class Test {
 					candidate := row->Get("candidate");
 					candidate_votes := row->Get("candidatevotes")->ToInt();
 					total_votes := row->Get("totalvotes")->ToInt();
-
 					records->AddBack(Record->New(year, state, state_po, candidate, candidate_votes, total_votes));
 				};
 
