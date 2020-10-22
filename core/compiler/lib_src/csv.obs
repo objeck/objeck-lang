@@ -74,7 +74,7 @@ bundle Data.CSV {
 		~#
 		method : public : Set(index : Int, value : String) ~ Bool {
 			if(@read_only = false & index < @columns->Size()) {
-				return @columns->Set(value->ReplaceAll("\"\"", "ˑ"), index);
+				return @columns->Set(value->ReplaceAll("\"", 0xfffd), index);
 			};
 			
 			return false;
@@ -214,7 +214,7 @@ bundle Data.CSV {
 			
 			each(i : @columns) {
 				buffer->Append("\"");
-				buffer->Append(@columns->Get(i)->ReplaceAll("ˑ", "\""));
+				buffer->Append(@columns->Get(i)->ReplaceAll(0xfffd, "\""));
 				if(i + 1 < @columns->Size()) {
 					buffer->Append("\",");
 				}
@@ -494,7 +494,7 @@ bundle Data.CSV {
 		method : native : ParseColumns(rows : String[]) ~ Vector<CsvRow> {
 			parsed_rows := Vector->New()<CsvRow>;
 			each(i : rows) {
-				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
+				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", 0xfffd))));
 			};
 
 			if(rows->Size() <> parsed_rows->Size()) {		
@@ -534,9 +534,9 @@ bundle Data.CSV {
 					token := row->SubString(start, index - start);
 					index += 1;
 					if(token <> Nil) {
-						columns->AddBack(token->ReplaceAll("ˑ", "\""));
+						columns->AddBack(token->ReplaceAll(0xfffd, "\""));
 					};
-# IO.Console->Print("quoted = |")->Print(token->ReplaceAll("ˑ", "\""))->PrintLine("|");
+# IO.Console->Print("quoted = |")->Print(token->ReplaceAll(0xfffd, "\""))->PrintLine("|");
 				}
 				else {
 					start := index;
@@ -547,8 +547,8 @@ bundle Data.CSV {
 					if(token = Nil) {
 						token := "";
 					};
-					columns->AddBack(token->ReplaceAll("ˑ", "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll("ˑ", "\""))->PrintLine("|");					
+					columns->AddBack(token->ReplaceAll(0xfffd, "\"")->Trim());
+# IO.Console->Print("normal = |")->Print(token->ReplaceAll(0xfffd, "\""))->PrintLine("|");					
 				};
 			
 				if(row->Get(index) = ',') {
