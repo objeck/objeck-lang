@@ -395,7 +395,7 @@ bundle Data.CSV {
 			Init(data, ending);
 		}
 
-		method : GetReplaceStr() ~ String {
+		method : public : GetReplaceStr() ~ String {
 			return @replace_str;
 		}
 		
