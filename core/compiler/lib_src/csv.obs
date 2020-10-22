@@ -32,8 +32,7 @@ bundle Data.CSV {
 			@columns := columns;
 
 			if(@replace_str = Nil) {
-				@replace_str := "";
-				@replace_str += 0xfffd->As(Char);
+				table->GetReplaceStr();
 			};
 		}
 		
@@ -373,7 +372,7 @@ bundle Data.CSV {
 		@header_names : Hash<String, IntHolder>;
 		@ending : String;
 		@replace_str : static : String;
-		
+
 		#~
 		Constructor
 		@param data CSV data with CRNL line endings
@@ -394,7 +393,11 @@ bundle Data.CSV {
 		~#
 		New(data : String, ending : String) {
 			Init(data, ending);
-		}	
+		}
+
+		method : GetReplaceStr() ~ String {
+			return @replace_str;
+		}
 		
 		method : Init(data : String, ending : String) ~ Nil {
 			@ending := ending;
