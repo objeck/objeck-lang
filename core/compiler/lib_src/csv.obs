@@ -16,6 +16,7 @@ bundle Data.CSV {
 		@id : Int;
 		@columns : CompareVector<String>;
 		@read_only : Bool;
+		@replace_str : static : String;
 		
 		#~
 		Constructor
@@ -29,6 +30,11 @@ bundle Data.CSV {
 			@id := id;
 			@read_only := read_only;
 			@columns := columns;
+
+			if(@replace_str = Nil) {
+				@replace_str := "";
+				@replace_str += 0xfffd->As(Char);
+			};
 		}
 		
 		#~
@@ -74,7 +80,7 @@ bundle Data.CSV {
 		~#
 		method : public : Set(index : Int, value : String) ~ Bool {
 			if(@read_only = false & index < @columns->Size()) {
-				return @columns->Set(value->ReplaceAll("\"", 0xfffd), index);
+				return @columns->Set(value->ReplaceAll("\"", @replace_str), index);
 			};
 			
 			return false;
@@ -214,7 +220,7 @@ bundle Data.CSV {
 			
 			each(i : @columns) {
 				buffer->Append("\"");
-				buffer->Append(@columns->Get(i)->ReplaceAll(0xfffd, "\""));
+				buffer->Append(@columns->Get(i)->ReplaceAll(@replace_str, "\""));
 				if(i + 1 < @columns->Size()) {
 					buffer->Append("\",");
 				}
@@ -366,6 +372,7 @@ bundle Data.CSV {
 		@is_parsed : Bool;
 		@header_names : Hash<String, IntHolder>;
 		@ending : String;
+		@replace_str : static : String;
 		
 		#~
 		Constructor
@@ -373,6 +380,11 @@ bundle Data.CSV {
 		~#
 		New(data : String) {
 			Init(data, "\r\n");
+
+			if(@replace_str = Nil) {
+				@replace_str := "";
+				@replace_str += 0xfffd->As(Char);
+			};
 		}
 
 		#~
@@ -494,7 +506,7 @@ bundle Data.CSV {
 		method : native : ParseColumns(rows : String[]) ~ Vector<CsvRow> {
 			parsed_rows := Vector->New()<CsvRow>;
 			each(i : rows) {
-				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", 0xfffd))));
+				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", @replace_str))));
 			};
 
 			if(rows->Size() <> parsed_rows->Size()) {		
@@ -534,9 +546,9 @@ bundle Data.CSV {
 					token := row->SubString(start, index - start);
 					index += 1;
 					if(token <> Nil) {
-						columns->AddBack(token->ReplaceAll(0xfffd, "\""));
+						columns->AddBack(token->ReplaceAll(@replace_str, "\""));
 					};
-# IO.Console->Print("quoted = |")->Print(token->ReplaceAll(0xfffd, "\""))->PrintLine("|");
+# IO.Console->Print("quoted = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");
 				}
 				else {
 					start := index;
@@ -547,8 +559,8 @@ bundle Data.CSV {
 					if(token = Nil) {
 						token := "";
 					};
-					columns->AddBack(token->ReplaceAll(0xfffd, "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll(0xfffd, "\""))->PrintLine("|");					
+					columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
+# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");					
 				};
 			
 				if(row->Get(index) = ',') {
