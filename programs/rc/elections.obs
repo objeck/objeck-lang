@@ -42,6 +42,7 @@ class Record implements Compare {
 	@candidate : String;
 	@candidate_votes : Int;
 	@total_votes : Int;
+	# TODO: make sorter
 	@sort_by : SortBy;
 
 	New(year : Int, state : String, state_po : String, candidate : String, candidate_votes : Int, total_votes : Int) {
