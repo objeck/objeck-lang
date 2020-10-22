@@ -1,0 +1,122 @@
+use Collection.Generic;
+use Data.CSV;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			input := System.IO.File.FileReader->ReadFile(args[0]);
+			table := CsvTable->New(input, "\n");
+
+			if(table->IsParsed()) {
+				records := CompareVector->New()<Record>;
+				each(i : table) {
+					row := table->Get(i);
+					year := row->Get("year")->ToInt();
+					state := row->Get("state");
+					state_po := row->Get("state_po");
+					candidate := row->Get("candidate");
+					candidate_votes := row->Get("candidatevotes")->ToInt();
+					total_votes := row->Get("totalvotes")->ToInt();
+
+					records->AddBack(Record->New(year, state, state_po, candidate, candidate_votes, total_votes));
+				};
+
+				records->Sort();
+				each(i : records) {
+					records->Get(i)->ToString()->PrintLine();
+				};
+			};
+		};
+	}
+}
+
+class Record implements Compare {
+	enum SortBy {
+		CANDIDATE_VOTES,
+		TOTAL_VOTES,
+		STATE
+	}
+
+	@year : Int;
+	@state : String;
+	@state_po : String;
+	@candidate : String;
+	@candidate_votes : Int;
+	@total_votes : Int;
+	@sort_by : SortBy;
+
+	New(year : Int, state : String, state_po : String, candidate : String, candidate_votes : Int, total_votes : Int) {
+		@year := year;
+		@state := state;
+		@state_po := state_po;
+		@candidate := candidate;
+		@candidate_votes := candidate_votes;
+		@total_votes := total_votes;
+		@sort_by := SortBy->STATE;
+	}
+
+	method : GetTotalVotes() ~ Int {
+		return @total_votes;
+	}
+
+	method : GeCandidateVotes() ~ Int {
+		return @candidate_votes;
+	}
+
+	method : GetState() ~ String {
+		return @state;
+	}
+
+	method : GetSortBy() ~ SortBy {
+		return @sort_by;
+	}
+
+	method : public : Clone() ~ Compare {
+		return @self;
+	}
+
+	method : public : Compare(rhs : Compare) ~ Int {
+		# check class type
+#		if(<>rhs->TypeOf(Record)) {
+		if(GetClassID() <> rhs->GetClassID()) {
+			return -1;
+		};
+
+		record := rhs->As(Record);
+		if(record->GetSortBy() = SortBy->CANDIDATE_VOTES) {
+			if(@candidate_votes < record->GeCandidateVotes()) {
+				return -1;
+			}
+			else if(@candidate_votes > record->GeCandidateVotes()) {
+				return 1;
+			}
+			else {
+				return 0;
+			};
+		}
+		else if(record->GetSortBy() = SortBy->TOTAL_VOTES) {
+			if(@total_votes < record->GetTotalVotes()) {
+				return -1;
+			}
+			else if(@total_votes > record->GetTotalVotes()) {
+				return 1;
+			}
+			else {
+				return 0;
+			};
+		}
+		else if(record->GetSortBy() = SortBy->STATE) {
+			return @state->Compare(record->GetState());
+		};
+
+		return -1;
+	}
+
+	method : public : HashID() ~ Int {
+		return ToString()->HashID();
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@year}|{$@state}|{$@state_po}|{$@candidate}|{$@candidate_votes}|{$@total_votes}";
+	}
+}
