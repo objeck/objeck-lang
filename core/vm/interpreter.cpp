@@ -1328,7 +1328,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
 {
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
   if(mem) {
-    size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
+    const size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
     if(result) {
       PushInt(1, op_stack, stack_pos);
     }

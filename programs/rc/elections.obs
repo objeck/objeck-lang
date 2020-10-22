@@ -64,7 +64,7 @@ class Record implements Compare {
 	}
 
 	method : GetState() ~ String {
-		return @state;
+		returate;
 	}
 
 	method : GetSortBy() ~ SortBy {
@@ -77,7 +77,6 @@ class Record implements Compare {
 
 	method : public : Compare(rhs : Compare) ~ Int {
 		# check class type
-#		if(<>rhs->TypeOf(Record)) {
 		if(GetClassID() <> rhs->GetClassID()) {
 			return -1;
 		};
