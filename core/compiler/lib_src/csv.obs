@@ -32,7 +32,7 @@ bundle Data.CSV {
 			@columns := columns;
 
 			if(@replace_str = Nil) {
-				table->GetReplaceStr();
+				@replace_str := table->GetReplaceStr();
 			};
 		}
 		
