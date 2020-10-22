@@ -560,10 +560,13 @@ bundle Data.CSV {
 					};
 					token := row->SubString(start, index - start);
 					if(token = Nil | token->Equals(@replace_str)) {
-						token := "";
+						columns->AddBack("");
+# "normal = ||"->PrintLine();
+					}
+					else {
+						columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
+# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");											
 					};
-					columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");					
 				};
 			
 				if(row->Get(index) = ',') {
