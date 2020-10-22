@@ -379,12 +379,6 @@ bundle Data.CSV {
 		~#
 		New(data : String) {
 			Init(data, "\r\n");
-
-			if(@replace_str = Nil) {
-				@replace_str := "";
-				@replace_str += 0xfffd->As(Char);
-"fooo"->PrintLine();				
-			};
 		}
 
 		#~
@@ -401,6 +395,11 @@ bundle Data.CSV {
 		}
 		
 		method : Init(data : String, ending : String) ~ Nil {
+			if(@replace_str = Nil) {
+				@replace_str := "";
+				@replace_str += 0xfffd->As(Char);
+			};
+
 			@ending := ending;
 			@is_parsed := true;
 			rows := data->Split(@ending);
@@ -563,8 +562,12 @@ bundle Data.CSV {
 					if(token = Nil) {
 						token := "";
 					};
-					columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");					
+					token_str := token->ReplaceAll(@replace_str, "\"")->Trim();
+					if(token_str->Equals("\"")) {
+						token_str := "";
+					};
+					columns->AddBack(token_str);
+# IO.Console->Print("normal = |")->Print(token_str)->PrintLine("|");					
 				};
 			
 				if(row->Get(index) = ',') {
