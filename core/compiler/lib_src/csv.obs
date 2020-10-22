@@ -559,15 +559,11 @@ bundle Data.CSV {
 						index += 1;
 					};
 					token := row->SubString(start, index - start);
-					if(token = Nil) {
+					if(token = Nil | token->Equals(@replace_str)) {
 						token := "";
 					};
-					token_str := token->ReplaceAll(@replace_str, "\"")->Trim();
-					if(token_str->Equals("\"")) {
-						token_str := "";
-					};
-					columns->AddBack(token_str);
-# IO.Console->Print("normal = |")->Print(token_str)->PrintLine("|");					
+					columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
+# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");					
 				};
 			
 				if(row->Get(index) = ',') {
