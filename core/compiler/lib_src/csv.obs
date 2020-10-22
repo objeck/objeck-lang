@@ -383,6 +383,7 @@ bundle Data.CSV {
 			if(@replace_str = Nil) {
 				@replace_str := "";
 				@replace_str += 0xfffd->As(Char);
+"fooo"->PrintLine();				
 			};
 		}
 
