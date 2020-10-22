@@ -64,7 +64,7 @@ class Record implements Compare {
 	}
 
 	method : GetState() ~ String {
-		returate;
+		return @state;
 	}
 
 	method : GetSortBy() ~ SortBy {
