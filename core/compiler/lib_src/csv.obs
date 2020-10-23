@@ -535,8 +535,7 @@ bundle Data.CSV {
 			index := 0;
 			while(index < row->Size()) {
 				# stripe white space
-				while(index < row->Size() & (row->Get(index) = ' ' | row->Get(index) = '\t' | 
-						index = '\f' | row->Get(index) = '\v')) {
+				while(index < row->Size() & (row->Get(index) = ' ' | row->Get(index) = '\t' | row->Get(index) = '\f' | row->Get(index) = '\v')) {
 					index += 1;
 				};
 
@@ -559,14 +558,7 @@ bundle Data.CSV {
 						index += 1;
 					};
 
-					token : String;
-					if(row->Get(index - 1) = '"') {
-						token := row->SubString(start, index - start - 1);
-					}
-					else {
-						token := row->SubString(start, index - start);
-					};
-
+					token := row->SubString(start, index - start);
 					if(token = Nil | token->Equals(@replace_str)) {
 						columns->AddBack("");
 # "normal = ||"->PrintLine();
@@ -581,7 +573,7 @@ bundle Data.CSV {
 					index += 1;
 					if(index = row->Size()) {
 						columns->AddBack("");
-# "normal = ||"->PrintLine();						
+"normal = ||"->PrintLine();						
 					};
 				};
 			};
