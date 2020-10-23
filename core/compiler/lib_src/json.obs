@@ -221,9 +221,11 @@ bundle Data.JSON {
 				# TODO: add-in line numbers
 				while(index < input->Size()) {
 					# skip whitespace
-					char := input[index];
-					while(index < input->Size() & (char = '\r' | char = '\n' | char = '\t' | char = ' ' | char = '\f' | char = '\v')) {
-						char := input[++index];
+					if(index < input->Size()) {
+						char := input[index];
+						while(index < input->Size() & (char = '\r' | char = '\n' | char = '\t' | char = ' ' | char = '\f' | char = '\v')) {
+							char := input[++index];
+						};
 					};
 					# comment
 					if(index + 1 < input->Size() & input[index] = '/' & input[index + 1] = '/') {
