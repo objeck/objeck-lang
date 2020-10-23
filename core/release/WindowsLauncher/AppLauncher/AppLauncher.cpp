@@ -390,36 +390,37 @@ BOOL InitEnvironment()
     if(!CreateDirectory(programDataPath.c_str(), nullptr)) {
       return FALSE;
     }
-
-    // create cmd file
-    std::wstring programCmdFile = programDataPath + L"\\SetObjEnv.cmd";
-    HANDLE cmdFile = CreateFile(programCmdFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
-                                nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if(cmdFile == INVALID_HANDLE_VALUE) {
-      return FALSE;
-    }
-
-    // write to file
-    std::wstring pathText;
-
-    pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt(obc, obr, obd)\r\n@echo Copyright(c) 2008-2020, Randy Hollines\r\n@echo =========================================";
-    WriteLineToFile(cmdFile, pathText);
-
-    pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
-    WriteLineToFile(cmdFile, pathText);
-
-    pathText = L"set OBJECK_LIB_PATH=" + applicationPath + L"\\..\\lib";
-    WriteLineToFile(cmdFile, pathText);
-
-    pathText = L"title Objeck Prompt";
-    WriteLineToFile(cmdFile, pathText);
-
-    pathText = L"cd ..";
-    WriteLineToFile(cmdFile, pathText);
-
-    // close file
-    CloseHandle(cmdFile);
   }
+
+  // create cmd file
+  std::wstring programCmdFile = programDataPath + L"\\SetObjEnv.cmd";
+  HANDLE cmdFile = CreateFile(programCmdFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+                              nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if(cmdFile == INVALID_HANDLE_VALUE) {
+    return FALSE;
+  }
+
+  // write to file
+  std::wstring pathText;
+  pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt (v";
+  pathText += VERSION_STRING;
+  pathText += L")\r\n@echo Copyright(c) 2008-2020, Randy Hollines\r\n@echo =========================================";
+  WriteLineToFile(cmdFile, pathText);
+
+  pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
+  WriteLineToFile(cmdFile, pathText);
+
+  pathText = L"set OBJECK_LIB_PATH=" + applicationPath + L"\\..\\lib";
+  WriteLineToFile(cmdFile, pathText);
+
+  pathText = L"title Objeck Prompt";
+  WriteLineToFile(cmdFile, pathText);
+
+  pathText = L"cd ..";
+  WriteLineToFile(cmdFile, pathText);
+
+  // close file
+  CloseHandle(cmdFile);
 
   return TRUE;
 }
