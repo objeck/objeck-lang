@@ -304,8 +304,9 @@ bundle Data.XML {
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : native : IgnoreWhiteSpace() ~ Nil {
 			# ignore whitespace
-			while(@buffer_pos < @buffer->Size() & WhiteSpace(@buffer[@buffer_pos])) {
-				@buffer_pos += 1;
+			char := @buffer[@buffer_pos];
+			while(@buffer_pos < @buffer->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n' | char = '\f' | char = '\v')) {
+				char := @buffer[++@buffer_pos];
 			};
 		}
 		
@@ -431,17 +432,6 @@ bundle Data.XML {
 			};
 			
 			return Nil;
-		}
-		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# define whitespce
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : native : WhiteSpace(c : Char) ~ Bool {
-			if(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\f' | c = '\v') {
-				return true;
-			};
-			
-			return false;
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
