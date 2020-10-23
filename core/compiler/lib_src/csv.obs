@@ -558,14 +558,22 @@ bundle Data.CSV {
 					while(index < row->Size() & row->Get(index) <> ',') {
 						index += 1;
 					};
-					token := row->SubString(start, index - start);
+
+					token : String;
+					if(row->Get(index - 1) = '"') {
+						token := row->SubString(start, index - start - 1);
+					}
+					else {
+						token := row->SubString(start, index - start);
+					};
+
 					if(token = Nil | token->Equals(@replace_str)) {
 						columns->AddBack("");
 # "normal = ||"->PrintLine();
 					}
 					else {
 						columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");											
+# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\"")->Trim())->PrintLine("|");											
 					};
 				};
 			

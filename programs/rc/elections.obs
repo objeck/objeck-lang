@@ -96,26 +96,10 @@ class Record implements Compare {
 
 		record := rhs->As(Record);
 		if(@sorter->GetSortBy() = SortBy->CANDIDATE_VOTES) {
-			if(@candidate_votes < record->GeCandidateVotes()) {
-				return -1;
-			}
-			else if(@candidate_votes > record->GeCandidateVotes()) {
-				return 1;
-			}
-			else {
-				return 0;
-			};
+			return @candidate_votes->Compare(record->GeCandidateVotes());
 		}
 		else if(@sorter->GetSortBy() = SortBy->TOTAL_VOTES) {
-			if(@total_votes < record->GetTotalVotes()) {
-				return -1;
-			}
-			else if(@total_votes > record->GetTotalVotes()) {
-				return 1;
-			}
-			else {
-				return 0;
-			};
+			return @total_votes->Compare(record->GetTotalVotes());
 		}
 		else if(@sorter->GetSortBy() = SortBy->STATE) {
 			return @state->Compare(record->GetState());
