@@ -155,7 +155,7 @@ bundle System {
 		}
 
 		#~
-		Compares two objects
+		Compares two values
 		@param rhs compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
@@ -454,7 +454,7 @@ bundle System {
 		}
 		
 		#~
-		Compares two objects
+		Compares two values
 		@param rhs compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
@@ -724,7 +724,7 @@ bundle System {
 		}
 
 		#~
-		Compares two objects
+		Compares two values
 		@param rhs compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
@@ -1076,7 +1076,7 @@ bundle System {
 		}
 
 		#~
-		Compares two objects
+		Compares two value
 		@param rhs compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
@@ -1365,7 +1365,7 @@ bundle System {
 			};
 		}
 	}
-	
+
 	# Array class support
 	class $BaseArray {
 		function : Size(f : System.Base[]) ~ Int {
@@ -1380,7 +1380,7 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 	}
-	
+
 	#~
 	Holds a boolean value
 	~#
