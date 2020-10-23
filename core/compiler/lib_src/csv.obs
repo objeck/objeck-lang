@@ -573,7 +573,7 @@ bundle Data.CSV {
 					index += 1;
 					if(index = row->Size()) {
 						columns->AddBack("");
-"normal = ||"->PrintLine();						
+# "normal = ||"->PrintLine();						
 					};
 				};
 			};
