@@ -156,7 +156,8 @@ bundle System {
 
 		#~
 		Compares two values
-		@param rhs compare object
+		@param l left compare object
+		@param r right compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
 		function : native : Compare(l : Byte, r : Byte) ~ Int {
@@ -455,7 +456,8 @@ bundle System {
 		
 		#~
 		Compares two values
-		@param rhs compare object
+		@param l left compare object
+		@param r right compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
 		function : native : Compare(l : Char, r : Char) ~ Int {
@@ -725,7 +727,8 @@ bundle System {
 
 		#~
 		Compares two values
-		@param rhs compare object
+		@param l left compare object
+		@param r right compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
 		function : native : Compare(l : Int, r : Int) ~ Int {
@@ -1077,7 +1080,8 @@ bundle System {
 
 		#~
 		Compares two value
-		@param rhs compare object
+		@param l left compare object
+		@param r right compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
 		function : native : Compare(l : Float, r : Float) ~ Int {
