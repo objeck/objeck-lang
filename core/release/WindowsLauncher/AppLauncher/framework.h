@@ -26,6 +26,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <tlhelp32.h>
 #include <process.h>
 #include "../../../shared/sys.h"
+#include "../../../shared/version.h"
 
 // C RunTime Header Files
 #include <stdlib.h>
