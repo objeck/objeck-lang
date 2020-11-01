@@ -4198,7 +4198,7 @@ bundle Collection {
 		}
 	}
 	
-	class : private : HashPair implements Compare {
+	class : private : HashPair implements Compare, Clone {
 		@key : Compare;
 		@value : Base;
 

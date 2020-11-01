@@ -151,7 +151,7 @@ bundle Collection.Generic {
 		}
 	}
 
-	class : private : HashPair<V> implements Compare {
+	class : private : HashPair<V> implements Compare, Clone {
 		@key : Compare;
 		@value : V;
 
