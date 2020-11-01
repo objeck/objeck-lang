@@ -1,5 +1,4 @@
 use Game.SDL2;
-use Collection;
 use Game.Framework;
 
 class Game {

@@ -1388,7 +1388,7 @@ bundle System {
 	#~
 	Holds a boolean value
 	~#
-	class BoolHolder implements Compare {
+	class BoolHolder implements System.Compare, System.Clone {
 		@value : Bool;
 
 		#~
@@ -1475,7 +1475,7 @@ bundle System {
 	#~
 	Holds an byte value
 	~#
-	class ByteHolder implements Compare {
+	class ByteHolder implements System.Compare, System.Clone {
 		@value : Byte;
 
 		#~
@@ -1565,7 +1565,7 @@ bundle System {
 	#~
 	Holds an character value
 	~#
-	class CharHolder implements Compare {
+	class CharHolder implements System.Compare, System.Clone {
 		@value : Char;
 
 		#~
@@ -1655,7 +1655,7 @@ bundle System {
 	#~
 	Holds an integer value
 	~#
-	class IntHolder implements Compare {
+	class IntHolder implements System.Compare, System.Clone {
 		@value : Int;
 
 		#~
@@ -1791,7 +1791,7 @@ bundle System {
 	#~
 	Holds a float
 	~#
-	class FloatHolder implements Compare {
+	class FloatHolder implements System.Compare, System.Clone {
 		@value : Float;
 
 		#~
@@ -2255,7 +2255,12 @@ bundle System {
 		@return hash ID
 		~#
 		method : virtual : public : HashID() ~ Int;
+	}
 
+	#~
+	Used to clone values
+	~#
+	class Clone {
 		#~
 		Clones the object instance
 		@return cloned the object instance
@@ -2266,7 +2271,7 @@ bundle System {
 	#~
 	Provides rudimentary compare functionality 
 	~#
-	class BasicCompare implements System.Compare {
+	class BasicCompare implements System.Compare, System.Clone {
 		#~
 		Default constructor
 		~#
@@ -2289,15 +2294,7 @@ bundle System {
 
 			return -1;
 		}
-
-		#~
-		Clones the object instance
-		@return cloned the object instance
-		~#
-		method : public : Clone() ~ System.Compare {
-			return BasicCompare->New();
-		}
-
+		
 		#~
 		Returns the class default hash ID
 		@return hash ID
@@ -2310,7 +2307,7 @@ bundle System {
 	#~
 	Resizeable Unicode string class that supports typical string operations.
 	~#	
-	class String implements System.Compare {
+	class String implements System.Compare, System.Clone {
 		@string : Char[];
 		@max : Int;
 		@pos : Int;
@@ -3671,7 +3668,7 @@ bundle System.Time {
 	#~
 	Provides date and time functionality 
 	~#	
-	class Date implements System.Compare {
+	class Date implements System.Compare, System.Clone {
 		@day : Int;
 		@month : Int;
 		@year : Int;
