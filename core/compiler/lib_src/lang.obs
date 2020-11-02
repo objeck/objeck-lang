@@ -2260,7 +2260,7 @@ bundle System {
 	#~
 	Used to clone values
 	~#
-	class Clone {
+	interface Clone {
 		#~
 		Clones the object instance
 		@return cloned the object instance
@@ -2271,7 +2271,7 @@ bundle System {
 	#~
 	Provides rudimentary compare functionality 
 	~#
-	class BasicCompare implements System.Compare, System.Clone {
+	class BasicCompare implements System.Compare {
 		#~
 		Default constructor
 		~#
