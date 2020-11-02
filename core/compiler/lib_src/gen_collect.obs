@@ -2078,7 +2078,7 @@ bundle Collection.Generic {
 				# process left 
 				Each(node->GetLeft(), f);
 				
-				key := node->GetKey()->Clone();
+				key := node->GetKey()->As(Clone)->Clone();
 				value := node->Get();
 				f(key, value);
 				
@@ -2548,7 +2548,7 @@ bundle Collection.Generic {
 		method : public : Each(f : (K, V) ~ Nil) ~ MultiMap<K, V> {
 			keys := GetKeys();
 			each(i : keys) {
-				key := keys->Get(i)->Clone();
+				key := keys->Get(i)->As(Clone)->Clone();
 				values := Find(key);
 				each(j : values) {
 					f(key, values->Get(j));
