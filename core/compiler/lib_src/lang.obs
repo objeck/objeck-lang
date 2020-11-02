@@ -2258,14 +2258,14 @@ bundle System {
 	}
 
 	#~
-	Used to clone values
+	Used to clone objects
 	~#
 	interface Clone {
 		#~
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : virtual : public : Clone() ~ System.Compare;
+		method : virtual : public : Clone() ~ System.Clone;
 	}
 
 	#~

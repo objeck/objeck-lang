@@ -2080,7 +2080,7 @@ bundle Collection.Generic {
 				
 				key := node->GetKey()->As(Clone)->Clone();
 				value := node->Get();
-				f(key, value);
+				f(key->As(Compare), value);
 				
 				# process right
 				Each(node->GetRight(), f);
@@ -2549,9 +2549,9 @@ bundle Collection.Generic {
 			keys := GetKeys();
 			each(i : keys) {
 				key := keys->Get(i)->As(Clone)->Clone();
-				values := Find(key);
+				values := Find(key->As(Compare));
 				each(j : values) {
-					f(key, values->Get(j));
+					f(key->As(Compare), values->Get(j));
 				};
 			};
 			return @self;
