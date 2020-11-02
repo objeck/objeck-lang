@@ -141,6 +141,7 @@ class Parser {
   Enum* ParseEnum(int depth);
   Alias* ParseLambdas(int depth);
   Enum* ParseConsts(int depth);
+  void CalculateConst(Expression* expression, stack<int> &values, int depth);
   For* ParseFor(int depth);
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);

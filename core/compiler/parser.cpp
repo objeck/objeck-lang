@@ -632,18 +632,36 @@ Enum* Parser::ParseConsts(int depth)
 
     NextToken();
     int value = -1;
-    Expression* label = ParseSimpleExpression(depth + 1);
-    if(label) {
-      if(label->GetExpressionType() == INT_LIT_EXPR) {
-        value = static_cast<IntegerLiteral*>(label)->GetValue();
+    Expression* expression = ParseTerm(depth + 1);
+    if(expression) {
+      switch (expression->GetExpressionType()) {
+      case INT_LIT_EXPR:
+        value = static_cast<IntegerLiteral*>(expression)->GetValue();
+        break;
+
+      case CHAR_LIT_EXPR:
+        value = static_cast<CharacterLiteral*>(expression)->GetValue();
+        break;
+
+      case ADD_EXPR:
+      case SUB_EXPR:
+      case MUL_EXPR:
+      case DIV_EXPR:
+      case MOD_EXPR: {
+        stack<int> values;
+        CalculateConst(expression, values, depth + 1);
+        if(values.size() == 1) {
+          value = values.top();
+        }
       }
-      else if(label->GetExpressionType() == CHAR_LIT_EXPR) {
-        value = static_cast<CharacterLiteral*>(label)->GetValue();
-      }
-      else {
-        ProcessError(L"Expected integer or character literal", TOKEN_CLOSED_PAREN);
+        break;
+
+      default:
+        ProcessError(L"Expected integer or character literal expression", TOKEN_CLOSED_PAREN);
+        break;
       }
     }
+
     if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum), value)) {
       ProcessError(L"Duplicate consts label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
     }
@@ -665,6 +683,75 @@ Enum* Parser::ParseConsts(int depth)
   NextToken();
 
   return eenum;
+}
+
+/****************************
+ * Calculates a constant expression
+ ****************************/
+void Parser::CalculateConst(Expression* expression, stack<int>& values, int depth)
+{
+  switch (expression->GetExpressionType()) {
+  case INT_LIT_EXPR:
+    values.push(static_cast<IntegerLiteral*>(expression)->GetValue());
+    break;
+
+  case CHAR_LIT_EXPR:
+    values.push(static_cast<CharacterLiteral*>(expression)->GetValue());
+    break;
+
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR: {
+    CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(expression);
+    if(calc_expr->GetLeft() && calc_expr->GetRight()) {
+      CalculateConst(calc_expr->GetLeft(), values, depth + 1);
+      CalculateConst(calc_expr->GetRight(), values, depth + 1);
+    }
+    
+    if(values.size() > 1) {
+      const int right = values.top();
+      values.pop();
+
+      const int left = values.top();
+      values.pop();
+
+      switch (expression->GetExpressionType()) {
+      case ADD_EXPR:
+        values.push(left + right);
+        break;
+
+      case SUB_EXPR:
+        values.push(left - right);
+        break;
+
+      case MUL_EXPR:
+        values.push(left * right);
+        break;
+
+      case DIV_EXPR:
+        values.push(left / right);
+        break;
+
+      case MOD_EXPR:
+        values.push(left % right);
+        break;
+
+       default:
+          break;
+      }
+    }
+    else {
+      ProcessError(L"Expected integer or character literal expression", TOKEN_CLOSED_PAREN);
+    }
+  }
+    break;
+
+  default:
+    ProcessError(L"Expected integer or character literal expression", TOKEN_CLOSED_PAREN);
+    break;
+  }
 }
 
 /****************************
