@@ -1350,13 +1350,8 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 
   case METHOD_CALL_STMT: {
     MethodCall* mthd_call = static_cast<MethodCall*>(statement);
-    if(mthd_call->GetCallType() == ENUM_CALL) {
-      ProcessError(statement, L"Invalid statement");
-    }
-    else {
-      AnalyzeMethodCall(mthd_call, depth);
-      AnalyzeCast(mthd_call, depth + 1);
-    }
+    AnalyzeMethodCall(mthd_call, depth);
+    AnalyzeCast(mthd_call, depth + 1);
   }
     break;
 
