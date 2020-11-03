@@ -53,11 +53,12 @@ class LongSubtraction {
 			};
 
 			# check barrow
+			neg_borrow := false;
 			if(barrow) {
 				top -= 1;
 				if(top < 0) {
 					top := 9;
-					barrow := true;
+					barrow := neg_borrow := true;
 				};
 #				problem[Line->TOP, i] := "#";
 			};
@@ -72,7 +73,9 @@ class LongSubtraction {
 			}
 			else {
 				check := top - bottom;
-				barrow := barrow ? barrow : false;
+				if(<>neg_borrow) {
+					barrow := false;
+				};
 			};
 
 			answer := 0;
@@ -94,7 +97,7 @@ class LongSubtraction {
 		problem := String->New[4, 3];
 
 		# set top number
-		problem[Line->TOP, 0] := "3"; problem[Line->TOP, 1] := "8"; problem[Line->TOP, 2] := "0";
+		problem[Line->TOP, 0] := "3"; problem[Line->TOP, 1] := "0"; problem[Line->TOP, 2] := "0";
 		# set bottom number
 		problem[Line->BOTTOM, 1] := "7"; problem[Line->BOTTOM, 2] := "3";
 
