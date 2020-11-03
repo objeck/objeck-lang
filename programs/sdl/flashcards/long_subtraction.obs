@@ -1,0 +1,121 @@
+class LongSubtraction {
+	enum Line {
+		CARRY,
+		TOP,
+		BOTTOM,
+		ANSWER
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		problem := GenerateProblem();
+		
+		# set answer
+		problem[Line->CARRY, 2] := 11;
+		problem[Line->CARRY, 1] := 9;
+		
+		SetAnswer(problem);
+		PrintProblem(problem);
+		
+		
+
+		CheckProblem(problem);
+	}
+
+	function : SetAnswer(problem : Char[,]) ~ Nil {
+		dims := problem->Size();
+
+		input := System.IO.Console->ReadString();
+		j := dims[1] - 1;
+		for(i := input->Size() - 1; i > -1 & j > -1; i -= 1;) {
+			problem[Line->ANSWER, j] := input->Get(i);
+			j -= 1;
+		};
+	}
+
+	function : GenerateProblem() ~ Char[,] {
+		problem := Char->New[4, 3];
+
+		dims := problem->Size();
+		for(i := 0; i < dims[0]; i += 1;) {
+			for(j := 0; j < dims[1]; j += 1;) {
+				problem[i,j] := ' ';
+			};
+		};
+
+		# set top number
+		problem[Line->TOP, 0] := '1'; problem[Line->TOP, 1] := '0'; problem[Line->TOP, 2] := '1';
+		# set bottom number
+		problem[Line->BOTTOM, 0] := ' '; problem[Line->BOTTOM, 1] := '7'; problem[Line->BOTTOM, 2] := '8';
+
+		return problem;
+	}
+
+	function : CheckProblem(problem : Char[,]) ~ Nil {
+		dims := problem->Size();
+
+		for(i := 0; i < dims[1]; i += 1;) {
+			carry : Int;
+			carry_char := problem[Line->CARRY, i];
+			if(carry_char >= '0' & carry_char <= '9') {
+				carry := carry_char - '0';
+			};
+
+			top : Int;
+			top_char := problem[Line->TOP, i];
+			if(top_char >= '0' & top_char <= '9') {
+				top := top_char - '0';
+			};
+
+			bottom : Int;
+			bottom_char := problem[Line->BOTTOM, i];
+			if(bottom_char >= '0' & bottom_char <= '9') {
+				bottom := bottom_char - '0';
+			};
+
+			answer : Int;
+			answer_char := problem[Line->ANSWER, i];
+			if(answer_char >= '0' & answer_char <= '9') {
+				answer := answer_char - '0';
+			};
+
+
+
+			"{$carry}, {$top}, {$bottom}: {$answer}"->PrintLine();
+
+#~
+			check : Int;
+			if(carry = 0) {
+				check := top - bottom;
+			}
+			else {
+				check := carry - bottom;
+			};
+
+			if(check <> problem[Line->ANSWER, 2]) {
+				value := problem[Line->ANSWER, 2];
+				"*** Incorrect: {$i}->{$value} ***"->PrintLine();
+			};
+~#			
+		};
+	}
+
+	function : PrintProblem(problem : Char[,]) ~ Nil {
+		dims := problem->Size();
+		
+		for(i := 0; i < dims[0]; i += 1;) {
+			if(i = Line->ANSWER) {
+				"------------------"->PrintLine();
+			};
+
+			for(j := 0; j < dims[1]; j += 1;) {
+				digit := problem[i,j];
+				"{$digit}\t"->Print();
+			};
+
+			'\n'->Print();
+			if(i = Line->CARRY) {
+				"=================="->PrintLine();
+			};
+		};
+	}
+}
