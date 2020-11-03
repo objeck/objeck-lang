@@ -9,11 +9,11 @@ class LongSubtraction {
 	function : Main(args : String[]) ~ Nil {
 		problem := GenerateProblem();
 
-		PrintProblem(problem);
+		ShowProblem(problem);
 		SetAnswer(problem);
 
 		CheckProblem(problem)->PrintLine();
-		PrintProblem(problem);
+		ShowProblem(problem);
 	}
 
 	function : SetAnswer(problem : String[,]) ~ Nil {
@@ -102,7 +102,7 @@ class LongSubtraction {
 		return problem;
 	}
 
-	function : PrintProblem(problem : String[,]) ~ Nil {
+	function : ShowProblem(problem : String[,]) ~ Nil {
 		dims := problem->Size();
 		
 		'\n'->Print();
