@@ -15,6 +15,8 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
+  <w:Zoom>120</w:Zoom>
+  <w:DontDisplayPageBoundaries/>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -1188,7 +1190,7 @@ Programming Language</span><span style='font-family:"Calibri",sans-serif;
 mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h1>
 
 <p class=MsoSubtitle style='margin-bottom:0in'><span style='font-size:10.0pt;
-line-height:105%;font-family:"Calibri",sans-serif'>v5.5.3 (November 1, 2020)</span><span
+line-height:105%;font-family:"Calibri",sans-serif'>v5.5.4 (November 3, 2020)</span><span
 style='font-family:"Calibri",sans-serif'><o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:12.0pt;line-height:105%;
@@ -1222,7 +1224,7 @@ line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
 style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Added
-a ‘Clone’ interface (new)<o:p></o:p></span></p>
+a 'Clone' interface (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;margin-bottom:0in;
 margin-top:0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:
@@ -1230,13 +1232,21 @@ auto;text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !suppo
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
 style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Added
-'-asm' flag to the compiler to emit high-level assembly instructions (new)<o:p></o:p></span></p>
+'consts' support for literal mathematical expressions (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;margin-bottom:0in;
 margin-top:0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:
 auto;text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
 style='mso-list:Ignore'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Added
+'-asm' flag to the compiler to emit high-level assembly instructions (new)<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;margin-bottom:0in;
+margin-top:0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:
+auto;text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
+style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
+style='mso-list:Ignore'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Updated
 the HTTP/HTTPS clients to include additional default request parameters (new)<o:p></o:p></span></p>
 
@@ -1244,7 +1254,7 @@ the HTTP/HTTPS clients to include additional default request parameters (new)<o:
 margin-top:0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:
 auto;text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
-style='mso-list:Ignore'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Reduced
 the size of emitted binaries (new)<o:p></o:p></span></p>
 
@@ -1252,7 +1262,7 @@ the size of emitted binaries (new)<o:p></o:p></span></p>
 margin-top:0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:
 auto;text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
-style='mso-list:Ignore'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>7.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Minor
 tweaks to API documentation (new)<o:p></o:p></span></p>
 
@@ -1260,7 +1270,7 @@ tweaks to API documentation (new)<o:p></o:p></span></p>
 margin-top:0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:
 auto;text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
-style='mso-list:Ignore'>7.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>8.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Resolved
 paring bug in the CSV library for quoted string (bug)<o:p></o:p></span></p>
 
@@ -1268,7 +1278,7 @@ paring bug in the CSV library for quoted string (bug)<o:p></o:p></span></p>
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
 text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
-style='mso-list:Ignore'>8.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>9.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Fixed
 compiler check that missed flagging some static calls to library methods (bug)<o:p></o:p></span></p>
 
@@ -1374,11 +1384,7 @@ style='font-family:"Calibri",sans-serif'>Convenient way to run programs and
 access documentation. On Windows, configuration information is stored in the
 “%programdata%\Objeck” directory and build the first time the app runs. If you
 move the location of the install delete the “%programdata%\Objeck” directory
-and rerun the launcher.<o:p></o:p></span></p>
-
-<p class=MsoNormal style='margin-bottom:0in;margin-bottom:8.0pt;mso-margin-bottom-alt:
-8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>&nbsp;<o:p></o:p></span></p>
+and rerun the launcher.&nbsp;<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:12.0pt;line-height:105%;
 font-family:"Calibri",sans-serif;mso-fareast-font-family:"Times New Roman"'>Compiling
@@ -1415,19 +1421,22 @@ setting the environment paths in Windows:<o:p></o:p></span></p>
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;
 font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='font-family:"Calibri",sans-serif'>set <a name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=C:\Users\&lt;account&gt;\objeck-lang\lib<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>set <a name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=&lt;</span><span
+style='font-family:"Calibri",sans-serif;mso-fareast-font-family:"Times New Roman"'>
+program_path</span><span style='font-family:"Calibri",sans-serif'> &gt;\objeck-lang\lib<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>2.</span><span style='font-size:7.0pt;
 font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='font-family:"Calibri",sans-serif'>set PATH=%PATH%;C:\
-Users\&lt;account&gt;\ objeck-lang\bin; C:\ Users\&lt;account&gt;\
-objeck-lang\lib\sdl<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>set PATH=%PATH%;&lt;</span><span
+style='font-family:"Calibri",sans-serif;mso-fareast-font-family:"Times New Roman"'>
+program_path</span><span style='font-family:"Calibri",sans-serif'> &gt;\
+objeck-lang\bin; C:\ Users\&lt;account&gt;\ objeck-lang\lib\sdl<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
-line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;<o:p></o:p></span></p>
+line-height:normal'><span style='font-family:"Calibri",sans-serif'><o:p>&nbsp;</o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
@@ -1439,12 +1448,12 @@ setting the environment paths in macOS and Linux:<o:p></o:p></span></p>
      0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
      line-height:normal;mso-list:l0 level1 lfo2;tab-stops:list .5in'><span
      style='font-family:"Calibri",sans-serif;mso-fareast-font-family:"Times New Roman"'>export
-     PATH=$PATH:/home/&lt;account&gt;/objeck-lang/bin<o:p></o:p></span></li>
+     PATH=$PATH: &lt;program_path&gt;/objeck-lang/bin<o:p></o:p></span></li>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:
      0in;mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
      line-height:normal;mso-list:l0 level1 lfo2;tab-stops:list .5in'><span
      style='font-family:"Calibri",sans-serif;mso-fareast-font-family:"Times New Roman"'>export
-     OBJECK_LIB_PATH=/home/&lt;account&gt;/objeck-lang/lib<o:p></o:p></span></li>
+     OBJECK_LIB_PATH=&lt; program_path &gt;/objeck-lang/lib<o:p></o:p></span></li>
 </ol>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
@@ -1472,8 +1481,8 @@ line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;
 font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='font-family:"Calibri",sans-serif'>obc -src 'C:\Program
-Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt.obl -dest hello.obe<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>obc -src 'C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs'
+-lib encrypt.obl -dest hello.obe<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
@@ -1672,7 +1681,8 @@ word-spacing:0px'><span style='background:white;text-decoration:none;
 text-underline:none'>Randy Hollines</span></a><span style='color:#212529;
 background:white'><span style='font-variant-ligatures: normal;font-variant-caps: normal;
 orphans: 2;widows: 2;-webkit-text-stroke-width: 0px;text-decoration-style: initial;
-text-decoration-color: initial;float:none;word-spacing:0px'>. All Rights Reserved.</span></span><o:p></o:p></span></p>
+text-decoration-color: initial;float:none;word-spacing:0px'>. All Rights
+Reserved.</span></span><o:p></o:p></span></p>
 
 </div>
 
