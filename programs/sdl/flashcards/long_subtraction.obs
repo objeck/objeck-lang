@@ -8,98 +8,91 @@ class LongSubtraction {
 
 	function : Main(args : String[]) ~ Nil {
 		problem := GenerateProblem();
-		
-		# set answer
-		problem[Line->CARRY, 2] := 11;
-		problem[Line->CARRY, 1] := 9;
-		
-		SetAnswer(problem);
-		PrintProblem(problem);
-		
-		
 
+		PrintProblem(problem);
+		SetAnswer(problem);		
 		CheckProblem(problem);
 	}
 
-	function : SetAnswer(problem : Char[,]) ~ Nil {
-		dims := problem->Size();
+	function : SetAnswer(problem : String[,]) ~ Nil {
+		values := System.IO.Console->ReadString()->Split(" ");
+		if(values->Size() = 3) {
+			problem[Line->CARRY, 0] := values[2];
+			problem[Line->CARRY, 1] := values[1];
+			problem[Line->CARRY, 2] := values[0];
+		};
 
-		input := System.IO.Console->ReadString();
-		j := dims[1] - 1;
-		for(i := input->Size() - 1; i > -1 & j > -1; i -= 1;) {
-			problem[Line->ANSWER, j] := input->Get(i);
-			j -= 1;
+		values := System.IO.Console->ReadString()->Split(" ");
+		if(values->Size() = 3) {
+			problem[Line->ANSWER, 0] := values[2];
+			problem[Line->ANSWER, 1] := values[1];
+			problem[Line->ANSWER, 2] := values[0];
 		};
 	}
 
-	function : GenerateProblem() ~ Char[,] {
-		problem := Char->New[4, 3];
+	function : CheckProblem(problem : String[,]) ~ Nil {
+		carry_over := false;
 
 		dims := problem->Size();
-		for(i := 0; i < dims[0]; i += 1;) {
-			for(j := 0; j < dims[1]; j += 1;) {
-				problem[i,j] := ' ';
+		for(i := dims[1] - 1; i > -1; i -= 1;) {
+			carry := 0;
+			if(problem[Line->CARRY, i] <> Nil) {
+				carry := problem[Line->CARRY, i]->ToInt();
 			};
+
+			top := 0;
+			if(problem[Line->TOP, i] <> Nil) {
+				top := problem[Line->TOP, i]->ToInt();
+			};
+
+			bottom := 0;
+			if(problem[Line->BOTTOM, i] <> Nil) {
+				bottom := problem[Line->BOTTOM, i]->ToInt();
+			};
+
+			check : Int;
+			if(carry = 0) {
+				check := CarryOver(top, carry_over) - bottom;
+				carry_over := false;
+			}
+			else {
+				check := CarryOver(carry, carry_over) - bottom;
+				carry_over := true;
+			};
+
+			answer := 0;
+			if(problem[Line->ANSWER, i] <> Nil) {
+				answer := problem[Line->ANSWER, i]->ToInt();
+			};
+
+			"\n\n{$carry}\n==\n{$top}\n{$bottom}\n--\n{$answer} equals {$check}?"->PrintLine();
+		};
+	}
+
+	function : CarryOver(number : Int, carry_over : Bool) ~ Int {
+		if(<>carry_over) {
+			return number;
 		};
 
+		if(number = 0) {
+			return 9;
+		};
+
+		return number - 1;
+	}
+
+	function : GenerateProblem() ~ String[,] {
+		problem := String->New[4, 3];
+
 		# set top number
-		problem[Line->TOP, 0] := '1'; problem[Line->TOP, 1] := '0'; problem[Line->TOP, 2] := '1';
+		problem[Line->TOP, 0] := "1"; problem[Line->TOP, 1] := "0"; problem[Line->TOP, 2] := "1";
 		# set bottom number
-		problem[Line->BOTTOM, 0] := ' '; problem[Line->BOTTOM, 1] := '7'; problem[Line->BOTTOM, 2] := '8';
+		problem[Line->BOTTOM, 1] := "7"; problem[Line->BOTTOM, 2] := "8";
 
 		return problem;
 	}
 
-	function : CheckProblem(problem : Char[,]) ~ Nil {
-		dims := problem->Size();
-
-		for(i := 0; i < dims[1]; i += 1;) {
-			carry : Int;
-			carry_char := problem[Line->CARRY, i];
-			if(carry_char >= '0' & carry_char <= '9') {
-				carry := carry_char - '0';
-			};
-
-			top : Int;
-			top_char := problem[Line->TOP, i];
-			if(top_char >= '0' & top_char <= '9') {
-				top := top_char - '0';
-			};
-
-			bottom : Int;
-			bottom_char := problem[Line->BOTTOM, i];
-			if(bottom_char >= '0' & bottom_char <= '9') {
-				bottom := bottom_char - '0';
-			};
-
-			answer : Int;
-			answer_char := problem[Line->ANSWER, i];
-			if(answer_char >= '0' & answer_char <= '9') {
-				answer := answer_char - '0';
-			};
-
-
-
-			"{$carry}, {$top}, {$bottom}: {$answer}"->PrintLine();
-
-#~
-			check : Int;
-			if(carry = 0) {
-				check := top - bottom;
-			}
-			else {
-				check := carry - bottom;
-			};
-
-			if(check <> problem[Line->ANSWER, 2]) {
-				value := problem[Line->ANSWER, 2];
-				"*** Incorrect: {$i}->{$value} ***"->PrintLine();
-			};
-~#			
-		};
-	}
-
-	function : PrintProblem(problem : Char[,]) ~ Nil {
+	function : PrintProblem(problem : String[,]) ~ Nil {
 		dims := problem->Size();
 		
 		for(i := 0; i < dims[0]; i += 1;) {
@@ -108,8 +101,15 @@ class LongSubtraction {
 			};
 
 			for(j := 0; j < dims[1]; j += 1;) {
-				digit := problem[i,j];
-				"{$digit}\t"->Print();
+				digit_str := problem[i,j];
+				if(digit_str = Nil) {
+					" \t"->Print();
+				}
+				else {
+					digit := digit_str->ToInt();
+					"{$digit}\t"->Print();
+				};
+				
 			};
 
 			'\n'->Print();
