@@ -39,7 +39,7 @@ class LongSubtraction {
 		for(i := dims[1] - 1; i > -1; i -= 1;) {
 			carry := 0;
 			if(problem[Line->CARRY, i] <> Nil) {
-				carry := problem[Line->CARRY, i]->ToInt();
+				carry := problem[Line->CARRY, i]->ToInt();				
 			};
 
 			top := 0;
@@ -60,7 +60,6 @@ class LongSubtraction {
 					top := 9;
 					barrow := neg_borrow := true;
 				};
-#				problem[Line->TOP, i] := "#";
 			};
 			
 			# do the math
@@ -69,7 +68,6 @@ class LongSubtraction {
 				top += 10;
 				check := top - bottom;				
 				barrow := true;
-#				problem[Line->TOP, i] := "#";
 			}
 			else {
 				check := top - bottom;
@@ -83,10 +81,10 @@ class LongSubtraction {
 				answer := problem[Line->ANSWER, i]->ToInt();
 			};
 
- "\n\n[{$carry}]\n==\n{$top}\n{$bottom}\n--\n{$answer} equals [{$check}]?"->PrintLine();
+ "\n\n{$top} equals [{$carry}]\n{$bottom}\n--\n{$check} equals [{$answer}]"->PrintLine();
 
 			if(answer <> check) {
-#				return false;
+				return false;
 			};
 		};
 
@@ -97,7 +95,7 @@ class LongSubtraction {
 		problem := String->New[4, 3];
 
 		# set top number
-		problem[Line->TOP, 0] := "3"; problem[Line->TOP, 1] := "0"; problem[Line->TOP, 2] := "0";
+		problem[Line->TOP, 0] := "3"; problem[Line->TOP, 1] := "8"; problem[Line->TOP, 2] := "0";
 		# set bottom number
 		problem[Line->BOTTOM, 1] := "7"; problem[Line->BOTTOM, 2] := "3";
 
