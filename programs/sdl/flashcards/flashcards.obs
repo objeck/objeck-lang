@@ -344,9 +344,10 @@ class Flashcards {
 		
 
 		@top_string := @top_number->ToString();
-		@bottom_string := "-";
+		
+		@bottom_string := "-\t";
 		@bottom_string += @bottom_number->ToString();
-		@answer_string := "";
+		@answer_string := "\t";
 	}
 
 	method : Render() ~ Nil {
