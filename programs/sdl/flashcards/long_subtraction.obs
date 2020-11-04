@@ -9,7 +9,8 @@ class Flashcards {
 	@carry_left : Rectangle;
 	@carry_middle : Rectangle;
 	@carry_right : Rectangle;
-
+	@mouse_pos : Point;
+	
 	@top_sprite : TextSprite;
 	@top_string : String;
 	@top_number : Int;
@@ -110,6 +111,8 @@ class Flashcards {
 		@card_rect := Rect->New(x, y, w, h);
 
 		# carry boxes
+		@mouse_pos := Point->New(0, 0);
+
 		@carry_left := @framework->AddRectangle(90, 60);
 		@carry_color := Color->New(204, 229, 255);
 		@carry_left->SetFill(false);
@@ -192,6 +195,22 @@ class Flashcards {
 					# keyboard
 					else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 				        GetInput(e);
+				    }
+				    # mouse
+				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONDOWN) {
+				    	mouse_x := IntHolder->New();
+						mouse_y := IntHolder->New();
+				    	Cursor->GetMouseState(mouse_x, mouse_y);
+						@mouse_pos->SetX(mouse_x->Get());
+						@mouse_pos->SetY(mouse_y->Get());
+						
+						if(@carry_left->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+							@carry_left->SetFill(true);
+						}
+						else {
+							@carry_left->SetFill(false);
+						};
+		
 				    };
 				};
 
@@ -394,6 +413,7 @@ class Flashcards {
 		renderer->SetDrawColor(@card_color->GetR(), @card_color->GetG(), @card_color->GetB(), 0);		
 		renderer->FillRect(@card_rect);
 
+		# carry
 		@carry_left->Render(210, 140);
 
 		# draw problem text
