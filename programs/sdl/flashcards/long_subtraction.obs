@@ -16,7 +16,12 @@ class Flashcards {
 	@card_text_color : Color;
 	@card_texts : TextSprite[];
 	@card_text_sign : TextSprite;
-	
+
+	# mouse input
+	@mouse_x : IntHolder;
+	@mouse_y : IntHolder;
+	@mouse_pos : Point;
+
 	function : Main(args : String[]) ~ Nil {
 		flash_cards : Flashcards;
 		
@@ -36,6 +41,7 @@ class Flashcards {
 		
 		LoadMedia();
 		BuildCard();
+		WireInput();
 	}
 
 	method : LoadMedia() ~ Nil {
@@ -81,6 +87,12 @@ class Flashcards {
 		@card_line->SetFill(true);
 	}
 
+	method : WireInput() ~ Nil {
+		@mouse_x := IntHolder->New();
+		@mouse_y := IntHolder->New();
+		@mouse_pos := Point->New(0, 0);
+	}
+
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			e := @framework->GetEvent();
@@ -96,13 +108,11 @@ class Flashcards {
 					}
 					# keyboard
 					else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
-				        GetInput(e);
+				        KeyboardInput(e);
 				    }
 				    # mouse
-				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONDOWN) {
-				    	mouse_x := IntHolder->New();
-						mouse_y := IntHolder->New();
-				    	Cursor->GetMouseState(mouse_x, mouse_y);
+				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONDOWN) {				    	
+				    	MouseInput(e);
 				    };
 				};
 
@@ -126,8 +136,23 @@ class Flashcards {
 		};
 	}
 
-	method : GetInput(e : Event) ~ Nil {
-		
+	method : KeyboardInput(e : Event) ~ Nil {		
+	}
+
+	method : MouseInput(e : Event) ~ Nil {
+		Cursor->GetMouseState(@mouse_x, @mouse_y);
+		@mouse_pos->SetX(@mouse_x->Get());
+		@mouse_pos->SetY(@mouse_y->Get());
+
+		each(i : @card_carry_boxes) {
+			card_carry_box := @card_carry_boxes[i];
+			if(card_carry_box->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+				 card_carry_box->SetFill(true);
+			}
+			else {
+				card_carry_box->SetFill(false);
+			};
+		};
 	}
 
 	method : Render() ~ Nil {
