@@ -44,7 +44,7 @@ class Flashcards {
 
 	New(is_sound : Bool) {
 		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Long Subtraction");		
-		@framework->SetClearColor(Color->New(0, 0, 0));
+		@framework->SetClearColor(Color->New(105, 105, 105));
 		
 		LoadMedia();
 		BuildCard();
@@ -52,7 +52,7 @@ class Flashcards {
 		FetchProblem();
 	}
 
-	method :FetchProblem() ~ Nil {
+	method : FetchProblem() ~ Nil {
 		@card_text_strings[Layout->RIGHT_TOP] := "0";
 		@card_text_strings[Layout->RIGHT_BOTTOM] := "7";
 
