@@ -13,6 +13,8 @@ class Flashcards {
 	@card_box_font : Font;
 	@card_carry_color : Color;
 	@card_carry_texts : TextSprite[];
+	@card_carry_string_index : Int;
+	@card_carry_strings : String[];
 	
 	# card text
 	@card_text_font : Font;
@@ -93,6 +95,11 @@ class Flashcards {
 			@card_carry_texts[i]->SetFont(@card_box_font);
 		};
 
+		@card_carry_strings := String->New[6];
+		each(i : @card_carry_strings) {
+			@card_carry_strings[i] := "";
+		};
+
 		# sign
 		@card_text_sign := @framework->AddTextSprite();
 		@card_text_sign->SetFont(@card_text_font);
@@ -153,7 +160,88 @@ class Flashcards {
 		};
 	}
 
-	method : KeyboardInput(e : Event) ~ Nil {		
+	method : KeyboardInput(e : Event) ~ Nil {
+		if(@card_carry_string_index > -1) {
+			select(e->GetKey()->GetKeysym()->GetScancode()) {
+				label Scancode->SDL_SCANCODE_BACKSPACE: {
+					@card_carry_strings[@card_carry_string_index]->Pop();
+				}
+
+	        	label Scancode->SDL_SCANCODE_DELETE: {
+	            	@card_carry_strings[@card_carry_string_index] := "";
+	            }
+
+				label Scancode->SDL_SCANCODE_0:
+	        	label Scancode->SDL_SCANCODE_KP_0: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('0');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_1:
+	            label Scancode->SDL_SCANCODE_KP_1: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('1');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_2:
+	            label Scancode->SDL_SCANCODE_KP_2: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('2');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_3:
+	            label Scancode->SDL_SCANCODE_KP_3: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('3');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_4:
+	            label Scancode->SDL_SCANCODE_KP_4: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('4');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_5:
+	            label Scancode->SDL_SCANCODE_KP_5: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('5');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_6:
+	            label Scancode->SDL_SCANCODE_KP_6: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('6');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_7:
+	            label Scancode->SDL_SCANCODE_KP_7: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('7');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_8:
+	            label Scancode->SDL_SCANCODE_KP_8: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('8');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_9:
+	            label Scancode->SDL_SCANCODE_KP_9: {
+	            	if(@card_carry_strings[@card_carry_string_index]->Size() < 2) {
+	            		@card_carry_strings[@card_carry_string_index]->Append('9');
+	            	};
+	            }
+			};
+		};
 	}
 
 	method : MouseInput(e : Event) ~ Nil {
@@ -161,14 +249,21 @@ class Flashcards {
 		@mouse_pos->SetX(@mouse_x->Get());
 		@mouse_pos->SetY(@mouse_y->Get());
 
+		found := false;
 		each(i : @card_carry_boxes) {
 			card_carry_box := @card_carry_boxes[i];
 			if(card_carry_box->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
 				 card_carry_box->SetFill(true);
+				 @card_carry_string_index := i;
+				 found := true;
 			}
 			else {
 				card_carry_box->SetFill(false);
 			};
+		};
+
+		if(<>found) {
+			@card_carry_active_text := -1;
 		};
 	}
 
@@ -187,7 +282,7 @@ class Flashcards {
 		
 		# math line
 		@card_line->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 14);
-		
+
 		@framework->Show();
 	}
 
@@ -203,63 +298,75 @@ class Flashcards {
 		@card_carry_boxes[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
 
 		# carry text - CARRY_RIGHT_TOP
-		text := "2";
-		@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->RenderedText(text, @card_carry_color);
-		if(text->Size() = 2) {
-			@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 5 + 10);
-		}
-		else {
-			@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 5 + 10);	
+		text := @card_carry_strings[CarryBoxes->CARRY_RIGHT_TOP];
+		if(<>text->IsEmpty()) {
+			@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->RenderedText(text, @card_carry_color);
+			if(text->Size() = 2) {
+				@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 5 + 10);
+			}
+			else {
+				@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 5 + 10);	
+			};
 		};
 
 		# carry text - CARRY_RIGHT_BOTTOM
-		text := "10";
-		@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->RenderedText(text, @card_carry_color);
-		if(text->Size() = 2) {
-			@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 14.5 + 10);
-		}
-		else {
-			@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+		text := @card_carry_strings[CarryBoxes->CARRY_RIGHT_BOTTOM];
+		if(<>text->IsEmpty()) {			
+			@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->RenderedText(text, @card_carry_color);
+			if(text->Size() = 2) {
+				@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+			}
+			else {
+				@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+			};
 		};
 
 		# carry text - CARRY_MIDDLE_TOP
-		text := "9";
-		@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->RenderedText(text, @card_carry_color);
-		if(text->Size() = 2) {
-			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 5 + 10);
-		}
-		else {
-			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 5 + 10);	
+		text := @card_carry_strings[CarryBoxes->CARRY_MIDDLE_TOP];
+		if(<>text->IsEmpty()) {
+			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->RenderedText(text, @card_carry_color);
+			if(text->Size() = 2) {
+				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 5 + 10);
+			}
+			else {
+				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 5 + 10);	
+			};
 		};
 
 		# carry text - CARRY_MIDDLE_BOTTOM
-		text := "8";
-		@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->RenderedText(text, @card_carry_color);
-		if(text->Size() = 2) {
-			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 14.5 + 10);
-		}
-		else {
-			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+		text := @card_carry_strings[CarryBoxes->CARRY_MIDDLE_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->RenderedText(text, @card_carry_color);
+			if(text->Size() = 2) {
+				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+			}
+			else {
+				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+			};
 		};
 
 		# carry text - CARRY_LEFT_TOP
-		text := "16";
-		@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->RenderedText(text, @card_carry_color);
-		if(text->Size() = 2) {
-			@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 5 + 10);
-		}
-		else {
-			@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 5 + 10);	
+		text := @card_carry_strings[CarryBoxes->CARRY_LEFT_TOP];
+		if(<>text->IsEmpty()) {
+			@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->RenderedText(text, @card_carry_color);
+			if(text->Size() = 2) {
+				@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 5 + 10);
+			}
+			else {
+				@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 5 + 10);	
+			};
 		};
 
 		# carry text - CARRY_LEFT_BOTTOM
-		text := "0";
-		@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->RenderedText(text, @card_carry_color);
-		if(text->Size() = 2) {
-			@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 14.5 + 10);
-		}
-		else {
-			@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+		text := @card_carry_strings[CarryBoxes->CARRY_LEFT_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->RenderedText(text, @card_carry_color);
+			if(text->Size() = 2) {
+				@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+			}
+			else {
+				@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+			};
 		};
 	}
 
