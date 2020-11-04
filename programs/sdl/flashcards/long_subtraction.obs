@@ -7,10 +7,11 @@ class Flashcards {
 	# card
 	@card : Rectangle;
 	@card_line : Rectangle;
-	
+	@check_button : Rectangle;
+
 	# carry boxes
 	@card_carry_boxes : Rectangle[];
-	@card_box_font : Font;
+	@card_carry_box_font : Font;
 	@card_carry_color : Color;
 	@card_carry_texts : TextSprite[];
 	@card_carry_string_index : Int;
@@ -20,6 +21,7 @@ class Flashcards {
 	@card_text_font : Font;
 	@card_text_color : Color;
 	@card_texts : TextSprite[];
+	@card_text_strings : String[];
 	@card_text_sign : TextSprite;
 
 	# mouse input
@@ -41,12 +43,24 @@ class Flashcards {
 	}
 
 	New(is_sound : Bool) {
-		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Flashcards");		
+		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Long Subtraction");		
 		@framework->SetClearColor(Color->New(0, 0, 0));
 		
 		LoadMedia();
 		BuildCard();
 		WireInput();
+		FetchProblem();
+	}
+
+	method :FetchProblem() ~ Nil {
+		@card_text_strings[Layout->RIGHT_TOP] := "0";
+		@card_text_strings[Layout->RIGHT_BOTTOM] := "7";
+
+		@card_text_strings[Layout->MIDDLE_TOP] := "1";
+		@card_text_strings[Layout->MIDDLE_BOTTOM] := "5";
+
+		@card_text_strings[Layout->LEFT_TOP] := "8";
+		@card_text_strings[Layout->LEFT_BOTTOM] := "3";
 	}
 
 	method : LoadMedia() ~ Nil {
@@ -58,8 +72,8 @@ class Flashcards {
 		};
 
 		font_path :=  "./media/hella.ttf";
-		@card_box_font := Font->New(font_path, 48);
-		if(@card_box_font->IsNull()) {
+		@card_carry_box_font := Font->New(font_path, 48);
+		if(@card_carry_box_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
@@ -75,10 +89,12 @@ class Flashcards {
 		@card_carry_boxes := Rectangle->New[6];
 		each(i : @card_carry_boxes) {
 			@card_carry_boxes[i] := @framework->AddRectangle(120, 80);
-			@card_carry_boxes[i]->SetColor(Color->New(179, 229, 252));
+			@card_carry_boxes[i]->SetColor(Color->New(176, 224, 230));
 			@card_carry_boxes[i]->SetFill(false);
 		};		
-		@card_carry_color := Color->New(0, 0, 200);
+		@card_carry_color := Color->New(0, 0, 139);
+
+		# @check_button
 
 		# problem text
 		@card_text_color := Color->New(224, 219, 200);
@@ -92,12 +108,17 @@ class Flashcards {
 		@card_carry_texts := TextSprite->New[6];
 		each(i : @card_carry_texts) {
 			@card_carry_texts[i] := @framework->AddTextSprite();
-			@card_carry_texts[i]->SetFont(@card_box_font);
+			@card_carry_texts[i]->SetFont(@card_carry_box_font);
 		};
 
 		@card_carry_strings := String->New[6];
 		each(i : @card_carry_strings) {
 			@card_carry_strings[i] := "";
+		};
+
+		@card_text_strings := String->New[6];
+		each(i : @card_carry_strings) {
+			@card_text_strings[i] := "";
 		};
 
 		# sign
@@ -288,117 +309,138 @@ class Flashcards {
 
 	method : RenderCarry() ~ Nil {
 		# carry boxes
-		@card_carry_boxes[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 5);
-		@card_carry_boxes[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
 
-		@card_carry_boxes[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 5);
-		@card_carry_boxes[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 14.5);
 
-		@card_carry_boxes[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 5);
-		@card_carry_boxes[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
 
-		# carry text - CARRY_RIGHT_TOP
-		text := @card_carry_strings[CarryBoxes->CARRY_RIGHT_TOP];
+		# carry text - RIGHT_TOP
+		text := @card_carry_strings[Layout->RIGHT_TOP];
 		if(<>text->IsEmpty()) {
-			@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->RenderedText(text, @card_carry_color);
+			@card_carry_texts[Layout->RIGHT_TOP]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 5 + 10);
+				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 5 + 10);
 			}
 			else {
-				@card_carry_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 5 + 10);	
+				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 5 + 10);	
 			};
 		};
 
-		# carry text - CARRY_RIGHT_BOTTOM
-		text := @card_carry_strings[CarryBoxes->CARRY_RIGHT_BOTTOM];
+		# carry text - RIGHT_BOTTOM
+		text := @card_carry_strings[Layout->RIGHT_BOTTOM];
 		if(<>text->IsEmpty()) {			
-			@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->RenderedText(text, @card_carry_color);
+			@card_carry_texts[Layout->RIGHT_BOTTOM]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+				@card_carry_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 14.5 + 10);
 			}
 			else {
-				@card_carry_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+				@card_carry_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
 			};
 		};
 
-		# carry text - CARRY_MIDDLE_TOP
-		text := @card_carry_strings[CarryBoxes->CARRY_MIDDLE_TOP];
+		# carry text - MIDDLE_TOP
+		text := @card_carry_strings[Layout->MIDDLE_TOP];
 		if(<>text->IsEmpty()) {
-			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->RenderedText(text, @card_carry_color);
+			@card_carry_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 5 + 10);
+				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 5 + 10);
 			}
 			else {
-				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 5 + 10);	
+				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 5 + 10);	
 			};
 		};
 
-		# carry text - CARRY_MIDDLE_BOTTOM
-		text := @card_carry_strings[CarryBoxes->CARRY_MIDDLE_BOTTOM];
+		# carry text - MIDDLE_BOTTOM
+		text := @card_carry_strings[Layout->MIDDLE_BOTTOM];
 		if(<>text->IsEmpty()) {
-			@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->RenderedText(text, @card_carry_color);
+			@card_carry_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+				@card_carry_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 14.5 + 10);
 			}
 			else {
-				@card_carry_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+				@card_carry_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
 			};
 		};
 
-		# carry text - CARRY_LEFT_TOP
-		text := @card_carry_strings[CarryBoxes->CARRY_LEFT_TOP];
+		# carry text - LEFT_TOP
+		text := @card_carry_strings[Layout->LEFT_TOP];
 		if(<>text->IsEmpty()) {
-			@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->RenderedText(text, @card_carry_color);
+			@card_carry_texts[Layout->LEFT_TOP]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 5 + 10);
+				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 5 + 10);
 			}
 			else {
-				@card_carry_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 5 + 10);	
+				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 5 + 10);	
 			};
 		};
 
-		# carry text - CARRY_LEFT_BOTTOM
-		text := @card_carry_strings[CarryBoxes->CARRY_LEFT_BOTTOM];
+		# carry text - LEFT_BOTTOM
+		text := @card_carry_strings[Layout->LEFT_BOTTOM];
 		if(<>text->IsEmpty()) {
-			@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->RenderedText(text, @card_carry_color);
+			@card_carry_texts[Layout->LEFT_BOTTOM]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+				@card_carry_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 14.5 + 10);
 			}
 			else {
-				@card_carry_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+				@card_carry_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
 			};
 		};
 	}
 
 	method : RenderProblem() ~ Nil {
 		top_x_offset := 7;
-		@card_texts[CarryBoxes->CARRY_RIGHT_TOP]->RenderedText("9", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
 
-		@card_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->RenderedText("8", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
+		# right column
+		text := @card_text_strings[Layout->RIGHT_TOP];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->RIGHT_TOP]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
+		};
 
-		@card_texts[CarryBoxes->CARRY_MIDDLE_TOP]->RenderedText("7", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
+		text := @card_text_strings[Layout->RIGHT_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->RIGHT_BOTTOM]->RenderedText(@card_text_strings[Layout->RIGHT_BOTTOM], @card_text_color);
+			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
+		};
 
-		# bottom row of text
-		@card_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->RenderedText("6", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
+		# middle column
+		text := @card_text_strings[Layout->MIDDLE_TOP];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
+		};
 
-		@card_texts[CarryBoxes->CARRY_LEFT_TOP]->RenderedText("5", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
+		text := @card_text_strings[Layout->MIDDLE_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
+		};
 
-		@card_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->RenderedText("4", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
+		# left column
+		text := @card_text_strings[Layout->LEFT_TOP];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->LEFT_TOP]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
+		};
+
+		text := @card_text_strings[Layout->LEFT_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->LEFT_BOTTOM]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
+		};
 	}
 
-	enum CarryBoxes {
-		CARRY_LEFT_TOP,
-		CARRY_LEFT_BOTTOM,
-		CARRY_MIDDLE_TOP,
-		CARRY_MIDDLE_BOTTOM,
-		CARRY_RIGHT_TOP,
-		CARRY_RIGHT_BOTTOM
+	enum Layout {
+		LEFT_TOP,
+		LEFT_BOTTOM,
+		MIDDLE_TOP,
+		MIDDLE_BOTTOM,
+		RIGHT_TOP,
+		RIGHT_BOTTOM
 	}
 
 	consts GameValues {
