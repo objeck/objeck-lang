@@ -56,6 +56,7 @@ class Flashcards {
 		@card_text_strings[Layout->RIGHT_TOP] := "0";
 		@card_text_strings[Layout->RIGHT_BOTTOM] := "7";
 
+
 		@card_text_strings[Layout->MIDDLE_TOP] := "1";
 		@card_text_strings[Layout->MIDDLE_BOTTOM] := "5";
 
@@ -404,27 +405,27 @@ class Flashcards {
 		text := @card_text_strings[Layout->RIGHT_BOTTOM];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->RIGHT_BOTTOM]->RenderedText(@card_text_strings[Layout->RIGHT_BOTTOM], @card_text_color);
-			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
+			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
 		};
 
 		# middle column
 		text := @card_text_strings[Layout->MIDDLE_TOP];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
+			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
 		};
 
 		text := @card_text_strings[Layout->MIDDLE_BOTTOM];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
+			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
 		};
 
 		# left column
 		text := @card_text_strings[Layout->LEFT_TOP];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->LEFT_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
+			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
 		};
 
 		text := @card_text_strings[Layout->LEFT_BOTTOM];
