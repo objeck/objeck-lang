@@ -162,34 +162,37 @@ class Flashcards {
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
 		# carry
-		@card_carry_boxes[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 5);
-		@card_carry_boxes[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
 
 		@card_carry_boxes[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 5);
 		@card_carry_boxes[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 14.5);
 
-		@card_carry_boxes[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 5);
-		@card_carry_boxes[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
 
 		# top row of text
-		@card_texts[CarryBoxes->CARRY_LEFT_TOP]->RenderedText("9", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
+		top_x_offset := 7;
+		@card_texts[CarryBoxes->CARRY_RIGHT_TOP]->RenderedText("9", @card_text_color);
+		@card_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
 
-		@card_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->RenderedText("8", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
+		@card_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->RenderedText("8", @card_text_color);
+		@card_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
 
 		@card_texts[CarryBoxes->CARRY_MIDDLE_TOP]->RenderedText("7", @card_text_color);
 		@card_texts[CarryBoxes->CARRY_MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
 
+		# bottom row of text
 		@card_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->RenderedText("6", @card_text_color);
 		@card_texts[CarryBoxes->CARRY_MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
 
-		@card_texts[CarryBoxes->CARRY_RIGHT_TOP]->RenderedText("5", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
+		@card_texts[CarryBoxes->CARRY_LEFT_TOP]->RenderedText("5", @card_text_color);
+		@card_texts[CarryBoxes->CARRY_LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
 
-		@card_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->RenderedText("4", @card_text_color);
-		@card_texts[CarryBoxes->CARRY_RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
-		
+		@card_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->RenderedText("4", @card_text_color);
+		@card_texts[CarryBoxes->CARRY_LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
+
+		# sign		
 		@card_text_sign->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 10);
 
 		# line
