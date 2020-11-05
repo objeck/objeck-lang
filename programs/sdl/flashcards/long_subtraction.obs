@@ -326,8 +326,8 @@ class Chalkboard {
 			answer_bottom_middle_string := @card_carry_strings[Layout->MIDDLE_BOTTOM];
 			answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
 
-			carry_string := "";
-			answer_string := "";
+			carry_string := "{$carry_top_left_string} {$carry_top_middle_string} {$carry_top_right_string}";
+			answer_string := "{$answer_bottom_left_string} {$answer_bottom_middle_string} {$answer_bottom_right_string}";
 
 "{$problem_top_left_string}, {$problem_top_middle_string}, {$problem_top_right_string}"->PrintLine();
 "{$problem_bottom_left_string}, {$problem_bottom_middle_string}, {$problem_bottom_right_string}"->PrintLine();
@@ -335,9 +335,10 @@ class Chalkboard {
 "{$carry_top_left_string}, {$carry_top_middle_string}, {$carry_top_right_string}"->PrintLine();
 "{$answer_bottom_left_string}, {$answer_bottom_middle_string}, {$answer_bottom_right_string}"->PrintLine();
 
-#			solver := SubtractionSolver->New(top_left_string, top_middle_string, top_right_string, bottom_left_string, bottom_middle_string, bottom_right_string);
-#			solver->SetAnswer(carry_string : String, answer_string : String)
-#			solver->CheckProblem()->PrintLine();
+			solver := SubtractionSolver->New(problem_top_left_string, problem_top_middle_string, problem_top_right_string, problem_bottom_left_string, problem_bottom_middle_string, problem_bottom_right_string);
+			solver->SetAnswer(carry_string, answer_string);
+			solver->CheckProblem()->PrintLine();
+"----"->PrintLine();
 		}
 		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
 			@clear_button->SetFill(false);
@@ -564,16 +565,16 @@ class SubtractionSolver {
 	method : public : SetAnswer(carry_string : String, answer_string : String) ~ Nil {
 		values := carry_string->Split(" ");
 		if(values->Size() = 3) {
-			@problem[Line->CARRY, 0] := values[2];
+			@problem[Line->CARRY, 0] := values[0];
 			@problem[Line->CARRY, 1] := values[1];
-			@problem[Line->CARRY, 2] := values[0];
+			@problem[Line->CARRY, 2] := values[2];
 		};
 
 		values := answer_string->Split(" ");
 		if(values->Size() = 3) {
-			@problem[Line->ANSWER, 0] := values[2];
+			@problem[Line->ANSWER, 0] := values[0];
 			@problem[Line->ANSWER, 1] := values[1];
-			@problem[Line->ANSWER, 2] := values[0];
+			@problem[Line->ANSWER, 2] := values[2];
 		};
 	}
 
