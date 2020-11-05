@@ -7,7 +7,6 @@ class Chalkboard {
 	# scores
 	@score_boxes : Rectangle[];
 	@score_index : Int;
-	@problem_count : Int;
 
 	# card
 	@card : Rectangle;
@@ -108,8 +107,8 @@ class Chalkboard {
 		@score_boxes := Rectangle->New[10];
 		each(i : @score_boxes) {
 			@score_boxes[i] := @framework->AddRectangle(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING);
-			@score_boxes[i]->SetColor(@card_carry_neutral_color);
-			@score_boxes[i]->SetFill(true);
+			@score_boxes[i]->SetColor(Color->New(0, 220, 0));
+			@score_boxes[i]->SetFill(false);
 		};	
 
 		# check button
@@ -434,15 +433,12 @@ class Chalkboard {
 				};
 			};
 
+			# correct
 			if(correct) {
-				@score_boxes[@score_index]->SetColor(Color->New(0, 220, 0));
+				@score_boxes[@score_index]->SetFill(true);
+				@score_index += 1;
 				NextProblem();
-			}
-			else {
-				@score_boxes[@score_index]->SetColor(Color->New(220, 0, 0));
 			};
-
-			@score_index += 1;
 		};
 	}
 
@@ -450,7 +446,6 @@ class Chalkboard {
 		if(@score_index < @score_boxes->Size()) {
 			ClearInput();
 			GenerateProblem();
-			@problem_count += 1;
 		}
 		else {
 			"-- Show Score --"->PrintLine();
@@ -469,9 +464,7 @@ class Chalkboard {
 		};
 		@card_text_strings[Layout->MIDDLE_BOTTOM] := Int->Random(0, 9)->ToString();
 		@card_text_strings[Layout->RIGHT_BOTTOM] := Int->Random(3, 9)->ToString();
- 
- digit->PrintLine();
-
+ 		
 		# top line
 		if(digit = 0) {
 			@card_text_strings[Layout->LEFT_TOP] := Int->Random(1, 2)->ToString();
