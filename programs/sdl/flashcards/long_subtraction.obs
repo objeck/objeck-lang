@@ -458,6 +458,10 @@ class Chalkboard {
 	}
 
 	method : GenerateProblem() ~ Nil {
+		each(i : @card_carry_strings) {
+			@card_text_strings[i] := "";
+		};
+
 		# bottom line
 		digit := Int->Random(0, 2);
 		if(digit <> 0) {
@@ -465,6 +469,8 @@ class Chalkboard {
 		};
 		@card_text_strings[Layout->MIDDLE_BOTTOM] := Int->Random(0, 9)->ToString();
 		@card_text_strings[Layout->RIGHT_BOTTOM] := Int->Random(3, 9)->ToString();
+ 
+ digit->PrintLine();
 
 		# top line
 		if(digit = 0) {
