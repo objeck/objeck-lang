@@ -374,8 +374,9 @@ class Chalkboard {
 				carry_top_right_string := "0";
 			};
 
-			# bottom
+			# problem text
 			answer_bottom_left_string : String; answer_bottom_middle_string : String; answer_bottom_right_string : String; 
+			
 			# validation
 			if(<>@card_carry_strings[Layout->LEFT_BOTTOM]->IsEmpty() & @card_carry_strings[Layout->MIDDLE_BOTTOM]->IsEmpty() & <>@card_carry_strings[Layout->RIGHT_BOTTOM]->IsEmpty()) {
 				answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
