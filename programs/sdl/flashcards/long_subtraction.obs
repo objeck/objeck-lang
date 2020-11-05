@@ -7,8 +7,15 @@ class Flashcards {
 	# card
 	@card : Rectangle;
 	@card_line : Rectangle;
-	@check_button : Rectangle;
 
+	@card_button_font : Font;
+
+	@check_button : Rectangle;
+	@check_button_text : TextSprite;
+
+	@clear_button : Rectangle;
+	@clear_button_text : TextSprite;
+	
 	# carry boxes
 	@card_carry_boxes : Rectangle[];
 	@card_carry_box_font : Font;
@@ -78,6 +85,13 @@ class Flashcards {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
+
+		font_path :=  "./media/hella.ttf";
+		@card_button_font := Font->New(font_path, 24);
+		if(@card_button_font->IsNull()) {
+			"Failed to load font '{$font_path}'!"->ErrorLine();
+			Runtime->Exit(1);
+		};
 	}
 
 	method : BuildCard() ~ Nil {
@@ -95,7 +109,23 @@ class Flashcards {
 		};		
 		@card_carry_color := Color->New(0, 0, 139);
 
-		# @check_button
+		# check button
+		@check_button := @framework->AddRectangle(180, 40);
+		@check_button->SetColor(Color->New(105, 105, 105));
+		@check_button->SetFill(true);
+
+		@check_button_text := @framework->AddTextSprite();
+		@check_button_text->SetFont(@card_button_font);
+		@check_button_text->RenderedText("Check");
+
+		# clear button
+		@clear_button := @framework->AddRectangle(180, 40);
+		@clear_button->SetColor(Color->New(192, 192, 192));
+		@clear_button->SetFill(true);
+
+		@clear_button_text := @framework->AddTextSprite();
+		@clear_button_text->SetFont(@card_button_font);
+		@clear_button_text->RenderedText("Clear");
 
 		# problem text
 		@card_text_color := Color->New(224, 219, 200);
@@ -159,6 +189,10 @@ class Flashcards {
 				    # mouse
 				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONDOWN) {				    	
 				    	MouseInput(e);
+				    }
+				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONUP) {
+				    	@check_button->SetFill(true); # TODO: wire return key
+				    	@clear_button->SetFill(true); # TODO: wire escape kay
 				    };
 				};
 
@@ -271,21 +305,31 @@ class Flashcards {
 		@mouse_pos->SetX(@mouse_x->Get());
 		@mouse_pos->SetY(@mouse_y->Get());
 
-		found := false;
-		each(i : @card_carry_boxes) {
-			card_carry_box := @card_carry_boxes[i];
-			if(card_carry_box->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
-				 card_carry_box->SetFill(true);
-				 @card_carry_string_index := i;
-				 found := true;
-			}
-			else {
-				card_carry_box->SetFill(false);
+		if(@check_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+			@check_button->SetFill(false);
+			"-- Check --"->PrintLine();
+		}
+		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+			@clear_button->SetFill(false);
+			"-- Clear --"->PrintLine();
+		}
+		else {
+			found := false;
+			each(i : @card_carry_boxes) {
+				card_carry_box := @card_carry_boxes[i];
+				if(card_carry_box->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+					 card_carry_box->SetFill(true);
+					 @card_carry_string_index := i;
+					 found := true;
+				}
+				else {
+					card_carry_box->SetFill(false);
+				};
 			};
-		};
 
-		if(<>found) {
-			@card_carry_active_text := -1;
+			if(<>found) {
+				@card_carry_active_text := -1;
+			};
 		};
 	}
 
@@ -299,11 +343,19 @@ class Flashcards {
 		RenderProblem();
 		RenderCarry();
 		
-		# sign		
+		# sign
 		@card_text_sign->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 10);
 		
 		# math line
 		@card_line->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 14);
+
+		# clear button
+		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - 90, GameValues->SCREEN_PADDING * 18.5);
+		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - 30, GameValues->SCREEN_PADDING * 18.5 + 4);
+
+		# check button
+		@check_button->Render(GameValues->SCREEN_WIDTH / 2 - 90, GameValues->SCREEN_PADDING * 19.5 + 10);
+		@check_button_text->Render(GameValues->SCREEN_WIDTH / 2 - 30, GameValues->SCREEN_PADDING * 19.5 + 14);
 
 		@framework->Show();
 	}
@@ -446,7 +498,7 @@ class Flashcards {
 
 	consts GameValues {
 		SCREEN_WIDTH := 800,
-		SCREEN_HEIGHT := 800,
+		SCREEN_HEIGHT := 900,
 		SCREEN_PADDING := 40,
 		PLAY_TIME := 60 * 5
 	}
