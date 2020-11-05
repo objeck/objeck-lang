@@ -79,8 +79,8 @@ class Chalkboard {
 			Runtime->Exit(1);
 		};
 
-		font_path :=  "./media/hella.ttf";
-		@card_carry_box_font := Font->New(font_path, 48);
+		font_path :=  "./media/nicholia.ttf";
+		@card_carry_box_font := Font->New(font_path, 62);
 		if(@card_carry_box_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
@@ -104,10 +104,9 @@ class Chalkboard {
 		@card_carry_boxes := Rectangle->New[6];
 		each(i : @card_carry_boxes) {
 			@card_carry_boxes[i] := @framework->AddRectangle(120, 80);
-			@card_carry_boxes[i]->SetColor(Color->New(176, 224, 230));
+			@card_carry_boxes[i]->SetColor(Color->New(192, 192, 192));
 			@card_carry_boxes[i]->SetFill(false);
 		};		
-		@card_carry_color := Color->New(0, 0, 139);
 
 		# check button
 		@check_button := @framework->AddRectangle(180, 40);
