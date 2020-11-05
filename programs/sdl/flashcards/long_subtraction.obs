@@ -374,19 +374,37 @@ class Chalkboard {
 				carry_top_right_string := "0";
 			};
 
-			answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
-			if(answer_bottom_left_string->IsEmpty()) {
-				answer_bottom_left_string := "0";
-			};
+			# bottom
+			answer_bottom_left_string : String; answer_bottom_middle_string : String; answer_bottom_right_string : String; 
+			# validation
+			if(<>@card_carry_strings[Layout->LEFT_BOTTOM]->IsEmpty() & @card_carry_strings[Layout->MIDDLE_BOTTOM]->IsEmpty() & <>@card_carry_strings[Layout->RIGHT_BOTTOM]->IsEmpty()) {
+				answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
+				if(answer_bottom_left_string->IsEmpty()) {
+					answer_bottom_left_string := "0";
+				};
 
-			answer_bottom_middle_string := @card_carry_strings[Layout->MIDDLE_BOTTOM];
-			if(answer_bottom_middle_string->IsEmpty()) {
-				answer_bottom_middle_string := "0";
-			};
+				answer_bottom_middle_string := "-1";
 
-			answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
-			if(answer_bottom_right_string->IsEmpty()) {
-				answer_bottom_right_string := "0";
+				answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
+				if(answer_bottom_right_string->IsEmpty()) {
+					answer_bottom_right_string := "0";
+				};
+			}
+			else {
+				answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
+				if(answer_bottom_left_string->IsEmpty()) {
+					answer_bottom_left_string := "0";
+				};
+
+				answer_bottom_middle_string := @card_carry_strings[Layout->MIDDLE_BOTTOM];
+				if(answer_bottom_middle_string->IsEmpty()) {
+					answer_bottom_middle_string := "0";
+				};
+
+				answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
+				if(answer_bottom_right_string->IsEmpty()) {
+					answer_bottom_right_string := "0";
+				};
 			};
 
 			carry_string := "{$carry_top_left_string},{$carry_top_middle_string},{$carry_top_right_string}";
