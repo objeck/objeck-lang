@@ -79,8 +79,8 @@ class Chalkboard {
 			Runtime->Exit(1);
 		};
 
-		font_path :=  "./media/nicholia.ttf";
-		@card_carry_box_font := Font->New(font_path, 62);
+		font_path :=  "./media/maghrib.ttf";
+		@card_carry_box_font := Font->New(font_path, 70);
 		if(@card_carry_box_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
@@ -328,16 +328,9 @@ class Chalkboard {
 			carry_string := "{$carry_top_left_string} {$carry_top_middle_string} {$carry_top_right_string}";
 			answer_string := "{$answer_bottom_left_string} {$answer_bottom_middle_string} {$answer_bottom_right_string}";
 
-"{$problem_top_left_string}, {$problem_top_middle_string}, {$problem_top_right_string}"->PrintLine();
-"{$problem_bottom_left_string}, {$problem_bottom_middle_string}, {$problem_bottom_right_string}"->PrintLine();
-
-"{$carry_top_left_string}, {$carry_top_middle_string}, {$carry_top_right_string}"->PrintLine();
-"{$answer_bottom_left_string}, {$answer_bottom_middle_string}, {$answer_bottom_right_string}"->PrintLine();
-
 			solver := SubtractionSolver->New(problem_top_left_string, problem_top_middle_string, problem_top_right_string, problem_bottom_left_string, problem_bottom_middle_string, problem_bottom_right_string);
 			solver->SetAnswer(carry_string, answer_string);
 			solver->CheckProblem()->PrintLine();
-"----"->PrintLine();
 		}
 		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
 			@clear_button->SetFill(false);
@@ -376,7 +369,7 @@ class Chalkboard {
 		@card_text_sign->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 10);
 		
 		# math line
-		@card_line->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 14);
+		@card_line->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 13.5);
 
 		# clear button
 		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - 90, GameValues->SCREEN_PADDING * 18.5);
@@ -391,13 +384,13 @@ class Chalkboard {
 
 	method : RenderCarry() ~ Nil {
 		# carry boxes
-		@card_carry_boxes[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 4.5);
 		@card_carry_boxes[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
 
-		@card_carry_boxes[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 4.5);
 		@card_carry_boxes[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 14.5);
 
-		@card_carry_boxes[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 5);
+		@card_carry_boxes[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 4.5);
 		@card_carry_boxes[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
 
 		# carry text - RIGHT_TOP
@@ -405,10 +398,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->RIGHT_TOP]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 5 + 10);
+				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 4.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 5 + 10);	
+				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
 			};
 		};
 
@@ -429,10 +422,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 5 + 10);
+				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 4.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 5 + 10);	
+				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
 			};
 		};
 
@@ -453,10 +446,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->LEFT_TOP]->RenderedText(text, @card_carry_color);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 5 + 10);
+				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 4.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 5 + 10);	
+				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
 			};
 		};
 
@@ -548,18 +541,6 @@ class SubtractionSolver {
 	New(top_left : String, top_middle : String, top_right : String, bottom_left : String, bottom_middle : String, bottom_right : String) {
 		SetProblem(top_left, top_middle, top_right, bottom_left, bottom_middle, bottom_right);
 	}
-
-#~
-	function : Main(args : String[]) ~ Nil {
-		@problem := GenerateProblem();
-
-		ShowProblem(@problem);
-		SetAnswer(@problem);
-
-		CheckProblem(@problem)->PrintLine();
-		ShowProblem(@problem);
-	}
-~#
 
 	method : public : SetAnswer(carry_string : String, answer_string : String) ~ Nil {
 		values := carry_string->Split(" ");
