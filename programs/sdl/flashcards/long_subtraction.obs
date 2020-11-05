@@ -4,9 +4,10 @@ use Game.Framework;
 class Chalkboard {
 	@framework : GameFramework;
 
-	# carry boxes
+	# scores
 	@score_boxes : Rectangle[];
 	@score_index : Int;
+	@problem_count : Int;
 
 	# card
 	@card : Rectangle;
@@ -221,10 +222,7 @@ class Chalkboard {
 	method : KeyboardInput(e : Event) ~ Nil {
 		if(@card_carry_string_index > -1) {
 			select(e->GetKey()->GetKeysym()->GetScancode()) {
-				label Scancode->SDL_SCANCODE_BACKSPACE: {
-					@card_carry_strings[@card_carry_string_index]->Pop();
-				}
-
+				label Scancode->SDL_SCANCODE_BACKSPACE:
 	        	label Scancode->SDL_SCANCODE_DELETE: {
 	            	@card_carry_strings[@card_carry_string_index] := "";
 	            }
@@ -327,6 +325,7 @@ class Chalkboard {
 			each(i : @card_carry_boxes) {
 				card_carry_box := @card_carry_boxes[i];
 				if(card_carry_box->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+					card_carry_box->SetColor(@card_carry_neutral_color);
 					 card_carry_box->SetFill(true);
 					 @card_carry_string_index := i;
 					 found := true;
@@ -363,32 +362,32 @@ class Chalkboard {
 			# solution and carry text
 			carry_top_left_string := @card_carry_strings[Layout->LEFT_TOP];
 			if(carry_top_left_string->IsEmpty()) {
-				carry_top_left_string := "-1";
+				carry_top_left_string := "0";
 			};
 
 			carry_top_middle_string := @card_carry_strings[Layout->MIDDLE_TOP];
 			if(carry_top_middle_string->IsEmpty()) {
-				carry_top_middle_string := "-1";
+				carry_top_middle_string := "0";
 			};
 
 			carry_top_right_string := @card_carry_strings[Layout->RIGHT_TOP];
 			if(carry_top_right_string->IsEmpty()) {
-				carry_top_right_string := "-1";
+				carry_top_right_string := "0";
 			};
 
 			answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
 			if(answer_bottom_left_string->IsEmpty()) {
-				answer_bottom_left_string := "-1";
+				answer_bottom_left_string := "0";
 			};
 
 			answer_bottom_middle_string := @card_carry_strings[Layout->MIDDLE_BOTTOM];
 			if(answer_bottom_middle_string->IsEmpty()) {
-				answer_bottom_middle_string := "-1";
+				answer_bottom_middle_string := "0";
 			};
 
 			answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
 			if(answer_bottom_right_string->IsEmpty()) {
-				answer_bottom_right_string := "-1";
+				answer_bottom_right_string := "0";
 			};
 
 			carry_string := "{$carry_top_left_string},{$carry_top_middle_string},{$carry_top_right_string}";
@@ -437,12 +436,13 @@ class Chalkboard {
 
 			if(correct) {
 				@score_boxes[@score_index]->SetColor(Color->New(0, 220, 0));
+				NextProblem();
 			}
 			else {
 				@score_boxes[@score_index]->SetColor(Color->New(220, 0, 0));
 			};
 
-			score_index += 1;
+			@score_index += 1;
 		};
 	}
 
@@ -450,6 +450,7 @@ class Chalkboard {
 		if(@score_index < @score_boxes->Size()) {
 			ClearInput();
 			GenerateProblem();
+			@problem_count += 1;
 		}
 		else {
 			"-- Show Score --"->PrintLine();
@@ -457,35 +458,27 @@ class Chalkboard {
 	}
 
 	method : GenerateProblem() ~ Nil {
-		# top line
-		@card_text_strings[Layout->LEFT_TOP] := "8";
-		@card_text_strings[Layout->MIDDLE_TOP] := "1";
-		@card_text_strings[Layout->RIGHT_TOP] := "0";
-
 		# bottom line
-		@card_text_strings[Layout->LEFT_BOTTOM] := "3";
-		@card_text_strings[Layout->MIDDLE_BOTTOM] := "5";
-		@card_text_strings[Layout->RIGHT_BOTTOM] := "7";
-
-#~
-		# top line
-		@card_text_strings[Layout->LEFT_TOP] := Int->Random(0, 3)->ToString();
-		@card_text_strings[Layout->MIDDLE_TOP] := Int->Random(0, 5)->ToString();
-		@card_text_strings[Layout->RIGHT_TOP] := Int->Random(2, 4)->ToString();
-
-		# bottom line
-		@card_text_strings[Layout->LEFT_BOTTOM] := Int->Random(2, 8)->ToString();
-		@card_text_strings[Layout->MIDDLE_BOTTOM] := Int->Random(3, 8)->ToString();
-		value := Int->Random(0, 2)->ToString();
-		if(<>value->Equals("0")) {
-			@card_text_strings[Layout->RIGHT_BOTTOM] := value;
+		digit := Int->Random(0, 2);
+		if(digit <> 0) {
+			@card_text_strings[Layout->LEFT_BOTTOM] := digit->ToString();
 		};
-~#
+		@card_text_strings[Layout->MIDDLE_BOTTOM] := Int->Random(0, 9)->ToString();
+		@card_text_strings[Layout->RIGHT_BOTTOM] := Int->Random(3, 9)->ToString();
+
+		# top line
+		if(digit = 0) {
+			@card_text_strings[Layout->LEFT_TOP] := Int->Random(1, 2)->ToString();
+		}
+		else {
+			digit += 1;
+			@card_text_strings[Layout->LEFT_TOP] := Int->Random(digit, 4)->ToString();
+		};
+		@card_text_strings[Layout->MIDDLE_TOP] := Int->Random(2, 7)->ToString();
+		@card_text_strings[Layout->RIGHT_TOP] := Int->Random(0, 5)->ToString();
 	}
 
 	method : ClearInput() ~ Nil {
-		@clear_button->SetFill(false);
-
 		each(i : @card_carry_boxes) {
 			@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
 			@card_carry_boxes[i]->SetFill(false);
@@ -762,7 +755,7 @@ class SubtractionSolver {
 
  "\n\n{$top} equals [{$carry}]\n{$bottom}\n--\n{$check} equals [{$answer}]"->PrintLine();
 
-			if(top <> carry | answer <> check) {
+			if((carry <> 0 & top <> carry) | answer <> check) {
 				results[i] := false;
 			};
 		};
