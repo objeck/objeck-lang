@@ -4,6 +4,10 @@ use Game.Framework;
 class Chalkboard {
 	@framework : GameFramework;
 
+	# carry boxes
+	@score_boxes : Rectangle[];
+	@score_index : Int;
+
 	# card
 	@card : Rectangle;
 	@card_line : Rectangle;
@@ -109,7 +113,15 @@ class Chalkboard {
 			@card_carry_boxes[i] := @framework->AddRectangle(120, 80);
 			@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
 			@card_carry_boxes[i]->SetFill(false);
-		};		
+		};
+
+		# score boxes
+		@score_boxes := Rectangle->New[10];
+		each(i : @score_boxes) {
+			@score_boxes[i] := @framework->AddRectangle(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING);
+			@score_boxes[i]->SetColor(@card_carry_neutral_color);
+			@score_boxes[i]->SetFill(true);
+		};	
 
 		# check button
 		@check_button := @framework->AddRectangle(180, 40);
@@ -454,6 +466,13 @@ class Chalkboard {
 	method : Render() ~ Nil {
 		@framework->Clear();
 
+		# score_boxes
+		offset := GameValues->SCREEN_PADDING + 2;
+		each(i : @score_boxes) {
+			@score_boxes[i]->Render(GameValues->SCREEN_PADDING * i + offset, GameValues->SCREEN_PADDING);
+			offset += 35;
+		};
+
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
@@ -640,7 +659,6 @@ class SubtractionSolver {
 
 	method : public : SetAnswer(carry_string : String, answer_string : String) ~ Nil {
 		values := carry_string->Split(",");
-values->Size()->PrintLine();		
 		if(values->Size() = 3) {
 			@problem[Line->CARRY, 0] := values[0];
 			@problem[Line->CARRY, 1] := values[1];
@@ -648,7 +666,6 @@ values->Size()->PrintLine();
 		};
 
 		values := answer_string->Split(",");
-values->Size()->PrintLine();		
 		if(values->Size() = 3) {
 			@problem[Line->ANSWER, 0] := values[0];
 			@problem[Line->ANSWER, 1] := values[1];
