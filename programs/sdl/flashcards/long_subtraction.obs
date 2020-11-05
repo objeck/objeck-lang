@@ -300,6 +300,15 @@ class Chalkboard {
 	            }
 			};
 		};
+		
+		if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_RETURN | e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_KP_ENTER) {
+			CheckInput();
+			@check_button->SetFill(true);
+		}
+		else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_ESCAPE) {
+			ClearInput();
+			@clear_button->SetFill(true);
+		};
 	}
 
 	method : MouseInput(e : Event) ~ Nil {
@@ -308,101 +317,10 @@ class Chalkboard {
 		@mouse_pos->SetY(@mouse_y->Get());
 
 		if(@check_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
-			@check_button->SetFill(false);
-
-			each(i : @card_carry_boxes) {
-				@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
-				@card_carry_boxes[i]->SetFill(false);
-			};
-
-			# problem text
-			problem_top_left_string := @card_text_strings[Layout->LEFT_TOP];
-			problem_top_middle_string := @card_text_strings[Layout->MIDDLE_TOP];
-			problem_top_right_string := @card_text_strings[Layout->RIGHT_TOP];
-
-			problem_bottom_left_string := @card_text_strings[Layout->LEFT_BOTTOM];
-			problem_bottom_middle_string := @card_text_strings[Layout->MIDDLE_BOTTOM];
-			problem_bottom_right_string := @card_text_strings[Layout->RIGHT_BOTTOM];
-
-			# solution and carry text
-			carry_top_left_string := @card_carry_strings[Layout->LEFT_TOP];
-			if(carry_top_left_string->IsEmpty()) {
-				carry_top_left_string := "-1";
-			};
-
-			carry_top_middle_string := @card_carry_strings[Layout->MIDDLE_TOP];
-			if(carry_top_middle_string->IsEmpty()) {
-				carry_top_middle_string := "-1";
-			};
-
-			carry_top_right_string := @card_carry_strings[Layout->RIGHT_TOP];
-			if(carry_top_right_string->IsEmpty()) {
-				carry_top_right_string := "-1";
-			};
-
-			answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
-			if(answer_bottom_left_string->IsEmpty()) {
-				answer_bottom_left_string := "-1";
-			};
-
-			answer_bottom_middle_string := @card_carry_strings[Layout->MIDDLE_BOTTOM];
-			if(answer_bottom_middle_string->IsEmpty()) {
-				answer_bottom_middle_string := "-1";
-			};
-
-			answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
-			if(answer_bottom_right_string->IsEmpty()) {
-				answer_bottom_right_string := "-1";
-			};
-
-			carry_string := "{$carry_top_left_string},{$carry_top_middle_string},{$carry_top_right_string}";
-			answer_string := "{$answer_bottom_left_string},{$answer_bottom_middle_string},{$answer_bottom_right_string}";
-
-			solver := SubtractionSolver->New(problem_top_left_string, problem_top_middle_string, problem_top_right_string, problem_bottom_left_string, problem_bottom_middle_string, problem_bottom_right_string);
-			solver->SetAnswer(carry_string, answer_string);
-			results := solver->CheckProblem();
-
-			correct := true;
-			for(i := results->Size() - 1; correct & i > -1; i -= 1;) {
-				if(<>results[i]) {
-					select(i) {
-						label 0: {
-							@card_carry_boxes[Layout->LEFT_TOP]->SetColor(@card_carry_error_color);
-							@card_carry_boxes[Layout->LEFT_TOP]->SetFill(true);
-
-							@card_carry_boxes[Layout->LEFT_BOTTOM]->SetColor(@card_carry_error_color);
-							@card_carry_boxes[Layout->LEFT_BOTTOM]->SetFill(true);
-
-							correct := false;
-						}
-
-						label 1: {
-							@card_carry_boxes[Layout->MIDDLE_TOP]->SetColor(@card_carry_error_color);
-							@card_carry_boxes[Layout->MIDDLE_TOP]->SetFill(true);
-
-							@card_carry_boxes[Layout->MIDDLE_BOTTOM]->SetColor(@card_carry_error_color);
-							@card_carry_boxes[Layout->MIDDLE_BOTTOM]->SetFill(true);
-
-							correct := false;
-						}
-
-						label 2: {
-							@card_carry_boxes[Layout->RIGHT_TOP]->SetColor(@card_carry_error_color);
-							@card_carry_boxes[Layout->RIGHT_TOP]->SetFill(true);
-
-							@card_carry_boxes[Layout->RIGHT_BOTTOM]->SetColor(@card_carry_error_color);
-							@card_carry_boxes[Layout->RIGHT_BOTTOM]->SetFill(true);
-
-							correct := false;
-						}
-					};
-				};
-			};
-
-			correct->PrintLine();
+			CheckInput();
 		}
 		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
-			@clear_button->SetFill(false);
+			ClearInput();
 		}
 		else {
 			found := false;
@@ -421,6 +339,115 @@ class Chalkboard {
 			if(<>found) {
 				@card_carry_active_text := -1;
 			};
+		};
+	}
+
+	method : CheckInput() ~ Nil {
+		@check_button->SetFill(false);
+
+		each(i : @card_carry_boxes) {
+			@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
+			@card_carry_boxes[i]->SetFill(false);
+		};
+
+		# problem text
+		problem_top_left_string := @card_text_strings[Layout->LEFT_TOP];
+		problem_top_middle_string := @card_text_strings[Layout->MIDDLE_TOP];
+		problem_top_right_string := @card_text_strings[Layout->RIGHT_TOP];
+
+		problem_bottom_left_string := @card_text_strings[Layout->LEFT_BOTTOM];
+		problem_bottom_middle_string := @card_text_strings[Layout->MIDDLE_BOTTOM];
+		problem_bottom_right_string := @card_text_strings[Layout->RIGHT_BOTTOM];
+
+		# solution and carry text
+		carry_top_left_string := @card_carry_strings[Layout->LEFT_TOP];
+		if(carry_top_left_string->IsEmpty()) {
+			carry_top_left_string := "-1";
+		};
+
+		carry_top_middle_string := @card_carry_strings[Layout->MIDDLE_TOP];
+		if(carry_top_middle_string->IsEmpty()) {
+			carry_top_middle_string := "-1";
+		};
+
+		carry_top_right_string := @card_carry_strings[Layout->RIGHT_TOP];
+		if(carry_top_right_string->IsEmpty()) {
+			carry_top_right_string := "-1";
+		};
+
+		answer_bottom_left_string := @card_carry_strings[Layout->LEFT_BOTTOM];
+		if(answer_bottom_left_string->IsEmpty()) {
+			answer_bottom_left_string := "-1";
+		};
+
+		answer_bottom_middle_string := @card_carry_strings[Layout->MIDDLE_BOTTOM];
+		if(answer_bottom_middle_string->IsEmpty()) {
+			answer_bottom_middle_string := "-1";
+		};
+
+		answer_bottom_right_string := @card_carry_strings[Layout->RIGHT_BOTTOM];
+		if(answer_bottom_right_string->IsEmpty()) {
+			answer_bottom_right_string := "-1";
+		};
+
+		carry_string := "{$carry_top_left_string},{$carry_top_middle_string},{$carry_top_right_string}";
+		answer_string := "{$answer_bottom_left_string},{$answer_bottom_middle_string},{$answer_bottom_right_string}";
+
+		solver := SubtractionSolver->New(problem_top_left_string, problem_top_middle_string, problem_top_right_string, problem_bottom_left_string, problem_bottom_middle_string, problem_bottom_right_string);
+		solver->SetAnswer(carry_string, answer_string);
+		results := solver->CheckProblem();
+
+		correct := true;
+		for(i := results->Size() - 1; correct & i > -1; i -= 1;) {
+			if(<>results[i]) {
+				select(i) {
+					label 0: {
+						@card_carry_boxes[Layout->LEFT_TOP]->SetColor(@card_carry_error_color);
+						@card_carry_boxes[Layout->LEFT_TOP]->SetFill(true);
+
+						@card_carry_boxes[Layout->LEFT_BOTTOM]->SetColor(@card_carry_error_color);
+						@card_carry_boxes[Layout->LEFT_BOTTOM]->SetFill(true);
+
+						correct := false;
+					}
+
+					label 1: {
+						@card_carry_boxes[Layout->MIDDLE_TOP]->SetColor(@card_carry_error_color);
+						@card_carry_boxes[Layout->MIDDLE_TOP]->SetFill(true);
+
+						@card_carry_boxes[Layout->MIDDLE_BOTTOM]->SetColor(@card_carry_error_color);
+						@card_carry_boxes[Layout->MIDDLE_BOTTOM]->SetFill(true);
+
+						correct := false;
+					}
+
+					label 2: {
+						@card_carry_boxes[Layout->RIGHT_TOP]->SetColor(@card_carry_error_color);
+						@card_carry_boxes[Layout->RIGHT_TOP]->SetFill(true);
+
+						@card_carry_boxes[Layout->RIGHT_BOTTOM]->SetColor(@card_carry_error_color);
+						@card_carry_boxes[Layout->RIGHT_BOTTOM]->SetFill(true);
+
+						correct := false;
+					}
+				};
+			};
+		};
+
+		correct->PrintLine();
+	}
+
+	method : ClearInput() ~ Nil {
+		@clear_button->SetFill(false);
+
+		each(i : @card_carry_boxes) {
+			@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
+			@card_carry_boxes[i]->SetFill(false);
+		};
+
+		@card_carry_strings := String->New[6];
+		each(i : @card_carry_strings) {
+			@card_carry_strings[i] := "";
 		};
 	}
 
