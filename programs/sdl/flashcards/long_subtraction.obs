@@ -4,12 +4,16 @@ use Game.Framework;
 class Chalkboard {
 	@framework : GameFramework;
 
-	# scores
+	# game score
 	@score_star : ImageSprite;
 	@score_index : Int;
 	@score_tries : Int;
 	@score_tries_text : TextSprite;
 	@card_score_font : Font;
+
+	# final score
+	@game_score_images : ImageSprite[];
+	@game_score_text : TextSprite;
 
 	# card
 	@card : Rectangle;
@@ -133,7 +137,11 @@ class Chalkboard {
 		};
 
 		# score boxes
-		@score_star := @framework->AddAnimatedImageSprite("./media/star.png");
+		@score_star := @framework->AddImageSprite("./media/star.png");
+
+		@game_score_images := ImageSprite->New[2];
+		@game_score_images[0] := @framework->AddImageSprite("./media/thumbs-up.png");
+		@game_score_images[1] := @framework->AddImageSprite("./media/thumbs-down.png");
 		
 		# check button
 		@check_button := @framework->AddRectangle(180, 40);
@@ -151,10 +159,12 @@ class Chalkboard {
 
 		@clear_button_text := @framework->AddTextSprite();
 		@clear_button_text->SetFont(@card_button_font);
-		@clear_button_text->RenderedText("Clear");
-
+		
 		@score_tries_text := @framework->AddTextSprite();
 		@score_tries_text->SetFont(@card_score_font);
+
+		@game_score_text := @framework->AddTextSprite();
+		@game_score_text->SetFont(@card_score_font);
 
 		# problem text
 		@card_text_color := Color->New(224, 219, 200);
@@ -248,7 +258,7 @@ class Chalkboard {
 	}
 
 	method : KeyboardInput(e : Event) ~ Nil {
-		if(@card_carry_string_index > -1) {
+		if(@score_tries > 0 & @card_carry_string_index > -1) {
 			select(e->GetKey()->GetKeysym()->GetScancode()) {
 				label Scancode->SDL_SCANCODE_BACKSPACE:
 	        	label Scancode->SDL_SCANCODE_DELETE: {
@@ -348,7 +358,7 @@ class Chalkboard {
 		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
 			ClearInput();
 		}
-		else {
+		else if(@score_tries > 0) {
 			found := false;
 			each(i : @card_carry_boxes) {
 				card_carry_box := @card_carry_boxes[i];
@@ -366,7 +376,7 @@ class Chalkboard {
 	}
 
 	method : CheckInput() ~ Nil {
-		if(@score_tries >= 0) {
+		if(@score_tries > 0) {
 			@check_button->SetFill(false);
 
 			each(i : @card_carry_boxes) {
@@ -494,10 +504,24 @@ class Chalkboard {
 		};
 	}
 
-	method : NextProblem() ~ Nil {
-		if(@score_tries >= 0) {
-			ClearInput();
-			GenerateProblem();
+	method : ClearInput() ~ Nil {
+		if(@score_tries > 0) {
+			each(i : @card_carry_boxes) {
+				@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
+				@card_carry_boxes[i]->SetFill(false);
+			};
+			# set bottom right box
+			@card_carry_string_index := Layout->RIGHT_BOTTOM;
+			@card_carry_boxes[@card_carry_string_index]->SetColor(@card_carry_neutral_color);
+			@card_carry_boxes[@card_carry_string_index]->SetFill(true);
+
+			@card_carry_strings := String->New[6];
+			each(i : @card_carry_strings) {
+				@card_carry_strings[i] := "";
+			};
+		}
+		else {
+			Reset();
 		};
 	}
 
@@ -526,25 +550,15 @@ class Chalkboard {
 		@card_text_strings[Layout->RIGHT_TOP] := Int->Random(0, 5)->ToString();
 	}
 
-	method : ClearInput() ~ Nil {
-		each(i : @card_carry_boxes) {
-			@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
-			@card_carry_boxes[i]->SetFill(false);
-		};
-		# set bottom right box
-		@card_carry_string_index := Layout->RIGHT_BOTTOM;
-		@card_carry_boxes[@card_carry_string_index]->SetColor(@card_carry_neutral_color);
-		@card_carry_boxes[@card_carry_string_index]->SetFill(true);
-
-		@card_carry_strings := String->New[6];
-		each(i : @card_carry_strings) {
-			@card_carry_strings[i] := "";
-		};
+	method : NextProblem() ~ Nil {
+		ClearInput();
+		GenerateProblem();
 	}
 
 	method : Reset() ~ Nil {
 		@score_index := 0;
 		@score_tries := 10;
+		@clear_button_text->RenderedText("Clear");
 
 		text := @score_tries->ToString();
 		text += " chances";
@@ -556,6 +570,17 @@ class Chalkboard {
 	method : Render() ~ Nil {
 		@framework->Clear();
 
+		if(@score_tries > 0) {
+			RenderGame();
+		}
+		else {
+			RenderFinalScore();
+		};
+
+		@framework->Show();
+	}
+
+	method : RenderGame() ~ Nil {
 		# score_boxes
 		offset := GameValues->SCREEN_PADDING + 2;
 		each(i : @score_index) {
@@ -571,7 +596,7 @@ class Chalkboard {
 
 		# problem and carry boxes
 		RenderProblem();
-		RenderCarry();
+		RenderInputs();
 		
 		# sign
 		@card_text_sign->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 10);
@@ -586,11 +611,52 @@ class Chalkboard {
 		# check button
 		@check_button->Render(GameValues->SCREEN_WIDTH / 2 - 90, GameValues->SCREEN_PADDING * 19.5 + 10);
 		@check_button_text->Render(GameValues->SCREEN_WIDTH / 2 - 30, GameValues->SCREEN_PADDING * 19.5 + 14);
-
-		@framework->Show();
 	}
 
-	method : RenderCarry() ~ Nil {
+	method : RenderProblem() ~ Nil {
+		top_x_offset := 7;
+
+		# right column
+		text := @card_text_strings[Layout->RIGHT_TOP];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->RIGHT_TOP]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
+		};
+
+		text := @card_text_strings[Layout->RIGHT_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->RIGHT_BOTTOM]->RenderedText(@card_text_strings[Layout->RIGHT_BOTTOM], @card_text_color);
+			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
+		};
+
+		# middle column
+		text := @card_text_strings[Layout->MIDDLE_TOP];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
+		};
+
+		text := @card_text_strings[Layout->MIDDLE_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
+		};
+
+		# left column
+		text := @card_text_strings[Layout->LEFT_TOP];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->LEFT_TOP]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
+		};
+
+		text := @card_text_strings[Layout->LEFT_BOTTOM];
+		if(<>text->IsEmpty()) {
+			@card_texts[Layout->LEFT_BOTTOM]->RenderedText(text, @card_text_color);
+			@card_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
+		};
+	}
+
+	method : RenderInputs() ~ Nil {
 		# carry boxes
 		@card_carry_boxes[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 4.5);
 		@card_carry_boxes[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
@@ -674,47 +740,32 @@ class Chalkboard {
 		};
 	}
 
-	method : RenderProblem() ~ Nil {
-		top_x_offset := 7;
-
-		# right column
-		text := @card_text_strings[Layout->RIGHT_TOP];
-		if(<>text->IsEmpty()) {
-			@card_texts[Layout->RIGHT_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
+	method : RenderFinalScore() ~ Nil {
+		score := @score_index * 10;
+		score_text := "Score is {$score}%, ";
+		if(score > 80) {
+			score_text += "amazing job!";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else if(score < 80 & score >= 70) {
+			score_text += "well done!";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else if(score < 70 & score >= 50) {
+			score_text += "good effort.";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else {
+			score_text += "let's try again...";
+			@game_score_images[1]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[1]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
 		};
+		@game_score_text->RenderedText(score_text, @card_text_color);
 
-		text := @card_text_strings[Layout->RIGHT_BOTTOM];
-		if(<>text->IsEmpty()) {
-			@card_texts[Layout->RIGHT_BOTTOM]->RenderedText(@card_text_strings[Layout->RIGHT_BOTTOM], @card_text_color);
-			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
-		};
+		@game_score_text->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 3);
 
-		# middle column
-		text := @card_text_strings[Layout->MIDDLE_TOP];
-		if(<>text->IsEmpty()) {
-			@card_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
-		};
-
-		text := @card_text_strings[Layout->MIDDLE_BOTTOM];
-		if(<>text->IsEmpty()) {
-			@card_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
-		};
-
-		# left column
-		text := @card_text_strings[Layout->LEFT_TOP];
-		if(<>text->IsEmpty()) {
-			@card_texts[Layout->LEFT_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
-		};
-
-		text := @card_text_strings[Layout->LEFT_BOTTOM];
-		if(<>text->IsEmpty()) {
-			@card_texts[Layout->LEFT_BOTTOM]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
-		};
+		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * -1);
+		@clear_button_text->RenderedText("Retry");
+		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * -1 + 5);
 	}
 
 	enum Layout {
