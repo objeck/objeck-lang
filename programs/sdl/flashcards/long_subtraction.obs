@@ -105,7 +105,7 @@ class Chalkboard {
 
 		# carry boxes
 		@card_carry_neutral_color := Color->New(192, 192, 192);
-		@card_carry_error_color := Color->New(255, 40, 0);
+		@card_carry_error_color := Color->New(213, 0, 0);
 		@card_carry_boxes := Rectangle->New[6];
 		each(i : @card_carry_boxes) {
 			@card_carry_boxes[i] := @framework->AddRectangle(120, 80);
@@ -463,7 +463,7 @@ class Chalkboard {
 			};
 
 			@score_tries -= 1;
-			@score_tries_text->RenderedText(@score_tries->ToString(), Color->New(220, 220, 220));
+			@score_tries_text->RenderedText(@score_tries->ToString(), @card_text_color);
 		};
 	}
 
@@ -518,7 +518,7 @@ class Chalkboard {
 	method : Reset() ~ Nil {
 		@score_index := 0;
 		@score_tries := 10;
-		@score_tries_text->RenderedText(@score_tries->ToString(), Color->New(220, 220, 220));
+		@score_tries_text->RenderedText(@score_tries->ToString(), @card_text_color);
 
 		NextProblem();
 	}
@@ -533,7 +533,7 @@ class Chalkboard {
 			offset += 35;
 		};
 
-		@score_tries_text->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING / 3);
+		@score_tries_text->Render(GameValues->SCREEN_WIDTH / 2 - 20, GameValues->SCREEN_PADDING / 3);
 
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
@@ -788,7 +788,7 @@ class SubtractionSolver {
 				answer := @problem[Line->ANSWER, i]->ToInt();
 			};
 
- "\n\n{$top} equals [{$carry}]\n{$bottom}\n--\n{$check} equals [{$answer}]"->PrintLine();
+ 			# "\n\n{$top} equals [{$carry}]\n{$bottom}\n--\n{$check} equals [{$answer}]"->PrintLine();
 
 			if((carry <> 0 & top <> carry) | answer <> check) {
 				results[i] := false;
@@ -808,6 +808,7 @@ class SubtractionSolver {
 		@problem[Line->BOTTOM, 0] := bottom_left; @problem[Line->BOTTOM, 1] := bottom_middle; @problem[Line->BOTTOM, 2] := bottom_right;
 	}
 
+#~
 	method : ShowProblem() ~ Nil {
 		dims := @problem->Size();
 		
@@ -838,4 +839,5 @@ class SubtractionSolver {
 			};
 		};
 	}
+~#	
 }
