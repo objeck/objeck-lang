@@ -44,6 +44,10 @@ class Chalkboard {
 	@mouse_y : IntHolder;
 	@mouse_pos : Point;
 
+	# sounds
+	@cheer_chunk : MixChunk;
+	@aww_chunk : MixChunk;
+
 	function : Main(args : String[]) ~ Nil {
 		flash_cards : Chalkboard;
 		
@@ -95,6 +99,21 @@ class Chalkboard {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
+
+		@cheer_chunk := MixChunk->New("./media/cheer.wav");
+		if(@cheer_chunk->IsNull()) {
+			"--- Cannot load sound! ---"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		@aww_chunk := MixChunk->New("./media/aww.wav");
+		if(@aww_chunk->IsNull()) {
+			"--- Cannot load sound! ---"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		# adjust volume
+		Mixer->Volume(-1, 24);
 	}
 
 	method : BuildCard() ~ Nil {
@@ -222,7 +241,9 @@ class Chalkboard {
 		};
 
 		leaving {
-			
+			@cheer_chunk->Free();
+			@aww_chunk->Free();
+			@framework->Quit();
 		};
 	}
 
@@ -458,12 +479,18 @@ class Chalkboard {
 
 			# correct
 			if(correct) {
+				@cheer_chunk->PlayChannel(-1, 0);
 				@score_index += 1;
 				NextProblem();
+			}
+			else {
+				@aww_chunk->PlayChannel(-1, 0);
 			};
 
 			@score_tries -= 1;
-			@score_tries_text->RenderedText(@score_tries->ToString(), @card_text_color);
+			text := @score_tries->ToString();
+			text += " chances";
+			@score_tries_text->RenderedText(text, @card_text_color);
 		};
 	}
 
@@ -518,7 +545,10 @@ class Chalkboard {
 	method : Reset() ~ Nil {
 		@score_index := 0;
 		@score_tries := 10;
-		@score_tries_text->RenderedText(@score_tries->ToString(), @card_text_color);
+
+		text := @score_tries->ToString();
+		text += " chances";
+		@score_tries_text->RenderedText(text, @card_text_color);
 
 		NextProblem();
 	}
@@ -533,7 +563,8 @@ class Chalkboard {
 			offset += 35;
 		};
 
-		@score_tries_text->Render(GameValues->SCREEN_WIDTH / 2 - 20, GameValues->SCREEN_PADDING / 3);
+		# chances
+		@score_tries_text->Render(GameValues->SCREEN_WIDTH / 2 - 85, GameValues->SCREEN_PADDING / 3);
 
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
