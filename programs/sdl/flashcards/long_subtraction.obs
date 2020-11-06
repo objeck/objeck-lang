@@ -230,9 +230,21 @@ class Chalkboard {
 				    	MouseInput(e);
 				    }
 				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONUP) {
-				    	@check_button->SetFill(true); # TODO: wire return key
-				    	@clear_button->SetFill(true); # TODO: wire escape kay
-				    };
+				    	@check_button->SetFill(true);
+				    	@clear_button->SetFill(true);
+				    }
+					else if(@score_tries = 0 & e->GetType() = EventType->SDL_MOUSEMOTION) {
+						Cursor->GetMouseState(@mouse_x, @mouse_y);
+						@mouse_pos->SetX(@mouse_x->Get());
+						@mouse_pos->SetY(@mouse_y->Get());
+
+						if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+		    				@clear_button->SetFill(false);
+		    			}
+		    			else {
+		    				@clear_button->SetFill(true);
+		    			};
+		    		};
 				};
 
 				Render();
@@ -558,6 +570,8 @@ class Chalkboard {
 	method : Reset() ~ Nil {
 		@score_index := 0;
 		@score_tries := 10;
+
+		@clear_button->SetFill(true);
 		@clear_button_text->RenderedText("Clear");
 
 		text := @score_tries->ToString();
@@ -785,8 +799,6 @@ class Chalkboard {
 	}
 }
 
-# -------------------------------------
-
 class SubtractionSolver {
 	@problem : String[,];
 
@@ -889,37 +901,4 @@ class SubtractionSolver {
 		# set bottom number
 		@problem[Line->BOTTOM, 0] := bottom_left; @problem[Line->BOTTOM, 1] := bottom_middle; @problem[Line->BOTTOM, 2] := bottom_right;
 	}
-
-#~
-	method : ShowProblem() ~ Nil {
-		dims := @problem->Size();
-		
-		'\n'->Print();
-		for(i := 0; i < dims[0]; i += 1;) {
-			if(i = Line->ANSWER) {
-				"------------------"->PrintLine();
-			};
-
-			for(j := 0; j < dims[1]; j += 1;) {
-				digit_str := @problem[i,j];
-				if(digit_str = Nil) {
-					" \t"->Print();
-				}
-				else if(digit_str->Equals("#")) {
-					"#\t"->Print();
-				}
-				else {
-					digit := digit_str->ToInt();
-					"{$digit}\t"->Print();
-				};
-				
-			};
-
-			'\n'->Print();
-			if(i = Line->CARRY) {
-				"=================="->PrintLine();
-			};
-		};
-	}
-~#	
 }
