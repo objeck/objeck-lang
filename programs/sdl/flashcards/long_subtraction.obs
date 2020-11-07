@@ -117,7 +117,7 @@ class Chalkboard {
 		};
 
 		# adjust volume
-		Mixer->Volume(-1, 24);
+		Mixer->Volume(-1, 16);
 	}
 
 	method : BuildCard() ~ Nil {
