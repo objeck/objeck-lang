@@ -379,6 +379,7 @@ class Chalkboard {
 					card_carry_box->SetFill(true);
 					@card_carry_string_index := i;
 					found := true;
+#					@card_carry_strings[@card_carry_string_index] := "";
 				}
 				else {
 					card_carry_box->SetFill(false);
