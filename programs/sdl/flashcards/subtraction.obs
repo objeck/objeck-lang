@@ -77,28 +77,28 @@ class Chalkboard {
 
 	method : LoadMedia() ~ Nil {
 		font_path :=  "./media/chalk.ttf";
-		@card_text_font := Font->New(font_path, 96);
+		@card_text_font := Font->New(font_path, 48);
 		if(@card_text_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
 		font_path :=  "./media/maghrib.ttf";
-		@card_carry_box_font := Font->New(font_path, 70);
+		@card_carry_box_font := Font->New(font_path, 35);
 		if(@card_carry_box_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
 		font_path :=  "./media/hella.ttf";
-		@card_button_font := Font->New(font_path, 24);
+		@card_button_font := Font->New(font_path, 15);
 		if(@card_button_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
 		font_path :=  "./media/hella.ttf";
-		@card_score_font := Font->New(font_path, 32);
+		@card_score_font := Font->New(font_path, 20);
 		if(@card_score_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
@@ -131,7 +131,7 @@ class Chalkboard {
 		@card_carry_error_color := Color->New(213, 0, 0);
 		@card_carry_boxes := Rectangle->New[6];
 		each(i : @card_carry_boxes) {
-			@card_carry_boxes[i] := @framework->AddRectangle(120, 80);
+			@card_carry_boxes[i] := @framework->AddRectangle(GameValues->SCREEN_PADDING * 3, GameValues->SCREEN_PADDING * 2);
 			@card_carry_boxes[i]->SetColor(@card_carry_neutral_color);
 			@card_carry_boxes[i]->SetFill(false);
 		};
@@ -144,7 +144,7 @@ class Chalkboard {
 		@game_score_images[1] := @framework->AddImageSprite("./media/thumbs-down.png");
 		
 		# check button
-		@check_button := @framework->AddRectangle(180, 40);
+		@check_button := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_PADDING);
 		@check_button->SetColor(Color->New(105, 105, 105));
 		@check_button->SetFill(true);
 
@@ -153,7 +153,7 @@ class Chalkboard {
 		@check_button_text->RenderedText("Check");
 
 		# clear button
-		@clear_button := @framework->AddRectangle(180, 40);
+		@clear_button := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_PADDING);
 		@clear_button->SetColor(@card_carry_neutral_color);
 		@clear_button->SetFill(true);
 
@@ -197,7 +197,7 @@ class Chalkboard {
 		@card_text_sign->RenderedText("-", @card_text_color);
 
 		# line
-		@card_line := @framework->AddRectangle(GameValues->SCREEN_PADDING * 14, 6);
+		@card_line := @framework->AddRectangle(GameValues->SCREEN_PADDING * 13, 6);
 		@card_line->SetColor(@card_text_color);
 		@card_line->SetFill(true);
 	}
@@ -597,14 +597,14 @@ class Chalkboard {
 
 	method : RenderGame() ~ Nil {
 		# score_boxes
-		offset := GameValues->SCREEN_PADDING + 2;
+		offset := GameValues->SCREEN_PADDING / 1.25;
 		each(i : @score_index) {
 			@score_star->Render(GameValues->SCREEN_PADDING * i + offset, GameValues->SCREEN_PADDING * 1.5);
-			offset += 35;
+			offset += 15;
 		};
 
 		# chances
-		@score_tries_text->Render(GameValues->SCREEN_WIDTH / 2 - 85, GameValues->SCREEN_PADDING / 3);
+		@score_tries_text->Render(GameValues->SCREEN_WIDTH / 2 - @score_tries_text->GetWidth() / 2, GameValues->SCREEN_PADDING / 3);
 
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
@@ -614,83 +614,81 @@ class Chalkboard {
 		RenderInputs();
 		
 		# sign
-		@card_text_sign->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 10);
+		@card_text_sign->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
 		
 		# math line
-		@card_line->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 17, GameValues->SCREEN_PADDING * 13.5);
+		@card_line->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 15.5);
 
 		# clear button
-		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - 90, GameValues->SCREEN_PADDING * 18.5);
-		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - 30, GameValues->SCREEN_PADDING * 18.5 + 4);
+		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button->GetWidth() / 2, GameValues->SCREEN_PADDING * 18.5);
+		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 18.5 + 4);
 
 		# check button
-		@check_button->Render(GameValues->SCREEN_WIDTH / 2 - 90, GameValues->SCREEN_PADDING * 19.5 + 10);
-		@check_button_text->Render(GameValues->SCREEN_WIDTH / 2 - 30, GameValues->SCREEN_PADDING * 19.5 + 14);
+		@check_button->Render(GameValues->SCREEN_WIDTH / 2 - @check_button->GetWidth() / 2, GameValues->SCREEN_PADDING * 19.5 + 5);
+		@check_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @check_button_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 19.5 + 7);
 	}
 
 	method : RenderProblem() ~ Nil {
-		top_x_offset := 7;
-
 		# right column
 		text := @card_text_strings[Layout->RIGHT_TOP];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->RIGHT_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 7);
+			@card_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 5, GameValues->SCREEN_PADDING * 7);
 		};
 
 		text := @card_text_strings[Layout->RIGHT_BOTTOM];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->RIGHT_BOTTOM]->RenderedText(@card_text_strings[Layout->RIGHT_BOTTOM], @card_text_color);
-			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7, GameValues->SCREEN_PADDING * 10);
+			@card_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 5, GameValues->SCREEN_PADDING * 10);
 		};
 
 		# middle column
 		text := @card_text_strings[Layout->MIDDLE_TOP];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->MIDDLE_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 7);
+			@card_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 9, GameValues->SCREEN_PADDING * 7);
 		};
 
 		text := @card_text_strings[Layout->MIDDLE_BOTTOM];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11, GameValues->SCREEN_PADDING * 10);
+			@card_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 9, GameValues->SCREEN_PADDING * 10);
 		};
 
 		# left column
 		text := @card_text_strings[Layout->LEFT_TOP];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->LEFT_TOP]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 7);
+			@card_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 13, GameValues->SCREEN_PADDING * 7);
 		};
 
 		text := @card_text_strings[Layout->LEFT_BOTTOM];
 		if(<>text->IsEmpty()) {
 			@card_texts[Layout->LEFT_BOTTOM]->RenderedText(text, @card_text_color);
-			@card_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15, GameValues->SCREEN_PADDING * 10);
+			@card_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 13, GameValues->SCREEN_PADDING * 10);
 		};
 	}
 
 	method : RenderInputs() ~ Nil {
 		# carry boxes
-		@card_carry_boxes[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 4.5);
-		@card_carry_boxes[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 7.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 5.5, GameValues->SCREEN_PADDING * 4.5);
+		@card_carry_boxes[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 5.5, GameValues->SCREEN_PADDING * 12.5);
 
-		@card_carry_boxes[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 4.5);
-		@card_carry_boxes[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 11.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 9.5, GameValues->SCREEN_PADDING * 4.5);
+		@card_carry_boxes[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 9.5, GameValues->SCREEN_PADDING * 12.5);
 
-		@card_carry_boxes[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 4.5);
-		@card_carry_boxes[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 15.5, GameValues->SCREEN_PADDING * 14.5);
+		@card_carry_boxes[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 13.5, GameValues->SCREEN_PADDING * 4.5);
+		@card_carry_boxes[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 13.5, GameValues->SCREEN_PADDING * 12.5);
 
 		# carry text: RIGHT_TOP
 		text := @card_carry_strings[Layout->RIGHT_TOP];
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->RIGHT_TOP]->RenderedText(text);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 4.5 + 10);
+				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4.75, GameValues->SCREEN_PADDING * 4.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
+				@card_carry_texts[Layout->RIGHT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
 			};
 		};
 
@@ -699,10 +697,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {			
 			@card_carry_texts[Layout->RIGHT_BOTTOM]->RenderedText(text);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+				@card_carry_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4.75, GameValues->SCREEN_PADDING * 12.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 6.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+				@card_carry_texts[Layout->RIGHT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 12.5 + 10);	
 			};
 		};
 
@@ -711,10 +709,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->MIDDLE_TOP]->RenderedText(text);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 4.5 + 10);
+				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 8.75, GameValues->SCREEN_PADDING * 4.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
+				@card_carry_texts[Layout->MIDDLE_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 8.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
 			};
 		};
 
@@ -723,10 +721,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->MIDDLE_BOTTOM]->RenderedText(text);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+				@card_carry_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 8.75, GameValues->SCREEN_PADDING * 12.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 10.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+				@card_carry_texts[Layout->MIDDLE_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 8.5, GameValues->SCREEN_PADDING * 12.5 + 10);	
 			};
 		};
 
@@ -735,10 +733,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->LEFT_TOP]->RenderedText(text);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 4.5 + 10);
+				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 12.75, GameValues->SCREEN_PADDING * 4.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
+				@card_carry_texts[Layout->LEFT_TOP]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 12.5, GameValues->SCREEN_PADDING * 4.5 + 10);	
 			};
 		};
 
@@ -747,10 +745,10 @@ class Chalkboard {
 		if(<>text->IsEmpty()) {
 			@card_carry_texts[Layout->LEFT_BOTTOM]->RenderedText(text);
 			if(text->Size() = 2) {
-				@card_carry_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.75, GameValues->SCREEN_PADDING * 14.5 + 10);
+				@card_carry_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 12.75, GameValues->SCREEN_PADDING * 12.5 + 10);
 			}
 			else {
-				@card_carry_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 14.5, GameValues->SCREEN_PADDING * 14.5 + 10);	
+				@card_carry_texts[Layout->LEFT_BOTTOM]->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 12.5, GameValues->SCREEN_PADDING * 12.5 + 10);	
 			};
 		};
 	}
@@ -793,9 +791,9 @@ class Chalkboard {
 	}
 
 	consts GameValues {
-		SCREEN_WIDTH := 800,
-		SCREEN_HEIGHT := 900,
-		SCREEN_PADDING := 40,
+		SCREEN_WIDTH := 500,
+		SCREEN_HEIGHT := 675,
+		SCREEN_PADDING := 30,
 		PLAY_TIME := 60 * 5
 	}
 }
