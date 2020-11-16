@@ -28,7 +28,8 @@ Notable features:
 * Supported platforms (with JIT compilation)
   * x86-64: Windows, macOS and Linux
   * x86: Windows and Linux
-  * ARMv7: Linux
+  * ARMv7: Raspberry Pi 3/4 (Linux)
+  * ARMv8: macOS (M1) [Work-In-Progress]
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
   * Collections (vectors, queues, trees, hashes, etc.)
