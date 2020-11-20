@@ -27,6 +27,8 @@ class Chalkboard {
 	@card_carry_box_font : Font;
 	@card_carry_box : Rectangle;
 	@card_carry_text : TextSprite;
+
+	@card_table_text : TextSprite;
 	
 	# mouse input
 	@mouse_x : IntHolder;
@@ -134,7 +136,11 @@ class Chalkboard {
 
 		@card_carry_text := @framework->AddTextSprite();
 		@card_carry_text->SetFont(@card_carry_box_font);
-		@card_carry_text->RenderedText("6");
+		@card_carry_text->RenderedText("16");
+
+		@card_table_text := @framework->AddTextSprite();
+		@card_table_text->SetFont(@card_button_font);
+		@card_table_text->RenderedText("3, 6, 9, 12, 15, 18, 21, 24, 27, 30", Color->New(0, 0, 139));
 
 		# TODO: change me
 		@card_text_top := @framework->AddTextSprite();
@@ -365,6 +371,9 @@ class Chalkboard {
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
+		#
+		@card_table_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_table_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 2);
+
 		# problem and inputs
 		RenderProblem();
 		RenderInputs();
@@ -390,7 +399,7 @@ class Chalkboard {
 
 	method : RenderInputs() ~ Nil {
 		@card_carry_box->Render(GameValues->SCREEN_PADDING * 12, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
-		@card_carry_text->Render(GameValues->SCREEN_PADDING * 13, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		@card_carry_text->Render(GameValues->SCREEN_PADDING * 13.5, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
 	}
 
 	method : RenderFinalScore() ~ Nil {
@@ -400,7 +409,7 @@ class Chalkboard {
 	}
 
 	consts GameValues {
-		SCREEN_WIDTH := 600,
+		SCREEN_WIDTH := 630,
 		SCREEN_HEIGHT := 400,
 		SCREEN_PADDING := 30,
 		PLAY_TIME := 60 * 5
