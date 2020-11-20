@@ -381,7 +381,11 @@ class Chalkboard {
 				bottom := @card_string_bottom->ToInt();
 
 				if(top * bottom = answer) {
+					@cheer_chunk->PlayChannel(-1, 0);
 					@score_index += 1;
+				}
+				else {
+					@aww_chunk->PlayChannel(-1, 0);
 				};
 
 				@score_tries -= 1;
