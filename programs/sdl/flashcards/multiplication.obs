@@ -39,8 +39,8 @@ class Chalkboard {
 	@card_answer_string : String;
 
 	# number table
-	@card_num_tbl_text : TextSprite;
-	@card_num_tbl_string : String;
+	@card_num_line_text : TextSprite;
+	@card_num_line_string : String;
 	
 	# mouse input
 	@mouse_x : IntHolder;
@@ -150,8 +150,8 @@ class Chalkboard {
 		@card_answer_text->SetFont(@card_answer_box_font);
 
 		# number line
-		@card_num_tbl_text := @framework->AddTextSprite();
-		@card_num_tbl_text->SetFont(@card_button_font);
+		@card_num_line_text := @framework->AddTextSprite();
+		@card_num_line_text->SetFont(@card_button_font);
 
 		# problem
 		@card_text_top := @framework->AddTextSprite();
@@ -339,7 +339,20 @@ class Chalkboard {
 
 	method : CheckProblem() ~ Nil {
 		if(@score_tries > 0) {
-			
+			top := @card_string_top->ToInt();
+			bottom := @card_string_bottom->ToInt();
+
+			if(top <> 0 & bottom <> 0) {
+				check := top * bottom;
+				if(check = @card_answer_string->ToInt()) {
+					"Correct"->PrintLine();
+				}
+				else {
+					"Incorrect"->PrintLine();
+				};
+
+				NextProblem();
+			};
 		};
 	}
 
@@ -360,12 +373,13 @@ class Chalkboard {
 			@card_string_top := v1->ToString();
 			@card_string_bottom := v2->ToString();
 
-			@card_num_tbl_string := "";
 			tmp := v1;
+			@card_num_line_string := tmp->ToString();
+			@card_num_line_string->Append("'s: "); 
 			for(i := 1; i <= 10; i++;) {
-				@card_num_tbl_string->Append(tmp);
+				@card_num_line_string->Append(tmp);
 				if(i + 1 <= 10) {
-					@card_num_tbl_string->Append(", ");
+					@card_num_line_string->Append(", ");
 				};
 				tmp += v1;
 			};
@@ -374,12 +388,13 @@ class Chalkboard {
 			@card_string_top := v2->ToString();
 			@card_string_bottom := v1->ToString();
 
-			@card_num_tbl_string := "";
 			tmp := v2;
+			@card_num_line_string := tmp->ToString();
+			@card_num_line_string->Append("'s: ");
 			for(i := 1; i <= 10; i++;) {
-				@card_num_tbl_string->Append(tmp);
+				@card_num_line_string->Append(tmp);
 				if(i + 1 <= 10) {
-					@card_num_tbl_string->Append(", ");
+					@card_num_line_string->Append(", ");
 				};
 				tmp += v2;
 			};
@@ -419,8 +434,8 @@ class Chalkboard {
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
 		# number line
-		@card_num_tbl_text->RenderedText(@card_num_tbl_string, Color->New(0, 0, 139));
-		@card_num_tbl_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_tbl_text->GetWidth() / 2, GameValues->SCREEN_PADDING);
+		@card_num_line_text->RenderedText(@card_num_line_string, Color->New(0, 0, 139));
+		@card_num_line_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_line_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 3);
 
 		# problem and inputs
 		RenderProblem();
@@ -463,13 +478,9 @@ class Chalkboard {
 	method : RenderFinalScore() ~ Nil {
 	}
 
-	enum Layout {
-	}
-
 	consts GameValues {
 		SCREEN_WIDTH := 630,
 		SCREEN_HEIGHT := 400,
-		SCREEN_PADDING := 30,
-		PLAY_TIME := 60 * 5
+		SCREEN_PADDING := 30
 	}
 }
