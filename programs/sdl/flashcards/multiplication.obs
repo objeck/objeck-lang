@@ -5,8 +5,17 @@ class Chalkboard {
 	@framework : GameFramework;
 
 	# score
-	@score_tries : Int;
+	@score_star : ImageSprite;
+	@score_index : Int;
 
+	@score_tries : Int;
+	@card_score_font : Font;
+	@score_tries_text : TextSprite;
+
+	# final score
+	@game_score_images : ImageSprite[];
+	@game_score_text : TextSprite;
+	
 	# card
 	@card : Rectangle;
 	
@@ -96,6 +105,16 @@ class Chalkboard {
 			Runtime->Exit(1);
 		};
 
+		font_path :=  "./media/hella.ttf";
+		@card_score_font := Font->New(font_path, 18);
+		if(@card_score_font->IsNull()) {
+			"Failed to load font '{$font_path}'!"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		# score stars
+		@score_star := @framework->AddImageSprite("./media/star.png");
+
 		@cheer_chunk := MixChunk->New("./media/cheer.wav");
 		if(@cheer_chunk->IsNull()) {
 			"--- Cannot load sound! ---"->ErrorLine();
@@ -119,6 +138,10 @@ class Chalkboard {
 		@card := @framework->AddRectangle(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);
 		@card->SetColor(Color->New(46, 139, 87));
 		@card->SetFill(true);
+
+		# tries
+		@score_tries_text := @framework->AddTextSprite();
+		@score_tries_text->SetFont(@card_score_font);
 
 		# check button
 		@check_button := @framework->AddRectangle(160, 30);
@@ -163,6 +186,14 @@ class Chalkboard {
 		# answer
 		@card_answer_box := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 2.5);
 		@card_answer_box->SetColor(Color->New(0, 0, 139));
+
+		# final score
+		@game_score_images := ImageSprite->New[2];
+		@game_score_images[0] := @framework->AddImageSprite("./media/thumbs-up.png");
+		@game_score_images[1] := @framework->AddImageSprite("./media/thumbs-down.png");
+
+		@game_score_text := @framework->AddTextSprite();
+		@game_score_text->SetFont(@card_score_font);
 	}
 
 	method : WireInput() ~ Nil {
@@ -333,23 +364,30 @@ class Chalkboard {
 			CheckProblem();
 		}
 		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
-			ClearInput();
+			if(@score_tries > 0) {
+				ClearInput();
+			}
+			else {
+				Reset();
+			};
 		};
 	}
 
 	method : CheckProblem() ~ Nil {
 		if(@score_tries > 0) {
-			top := @card_string_top->ToInt();
-			bottom := @card_string_bottom->ToInt();
+			answer := @card_answer_string->ToInt();
+			if(answer <> 0) {
+				top := @card_string_top->ToInt();
+				bottom := @card_string_bottom->ToInt();
 
-			if(top <> 0 & bottom <> 0) {
-				check := top * bottom;
-				if(check = @card_answer_string->ToInt()) {
-					"Correct"->PrintLine();
-				}
-				else {
-					"Incorrect"->PrintLine();
+				if(top * bottom = answer) {
+					@score_index += 1;
 				};
+
+				@score_tries -= 1;
+				text := @score_tries->ToString();
+				text += " chances";
+				@score_tries_text->RenderedText(text, Color->New(0, 0, 139));
 
 				NextProblem();
 			};
@@ -359,9 +397,6 @@ class Chalkboard {
 	method : ClearInput() ~ Nil {
 		if(@score_tries > 0) {
 			@card_answer_string := " ";
-		}
-		else {
-			Reset();
 		};
 	}
 
@@ -372,32 +407,22 @@ class Chalkboard {
 		if(Int->Random(0, 1) = 0) {
 			@card_string_top := v1->ToString();
 			@card_string_bottom := v2->ToString();
-
-			tmp := v1;
-			@card_num_line_string := tmp->ToString();
-			@card_num_line_string->Append("'s: "); 
-			for(i := 1; i <= 10; i++;) {
-				@card_num_line_string->Append(tmp);
-				if(i + 1 <= 10) {
-					@card_num_line_string->Append(", ");
-				};
-				tmp += v1;
-			};
 		}
 		else {
 			@card_string_top := v2->ToString();
 			@card_string_bottom := v1->ToString();
+		};
 
-			tmp := v2;
-			@card_num_line_string := tmp->ToString();
-			@card_num_line_string->Append("'s: ");
-			for(i := 1; i <= 10; i++;) {
-				@card_num_line_string->Append(tmp);
-				if(i + 1 <= 10) {
-					@card_num_line_string->Append(", ");
-				};
-				tmp += v2;
+		# number line
+		tmp := v1;
+		@card_num_line_string := tmp->ToString();
+		@card_num_line_string->Append("'s: "); 
+		for(i := 1; i <= 10; i++;) {
+			@card_num_line_string->Append(tmp);
+			if(i + 1 <= 10) {
+				@card_num_line_string->Append(", ");
 			};
+			tmp += v1;
 		};
 	}
 
@@ -409,6 +434,10 @@ class Chalkboard {
 	method : Reset() ~ Nil {
 		@score_index := 0;
 		@score_tries := 10;
+
+		text := @score_tries->ToString();
+		text += " chances";
+		@score_tries_text->RenderedText(text, Color->New(0, 0, 139));
 
 		@clear_button->SetFill(true);
 		@clear_button_text->RenderedText("Clear");
@@ -430,6 +459,15 @@ class Chalkboard {
 	}
 
 	method : RenderGame() ~ Nil {
+		# score_boxes
+		offset := GameValues->SCREEN_PADDING * 3;
+		each(i : @score_index) {
+			@score_star->Render(GameValues->SCREEN_PADDING * i + offset, GameValues->SCREEN_PADDING);
+			offset += 15;
+		};
+
+		@score_tries_text->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_PADDING / 4);
+
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
@@ -476,6 +514,31 @@ class Chalkboard {
 	}
 
 	method : RenderFinalScore() ~ Nil {
+		score := @score_index * 10;
+		score_text := "Score is {$score}%, ";
+		if(score >= 80) {
+			score_text += "amazing job!";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else if(score < 80 & score >= 70) {
+			score_text += "well done!";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else if(score < 70 & score >= 50) {
+			score_text += "good effort.";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else {
+			score_text += "let's try again...";
+			@game_score_images[1]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[1]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		};
+		@game_score_text->RenderedText(score_text, @card_text_color);
+
+		@game_score_text->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 3);
+
+		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * -1);
+		@clear_button_text->RenderedText("Retry");
+		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * -1);
 	}
 
 	consts GameValues {
