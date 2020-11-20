@@ -40,6 +40,7 @@ class Chalkboard {
 
 	# number table
 	@card_num_tbl_text : TextSprite;
+	@card_num_tbl_string : String;
 	
 	# mouse input
 	@mouse_x : IntHolder;
@@ -151,7 +152,6 @@ class Chalkboard {
 		# number line
 		@card_num_tbl_text := @framework->AddTextSprite();
 		@card_num_tbl_text->SetFont(@card_button_font);
-		@card_num_tbl_text->RenderedText("3, 6, 9, 12, 15, 18, 21, 24, 27, 30", Color->New(0, 0, 139));
 
 		# problem
 		@card_text_top := @framework->AddTextSprite();
@@ -353,16 +353,36 @@ class Chalkboard {
 	}
 
 	method : GenerateProblem() ~ Nil {
-		v1 := Int->Random(2, 3)->ToString();
-		v2 := Int->Random(1, 9)->ToString();
-		
+		v1 := Int->Random(2, 3);
+		v2 := Int->Random(1, 9);
+
 		if(Int->Random(0, 1) = 0) {
-			@card_string_top := v1;
-			@card_string_bottom := v2;
+			@card_string_top := v1->ToString();
+			@card_string_bottom := v2->ToString();
+
+			@card_num_tbl_string := "";
+			tmp := v1;
+			for(i := 1; i <= 10; i++;) {
+				@card_num_tbl_string->Append(tmp);
+				if(i + 1 <= 10) {
+					@card_num_tbl_string->Append(", ");
+				};
+				tmp += v1;
+			};
 		}
 		else {
-			@card_string_top := v2;
-			@card_string_bottom := v1;
+			@card_string_top := v2->ToString();
+			@card_string_bottom := v1->ToString();
+
+			@card_num_tbl_string := "";
+			tmp := v2;
+			for(i := 1; i <= 10; i++;) {
+				@card_num_tbl_string->Append(tmp);
+				if(i + 1 <= 10) {
+					@card_num_tbl_string->Append(", ");
+				};
+				tmp += v2;
+			};
 		};
 	}
 
@@ -398,7 +418,8 @@ class Chalkboard {
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
-		#
+		# number line
+		@card_num_tbl_text->RenderedText(@card_num_tbl_string, Color->New(0, 0, 139));
 		@card_num_tbl_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_tbl_text->GetWidth() / 2, GameValues->SCREEN_PADDING);
 
 		# problem and inputs
