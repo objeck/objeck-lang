@@ -4,31 +4,42 @@ use Game.Framework;
 class Chalkboard {
 	@framework : GameFramework;
 
+	# score
 	@score_tries : Int;
 
 	# card
 	@card : Rectangle;
+	
+	@card_text_font : Font;
 	@card_text_color : Color;
+
 	@card_text_mul_sign : TextSprite;
 	@card_text_eql_sign : TextSprite;
-	@card_text_top : TextSprite;
-	@card_text_bottom : TextSprite;
-
+	
+	# buttons
 	@card_button_font : Font;
 
 	@check_button : Rectangle;
 	@check_button_text : TextSprite;
 
-	@card_text_font : Font;
-
 	@clear_button : Rectangle;
 	@clear_button_text : TextSprite;
 
-	@card_carry_box_font : Font;
-	@card_carry_box : Rectangle;
-	@card_carry_text : TextSprite;
+	# problem
+	@card_text_top : TextSprite;
+	@card_string_top : String;
 
-	@card_table_text : TextSprite;
+	@card_text_bottom : TextSprite;
+	@card_string_bottom : String;
+
+	# answer
+	@card_answer_box_font : Font;
+	@card_answer_box : Rectangle;
+	@card_answer_text : TextSprite;
+	@card_answer_string : String;
+
+	# number table
+	@card_num_tbl_text : TextSprite;
 	
 	# mouse input
 	@mouse_x : IntHolder;
@@ -78,8 +89,8 @@ class Chalkboard {
 		};
 
 		font_path :=  "./media/maghrib.ttf";
-		@card_carry_box_font := Font->New(font_path, 72);
-		if(@card_carry_box_font->IsNull()) {
+		@card_answer_box_font := Font->New(font_path, 72);
+		if(@card_answer_box_font->IsNull()) {
 			"Failed to load font '{$font_path}'!"->ErrorLine();
 			Runtime->Exit(1);
 		};
@@ -109,7 +120,7 @@ class Chalkboard {
 		@card->SetFill(true);
 
 		# check button
-		@check_button := @framework->AddRectangle(180, 30);
+		@check_button := @framework->AddRectangle(160, 30);
 		@check_button->SetColor(Color->New(105, 105, 105));
 		@check_button->SetFill(true);
 
@@ -118,7 +129,7 @@ class Chalkboard {
 		@check_button_text->RenderedText("Check");
 
 		# clear button
-		@clear_button := @framework->AddRectangle(180, 30);
+		@clear_button := @framework->AddRectangle(160, 30);
 		@clear_button->SetColor(Color->New(192, 192, 192));
 		@clear_button->SetFill(true);
 
@@ -134,25 +145,24 @@ class Chalkboard {
 		@card_text_eql_sign->SetFont(@card_text_font);
 		@card_text_eql_sign->RenderedText("=", @card_text_color);
 
-		@card_carry_text := @framework->AddTextSprite();
-		@card_carry_text->SetFont(@card_carry_box_font);
-		@card_carry_text->RenderedText("16");
+		@card_answer_text := @framework->AddTextSprite();
+		@card_answer_text->SetFont(@card_answer_box_font);
 
-		@card_table_text := @framework->AddTextSprite();
-		@card_table_text->SetFont(@card_button_font);
-		@card_table_text->RenderedText("3, 6, 9, 12, 15, 18, 21, 24, 27, 30", Color->New(0, 0, 139));
+		# number line
+		@card_num_tbl_text := @framework->AddTextSprite();
+		@card_num_tbl_text->SetFont(@card_button_font);
+		@card_num_tbl_text->RenderedText("3, 6, 9, 12, 15, 18, 21, 24, 27, 30", Color->New(0, 0, 139));
 
-		# TODO: change me
+		# problem
 		@card_text_top := @framework->AddTextSprite();
 		@card_text_top->SetFont(@card_text_font);
-		@card_text_top->RenderedText("2", @card_text_color);
-
-		#
-		@card_carry_box := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 2.5);
-
+		
 		@card_text_bottom := @framework->AddTextSprite();
 		@card_text_bottom->SetFont(@card_text_font);
-		@card_text_bottom->RenderedText("3", @card_text_color);
+
+		# answer
+		@card_answer_box := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 2.5);
+		@card_answer_box->SetColor(Color->New(0, 0, 139));
 	}
 
 	method : WireInput() ~ Nil {
@@ -225,69 +235,92 @@ class Chalkboard {
 	method : KeyboardInput(e : Event) ~ Nil {
 		if(@score_tries > 0) {
 			select(e->GetKey()->GetKeysym()->GetScancode()) {
+				label Scancode->Scancode->SDL_SCANCODE_ESCAPE: {
+					ClearInput();
+					@clear_button->SetFill(true);
+				}
+
+	            label Scancode->SDL_SCANCODE_RETURN:
+				label Scancode->SDL_SCANCODE_KP_ENTER: {
+					CheckProblem();
+					@check_button->SetFill(true);
+				}
+
 				label Scancode->SDL_SCANCODE_BACKSPACE:
 	        	label Scancode->SDL_SCANCODE_DELETE: {
+	        		ClearInput();
 	            }
 
 				label Scancode->SDL_SCANCODE_0:
 	        	label Scancode->SDL_SCANCODE_KP_0: {
-	            	
+	        		if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('0');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_1:
 	            label Scancode->SDL_SCANCODE_KP_1: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('1');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_2:
 	            label Scancode->SDL_SCANCODE_KP_2: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('2');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_3:
 	            label Scancode->SDL_SCANCODE_KP_3: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('3');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_4:
 	            label Scancode->SDL_SCANCODE_KP_4: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('4');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_5:
 	            label Scancode->SDL_SCANCODE_KP_5: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('5');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_6:
 	            label Scancode->SDL_SCANCODE_KP_6: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('6');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_7:
 	            label Scancode->SDL_SCANCODE_KP_7: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('7');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_8:
 	            label Scancode->SDL_SCANCODE_KP_8: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('8');
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_9:
 	            label Scancode->SDL_SCANCODE_KP_9: {
-	            	
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('9');
+	            	};
 	            }
 			};
-		};
-		
-		if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_RETURN | e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_KP_ENTER) {
-			CheckInput();
-			@check_button->SetFill(true);
-		}
-		else if(e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_ESCAPE) {
-			ClearInput();
-			@clear_button->SetFill(true);
 		};
 	}
 
@@ -297,31 +330,14 @@ class Chalkboard {
 		@mouse_pos->SetY(@mouse_y->Get());
 
 		if(@check_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
-			CheckInput();
+			CheckProblem();
 		}
 		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
 			ClearInput();
-		}
-		else if(@score_tries > 0) {
-#~			
-			found := false;
-			each(i : @card_carry_boxes) {
-				card_carry_box := @card_carry_boxes[i];
-				if(card_carry_box->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
-					card_carry_box->SetColor(@card_carry_neutral_color);
-					card_carry_box->SetFill(true);
-					@card_carry_string_index := i;
-					found := true;
-				}
-				else {
-					card_carry_box->SetFill(false);
-				};				
-			};
-~#
 		};
 	}
 
-	method : CheckInput() ~ Nil {
+	method : CheckProblem() ~ Nil {
 		if(@score_tries > 0) {
 			
 		};
@@ -329,6 +345,7 @@ class Chalkboard {
 
 	method : ClearInput() ~ Nil {
 		if(@score_tries > 0) {
+			@card_answer_string := " ";
 		}
 		else {
 			Reset();
@@ -336,7 +353,17 @@ class Chalkboard {
 	}
 
 	method : GenerateProblem() ~ Nil {
+		v1 := Int->Random(2, 3)->ToString();
+		v2 := Int->Random(1, 9)->ToString();
 		
+		if(Int->Random(0, 1) = 0) {
+			@card_string_top := v1;
+			@card_string_bottom := v2;
+		}
+		else {
+			@card_string_top := v2;
+			@card_string_bottom := v1;
+		};
 	}
 
 	method : NextProblem() ~ Nil {
@@ -372,7 +399,7 @@ class Chalkboard {
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
 		#
-		@card_table_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_table_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 2);
+		@card_num_tbl_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_tbl_text->GetWidth() / 2, GameValues->SCREEN_PADDING);
 
 		# problem and inputs
 		RenderProblem();
@@ -393,13 +420,23 @@ class Chalkboard {
 	}
 
 	method : RenderProblem() ~ Nil {
+		@card_text_top->RenderedText(@card_string_top, @card_text_color);
 		@card_text_top->Render(GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+
+		@card_text_bottom->RenderedText(@card_string_bottom, @card_text_color);
 		@card_text_bottom->Render(GameValues->SCREEN_PADDING * 8, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
 	}
 
 	method : RenderInputs() ~ Nil {
-		@card_carry_box->Render(GameValues->SCREEN_PADDING * 12, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
-		@card_carry_text->Render(GameValues->SCREEN_PADDING * 13.5, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		@card_answer_box->Render(GameValues->SCREEN_PADDING * 12, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+
+		@card_answer_text->RenderedText(@card_answer_string);
+		if(@card_answer_string->Size() > 2) {
+			@card_answer_text->Render(GameValues->SCREEN_PADDING * 13, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		}
+		else {
+			@card_answer_text->Render(GameValues->SCREEN_PADDING * 13.5, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		};
 	}
 
 	method : RenderFinalScore() ~ Nil {
