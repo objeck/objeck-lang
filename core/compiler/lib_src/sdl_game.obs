@@ -1532,6 +1532,15 @@ bundle Game.Framework {
 		}
 
 		#~
+		Get specified color
+		@param name name of color
+		@return color
+		~# 
+		method : public : GetColor(name : String) ~ Color {
+			return @colors->Find(name)<String>;
+		}
+
+		#~
 		Build assets from a JSON file
 		@param file path to build file
 		@return true if successful, false otherwise
@@ -1569,7 +1578,7 @@ bundle Game.Framework {
 									if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-	"chunk: name={$name}, path={$path}"->PrintLine();
+"chunk: name={$name}, path={$path}"->PrintLine();
 									}
 									else {
 										"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
@@ -1594,12 +1603,11 @@ bundle Game.Framework {
 									name := name_attrib->GetValue();
 									codes := code_attrib->GetValue()->Split(",");
 									if(codes->Size() = 3) {
-"color: name={$name}, code=xxx"->PrintLine();
-
+# "color: name={$name}, code=xxx"->PrintLine();
 										@colors->Insert(name, Color->New(codes[0]->ToInt(), codes[1]->ToInt(), codes[2]->ToInt()));
 									}
 									else {
-										@colors->Insert(name, Color->New(0, 0, 0,));
+										@colors->Insert(name, Color->New(0, 0, 0));
 									};
 								}
 								else {
