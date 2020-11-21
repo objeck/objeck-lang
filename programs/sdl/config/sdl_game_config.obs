@@ -28,15 +28,20 @@ class Test {
 					if(chunks <> Nil & chunks->GetType() = JSONType->ARRAY) {
 						each(i : chunks) {
 							chunk := chunks->Get(i);
-							name_attrib := chunk->Get("name");
-							path_attrib := chunk->Get("path");
-							if(name_attrib <> Nil & path_attrib <> Nil) {
-								name := name_attrib->GetValue();
-								path := path_attrib->GetValue();
+							if(chunk->GetType() = JSONType->OBJECT) {
+								name_attrib := chunk->Get("name");
+								path_attrib := chunk->Get("path");
+								if(name_attrib <> Nil & path_attrib <> Nil) {
+									name := name_attrib->GetValue();
+									path := path_attrib->GetValue();
 "chunk: name={$name}, path={$path}"->PrintLine();
+								}
+								else {
+									"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
+								};
 							}
 							else {
-								"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
+								"### Invalid type ###"->ErrorLine();
 							};
 						};
 					};
@@ -47,15 +52,20 @@ class Test {
 				if(colors <> Nil & colors->GetType() = JSONType->ARRAY) {
 					each(i : colors) {
 						color := colors->Get(i);
-						name_attrib := color->Get("name");
-						code_attrib := color->Get("code");
-						if(name_attrib <> Nil & code_attrib <> Nil) {
-							name := name_attrib->GetValue();
-							code := code_attrib->GetValue();
+						if(color->GetType() = JSONType->OBJECT) {
+							name_attrib := color->Get("name");
+							code_attrib := color->Get("code");
+							if(name_attrib <> Nil & code_attrib <> Nil) {
+								name := name_attrib->GetValue();
+								code := code_attrib->GetValue();
 "color: name={$name}, code={$code}"->PrintLine();
+							}
+							else {
+								"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
+							};
 						}
 						else {
-							"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
+							"### Invalid type ###"->ErrorLine();
 						};
 					};
 				};
@@ -68,15 +78,20 @@ class Test {
 					if(image_sprites <> Nil & image_sprites->GetType() = JSONType->ARRAY) {
 						each(i : image_sprites) {
 							image_sprite := image_sprites->Get(i);
-							name_attrib := image_sprite->Get("name");
-							path_attrib := image_sprite->Get("path");
-							if(name_attrib <> Nil & path_attrib <> Nil) {
-								name := name_attrib->GetValue();
-								path := path_attrib->GetValue();
+							if(image_sprite->GetType() = JSONType->OBJECT) {
+								name_attrib := image_sprite->Get("name");
+								path_attrib := image_sprite->Get("path");
+								if(name_attrib <> Nil & path_attrib <> Nil) {
+									name := name_attrib->GetValue();
+									path := path_attrib->GetValue();
 "image_sprite: name={$name}, path={$path}"->PrintLine();
+								}
+								else {
+									"### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+								};
 							}
 							else {
-								"### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+								"### Invalid type ###"->ErrorLine();
 							};
 						};
 					};
@@ -85,22 +100,26 @@ class Test {
 					titled_sprites := assets->Get("titled_sprites");
 					if(titled_sprites <> Nil & titled_sprites->GetType() = JSONType->ARRAY) {
 						each(i : titled_sprites) {
-							image_sprite := titled_sprites->Get(i);
-							name_attrib := image_sprite->Get("name");
-							path_attrib := image_sprite->Get("path");
-							size_attrib := image_sprite->Get("size");
-							if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil) {
-								name := name_attrib->GetValue();
-								path := path_attrib->GetValue();
-								size := size_attrib->GetValue();
+							titled_sprite := titled_sprites->Get(i);
+							if(titled_sprite->GetType() = JSONType->OBJECT) {
+								name_attrib := titled_sprite->Get("name");
+								path_attrib := titled_sprite->Get("path");
+								size_attrib := titled_sprite->Get("size");
+								if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil) {
+									name := name_attrib->GetValue();
+									path := path_attrib->GetValue();
+									size := size_attrib->GetValue();
 "titled_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
+								}
+								else {
+									"### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+								};
 							}
 							else {
-								"### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+								"### Invalid type ###"->ErrorLine();
 							};
 						};
 					};
-
 				}
 				else {
 					"### Missing 'assets' element ###"->ErrorLine();
