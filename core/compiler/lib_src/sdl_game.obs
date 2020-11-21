@@ -5,6 +5,7 @@ Copyright (c) 2018-2020 Randy Hollines
 
 use Game.SDL2;
 use Collection.Generic;
+use Data.JSON;
 
 #~
 2D gaming framework that uses SDL2 (-lib sdl_game)
@@ -1531,6 +1532,201 @@ bundle Game.Framework {
 		@return true if successful, false otherwise
 		~#
 		method : public : BuildFromFile(file : String) ~ Bool {
+			if(@is_ok) {
+				parser := JSONParser->New(System.IO.File.FileReader->ReadFile(file));
+				if(parser->Parse()) {
+					root := parser->GetRoot();
+
+					# sound
+					sound := root->Get("sound");
+					if(sound <> Nil & sound->GetType() = JSONType->OBJECT) {
+						# music
+						music := sound->Get("music");
+						if(music <> Nil & music->GetType() = JSONType->OBJECT) {
+							path_attrib := music->Get("path");
+							if(path_attrib <> Nil)	{
+								path := path_attrib->GetValue();
+	"music: path={$path}"->PrintLine();							
+							}
+							else {
+								"### Missing music: 'path' attribute ###"->ErrorLine();							
+							};
+						};
+						
+						# chucks
+						chunks := sound->Get("chunks");
+						if(chunks <> Nil & chunks->GetType() = JSONType->ARRAY) {
+							each(i : chunks) {
+								chunk := chunks->Get(i);
+								if(chunk->GetType() = JSONType->OBJECT) {
+									name_attrib := chunk->Get("name");
+									path_attrib := chunk->Get("path");
+									if(name_attrib <> Nil & path_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										path := path_attrib->GetValue();
+	"chunk: name={$name}, path={$path}"->PrintLine();
+									}
+									else {
+										"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
+									};
+								}
+								else {
+									"### Invalid type ###"->ErrorLine();
+								};
+							};
+						};
+					};
+
+					# colors
+					colors := root->Get("colors");
+					if(colors <> Nil & colors->GetType() = JSONType->ARRAY) {
+						each(i : colors) {
+							color := colors->Get(i);
+							if(color->GetType() = JSONType->OBJECT) {
+								name_attrib := color->Get("name");
+								code_attrib := color->Get("code");
+								if(name_attrib <> Nil & code_attrib <> Nil) {
+									name := name_attrib->GetValue();
+									code := code_attrib->GetValue();
+	"color: name={$name}, code={$code}"->PrintLine();
+								}
+								else {
+									"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
+								};
+							}
+							else {
+								"### Invalid type ###"->ErrorLine();
+							};
+						};
+					};
+
+					# assets
+					assets := root->Get("assets");
+					if(assets <> Nil & assets->GetType() = JSONType->OBJECT) {
+						# image_sprites
+						image_sprites := assets->Get("image_sprites");
+						if(image_sprites <> Nil & image_sprites->GetType() = JSONType->ARRAY) {
+							each(i : image_sprites) {
+								image_sprite := image_sprites->Get(i);
+								if(image_sprite->GetType() = JSONType->OBJECT) {
+									name_attrib := image_sprite->Get("name");
+									path_attrib := image_sprite->Get("path");
+									if(name_attrib <> Nil & path_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										path := path_attrib->GetValue();
+	"image_sprite: name={$name}, path={$path}"->PrintLine();
+									}
+									else {
+										"### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+									};
+								}
+								else {
+									"### Invalid type ###"->ErrorLine();
+								};
+							};
+						};
+
+						# titled_sprites
+						titled_sprites := assets->Get("titled_sprites");
+						if(titled_sprites <> Nil & titled_sprites->GetType() = JSONType->ARRAY) {
+							each(i : titled_sprites) {
+								titled_sprite := titled_sprites->Get(i);
+								if(titled_sprite->GetType() = JSONType->OBJECT) {
+									name_attrib := titled_sprite->Get("name");
+									path_attrib := titled_sprite->Get("path");
+									size_attrib := titled_sprite->Get("size");
+									if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										path := path_attrib->GetValue();
+										size := size_attrib->GetValue();
+	"titled_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
+									}
+									else {
+										"### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+									};
+								}
+								else {
+									"### Invalid type ###"->ErrorLine();
+								};
+							};
+						};
+
+						# animated_sprites
+						animated_sprites := assets->Get("animated_sprites");
+						if(animated_sprites <> Nil & animated_sprites->GetType() = JSONType->ARRAY) {
+							each(i : animated_sprites) {
+								animated_sprite := animated_sprites->Get(i);
+								if(animated_sprite->GetType() = JSONType->OBJECT) {
+									name_attrib := animated_sprite->Get("name");
+									path_attrib := animated_sprite->Get("path");
+									size_attrib := animated_sprite->Get("size");
+									rects_attrib := animated_sprite->Get("rects");
+									if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil & rects_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										path := path_attrib->GetValue();
+										size := size_attrib->GetValue();
+	"animated_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
+									}
+									else {
+										"### Missing animated_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+									};
+
+									# animated_sprites/rects
+									if(rects_attrib->GetType() = JSONType->ARRAY) {
+										each(j : rects_attrib) {
+											rect_obj := rects_attrib->Get(j);
+											if(rect_obj->GetType() = JSONType->OBJECT) {
+												rect_attrib := rect_obj->Get("rect");
+												if(rect_attrib <> Nil) {
+													rect := rect_attrib->GetValue();
+	"animated_sprite/rect: rect={$rect}"->PrintLine();												
+												};
+											}
+											else {
+												"### Invalid type ###"->ErrorLine();
+											};
+										};						
+									};
+								}
+								else {
+									"### Invalid type ###"->ErrorLine();
+								};
+							};
+						};
+						
+						# rectangles
+						rectangles := assets->Get("rectangles");
+						if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
+							each(i : rectangles) {
+								rectangle := rectangles->Get(i);
+								if(rectangle->GetType() = JSONType->OBJECT) {
+									name_attrib := rectangle->Get("name");
+									color_attrib := rectangle->Get("color");
+									size_attrib := rectangle->Get("size");
+									filled_attrib := rectangle->Get("filled");
+									if(name_attrib <> Nil & color_attrib <> Nil & size_attrib <> Nil & filled_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										color := color_attrib->GetValue();
+										filled := filled_attrib->GetValue();
+										size := size_attrib->GetValue();
+	"rectangle: name={$name}, color={$color}, filled={$filled}, size={$size}"->PrintLine();
+									}
+									else {
+										"### Missing rectangle: 'name' or 'path' attribute ###"->ErrorLine();
+									};
+								}
+								else {
+									"### Invalid type ###"->ErrorLine();
+								};
+							};
+						};
+					}
+					else {
+						"### Missing 'assets' element ###"->ErrorLine();
+					};
+				};
+			};
+
 			return false;
 		}		
 
