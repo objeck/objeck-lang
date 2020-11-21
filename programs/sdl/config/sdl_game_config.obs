@@ -163,8 +163,7 @@ class Test {
 							};
 						};
 					};
-
-
+					
 					# rectangles
 					rectangles := assets->Get("rectangles");
 					if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
