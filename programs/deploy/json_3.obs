@@ -13,8 +13,8 @@ class JsonWeb {
 		document := HttpsClient->GetAll(url);
 		
 		parser := JSONParser->New(document);
-		root := parser->Parse();
-		if(root <> Nil & root->GetType() = JSONType->OBJECT) {
+		if(parser->Parse()) {
+			root := parser->GetRoot();
 			countries := root->FindElements("countries");
 			if(countries <> Nil & countries->GetType() = JSONType->ARRAY) {
 				total := 0;
@@ -22,7 +22,7 @@ class JsonWeb {
 					country := countries->Get(i);
 					total += country->Get(1)->GetValue()->ToInt();
 				};
-				"total downloads of objeck is {$total}"->PrintLine();
+				"total downloads is {$total}"->PrintLine();
 			}
 			else {
 				"-- Invalid JSON! --"->ErrorLine();
