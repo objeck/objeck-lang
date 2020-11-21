@@ -8,22 +8,22 @@
 	"sound": {
 		"music": {"path": "a/b/c"},
 		"chunks" : [
-			{"name": "mary", "path": "a/b/c"},
-			{"name": "mary", "path": "a/b/c"},
-			{"name": "mary", "path": "a/b/c"}
+			{"name": "mary1", "path": "a/b/c1"},
+			{"name": "mary2", "path": "a/b/c2"},
+			{"name": "mary3", "path": "a/b/c3"}
 		]
 	},
 
-	"assets": [{
+	"assets": {
 		"image_sprites": [
-			{"name": "mary", "path": "a/b/c", "size": "0,0,10,10"},
-			{"name": "joe", "path": "a/b/c", "size": "0,0,10,10"},
-			{"name": "bob", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "mary4", "path": "a/b/c4", "size": "0,0,10,10"},
+			{"name": "joe5", "path": "a/b/c5", "size": "0,0,10,10"},
+			{"name": "bob6", "path": "a/b/c6", "size": "0,0,10,10"},
 		],
 		"titled_sprites": [
-			{"name": "mary", "path": "a/b/c", "size": "0,0,10,10"},
-			{"name": "joe", "path": "a/b/c", "size": "0,0,10,10"},
-			{"name": "bob", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "mary", "path": "a/b/c7", "size": "0,0,10,10"},
+			{"name": "joe", "path": "a/b/c9", "size": "0,0,10,10"},
+			{"name": "bob", "path": "a/b/c9", "size": "0,0,10,10"},
 		],
 		"animated_sprites": [
 			{"name": "mary", "count": "4", "path": "a/b/c", "size": "0,0,10,10"},
@@ -35,5 +35,5 @@
 			{"name": "joe", "color": "red", "filled": "false", "size": "0,0,10,10"},
 			{"name": "bob", "color": "red", "filled": "false", "size": "0,0,10,10"},
 		]}
-	]
+	}
 }
