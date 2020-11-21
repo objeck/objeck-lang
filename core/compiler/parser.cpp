@@ -2988,7 +2988,7 @@ ExpressionList* Parser::ParseExpressionList(int depth, ScannerTokenType open, Sc
         break;
       }
       else if(!Match(closed)) {
-        ProcessError(L"Invalid token", closed);
+        ProcessError(L"Invalid token");
         NextToken();
       }
     }
