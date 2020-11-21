@@ -1,0 +1,62 @@
+use Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := JSONParser->New(System.IO.File.FileReader->ReadFile(args[0]));
+			if(parser->Parse()) {
+				root := parser->GetRoot();
+
+				# sound
+				sound := root->Get("sound");
+				if(sound->GetType() = JSONType->OBJECT) {
+					# music
+					music := sound->Get("music");
+					if(music->GetType() = JSONType->OBJECT) {
+						music_path := music->Get("path");	
+"music: path={$music_path}"->PrintLine();
+					};
+					# chucks
+					chunks := sound->Get("chunks");
+					if(chunks->GetType() = JSONType->ARRAY) {
+chunks->Size()->PrintLine();
+					}
+					else {
+						"### Missing 'chunks' element ###"->ErrorLine();
+					};
+				}
+				else {
+					"### Missing 'sound' element ###"->ErrorLine();
+				};
+
+				# colors
+				colors := root->Get("colors");
+				if(colors->GetType() = JSONType->ARRAY) {
+					each(i : colors) {
+						color := colors->Get(i);
+						name := color->Get("name");
+						code := color->Get("code");
+						if(name <> Nil & code <> Nil) {
+"color: name={$name}, code={$code}"->PrintLine();
+						}
+						else {
+							"### Missing 'color' attributes ###"->ErrorLine();
+						};
+					};
+				}
+				else {
+					"### Missing 'colors' element ###"->ErrorLine();
+				};
+
+				# images
+				assets := root->Get("assets");
+				if(colors->GetType() = JSONType->ARRAY) {
+assets->Size()->PrintLine();
+				}
+				else {
+					"### Missing 'assets' element ###"->ErrorLine();
+				};
+			};
+		};
+	}
+}

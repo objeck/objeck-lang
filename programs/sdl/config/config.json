@@ -1,0 +1,39 @@
+{
+	"colors": [
+		{"name": "red", "code": "255,0,0"},
+		{"name": "green", "code": "0,255,0"},
+		{"name": "blue", "code": "0,0,255"}
+	],
+
+	"sound": {
+		"music": {"path": "a/b/c"},
+		"chunks" : [
+			{"name": "mary", "path": "a/b/c"},
+			{"name": "mary", "path": "a/b/c"},
+			{"name": "mary", "path": "a/b/c"}
+		]
+	},
+
+	"assets": [{
+		"image_sprites": [
+			{"name": "mary", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "joe", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "bob", "path": "a/b/c", "size": "0,0,10,10"},
+		],
+		"titled_sprites": [
+			{"name": "mary", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "joe", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "bob", "path": "a/b/c", "size": "0,0,10,10"},
+		],
+		"animated_sprites": [
+			{"name": "mary", "count": "4", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "joe", "count": "4", "path": "a/b/c", "size": "0,0,10,10"},
+			{"name": "bob", "count": "4", "path": "a/b/c", "size": "0,0,10,10"},
+		],
+		"rectangles": [
+			{"name": "mary", "color": "red", "filled": "false", "size": "0,0,10,10"},
+			{"name": "joe", "color": "red", "filled": "false", "size": "0,0,10,10"},
+			{"name": "bob", "color": "red", "filled": "false", "size": "0,0,10,10"},
+		]}
+	]
+}
