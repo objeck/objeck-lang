@@ -2980,7 +2980,7 @@ ExpressionList* Parser::ParseExpressionList(int depth, ScannerTokenType open, Sc
     if(expression) {
       expressions->AddExpression(expression);
 
-      if(Match(TOKEN_COMMA)) {
+      if(Match(TOKEN_COMMA) && !Match(closed, SECOND_INDEX)) {
         NextToken();
       }
       else if((expression->GetExpressionType() == LAMBDA_EXPR && Match(TOKEN_SEMI_COLON))) {
