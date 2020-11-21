@@ -9,7 +9,7 @@ class Test {
 
 				# sound
 				sound := root->Get("sound");
-				if(sound->GetType() = JSONType->OBJECT) {
+				if(sound <> Nil & sound->GetType() = JSONType->OBJECT) {
 					# music
 					music := sound->Get("music");
 					if(music <> Nil & music->GetType() = JSONType->OBJECT) {
@@ -60,7 +60,7 @@ class Test {
 					};
 				};
 
-				# images
+				# assets
 				assets := root->Get("assets");
 				if(assets <> Nil & assets->GetType() = JSONType->OBJECT) {
 					# image_sprites
@@ -80,7 +80,7 @@ class Test {
 							};
 						};
 					};
-
+					# TODO: 
 				}
 				else {
 					"### Missing 'assets' element ###"->ErrorLine();
