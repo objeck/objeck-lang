@@ -45,7 +45,7 @@ bundle Data.JSON {
 		Parses a JSON string
 		@return true is successful, false otherwise
 		~#
-		method : public : Parse() ~ JSONElement {
+		method : public : Parse() ~ Bool {
 			@tokens := Scan();
 			if(@tokens->Size() > 0) {
 # DumpTokens(@tokens);
