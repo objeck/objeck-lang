@@ -26,9 +26,7 @@
 			{"name": "bob", "path": "a/b/c9", "size": "0,0,10,10"},
 		],
 		"animated_sprites": [
-			{"name": "mary", "count": "4", "path": "a/b/c10", "size": "0,0,10,10"},
-			{"name": "joe", "count": "4", "path": "a/b/c11", "size": "0,0,10,10"},
-			{"name": "bob", "count": "4", "path": "a/b/c12", "size": "0,0,10,10"},
+			{"name": "mary", "rects": [{"rect": "0,0,10,10"},{"rect": "0,0,10,10"}], "path": "a/b/c10", "size": "0,0,10,10"}
 		],
 		"rectangles": [
 			{"name": "mary", "color": "red", "filled": "false", "size": "0,0,10,10"},
