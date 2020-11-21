@@ -1,9 +1,7 @@
 class Test {
-	consts Say {
-		FIE := 7 - 3 * 2
-	}
+	function : Foo(a : Int, b : Int) ~ Nil {}
 
 	function : Main(args : String[]) ~ Nil {
-		Say->FIE->PrintLine();
+		Foo(2,3);
 	}
 }
