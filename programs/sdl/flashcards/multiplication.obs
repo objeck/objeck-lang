@@ -3,6 +3,7 @@ use Game.Framework;
 
 class Chalkboard {
 	@framework : GameFramework;
+	@is_sound : Bool;
 
 	# score
 	@score_star : ImageSprite;
@@ -74,6 +75,7 @@ class Chalkboard {
 	}
 
 	New(is_sound : Bool) {
+		@is_sound := is_sound;
 		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Multiplication");		
 		@framework->SetClearColor(Color->New(105, 105, 105));
 		
@@ -381,10 +383,12 @@ class Chalkboard {
 				bottom := @card_string_bottom->ToInt();
 
 				if(top * bottom = answer) {
-					@cheer_chunk->PlayChannel(-1, 0);
 					@score_index += 1;
+					if(@is_sound) {
+						@cheer_chunk->PlayChannel(-1, 0);
+					};
 				}
-				else {
+				else if(@is_sound) {
 					@aww_chunk->PlayChannel(-1, 0);
 				};
 
@@ -470,14 +474,14 @@ class Chalkboard {
 			offset += 15;
 		};
 
-		@score_tries_text->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_PADDING / 4);
+		@score_tries_text->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_PADDING / 3);
 
 		# card
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
 		# number line
 		@card_num_line_text->RenderedText(@card_num_line_string, Color->New(0, 0, 139));
-		@card_num_line_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_line_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 3);
+		@card_num_line_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_line_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 3.25);
 
 		# problem and inputs
 		RenderProblem();
