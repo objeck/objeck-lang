@@ -1292,6 +1292,9 @@ bundle Game.Framework {
 		@frame_start : Int;
 
 		@shapes : Vector<Shape>;
+
+		@colors : Hash<String, Color>;
+
 		@mix_chunks : Vector<MixChunk>;
 		@music : MixMusic;
 
@@ -1357,6 +1360,8 @@ bundle Game.Framework {
 
 			@screen_width := screen_width;
 			@screen_height := screen_height;
+
+			@colors := Hash->New()<String, Color>;
 
 			if(Core->Init(init_flags) < 0) {
 				"SDL could not initialize!"->ErrorLine();
@@ -1530,7 +1535,7 @@ bundle Game.Framework {
 		Build assets from a JSON file
 		@param file path to build file
 		@return true if successful, false otherwise
-		~#
+		~# 
 		method : public : BuildFromFile(file : String) ~ Bool {
 			if(@is_ok) {
 				parser := JSONParser->New(System.IO.File.FileReader->ReadFile(file));
@@ -1587,8 +1592,15 @@ bundle Game.Framework {
 								code_attrib := color->Get("code");
 								if(name_attrib <> Nil & code_attrib <> Nil) {
 									name := name_attrib->GetValue();
-									code := code_attrib->GetValue();
-	"color: name={$name}, code={$code}"->PrintLine();
+									codes := code_attrib->GetValue()->Split(",");
+									if(codes->Size() = 3) {
+"color: name={$name}, code=xxx"->PrintLine();
+
+										@colors->Insert(name, Color->New(codes[0]->ToInt(), codes[1]->ToInt(), codes[2]->ToInt()));
+									}
+									else {
+										@colors->Insert(name, Color->New(0, 0, 0,));
+									};
 								}
 								else {
 									"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
