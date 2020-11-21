@@ -30,7 +30,7 @@
 		],
 		"rectangles": [
 			{"name": "mary", "color": "red", "filled": "false", "size": "0,0,10,10"},
-			{"name": "joe", "color": "red", "filled": "false", "size": "0,0,10,10"},
+			{"name": "joe", "color": "red", "filled": "true", "size": "0,0,10,10"},
 			{"name": "bob", "color": "red", "filled": "false", "size": "0,0,10,10"},
 		]}
 	}

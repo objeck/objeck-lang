@@ -163,6 +163,34 @@ class Test {
 							};
 						};
 					};
+
+
+					# rectangles
+					rectangles := assets->Get("rectangles");
+					if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
+						each(i : rectangles) {
+							rectangle := rectangles->Get(i);
+							if(rectangle->GetType() = JSONType->OBJECT) {
+								name_attrib := rectangle->Get("name");
+								color_attrib := rectangle->Get("color");
+								size_attrib := rectangle->Get("size");
+								filled_attrib := rectangle->Get("filled");
+								if(name_attrib <> Nil & color_attrib <> Nil & size_attrib <> Nil & filled_attrib <> Nil) {
+									name := name_attrib->GetValue();
+									color := color_attrib->GetValue();
+									filled := filled_attrib->GetValue();
+									size := size_attrib->GetValue();
+"rectangle: name={$name}, color={$color}, filled={$filled}, size={$size}"->PrintLine();
+								}
+								else {
+									"### Missing rectangle: 'name' or 'path' attribute ###"->ErrorLine();
+								};
+							}
+							else {
+								"### Invalid type ###"->ErrorLine();
+							};
+						};
+					};
 				}
 				else {
 					"### Missing 'assets' element ###"->ErrorLine();
