@@ -1526,6 +1526,15 @@ bundle Game.Framework {
 		}
 
 		#~
+		Build assets from a JSON file
+		@param file path to build file
+		@return true if successful, false otherwise
+		~#
+		method : public : BuildFromFile(file : String) ~ Bool {
+			return false;
+		}		
+
+		#~
 		Adds a sound mix chunk
 		@param file file path to sound asset 
 		@return mix chunk

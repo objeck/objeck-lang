@@ -17,6 +17,7 @@ bundle Data.JSON {
 		@tokens : Vector<Token>;
 		@token_pos : Int;
 		@cur_token : Token;
+		@root : JSONElement;
 		
 		#~
 		Creates a new parser
@@ -42,18 +43,27 @@ bundle Data.JSON {
 
 		#~
 		Parses a JSON string
-		@return root JSON element
+		@return true is successful, false otherwise
 		~#
 		method : public : Parse() ~ JSONElement {
 			@tokens := Scan();
 			if(@tokens->Size() > 0) {
 # DumpTokens(@tokens);
 				NextToken();
-				return ParseValue();
+				@root := ParseValue();
+				return @root <> Nil & @root->GetType() = JSONType->OBJECT;
 			};
 			
-			return Nil;
+			return false;
     	}
+
+    	#~
+		Get document root
+		@return root JSON element
+		~#
+		method : public : GetRoot() ~ JSONElement {
+			return @root;
+		}
 		
 		method : NextToken() ~ Nil {
 			if(@token_pos < @tokens->Size()) {
@@ -65,11 +75,7 @@ bundle Data.JSON {
 			};
 		}
 		
-		#~
-		Parses a JSON value
-		@return JSON value element
-		~#
-		method : public : ParseValue() ~ JSONElement {
+		method : ParseValue() ~ JSONElement {
 			element : JSONElement;
 			
 			select(@cur_token->GetType()) {
@@ -125,11 +131,7 @@ bundle Data.JSON {
 			return element;
 		}
 
-		#~
-		Parses a JSON object
-		@return JSON object element
-		~#
-		method : public : ParseObject() ~ JSONElement {
+		method : ParseObject() ~ JSONElement {
 			elements := Map->New()<String, JSONElement>;
 			
 			NextToken();
@@ -178,11 +180,7 @@ bundle Data.JSON {
 			return JSONElement->New(elements);
 		}
 
-		#~
-		Parses a JSON array
-		@return JSON array element
-		~#
-		method : public : ParseArray() ~ JSONElement {
+		method : ParseArray() ~ JSONElement {
 			elements := Vector->New()<JSONElement>;
 			
 			NextToken();
