@@ -1,4 +1,6 @@
 use Data.JSON;
+use Game.SDL2;
+use Game.Framework;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -163,7 +165,7 @@ class Test {
 							};
 						};
 					};
-					
+
 					# rectangles
 					rectangles := assets->Get("rectangles");
 					if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
