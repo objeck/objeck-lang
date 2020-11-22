@@ -1299,6 +1299,8 @@ bundle Game.Framework {
 		@music : MixMusic;
 
 		@font : Font;
+		@fonts : Vector<Font>;
+
 		@joystick : Joystick;
 
 		@event : Event;
@@ -1318,6 +1320,7 @@ bundle Game.Framework {
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New()<Shape>;
 			@mix_chunks := Vector->New()<MixChunk>;
+			@fonts := Vector->New()<Font>;
 						
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1336,7 +1339,8 @@ bundle Game.Framework {
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New()<Shape>;
 			@mix_chunks := Vector->New()<MixChunk>;
-			
+			@fonts := Vector->New()<Font>;
+
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
@@ -1778,7 +1782,21 @@ bundle Game.Framework {
 			};
 
 			return true;
-		}		
+		}	
+
+		#~
+		Adds a font
+		@param file file path to font
+		@param size font size
+		@return font
+		~#
+		method : public : AddFont(file : String, size : Int) ~ Font {
+			font := Font->New(file, size);
+			SetOk(<>font->IsNull());
+			@fonts->AddBack(font);
+
+			return font;
+		}	
 
 		#~
 		Adds a sound mix chunk
@@ -1937,21 +1955,45 @@ bundle Game.Framework {
 
 		#~
 		Remove chunk from framework
-		@param mix_chunks chunk to remove
+		@param mix_chunk chunk to remove
 		@return true if successful, false otherwise
 		~#
-		method : public : RemoveMixChunk(mix_chunks : MixChunk) ~ Bool {
+		method : public : RemoveMixChunk(mix_chunk : MixChunk) ~ Bool {
 			found := -1;
 			
 			for(i := 0; i < @mix_chunks->Size() & found < 0; i +=1;) {
-				if(@mix_chunks->Get(i) = mix_chunks) {
+				if(@mix_chunks->Get(i) = mix_chunk) {
 					found := i;
 				};
 			};
 
 			if(found > -1) {
 				@mix_chunks->Remove(found);
-				mix_chunks->Free();
+				mix_chunk->Free();
+
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Remove chunk from framework
+		@param font chunk to remove
+		@return true if successful, false otherwise
+		~#
+		method : public : RemoveFont(font : Font) ~ Bool {
+			found := -1;
+			
+			for(i := 0; i < @fonts->Size() & found < 0; i +=1;) {
+				if(@fonts->Get(i) = font) {
+					found := i;
+				};
+			};
+
+			if(found > -1) {
+				@fonts->Remove(found);
+				font->Quit();
 
 				return true;
 			};
@@ -1982,6 +2024,17 @@ bundle Game.Framework {
 		}
 
 		#~
+		Removes all font
+		~#
+		method : public : FreeFonts() ~ Nil {
+			each(i : @fonts) {
+				chunk := @fonts->Get(i);
+				chunk->Quit();
+			};
+			@fonts->Empty();
+		}
+
+		#~
 		Free music
 		~#
 		method : public : FreeMusic() ~ Nil {
@@ -1997,6 +2050,7 @@ bundle Game.Framework {
 		method : public : Quit() ~ Nil {
 			FreeShapes();
 			FreeMixChunks();
+			FreeFonts();
 
 			if(@event <> Nil) {
 				@event->Free();
