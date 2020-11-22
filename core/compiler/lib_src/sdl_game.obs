@@ -1563,7 +1563,9 @@ bundle Game.Framework {
 	"music: path={$path}"->PrintLine();							
 							}
 							else {
-								"### Missing music: 'path' attribute ###"->ErrorLine();							
+								"### Missing music: 'path' attribute ###"->ErrorLine();	
+								@is_ok := false;
+								return false;
 							};
 						};
 						
@@ -1582,10 +1584,14 @@ bundle Game.Framework {
 									}
 									else {
 										"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
+										@is_ok := false;
+										return false;
 									};
 								}
 								else {
 									"### Invalid type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
 								};
 							};
 						};
@@ -1612,10 +1618,14 @@ bundle Game.Framework {
 								}
 								else {
 									"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
+									@is_ok := false;
+									return false;
 								};
 							}
 							else {
 								"### Invalid type ###"->ErrorLine();
+								@is_ok := false;
+								return false;
 							};
 						};
 					};
@@ -1638,10 +1648,14 @@ bundle Game.Framework {
 									}
 									else {
 										"### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+										@is_ok := false;
+										return false;
 									};
 								}
 								else {
 									"### Invalid type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
 								};
 							};
 						};
@@ -1663,10 +1677,14 @@ bundle Game.Framework {
 									}
 									else {
 										"### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+										@is_ok := false;
+										return false;
 									};
 								}
 								else {
 									"### Invalid type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
 								};
 							};
 						};
@@ -1689,6 +1707,8 @@ bundle Game.Framework {
 									}
 									else {
 										"### Missing animated_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+										@is_ok := false;
+										return false;
 									};
 
 									# animated_sprites/rects
@@ -1704,12 +1724,16 @@ bundle Game.Framework {
 											}
 											else {
 												"### Invalid type ###"->ErrorLine();
+												@is_ok := false;
+												return false;
 											};
 										};						
 									};
 								}
 								else {
 									"### Invalid type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
 								};
 							};
 						};
@@ -1733,21 +1757,27 @@ bundle Game.Framework {
 									}
 									else {
 										"### Missing rectangle: 'name' or 'path' attribute ###"->ErrorLine();
+										@is_ok := false;
+										return false;
 									};
 								}
 								else {
 									"### Invalid type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
 								};
 							};
 						};
 					}
 					else {
 						"### Missing 'assets' element ###"->ErrorLine();
+						@is_ok := false;
+						return false;
 					};
 				};
 			};
 
-			return false;
+			return true;
 		}		
 
 		#~
