@@ -1718,7 +1718,7 @@ bundle Game.Framework {
 										if(color_key_attrib <> Nil) {
 											color_key := color_key_attrib->GetValue()->Split(",");
 											if(color_key->Size() = 3) {
-# bar											image->Set();
+# foo TOO: look up color id
 											};
 										};
 
