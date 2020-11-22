@@ -96,8 +96,8 @@ class Chalkboard {
 		@score_star := @framework->AddImageSprite("./media/star.png");
 
 		# load audio
-		@cheer_chunk := @framework->AddMixChunk("./media/cheer.wav");
-		@aww_chunk := @framework->AddMixChunk("./media/aww.wav");
+		@cheer_chunk := @framework->GetMixChunk("cheer");
+		@aww_chunk := @framework->GetMixChunk("aww");
 
 		# adjust volume
 		Mixer->Volume(-1, 16);

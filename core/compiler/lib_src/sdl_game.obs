@@ -161,7 +161,7 @@ bundle Game.Framework {
 			
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
-				"Unable to load image '{$file}'!"->ErrorLine();
+			# "Unable to load image '{$file}'!"->ErrorLine();
 				return false;
 			};
 
@@ -174,7 +174,7 @@ bundle Game.Framework {
 
 			texture := surface->CreateTexture(@renderer);
 			if(texture->IsNull()) {
-				"Unable to create texture from '{$file}'!"->ErrorLine();
+			# "Unable to create texture from '{$file}'!"->ErrorLine();
 				return false;
 			};
 
@@ -324,7 +324,7 @@ bundle Game.Framework {
 			
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
-				"Unable to load image '{$file}'!"->ErrorLine();
+			# "Unable to load image '{$file}'!"->ErrorLine();
 				return false;
 			};
 
@@ -337,7 +337,7 @@ bundle Game.Framework {
 
 			texture := surface->CreateTexture(@renderer);
 			if(texture->IsNull()) {
-				"Unable to create texture from '{$file}'!"->ErrorLine();
+			# "Unable to create texture from '{$file}'!"->ErrorLine();
 				return false;
 			};
 
@@ -444,7 +444,7 @@ bundle Game.Framework {
 				# Render text surface
 				text_surface := @font->RenderTextSolid(text, color);
 				if(text_surface->IsNull()) {
-					"Unable to render text surface!"->ErrorLine();
+				# "Unable to render text surface!"->ErrorLine();
 					@is_ok := false;
 				};
 
@@ -1293,9 +1293,10 @@ bundle Game.Framework {
 
 		@shapes : Vector<Shape>;
 
-		@colors : Hash<String, Color>;
+		@colors_dict : Hash<String, Color>;
 
 		@mix_chunks : Vector<MixChunk>;
+		@chunk_dict : Hash<String, MixChunk>;
 		@music : MixMusic;
 
 		@font : Font;
@@ -1365,20 +1366,21 @@ bundle Game.Framework {
 			@screen_width := screen_width;
 			@screen_height := screen_height;
 
-			@colors := Hash->New()<String, Color>;
+			@colors_dict := Hash->New()<String, Color>;
+			@chunk_dict := Hash->New()<String, MixChunk>;
 
 			if(Core->Init(init_flags) < 0) {
-				"SDL could not initialize!"->ErrorLine();
+			# "SDL could not initialize!"->ErrorLine();
 				return false;
 			};
 			
 			if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
-				"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			# "Warning: Linear texture filtering not enabled!"->ErrorLine();
 				return false;
 			};
 
 			if(<>Hints->Set("SDL_HINT_VIDEO_HIGHDPI_DISABLED", "1")) {
-				"Warning: High-DPI windows (\"Retina\" on Mac and iOS) not allowed!"->ErrorLine();
+			# "Warning: High-DPI windows (\"Retina\" on Mac and iOS) not allowed!"->ErrorLine();
 				return false;
 			};
 
@@ -1386,26 +1388,26 @@ bundle Game.Framework {
 				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
 				WindowFlags->SDL_WINDOW_SHOWN);
 			if(@window->IsNull()) {
-				"Cannot create window!"->ErrorLine();
+			# "Cannot create window!"->ErrorLine();
 				return false;
 			};
 
 			@renderer := Renderer->New(@window, -1, 
 				RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
 			if(@renderer->IsNull()) {
-				"Cannot create renderer!"->ErrorLine();
+			# "Cannot create renderer!"->ErrorLine();
 				return false;
 			};
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
 			img_flags := ImageFlags->IMG_INIT_PNG;
 			if((Image->Init(img_flags) and img_flags) = 0) {
-				"SDL image could not initialize!"->ErrorLine();
+			# "SDL image could not initialize!"->ErrorLine();
 				return false;
 			};
 
 			if(Font->Init() < 0) {
-				"SDL_ttf could not initialize!"->ErrorLine();
+			# "SDL_ttf could not initialize!"->ErrorLine();
 				return false;
 			};
 			
@@ -1423,12 +1425,12 @@ bundle Game.Framework {
 			};
 
 			if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
-				"SDL mixer could not initialize!"->ErrorLine();
+			# "SDL mixer could not initialize!"->ErrorLine();
 				return false;
 			};
 
 			if(Joystick->Number() < 1) {
-				"Warning: No joysticks connected!"->ErrorLine();
+			# "Warning: No joysticks connected!"->ErrorLine();
 			};
 			@joystick := Joystick->New(0);
 			@event := Event->New();
@@ -1541,7 +1543,16 @@ bundle Game.Framework {
 		@return color
 		~# 
 		method : public : GetColor(name : String) ~ Color {
-			return @colors->Find(name)<String>;
+			return @colors_dict->Find(name)<String>;
+		}
+
+		#~
+		Get mix chunk
+		@param name name of mix chunk
+		@return mix chunk
+		~# 
+		method : public : GetMixChunk(name : String) ~ MixChunk {
+			return @chunk_dict->Find(name)<String>;
 		}
 
 		#~
@@ -1556,7 +1567,7 @@ bundle Game.Framework {
 					root := parser->GetRoot();
 
 					# sound
-					sound := root->Get("sound");
+					sound := root->Get("sounds");
 					if(sound <> Nil & sound->GetType() = JSONType->OBJECT) {
 						# music
 						music := sound->Get("music");
@@ -1564,10 +1575,12 @@ bundle Game.Framework {
 							path_attrib := music->Get("path");
 							if(path_attrib <> Nil)	{
 								path := path_attrib->GetValue();
-	"music: path={$path}"->PrintLine();							
+								SetMusicChunk(path);
+"music: {$path}"->PrintLine();										
+
 							}
 							else {
-								"### Missing music: 'path' attribute ###"->ErrorLine();	
+							# "### Missing music: 'path' attribute ###"->ErrorLine();	
 								@is_ok := false;
 								return false;
 							};
@@ -1584,16 +1597,17 @@ bundle Game.Framework {
 									if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-"chunk: name={$name}, path={$path}"->PrintLine();
+"mix chunk: {$name}={$path}"->PrintLine();										
+										@chunk_dict->Insert(name, AddMixChunk(path));
 									}
 									else {
-										"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
+									# "### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};
 								}
 								else {
-									"### Invalid type ###"->ErrorLine();
+								# "### Invalid type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
@@ -1613,21 +1627,21 @@ bundle Game.Framework {
 									name := name_attrib->GetValue();
 									codes := code_attrib->GetValue()->Split(",");
 									if(codes->Size() = 3) {
-# "color: name={$name}, code=xxx"->PrintLine();
-										@colors->Insert(name, Color->New(codes[0]->ToInt(), codes[1]->ToInt(), codes[2]->ToInt()));
+"color: name={$name}, code=RGB"->PrintLine();
+										@colors_dict->Insert(name, Color->New(codes[0]->ToInt(), codes[1]->ToInt(), codes[2]->ToInt()));
 									}
 									else {
-										@colors->Insert(name, Color->New(0, 0, 0));
+										@colors_dict->Insert(name, Color->New(0, 0, 0));
 									};
 								}
 								else {
-									"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
+								# "### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
 							}
 							else {
-								"### Invalid type ###"->ErrorLine();
+							# "### Invalid type ###"->ErrorLine();
 								@is_ok := false;
 								return false;
 							};
@@ -1648,16 +1662,16 @@ bundle Game.Framework {
 									if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-	"image_sprite: name={$name}, path={$path}"->PrintLine();
+# "image_sprite: name={$name}, path={$path}"->PrintLine();
 									}
 									else {
-										"### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+									# "### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};
 								}
 								else {
-									"### Invalid type ###"->ErrorLine();
+								# "### Invalid type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
@@ -1677,16 +1691,16 @@ bundle Game.Framework {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										size := size_attrib->GetValue();
-	"titled_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
+# "titled_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
 									}
 									else {
-										"### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+									# "### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};
 								}
 								else {
-									"### Invalid type ###"->ErrorLine();
+								# "### Invalid type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
@@ -1707,10 +1721,10 @@ bundle Game.Framework {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										size := size_attrib->GetValue();
-	"animated_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
+# "animated_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
 									}
 									else {
-										"### Missing animated_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+									# "### Missing animated_sprite: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};
@@ -1723,11 +1737,11 @@ bundle Game.Framework {
 												rect_attrib := rect_obj->Get("rect");
 												if(rect_attrib <> Nil) {
 													rect := rect_attrib->GetValue();
-	"animated_sprite/rect: rect={$rect}"->PrintLine();												
+# "animated_sprite/rect: rect={$rect}"->PrintLine();												
 												};
 											}
 											else {
-												"### Invalid type ###"->ErrorLine();
+											# "### Invalid type ###"->ErrorLine();
 												@is_ok := false;
 												return false;
 											};
@@ -1735,7 +1749,7 @@ bundle Game.Framework {
 									};
 								}
 								else {
-									"### Invalid type ###"->ErrorLine();
+								# "### Invalid type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
@@ -1757,16 +1771,16 @@ bundle Game.Framework {
 										color := color_attrib->GetValue();
 										filled := filled_attrib->GetValue();
 										size := size_attrib->GetValue();
-	"rectangle: name={$name}, color={$color}, filled={$filled}, size={$size}"->PrintLine();
+# "rectangle: name={$name}, color={$color}, filled={$filled}, size={$size}"->PrintLine();
 									}
 									else {
-										"### Missing rectangle: 'name' or 'path' attribute ###"->ErrorLine();
+									# "### Missing rectangle: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};
 								}
 								else {
-									"### Invalid type ###"->ErrorLine();
+								# "### Invalid type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
@@ -1774,7 +1788,7 @@ bundle Game.Framework {
 						};
 					}
 					else {
-						"### Missing 'assets' element ###"->ErrorLine();
+					# "### Missing 'assets' element ###"->ErrorLine();
 						@is_ok := false;
 						return false;
 					};
@@ -1792,7 +1806,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddFont(file : String, size : Int) ~ Font {
 			font := Font->New(file, size);
-			if(font = Nil) {
+			if(font->IsNull()) {
 				"Failed to load font '{$file}'!"->ErrorLine();
 			};
 			SetOk(<>font->IsNull());
@@ -1808,7 +1822,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddMixChunk(file : String) ~ MixChunk {
 			chunk := MixChunk->New(file);
-			if(chunk = Nil) {
+			if(chunk->IsNull()) {
 				"Failed to load audio chunk '{$file}'!"->ErrorLine();
 			};
 			SetOk(<>chunk->IsNull());
@@ -1824,7 +1838,7 @@ bundle Game.Framework {
 		~#
 		method : public : SetMusicChunk(file : String) ~ MixMusic {
 			@music := MixMusic->New(file);
-			if(@music = Nil) {
+			if(@music->IsNull()) {
 				"Failed to load music '{$file}'!"->ErrorLine();
 			};
 			SetOk(<>@music->IsNull());
@@ -1864,7 +1878,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String, colorkey : Color, render_rect : Rect) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey, render_rect);
-			if(shape = Nil) {
+			if(<>shape->IsOk()) {
 				"Failed to load sprite '{$file}'!"->ErrorLine();
 			};
 			SetOk(shape->IsOk());
@@ -1881,7 +1895,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String, colorkey : Color) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey);
-			if(shape = Nil) {
+			if(<>shape->IsOk()) {
 				"Failed to load sprite '{$file}'!"->ErrorLine();
 			};
 			SetOk(shape->IsOk());
@@ -1898,7 +1912,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddTitledImageSprite(file : String, colorkey : Color) ~ TitledImageSprite {
 			shape := TitledImageSprite->New(@renderer, file, colorkey);
-			if(shape = Nil) {
+			if(<>shape->IsOk()) {
 				"Failed to load sprite '{$file}'!"->ErrorLine();
 			};
 			SetOk(shape->IsOk());
@@ -1914,7 +1928,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file);
-			if(shape = Nil) {
+			if(<>shape->IsOk()) {
 				"Failed to load sprite '{$file}'!"->ErrorLine();
 			};
 			SetOk(shape->IsOk());
@@ -1931,7 +1945,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddAnimatedImageSprite(file : String, clips : Vector<Rect>) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file, clips);
-			if(shape = Nil) {
+			if(<>shape->IsOk()) {
 				"Failed to load sprite '{$file}'!"->ErrorLine();
 			};
 			SetOk(shape->IsOk());
@@ -1947,7 +1961,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddAnimatedImageSprite(file : String) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file);
-			if(shape = Nil) {
+			if(<>shape->IsOk()) {
 				"Failed to load sprite '{$file}'!"->ErrorLine();
 			};
 			SetOk(shape->IsOk());
