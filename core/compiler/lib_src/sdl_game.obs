@@ -1716,11 +1716,14 @@ bundle Game.Framework {
 
 										@image_sprites_dict->Insert(name, image);
 										if(color_key_attrib <> Nil) {
-											color_key := color_key_attrib->GetValue();
+											color_key := color_key_attrib->GetValue()->Split(",");
+											if(color_key->Size() = 3) {
+#												image->Set();
+											};
 										};
 
 										if(render_rect_attrib <> Nil) {
-											render_rect := render_rect_attrib->GetValue();
+											render_rect := render_rect_attrib->GetValue()->Split(",");
 										};
 									}
 									else {
