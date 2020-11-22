@@ -87,12 +87,7 @@ class Chalkboard {
 	}
 
 	method : LoadMedia() ~ Nil {
-		font_path :=  "./media/hella.ttf";
-		@card_button_font := Font->New(font_path, 22);
-		if(@card_button_font->IsNull()) {
-			"Failed to load font '{$font_path}'!"->ErrorLine();
-			Runtime->Exit(1);
-		};
+		@card_button_font := @framework->AddFont("./media/hella.ttf", 22);
 
 		font_path :=  "./media/chalk.ttf";
 		@card_text_font := Font->New(font_path, 56);
