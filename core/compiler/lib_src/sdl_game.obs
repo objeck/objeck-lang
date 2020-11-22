@@ -1598,8 +1598,6 @@ bundle Game.Framework {
 							if(path_attrib <> Nil)	{
 								path := path_attrib->GetValue();
 								SetMusicChunk(path);
-"music: {$path}"->PrintLine();										
-
 							}
 							else {
 								"### Missing music: 'path' attribute ###"->ErrorLine();	
@@ -1619,7 +1617,6 @@ bundle Game.Framework {
 									if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-"mix chunk: {$name}={$path}"->PrintLine();										
 										@chunks_dict->Insert(name, AddMixChunk(path));
 									}
 									else {
@@ -1649,7 +1646,6 @@ bundle Game.Framework {
 									name := name_attrib->GetValue();
 									codes := code_attrib->GetValue()->Split(",");
 									if(codes->Size() = 3) {
-"color: name={$name}, code=RGB"->PrintLine();
 										@colors_dict->Insert(name, Color->New(codes[0]->ToInt(), codes[1]->ToInt(), codes[2]->ToInt()));
 									}
 									else {
@@ -1716,10 +1712,9 @@ bundle Game.Framework {
 									if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-"image_sprite: name={$name}, path={$path}"->PrintLine();
 										image := AddImageSprite(path);
-										@image_sprites_dict->Insert(name, image);
 
+										@image_sprites_dict->Insert(name, image);
 										if(color_key_attrib <> Nil) {
 											color_key := color_key_attrib->GetValue();
 										};
@@ -1735,7 +1730,7 @@ bundle Game.Framework {
 									};
 								}
 								else {
-								# "### Invalid type ###"->ErrorLine();
+									"### Invalid image sprite type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
