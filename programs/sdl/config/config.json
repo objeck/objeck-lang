@@ -22,7 +22,7 @@
 
 	"assets": {
 		"image_sprites": [
-			{"name": "score-star", "path": "./media/star.png", "_color-key_": "0,0,10,10", "_render-rect_": "1,2,3,4"}
+			{"name": "score-star", "path": "./media/star.png", "_color-key_": "#name2code#", "_render-rect_": "1,2,3,4"}
 		],
 		"titled_sprites": [
 			{"name": "mary", "path": "a/b/c7", "size": "0,0,10,10"},
