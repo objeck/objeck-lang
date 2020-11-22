@@ -1,16 +1,24 @@
 {
 	"colors": [
-		{"name": "red", "code": "255,0,0"},
-		{"name": "chalk", "code": "224, 219, 200"},
-		{"name": "blue", "code": "0,0,255"}
+		{"name": "red-color", "code": "255,0,0"},
+		{"name": "chalk-color", "code": "224, 219, 200"},
+		{"name": "blue-color", "code": "0,0,255"}
 	],
 
 	"sounds": {
+		"_music_": {"path": "a/b/c"},
 		"chunks" : [
-			{"name": "cheer", "path": "./media/cheer.wav"},
-			{"name": "aww", "path": "./media/aww.wav"}
+			{"name": "cheer-chunk", "path": "./media/cheer.wav"},
+			{"name": "aww-chunk", "path": "./media/aww.wav"}
 		]
 	},
+
+	"fonts": [
+		{"name": "card-button-font", "path": "./media/hella.ttf", "size": "22"},
+		{"name": "card-text-font", "path": "./media/chalk.ttf", "size": "56"},
+		{"name": "card-answer-box-font", "path": "./media/maghrib.ttf", "size": "72"},
+		{"name": "card-score-font", "path": "./media/hella.ttf", "size": "18"}
+	],
 
 	"assets": {
 		"image_sprites": [
