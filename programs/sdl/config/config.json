@@ -5,12 +5,10 @@
 		{"name": "blue", "code": "0,0,255"}
 	],
 
-	"sound": {
-		"music": {"path": "a/b/c"},
+	"sounds": {
 		"chunks" : [
-			{"name": "mary1", "path": "a/b/c1"},
-			{"name": "mary2", "path": "a/b/c2"},
-			{"name": "mary3", "path": "a/b/c3"}
+			{"name": "cheer", "path": "./media/cheer.wav"},
+			{"name": "aww", "path": "./media/aww.wav"}
 		]
 	},
 
