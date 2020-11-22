@@ -88,42 +88,16 @@ class Chalkboard {
 
 	method : LoadMedia() ~ Nil {
 		@card_button_font := @framework->AddFont("./media/hella.ttf", 22);
-
-		font_path :=  "./media/chalk.ttf";
-		@card_text_font := Font->New(font_path, 56);
-		if(@card_text_font->IsNull()) {
-			"Failed to load font '{$font_path}'!"->ErrorLine();
-			Runtime->Exit(1);
-		};
-
-		font_path :=  "./media/maghrib.ttf";
-		@card_answer_box_font := Font->New(font_path, 72);
-		if(@card_answer_box_font->IsNull()) {
-			"Failed to load font '{$font_path}'!"->ErrorLine();
-			Runtime->Exit(1);
-		};
-
-		font_path :=  "./media/hella.ttf";
-		@card_score_font := Font->New(font_path, 18);
-		if(@card_score_font->IsNull()) {
-			"Failed to load font '{$font_path}'!"->ErrorLine();
-			Runtime->Exit(1);
-		};
+		@card_text_font := @framework->AddFont("./media/chalk.ttf", 56);
+		@card_answer_box_font := @framework->AddFont("./media/maghrib.ttf", 72);
+		@card_score_font := @framework->AddFont("./media/hella.ttf", 18);
 
 		# score stars
 		@score_star := @framework->AddImageSprite("./media/star.png");
 
-		@cheer_chunk := MixChunk->New("./media/cheer.wav");
-		if(@cheer_chunk->IsNull()) {
-			"--- Cannot load sound! ---"->ErrorLine();
-			Runtime->Exit(1);
-		};
-
-		@aww_chunk := MixChunk->New("./media/aww.wav");
-		if(@aww_chunk->IsNull()) {
-			"--- Cannot load sound! ---"->ErrorLine();
-			Runtime->Exit(1);
-		};
+		# load audio
+		@cheer_chunk := @framework->AddMixChunk("./media/cheer.wav");
+		@aww_chunk := @framework->AddMixChunk("./media/aww.wav");
 
 		# adjust volume
 		Mixer->Volume(-1, 16);
