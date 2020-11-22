@@ -1294,6 +1294,7 @@ bundle Game.Framework {
 		@shapes : Vector<Shape>;
 
 		@colors_dict : Hash<String, Color>;
+		@image_sprites_dict : Hash<String, ImageSprite>;
 
 		@mix_chunks : Vector<MixChunk>;
 		@chunks_dict : Hash<String, MixChunk>;
@@ -1368,6 +1369,7 @@ bundle Game.Framework {
 			@screen_height := screen_height;
 
 			@colors_dict := Hash->New()<String, Color>;
+			@image_sprites_dict := Hash->New()<String, ImageSprite>;
 			@chunks_dict := Hash->New()<String, MixChunk>;
 			@fonts_dict := Hash->New()<String, Font>;
 
@@ -1540,6 +1542,15 @@ bundle Game.Framework {
 		}
 
 		#~
+		Get specified image sprite
+		@param name name of image sprite
+		@return image sprite
+		~# 
+		method : public : GetImageSprite(name : String) ~ ImageSprite {
+			return @image_sprites_dict->Find(name)<String>;
+		}
+
+		#~
 		Get specified color
 		@param name name of color
 		@return color
@@ -1700,13 +1711,25 @@ bundle Game.Framework {
 								if(image_sprite->GetType() = JSONType->OBJECT) {
 									name_attrib := image_sprite->Get("name");
 									path_attrib := image_sprite->Get("path");
+									color_key_attrib := image_sprite->Get("color-key");
+									render_rect_attrib := image_sprite->Get("render-rect");						
 									if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-# "image_sprite: name={$name}, path={$path}"->PrintLine();
+"image_sprite: name={$name}, path={$path}"->PrintLine();
+										image := AddImageSprite(path);
+										@image_sprites_dict->Insert(name, image);
+
+										if(color_key_attrib <> Nil) {
+											color_key := color_key_attrib->GetValue();
+										};
+
+										if(render_rect_attrib <> Nil) {
+											render_rect := render_rect_attrib->GetValue();
+										};
 									}
 									else {
-									# "### Missing image_sprite: 'name' or 'path' attribute ###"->ErrorLine();
+										"### Missing image sprite: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};

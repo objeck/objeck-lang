@@ -93,7 +93,7 @@ class Chalkboard {
 		@card_score_font := @framework->GetFont("card-score-font");
 
 		# score stars
-		@score_star := @framework->AddImageSprite("./media/star.png");
+		@score_star := @framework->GetImageSprite("score-star");
 
 		# load audio
 		@cheer_chunk := @framework->GetMixChunk("cheer-chunk");
