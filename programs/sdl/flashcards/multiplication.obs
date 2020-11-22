@@ -135,7 +135,7 @@ class Chalkboard {
 	}
 
 	method : BuildCard() ~ Nil {
-		@card_text_color := @framework->GetColor("red"); # Color->New(224, 219, 200);
+		@card_text_color := @framework->GetColor("chalk"); # Color->New(224, 219, 200);
 
 		# card
 		@card := @framework->AddRectangle(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);

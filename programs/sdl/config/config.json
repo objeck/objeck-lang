@@ -1,7 +1,7 @@
 {
 	"colors": [
 		{"name": "red", "code": "255,0,0"},
-		{"name": "green", "code": "0,255,0"},
+		{"name": "chalk", "code": "224, 219, 200"},
 		{"name": "blue", "code": "0,0,255"}
 	],
 
