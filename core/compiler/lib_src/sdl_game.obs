@@ -1712,20 +1712,22 @@ bundle Game.Framework {
 									if(name_attrib <> Nil & path_attrib <> Nil & color_key_attrib <> Nil & render_rect_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();										
-										color_key := color_key_attrib->GetValue()->Split(",");
+										color_key := color_key_attrib->GetValue();
 										render_rect := render_rect_attrib->GetValue()->Split(",");
 
+										color := GetColor(color_key);
 										if(render_rect->Size() = 4) {
-											image := AddImageSprite(path);
+											image := AddImageSprite(path, color, Rect->New(render_rect[0]->ToInt(), render_rect[1]->ToInt(), render_rect[2]->ToInt(), render_rect[3]->ToInt()));
 										}
 										else {
+											image := AddImageSprite(path, color);
 										};
 									}
 									else if(name_attrib <> Nil & path_attrib <> Nil & color_key_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
-										color_key := color_key_attrib->GetValue()->Split(",");
-
+										color_key := color_key_attrib->GetValue();
+										image := AddImageSprite(path, GetColor(color_key));
 									}
 									else if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
