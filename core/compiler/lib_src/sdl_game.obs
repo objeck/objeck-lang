@@ -1296,11 +1296,12 @@ bundle Game.Framework {
 		@colors_dict : Hash<String, Color>;
 
 		@mix_chunks : Vector<MixChunk>;
-		@chunk_dict : Hash<String, MixChunk>;
+		@chunks_dict : Hash<String, MixChunk>;
 		@music : MixMusic;
 
 		@font : Font;
 		@fonts : Vector<Font>;
+		@fonts_dict : Hash<String, Font>;
 
 		@joystick : Joystick;
 
@@ -1367,7 +1368,8 @@ bundle Game.Framework {
 			@screen_height := screen_height;
 
 			@colors_dict := Hash->New()<String, Color>;
-			@chunk_dict := Hash->New()<String, MixChunk>;
+			@chunks_dict := Hash->New()<String, MixChunk>;
+			@fonts_dict := Hash->New()<String, Font>;
 
 			if(Core->Init(init_flags) < 0) {
 			# "SDL could not initialize!"->ErrorLine();
@@ -1375,12 +1377,12 @@ bundle Game.Framework {
 			};
 			
 			if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
-			# "Warning: Linear texture filtering not enabled!"->ErrorLine();
+				"Warning: Linear texture filtering not enabled!"->ErrorLine();
 				return false;
 			};
 
 			if(<>Hints->Set("SDL_HINT_VIDEO_HIGHDPI_DISABLED", "1")) {
-			# "Warning: High-DPI windows (\"Retina\" on Mac and iOS) not allowed!"->ErrorLine();
+				"Warning: High-DPI windows (\"Retina\" on Mac and iOS) not allowed!"->ErrorLine();
 				return false;
 			};
 
@@ -1388,26 +1390,26 @@ bundle Game.Framework {
 				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
 				WindowFlags->SDL_WINDOW_SHOWN);
 			if(@window->IsNull()) {
-			# "Cannot create window!"->ErrorLine();
+				"Cannot create window!"->ErrorLine();
 				return false;
 			};
 
 			@renderer := Renderer->New(@window, -1, 
 				RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
 			if(@renderer->IsNull()) {
-			# "Cannot create renderer!"->ErrorLine();
+				"Cannot create renderer!"->ErrorLine();
 				return false;
 			};
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
 			img_flags := ImageFlags->IMG_INIT_PNG;
 			if((Image->Init(img_flags) and img_flags) = 0) {
-			# "SDL image could not initialize!"->ErrorLine();
+				"SDL image could not initialize!"->ErrorLine();
 				return false;
 			};
 
 			if(Font->Init() < 0) {
-			# "SDL_ttf could not initialize!"->ErrorLine();
+				"SDL_ttf could not initialize!"->ErrorLine();
 				return false;
 			};
 			
@@ -1425,12 +1427,12 @@ bundle Game.Framework {
 			};
 
 			if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
-			# "SDL mixer could not initialize!"->ErrorLine();
+				"SDL mixer could not initialize!"->ErrorLine();
 				return false;
 			};
 
 			if(Joystick->Number() < 1) {
-			# "Warning: No joysticks connected!"->ErrorLine();
+				"Warning: No joysticks connected!"->ErrorLine();
 			};
 			@joystick := Joystick->New(0);
 			@event := Event->New();
@@ -1547,12 +1549,21 @@ bundle Game.Framework {
 		}
 
 		#~
+		Get specified font
+		@param name name of font
+		@return font
+		~# 
+		method : public : GetFont(name : String) ~ Font {
+			return @fonts_dict->Find(name)<String>;
+		}
+
+		#~
 		Get mix chunk
 		@param name name of mix chunk
 		@return mix chunk
 		~# 
 		method : public : GetMixChunk(name : String) ~ MixChunk {
-			return @chunk_dict->Find(name)<String>;
+			return @chunks_dict->Find(name)<String>;
 		}
 
 		#~
@@ -1580,7 +1591,7 @@ bundle Game.Framework {
 
 							}
 							else {
-							# "### Missing music: 'path' attribute ###"->ErrorLine();	
+								"### Missing music: 'path' attribute ###"->ErrorLine();	
 								@is_ok := false;
 								return false;
 							};
@@ -1598,16 +1609,16 @@ bundle Game.Framework {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 "mix chunk: {$name}={$path}"->PrintLine();										
-										@chunk_dict->Insert(name, AddMixChunk(path));
+										@chunks_dict->Insert(name, AddMixChunk(path));
 									}
 									else {
-									# "### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
+										"### Missing chunk: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
 										return false;
 									};
 								}
 								else {
-								# "### Invalid type ###"->ErrorLine();
+									"### Invalid chunk type ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
@@ -1635,13 +1646,43 @@ bundle Game.Framework {
 									};
 								}
 								else {
-								# "### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
+									"### Missing color: 'name' or 'code' attribute ###"->ErrorLine();
 									@is_ok := false;
 									return false;
 								};
 							}
 							else {
-							# "### Invalid type ###"->ErrorLine();
+								"### Invalid color type ###"->ErrorLine();
+								@is_ok := false;
+								return false;
+							};
+						};
+					};
+
+					# fonts
+					fonts := root->Get("fonts");
+					if(fonts <> Nil & fonts->GetType() = JSONType->ARRAY) {
+						each(i : fonts) {
+							font_obj := fonts->Get(i);
+							if(font_obj->GetType() = JSONType->OBJECT) {
+								name_attrib := font_obj->Get("name");
+								path_attrib := font_obj->Get("path");
+								size_attrib := font_obj->Get("size");
+								if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil) {
+									name := name_attrib->GetValue();
+									path := path_attrib->GetValue();
+									size := size_attrib->GetValue()->ToInt();
+									font := AddFont(path, size);
+									@fonts_dict->Insert(name, font);
+								}
+								else {
+									"### Missing font: 'name', 'path' or 'size' attribute ###"->ErrorLine();
+									@is_ok := false;
+									return false;
+								};
+							}
+							else {
+								"### Invalid font type ###"->ErrorLine();
 								@is_ok := false;
 								return false;
 							};
