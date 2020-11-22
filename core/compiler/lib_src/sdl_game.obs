@@ -1792,6 +1792,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddFont(file : String, size : Int) ~ Font {
 			font := Font->New(file, size);
+			if(font = Nil) {
+				"Failed to load font '{$file}'!"->ErrorLine();
+			};
 			SetOk(<>font->IsNull());
 			@fonts->AddBack(font);
 
@@ -1805,6 +1808,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddMixChunk(file : String) ~ MixChunk {
 			chunk := MixChunk->New(file);
+			if(chunk = Nil) {
+				"Failed to load audio chunk '{$file}'!"->ErrorLine();
+			};
 			SetOk(<>chunk->IsNull());
 			@mix_chunks->AddBack(chunk);
 
@@ -1818,6 +1824,9 @@ bundle Game.Framework {
 		~#
 		method : public : SetMusicChunk(file : String) ~ MixMusic {
 			@music := MixMusic->New(file);
+			if(@music = Nil) {
+				"Failed to load music '{$file}'!"->ErrorLine();
+			};
 			SetOk(<>@music->IsNull());
 			return @music;
 		}
@@ -1855,6 +1864,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String, colorkey : Color, render_rect : Rect) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey, render_rect);
+			if(shape = Nil) {
+				"Failed to load sprite '{$file}'!"->ErrorLine();
+			};
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
@@ -1869,6 +1881,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String, colorkey : Color) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey);
+			if(shape = Nil) {
+				"Failed to load sprite '{$file}'!"->ErrorLine();
+			};
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
@@ -1883,6 +1898,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddTitledImageSprite(file : String, colorkey : Color) ~ TitledImageSprite {
 			shape := TitledImageSprite->New(@renderer, file, colorkey);
+			if(shape = Nil) {
+				"Failed to load sprite '{$file}'!"->ErrorLine();
+			};
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
@@ -1896,6 +1914,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file);
+			if(shape = Nil) {
+				"Failed to load sprite '{$file}'!"->ErrorLine();
+			};
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
@@ -1910,6 +1931,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddAnimatedImageSprite(file : String, clips : Vector<Rect>) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file, clips);
+			if(shape = Nil) {
+				"Failed to load sprite '{$file}'!"->ErrorLine();
+			};
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
@@ -1923,6 +1947,9 @@ bundle Game.Framework {
 		~#
 		method : public : AddAnimatedImageSprite(file : String) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file);
+			if(shape = Nil) {
+				"Failed to load sprite '{$file}'!"->ErrorLine();
+			};
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
