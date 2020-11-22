@@ -1709,26 +1709,29 @@ bundle Game.Framework {
 									path_attrib := image_sprite->Get("path");
 									color_key_attrib := image_sprite->Get("color-key");
 									render_rect_attrib := image_sprite->Get("render-rect");						
-									if(name_attrib <> Nil & path_attrib <> Nil) {
+									if(name_attrib <> Nil & path_attrib <> Nil & color_key_attrib <> Nil & render_rect_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										path := path_attrib->GetValue();										
+										color_key := color_key_attrib->GetValue()->Split(",");
+										render_rect := render_rect_attrib->GetValue()->Split(",");
+
+										if(render_rect->Size() = 4) {
+											image := AddImageSprite(path);
+										}
+										else {
+										};
+									}
+									else if(name_attrib <> Nil & path_attrib <> Nil & color_key_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										path := path_attrib->GetValue();
+										color_key := color_key_attrib->GetValue()->Split(",");
+
+									}
+									else if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										image := AddImageSprite(path);
-
-										@image_sprites_dict->Insert(name, image);
-										if(color_key_attrib <> Nil) {
-											color_key := color_key_attrib->GetValue()->Split(",");
-											if(color_key->Size() = 3) {
-# foo TOO: look up color id
-											};
-										};
-
-										if(render_rect_attrib <> Nil) {
-											render_rect := render_rect_attrib->GetValue()->Split(",");
-											if(render_rect->Size() = 4) {
-# bar
-											};
-										};
-									}
+									}									
 									else {
 										"### Missing image sprite: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
