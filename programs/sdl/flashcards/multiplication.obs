@@ -78,7 +78,7 @@ class Chalkboard {
 		@is_sound := is_sound;
 		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Multiplication");
 		@framework->BuildFromFile("../config/config.json");
-		@framework->SetClearColor(@framework->GetColor("card-bg-color"));
+		@framework->SetClearColor(@framework->GetColor("bg-color"));
 		
 		LoadMedia();
 		BuildCard();
@@ -108,7 +108,7 @@ class Chalkboard {
 
 		# card
 		@card := @framework->AddRectangle(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);
-		@card->SetColor(Color->New(46, 139, 87));
+		@card->SetColor(@framework->GetColor("card-color"));
 		@card->SetFill(true);
 
 		# tries
@@ -143,7 +143,7 @@ class Chalkboard {
 
 		# answer
 		@card_answer_box := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 2.5);
-		@card_answer_box->SetColor(Color->New(0, 0, 139));
+		@card_answer_box->SetColor(@framework->GetColor("card-answer-color"));
 
 		# final score
 		@game_score_images := ImageSprite->New[2];
@@ -351,7 +351,7 @@ class Chalkboard {
 				@score_tries -= 1;
 				text := @score_tries->ToString();
 				text += " chances";
-				@score_tries_text->RenderedText(text, Color->New(0, 0, 139));
+				@score_tries_text->RenderedText(text, @framework->GetColor("card-answer-color"));
 
 				NextProblem();
 			};
@@ -401,7 +401,7 @@ class Chalkboard {
 
 		text := @score_tries->ToString();
 		text += " chances";
-		@score_tries_text->RenderedText(text, Color->New(0, 0, 139));
+		@score_tries_text->RenderedText(text, @framework->GetColor("card-answer-color"));
 
 		@clear_button->SetFill(true);
 		@clear_button_text->RenderedText("Clear");
@@ -436,7 +436,7 @@ class Chalkboard {
 		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
 
 		# number line
-		@card_num_line_text->RenderedText(@card_num_line_string, Color->New(0, 0, 139));
+		@card_num_line_text->RenderedText(@card_num_line_string, @framework->GetColor("card-answer-color"));
 		@card_num_line_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_line_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 3.25);
 
 		# problem and inputs
