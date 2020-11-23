@@ -124,8 +124,7 @@ class Chalkboard {
 		@clear_button_text := @framework->GetTextSprite("clear-button-text");
 
 		# sign
-		@card_text_mul_sign := @framework->AddTextSprite();
-		@card_text_mul_sign->SetFont(@card_text_font);
+		@card_text_mul_sign := @framework->GetTextSprite("card-text-mul-sign");
 		@card_text_mul_sign->RenderedText("X", @card_text_color);
 
 		@card_text_eql_sign := @framework->AddTextSprite();
