@@ -116,21 +116,12 @@ class Chalkboard {
 		@score_tries_text->SetFont(@card_score_font);
 
 		# check button
-		@check_button := @framework->AddRectangle(160, 30);
-		@check_button->SetColor(Color->New(105, 105, 105));
-		@check_button->SetFill(true);
-
-		@check_button_text := @framework->AddTextSprite();
-		@check_button_text->SetFont(@card_button_font);
-		@check_button_text->RenderedText("Check");
+		@check_button := @framework->GetRectangle("check-button");
+		@check_button_text := @framework->GetTextSprite("check-button-text");
 
 		# clear button
-		@clear_button := @framework->AddRectangle(160, 30);
-		@clear_button->SetColor(Color->New(192, 192, 192));
-		@clear_button->SetFill(true);
-
-		@clear_button_text := @framework->AddTextSprite();
-		@clear_button_text->SetFont(@card_button_font);
+		@clear_button := @framework->GetRectangle("clear-button");
+		@clear_button_text := @framework->GetTextSprite("clear-button-text");
 
 		# sign
 		@card_text_mul_sign := @framework->AddTextSprite();

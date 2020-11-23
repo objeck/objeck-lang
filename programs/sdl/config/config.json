@@ -1,7 +1,8 @@
 {
 	"colors": [
-		{"name": "red-color", "code": "255,0,0"},
 		{"name": "chalk-color", "code": "224, 219, 200"},
+		{"name": "check-button-color", "code": "105, 105, 105"},
+		{"name": "clear-button-color", "code": "192, 192, 192"},
 		{"name": "blue-color", "code": "0,0,255"}
 	],
 
@@ -22,8 +23,23 @@
 
 	"assets": {
 		"image_sprites": [
-			{"name": "score-star", "path": "./media/star.png", "_color-key_": "#name2code#", "_render-rect_": "1,2,3,4"}
+			{"name": "score-star", "path": "./media/star.png", "_color-key_": "chalk", "_render-rect_": "1,2,3,4"}
 		],
+
+		"rectangles": [
+			{"name": "check-button", "color": "check-button-color", "filled": "true", "size": "160, 30"}
+			{"name": "clear-button", "color": "clear-button-color", "filled": "true", "size": "160, 30"}
+		],
+
+		"text_sprites": [
+			{"name": "check-button-text", "font": "card-button-font", "text": "Check"},
+			{"name": "clear-button-text", "font": "card-button-font"}
+		],
+
+
+		
+
+		
 		"titled_sprites": [
 			{"name": "mary", "path": "a/b/c7", "size": "0,0,10,10"},
 			{"name": "joe", "path": "a/b/c9", "size": "0,0,10,10"},
@@ -31,11 +47,6 @@
 		],
 		"animated_sprites": [
 			{"name": "mary", "rects": [{"rect": "0,0,10,10"},{"rect": "0,0,10,10"}], "path": "a/b/c10", "size": "0,0,10,10"}
-		],
-		"rectangles": [
-			{"name": "mary", "color": "red", "filled": "false", "size": "0,0,10,10"},
-			{"name": "joe", "color": "red", "filled": "true", "size": "0,0,10,10"},
-			{"name": "bob", "color": "red", "filled": "false", "size": "0,0,10,10"},
 		]}
 	}
 }

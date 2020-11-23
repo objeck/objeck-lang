@@ -1295,6 +1295,8 @@ bundle Game.Framework {
 
 		@colors_dict : Hash<String, Color>;
 		@image_sprites_dict : Hash<String, ImageSprite>;
+		@rectangles_dict : Hash<String, Rectangle>;
+		@text_sprites_dict : Hash<String, TextSprite>;		
 
 		@mix_chunks : Vector<MixChunk>;
 		@chunks_dict : Hash<String, MixChunk>;
@@ -1370,6 +1372,9 @@ bundle Game.Framework {
 
 			@colors_dict := Hash->New()<String, Color>;
 			@image_sprites_dict := Hash->New()<String, ImageSprite>;
+			@rectangles_dict := Hash->New()<String, Rectangle>;
+			@text_sprites_dict := Hash->New()<String, TextSprite>;
+
 			@chunks_dict := Hash->New()<String, MixChunk>;
 			@fonts_dict := Hash->New()<String, Font>;
 
@@ -1551,6 +1556,24 @@ bundle Game.Framework {
 		}
 
 		#~
+		Get specified rectangle
+		@param name name of rectangle
+		@return rectangle
+		~# 
+		method : public : GetRectangle(name : String) ~ Rectangle {
+			return @rectangles_dict->Find(name)<String>;
+		}
+
+		#~
+		Get specified text sprite
+		@param name name of text sprite
+		@return text sprite
+		~# 
+		method : public : GetTextSprite(name : String) ~ TextSprite {
+			return @text_sprites_dict->Find(name)<String>;
+		}
+
+		#~
 		Get specified color
 		@param name name of color
 		@return color
@@ -1714,25 +1737,29 @@ bundle Game.Framework {
 										path := path_attrib->GetValue();										
 										color_key := color_key_attrib->GetValue();
 										render_rect := render_rect_attrib->GetValue()->Split(",");
-
 										color := GetColor(color_key);
+
+										image : ImageSprite;
 										if(render_rect->Size() = 4) {
 											image := AddImageSprite(path, color, Rect->New(render_rect[0]->ToInt(), render_rect[1]->ToInt(), render_rect[2]->ToInt(), render_rect[3]->ToInt()));
 										}
 										else {
 											image := AddImageSprite(path, color);
 										};
+										@image_sprites_dict->Insert(name, image);
 									}
 									else if(name_attrib <> Nil & path_attrib <> Nil & color_key_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										color_key := color_key_attrib->GetValue();
 										image := AddImageSprite(path, GetColor(color_key));
+										@image_sprites_dict->Insert(name, image);
 									}
 									else if(name_attrib <> Nil & path_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										image := AddImageSprite(path);
+										@image_sprites_dict->Insert(name, image);
 									}									
 									else {
 										"### Missing image sprite: 'name' or 'path' attribute ###"->ErrorLine();
@@ -1747,6 +1774,100 @@ bundle Game.Framework {
 								};
 							};
 						};
+
+						# rectangles
+						rectangles := assets->Get("rectangles");
+						if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
+							each(i : rectangles) {
+								rectangle := rectangles->Get(i);
+								if(rectangle->GetType() = JSONType->OBJECT) {
+									name_attrib := rectangle->Get("name");
+									size_attrib := rectangle->Get("size");
+									color_attrib := rectangle->Get("color");
+									filled_attrib := rectangle->Get("filled");
+									
+									if(name_attrib <> Nil & size_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										size := size_attrib->GetValue()->Split(",");
+										
+										rect_obj : Rectangle;
+										if(size->Size() = 2) {
+											rect_obj := AddRectangle(size[0]->ToInt(), size[1]->ToInt());
+										}
+										else {
+											rect_obj := AddRectangle(8, 8);											
+										};
+										@rectangles_dict->Insert(name, rect_obj);
+
+										if(color_attrib <> Nil) {
+											rect_obj->SetColor(GetColor(color_attrib->GetValue()));
+										};
+
+										if(filled_attrib <> Nil) {
+											rect_obj->SetFill(filled_attrib->GetValue()->ToLower()->Equals("true"));
+										};
+									}
+									else {
+										"### Invalid rectangle type ###"->ErrorLine();
+										@is_ok := false;
+										return false;
+									};
+								}
+								else {
+									"### Invalid rectangle type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
+								};
+							};
+						};
+
+						# text_sprites
+						text_sprites := assets->Get("text_sprites");
+						if(text_sprites <> Nil & text_sprites->GetType() = JSONType->ARRAY) {
+							each(i : text_sprites) {
+								text_sprite := text_sprites->Get(i);
+								if(text_sprite->GetType() = JSONType->OBJECT) {
+									name_attrib := text_sprite->Get("name");
+									font_attrib := text_sprite->Get("font");
+									text_attrib := text_sprite->Get("text");
+									
+									if(name_attrib <> Nil) {
+										name := name_attrib->GetValue();
+										font := font_attrib->GetValue()->Split(",");
+										
+										text_obj := AddTextSprite();
+										@text_sprites_dict->Insert(name, text_obj);
+
+										if(font_attrib <> Nil) {
+											text_obj->SetFont(GetFont(font_attrib->GetValue()));
+										};
+
+										if(text_attrib <> Nil) {
+											text_obj->RenderedText(text_attrib->GetValue());
+										};
+									}
+									else {
+										"### Invalid text sprite type ###"->ErrorLine();
+										@is_ok := false;
+										return false;
+									};
+								}
+								else {
+									"### Invalid text sprite type ###"->ErrorLine();
+									@is_ok := false;
+									return false;
+								};
+							};
+						};
+
+
+
+
+
+
+
+
+
 
 						# titled_sprites
 						titled_sprites := assets->Get("titled_sprites");
