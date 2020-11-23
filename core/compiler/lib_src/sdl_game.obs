@@ -405,6 +405,7 @@ bundle Game.Framework {
 	~#
 	class TextSprite from Sprite {
 		@font : Font;
+		@color : Color;
 		@is_ok : Bool;
 
 		New(renderer : Renderer, font : Font) {
@@ -429,11 +430,27 @@ bundle Game.Framework {
 		}		
 
 		#~
+		Sets the text color
+		@param color text color
+		~#
+		method : public : SetColor(color : Color) ~ Nil {
+			@color := color;
+		}
+
+		#~
+		Renders the set text
+		@param text text to render
+		~#
+		method : public : RenderedText(text : String) ~ Nil {
+			RenderedText(text, @color);
+		}
+
+		#~
 		Renders the set text
 		@param text text to render
 		@param color color of text
 		~#
-		method : public : RenderedText(text : String, color : Color := Nil) ~ Nil {
+		method : public : RenderedText(text : String, color : Color) ~ Nil {
 			if(@font <> Nil) {
 				Free();
 
@@ -1830,7 +1847,8 @@ bundle Game.Framework {
 									name_attrib := text_sprite->Get("name");
 									font_attrib := text_sprite->Get("font");
 									text_attrib := text_sprite->Get("text");
-									
+									color_attrib := text_sprite->Get("color");
+																	
 									if(name_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										font := font_attrib->GetValue()->Split(",");
@@ -1840,6 +1858,10 @@ bundle Game.Framework {
 
 										if(font_attrib <> Nil) {
 											text_obj->SetFont(GetFont(font_attrib->GetValue()));
+										};
+
+										if(color_attrib <> Nil) {
+											text_obj->SetColor(GetColor(color_attrib->GetValue()));
 										};
 
 										if(text_attrib <> Nil) {
