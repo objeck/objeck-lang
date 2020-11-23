@@ -104,7 +104,7 @@ class Chalkboard {
 	}
 
 	method : BuildCard() ~ Nil {
-		@card_text_color := @framework->GetColor("chalk-color");
+		@card_text_color := @framework->GetColor("card-text-color");
 
 		# card
 		@card := @framework->AddRectangle(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);
@@ -125,7 +125,6 @@ class Chalkboard {
 
 		# sign
 		@card_text_mul_sign := @framework->GetTextSprite("card-text-mul-sign");
-		@card_text_mul_sign->RenderedText("X", @card_text_color);
 
 		@card_text_eql_sign := @framework->AddTextSprite();
 		@card_text_eql_sign->SetFont(@card_text_font);

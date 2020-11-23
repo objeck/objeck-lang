@@ -1,9 +1,9 @@
 {
 	"colors": [
-		{"name": "chalk-color", "code": "224, 219, 200"},
+		{"name": "card-text-color", "code": "224, 219, 200"},
 		{"name": "check-button-color", "code": "105, 105, 105"},
 		{"name": "clear-button-color", "code": "192, 192, 192"},
-		{"name": "blue-color", "code": "0,0,255"}
+		{"name": "clear-button-color", "code": "192, 192, 192"}
 	],
 
 	"sounds": {
@@ -34,7 +34,7 @@
 		"text_sprites": [
 			{"name": "check-button-text", "font": "card-button-font", "text": "Check"},
 			{"name": "clear-button-text", "font": "card-button-font"},
-			{"name": "card-text-mul-sign", "font": "card-text-font"}
+			{"name": "card-text-mul-sign", "font": "card-text-font", "color": "card-text-color", "text": "X"}
 		],
 
 
