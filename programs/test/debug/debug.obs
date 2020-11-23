@@ -1,7 +1,11 @@
 class Test {
-	function : Foo(a : Int, b : Int) ~ Nil {}
-
 	function : Main(args : String[]) ~ Nil {
-		Foo(2,3,,);
+		map := Collection.Generic.Hash->New()<IntHolder, IntHolder>;
+		map->Insert(1, 101);
+		map->Insert(1, 201);
+		map->Size()->PrintLine();
+
+		map->Remove(1);
+		map->Find(1)->PrintLine();
 	}
 }
