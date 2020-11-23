@@ -34,7 +34,8 @@
 		"text_sprites": [
 			{"name": "check-button-text", "font": "card-button-font", "text": "Check"},
 			{"name": "clear-button-text", "font": "card-button-font"},
-			{"name": "card-text-mul-sign", "font": "card-text-font", "color": "card-text-color", "text": "X"}
+			{"name": "card-text-mul-sign", "font": "card-text-font", "color": "card-text-color", "text": "X"},
+			{"name": "card-text-eql-sign", "font": "card-text-font", "color": "card-text-color", "text": "="}
 		],
 
 
