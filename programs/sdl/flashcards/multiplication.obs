@@ -147,8 +147,8 @@ class Chalkboard {
 
 		# final score
 		@game_score_images := ImageSprite->New[2];
-		@game_score_images[0] := @framework->AddImageSprite("./media/thumbs-up.png");
-		@game_score_images[1] := @framework->AddImageSprite("./media/thumbs-down.png");
+		@game_score_images[0] := @framework->GetImageSprite("thumbs-up");
+		@game_score_images[1] := @framework->GetImageSprite("thumbs-down");
 
 		@game_score_text := @framework->AddTextSprite();
 		@game_score_text->SetFont(@card_score_font);
