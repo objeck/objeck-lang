@@ -3,7 +3,8 @@
 		{"name": "card-text-color", "code": "224, 219, 200"},
 		{"name": "check-button-color", "code": "105, 105, 105"},
 		{"name": "clear-button-color", "code": "192, 192, 192"},
-		{"name": "clear-button-color", "code": "192, 192, 192"}
+		{"name": "clear-button-color", "code": "192, 192, 192"},
+		{"name": "card-bg-color", "code": "105, 105, 105"}
 	],
 
 	"sounds": {
@@ -24,6 +25,8 @@
 	"assets": {
 		"image_sprites": [
 			{"name": "score-star", "path": "./media/star.png", "_color-key_": "chalk", "_render-rect_": "1,2,3,4"}
+			{"name": "thumbs-up", "path": "./media/thumbs-up.png"},
+			{"name": "thumbs-down", "path": "./media/thumbs-down.png"}
 		],
 
 		"rectangles": [

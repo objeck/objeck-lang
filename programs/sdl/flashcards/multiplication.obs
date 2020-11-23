@@ -76,9 +76,9 @@ class Chalkboard {
 
 	New(is_sound : Bool) {
 		@is_sound := is_sound;
-		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Multiplication");		
-		@framework->SetClearColor(Color->New(105, 105, 105));
+		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Multiplication");
 		@framework->BuildFromFile("../config/config.json");
+		@framework->SetClearColor(@framework->GetColor("card-bg-color"));
 		
 		LoadMedia();
 		BuildCard();
