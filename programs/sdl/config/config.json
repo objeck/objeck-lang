@@ -4,7 +4,9 @@
 		{"name": "check-button-color", "code": "105, 105, 105"},
 		{"name": "clear-button-color", "code": "192, 192, 192"},
 		{"name": "clear-button-color", "code": "192, 192, 192"},
-		{"name": "card-bg-color", "code": "105, 105, 105"}
+		{"name": "card-color", "code": "46, 139, 87"},
+		{"name": "card-answer-color", "code": "0, 0, 139"},
+		{"name": "bg-color", "code": "105, 105, 105"}
 	],
 
 	"sounds": {
