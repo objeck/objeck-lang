@@ -125,10 +125,7 @@ class Chalkboard {
 
 		# sign
 		@card_text_mul_sign := @framework->GetTextSprite("card-text-mul-sign");
-
-		@card_text_eql_sign := @framework->AddTextSprite();
-		@card_text_eql_sign->SetFont(@card_text_font);
-		@card_text_eql_sign->RenderedText("=", @card_text_color);
+		@card_text_eql_sign := @framework->GetTextSprite("card-text-eql-sign");
 
 		@card_answer_text := @framework->AddTextSprite();
 		@card_answer_text->SetFont(@card_answer_box_font);
