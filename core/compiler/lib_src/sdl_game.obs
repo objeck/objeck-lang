@@ -1882,15 +1882,7 @@ bundle Game.Framework {
 							};
 						};
 
-
-
-
-
-
-
-
-
-
+#~
 						# titled_sprites
 						titled_sprites := assets->Get("titled_sprites");
 						if(titled_sprites <> Nil & titled_sprites->GetType() = JSONType->ARRAY) {
@@ -1904,7 +1896,6 @@ bundle Game.Framework {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										size := size_attrib->GetValue();
-# "titled_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
 									}
 									else {
 									# "### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
@@ -1934,7 +1925,6 @@ bundle Game.Framework {
 										name := name_attrib->GetValue();
 										path := path_attrib->GetValue();
 										size := size_attrib->GetValue();
-# "animated_sprite: name={$name}, path={$path}, size={$size}"->PrintLine();
 									}
 									else {
 									# "### Missing animated_sprite: 'name' or 'path' attribute ###"->ErrorLine();
@@ -1950,7 +1940,6 @@ bundle Game.Framework {
 												rect_attrib := rect_obj->Get("rect");
 												if(rect_attrib <> Nil) {
 													rect := rect_attrib->GetValue();
-# "animated_sprite/rect: rect={$rect}"->PrintLine();												
 												};
 											}
 											else {
@@ -1968,37 +1957,7 @@ bundle Game.Framework {
 								};
 							};
 						};
-						
-						# rectangles
-						rectangles := assets->Get("rectangles");
-						if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
-							each(i : rectangles) {
-								rectangle := rectangles->Get(i);
-								if(rectangle->GetType() = JSONType->OBJECT) {
-									name_attrib := rectangle->Get("name");
-									color_attrib := rectangle->Get("color");
-									size_attrib := rectangle->Get("size");
-									filled_attrib := rectangle->Get("filled");
-									if(name_attrib <> Nil & color_attrib <> Nil & size_attrib <> Nil & filled_attrib <> Nil) {
-										name := name_attrib->GetValue();
-										color := color_attrib->GetValue();
-										filled := filled_attrib->GetValue();
-										size := size_attrib->GetValue();
-# "rectangle: name={$name}, color={$color}, filled={$filled}, size={$size}"->PrintLine();
-									}
-									else {
-									# "### Missing rectangle: 'name' or 'path' attribute ###"->ErrorLine();
-										@is_ok := false;
-										return false;
-									};
-								}
-								else {
-								# "### Invalid type ###"->ErrorLine();
-									@is_ok := false;
-									return false;
-								};
-							};
-						};
+~#
 					}
 					else {
 					# "### Missing 'assets' element ###"->ErrorLine();
