@@ -318,9 +318,9 @@ namespace Runtime {
     StackMethod* method;
     int32_t instr_count;
     uint32_t* code;
-    uint32_t code_index;
-    int32_t epilog_index;
-    int32_t* ints;
+    long code_index;
+    long epilog_index;
+    long* ints;
     double* float_consts;
     int32_t floats_index;
     int32_t instr_index;
