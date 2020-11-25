@@ -4580,7 +4580,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     code = (uint32_t*)malloc(BUFFER_SIZE);
     code_buf_max = BUFFER_SIZE;
     
-    ints = new int32_t[MAX_INTS];
+    ints = new long[MAX_INTS];
     float_consts = new double[MAX_DBLS];
     
     floats_index = instr_index = code_index = instr_count = 0;
@@ -4747,10 +4747,9 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   const int32_t cls_id = method->GetClass()->GetId();
   const int32_t mthd_id = method->GetId();
   NativeCode* native_code = method->GetNativeCode();
-  int32_t* int_consts = native_code->GetInts();
+  long* int_consts = native_code->GetInts();
 
 #ifdef _DEBUG
-  const long code_index = native_code->GetSize();
   wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
         << L"'; self=" << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos="
         << (*stack_pos) << L"; params=" << method->GetParamCount() << L"; code=" << (size_t *)native_code->GetCode() << L"; code_index="
