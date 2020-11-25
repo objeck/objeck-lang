@@ -672,12 +672,12 @@ namespace Runtime {
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
       (*stack_pos)++;
     }
-
-    // Process call backs from ASM code
-    static void JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id,
-                                const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t *stack_pos,
-                                StackFrame** call_stack, long* call_stack_pos, const int32_t ip);
     
+    // Process call backs from ASM code
+    static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
+                                 const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos,
+                                 StackFrame** call_stack, long* call_stack_pos, const long ip);
+
     // Calculates array element offset.
     // Note: this code must match up
     // with the interpreter's 'ArrayIndex'
@@ -764,8 +764,10 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, size_t *cls_mem, size_t *inst, size_t *op_stack, long *stack_pos,
-                                 StackFrame **call_stack, long *call_stack_pos, size_t **jit_mem, long *offset, int32_t *ints);
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t *cls_mem, size_t *inst,
+                              size_t *op_stack, long *stack_pos, StackFrame **call_stack,
+                              long *call_stack_pos, size_t **jit_mem, long *offset, long *ints);
+  
   
   /********************************
    * JitExecutor class
@@ -778,7 +780,7 @@ namespace Runtime {
     
     // Executes machine code
     long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos,
-                 StackFrame** call_stack, long* call_stack_pos, StackFrame *frame);
+                 StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
   };
 }
 #endif
