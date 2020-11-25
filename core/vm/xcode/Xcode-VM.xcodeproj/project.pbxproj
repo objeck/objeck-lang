@@ -13,10 +13,10 @@
 		255B2D751966EFB700AF1F2E /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6E1966EFB700AF1F2E /* loader.cpp */; };
 		255B2D761966EFB700AF1F2E /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D701966EFB700AF1F2E /* posix_main.cpp */; };
 		255B2D771966EFB700AF1F2E /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D711966EFB700AF1F2E /* vm.cpp */; };
-		25DC32161FF1A7FE0040A5BE /* jit_amd_lp64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */; };
 		ED0340C9216A6B920091732E /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED0340C8216A6B920091732E /* memory.cpp */; };
 		ED0340DB216A760F0091732E /* libssl.1.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340D7216A760F0091732E /* libssl.1.1.dylib */; };
 		ED0340DD216A760F0091732E /* libcrypto.1.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */; };
+		ED6A147A256EC44800835770 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED6A1478256EC44800835770 /* jit_arm_a64.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,12 +46,12 @@
 		255B2D701966EFB700AF1F2E /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../../posix_main.cpp; sourceTree = "<group>"; };
 		255B2D711966EFB700AF1F2E /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../../vm.cpp; sourceTree = "<group>"; };
 		255B2D721966EFB700AF1F2E /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../../vm.h; sourceTree = "<group>"; };
-		25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
-		25DC32151FF1A7FE0040A5BE /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
 		ED0340C7216A6B920091732E /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../arch/memory.h; sourceTree = "<group>"; };
 		ED0340C8216A6B920091732E /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/memory.cpp; sourceTree = "<group>"; };
 		ED0340D7216A760F0091732E /* libssl.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.1.dylib; path = ../../../../../../../../usr/local/lib/libssl.1.1.dylib; sourceTree = "<group>"; };
 		ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.1.dylib; path = ../../../../../../../../usr/local/lib/libcrypto.1.1.dylib; sourceTree = "<group>"; };
+		ED6A1478256EC44800835770 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
+		ED6A1479256EC44800835770 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,10 +89,10 @@
 		255B2D5F1966EF5400AF1F2E /* Xcode-VM */ = {
 			isa = PBXGroup;
 			children = (
+				ED6A1478256EC44800835770 /* jit_arm_a64.cpp */,
+				ED6A1479256EC44800835770 /* jit_arm_a64.h */,
 				ED0340C8216A6B920091732E /* memory.cpp */,
 				ED0340C7216A6B920091732E /* memory.h */,
-				25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */,
-				25DC32151FF1A7FE0040A5BE /* jit_amd_lp64.h */,
 				255B2D691966EFB700AF1F2E /* common.cpp */,
 				255B2D6A1966EFB700AF1F2E /* common.h */,
 				255B2D6B1966EFB700AF1F2E /* interpreter.cpp */,
@@ -151,6 +151,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 255B2D541966EF5400AF1F2E;
@@ -170,8 +171,8 @@
 			files = (
 				255B2D771966EFB700AF1F2E /* vm.cpp in Sources */,
 				255B2D741966EFB700AF1F2E /* interpreter.cpp in Sources */,
+				ED6A147A256EC44800835770 /* jit_arm_a64.cpp in Sources */,
 				255B2D751966EFB700AF1F2E /* loader.cpp in Sources */,
-				25DC32161FF1A7FE0040A5BE /* jit_amd_lp64.cpp in Sources */,
 				255B2D761966EFB700AF1F2E /* posix_main.cpp in Sources */,
 				ED0340C9216A6B920091732E /* memory.cpp in Sources */,
 				255B2D731966EFB700AF1F2E /* common.cpp in Sources */,
