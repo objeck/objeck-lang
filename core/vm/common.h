@@ -236,7 +236,7 @@ class NativeCode {
   FLOAT_VALUE* floats;
   
  public:
-#ifdef _ARM32
+#if defined(_ARM32) || defined(_ARM64)
   NativeCode(uint32_t* c, long s, int32_t* i, FLOAT_VALUE* f) {
     code = c;
     size = s;
@@ -272,7 +272,7 @@ class NativeCode {
     floats = nullptr;
   }
 
-#ifdef _ARM32
+#if defined(_ARM32) || defined(_ARM64)
   inline uint32_t* GetCode() const {
     return code;
   }

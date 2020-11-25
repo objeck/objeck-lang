@@ -100,6 +100,8 @@ void StackInterpreter::Initialize(StackProgram* p)
   JitCompilerIA64::Initialize(program);
 #elif _ARM32
   JitCompilerA32::Initialize(program);
+#elif _ARM64
+  JitCompilerA64::Initialize(program);
 #else
   JitCompilerIA32::Initialize(program);
 #endif
@@ -2090,6 +2092,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
     JitCompilerIA64 jit_compiler;
 #elif _ARM32
     JitCompilerA32 jit_compiler;
+#elif _ARM64
+    JitCompilerA64 jit_compiler;
 #else
     JitCompilerIA32 jit_compiler;
 #endif

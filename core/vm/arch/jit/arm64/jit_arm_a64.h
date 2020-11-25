@@ -4,28 +4,28 @@
  * Copyright (c) 2020, Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the Objeck team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the Objeck team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -75,7 +75,7 @@ namespace Runtime {
 #define PAGE_SIZE 4096
   
   // register type
-  enum RegType { 
+  enum RegType {
     IMM_INT = -4000,
     REG_INT,
     MEM_INT,
@@ -85,19 +85,19 @@ namespace Runtime {
   };
   
   // general and float registers
-  enum Register { 
-    R0 = 0, 
-    R1, 
-    R2, 
-    R3, 
-    R4, 
-    R5, 
-    R6, 
-    R7, 
-    R8, 
-    R9, 
-    R10, 
-    FP, 
+  enum Register {
+    R0 = 0,
+    R1,
+    R2,
+    R3,
+    R4,
+    R5,
+    R6,
+    R7,
+    R8,
+    R9,
+    R10,
+    FP,
     R12,
     SP,
     LR,
@@ -146,7 +146,7 @@ namespace Runtime {
     RegisterHolder* holder;
     StackInstr* instr;
 
-  public:    
+  public:
     RegInstr(RegisterHolder* h) {
       if(h->IsDouble()) {
         type = REG_FLOAT;
@@ -156,7 +156,7 @@ namespace Runtime {
       }
       holder = h;
       instr = nullptr;
-    }  
+    }
 
     RegInstr(StackInstr* si, double* da) {
       type = IMM_FLOAT;
@@ -194,7 +194,7 @@ namespace Runtime {
       case STOR_CLS_INST_INT_VAR:
       case LOAD_FUNC_VAR:
       case STOR_FUNC_VAR:
-      case COPY_LOCL_INT_VAR: 
+      case COPY_LOCL_INT_VAR:
       case COPY_CLS_INST_INT_VAR:
         type = MEM_INT;
         operand = si->GetOperand3();
@@ -234,7 +234,7 @@ namespace Runtime {
       return type;
     }
 
-    size_t GetOperand() {
+    int32_t GetOperand() {
       return operand;
     }
   };
@@ -243,16 +243,16 @@ namespace Runtime {
    * Manage executable buffers of memory
    ********************************/
   class PageHolder {
-    int32_t* buffer;
-    int32_t available, index;
+    uint32_t* buffer;
+    uint32_t available, index;
 
   public:
-    PageHolder(size_t size) {
+    PageHolder(int32_t size) {
       index = 0;
 
-      const int32_t byte_size = size * sizeof(int32_t);
+      const uint32_t byte_size = size * sizeof(uint32_t);
       int factor = byte_size / PAGE_SIZE + 1;
-      const int32_t alloc_size = PAGE_SIZE * factor;
+      const uint32_t alloc_size = PAGE_SIZE * factor;
       
       if(posix_memalign((void**)&buffer, PAGE_SIZE, alloc_size)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -272,8 +272,8 @@ namespace Runtime {
       buffer = nullptr;
     }
 
-    inline bool CanAddCode(size_t size) {
-      const size_t size_diff = available - size * sizeof(int32_t);
+    inline bool CanAddCode(int32_t size) {
+      const int32_t size_diff = available - size * sizeof(uint32_t);
       if(size_diff > 0) {
         return true;
       }
@@ -281,7 +281,7 @@ namespace Runtime {
       return false;
     }
     
-    int32_t* AddCode(int32_t* code, size_t size);
+    uint32_t* AddCode(uint32_t* code, int32_t size);
   };
   
   class PageManager {
@@ -292,13 +292,13 @@ namespace Runtime {
 
     ~PageManager();
 
-    int32_t* GetPage(int32_t* code, size_t size);
+    uint32_t* GetPage(uint32_t* code, int32_t size);
   };
   
   /********************************
-   * JitCompilerA32 class
+   * JitCompilerA64 class
    ********************************/
-  class JitCompilerA32 {
+  class JitCompilerA64 {
     static StackProgram* program;
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
@@ -308,23 +308,23 @@ namespace Runtime {
     RegisterHolder* reg_eax;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    unordered_map<size_t, StackInstr*> jump_table;
-    multimap<size_t, size_t> const_int_pool;
-    vector<size_t> deref_offsets;          // -1
-    vector<size_t> bounds_less_offsets;    // -2
-    vector<size_t> bounds_greater_offsets; // -3
-    size_t local_space;
+    unordered_map<int32_t, StackInstr*> jump_table;
+    multimap<int32_t, int32_t> const_int_pool;
+    vector<int32_t> deref_offsets;          // -1
+    vector<int32_t> bounds_less_offsets;    // -2
+    vector<int32_t> bounds_greater_offsets; // -3
+    int32_t local_space;
     bool realign_stack;
     StackMethod* method;
-    size_t instr_count;
-	int32_t* code;
-    int32_t code_index;
-    size_t epilog_index;
-    size_t* ints;
-    double* float_consts;     
-    size_t floats_index;
-    size_t instr_index;
-    size_t code_buf_max;
+    int32_t instr_count;
+    uint32_t* code;
+    uint32_t code_index;
+    int32_t epilog_index;
+    int32_t* ints;
+    double* float_consts;
+    int32_t floats_index;
+    int32_t instr_index;
+    int32_t code_buf_max;
     bool compile_success;
     bool skip_jump;
 
@@ -333,7 +333,7 @@ namespace Runtime {
     void Epilog();
 
     // stack conversion operations
-    void ProcessParameters(size_t count);
+    void ProcessParameters(int32_t count);
     void RegisterRoot();
     void ProcessInstructions();
     void ProcessLoad(StackInstr* instr);
@@ -344,10 +344,10 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessFloatOperation(StackInstr* instruction);
     void ProcessFloatOperation2(StackInstr* instruction);
-    void ProcessReturn(size_t params = -1);
-    void ProcessStackCallback(size_t instr_id, StackInstr* instr, size_t &instr_index, size_t params);
+    void ProcessReturn(int32_t params = -1);
+    void ProcessStackCallback(int32_t instr_id, StackInstr* instr, int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
-    void ProcessFloatCallParameter(); 
+    void ProcessFloatCallParameter();
     void ProcessFunctionCallParameter();
     void ProcessReturnParameters(MemoryType type);
     void ProcessLoadByteElement(StackInstr* instr);
@@ -365,10 +365,10 @@ namespace Runtime {
     void ProcessIntToFloat(StackInstr* instr);
     
     // Add byte code to buffer
-    inline void AddMachineCode(int32_t i) {
-      if(code_index * sizeof(int32_t) >= (int32_t)code_buf_max) {
+    inline void AddMachineCode(uint32_t i) {
+      if(code_index * sizeof(uint32_t) >= (uint32_t)code_buf_max) {
         code_buf_max *= 2;
-        code = (int32_t*)realloc(code, code_buf_max); 
+        code = (uint32_t*)realloc(code, code_buf_max);
         if(!code) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
@@ -378,12 +378,12 @@ namespace Runtime {
     }
     
     // Encodes and writes out a 32-bit integer value
-    inline void AddImm(size_t imm) {
+    inline void AddImm(int32_t imm) {
       AddMachineCode(imm);
     }
     
-	  // Returns the name of a register
-	  wstring GetRegisterName(Register reg);
+    // Returns the name of a register
+    wstring GetRegisterName(Register reg);
         
     /***********************************
      * Check for 'Nil' dereferencing
@@ -520,142 +520,142 @@ namespace Runtime {
     }
 
     // move instructions
-    void move_reg_mem8(Register src, size_t offset, Register dest);
-    void move_mem8_reg(size_t offset, Register src, Register dest);
-    void move_imm_mem8(size_t imm, size_t offset, Register dest);    
+    void move_reg_mem8(Register src, int32_t offset, Register dest);
+    void move_mem8_reg(int32_t offset, Register src, Register dest);
+    void move_imm_mem8(int32_t imm, int32_t offset, Register dest);
     void move_reg_reg(Register src, Register dest);
-    void move_reg_mem(Register src, size_t offset, Register dest);
-    void move_mem_reg(size_t offset, Register src, Register dest);
-    void move_imm_memx(RegInstr* instr, size_t offset, Register dest);
-    void move_imm_mem(size_t imm, size_t offset, Register dest);
-    void move_imm_reg(size_t imm, Register reg);
+    void move_reg_mem(Register src, int32_t offset, Register dest);
+    void move_mem_reg(int32_t offset, Register src, Register dest);
+    void move_imm_memx(RegInstr* instr, int32_t offset, Register dest);
+    void move_imm_mem(int32_t imm, int32_t offset, Register dest);
+    void move_imm_reg(int32_t imm, Register reg);
     void move_imm_xreg(RegInstr* instr, Register reg);
-    void move_mem_xreg(size_t offset, Register src, Register dest);
-    void move_xreg_mem(Register src, size_t offset, Register dest);
+    void move_mem_xreg(int32_t offset, Register src, Register dest);
+    void move_xreg_mem(Register src, int32_t offset, Register dest);
     void move_xreg_xreg(Register src, Register dest);
 
     // math instructions
-    void math_imm_reg(size_t imm, Register reg, InstructionType type);    
+    void math_imm_reg(int32_t imm, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
-    void math_mem_reg(size_t offset, Register reg, InstructionType type);
+    void math_mem_reg(int32_t offset, Register reg, InstructionType type);
     void math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, InstructionType type);
-    void math_mem_xreg(size_t offset, RegisterHolder *&reg, InstructionType type);
+    void math_mem_xreg(int32_t offset, RegisterHolder *&reg, InstructionType type);
     void math_xreg_xreg(Register src, RegisterHolder *&dest, InstructionType type);
     
     // logical
-    void and_imm_reg(size_t imm, Register reg);
+    void and_imm_reg(int32_t imm, Register reg);
     void and_reg_reg(Register src, Register dest);
-    void and_mem_reg(size_t offset, Register src, Register dest);
-    void or_imm_reg(size_t imm, Register reg);
+    void and_mem_reg(int32_t offset, Register src, Register dest);
+    void or_imm_reg(int32_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);
-    void or_mem_reg(size_t offset, Register src, Register dest);
-    void xor_imm_reg(size_t imm, Register reg);
+    void or_mem_reg(int32_t offset, Register src, Register dest);
+    void xor_imm_reg(int32_t imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
-    void xor_mem_reg(size_t offset, Register src, Register dest);
+    void xor_mem_reg(int32_t offset, Register src, Register dest);
     
     // add instructions
-    void add_imm_mem(size_t imm, size_t offset, Register dest);    
-    void add_imm_reg(size_t imm, Register reg);    
+    void add_imm_mem(int32_t imm, int32_t offset, Register dest);
+    void add_imm_reg(int32_t imm, Register reg);
     void add_imm_xreg(RegInstr* instr, Register reg);
     void add_xreg_xreg(Register src, Register dest);
-    void add_mem_reg(size_t offset, Register src, Register dest);
-    void add_mem_xreg(size_t offset, Register src, Register dest);
+    void add_mem_reg(int32_t offset, Register src, Register dest);
+    void add_mem_xreg(int32_t offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
 
     // sub instructions
     void sub_imm_xreg(RegInstr* instr, Register reg);
     void sub_xreg_xreg(Register src, Register dest);
-    void sub_mem_xreg(size_t offset, Register src, Register dest);
-    void sub_imm_reg(size_t imm, Register reg);
-    void sub_imm_mem(size_t imm, size_t offset, Register dest);
+    void sub_mem_xreg(int32_t offset, Register src, Register dest);
+    void sub_imm_reg(int32_t imm, Register reg);
+    void sub_imm_mem(int32_t imm, int32_t offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
-    void sub_mem_reg(size_t offset, Register src, Register dest);
+    void sub_mem_reg(int32_t offset, Register src, Register dest);
 
     // mul instructions
     void mul_imm_xreg(RegInstr* instr, Register reg);
     void mul_xreg_xreg(Register src, Register dest);
-    void mul_mem_xreg(size_t offset, Register src, Register dest);
-    void mul_imm_reg(size_t imm, Register reg);
+    void mul_mem_xreg(int32_t offset, Register src, Register dest);
+    void mul_imm_reg(int32_t imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
-    void mul_mem_reg(size_t offset, Register src, Register dest);
+    void mul_mem_reg(int32_t offset, Register src, Register dest);
 
     // div instructions
     void div_imm_xreg(RegInstr* instr, Register reg);
     void div_xreg_xreg(Register src, Register dest);
-    void div_mem_xreg(size_t offset, Register src, Register dest);
-    void div_imm_reg(size_t imm, Register reg, bool is_mod = false);
+    void div_mem_xreg(int32_t offset, Register src, Register dest);
+    void div_imm_reg(int32_t imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
-    void div_mem_reg(size_t offset, Register src, Register dest, bool is_mod = false);
+    void div_mem_reg(int32_t offset, Register src, Register dest, bool is_mod = false);
 
     // compare instructions
     void cmp_reg_reg(Register src, Register dest);
-    void cmp_mem_reg(size_t offset, Register src, Register dest);
-    void cmp_imm_reg(size_t imm, Register reg);
+    void cmp_mem_reg(int32_t offset, Register src, Register dest);
+    void cmp_imm_reg(int32_t imm, Register reg);
     
     void cmp_xreg_xreg(Register src, Register dest);
-    void cmp_mem_xreg(size_t offset, Register src, Register dest);
+    void cmp_mem_xreg(int32_t offset, Register src, Register dest);
     void cmp_imm_xreg(RegInstr* instr, Register reg);
     
     void cmov_reg(Register reg, InstructionType oper);
 
     // inc/dec instructions
     void dec_reg(Register dest);
-    void dec_mem(size_t offset, Register dest);
-    void inc_mem(size_t offset, Register dest);
+    void dec_mem(int32_t offset, Register dest);
+    void inc_mem(int32_t offset, Register dest);
 
     // shift instructions
     void shl_reg_reg(Register src, Register dest);
-    void shl_mem_reg(size_t offset, Register src, Register dest);
-    void shl_imm_reg(size_t value, Register dest);
+    void shl_mem_reg(int32_t offset, Register src, Register dest);
+    void shl_imm_reg(int32_t value, Register dest);
 
     void shr_reg_reg(Register src, Register dest);
-    void shr_mem_reg(size_t offset, Register src, Register dest);
-    void shr_imm_reg(size_t value, Register dest);
+    void shr_mem_reg(int32_t offset, Register src, Register dest);
+    void shr_imm_reg(int32_t value, Register dest);
 
     // push/pop instructions
-    void push_imm(size_t value);
+    void push_imm(int32_t value);
     void push_reg(Register reg);
     void pop_reg(Register reg);
-    void push_mem(size_t offset, Register src);
+    void push_mem(int32_t offset, Register src);
 
     // type conversion instructions
     void round_imm_xreg(RegInstr* instr, Register reg, bool is_floor);
-    void round_mem_xreg(size_t offset, Register src, Register dest, bool is_floor);
+    void round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor);
     void round_xreg_xreg(Register src, Register dest, bool is_floor);
     void vcvt_xreg_reg(Register src, Register dest);
     void vcvt_imm_reg(RegInstr* instr, Register reg);
-    void vcvt_mem_reg(size_t offset, Register src, Register dest);
+    void vcvt_mem_reg(int32_t offset, Register src, Register dest);
     void vcvt_reg_xreg(Register src, Register dest);
     void vcvt_imm_xreg(RegInstr* instr, Register reg);
-    void vcvt_mem_xreg(size_t offset, Register src, Register dest);
+    void vcvt_mem_xreg(int32_t offset, Register src, Register dest);
 
     // function call instruction
     void call_reg(Register reg);
     
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
-    void loop(size_t offset);
-
-    inline static size_t PopInt(size_t* op_stack, size_t *stack_pos) {
-      size_t value = op_stack[--(*stack_pos)];
-#ifdef _DEBUG
+    void loop(int32_t offset);
+    
+    static size_t PopInt(size_t* op_stack, long *stack_pos) {
+      const size_t value = op_stack[--(*stack_pos)];
+#ifdef _DEBUG_JIT
       wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
 
       return value;
     }
 
-    inline static void PushInt(size_t* op_stack, size_t *stack_pos, size_t value) {
+    static void PushInt(size_t* op_stack, long *stack_pos, size_t value) {
       op_stack[(*stack_pos)++] = value;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
     }
 
-    inline static FLOAT_VALUE PopFloat(size_t* op_stack, size_t* stack_pos) {
-      (*stack_pos) -= 2;
+    inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
+      (*stack_pos)--;
       
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << endl;
       return v;
@@ -664,22 +664,22 @@ namespace Runtime {
       return *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
     }
 
-    inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, size_t* stack_pos) {
-#ifdef _DEBUG
+    inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
+#ifdef _DEBUG_JIT
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; call_pos=" << (*stack_pos) << endl;
 #endif
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-      (*stack_pos) += 2;
+      (*stack_pos)++;
     }
 
     // Process call backs from ASM code
-    static void JitStackCallback(const size_t instr_id, StackInstr* instr, const size_t cls_id, 
-                                const size_t mthd_id, size_t* inst, size_t* op_stack, size_t *stack_pos, 
-                                StackFrame** call_stack, long* call_stack_pos, const size_t ip); 
+    static void JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id,
+                                const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t *stack_pos,
+                                StackFrame** call_stack, long* call_stack_pos, const int32_t ip);
     
-    // Calculates array element offset. 
-    // Note: this code must match up 
+    // Calculates array element offset.
+    // Note: this code must match up
     // with the interpreter's 'ArrayIndex'
     // method. Bounds checks are not done on
     // JIT code.
@@ -689,13 +689,13 @@ namespace Runtime {
     // memory references.
     void ProcessIndices();
 
-  public: 
+  public:
     static void Initialize(StackProgram* p);
 
-    JitCompilerA32() {
+    JitCompilerA64() {
     }
 
-    ~JitCompilerA32() {
+    ~JitCompilerA64() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
@@ -703,7 +703,7 @@ namespace Runtime {
           delete instr;
           instr = nullptr;
         }
-      }      
+      }
 
       while(!aval_regs.empty()) {
         RegisterHolder* holder = aval_regs.back();
@@ -764,8 +764,8 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef size_t (*jit_fun_ptr)(size_t cls_id, size_t mthd_id, size_t *cls_mem, size_t *inst, size_t *op_stack, long *stack_pos, 
-                                 StackFrame **call_stack, long *call_stack_pos, size_t **jit_mem, long *offset, size_t *ints);
+  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, size_t *cls_mem, size_t *inst, size_t *op_stack, long *stack_pos,
+                                 StackFrame **call_stack, long *call_stack_pos, size_t **jit_mem, long *offset, int32_t *ints);
   
   /********************************
    * JitExecutor class
@@ -777,7 +777,7 @@ namespace Runtime {
     static void Initialize(StackProgram* p);
     
     // Executes machine code
-    long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, 
+    long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos,
                  StackFrame** call_stack, long* call_stack_pos, StackFrame *frame);
   };
 }
