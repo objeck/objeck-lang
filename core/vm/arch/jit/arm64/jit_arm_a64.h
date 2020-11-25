@@ -243,16 +243,16 @@ namespace Runtime {
    * Manage executable buffers of memory
    ********************************/
   class PageHolder {
-    usize_t* buffer;
-    usize_t available, index;
+    int32_t* buffer;
+    int32_t available, index;
 
   public:
     PageHolder(size_t size) {
       index = 0;
 
-      const usize_t byte_size = size * sizeof(usize_t);
+      const int32_t byte_size = size * sizeof(int32_t);
       int factor = byte_size / PAGE_SIZE + 1;
-      const usize_t alloc_size = PAGE_SIZE * factor;
+      const int32_t alloc_size = PAGE_SIZE * factor;
       
       if(posix_memalign((void**)&buffer, PAGE_SIZE, alloc_size)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -273,7 +273,7 @@ namespace Runtime {
     }
 
     inline bool CanAddCode(size_t size) {
-      const size_t size_diff = available - size * sizeof(usize_t);
+      const size_t size_diff = available - size * sizeof(int32_t);
       if(size_diff > 0) {
         return true;
       }
@@ -281,7 +281,7 @@ namespace Runtime {
       return false;
     }
     
-    usize_t* AddCode(usize_t* code, size_t size);
+    int32_t* AddCode(int32_t* code, size_t size);
   };
   
   class PageManager {
@@ -292,7 +292,7 @@ namespace Runtime {
 
     ~PageManager();
 
-    usize_t* GetPage(usize_t* code, size_t size);
+    int32_t* GetPage(int32_t* code, size_t size);
   };
   
   /********************************
@@ -317,8 +317,8 @@ namespace Runtime {
     bool realign_stack;
     StackMethod* method;
     size_t instr_count;
-	  usize_t* code;
-    usize_t code_index;
+	int32_t* code;
+    int32_t code_index;
     size_t epilog_index;
     size_t* ints;
     double* float_consts;     
@@ -365,10 +365,10 @@ namespace Runtime {
     void ProcessIntToFloat(StackInstr* instr);
     
     // Add byte code to buffer
-    inline void AddMachineCode(usize_t i) {
-      if(code_index * sizeof(usize_t) >= (usize_t)code_buf_max) {
+    inline void AddMachineCode(int32_t i) {
+      if(code_index * sizeof(int32_t) >= (int32_t)code_buf_max) {
         code_buf_max *= 2;
-        code = (usize_t*)realloc(code, code_buf_max); 
+        code = (int32_t*)realloc(code, code_buf_max); 
         if(!code) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);

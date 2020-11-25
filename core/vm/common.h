@@ -226,7 +226,7 @@ class StackInstr
  * JIT compile code
  ********************************/
 class NativeCode {
-#ifdef _ARM32
+#if defined(_ARM32) || defined(_ARM64)
   uint32_t* code;
   int32_t* ints;
 #else

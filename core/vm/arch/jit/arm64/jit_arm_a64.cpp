@@ -51,7 +51,7 @@ void JitCompilerA32::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  usize_t setup_code[] = {
+  int32_t setup_code[] = {
     0xe52db004,                 // push  {fp}
     0xe92d01f0,						      // push {r4-r8}
 		0xe28db000,						      // add fp, sp, #0
@@ -92,7 +92,7 @@ void JitCompilerA32::Epilog() {
   AddMachineCode(0xea000000);
     
   move_imm_reg(0, R0);
-  usize_t teardown_code[] = {
+  int32_t teardown_code[] = {
     0xe24bd000, // sub sp, fp, #0
     0xe8bd01f0, // pop {r4-r7}‬
     0xe49db004, // pop {fp}
@@ -1588,7 +1588,7 @@ void JitCompilerA32::ProcessStackCallback(size_t instr_id, StackInstr* instr, si
   move_imm_reg((size_t)instr, R1);
   move_imm_reg(instr_id, R0);
   
-  move_imm_reg((usize_t)JitCompilerA32::JitStackCallback, R8);
+  move_imm_reg((int32_t)JitCompilerA32::JitStackCallback, R8);
   call_reg(R8);
   
   // restore register values
@@ -2052,12 +2052,12 @@ void JitCompilerA32::move_reg_reg(Register src, Register dest) {
 	  << L", " << GetRegisterName(src) << L"]" << endl;
 #endif    
     
-    usize_t op_code = 0xe1a00000;
+    int32_t op_code = 0xe1a00000;
     
-    usize_t op_dest = dest << 12;
+    int32_t op_dest = dest << 12;
     op_code |= op_dest;
     
-    usize_t op_offset = src;
+    int32_t op_offset = src;
     op_code |= op_offset;
     
     // encode
@@ -2071,7 +2071,7 @@ void JitCompilerA32::move_reg_mem(Register src, size_t offset, Register dest) {
 	<< L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
 #endif
   
-  usize_t op_code;
+  int32_t op_code;
   if(offset >= 0) {
     // forward
     op_code = 0xe5800000;
@@ -2081,13 +2081,13 @@ void JitCompilerA32::move_reg_mem(Register src, size_t offset, Register dest) {
     op_code = 0xe5000000;
   }
   
-  usize_t op_dest = dest << 16;
+  int32_t op_dest = dest << 16;
   op_code |= op_dest;
   
-  usize_t op_src = src << 12;
+  int32_t op_src = src << 12;
   op_code |= op_src;
   
-  usize_t op_offset = abs(offset);
+  int32_t op_offset = abs(offset);
   op_code |= op_offset;
   
   // encode
@@ -2100,7 +2100,7 @@ void JitCompilerA32::move_mem_reg(size_t offset, Register src, Register dest) {
 	<< L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
 #endif
   
-  usize_t op_code;
+  int32_t op_code;
   if(offset >= 0) {
     // forward
     op_code = 0xe5900000;
@@ -2110,13 +2110,13 @@ void JitCompilerA32::move_mem_reg(size_t offset, Register src, Register dest) {
     op_code = 0xe5100000;    
   }
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
   
-  usize_t op_offset = abs(offset);
+  int32_t op_offset = abs(offset);
   op_code |= op_offset;
   
   // encode
@@ -2130,7 +2130,7 @@ void JitCompilerA32::move_reg_mem8(Register src, size_t offset, Register dest) {
 	      << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
 #endif
     
-  usize_t op_code;
+  int32_t op_code;
   if(offset >= 0) {
     // forward
     op_code = 0xe5c00000;
@@ -2140,13 +2140,13 @@ void JitCompilerA32::move_reg_mem8(Register src, size_t offset, Register dest) {
     op_code = 0xe5400000;
   }
   
-  usize_t op_dest = dest << 16;
+  int32_t op_dest = dest << 16;
   op_code |= op_dest;
   
-  usize_t op_src = src << 12;
+  int32_t op_src = src << 12;
   op_code |= op_src;
   
-  usize_t op_offset = abs(offset);
+  int32_t op_offset = abs(offset);
   op_code |= op_offset;
   
   // encode
@@ -2159,7 +2159,7 @@ void JitCompilerA32::move_mem8_reg(size_t offset, Register src, Register dest) {
 	      << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
 #endif
     
-  usize_t op_code;
+  int32_t op_code;
   if(offset >= 0) {
     // forward
     op_code = 0xe5d00000;
@@ -2169,13 +2169,13 @@ void JitCompilerA32::move_mem8_reg(size_t offset, Register src, Register dest) {
     op_code = 0xe5500000;    
   }
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
   
-  usize_t op_offset = abs(offset);
+  int32_t op_offset = abs(offset);
   op_code |= op_offset;
   
   // encode
@@ -2202,9 +2202,9 @@ void JitCompilerA32::move_imm_reg(size_t imm, Register reg) {
     wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
 #endif
-    usize_t op_code = 0xe3e00000;
+    int32_t op_code = 0xe3e00000;
 
-    usize_t op_dest = reg << 12;
+    int32_t op_dest = reg << 12;
     op_code |= op_dest;
     op_code |= abs(imm) - 1;
 
@@ -2214,9 +2214,9 @@ void JitCompilerA32::move_imm_reg(size_t imm, Register reg) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
-    usize_t op_code = 0xe3a00000;
+    int32_t op_code = 0xe3a00000;
     
-    usize_t op_dest = reg << 12;
+    int32_t op_dest = reg << 12;
     op_code |= op_dest;
     op_code |= abs(imm);
 
@@ -2227,9 +2227,9 @@ void JitCompilerA32::move_imm_reg(size_t imm, Register reg) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
-    usize_t op_code = 0xe5980000;
+    int32_t op_code = 0xe5980000;
     
-    usize_t op_dest = reg << 12;
+    int32_t op_dest = reg << 12;
     op_code |= op_dest;
     
     // save code index
@@ -2261,7 +2261,7 @@ void JitCompilerA32::move_mem_xreg(size_t offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code;
+  int32_t op_code;
   if(offset >= 0) {
     // forward
     op_code = 0xed900b00;
@@ -2271,13 +2271,13 @@ void JitCompilerA32::move_mem_xreg(size_t offset, Register src, Register dest) {
     op_code = 0xed100b00;    
   }
     
-  usize_t op_dest = src << 16;
+  int32_t op_dest = src << 16;
   op_code |= op_dest;
   
-  usize_t op_src = dest << 12;
+  int32_t op_src = dest << 12;
   op_code |= op_src;
   
-  usize_t op_offset = abs(offset) >> 2;
+  int32_t op_offset = abs(offset) >> 2;
   op_code |= op_offset;
   
   // encode
@@ -2291,7 +2291,7 @@ void JitCompilerA32::move_xreg_mem(Register src, size_t offset, Register dest) {
         << endl;
 #endif 
   
-  usize_t op_code;
+  int32_t op_code;
   if(offset >= 0) {
     // forward
     op_code = 0xed800b00;
@@ -2301,13 +2301,13 @@ void JitCompilerA32::move_xreg_mem(Register src, size_t offset, Register dest) {
     op_code = 0xed000b00;
   }
   
-  usize_t op_dest = dest << 16;
+  int32_t op_dest = dest << 16;
   op_code |= op_dest;
   
-  usize_t op_src = src << 12;
+  int32_t op_src = src << 12;
   op_code |= op_src;
   
-  usize_t op_offset = abs(offset) >> 2;
+  int32_t op_offset = abs(offset) >> 2;
   op_code |= op_offset;
   
   // encode
@@ -2320,12 +2320,12 @@ void JitCompilerA32::add_xreg_xreg(Register src, Register dest) {
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xee300b00;
+  int32_t op_code = 0xee300b00;
   
-  usize_t op_src = dest << 16;
+  int32_t op_src = dest << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 	
   op_code |= src;
@@ -2340,12 +2340,12 @@ void JitCompilerA32::sub_xreg_xreg(Register src, Register dest) {
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xee300b40;
+  int32_t op_code = 0xee300b40;
   
-  usize_t op_src = dest << 16;
+  int32_t op_src = dest << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 	
   op_code |= src;
@@ -2360,12 +2360,12 @@ void JitCompilerA32::mul_xreg_xreg(Register src, Register dest) {
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xee200b00;
+  int32_t op_code = 0xee200b00;
   
-  usize_t op_src = dest << 16;
+  int32_t op_src = dest << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 	
   op_code |= src;
@@ -2380,12 +2380,12 @@ void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xee800b00;
+  int32_t op_code = 0xee800b00;
   
-  usize_t op_src = dest << 16;
+  int32_t op_src = dest << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 	
   op_code |= src;
@@ -2513,9 +2513,9 @@ void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xeeb00b40;
+  int32_t op_code = 0xeeb00b40;
   
-  usize_t op_src = dest << 12;
+  int32_t op_src = dest << 12;
   op_code |= op_src;
 	
   op_code |= src;
@@ -2530,9 +2530,9 @@ void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xeeb40b40;
+  int32_t op_code = 0xeeb40b40;
   
-  usize_t op_src = dest << 12;
+  int32_t op_src = dest << 12;
   op_code |= op_src;
 	
   op_code |= src;
@@ -2560,12 +2560,12 @@ void JitCompilerA32::and_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [and " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe0000000;
+  int32_t op_code = 0xe0000000;
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2593,12 +2593,12 @@ void JitCompilerA32::or_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [orr " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe1800000;
+  int32_t op_code = 0xe1800000;
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2626,12 +2626,12 @@ void JitCompilerA32::xor_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [eor " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe0200000;
+  int32_t op_code = 0xe0200000;
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2660,12 +2660,12 @@ void JitCompilerA32::shl_reg_reg(Register src, Register dest)
   wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) 
        << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe1a00010;
+  int32_t op_code = 0xe1a00010;
   
-  usize_t op_src = dest << 12;
+  int32_t op_src = dest << 12;
   op_code |= op_src;
   
-  usize_t op_dest = src << 8;
+  int32_t op_dest = src << 8;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2700,12 +2700,12 @@ void JitCompilerA32::shr_reg_reg(Register src, Register dest)
   wcout << L"  " << (++instr_count) << L": [asr " << GetRegisterName(dest) 
        << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe1a00050;
+  int32_t op_code = 0xe1a00050;
   
-  usize_t op_src = dest << 12;
+  int32_t op_src = dest << 12;
   op_code |= op_src;
   
-  usize_t op_dest = src << 8;
+  int32_t op_dest = src << 8;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2775,12 +2775,12 @@ void JitCompilerA32::add_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(dest) 
 	<< L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe0800000;
+  int32_t op_code = 0xe0800000;
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2795,15 +2795,15 @@ void JitCompilerA32::add_imm_reg(size_t imm, Register reg) {
 	      << GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xe2800000;
+  int32_t op_code = 0xe2800000;
   
-  usize_t op_src = reg << 16;
+  int32_t op_src = reg << 16;
   op_code |= op_src;
   
-  usize_t op_dest = reg << 12;
+  int32_t op_dest = reg << 12;
   op_code |= op_dest;
   
-  usize_t op_imm = imm;
+  int32_t op_imm = imm;
   op_code |= op_imm;
   
   // encode
@@ -2842,12 +2842,12 @@ void JitCompilerA32::sub_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [rsb " << GetRegisterName(dest) << L", "
 	<< GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe0600000;
+  int32_t op_code = 0xe0600000;
   
-  usize_t op_src = src << 16;
+  int32_t op_src = src << 16;
   op_code |= op_src;
   
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2862,15 +2862,15 @@ void JitCompilerA32::sub_imm_reg(size_t imm, Register reg) {
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
   
-  usize_t op_code = 0xe2400000;
+  int32_t op_code = 0xe2400000;
   
-  usize_t op_src = reg << 16;
+  int32_t op_src = reg << 16;
   op_code |= op_src;
   
-  usize_t op_dest = reg << 12;
+  int32_t op_dest = reg << 12;
   op_code |= op_dest;
   
-  usize_t op_imm = imm;
+  int32_t op_imm = imm;
   op_code |= op_imm;
   
   // encode
@@ -2891,16 +2891,16 @@ void JitCompilerA32::shl_imm_reg(size_t value, Register dest) {
 	<< GetRegisterName(dest) << L", #" << value << L"]" << endl;
 #endif
                                  
-  usize_t op_code = 0xe1a00000;
+  int32_t op_code = 0xe1a00000;
       
-  usize_t op_dest = dest << 12;
+  int32_t op_dest = dest << 12;
   op_code |= op_dest;
 
   
-  usize_t op_imm = value << 7;
+  int32_t op_imm = value << 7;
   op_code |= op_imm;
   
-  usize_t op_src = dest;
+  int32_t op_src = dest;
   op_code |= op_src;
 
   // encode
@@ -2922,12 +2922,12 @@ void JitCompilerA32::mul_mem_reg(size_t offset, Register src, Register dest) {
 }
 
 void JitCompilerA32::mul_reg_reg(Register src, Register dest) {
-  usize_t op_code = 0xe0000090;
+  int32_t op_code = 0xe0000090;
   
-  usize_t op_dest = dest << 16;
+  int32_t op_dest = dest << 16;
   op_code |= op_dest;
   
-  usize_t op_src = src << 8;
+  int32_t op_src = src << 8;
   op_code |= op_src;
   
   op_code |= dest;
@@ -2958,18 +2958,18 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   RegisterHolder* result_holder = nullptr;
 
   // sign divide
-  usize_t op_code = 0xe710f010;
+  int32_t op_code = 0xe710f010;
   if(is_mod) {
     result_holder = GetRegister();
-    usize_t op_dest = result_holder->GetRegister() << 16;
+    int32_t op_dest = result_holder->GetRegister() << 16;
     op_code |= op_dest;
   }
   else {
-    usize_t op_dest = dest << 16;
+    int32_t op_dest = dest << 16;
     op_code |= op_dest;
   }
   
-  usize_t op_src = src << 8;
+  int32_t op_src = src << 8;
   op_code |= op_src;
   
   op_code |= dest;
@@ -2990,9 +2990,9 @@ void JitCompilerA32::cmp_imm_reg(size_t imm, Register reg) {
 #endif
   
   if (imm < 0 && imm >= -256) {
-    usize_t op_code = 0xe3700000;
+    int32_t op_code = 0xe3700000;
     
-    usize_t op_dest = reg << 16;
+    int32_t op_dest = reg << 16;
     op_code |= op_dest;
   
     op_code |= abs(imm);
@@ -3000,9 +3000,9 @@ void JitCompilerA32::cmp_imm_reg(size_t imm, Register reg) {
     AddMachineCode(op_code);
   }
   else if(imm <= 255 && imm >= 0) {
-    usize_t op_code = 0xe3500000;
+    int32_t op_code = 0xe3500000;
     
-    usize_t op_dest = reg << 16;
+    int32_t op_dest = reg << 16;
     op_code |= op_dest;
   
     op_code |= abs(imm);
@@ -3029,9 +3029,9 @@ void JitCompilerA32::cmp_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [cmp " << GetRegisterName(dest) 
        << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-  usize_t op_code = 0xe1500000;
+  int32_t op_code = 0xe1500000;
   
-  usize_t op_dest = dest << 16;
+  int32_t op_dest = dest << 16;
   op_code |= op_dest;
   
   op_code |= src;
@@ -3380,7 +3380,7 @@ void JitCompilerA32::call_reg(Register reg) {
   
   move_reg_mem(LR, TMP_REG_LR, FP);
 
-  usize_t op_code = 0xe12fff30;
+  int32_t op_code = 0xe12fff30;
   op_code |= reg;
   AddMachineCode(op_code);
   
@@ -3389,7 +3389,7 @@ void JitCompilerA32::call_reg(Register reg) {
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
 {
-  usize_t op_code, op_dest;
+  int32_t op_code, op_dest;
   
   switch (oper) {
   case LES_INT:
@@ -3619,7 +3619,7 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   
   // call function
   move_reg_mem(R8, TMP_REG_0, FP);
-  move_imm_reg((usize_t)func_ptr, R8);
+  move_imm_reg((int32_t)func_ptr, R8);
   call_reg(R8);
   move_mem_reg(TMP_REG_0, FP, R8);
   
@@ -3676,7 +3676,7 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   
   // call function
   move_reg_mem(R8, TMP_REG_0, FP);
-  move_imm_reg((usize_t)func_ptr, R8);
+  move_imm_reg((int32_t)func_ptr, R8);
   call_reg(R8);
   move_mem_reg(TMP_REG_0, FP, R8);
   
@@ -3733,8 +3733,8 @@ void JitCompilerA32::vcvt_reg_xreg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
-  usize_t op_code = 0xee070a90;
-  usize_t op_dest = src << 12;
+  int32_t op_code = 0xee070a90;
+  int32_t op_dest = src << 12;
   op_code |= op_dest;
   AddMachineCode(op_code);
   
@@ -3756,12 +3756,12 @@ void JitCompilerA32::vcvt_xreg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [vcvt.s32.f64 %" << GetRegisterName(dest) 
         << L", %" << GetRegisterName(src) << L"]" << endl;
 #endif
-  usize_t op_code = 0xeefd7bc0;
+  int32_t op_code = 0xeefd7bc0;
   op_code |= src;
   AddMachineCode(op_code);
   
   op_code = 0xee170a90;
-  const usize_t op_dest = dest << 12;
+  const int32_t op_dest = dest << 12;
   op_code |= op_dest;
   AddMachineCode(op_code);
 }
@@ -4575,7 +4575,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       << method->GetParamCount() << L" ----------" << endl;
 #endif
 
-    code = (usize_t*)malloc(BUFFER_SIZE);
+    code = (int32_t*)malloc(BUFFER_SIZE);
     code_buf_max = BUFFER_SIZE;
     
     ints = new size_t[MAX_INTS];
@@ -4681,7 +4681,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
       const size_t offset = ints_index * sizeof(size_t);
       
       // 12-bit max for ldr offset
-      if(offset >= PAGE_SIZE * (size_t)sizeof(usize_t)) {
+      if(offset >= PAGE_SIZE * (size_t)sizeof(int32_t)) {
         free(code);
         code = nullptr;
         
@@ -4790,11 +4790,11 @@ PageManager::~PageManager()
   }
 }
 
-usize_t* PageManager::GetPage(usize_t* code, size_t size)
+int32_t* PageManager::GetPage(int32_t* code, size_t size)
 {
   bool placed = false;
 
-  usize_t* temp = nullptr;
+  int32_t* temp = nullptr;
   for(size_t i = 0; !placed && i < holders.size(); ++i) {
     PageHolder* holder = holders[i];
     if(holder->CanAddCode(size)) {
@@ -4815,12 +4815,12 @@ usize_t* PageManager::GetPage(usize_t* code, size_t size)
 /********************************
  * PageHolder class
  ********************************/
-usize_t* PageHolder::AddCode(usize_t* code, size_t size) {
+int32_t* PageHolder::AddCode(int32_t* code, size_t size) {
   // get index into buffer
-  usize_t* temp = buffer + index;
+  int32_t* temp = buffer + index;
   
   // copy and flush instruction cache
-  const usize_t byte_size = size * sizeof(usize_t);
+  const int32_t byte_size = size * sizeof(int32_t);
   memcpy(temp, code, byte_size);
   __clear_cache(temp, temp + byte_size);
   
