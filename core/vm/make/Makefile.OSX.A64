@@ -6,16 +6,16 @@ CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_arm_a64.a memory.a
 MEM_PATH=arch
-JIT_PATH=arch/jit/amd64
+JIT_PATH=arch/jit/arm64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) -L../lib/openssl/macos/arm64 $(OBJ_LIBS) -lssl -lcrypto -ldl -lz
+	$(CC) -o $(EXE) $(SRC) -L../lib/openssl/macos/arm64 $(OBJ_LIBS) -lz
 
 memory.a:
 	cd $(MEM_PATH); make -f Makefile.OSX.A64
 	
-jit_amd_lp64.a:
+jit_arm_a64.a:
 	cd $(JIT_PATH); make -f Makefile.OSX.A64
 	
 %.o: %.cpp
