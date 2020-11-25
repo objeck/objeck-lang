@@ -197,7 +197,7 @@ bundle Collection.Generic {
 
 		#~
 		Pushes a value onto the stack
-		@value value to push
+		@param value to push
 		~#
 		method : public: Push(value : H) ~ Nil {
 			@values->AddBack(value);
