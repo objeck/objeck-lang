@@ -10,7 +10,7 @@ JIT_PATH=arch/jit/arm64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -o $(EXE) $(SRC) -L../lib/openssl/macos/arm64 $(OBJ_LIBS) -lz
+	$(CC) -o $(EXE) $(SRC) -Wl,../lib/openssl/macos/arm64/libcrypto.a -Wl,../lib/openssl/macos/arm64/libssl.a $(OBJ_LIBS) -lz
 
 memory.a:
 	cd $(MEM_PATH); make -f Makefile.OSX.A64
