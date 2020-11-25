@@ -1,0 +1,11 @@
+prefix=/Users/randyhollines/Documents/Temp/openssl-apple-master/bin/MacOSX10.15-x86_64.sdk
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: OpenSSL-libssl
+Description: Secure Sockets Layer and cryptography libraries
+Version: 1.1.1h
+Requires.private: libcrypto
+Libs: -L${libdir} -lssl
+Cflags: -I${includedir}
