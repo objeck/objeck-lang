@@ -419,6 +419,11 @@
 					"$(SDKROOT)/usr/lib/system",
 					/usr/local/lib,
 				);
+				"OTHER_LDFLAGS[arch=*]" = (
+					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
+					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
+					"-lz",
+				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -445,6 +450,11 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
 					/usr/local/lib,
+				);
+				"OTHER_LDFLAGS[arch=*]" = (
+					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
+					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
+					"-lz",
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
