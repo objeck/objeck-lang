@@ -3853,7 +3853,9 @@ std::wstring JitCompilerA64::GetRegisterName(Register reg)
 //
 // callback to stack interpreter
 //
-void JitCompilerA64::JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
+void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
+                                      const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos,
+                                      StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
 #ifdef _DEBUG
   wcout << L"Stack Call: instr=" << instr_id << L", oper_1=" << instr->GetOperand() << L", oper_2="
@@ -4739,7 +4741,8 @@ void JitExecutor::Initialize(StackProgram* p)
 }
 
 // Executes machine code
-long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame)
+long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos,
+                          StackFrame** call_stack, long* call_stack_pos, StackFrame* frame)
 {
   const int32_t cls_id = method->GetClass()->GetId();
   const int32_t mthd_id = method->GetId();
@@ -4759,7 +4762,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
   
   // execute
-  const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
+  const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
                                      call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), int_consts);
 
 #ifdef _DEBUG
