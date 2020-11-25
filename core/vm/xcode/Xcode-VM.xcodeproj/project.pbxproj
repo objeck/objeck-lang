@@ -358,11 +358,10 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
-				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
+				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
-					/usr/local/lib,
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -385,11 +384,10 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
-				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
+				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
-					/usr/local/lib,
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -417,7 +415,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
-					/usr/local/lib,
 				);
 				"OTHER_LDFLAGS[arch=*]" = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
@@ -449,7 +446,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
-					/usr/local/lib,
 				);
 				"OTHER_LDFLAGS[arch=*]" = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
