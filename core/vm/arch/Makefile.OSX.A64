@@ -1,0 +1,17 @@
+# ARGS=-g -Wall -D_X64 -D_DEBUG -D_OSX -Wno-unused-function
+# ARGS=-g -Wall -D_X64 -D_DEBUG -D_OSX -D_GC_SERIAL -Wno-unused-function
+ARGS=-O3 -Wall -D_ARM64 -D_OSX -Wno-unused-function
+
+CC=clang++
+AR=ar
+SRC= memory.o
+LIB=../memory.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< -I../../lib/openssl/macos/include
+
+clean:
+	rm -f *.o *~ $(LIB)
