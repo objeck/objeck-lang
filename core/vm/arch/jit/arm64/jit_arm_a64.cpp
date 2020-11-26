@@ -4800,8 +4800,6 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   // START: Test for execute permissions
   //
   
-  
-  uint32_t* buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | MAP_JIT, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   const uint32_t instrs[] = {
     0xd10043ff, // sub sp, sp, #16
     0xf90007e0, // str x0, [sp, #8]
@@ -4810,21 +4808,23 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
     0x910043ff, // add sp, sp, #16
     0xd65f03c0  // ret
   };
-
-  pthread_jit_write_protect_np(false);
-  memcpy(buffer, instrs, sizeof(instrs));
-  __clear_cache(buffer, buffer + sizeof(instrs));
-  pthread_jit_write_protect_np(true);
   
-  uint32_t* buffer_ptr = (uint32_t*)mmap(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_JIT | MAP_ANONYMOUS, 0, 0);
-  if(buffer_ptr == MAP_FAILED) {
+  uint32_t* buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
+  if(buffer == MAP_FAILED) {
     std::cerr << "unable to mmap!" << std::endl;
     return 1;
   }
+  
+  pthread_jit_write_protect_np(false);
+  memcpy(buffer, instrs, sizeof(instrs));
+  __clear_cache(buffer, buffer + sizeof(instrs));
   fun_ptr func = (fun_ptr)buffer;
+  pthread_jit_write_protect_np(true);
   
   const long value = func(1, 2);
   wcout << value << endl;
+  
+  munmap(buffer, PAGE_SIZE);
   
   return -1;
   
