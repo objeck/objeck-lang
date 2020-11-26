@@ -254,6 +254,12 @@ namespace Runtime {
       int factor = byte_size / PAGE_SIZE + 1;
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
+      buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | MAP_JIT, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+      if(buffer == MAP_FAILED) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+      /*
       if(posix_memalign((void**)&buffer, PAGE_SIZE, alloc_size)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -263,6 +269,7 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
+      */
 
       available = alloc_size;
     }
