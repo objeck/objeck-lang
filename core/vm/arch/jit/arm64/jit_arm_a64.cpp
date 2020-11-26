@@ -2230,12 +2230,11 @@ void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
-    uint32_t op_code = 0xe3a00000;
+    uint32_t op_code = 0xd2800000;
     
-    uint32_t op_dest = reg << 12;
-    op_code |= op_dest;
-    op_code |= abs(imm);
-
+    op_code |= abs(imm) << 5;
+    op_code |= reg;
+    
     AddMachineCode(op_code);
   }
   else {
@@ -4643,16 +4642,23 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     // process offsets
     ProcessIndices();
+    
     // setup
     Prolog();
-    // method information
-    move_imm_mem(cls_id, CLS_ID, FP);
-    move_imm_mem(mthd_id, MTHD_ID, FP);
     
+    // TODO: store method information
+    // method information
+    // move_imm_mem(cls_id, CLS_ID, FP);
+    // move_imm_mem(mthd_id, MTHD_ID, FP);
+    
+    // TODO: register with memory manager
     // register root
-    RegisterRoot();
+    // RegisterRoot();
+    
+    // TODO: process calling parameters
     // translate parameters
-    ProcessParameters(method->GetParamCount());
+    // ProcessParameters(method->GetParamCount());
+    
     // tranlsate program
     ProcessInstructions();
     
@@ -4669,6 +4675,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       return false;
     }
 
+    /* TODO: update offsets
     // update jump addresses
     unordered_map<int32_t, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
@@ -4687,8 +4694,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
     }
-  
-    /* FIXME LATER
+    
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const int32_t index = deref_offsets[i] - 1;
@@ -4746,16 +4752,14 @@ bool JitCompilerA64::Compile(StackMethod* cm)
         int_pool_cache.insert(pair<int32_t, int32_t>(const_value, offset));
       }
     }
-     
-    
-    
+        
 #ifdef _DEBUG
     wcout << L"------------------------" << endl;
     wcout << L"int const pool: size=" << int_pool_cache.size() << L" ["
           << int_pool_cache.size() * sizeof(int32_t) << L" of " << sizeof(int32_t) * MAX_INTS << L" byte(s)]" << endl;
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
-     */
+    */
     
     // store compiled code
     method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, ints, float_consts));
@@ -4769,9 +4773,9 @@ bool JitCompilerA64::Compile(StackMethod* cm)
   return compile_success;
 }
 
-/********************************
+/**
  * JitExecutor class
- ********************************/
+ */
 StackProgram* JitExecutor::program;
 
 void JitExecutor::Initialize(StackProgram* p)
@@ -4802,7 +4806,6 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
   // execute
-  pthread_jit_write_protect_np(true);
   const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
                                   op_stack, stack_pos, call_stack, call_stack_pos, &(frame->jit_mem),
                                   &(frame->jit_offset), int_consts);
@@ -4814,9 +4817,9 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
    return rtrn_value;
 }
 
-/********************************
+/**
  * PageManager class
- ********************************/
+ */
 PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
@@ -4869,6 +4872,7 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   pthread_jit_write_protect_np(false);
   memcpy(temp, code, byte_size);
   __clear_cache(temp, temp + byte_size);
+  pthread_jit_write_protect_np(true);
   
   index += size;
   available -= byte_size;
