@@ -2213,8 +2213,9 @@ void JitCompilerA64::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
 }
 
 void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
-  if(imm < 0 && imm >= -256) {
+  if(imm < 0 && imm >= -65536) {
 #ifdef _DEBUG
+    // TODO: FIXME
     wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg)
     << L", #" << imm << L"]" << endl;
 #endif
@@ -2226,7 +2227,7 @@ void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
 
     AddMachineCode(op_code);
   }
-  else if(imm <= 255 && imm >= 0) {
+  else if(imm <= 65535 && imm >= 0) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -2238,6 +2239,8 @@ void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
     AddMachineCode(op_code);
   }
   else {
+    // TODO: FIXME
+    
     move_mem_reg(INT_CONSTS, FP, R8);
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
