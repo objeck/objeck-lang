@@ -1,4 +1,4 @@
-prefix=/Users/randyhollines/Documents/Temp/openssl-apple-master/bin/MacOSX10.15-x86_64.sdk
+prefix=/Users/randyhollines/Documents/Temp/openssl-apple-master/bin/MacOSX11.0-x86_64.sdk
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
