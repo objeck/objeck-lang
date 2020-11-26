@@ -52,21 +52,25 @@ void JitCompilerA64::Prolog() {
 #endif
 
   uint32_t setup_code[] = {
-    0xd10103ff,                 // TESTING
-    0x9100c3fd
-    /*
-    0xe52db004,                 // push  {fp}
-    0xe92d01f0,                  // push {r4-r8}
-    0xe28db000,                  // add fp, sp, #0
-    0xe24dd000 + local_space,   // sub sp, sp, #local_space
-    0xe50b0008,                  // str r0, [fp, #-8]
-    0xe50b100c,                  // str r1, [fp, #-12]
-    0xe50b2010,                  // str r2, [fp, #-16]
-    0xe50b3014                  // str r3, [fp, #-20]
-     */
+    0xd10183ff, // sub sp, sp, #96
+    0xf94033e8, // ldr x8, [sp, #96]
+    0xf94037e9, // ldr x9, [sp, #104]
+    0xf9403bea, // ldr x10, [sp, #112
+    0xf9002fe0, // str x0, [sp, #88]
+    0xf9002be1, // str x1, [sp, #80]
+    0xf90027e2, // str x2, [sp, #72]
+    0xf90023e3, // str x3, [sp, #64]
+    0xf9001fe4, // str x4, [sp, #56]
+    0xf9001be5, // str x5, [sp, #48]
+    0xf90017e6, // str x6, [sp, #40]
+    0xf90013e7, // str x7, [sp, #32]
+    0xf9000fe8, // str x8, [sp, #24]
+    0xf9000be9, // str x9, [sp, #16]
+    0xf90007ea  // str x10, [sp, #8]
   };
-  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
+  
   // copy setup
+  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
   for(int32_t i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
@@ -80,6 +84,7 @@ void JitCompilerA64::Epilog() {
   
   epilog_index = code_index;
   
+  /*
   // nominal
   AddMachineCode(0xea000005);
   
@@ -101,6 +106,13 @@ void JitCompilerA64::Epilog() {
     0xe8bd01f0, // pop {r4-r7}‬
     0xe49db004, // pop {fp}
     0xe12fff1e  // bx  lr
+  };
+  */
+  
+//  move_imm_reg(0, R0);
+  uint32_t teardown_code[] = {
+    0x910183ff, // add sp, sp, #96
+    0xd65f03c0  // ret
   };
   
   // copy teardown
@@ -4779,18 +4791,62 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   assert((*stack_pos) >= method->GetParamCount());
 #endif
 
+  
+  
+  
+  
+  
+  //
+  // START: Test for execute permissions
+  //
+  
+  
+  uint32_t* buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | MAP_JIT, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+  const uint32_t instrs[] = {
+    0xd10043ff, // sub sp, sp, #16
+    0xf90007e0, // str x0, [sp, #8]
+    0xf90003e1, // str x1, [sp]
+    0xd28001a0, // mov x0, #13
+    0x910043ff, // add sp, sp, #16
+    0xd65f03c0  // ret
+  };
+
+  pthread_jit_write_protect_np(false);
+  memcpy(buffer, instrs, sizeof(instrs));
+  __clear_cache(buffer, buffer + sizeof(instrs));
+  pthread_jit_write_protect_np(true);
+  
+  uint32_t* buffer_ptr = (uint32_t*)mmap(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_JIT | MAP_ANONYMOUS, 0, 0);
+  if(buffer_ptr == MAP_FAILED) {
+    std::cerr << "unable to mmap!" << std::endl;
+    return 1;
+  }
+  fun_ptr func = (fun_ptr)buffer;
+  
+  const long value = func(1, 2);
+  wcout << value << endl;
+  
+  return -1;
+  
+  //
+  // END: Test
+  //
+  
+  /*
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
   
   // execute
-  const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
-                                     call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), int_consts);
+  const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
+                                  op_stack, stack_pos, call_stack, call_stack_pos, &(frame->jit_mem),
+                                  &(frame->jit_offset), int_consts);
 
 #ifdef _DEBUG
   wcout << L"JIT return: " << rtrn_value << endl;
 #endif
-
-  return rtrn_value;
+   
+   return rtrn_value;
+  */
 }
 
 /********************************
@@ -4845,8 +4901,10 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   
   // copy and flush instruction cache
   const uint32_t byte_size = size * sizeof(uint32_t);
+  pthread_jit_write_protect_np(false);
   memcpy(temp, code, byte_size);
   __clear_cache(temp, temp + byte_size);
+  pthread_jit_write_protect_np(true);
   
   index += size;
   available -= byte_size;

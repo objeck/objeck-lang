@@ -239,6 +239,8 @@ namespace Runtime {
     }
   };
 
+typedef long (*fun_ptr)(long a, long b);
+
   /********************************
    * Manage executable buffers of memory
    ********************************/
@@ -254,23 +256,27 @@ namespace Runtime {
       int factor = byte_size / PAGE_SIZE + 1;
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
-      buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | MAP_JIT, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+      
+      
+      buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC , MAP_PRIVATE | MAP_ANON | MAP_JIT, 0, 0);
       if(buffer == MAP_FAILED) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-      /*
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, alloc_size)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
-        exit(1);
-      }
       
-      if(mprotect(buffer, alloc_size, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+      /*
+       if(posix_memalign((void**)&buffer, PAGE_SIZE, alloc_size)) {
+         wcerr << L"Unable to allocate JIT memory!" << endl;
+         exit(1);
+       }
+       
+      if(mprotect(buffer, alloc_size, PROT_READ | PROT_WRITE | MAP_JIT) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
       */
-
+       
+      
       available = alloc_size;
     }
 
@@ -771,7 +777,7 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t *cls_mem, size_t *inst,
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t *inst,
                               size_t *op_stack, long *stack_pos, StackFrame **call_stack,
                               long *call_stack_pos, size_t **jit_mem, long *offset, long *ints);
   
