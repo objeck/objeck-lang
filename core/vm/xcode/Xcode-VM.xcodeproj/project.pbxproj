@@ -15,6 +15,7 @@
 		255B2D771966EFB700AF1F2E /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D711966EFB700AF1F2E /* vm.cpp */; };
 		ED0340C9216A6B920091732E /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED0340C8216A6B920091732E /* memory.cpp */; };
 		ED31B188256F341C00FD5C27 /* jit_amd_lp64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */; };
+		ED56FE56256F367D00DFB0F9 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */; };
 		EDFEDD80256EE38100382F3F /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D711966EFB700AF1F2E /* vm.cpp */; };
 		EDFEDD81256EE38100382F3F /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6B1966EFB700AF1F2E /* interpreter.cpp */; };
 		EDFEDD83256EE38100382F3F /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6E1966EFB700AF1F2E /* loader.cpp */; };
@@ -68,6 +69,8 @@
 		ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.1.dylib; path = ../../../../../../../../usr/local/lib/libcrypto.1.1.dylib; sourceTree = "<group>"; };
 		ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
 		ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
+		ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
+		ED56FE55256F367D00DFB0F9 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
 		EDFEDD8F256EE38100382F3F /* Xcode-VM-A64 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Xcode-VM-A64"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -112,6 +115,8 @@
 		255B2D5F1966EF5400AF1F2E /* Xcode-VM */ = {
 			isa = PBXGroup;
 			children = (
+				ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */,
+				ED56FE55256F367D00DFB0F9 /* jit_arm_a64.h */,
 				ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */,
 				ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */,
 				ED0340C8216A6B920091732E /* memory.cpp */,
@@ -226,6 +231,7 @@
 			files = (
 				EDFEDD80256EE38100382F3F /* vm.cpp in Sources */,
 				EDFEDD81256EE38100382F3F /* interpreter.cpp in Sources */,
+				ED56FE56256F367D00DFB0F9 /* jit_arm_a64.cpp in Sources */,
 				EDFEDD83256EE38100382F3F /* loader.cpp in Sources */,
 				EDFEDD84256EE38100382F3F /* posix_main.cpp in Sources */,
 				EDFEDD85256EE38100382F3F /* memory.cpp in Sources */,
