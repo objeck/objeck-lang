@@ -4791,45 +4791,6 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   assert((*stack_pos) >= method->GetParamCount());
 #endif
   
-  /*
-
-  //
-  // START: Test for execute permissions
-  //
-  
-  const uint32_t instrs[] = {
-    0xd10043ff, // sub sp, sp, #16
-    0xf90007e0, // str x0, [sp, #8]
-    0xf90003e1, // str x1, [sp]
-    0xd28001a0, // mov x0, #13
-    0x910043ff, // add sp, sp, #16
-    0xd65f03c0  // ret
-  };
-  
-  uint32_t* buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
-  if(buffer == MAP_FAILED) {
-    std::cerr << "unable to mmap!" << std::endl;
-    return 1;
-  }
-  
-  pthread_jit_write_protect_np(false);
-  memcpy(buffer, instrs, sizeof(instrs));
-  __clear_cache(buffer, buffer + sizeof(instrs));
-  fun_ptr func = (fun_ptr)buffer;
-  pthread_jit_write_protect_np(true);
-  
-  const long value = func(1, 2);
-  wcout << value << endl;
-  
-  munmap(buffer, PAGE_SIZE);
-  
-  return -1;
-  
-  //
-  // END: Test
-  //
-  */
-  
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
   
