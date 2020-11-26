@@ -52,6 +52,9 @@ void JitCompilerA64::Prolog() {
 #endif
 
   uint32_t setup_code[] = {
+    0xd10103ff,                 // TESTING
+    0x9100c3fd
+    /*
     0xe52db004,                 // push  {fp}
     0xe92d01f0,                  // push {r4-r8}
     0xe28db000,                  // add fp, sp, #0
@@ -60,6 +63,7 @@ void JitCompilerA64::Prolog() {
     0xe50b100c,                  // str r1, [fp, #-12]
     0xe50b2010,                  // str r2, [fp, #-16]
     0xe50b3014                  // str r3, [fp, #-20]
+     */
   };
   const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
   // copy setup
