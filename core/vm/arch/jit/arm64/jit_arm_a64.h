@@ -258,9 +258,9 @@ typedef long (*fun_ptr)(long a, long b);
       
       
       
-      buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC , MAP_PRIVATE | MAP_ANON | MAP_JIT, 0, 0);
+      buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
       if(buffer == MAP_FAILED) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
+        cerr << "unable to mmap!" << endl;
         exit(1);
       }
       

@@ -4790,12 +4790,9 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
         << native_code->GetSize() << L" ===" << endl;
   assert((*stack_pos) >= method->GetParamCount());
 #endif
+  
+  /*
 
-  
-  
-  
-  
-  
   //
   // START: Test for execute permissions
   //
@@ -4831,12 +4828,13 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   //
   // END: Test
   //
+  */
   
-  /*
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)native_code->GetCode();
   
   // execute
+  pthread_jit_write_protect_np(true);
   const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
                                   op_stack, stack_pos, call_stack, call_stack_pos, &(frame->jit_mem),
                                   &(frame->jit_offset), int_consts);
@@ -4846,7 +4844,6 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
 #endif
    
    return rtrn_value;
-  */
 }
 
 /********************************
@@ -4904,7 +4901,6 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   pthread_jit_write_protect_np(false);
   memcpy(temp, code, byte_size);
   __clear_cache(temp, temp + byte_size);
-  pthread_jit_write_protect_np(true);
   
   index += size;
   available -= byte_size;
