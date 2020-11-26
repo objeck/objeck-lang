@@ -69,6 +69,7 @@
 		ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.1.dylib; path = ../../../../../../../../usr/local/lib/libcrypto.1.1.dylib; sourceTree = "<group>"; };
 		ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
 		ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
+		ED563F572570075600791CB7 /* Xcode-VM-A64.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Xcode-VM-A64.entitlements"; sourceTree = "<group>"; };
 		ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
 		ED56FE55256F367D00DFB0F9 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
 		EDFEDD8F256EE38100382F3F /* Xcode-VM-A64 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Xcode-VM-A64"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -95,6 +96,7 @@
 		255B2D541966EF5400AF1F2E = {
 			isa = PBXGroup;
 			children = (
+				ED563F572570075600791CB7 /* Xcode-VM-A64.entitlements */,
 				255B2D5F1966EF5400AF1F2E /* Xcode-VM */,
 				255B2D5E1966EF5400AF1F2E /* Products */,
 				25DC32171FF1A92A0040A5BE /* Frameworks */,
@@ -190,6 +192,12 @@
 			attributes = {
 				LastUpgradeCheck = 1220;
 				ORGANIZATIONNAME = "Randy Hollines";
+				TargetAttributes = {
+					EDFEDD7E256EE38100382F3F = {
+						DevelopmentTeam = 37JDXYTCG2;
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
 			buildConfigurationList = 255B2D581966EF5400AF1F2E /* Build configuration list for PBXProject "Xcode-VM" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -414,7 +422,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_WARN_INT_CONVERSION = YES;
+				CODE_SIGN_ENTITLEMENTS = "Xcode-VM-A64.entitlements";
 				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 37JDXYTCG2;
+				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
@@ -433,6 +445,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				"OTHER_LDFLAGS[arch=*]" = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
@@ -440,6 +453,7 @@
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
 		};
@@ -447,7 +461,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_WARN_INT_CONVERSION = YES;
+				CODE_SIGN_ENTITLEMENTS = "Xcode-VM-A64.entitlements";
 				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 37JDXYTCG2;
+				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
@@ -465,6 +483,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				"OTHER_LDFLAGS[arch=*]" = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
@@ -472,6 +491,7 @@
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
 		};
