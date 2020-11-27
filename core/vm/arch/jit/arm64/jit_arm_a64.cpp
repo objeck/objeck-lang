@@ -1,4 +1,4 @@
-/***************************************************************************
+/**
  * JIT compiler for ARMv8 architecture (A1 encoding)
  *
  * Copyright (c) 2020, Randy Hollines
@@ -27,16 +27,16 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILSITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ***************************************************************************/
+ */
 
 #include "jit_arm_a64.h"
 #include <string>
 
 using namespace Runtime;
 
-/********************************
+/**
  * JitCompilerA64 class
- ********************************/
+ */
 StackProgram* JitCompilerA64::program;
 PageManager* JitCompilerA64::page_manager;
 
@@ -51,15 +51,15 @@ void JitCompilerA64::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  const long final_local_space = 96; // local_space + 8;
+  const long final_local_space = local_space + 96;
   uint32_t sub_offset = 0xd10183ff;
   sub_offset |= final_local_space << 10;
   
   uint32_t setup_code[] = {
+    0xF94003E9, // ldr x8, [sp, #0] // TODO: CHANGME
+    0xF94007E8, // ldr x9, [sp, #8] // TODO: CHANGME
+    0xF94007E8, // ldr x10, [sp, #16 // TODO: CHANGME
     sub_offset, // sub sp, sp, #local_space
-    0xf94033e8, // ldr x8, [sp, #96]
-    0xf94037e9, // ldr x9, [sp, #104]
-    0xf9403bea, // ldr x10, [sp, #112
     0xf9002fe0, // str x0, [sp, #88]
     0xf9002be1, // str x1, [sp, #80]
     0xf90027e2, // str x2, [sp, #72]
@@ -74,7 +74,7 @@ void JitCompilerA64::Prolog() {
   };
   
   // copy setup
-  const int32_t setup_size = sizeof(setup_code) / sizeof(long);
+  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
   for(int32_t i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
@@ -120,7 +120,7 @@ void JitCompilerA64::Epilog() {
   };
   
   // copy teardown
-  const int32_t teardown_size = sizeof(teardown_code) / sizeof(long);
+  const int32_t teardown_size = sizeof(teardown_code) / sizeof(int32_t);
   for(int32_t i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
   }
@@ -1551,7 +1551,7 @@ void JitCompilerA64::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
         move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, FP);
         dirty_regs.push(reg_offset);
         regs.push(left);
-        reg_offset -= 4;
+        reg_offset -= 8;
         break;
 
       case REG_FLOAT:
@@ -4702,6 +4702,15 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     // setup
     Prolog();
+    
+    /*
+     
+     move_reg_mem(RCX, CLS_ID, RBP);
+         move_reg_mem(RDX, MTHD_ID, RBP);
+         move_reg_mem(R8, CLASS_MEM, RBP);
+         move_reg_mem(R9, INSTANCE_MEM, RBP);
+     
+     */
     
     // TODO: store method information
     // method information
