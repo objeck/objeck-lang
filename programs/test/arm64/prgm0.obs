@@ -4,7 +4,7 @@ class Test {
 	}
 
 	function : native : Foo() ~ Int {
-		a := 13;
-		return a + 7;
+		a := -13;
+		return a - 7;
 	}
 }

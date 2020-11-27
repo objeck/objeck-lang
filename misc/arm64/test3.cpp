@@ -1,7 +1,8 @@
 #include<iostream>
 
 long Foo(long a, long b) {
-	return a - b;
+	long c = 13;
+	return a * c;
 }
 
 int main() {
