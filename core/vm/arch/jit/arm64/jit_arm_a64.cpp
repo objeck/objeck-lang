@@ -59,7 +59,7 @@ void JitCompilerA64::Prolog() {
     0xF94003E9, // ldr x8, [sp, #0]
     0xF94007E8, // ldr x9, [sp, #8]
     0xF9400BE8, // ldr x10, [sp, #16]
-    sub_offset, // sub sp, sp, #local_space
+    sub_offset, // sub sp, sp, #final_local_space
     0xf9002fe0, // str x0, [sp, #88]
     0xf9002be1, // str x1, [sp, #80]
     0xf90027e2, // str x2, [sp, #72]
@@ -119,7 +119,7 @@ void JitCompilerA64::Epilog() {
   
   //  move_imm_reg(0, X0);
   uint32_t teardown_code[] = {
-    add_offset, // add sp, sp, #96
+    add_offset, // add sp, sp, #final_local_space
     0xd65f03c0  // ret
   };
   
@@ -4706,15 +4706,6 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     // setup
     Prolog();
-    
-    /*
-     
-     move_reg_mem(RCX, CLS_ID, RBP);
-         move_reg_mem(RDX, MTHD_ID, RBP);
-         move_reg_mem(R8, CLASS_MEM, RBP);
-         move_reg_mem(R9, INSTANCE_MEM, RBP);
-     
-     */
     
     // TODO: store method information
     // method information
