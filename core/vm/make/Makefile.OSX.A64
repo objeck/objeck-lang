@@ -7,7 +7,10 @@ SRC=common.o interpreter.o loader.o vm.o posix_main.o
 OBJ_LIBS=jit_arm_a64.a memory.a
 MEM_PATH=arch
 JIT_PATH=arch/jit/arm64
-EXE= obr
+EXE=obr
+
+all: $(EXE)
+	codesign --force --sign $(SIGN) -o runtime --entitlements xcode/Xcode-VM-A64.entitlements --timestamp\=none $(EXE) 
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -o $(EXE) $(SRC) -Wl,../lib/openssl/macos/arm64/libcrypto.a -Wl,../lib/openssl/macos/arm64/libssl.a $(OBJ_LIBS) -lz
