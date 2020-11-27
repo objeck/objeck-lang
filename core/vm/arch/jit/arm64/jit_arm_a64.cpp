@@ -2075,20 +2075,11 @@ void JitCompilerA64::ProcessIntCalculation(StackInstr* instruction) {
 
 void JitCompilerA64::move_reg_mem(Register src, int32_t offset, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src)
-  << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+  wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+  assert(offset > -1);
 #endif
   
-  uint32_t op_code;
-  if(offset >= 0) {
-    // forward
-    op_code = 0xF9000000;
-  }
-  else {
-    // backward TODO: FIXME
-    op_code = 0xe5000000;
-  }
-  
+  uint32_t op_code = 0xF9000000;
   uint32_t op_dest = dest << 5;
   op_code |= op_dest;
   
@@ -2104,20 +2095,11 @@ void JitCompilerA64::move_reg_mem(Register src, int32_t offset, Register dest) {
 
 void JitCompilerA64::move_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest)
-  << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+  assert(offset > -1);
 #endif
   
-  uint32_t op_code;
-  if(offset >= 0) {
-    // forward
-    op_code = 0xF9400000;
-  }
-  else {
-    // backward TODO: FIXME
-    op_code = 0xe5100000;
-  }
-  
+  uint32_t op_code = 0xF9400000;
   uint32_t op_src = src << 5;
   op_code |= op_src;
   
@@ -2134,15 +2116,12 @@ void JitCompilerA64::move_mem_reg(int32_t offset, Register src, Register dest) {
 void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
   if(imm < 0 && imm >= -65536) {
 #ifdef _DEBUG
-    // TODO: FIXME
-    wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg)
-    << L", #" << imm << L"]" << endl;
+    wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
-    uint32_t op_code = 0xe3e00000;
-
-    uint32_t op_dest = reg << 12;
-    op_code |= op_dest;
-    op_code |= abs(imm) - 1;
+    uint32_t op_code = 0x92800000;
+    
+    op_code |= abs(imm) << 5;
+    op_code |= reg;
 
     AddMachineCode(op_code);
   }
@@ -2158,7 +2137,7 @@ void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
     AddMachineCode(op_code);
   }
   else {
-    // TODO: FIXME
+    // TODO: Support me...
     
     move_mem_reg(INT_CONSTS, SP, X28);
 #ifdef _DEBUG
@@ -2240,12 +2219,11 @@ void JitCompilerA64::sub_reg_reg(Register src, Register dest) {
 
 void JitCompilerA64::shl_imm_reg(int32_t value, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", "
-  << GetRegisterName(dest) << L", #" << value << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L", #" << value << L"]" << endl;
 #endif
                                  
   uint32_t op_code = 0xD3400000;
-      
+  
   uint32_t op_dest = dest << 5;
   op_code |= op_dest;
   
@@ -2253,7 +2231,7 @@ void JitCompilerA64::shl_imm_reg(int32_t value, Register dest) {
   op_code |= op_src;
 
   // set bit field
-  std::bitset<6> imm_bits;
+  bitset<6> imm_bits;
   imm_bits = value;
   imm_bits.flip();
   
@@ -2262,6 +2240,28 @@ void JitCompilerA64::shl_imm_reg(int32_t value, Register dest) {
   
   const uint8_t immr = imms + 1;
   op_code |= immr << 16;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::sub_imm_reg(int32_t imm, Register reg) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
+  << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
+#endif
+  
+
+  uint32_t op_code = 0xF1001C00;
+  
+  uint32_t op_src = reg << 5;
+  op_code |= op_src;
+  
+  uint32_t op_dest = reg;
+  op_code |= op_dest;
+  
+  uint32_t op_imm = imm << 10;
+  op_code |= op_imm;
   
   // encode
   AddMachineCode(op_code);
@@ -2921,27 +2921,6 @@ void JitCompilerA64::sub_mem_reg(int32_t offset, Register src, Register dest) {
   move_mem_reg(offset, src, mem_holder->GetRegister());
   sub_reg_reg(mem_holder->GetRegister(), dest);
   ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::sub_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
-  << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xe2400000;
-  
-  uint32_t op_src = reg << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = reg << 12;
-  op_code |= op_dest;
-  
-  uint32_t op_imm = imm;
-  op_code |= op_imm;
-  
-  // encode
-  AddMachineCode(op_code);
 }
 
 void JitCompilerA64::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
