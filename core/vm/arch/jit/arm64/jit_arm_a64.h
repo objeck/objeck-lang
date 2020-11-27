@@ -44,19 +44,19 @@ using namespace std;
 
 namespace Runtime {
   // offsets for ARM A32 addresses
-#define CLS_ID 8
-#define MTHD_ID 16
-#define CLASS_MEM 24
-#define INSTANCE_MEM 32
-#define OP_STACK 40
+#define CLS_ID 88
+#define MTHD_ID 80
+#define CLASS_MEM 72
+#define INSTANCE_MEM 64
+#define OP_STACK 56
 #define OP_STACK_POS 48
-#define CALL_STACK 56
-#define CALL_STACK_POS 64
-#define JIT_MEM 72
-#define JIT_OFFSET 80
-#define INT_CONSTS 88
+#define CALL_STACK 40
+#define CALL_STACK_POS 32
+#define JIT_MEM 24
+#define JIT_OFFSET 16
+#define INT_CONSTS 8
   // float temps
-#define TMP_D_0 -28
+#define TMP_D_0 -28 // TODO: should not be needed as 32-registers, grows from CLS_ID up
 #define TMP_D_1 -36
 #define TMP_D_2 -44
   // integer temps
