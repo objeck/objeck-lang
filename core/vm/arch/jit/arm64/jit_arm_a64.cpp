@@ -209,7 +209,7 @@ void JitCompilerA64::ProcessParameters(int32_t params) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-      shl_imm_reg(2, stack_pos_holder->GetRegister());
+      shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
@@ -220,7 +220,7 @@ void JitCompilerA64::ProcessParameters(int32_t params) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-      shl_imm_reg(2, stack_pos_holder->GetRegister());
+      shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       
@@ -241,7 +241,7 @@ void JitCompilerA64::ProcessParameters(int32_t params) {
       RegisterHolder* dest_holder = GetFpRegister();
       sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-      shl_imm_reg(2, stack_pos_holder->GetRegister());
+      shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
@@ -266,7 +266,7 @@ void JitCompilerA64::ProcessIntCallParameter() {
   
   dec_mem(0, stack_pos_holder->GetRegister());
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(2, stack_pos_holder->GetRegister());
+  shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
   move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
@@ -288,7 +288,7 @@ void JitCompilerA64::ProcessFunctionCallParameter() {
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
 
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(2, stack_pos_holder->GetRegister());
+  shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
   
   RegisterHolder* holder = GetRegister();
@@ -317,7 +317,7 @@ void JitCompilerA64::ProcessFloatCallParameter() {
   RegisterHolder* dest_holder = GetFpRegister();
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(2, stack_pos_holder->GetRegister());
+  shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
   move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
@@ -480,7 +480,7 @@ void JitCompilerA64::ProcessInstructions() {
 #ifdef _DEBUG
       wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      // ProcessReturn(); TODO: ADD BACK
+      ProcessReturn();
       // teardown
       Epilog();
       break;
@@ -1641,7 +1641,7 @@ void JitCompilerA64::ProcessReturn(int32_t params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
     move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-    shl_imm_reg(2, stack_pos_holder->GetRegister());
+    shl_imm_reg(3, stack_pos_holder->GetRegister());
     add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
 
     int32_t non_params;
@@ -4534,9 +4534,13 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   case CHAR_ARY_TYPE:
-  case INT_TYPE:
     shl_imm_reg(2, index_holder->GetRegister());
     shl_imm_reg(2, bounds_holder->GetRegister());
+    break;
+    
+  case INT_TYPE:
+    shl_imm_reg(3, index_holder->GetRegister());
+    shl_imm_reg(3, bounds_holder->GetRegister());
     break;
 
   case FLOAT_TYPE:
