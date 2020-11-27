@@ -1,3 +1,3 @@
-clang++ debug.cpp
-objdump -d a.out > out
+clang++ $1.cpp
+objdump -d a.out > $1.dbg
 rm a.out

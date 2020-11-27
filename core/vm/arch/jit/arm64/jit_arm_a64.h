@@ -1,4 +1,4 @@
-/***************************************************************************
+/**
  * JIT compiler for ARMv8 architecture (A1 instruction encoding)
  *
  * Copyright (c) 2020, Randy Hollines
@@ -27,7 +27,7 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ***************************************************************************/
+ */
 
 #ifndef __JIT_COMPILER__
 #define __JIT_COMPILER__
@@ -41,6 +41,11 @@
 #include "../../../interpreter.h"
 
 using namespace std;
+
+/**
+ * Notes on registers:
+ *     rn <- src and rm=rd <- dest
+ */
 
 namespace Runtime {
   // offsets for ARM A32 addresses
