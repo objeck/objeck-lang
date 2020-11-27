@@ -51,7 +51,7 @@ void JitCompilerA64::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  const long final_local_space = local_space + 8;
+  const long final_local_space = 96; // local_space + 8;
   uint32_t sub_offset = 0xd10183ff;
   sub_offset |= final_local_space << 10;
   
