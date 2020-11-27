@@ -56,9 +56,9 @@ void JitCompilerA64::Prolog() {
   sub_offset |= final_local_space << 10;
   
   uint32_t setup_code[] = {
-    0xF94003E9, // ldr x8, [sp, #0] // TODO: CHANGME
-    0xF94007E8, // ldr x9, [sp, #8] // TODO: CHANGME
-    0xF94007E8, // ldr x10, [sp, #16 // TODO: CHANGME
+    0xF94003E9, // ldr x8, [sp, #0]
+    0xF94007E8, // ldr x9, [sp, #8]
+    0xF94007E8, // ldr x10, [sp, #16
     sub_offset, // sub sp, sp, #local_space
     0xf9002fe0, // str x0, [sp, #88]
     0xf9002be1, // str x1, [sp, #80]
