@@ -1,6 +1,6 @@
-# ARGS=-g -Wall -pthread -D_OSX -D_X64 -D_JIT_SERIAL -D_OSX -D_DEBUG -Wno-unused-function -Wno-deprecated-declarations
-# ARGS=-g -Wall -pthread -D_X64 -D_OSX -D_JIT_SERIAL -D_TIMING -Wno-unused-function -Wno-deprecated-declarations
-ARGS=-O3 -Wall -pthread -D_OSX -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wno-deprecated-declarations
+ARGS=-g -Wall -pthread -D_OSX -D_ARM64 -D_JIT_SERIAL -D_OSX -D_DEBUG -Wno-unused-function -Wno-deprecated-declarations
+# ARGS=-g -Wall -pthread -D_ARM64 -D_OSX -D_JIT_SERIAL -D_TIMING -Wno-unused-function -Wno-deprecated-declarations
+# ARGS=-O3 -Wall -pthread -D_OSX -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wno-deprecated-declarations
 
 CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
