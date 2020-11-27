@@ -117,7 +117,7 @@ void JitCompilerA64::Epilog() {
   uint32_t add_offset = 0x910183ff;
   add_offset |= final_local_space << 10;
   
-  //  move_imm_reg(0, X0);
+  move_imm_reg(0, X0);
   uint32_t teardown_code[] = {
     add_offset, // add sp, sp, #final_local_space
     0xd65f03c0  // ret
@@ -2120,7 +2120,7 @@ void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
 #endif
     uint32_t op_code = 0x92800000;
     
-    op_code |= abs(imm) << 5;
+    op_code |= (abs(imm) - 1) << 5;
     op_code |= reg;
 
     AddMachineCode(op_code);
