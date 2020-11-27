@@ -44,17 +44,17 @@ using namespace std;
 
 namespace Runtime {
   // offsets for ARM A32 addresses
-#define CLS_ID -8
-#define MTHD_ID -12
-#define CLASS_MEM -16
-#define INSTANCE_MEM -20
-#define OP_STACK 24
-#define OP_STACK_POS 28
-#define CALL_STACK 32
-#define CALL_STACK_POS 36
-#define JIT_MEM 40
-#define JIT_OFFSET 44
-#define INT_CONSTS 48
+#define CLS_ID 8
+#define MTHD_ID 16
+#define CLASS_MEM 24
+#define INSTANCE_MEM 32
+#define OP_STACK 40
+#define OP_STACK_POS 48
+#define CALL_STACK 56
+#define CALL_STACK_POS 64
+#define JIT_MEM 72
+#define JIT_OFFSET 80
+#define INT_CONSTS 88
   // float temps
 #define TMP_D_0 -28
 #define TMP_D_1 -36
@@ -86,38 +86,38 @@ namespace Runtime {
   
   // general and float registers
   enum Register {
-    R0 = 0,
-    R1,
-    R2,
-    R3,
-    R4,
-    R5,
-    R6,
-    R7,
-    R8,
-    R9,
-    R10,
+    X0 = 0,
+    X1,
+    X2,
+    X3,
+    X4,
+    X5,
+    X6,
+    X7,
+    XS0,
+    X9,
+    X10,
+    X11,
+    X12,
+    X13,
+    X14,
+    X15,
+    XS1,
+    XS2,
+    XS3,
+    X19,
+    X20,
+    X21,
+    X22,
+    X23,
+    X24,
+    X25,
+    X26,
+    X27,
+    X28,
     FP,
-    R12,
-    SP,
     LR,
-    R15,
-    R16,
-    R17,
-    R18,
-    R19,
-    R20,
-    R21,
-    R22,
-    R23,
-    R24,
-    R25,
-    R26,
-    R27,
-    R28,
-    R29,
-    R30,
-    R31,
+    SP,
     // floating point
     D0 = 0,
     D1,
@@ -458,7 +458,7 @@ typedef long (*fun_ptr)(long a, long b);
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(R0, false));
+          aux_regs.push(new RegisterHolder(X0, false));
           holder = aux_regs.top();
           aux_regs.pop();
         }
@@ -490,7 +490,7 @@ typedef long (*fun_ptr)(long a, long b);
       }
 #endif
 
-      if(h->GetRegister() >= R4 && h->GetRegister() <= R7) {
+      if(h->GetRegister() >= X4 && h->GetRegister() <= X7) {
         aux_regs.push(h);
       }
       else {

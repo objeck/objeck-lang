@@ -51,8 +51,12 @@ void JitCompilerA64::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
+  const long final_local_space = local_space + 8;
+  uint32_t sub_offset = 0xd10183ff;
+  sub_offset |= final_local_space << 10;
+  
   uint32_t setup_code[] = {
-    0xd10183ff, // sub sp, sp, #96
+    sub_offset, // sub sp, sp, #local_space
     0xf94033e8, // ldr x8, [sp, #96]
     0xf94037e9, // ldr x9, [sp, #104]
     0xf9403bea, // ldr x10, [sp, #112
@@ -70,7 +74,7 @@ void JitCompilerA64::Prolog() {
   };
   
   // copy setup
-  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
+  const int32_t setup_size = sizeof(setup_code) / sizeof(long);
   for(int32_t i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
@@ -89,34 +93,34 @@ void JitCompilerA64::Epilog() {
   AddMachineCode(0xea000005);
   
   // nullptr deref
-  move_imm_reg(-1, R0);
+  move_imm_reg(-1, X0);
   AddMachineCode(0xea000004);
 
   // under bounds
-  move_imm_reg(-2, R0);
+  move_imm_reg(-2, X0);
   AddMachineCode(0xea000002);
 
   // over bounds
-  move_imm_reg(-3, R0);
+  move_imm_reg(-3, X0);
   AddMachineCode(0xea000000);
     
-  move_imm_reg(0, R0);
+  move_imm_reg(0, X0);
   uint32_t teardown_code[] = {
     0xe24bd000, // sub sp, fp, #0
-    0xe8bd01f0, // pop {r4-r7}‬
+    0xe8bd01f0, // pop {X4-X7}‬
     0xe49db004, // pop {fp}
     0xe12fff1e  // bx  lr
   };
   */
   
-//  move_imm_reg(0, R0);
+//  move_imm_reg(0, X0);
   uint32_t teardown_code[] = {
     0x910183ff, // add sp, sp, #96
     0xd65f03c0  // ret
   };
   
   // copy teardown
-  const int32_t teardown_size = sizeof(teardown_code) / sizeof(int32_t);
+  const int32_t teardown_size = sizeof(teardown_code) / sizeof(long);
   for(int32_t i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
   }
@@ -127,9 +131,9 @@ void JitCompilerA64::RegisterRoot() {
   RegisterHolder* mem_holder = GetRegister();
     
   // offset required to get to the first local variable
-  int32_t offset = local_space + TMP_REG_5 - 4;
+  int32_t offset = local_space + TMP_REG_5 - 8;
   if(realign_stack) {
-    offset -= 4;
+    offset -= 8;
   }
   
   move_reg_reg(FP, holder->GetRegister());
@@ -217,7 +221,7 @@ void JitCompilerA64::ProcessParameters(int32_t params) {
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(-(long)(sizeof(int32_t)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
+      move_mem_reg(-(long)(sizeof(long)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
       
       move_mem_reg(OP_STACK_POS, FP, stack_pos_holder->GetRegister());
       dec_mem(0, stack_pos_holder->GetRegister());
@@ -841,7 +845,7 @@ void JitCompilerA64::ProcessLoad(StackInstr* instr) {
   if(instr->GetOperand2() == LOCL) {
     if(instr->GetType() == LOAD_FUNC_VAR) {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(instr->GetOperand3() + sizeof(int32_t), FP, holder->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(long), FP, holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
       
       RegisterHolder* holder2 = GetRegister();
@@ -876,7 +880,7 @@ void JitCompilerA64::ProcessLoad(StackInstr* instr) {
     // function value
     else if(instr->GetType() == LOAD_FUNC_VAR) {
       RegisterHolder* holder2 = GetRegister();
-      move_mem_reg(instr->GetOperand3() + sizeof(int32_t), holder->GetRegister(), holder2->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(long), holder->GetRegister(), holder2->GetRegister());
       working_stack.push_front(new RegInstr(holder2));
       
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
@@ -1045,7 +1049,7 @@ void JitCompilerA64::ProcessStoreByteElement(StackInstr* instr) {
   case REG_INT: {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
-    if(holder->GetRegister() == R12) {
+    if(holder->GetRegister() == X12) {
       RegisterHolder* tmp_holder = GetRegister(false);
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
       move_reg_mem8(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
@@ -1091,7 +1095,7 @@ void JitCompilerA64::ProcessStoreCharElement(StackInstr* instr) {
   case REG_INT: {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
-    if(holder->GetRegister() == R12) {
+    if(holder->GetRegister() == X12) {
       RegisterHolder* tmp_holder = GetRegister(false);
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
       move_reg_mem(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
@@ -1347,7 +1351,7 @@ void JitCompilerA64::ProcessStore(StackInstr* instr) {
       
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(int32_t), dest);
+      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(long), dest);
 
       delete left2;
       left2 = nullptr;
@@ -1366,7 +1370,7 @@ void JitCompilerA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       move_mem_reg(left2->GetOperand(), FP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(int32_t), dest);
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
 
       delete left2;
       left2 = nullptr;
@@ -1387,7 +1391,7 @@ void JitCompilerA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       RegisterHolder* holder2  = left2->GetRegister();
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(int32_t), dest);
+      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
       ReleaseRegister(holder2);
 
       delete left2;
@@ -1599,13 +1603,13 @@ void JitCompilerA64::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
 
   ReleaseRegister(reg_holder);
   
-  move_mem_reg(MTHD_ID, FP, R3);
-  move_mem_reg(CLS_ID, FP, R2);
-  move_imm_reg((size_t)instr, R1);
-  move_imm_reg(instr_id, R0);
+  move_mem_reg(MTHD_ID, FP, X3);
+  move_mem_reg(CLS_ID, FP, X2);
+  move_imm_reg((size_t)instr, X1);
+  move_imm_reg(instr_id, X0);
   
-  move_imm_reg((size_t)JitCompilerA64::JitStackCallback, R8);
-  call_reg(R8);
+  move_imm_reg((size_t)JitCompilerA64::JitStackCallback, X28);
+  call_reg(X28);
   
   // restore register values
   while(!dirty_regs.empty()) {
@@ -1660,7 +1664,7 @@ void JitCompilerA64::ProcessReturn(int32_t params) {
         case IMM_INT:
           move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
           inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(int32_t), op_stack_holder->GetRegister());
+          add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
           break;
   
         case MEM_INT: {
@@ -1668,7 +1672,7 @@ void JitCompilerA64::ProcessReturn(int32_t params) {
             move_mem_reg(left->GetOperand(), FP, temp_holder->GetRegister());
             move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(int32_t), op_stack_holder->GetRegister());
+            add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
             ReleaseRegister(temp_holder);
           }
           break;
@@ -1676,7 +1680,7 @@ void JitCompilerA64::ProcessReturn(int32_t params) {
         case REG_INT:
           move_reg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
           inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(int32_t), op_stack_holder->GetRegister());
+          add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
           break;
   
         case IMM_FLOAT:
@@ -2241,7 +2245,7 @@ void JitCompilerA64::move_imm_reg(int32_t imm, Register reg) {
   else {
     // TODO: FIXME
     
-    move_mem_reg(INT_CONSTS, FP, R8);
+    move_mem_reg(INT_CONSTS, FP, X28);
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -3636,10 +3640,10 @@ void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(R8, TMP_REG_0, FP);
-  move_imm_reg((size_t)func_ptr, R8);
-  call_reg(R8);
-  move_mem_reg(TMP_REG_0, FP, R8);
+  move_reg_mem(X28, TMP_REG_0, FP);
+  move_imm_reg((size_t)func_ptr, X28);
+  call_reg(X28);
+  move_mem_reg(TMP_REG_0, FP, X28);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
@@ -3693,10 +3697,10 @@ void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(R8, TMP_REG_0, FP);
-  move_imm_reg((size_t)func_ptr, R8);
-  call_reg(R8);
-  move_mem_reg(TMP_REG_0, FP, R8);
+  move_reg_mem(X28, TMP_REG_0, FP);
+  move_imm_reg((size_t)func_ptr, X28);
+  call_reg(X28);
+  move_mem_reg(TMP_REG_0, FP, X28);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
@@ -3715,19 +3719,19 @@ void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
 
 // --- push/pop cpu stack ---
 void JitCompilerA64::push_mem(int32_t offset, Register dest) {
-  throw runtime_error("Method 'push_mem(..)' not implemented for ARM32 target");
+  throw runtime_error("Method 'push_mem(..)' not implemented for ARM64 target");
 }
 
 void JitCompilerA64::push_reg(Register reg) {
-  throw runtime_error("Method 'push_reg(..)' not implemented for ARM32 target");
+  throw runtime_error("Method 'push_reg(..)' not implemented for ARM64 target");
 }
 
 void JitCompilerA64::push_imm(int32_t value) {
-  throw runtime_error("Method 'push_imm(..)' not implemented for ARM32 target");
+  throw runtime_error("Method 'push_imm(..)' not implemented for ARM64 target");
 }
 
 void JitCompilerA64::pop_reg(Register reg) {
-  throw runtime_error("Method 'pop_reg(..)' not implemented for ARM32 target");
+  throw runtime_error("Method 'pop_reg(..)' not implemented for ARM64 target");
 }
 
 void JitCompilerA64::vcvt_imm_reg(RegInstr* instr, Register reg) {
@@ -3807,7 +3811,7 @@ void JitCompilerA64::round_mem_xreg(int32_t offset, Register src, Register dest,
 }
 
 void JitCompilerA64::round_xreg_xreg(Register src, Register dest, bool is_floor) {
-  throw runtime_error("Method 'round_xreg_xreg(..)' not implemented for ARM32 target");
+  throw runtime_error("Method 'round_xreg_xreg(..)' not implemented for ARM64 target");
 }
 
 //
@@ -3816,53 +3820,101 @@ void JitCompilerA64::round_xreg_xreg(Register src, Register dest, bool is_floor)
 std::wstring JitCompilerA64::GetRegisterName(Register reg)
 {
   switch(reg) {
-  case R0:
-    return L"r0/d0";
+  case X0:
+    return L"X0/D0";
 
-  case R1:
-    return L"r1/d1";
+  case X1:
+    return L"X1/D1";
 
-  case R2:
-    return L"r2/d2";
+  case X2:
+    return L"X2/D2";
 
-  case R3:
-    return L"r3/d3";
+  case X3:
+    return L"X3/D3";
     
-  case R4:
-    return L"r4/d4";
+  case X4:
+    return L"X4/D4";
   
-  case R5:
-    return L"r5/d5";
+  case X5:
+    return L"X5/D5";
     
-  case R6:
-    return L"r6/d6";
+  case X6:
+    return L"X6/D6";
     
-  case R7:
-    return L"r7/d7";
+  case X7:
+    return L"X7/D7";
     
-  case R8:
-    return L"r8/d8";
-    
-  case R9:
-    return L"r9/d9";
-        
-  case R10:
-    return L"r10/d10";
+  case XS0:
+    return L"XS0/D8";
       
-  case SP:
-    return L"sp/d11";
+  case X9:
+    return L"X9/D9";
+        
+  case X10:
+    return L"X10/D10";
+      
+  case X11:
+    return L"X11/D11";
     
-  case R12:
-    return L"r12/d12";
+  case X12:
+    return L"X12/D12";
+      
+  case X13:
+    return L"X13/D13";
+      
+  case X14:
+    return L"X14/D14";
+
+  case X15:
+    return L"X14/D15";
+    
+  case XS1:
+    return L"XS1/D16";
+      
+  case XS2:
+    return L"XS2/D17";
+    
+  case XS3:
+    return L"XS3/D18";
+      
+  case X19:
+    return L"X19/D19";
+
+  case X20:
+    return L"X20/D20";
+
+  case X21:
+    return L"X21/D21";
+
+  case X22:
+    return L"X22/D22";
+
+  case X23:
+    return L"X23/D23";
+
+  case X24:
+    return L"X24/D24";
+
+  case X25:
+    return L"X25/D25";
+
+  case X26:
+    return L"X26/D26";
+
+  case X27:
+    return L"X27/D27";
+
+  case X28:
+    return L"X28/D28";
 
   case FP:
-    return L"fp/d13";
+    return L"FP/D29";
 
   case LR:
-    return L"r14/d14";
+    return L"LR/D30";
 
-  case R15:
-    return L"r15/d15";
+  case SP:
+    return L"SP/D31";
   }
   
   return L"unknown";
@@ -4438,7 +4490,7 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
   const int32_t dim = instr->GetOperand();
   for(int i = 1; i < dim; ++i) {
     // index *= array[i];
-    mul_mem_reg((i + 2) * sizeof(int32_t), array_holder->GetRegister(),
+    mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(),
                 index_holder->GetRegister());
     if(holder) {
       delete holder;
@@ -4495,7 +4547,7 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
   ReleaseRegister(bounds_holder);
 
   // skip first 2 integers (size and dimension) and all dimension indices
-  add_imm_reg((instr->GetOperand() + 2) * sizeof(int32_t), index_holder->GetRegister());
+  add_imm_reg((instr->GetOperand() + 2) * sizeof(long), index_holder->GetRegister());
   add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
   ReleaseRegister(index_holder);
 
@@ -4510,8 +4562,8 @@ void JitCompilerA64::ProcessIndices()
 #ifdef _DEBUG
   wcout << L"Calculating indices for variables..." << endl;
 #endif
-  multimap<int32_t, StackInstr*> values;
-  for(int32_t i = 0; i < method->GetInstructionCount(); ++i) {
+  multimap<long, StackInstr*> values;
+  for(long i = 0; i < method->GetInstructionCount(); ++i) {
     StackInstr* instr = method->GetInstruction(i);
     switch(instr->GetType()) {
     case LOAD_LOCL_INT_VAR:
@@ -4525,7 +4577,7 @@ void JitCompilerA64::ProcessIndices()
     case LOAD_FLOAT_VAR:
     case STOR_FLOAT_VAR:
     case COPY_FLOAT_VAR:
-      values.insert(pair<int32_t, StackInstr*>(instr->GetOperand(), instr));
+      values.insert(pair<long, StackInstr*>(instr->GetOperand(), instr));
       break;
 
     default:
@@ -4533,17 +4585,18 @@ void JitCompilerA64::ProcessIndices()
     }
   }
 
-  int32_t index = TMP_REG_LR;
-  int32_t last_id = -1;
-  multimap<int32_t, StackInstr*>::iterator value;
+  // TODO: adjust as needed
+  long index = INT_CONSTS;
+  long last_id = -1;
+  multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
-    int32_t id = value->first;
+    long id = value->first;
     StackInstr* instr = (*value).second;
     // instance reference
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
       // note: all instance variables are allocated in 4-byte blocks,
       // for float_consts the assembler allocates 2 4-byte blocks
-      instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
+      instr->SetOperand3(instr->GetOperand() * sizeof(long));
     }
     // local reference
     else {
@@ -4556,14 +4609,14 @@ void JitCompilerA64::ProcessIndices()
            instr->GetType() == STOR_CLS_INST_INT_VAR ||
            instr->GetType() == COPY_LOCL_INT_VAR ||
            instr->GetType() == COPY_CLS_INST_INT_VAR) {
-          index -= sizeof(int32_t);
+          index += sizeof(long);
         }
         else if(instr->GetType() == LOAD_FUNC_VAR ||
                 instr->GetType() == STOR_FUNC_VAR) {
-          index -= sizeof(int32_t) * 2;
+          index += sizeof(long) * 2;
         }
         else {
-          index -= sizeof(double);
+          index += sizeof(double);
         }
       }
       instr->SetOperand3(index);
@@ -4581,14 +4634,15 @@ void JitCompilerA64::ProcessIndices()
 #endif
   }
   
+  // TOOD: adjust as needed
   // calculate local space (adjust for alignment)
-  local_space = -(index + TMP_REG_LR);
+  local_space += index;
   realign_stack = false;
-  if(local_space % 8 != 0) {
-    local_space += 4;
+  if(local_space % 16 != 0) {
+    local_space += 8;
     realign_stack = true;
   }
-    
+  
 #ifdef _DEBUG
   wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
 #endif
@@ -4621,15 +4675,15 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     floats_index = instr_index = code_index = instr_count = 0;
     // general use registers
-    aval_regs.push_back(new RegisterHolder(R3, false));
-    aval_regs.push_back(new RegisterHolder(R2, false));
-    aval_regs.push_back(new RegisterHolder(R1, false));
-    aval_regs.push_back(new RegisterHolder(R0, false));
+    aval_regs.push_back(new RegisterHolder(X3, false));
+    aval_regs.push_back(new RegisterHolder(X2, false));
+    aval_regs.push_back(new RegisterHolder(X1, false));
+    aval_regs.push_back(new RegisterHolder(X0, false));
     // aux general use registers
-    aux_regs.push(new RegisterHolder(R7, false));
-    aux_regs.push(new RegisterHolder(R6, false));
-    aux_regs.push(new RegisterHolder(R5, false));
-    aux_regs.push(new RegisterHolder(R4, false));
+    aux_regs.push(new RegisterHolder(X7, false));
+    aux_regs.push(new RegisterHolder(X6, false));
+    aux_regs.push(new RegisterHolder(X5, false));
+    aux_regs.push(new RegisterHolder(X4, false));
     // floating point registers
     aval_xregs.push_back(new RegisterHolder(D7, true));
     aval_xregs.push_back(new RegisterHolder(D6, true));
@@ -4640,7 +4694,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aval_xregs.push_back(new RegisterHolder(D1, true));
     aval_xregs.push_back(new RegisterHolder(D0, true));
 #ifdef _DEBUG
-    wcout << L"Compiling code for AARCH32 architecture..." << endl;
+    wcout << L"Compiling code for AArch64 architecture..." << endl;
 #endif
     
     // process offsets
@@ -4724,7 +4778,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
-      const int32_t offset = ints_index * sizeof(int32_t);
+      const int32_t offset = ints_index * sizeof(long);
       
       // 12-bit max for ldr offset
       if(offset >= PAGE_SIZE * (int32_t)sizeof(uint32_t)) {
@@ -4759,7 +4813,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
 #ifdef _DEBUG
     wcout << L"------------------------" << endl;
     wcout << L"int const pool: size=" << int_pool_cache.size() << L" ["
-          << int_pool_cache.size() * sizeof(int32_t) << L" of " << sizeof(int32_t) * MAX_INTS << L" byte(s)]" << endl;
+          << int_pool_cache.size() * sizeof(long) << L" of " << sizeof(long) * MAX_INTS << L" byte(s)]" << endl;
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     */
