@@ -135,7 +135,7 @@ void JitCompilerA64::RegisterRoot() {
   RegisterHolder* mem_holder = GetRegister();
     
   // offset required to get to the first local variable
-  int32_t offset = local_space + TMP_REG_5 + 8;
+  int32_t offset = local_space + INT_CONSTS + 8;
   if(realign_stack) {
     offset += 8;
   }
@@ -1538,6 +1538,7 @@ void JitCompilerA64::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
 #endif
   
+  // TODO: revist the use to temps, will not be restored?
   stack<RegInstr*> regs;
   stack<int32_t> dirty_regs;
   int32_t reg_offset = TMP_REG_0;
@@ -4687,6 +4688,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aval_regs.push_back(new RegisterHolder(X0, false));
     
     // aux general use registers
+/*  TODO: reserved for temp usage
     aux_regs.push(new RegisterHolder(X15, false));
     aux_regs.push(new RegisterHolder(X14, false));
     aux_regs.push(new RegisterHolder(X13, false));
@@ -4695,6 +4697,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aux_regs.push(new RegisterHolder(X10, false));
     aux_regs.push(new RegisterHolder(X9, false));
     aux_regs.push(new RegisterHolder(X7, false));
+*/
     aux_regs.push(new RegisterHolder(X6, false));
     aux_regs.push(new RegisterHolder(X5, false));
     aux_regs.push(new RegisterHolder(X4, false));

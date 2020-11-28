@@ -59,13 +59,15 @@ namespace Runtime {
 #define TMP_D_0 -28 // TODO: Remove and reserve extra registers
 #define TMP_D_1 -36
 #define TMP_D_2 -44
-  // integer temps
+  // integer temps to state state between calls
 #define TMP_REG_0 -48 // TODO: Remove and reserve extra registers
 #define TMP_REG_1 -52
 #define TMP_REG_2 -56
 #define TMP_REG_3 -60
 #define TMP_REG_4 -64
 #define TMP_REG_5 -68
+#define TMP_REG_6 -64
+#define TMP_REG_7 -68
   // holds $lr for callbacks
 #define TMP_REG_LR -72
 
@@ -340,7 +342,6 @@ namespace Runtime {
     bool compile_success;
     bool skip_jump;
     
-
     // setup and teardown
     void Prolog();
     void Epilog();
