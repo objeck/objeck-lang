@@ -56,11 +56,11 @@ namespace Runtime {
 #define JIT_OFFSET 16
 #define INT_CONSTS 8
   // float temps
-#define TMP_D_0 -28 // TODO: should not be needed as 32-registers, grows from CLS_ID up
+#define TMP_D_0 -28 // TODO: Remove and reserve extra registers
 #define TMP_D_1 -36
 #define TMP_D_2 -44
   // integer temps
-#define TMP_REG_0 -48
+#define TMP_REG_0 -48 // TODO: Remove and reserve extra registers
 #define TMP_REG_1 -52
 #define TMP_REG_2 -56
 #define TMP_REG_3 -60
@@ -255,9 +255,7 @@ namespace Runtime {
       return operand;
     }
   };
-
-typedef long (*fun_ptr)(long a, long b);
-
+  
   /**
    * Manage executable buffers of memory
    */
@@ -273,26 +271,11 @@ typedef long (*fun_ptr)(long a, long b);
       int factor = byte_size / PAGE_SIZE + 1;
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
-      
-      
       buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
       if(buffer == MAP_FAILED) {
         cerr << "unable to mmap!" << endl;
         exit(1);
       }
-      
-      /*
-       if(posix_memalign((void**)&buffer, PAGE_SIZE, alloc_size)) {
-         wcerr << L"Unable to allocate JIT memory!" << endl;
-         exit(1);
-       }
-       
-      if(mprotect(buffer, alloc_size, PROT_READ | PROT_WRITE | MAP_JIT) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
-        exit(1);
-      }
-      */
-       
       
       available = alloc_size;
     }
@@ -319,7 +302,6 @@ typedef long (*fun_ptr)(long a, long b);
     
   public:
     PageManager();
-
     ~PageManager();
 
     uint32_t* GetPage(uint32_t* code, int32_t size);

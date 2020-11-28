@@ -4685,11 +4685,20 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aval_regs.push_back(new RegisterHolder(X2, false));
     aval_regs.push_back(new RegisterHolder(X1, false));
     aval_regs.push_back(new RegisterHolder(X0, false));
+    
     // aux general use registers
+    aux_regs.push(new RegisterHolder(X15, false));
+    aux_regs.push(new RegisterHolder(X14, false));
+    aux_regs.push(new RegisterHolder(X13, false));
+    aux_regs.push(new RegisterHolder(X12, false));
+    aux_regs.push(new RegisterHolder(X11, false));
+    aux_regs.push(new RegisterHolder(X10, false));
+    aux_regs.push(new RegisterHolder(X9, false));
     aux_regs.push(new RegisterHolder(X7, false));
     aux_regs.push(new RegisterHolder(X6, false));
     aux_regs.push(new RegisterHolder(X5, false));
     aux_regs.push(new RegisterHolder(X4, false));
+    
     // floating point registers
     aval_xregs.push_back(new RegisterHolder(D7, true));
     aval_xregs.push_back(new RegisterHolder(D6, true));
