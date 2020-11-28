@@ -5338,10 +5338,9 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
     // code buffer memory
     code_buf_max = BUFFER_SIZE;
     code = (unsigned char*)malloc(code_buf_max);
-
+    
     // float_consts memory
 #ifdef _WIN64
-
     float_consts = (double*)VirtualAlloc(nullptr, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_READWRITE);
     if(!float_consts) {
       wcerr << L"Unable to allocate JIT memory for float_consts!" << endl;

@@ -4678,8 +4678,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     ints = new long[MAX_INTS];
     float_consts = new double[MAX_DBLS];
-    
     local_space = floats_index = instr_index = code_index = instr_count = 0;
+    
     // general use registers
     aval_regs.push_back(new RegisterHolder(X3, false));
     aval_regs.push_back(new RegisterHolder(X2, false));
