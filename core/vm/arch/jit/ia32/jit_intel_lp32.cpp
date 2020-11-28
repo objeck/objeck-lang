@@ -4998,7 +4998,7 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
     }
 #endif
 
-    floats_index = instr_index = code_index = epilog_index = instr_count = 0;
+    local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
     // general use registers
     reg_eax = new RegisterHolder(EAX);
     aval_regs.push_back(new RegisterHolder(EDX));

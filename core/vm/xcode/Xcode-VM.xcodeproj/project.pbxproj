@@ -484,6 +484,7 @@
 					"$(SDKROOT)/usr/lib/system",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				ONLY_ACTIVE_ARCH = YES;
 				"OTHER_LDFLAGS[arch=*]" = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",

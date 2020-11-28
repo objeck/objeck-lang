@@ -5353,7 +5353,7 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
       exit(1);
     }
 #endif    
-    floats_index = instr_index = code_index = epilog_index = instr_count = 0;
+    local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
 
     rax_reg = new RegisterHolder(RAX);
 #ifdef _WIN64

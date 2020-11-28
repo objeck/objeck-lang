@@ -135,9 +135,9 @@ void JitCompilerA64::RegisterRoot() {
   RegisterHolder* mem_holder = GetRegister();
     
   // offset required to get to the first local variable
-  int32_t offset = local_space + TMP_REG_5 - 8;
+  int32_t offset = local_space + TMP_REG_5 + 8;
   if(realign_stack) {
-    offset -= 8;
+    offset += 8;
   }
   
   move_reg_reg(SP, holder->GetRegister());
@@ -4644,7 +4644,7 @@ void JitCompilerA64::ProcessIndices()
   // calculate local space (adjust for alignment)
   local_space += index;
   realign_stack = false;
-  if(local_space % 16 != 0) {
+  while(local_space % 16 != 0) {
     local_space += 8;
     realign_stack = true;
   }
@@ -4664,10 +4664,10 @@ bool JitCompilerA64::Compile(StackMethod* cm)
   if(!cm->GetNativeCode()) {
     skip_jump = false;
     method = cm;
-
-    int32_t cls_id = method->GetClass()->GetId();
-    int32_t mthd_id = method->GetId();
+    
 #ifdef _DEBUG
+    const long cls_id = method->GetClass()->GetId();
+    const long mthd_id = method->GetId();
     wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L","
       << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params="
       << method->GetParamCount() << L" ----------" << endl;
@@ -4679,7 +4679,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     ints = new long[MAX_INTS];
     float_consts = new double[MAX_DBLS];
     
-    floats_index = instr_index = code_index = instr_count = 0;
+    local_space = floats_index = instr_index = code_index = instr_count = 0;
     // general use registers
     aval_regs.push_back(new RegisterHolder(X3, false));
     aval_regs.push_back(new RegisterHolder(X2, false));
@@ -4923,9 +4923,9 @@ uint32_t* PageManager::GetPage(uint32_t* code, int32_t size)
   return temp;
 }
 
-/********************************
+/**
  * PageHolder class
- ********************************/
+ */
 uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   // get index into buffer
   uint32_t* temp = buffer + index;
