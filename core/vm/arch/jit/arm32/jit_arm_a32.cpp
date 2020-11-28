@@ -4581,7 +4581,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     ints = new int32_t[MAX_INTS];
     float_consts = new double[MAX_DBLS];
     
-    floats_index = instr_index = code_index = instr_count = 0;
+    local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
     // general use registers
     aval_regs.push_back(new RegisterHolder(R3, false));
     aval_regs.push_back(new RegisterHolder(R2, false));

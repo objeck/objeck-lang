@@ -1,5 +1,5 @@
-ARGS=-g -D_DEBUG -D_ARM64 -Wunused -Wall -Wno-unused-function -std=c++11 -std=c++11
-# ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-unused-function
+# ARGS=-g -D_DEBUG -D_ARM64 -Wunused -Wall -Wno-unused-function -std=c++11 -std=c++11
+ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-unused-function
 
 CC=clang++
 AR=ar

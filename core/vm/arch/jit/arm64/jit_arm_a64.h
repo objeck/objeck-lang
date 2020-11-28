@@ -9,7 +9,7 @@
  *
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright
+ * - Redistributions in binary form must reproduce the above copyrightx
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
  * - Neither the name of the Objeck team nor the names of its
@@ -41,11 +41,6 @@
 #include "../../../interpreter.h"
 
 using namespace std;
-
-/**
- * Notes on registers:
- *     rn <- src and rm=rd <- dest
- */
 
 namespace Runtime {
   // offsets for ARM A32 addresses
@@ -134,9 +129,9 @@ namespace Runtime {
     D7
   };
 
-  /********************************
+  /**
    * RegisterHolder class
-   ********************************/
+   */
   class RegisterHolder {
     Register reg;
     bool is_float;
@@ -159,9 +154,9 @@ namespace Runtime {
     }
   };
 
-  /********************************
+  /**
    * RegInstr class
-   ********************************/
+   */
   class RegInstr {
     RegType type;
     long operand;
@@ -263,9 +258,9 @@ namespace Runtime {
 
 typedef long (*fun_ptr)(long a, long b);
 
-  /********************************
+  /**
    * Manage executable buffers of memory
-   ********************************/
+   */
   class PageHolder {
     uint32_t* buffer;
     uint32_t available, index;
@@ -330,9 +325,9 @@ typedef long (*fun_ptr)(long a, long b);
     uint32_t* GetPage(uint32_t* code, int32_t size);
   };
   
-  /********************************
+  /**
    * JitCompilerA64 class
-   ********************************/
+   */
   class JitCompilerA64 {
     static StackProgram* program;
     static PageManager* page_manager;
@@ -348,7 +343,7 @@ typedef long (*fun_ptr)(long a, long b);
     vector<int32_t> deref_offsets;          // -1
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
-    int32_t local_space;
+    long local_space;
     bool realign_stack;
     StackMethod* method;
     int32_t instr_count;
@@ -362,6 +357,7 @@ typedef long (*fun_ptr)(long a, long b);
     int32_t code_buf_max;
     bool compile_success;
     bool skip_jump;
+    
 
     // setup and teardown
     void Prolog();
@@ -420,9 +416,9 @@ typedef long (*fun_ptr)(long a, long b);
     // Returns the name of a register
     wstring GetRegisterName(Register reg);
         
-    /***********************************
+    /**
      * Check for 'Nil' dereferencing
-     **********************************/
+     */
     inline void CheckNilDereference(Register reg) {
       // less than zero
       cmp_imm_reg(0, reg);
@@ -431,9 +427,9 @@ typedef long (*fun_ptr)(long a, long b);
       // jump to exit
     }
 
-    /***********************************
+    /**
      * Checks array bounds
-     **********************************/
+     */
     inline void CheckArrayBounds(Register reg, Register max_reg) {
       // less than zero
       cmp_imm_reg(0, reg);
@@ -448,9 +444,9 @@ typedef long (*fun_ptr)(long a, long b);
       // jump to exit
     }
     
-    /***********************************
+    /**
      * Gets an avaiable register from
-     ***********************************/
+     */
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
@@ -796,17 +792,17 @@ typedef long (*fun_ptr)(long a, long b);
     bool Compile(StackMethod* cm);
   };
 
-  /********************************
+  /**
    * Prototype for jit function
-   ********************************/
+   */
   typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t *inst,
                               size_t *op_stack, long *stack_pos, StackFrame **call_stack,
                               long *call_stack_pos, size_t **jit_mem, long *offset, long *ints);
   
   
-  /********************************
+  /**
    * JitExecutor class
-   ********************************/
+   */
   class JitExecutor {
     static StackProgram* program;
 
