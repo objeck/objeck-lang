@@ -2277,8 +2277,7 @@ void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
   uint32_t op_dest = reg;
   op_code |= op_dest;
   
-  long op_imm = imm << 10;
-  op_code |= op_imm;
+  op_code |= imm << 10;
   
   // encode
   AddMachineCode(op_code);
