@@ -40,6 +40,9 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 ### To do
 * Instructions: ```lsl_reg_reg, lsr_reg_reg, mul_xxx_xxx and div_xxx_xx```
-* Functionality: Callback to interpreter
-   * Space to save volatile register that are in use
-   * Assign a temporary intermediate register (have registers to spare)
+* Callback to interpreter from machine code
+   * Need space to save volatile registers
+   * Wire up memory manager to work with JIT machine code (assume ARMv7 port)
+* Assign a temporary intermediate register (have registers to spare)
+* Support for floating point operations and conversions (assume ARMv7 port)
+* Byte level operations (assume ARMv7 port with new encodings)
