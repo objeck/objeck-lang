@@ -18,13 +18,18 @@ vSP - stack pointer and zero (XZR)
 ### Security
 * macOS 11 has added security for code exection use:    
 * Allocate:    
+    
     mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
+
 * Write:    
+    
     memcpy(temp, code, byte_size);
     __clear_cache(temp, temp + byte_size);
     pthread_jit_write_protect_np(true);
 
 ### To do
-* Instructions:    
+* Instructions:
+
     lsl_reg_reg, lsr_reg_reg, mul_xxx_xxx and div_xxx_xx
+
 * Functionality: Callback to interpreter
