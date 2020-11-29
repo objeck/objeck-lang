@@ -336,9 +336,9 @@ namespace Runtime {
     long epilog_index;
     long* ints;
     double* float_consts;
-    int32_t floats_index;
-    int32_t instr_index;
-    int32_t code_buf_max;
+    long floats_index;
+    long instr_index;
+    long code_buf_max;
     bool compile_success;
     bool skip_jump;
     
@@ -347,7 +347,7 @@ namespace Runtime {
     void Epilog();
 
     // stack conversion operations
-    void ProcessParameters(int32_t count);
+    void ProcessParameters(long count);
     void RegisterRoot();
     void ProcessInstructions();
     void ProcessLoad(StackInstr* instr);
@@ -358,8 +358,8 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessFloatOperation(StackInstr* instruction);
     void ProcessFloatOperation2(StackInstr* instruction);
-    void ProcessReturn(int32_t params = -1);
-    void ProcessStackCallback(int32_t instr_id, StackInstr* instr, int32_t &instr_index, int32_t params);
+    void ProcessReturn(long params = -1);
+    void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter();
     void ProcessFunctionCallParameter();

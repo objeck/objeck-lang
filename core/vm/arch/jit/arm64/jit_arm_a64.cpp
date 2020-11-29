@@ -190,12 +190,12 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(start_reg);
 }
 
-void JitCompilerA64::ProcessParameters(int32_t params) {
+void JitCompilerA64::ProcessParameters(long params) {
 #ifdef _DEBUG
   wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
   
-  for(int32_t i = 0; i < params; ++i) {
+  for(long i = 0; i < params; ++i) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
 
@@ -1525,7 +1525,7 @@ void JitCompilerA64::ProcessCopy(StackInstr* instr) {
   }
 }
 
-void JitCompilerA64::ProcessStackCallback(int32_t instr_id, StackInstr* instr, int32_t &instr_index, int32_t params) {
+void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
   int32_t non_params;
   if(params < 0) {
     non_params = 0;
@@ -1634,7 +1634,7 @@ void JitCompilerA64::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   }
 }
 
-void JitCompilerA64::ProcessReturn(int32_t params) {
+void JitCompilerA64::ProcessReturn(long params) {
   if(!working_stack.empty()) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
@@ -4721,18 +4721,12 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     // setup
     Prolog();
     
-    // TODO: store method information
-    // method information
-    // move_imm_mem(cls_id, CLS_ID, SP);
-    // move_imm_mem(mthd_id, MTHD_ID, SP);
-    
     // TODO: register with memory manager
     // register root
     // RegisterRoot();
     
-    // TODO: process calling parameters
     // translate parameters
-    // ProcessParameters(method->GetParamCount());
+    ProcessParameters(method->GetParamCount());
     
     // tranlsate program
     ProcessInstructions();
