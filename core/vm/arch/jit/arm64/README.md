@@ -21,6 +21,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * Allocating memory: ```mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);```
 * Writing to memory:    
     ```
+    pthread_jit_write_protect_np(false);
     memcpy(temp, code, byte_size);
     __clear_cache(temp, temp + byte_size); // needed for ARM targets
     pthread_jit_write_protect_np(true);
