@@ -1,7 +1,0 @@
-TODO:
-- Stack alignment and red zone for AA64
-+ Calling parameters into JIT 
-+ Caller save space for registers?
-+ More operations
-+ Floating point support
-+ Ship with 'binary harding' signed vs. non-signed
