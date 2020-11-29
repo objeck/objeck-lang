@@ -580,7 +580,7 @@ namespace Runtime {
     void sub_imm_xreg(RegInstr* instr, Register reg);
     void sub_xreg_xreg(Register src, Register dest);
     void sub_mem_xreg(int32_t offset, Register src, Register dest);
-    void sub_imm_reg(long imm, Register reg);
+    void sub_imm_reg(int32_t imm, Register reg);
     void sub_imm_mem(int32_t imm, int32_t offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
     void sub_mem_reg(int32_t offset, Register src, Register dest);
