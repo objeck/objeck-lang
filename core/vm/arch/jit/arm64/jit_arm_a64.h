@@ -534,121 +534,121 @@ namespace Runtime {
     }
 
     // move instructions
-    void move_reg_mem8(Register src, int32_t offset, Register dest);
-    void move_mem8_reg(int32_t offset, Register src, Register dest);
-    void move_imm_mem8(int32_t imm, int32_t offset, Register dest);
+    void move_reg_mem8(Register src, long offset, Register dest);
+    void move_mem8_reg(long offset, Register src, Register dest);
+    void move_imm_mem8(long imm, long offset, Register dest);
     void move_reg_reg(Register src, Register dest);
-    void move_reg_mem(Register src, int32_t offset, Register dest);
-    void move_mem_reg(int32_t offset, Register src, Register dest);
-    void move_imm_memx(RegInstr* instr, int32_t offset, Register dest);
-    void move_imm_mem(int32_t imm, int32_t offset, Register dest);
-    void move_imm_reg(int32_t imm, Register reg);
+    void move_reg_mem(Register src, long offset, Register dest);
+    void move_mem_reg(long offset, Register src, Register dest);
+    void move_imm_memx(RegInstr* instr, long offset, Register dest);
+    void move_imm_mem(long imm, long offset, Register dest);
+    void move_imm_reg(long imm, Register reg);
     void move_imm_xreg(RegInstr* instr, Register reg);
-    void move_mem_xreg(int32_t offset, Register src, Register dest);
-    void move_xreg_mem(Register src, int32_t offset, Register dest);
+    void move_mem_xreg(long offset, Register src, Register dest);
+    void move_xreg_mem(Register src, long offset, Register dest);
     void move_xreg_xreg(Register src, Register dest);
 
     // math instructions
-    void math_imm_reg(int32_t imm, Register reg, InstructionType type);
+    void math_imm_reg(long imm, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
-    void math_mem_reg(int32_t offset, Register reg, InstructionType type);
+    void math_mem_reg(long offset, Register reg, InstructionType type);
     void math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, InstructionType type);
-    void math_mem_xreg(int32_t offset, RegisterHolder *&reg, InstructionType type);
+    void math_mem_xreg(long offset, RegisterHolder *&reg, InstructionType type);
     void math_xreg_xreg(Register src, RegisterHolder *&dest, InstructionType type);
     
     // logical
-    void and_imm_reg(int32_t imm, Register reg);
+    void and_imm_reg(long imm, Register reg);
     void and_reg_reg(Register src, Register dest);
-    void and_mem_reg(int32_t offset, Register src, Register dest);
-    void or_imm_reg(int32_t imm, Register reg);
+    void and_mem_reg(long offset, Register src, Register dest);
+    void or_imm_reg(long imm, Register reg);
     void or_reg_reg(Register src, Register dest);
-    void or_mem_reg(int32_t offset, Register src, Register dest);
-    void xor_imm_reg(int32_t imm, Register reg);
+    void or_mem_reg(long offset, Register src, Register dest);
+    void xor_imm_reg(long imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
-    void xor_mem_reg(int32_t offset, Register src, Register dest);
+    void xor_mem_reg(long offset, Register src, Register dest);
     
     // add instructions
-    void add_imm_mem(int32_t imm, int32_t offset, Register dest);
-    void add_imm_reg(int32_t imm, Register reg);
+    void add_imm_mem(long imm, long offset, Register dest);
+    void add_imm_reg(long imm, Register reg);
     void add_imm_xreg(RegInstr* instr, Register reg);
     void add_xreg_xreg(Register src, Register dest);
-    void add_mem_reg(int32_t offset, Register src, Register dest);
-    void add_mem_xreg(int32_t offset, Register src, Register dest);
+    void add_mem_reg(long offset, Register src, Register dest);
+    void add_mem_xreg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
 
     // sub instructions
     void sub_imm_xreg(RegInstr* instr, Register reg);
     void sub_xreg_xreg(Register src, Register dest);
-    void sub_mem_xreg(int32_t offset, Register src, Register dest);
-    void sub_imm_reg(int32_t imm, Register reg);
-    void sub_imm_mem(int32_t imm, int32_t offset, Register dest);
+    void sub_mem_xreg(long offset, Register src, Register dest);
+    void sub_imm_reg(long imm, Register reg);
+    void sub_imm_mem(long imm, long offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
-    void sub_mem_reg(int32_t offset, Register src, Register dest);
+    void sub_mem_reg(long offset, Register src, Register dest);
 
     // mul instructions
     void mul_imm_xreg(RegInstr* instr, Register reg);
     void mul_xreg_xreg(Register src, Register dest);
-    void mul_mem_xreg(int32_t offset, Register src, Register dest);
-    void mul_imm_reg(int32_t imm, Register reg);
+    void mul_mem_xreg(long offset, Register src, Register dest);
+    void mul_imm_reg(long imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
-    void mul_mem_reg(int32_t offset, Register src, Register dest);
+    void mul_mem_reg(long offset, Register src, Register dest);
 
     // div instructions
     void div_imm_xreg(RegInstr* instr, Register reg);
     void div_xreg_xreg(Register src, Register dest);
-    void div_mem_xreg(int32_t offset, Register src, Register dest);
-    void div_imm_reg(int32_t imm, Register reg, bool is_mod = false);
+    void div_mem_xreg(long offset, Register src, Register dest);
+    void div_imm_reg(long imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
-    void div_mem_reg(int32_t offset, Register src, Register dest, bool is_mod = false);
+    void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
     // compare instructions
     void cmp_reg_reg(Register src, Register dest);
-    void cmp_mem_reg(int32_t offset, Register src, Register dest);
-    void cmp_imm_reg(int32_t imm, Register reg);
+    void cmp_mem_reg(long offset, Register src, Register dest);
+    void cmp_imm_reg(long imm, Register reg);
     
     void cmp_xreg_xreg(Register src, Register dest);
-    void cmp_mem_xreg(int32_t offset, Register src, Register dest);
+    void cmp_mem_xreg(long offset, Register src, Register dest);
     void cmp_imm_xreg(RegInstr* instr, Register reg);
     
     void cmov_reg(Register reg, InstructionType oper);
 
     // inc/dec instructions
     void dec_reg(Register dest);
-    void dec_mem(int32_t offset, Register dest);
-    void inc_mem(int32_t offset, Register dest);
+    void dec_mem(long offset, Register dest);
+    void inc_mem(long offset, Register dest);
 
     // shift instructions
     void shl_reg_reg(Register src, Register dest);
-    void shl_mem_reg(int32_t offset, Register src, Register dest);
-    void shl_imm_reg(int32_t value, Register dest);
+    void shl_mem_reg(long offset, Register src, Register dest);
+    void shl_imm_reg(long value, Register dest);
 
     void shr_reg_reg(Register src, Register dest);
-    void shr_mem_reg(int32_t offset, Register src, Register dest);
-    void shr_imm_reg(int32_t value, Register dest);
+    void shr_mem_reg(long offset, Register src, Register dest);
+    void shr_imm_reg(long value, Register dest);
 
     // push/pop instructions
     void push_imm(int32_t value);
     void push_reg(Register reg);
     void pop_reg(Register reg);
-    void push_mem(int32_t offset, Register src);
+    void push_mem(long offset, Register src);
 
     // type conversion instructions
     void round_imm_xreg(RegInstr* instr, Register reg, bool is_floor);
-    void round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor);
+    void round_mem_xreg(long offset, Register src, Register dest, bool is_floor);
     void round_xreg_xreg(Register src, Register dest, bool is_floor);
     void vcvt_xreg_reg(Register src, Register dest);
     void vcvt_imm_reg(RegInstr* instr, Register reg);
-    void vcvt_mem_reg(int32_t offset, Register src, Register dest);
+    void vcvt_mem_reg(long offset, Register src, Register dest);
     void vcvt_reg_xreg(Register src, Register dest);
     void vcvt_imm_xreg(RegInstr* instr, Register reg);
-    void vcvt_mem_xreg(int32_t offset, Register src, Register dest);
+    void vcvt_mem_xreg(long offset, Register src, Register dest);
 
     // function call instruction
     void call_reg(Register reg);
     
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
-    void loop(int32_t offset);
+    void loop(long offset);
     
     static size_t PopInt(size_t* op_stack, long *stack_pos) {
       const size_t value = op_stack[--(*stack_pos)];
