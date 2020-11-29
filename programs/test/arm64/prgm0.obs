@@ -1,10 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo()->PrintLine();
+		Foo(96)->PrintLine();
 	}
 
-	function : native : Foo() ~ Int {
-		a := -13;
-		return a - 7;
+	function : native : Foo(a : Int) ~ Int {
+		c := a + 8;
+		return c - 7;
 	}
 }
