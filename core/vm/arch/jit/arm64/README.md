@@ -1,8 +1,9 @@
 ## JIT Compiler for Apple Silicon (ARMv8) 
-While the instruciton set for ARMv7 is very simailr to ARMv8 the instruciton encoding is very differnt. There are 32 integer and floating point registers. Values stored in volatile registers need to stored between function calls.
+While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers. Values stored in volatile registers need to saved between function calls. ARMv8 does not support novel conditional instruction execution.
 
 ### Registers
-Link (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
+Currently plan to only use 8-registers, note on Intel only 5-6 are used for applications.
+Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * X0-X7 - arguments and return value (volatile)
 * X8 = indirect result (struct) location (or temp reg)
 * X9-X15 = temporary (volatile)
@@ -16,20 +17,30 @@ vSP - stack pointer and zero (XZR)
 * V8-V15 - callee saved registers (non-volatile, used for temp vars by compilers)
 
 ### Security
-* macOS 11 has added security for code exection use:    
-* Allocate:    
-    
-    mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
+* macOS 11 has added security for code execution use:    
+* Allocate: ```mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);```
 
 * Write:    
-    
+    ```
     memcpy(temp, code, byte_size);
     __clear_cache(temp, temp + byte_size);
     pthread_jit_write_protect_np(true);
+    ```
+* Entitlements:
+	Consider 'Allow Unsigned Executable Memory' option for shipping vs. signing for code execution
+	```
+	<dict>
+		<key>com.apple.security.cs.allow-jit</key>
+		<true/>
+	</dict>
+	```
+
+### Optimizations
+* Take advantage of more register, trade off is storing volatile register between calls
+* Guard 5, 6, and 12-bit values in JIT code generation
 
 ### To do
-* Instructions:
-
-    lsl_reg_reg, lsr_reg_reg, mul_xxx_xxx and div_xxx_xx
-
+* Instructions: ```lsl_reg_reg, lsr_reg_reg, mul_xxx_xxx and div_xxx_xx```
 * Functionality: Callback to interpreter
+   * Space to save volatile register that are in use
+   * Assign a temporary intermediate register (have registers to spare)
