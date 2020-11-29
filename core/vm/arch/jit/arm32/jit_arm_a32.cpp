@@ -2684,15 +2684,23 @@ void JitCompilerA32::shl_mem_reg(int32_t offset, Register src, Register dest)
 
 // TODO: missed this one... ha... will fix... after i boot up the rp4
 void JitCompilerA32::shr_imm_reg(int32_t value, Register dest) {
-  AddMachineCode(0xc1);
-  unsigned char code = 0xe8;
-  // RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddMachineCode(value);
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [asr $" << value << L", %" 
-        << GetRegisterName(dest) << L"]" << endl;
+  #ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [asr " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L", #" << value << L"]" << endl;
 #endif
+  uint32_t op_code = 0xe1a00040;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+
+  
+  uint32_t op_imm = value << 7;
+  op_code |= op_imm;
+  
+  uint32_t op_src = dest;
+  op_code |= op_src;
+
+  // encode
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA32::shr_reg_reg(Register src, Register dest)

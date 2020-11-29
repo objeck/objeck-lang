@@ -7,6 +7,7 @@
       <PathStyle>MinGWUnixSlash</PathStyle>
       <LocalDirForAbsolutePaths>$(ToolchainDir)</LocalDirForAbsolutePaths>
     </CustomSourceDirectories>
+    <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
     <DeploymentHost>
       <HostName>192.168.4.95</HostName>
       <Transport>SSH</Transport>
@@ -39,12 +40,13 @@
     </AlternateSysrootSource>
   </Project>
   <Build xsi:type="com.visualgdb.build.cmake">
+    <BuildLogMode xsi:nil="true" />
     <ToolchainID>
       <ID>com.visualgdb.raspberry_pi</ID>
       <Version>
         <GCC>8.3.0</GCC>
         <GDB>8.2.1</GDB>
-        <Revision>1</Revision>
+        <Revision>2</Revision>
       </Version>
     </ToolchainID>
     <RelativeSourceDirectory />
@@ -77,14 +79,16 @@
     <CMakeMakefileType>Ninja</CMakeMakefileType>
     <DeployAsRoot>false</DeployAsRoot>
     <CMakeCleanMode>RemoveBuildDirectory</CMakeCleanMode>
+    <UseCCache>false</UseCCache>
     <ProjectModeSettings>
       <ProjectItemSettings>
         <GroupSourcesByTypes>true</GroupSourcesByTypes>
         <GroupSourcesByPaths>true</GroupSourcesByPaths>
         <GroupTargetsByPaths>true</GroupTargetsByPaths>
+        <FollowCMakeSourceGroups>false</FollowCMakeSourceGroups>
         <AutoRefreshProject>true</AutoRefreshProject>
+        <AlwaysConsiderOutdated>false</AlwaysConsiderOutdated>
         <SortTargetsByName>true</SortTargetsByName>
-        <UseCMakeUpToDateCheck>false</UseCMakeUpToDateCheck>
         <RedundantTargetMode>HideOuterProjectTargets</RedundantTargetMode>
         <SortSourcesByName>true</SortSourcesByName>
         <BuildAllTargetsInSubdir>false</BuildAllTargetsInSubdir>
@@ -126,6 +130,8 @@
       <VirtualFolders />
       <ConfigurationNameCase>Upper</ConfigurationNameCase>
       <DefaultHeaderDiscoveryMode>None</DefaultHeaderDiscoveryMode>
+      <EnableFastUpToDateCheck>true</EnableFastUpToDateCheck>
+      <StartupTarget>arm_vm</StartupTarget>
     </ProjectModeSettings>
   </Build>
   <CustomBuild>
@@ -236,20 +242,25 @@
       <EnableAsyncExecutionMode>false</EnableAsyncExecutionMode>
       <EnableNonStopMode>false</EnableNonStopMode>
       <MaxBreakpointLimit>0</MaxBreakpointLimit>
+      <EnableVerboseMode>true</EnableVerboseMode>
     </AdditionalGDBSettings>
     <LaunchGDBSettings xsi:type="GDBLaunchParametersNewInstance">
       <DebuggedProgram>$(TargetPath)</DebuggedProgram>
       <GDBServerPort>2000</GDBServerPort>
       <ProgramArguments>$(SelectedCMakeTargetArgs)</ProgramArguments>
       <WorkingDirectory>$(SelectedCMakeTargetLaunchDir)</WorkingDirectory>
+      <ArgumentEscapingMode>Auto</ArgumentEscapingMode>
     </LaunchGDBSettings>
     <GenerateCtrlBreakInsteadOfCtrlC>false</GenerateCtrlBreakInsteadOfCtrlC>
+    <SuppressArgumentVariablesCheck>false</SuppressArgumentVariablesCheck>
     <DeploymentTargetPath>$(DeployPath)</DeploymentTargetPath>
     <X11WindowMode>Local</X11WindowMode>
     <KeepConsoleAfterExit>false</KeepConsoleAfterExit>
     <RunGDBUnderSudo>false</RunGDBUnderSudo>
     <DeploymentMode>Auto</DeploymentMode>
     <DeployWhenLaunchedWithoutDebugging>true</DeployWhenLaunchedWithoutDebugging>
+    <StripDebugSymbolsDuringDeployment>false</StripDebugSymbolsDuringDeployment>
     <SuppressTTYCreation>false</SuppressTTYCreation>
+    <IndexDebugSymbols>false</IndexDebugSymbols>
   </Debug>
 </VisualGDBProjectSettings2>
