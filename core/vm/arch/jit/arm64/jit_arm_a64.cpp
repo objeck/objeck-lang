@@ -2246,13 +2246,29 @@ void JitCompilerA64::shl_imm_reg(int32_t value, Register dest) {
   AddMachineCode(op_code);
 }
 
+void JitCompilerA64::shr_imm_reg(int32_t value, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [asr $" << value << L", %" << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0x9340FC00;
+  
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+  
+  uint32_t op_src = dest;
+  op_code |= op_src;
+  
+  op_code |= value << 16;
+  
+  AddMachineCode(op_code);
+}
+
 void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
   << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
 #endif
   
-
   uint32_t op_code = 0xF1000400;
   
   uint32_t op_src = reg << 5;
@@ -2809,18 +2825,6 @@ void JitCompilerA64::shl_mem_reg(int32_t offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerA64::shr_imm_reg(int32_t value, Register dest) {
-  AddMachineCode(0xc1);
-  unsigned char code = 0xe8;
-  // RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddMachineCode(value);
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [shr $" << value << L", %"
-        << GetRegisterName(dest) << L"]" << endl;
-#endif
-}
-
 void JitCompilerA64::shr_reg_reg(Register src, Register dest)
 {
 #ifdef _DEBUG
@@ -2839,7 +2843,6 @@ void JitCompilerA64::shr_reg_reg(Register src, Register dest)
   op_code |= op_dest;
   
   AddMachineCode(op_code);
-
 }
 
 void JitCompilerA64::shr_mem_reg(int32_t offset, Register src, Register dest)
