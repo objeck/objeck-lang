@@ -12,21 +12,20 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * X19-X28 - callee saved registers (non-volatile)
 * X29 - frame pointer
 * X30 - link register (LR)
-vSP - stack pointer and zero (XZR)
+* SP - stack pointer and zero (XZR)
 * V0-V7, V16-V31 - volatile NEON and FP registers
 * V8-V15 - callee saved registers (non-volatile, used for temp vars by compilers)
 
 ### Security
 * macOS 11 has added security for code execution use:    
-* Allocate: ```mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);```
-
-* Write:    
+* Allocating memory: ```mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);```
+* Writing to memory:    
     ```
     memcpy(temp, code, byte_size);
-    __clear_cache(temp, temp + byte_size);
+    __clear_cache(temp, temp + byte_size); // needed for ARM targets
     pthread_jit_write_protect_np(true);
     ```
-* Entitlements:
+* Application entitlements:
 	Consider 'Allow Unsigned Executable Memory' option for shipping vs. signing for code execution
 	```
 	<dict>
