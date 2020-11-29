@@ -2246,14 +2246,14 @@ void JitCompilerA64::shl_imm_reg(int32_t value, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA64::sub_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
   << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
 #endif
   
 
-  uint32_t op_code = 0xF1001C00;
+  uint32_t op_code = 0xF1000400;
   
   uint32_t op_src = reg << 5;
   op_code |= op_src;
@@ -2261,7 +2261,7 @@ void JitCompilerA64::sub_imm_reg(int32_t imm, Register reg) {
   uint32_t op_dest = reg;
   op_code |= op_dest;
   
-  uint32_t op_imm = imm << 10;
+  long op_imm = imm << 10;
   op_code |= op_imm;
   
   // encode
