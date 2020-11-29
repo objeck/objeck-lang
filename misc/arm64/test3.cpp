@@ -2,7 +2,8 @@
 
 long Foo(long a, long b) {
 	long c = 13;
-	return a * c;
+	long d = c - 1;
+	return d;
 }
 
 int main() {
