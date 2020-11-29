@@ -65,8 +65,6 @@
 		255B2D721966EFB700AF1F2E /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../../vm.h; sourceTree = "<group>"; };
 		ED0340C7216A6B920091732E /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../arch/memory.h; sourceTree = "<group>"; };
 		ED0340C8216A6B920091732E /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/memory.cpp; sourceTree = "<group>"; };
-		ED0340D7216A760F0091732E /* libssl.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.1.dylib; path = ../../../../../../../../usr/local/lib/libssl.1.1.dylib; sourceTree = "<group>"; };
-		ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.1.dylib; path = ../../../../../../../../usr/local/lib/libcrypto.1.1.dylib; sourceTree = "<group>"; };
 		ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
 		ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
 		ED563F572570075600791CB7 /* Xcode-VM-A64.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Xcode-VM-A64.entitlements"; sourceTree = "<group>"; };
@@ -141,8 +139,6 @@
 		25DC32171FF1A92A0040A5BE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */,
-				ED0340D7216A760F0091732E /* libssl.1.1.dylib */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
