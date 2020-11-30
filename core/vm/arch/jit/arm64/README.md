@@ -41,7 +41,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * Guard 5, 6, and 12-bit values in JIT code generation
 
 ### To do
-* Instructions: ```lsl_reg_reg, lsr_reg_reg, mul_xxx_xxx and div_xxx_xx```
+* Instructions: ```lsl_reg_reg, lsr_reg_reg``` ~~mul_xxx_xxx~~ and ~~div_xxx_xx~~
 * Callback to interpreter from machine code
    * Need space to save volatile registers
    * Wire up memory manager to work with JIT machine code (assume ARMv7 port)
