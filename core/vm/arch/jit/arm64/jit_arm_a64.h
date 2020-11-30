@@ -56,20 +56,17 @@ namespace Runtime {
 #define JIT_OFFSET 16
 #define INT_CONSTS 8
   // float temps
-#define TMP_D_0 -28 // TODO: Remove and reserve extra registers
-#define TMP_D_1 -36
-#define TMP_D_2 -44
-  // integer temps to state state between calls
-#define TMP_REG_0 -48 // TODO: Remove and reserve extra registers
-#define TMP_REG_1 -52
-#define TMP_REG_2 -56
-#define TMP_REG_3 -60
-#define TMP_REG_4 -64
-#define TMP_REG_5 -68
-#define TMP_REG_6 -64
-#define TMP_REG_7 -68
+#define TMP_D_0 96
+#define TMP_D_1 104
+#define TMP_D_2 112
+#define TMP_D_3 120
+  // integer temps
+#define TMP_REG_0 128
+#define TMP_REG_1 136
+#define TMP_REG_2 136
+#define TMP_REG_3 144
   // holds $lr for callbacks
-#define TMP_REG_LR -72
+#define TMP_REG_LR 152
 
 #define MAX_INTS 256
 #define MAX_DBLS 128
