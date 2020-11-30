@@ -2074,6 +2074,25 @@ void JitCompilerA64::ProcessIntCalculation(StackInstr* instruction) {
 // -------- Start: Port to A64 encoding --------
 //
 
+void JitCompilerA64::move_reg_reg(Register src, Register dest) {
+  if(src != dest) {
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(dest)
+    << L", " << GetRegisterName(src) << L"]" << endl;
+#endif
+    
+    uint32_t op_code = 0xAA0003E0;
+    
+    op_code |= dest;
+    
+    const uint32_t op_offset = src << 16;
+    op_code |= op_offset;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
+}
+
 void JitCompilerA64::move_reg_mem(Register src, long offset, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
@@ -2165,11 +2184,11 @@ void JitCompilerA64::add_reg_reg(Register src, Register dest) {
   uint32_t op_code = 0x8B000000;
   
   // rn <- src
-  uint32_t op_src = src << 5;
+  uint32_t op_src = src << 16;
   op_code |= op_src;
   
   // rm=rd <- dest
-  uint32_t op_dest = dest << 16;
+  uint32_t op_dest = dest << 5;
   op_code |= op_dest;
 
   op_dest = dest;
@@ -2199,6 +2218,25 @@ void JitCompilerA64::add_imm_reg(long imm, Register reg) {
   AddMachineCode(op_code);
 }
 
+void JitCompilerA64::add_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  add_reg_reg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder);
+}
+
+void JitCompilerA64::inc_mem(long offset, Register dest) {
+  add_imm_mem(1, offset, dest);
+}
+
+void JitCompilerA64::add_imm_mem(long imm, long offset, Register dest) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, dest, mem_holder->GetRegister());
+  add_imm_reg(imm, mem_holder->GetRegister());
+  move_reg_mem(mem_holder->GetRegister(), offset, dest);
+  ReleaseRegister(mem_holder);
+}
+
 void JitCompilerA64::sub_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [subs " << GetRegisterName(dest) << L", "
@@ -2206,16 +2244,139 @@ void JitCompilerA64::sub_reg_reg(Register src, Register dest) {
 #endif
   uint32_t op_code = 0xEB000000;
   
-  uint32_t op_src = src << 5;
+  uint32_t op_src = src << 16;
   op_code |= op_src;
   
-  uint32_t op_dest = dest << 12;
+  uint32_t op_dest = dest << 5;
   op_code |= op_dest;
 
   op_dest = dest;
   op_code |= op_dest;
 
   AddMachineCode(op_code);
+}
+
+void JitCompilerA64::sub_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  sub_reg_reg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder);
+}
+
+void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", " << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xF1000400;
+  
+  uint32_t op_src = reg << 5;
+  op_code |= op_src;
+  
+  uint32_t op_dest = reg;
+  op_code |= op_dest;
+  
+  op_code |= imm << 10;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::sub_imm_mem(long imm, long offset, Register dest) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, dest, mem_holder->GetRegister());
+  sub_imm_reg(imm, mem_holder->GetRegister());
+  move_reg_mem(mem_holder->GetRegister(), offset, dest);
+  ReleaseRegister(mem_holder);
+}
+
+void JitCompilerA64::dec_mem(long offset, Register dest) {
+  sub_imm_mem(1, offset, dest);
+}
+
+void JitCompilerA64::dec_reg(Register dest) {
+  sub_imm_reg(1, dest);
+}
+
+void JitCompilerA64::mul_imm_reg(long imm, Register reg) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  mul_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::mul_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  mul_reg_reg(src_holder->GetRegister(), dest);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::mul_reg_reg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [mul " << GetRegisterName(dest)
+  << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0x9B007C00;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::div_imm_reg(long imm, Register reg, bool is_mod) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  div_reg_reg(src_holder->GetRegister(), reg, is_mod);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  div_reg_reg(src_holder->GetRegister(), dest, is_mod);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::div_reg_reg(Register src, Register dest, bool is_mod) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x9AC00C00;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+  
+  if(is_mod) {
+    RegisterHolder* holder = GetRegister();
+    
+    op_code |= holder->GetRegister();
+    AddMachineCode(op_code);
+    mul_reg_reg(src, holder->GetRegister());
+    sub_reg_reg(holder->GetRegister(), dest);
+    
+    ReleaseRegister(holder);
+  }
+  else {
+    op_dest = dest;
+    op_code |= op_dest;
+    AddMachineCode(op_code);
+  }
 }
 
 void JitCompilerA64::shl_imm_reg(long value, Register dest) {
@@ -2263,49 +2424,9 @@ void JitCompilerA64::shr_imm_reg(long value, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
-  << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xF1000400;
-  
-  uint32_t op_src = reg << 5;
-  op_code |= op_src;
-  
-  uint32_t op_dest = reg;
-  op_code |= op_dest;
-  
-  op_code |= imm << 10;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
 //
 // -------- End: Port to A64 encoding --------
 //
-
-void JitCompilerA64::move_reg_reg(Register src, Register dest) {
-  if(src != dest) {
-#ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(dest)
-    << L", " << GetRegisterName(src) << L"]" << endl;
-#endif
-    
-    uint32_t op_code = 0xe1a00000;
-    
-    uint32_t op_dest = dest << 12;
-    op_code |= op_dest;
-    
-    uint32_t op_offset = src;
-    op_code |= op_offset;
-    
-    // encode
-    AddMachineCode(op_code);
-  }
-}
 
 // --- 8-bit operations ---
 void JitCompilerA64::move_reg_mem8(Register src, long offset, Register dest) {
@@ -2890,125 +3011,6 @@ void JitCompilerA64::cmp_imm_xreg(RegInstr* instr, Register reg) {
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
-}
-
-void JitCompilerA64::add_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, src, mem_holder->GetRegister());
-  add_reg_reg(mem_holder->GetRegister(), dest);
-  ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::add_imm_mem(long imm, long offset, Register dest) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, dest, mem_holder->GetRegister());
-  add_imm_reg(imm, mem_holder->GetRegister());
-  move_reg_mem(mem_holder->GetRegister(), offset, dest);
-  ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::inc_mem(long offset, Register dest) {
-  add_imm_mem(1, offset, dest);
-}
-
-void JitCompilerA64::dec_mem(long offset, Register dest) {
-  sub_imm_mem(1, offset, dest);
-}
-
-void JitCompilerA64::dec_reg(Register dest) {
-  sub_imm_reg(1, dest);
-}
-
-void JitCompilerA64::sub_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, src, mem_holder->GetRegister());
-  sub_reg_reg(mem_holder->GetRegister(), dest);
-  ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::sub_imm_mem(long imm, long offset, Register dest) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, dest, mem_holder->GetRegister());
-  sub_imm_reg(imm, mem_holder->GetRegister());
-  move_reg_mem(mem_holder->GetRegister(), offset, dest);
-  ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::mul_imm_reg(long imm, Register reg) {
-  RegisterHolder* src_holder = GetRegister();
-  move_imm_reg(imm, src_holder->GetRegister());
-  mul_reg_reg(src_holder->GetRegister(), reg);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::mul_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* src_holder = GetRegister();
-  move_mem_reg(offset, src, src_holder->GetRegister());
-  mul_reg_reg(src_holder->GetRegister(), dest);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::mul_reg_reg(Register src, Register dest) {
-  uint32_t op_code = 0xe0000090;
-  
-  uint32_t op_dest = dest << 16;
-  op_code |= op_dest;
-  
-  uint32_t op_src = src << 8;
-  op_code |= op_src;
-  
-  op_code |= dest;
-  
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::div_imm_reg(long imm, Register reg, bool is_mod) {
-  RegisterHolder* src_holder = GetRegister();
-  move_imm_reg(imm, src_holder->GetRegister());
-  div_reg_reg(src_holder->GetRegister(), reg, is_mod);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
-  RegisterHolder* src_holder = GetRegister();
-  move_mem_reg(offset, src, src_holder->GetRegister());
-  div_reg_reg(src_holder->GetRegister(), dest, is_mod);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::div_reg_reg(Register src, Register dest, bool is_mod) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest)
-  << L", " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << endl;
-#endif
-
-  RegisterHolder* result_holder = nullptr;
-
-  // sign divide
-  uint32_t op_code = 0xe710f010;
-  if(is_mod) {
-    result_holder = GetRegister();
-    uint32_t op_dest = result_holder->GetRegister() << 16;
-    op_code |= op_dest;
-  }
-  else {
-    uint32_t op_dest = dest << 16;
-    op_code |= op_dest;
-  }
-  
-  uint32_t op_src = src << 8;
-  op_code |= op_src;
-  
-  op_code |= dest;
-  
-  AddMachineCode(op_code);
-  
-  // mod from result
-  if(is_mod) {
-    mul_reg_reg(src, result_holder->GetRegister());
-    sub_reg_reg(result_holder->GetRegister(), dest);
-    ReleaseRegister(result_holder);
-  }
 }
 
 void JitCompilerA64::cmp_imm_reg(long imm, Register reg) {
