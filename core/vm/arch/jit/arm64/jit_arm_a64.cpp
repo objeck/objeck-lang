@@ -1575,8 +1575,8 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   }
 
 #ifdef _DEBUG
-  assert(reg_offset >= TMP_REG_5);
-  assert(fp_offset >= TMP_D_2);
+  assert(reg_offset >= TMP_REG_3);
+  assert(fp_offset >= TMP_D_3);
 #endif
 
   if(dirty_regs.size() > 6 || dirty_fp_regs.size() > 3 ) {
@@ -1613,8 +1613,8 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   move_imm_reg((size_t)instr, X1);
   move_imm_reg(instr_id, X0);
   
-  move_imm_reg((size_t)JitCompilerA64::JitStackCallback, X28);
-  call_reg(X28);
+  move_imm_reg((size_t)JitCompilerA64::JitStackCallback, X9);
+  call_reg(X9);
   
   // restore register values
   while(!dirty_regs.empty()) {
@@ -2159,7 +2159,7 @@ void JitCompilerA64::move_imm_reg(long imm, Register reg) {
   else {
     // TODO: Support me...
     
-    move_mem_reg(INT_CONSTS, SP, X28);
+    move_mem_reg(INT_CONSTS, SP, X9);
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -3648,10 +3648,10 @@ void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(X28, TMP_REG_0, SP);
-  move_imm_reg((size_t)func_ptr, X28);
-  call_reg(X28);
-  move_mem_reg(TMP_REG_0, SP, X28);
+  move_reg_mem(X9, TMP_REG_0, SP);
+  move_imm_reg((size_t)func_ptr, X9);
+  call_reg(X9);
+  move_mem_reg(TMP_REG_0, SP, X9);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
@@ -3705,10 +3705,10 @@ void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(X28, TMP_REG_0, SP);
-  move_imm_reg((size_t)func_ptr, X28);
-  call_reg(X28);
-  move_mem_reg(TMP_REG_0, SP, X28);
+  move_reg_mem(X9, TMP_REG_0, SP);
+  move_imm_reg((size_t)func_ptr, X9);
+  call_reg(X9);
+  move_mem_reg(TMP_REG_0, SP, X9);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
@@ -4596,9 +4596,8 @@ void JitCompilerA64::ProcessIndices()
       break;
     }
   }
-
-  // TODO: adjust as needed
-  long index = INT_CONSTS;
+  
+  long index = TMP_REG_LR;
   long last_id = -1;
   multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
@@ -4650,7 +4649,7 @@ void JitCompilerA64::ProcessIndices()
   // calculate local space (adjust for alignment)
   local_space += index;
   realign_stack = false;
-  while(local_space % 16 != 0) {
+  if(local_space % 16 != 0) {
     local_space += 8;
     realign_stack = true;
   }
@@ -4701,8 +4700,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aux_regs.push(new RegisterHolder(X11, false));
     aux_regs.push(new RegisterHolder(X10, false));
     aux_regs.push(new RegisterHolder(X9, false));
-    aux_regs.push(new RegisterHolder(X7, false));
 */
+    aux_regs.push(new RegisterHolder(X7, false));
     aux_regs.push(new RegisterHolder(X6, false));
     aux_regs.push(new RegisterHolder(X5, false));
     aux_regs.push(new RegisterHolder(X4, false));
