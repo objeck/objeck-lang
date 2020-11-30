@@ -1,0 +1,14 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Foo(19,12)->PrintLine();
+	}
+
+	function : Bar(a : Int) ~ Nil {
+		a->PrintLine();
+	}
+
+	function : native : Foo(a : Int, b : Int) ~ Int {
+		Bar(a + b);
+		return 13;
+	}
+}
