@@ -1,11 +1,11 @@
 #include<iostream>
 
 long Foo(long a, long b) {
-	long c = a % 4;
+	long c = a >> b;
 	return c;
 }
 
 int main() {
-	std::wcout << Foo(7,3) << std::endl;	
+	std::wcout << Foo(199,2) << std::endl;	
 	return 0;
 }
