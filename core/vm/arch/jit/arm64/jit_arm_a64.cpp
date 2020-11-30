@@ -1538,7 +1538,6 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
 #endif
   
-  // TODO: revist the use to temps, will not be restored?
   stack<RegInstr*> regs;
   stack<int32_t> dirty_regs;
   int32_t reg_offset = TMP_REG_0;
@@ -1556,14 +1555,14 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
         move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, SP);
         dirty_regs.push(reg_offset);
         regs.push(left);
-        reg_offset -= 8;
+        reg_offset += 8;
         break;
 
       case REG_FLOAT:
         move_xreg_mem(left->GetRegister()->GetRegister(), fp_offset, SP);
         dirty_fp_regs.push(fp_offset);
         fp_regs.push(left);
-        fp_offset -= 8;
+        fp_offset += 8;
         break;
 
       default:
@@ -1575,11 +1574,11 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   }
 
 #ifdef _DEBUG
-  assert(reg_offset >= TMP_REG_3);
-  assert(fp_offset >= TMP_D_3);
+  assert(reg_offset <= TMP_REG_3);
+  assert(fp_offset <= TMP_D_3);
 #endif
 
-  if(dirty_regs.size() > 6 || dirty_fp_regs.size() > 3 ) {
+  if(dirty_regs.size() > 4 || dirty_fp_regs.size() > 4 ) {
     compile_success = false;
   }
 
@@ -1587,27 +1586,16 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   ProcessReturn(params);
   
   // set parameters
-  move_imm_mem(instr_index - 1, 20, SP);
-  
+  move_imm_mem(instr_index - 1, 8, SP);
   RegisterHolder* reg_holder = GetRegister();
-  
   move_mem_reg(CALL_STACK_POS, SP, reg_holder->GetRegister());
-  move_reg_mem(reg_holder->GetRegister(), 16, SP);
-  
-  move_mem_reg(CALL_STACK, SP, reg_holder->GetRegister());
-  move_reg_mem(reg_holder->GetRegister(), 12, SP);
-  
-  move_mem_reg(OP_STACK_POS, SP, reg_holder->GetRegister());
-  move_reg_mem(reg_holder->GetRegister(), 8, SP);
-  
-  move_mem_reg(OP_STACK, SP, reg_holder->GetRegister());
-  move_reg_mem(reg_holder->GetRegister(), 4, SP);
-  
-  move_mem_reg(INSTANCE_MEM, SP, reg_holder->GetRegister());
   move_reg_mem(reg_holder->GetRegister(), 0, SP);
-
   ReleaseRegister(reg_holder);
   
+  move_mem_reg(CALL_STACK, SP, X7);
+  move_mem_reg(OP_STACK_POS, SP, X6);
+  move_mem_reg(OP_STACK, SP, X5);
+  move_mem_reg(INSTANCE_MEM, SP, X4);
   move_mem_reg(MTHD_ID, SP, X3);
   move_mem_reg(CLS_ID, SP, X2);
   move_imm_reg((size_t)instr, X1);
@@ -2479,6 +2467,21 @@ void JitCompilerA64::shr_reg_reg(Register src, Register dest)
   op_code |= op_dest;
 
   AddMachineCode(op_code);
+}
+
+// --- function calls ---
+void JitCompilerA64::call_reg(Register reg) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [blr %" << GetRegisterName(reg) << L"]" << endl;
+#endif
+  
+  move_reg_mem(LR, TMP_REG_LR, SP);
+
+  uint32_t op_code = 0xD63F0000;
+  op_code |= reg;
+  AddMachineCode(op_code);
+  
+  move_mem_reg(TMP_REG_LR, SP, LR);
 }
 
 //
@@ -3400,21 +3403,6 @@ void JitCompilerA64::math_mem_reg(long offset, Register reg, InstructionType typ
   default:
     break;
   }
-}
-
-// --- function calls ---
-void JitCompilerA64::call_reg(Register reg) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [blx %" << GetRegisterName(reg) << L"]" << endl;
-#endif
-  
-  move_reg_mem(LR, TMP_REG_LR, SP);
-
-  uint32_t op_code = 0xe12fff30;
-  op_code |= reg;
-  AddMachineCode(op_code);
-  
-  move_mem_reg(TMP_REG_LR, SP, LR);
 }
 
 void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
