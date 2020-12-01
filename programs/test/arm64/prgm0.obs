@@ -4,6 +4,8 @@ class Test {
 	}
 
 	function : native : Foo(a : Int, b : Int) ~ Int {
-		return a >> b;
+		c := 90000;
+		d := 30000;
+		return c + d;
 	}
 }

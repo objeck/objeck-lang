@@ -320,7 +320,7 @@ namespace Runtime {
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
-    multimap<int32_t, int32_t> const_int_pool;
+    multimap<long, long> const_int_pool;
     vector<int32_t> deref_offsets;          // -1
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
