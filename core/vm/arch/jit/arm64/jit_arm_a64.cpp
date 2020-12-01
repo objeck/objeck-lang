@@ -2145,22 +2145,10 @@ void JitCompilerA64::move_imm_reg(long imm, Register reg) {
     AddMachineCode(op_code);
   }
   else {
-    // TODO: Support me...
-    
-    move_mem_reg(INT_CONSTS, SP, X9);
-#ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
-#endif
-    uint32_t op_code = 0xe5980000;
-    
-    uint32_t op_dest = reg << 12;
-    op_code |= op_dest;
-    
     // save code index
-    const_int_pool.insert(pair<int32_t, int32_t>(imm, code_index));
-        
-    // encode
-    AddMachineCode(op_code);
+    move_mem_reg(INT_CONSTS, SP, X9);
+    move_mem_reg(0, X9, reg);
+    const_int_pool.insert(pair<long, long>(imm, code_index));
   }
 }
 
@@ -4670,6 +4658,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     code_buf_max = BUFFER_SIZE;
     
     ints = new long[MAX_INTS];
+    
     float_consts = new double[MAX_DBLS];
     local_space = floats_index = instr_index = code_index = instr_count = 0;
     
@@ -4736,7 +4725,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       return false;
     }
 
-    /* TODO: update offsets
+/* TODO: update offsets
     // update jump addresses
     unordered_map<int32_t, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
@@ -4774,18 +4763,18 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       long offset = epilog_index - index - 2 + 3;
       code[index] |= offset;
     }
+*/
     
     // update consts pools
     int ints_index = 0;
-    unordered_map<int32_t, int32_t> int_pool_cache;
-    multimap<int32_t, int32_t>::iterator int_pool_iter = const_int_pool.begin();
+    unordered_map<long, long> int_pool_cache;
+    multimap<long, long>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
-      const long offset = ints_index * sizeof(long);
       
       // 12-bit max for ldr offset
-      if(offset >= PAGE_SIZE * (int32_t)sizeof(uint32_t)) {
+      if(ints_index >= MAX_INTS) {
         free(code);
         code = nullptr;
         
@@ -4797,20 +4786,19 @@ bool JitCompilerA64::Compile(StackMethod* cm)
 
         return false;
       }
-
+      
 #ifdef _DEBUG
       assert(ints_index < MAX_INTS);
-      assert(offset < 4096); // max that can addressed in 12-bits
 #endif
       
-      unordered_map<int32_t, int32_t>::iterator int_pool_found = int_pool_cache.find(const_value);
+      unordered_map<long, long>::iterator int_pool_found = int_pool_cache.find(const_value);
       if(int_pool_found != int_pool_cache.end()) {
-        code[src_offset] |= int_pool_found->second;
+        code[src_offset] |= int_pool_found->second << 10;
       }
       else {
+        code[src_offset] |= ints_index << 10;
+        int_pool_cache.insert(pair<long, long>(const_value, ints_index));
         ints[ints_index++] = const_value;
-        code[src_offset] |= offset;
-        int_pool_cache.insert(pair<int32_t, int32_t>(const_value, offset));
       }
     }
         
@@ -4820,7 +4808,6 @@ bool JitCompilerA64::Compile(StackMethod* cm)
           << int_pool_cache.size() * sizeof(long) << L" of " << sizeof(long) * MAX_INTS << L" byte(s)]" << endl;
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
-    */
     
     // store compiled code
     method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, ints, float_consts));

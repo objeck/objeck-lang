@@ -264,7 +264,7 @@ class NativeCode {
 
   ~NativeCode() {
 #if defined(_ARM32) || defined(_ARM64)
-    free(ints);
+    delete[] ints;
     ints = nullptr;
 #endif
 #if defined(_WIN64) || defined(_X64)
