@@ -71,10 +71,10 @@ void JitCompilerA64::Prolog() {
     0xf9000fe8, // str x8, [sp, #24]
 #ifdef _DEBUG
     0xf9000be9, // str x9, [sp, #16]
-    0xf90007ea  // str x10, [sp, #8]
+    0xF90033Ea  // str x10, [sp, #8]
 #else
     0xf9000bea, // str x10, [sp, #16]
-    0xf90007eb  // str x11, [sp, #8]
+    0xF90033Eb  // str x11, [sp, #8]
 #endif
   };
   
@@ -1606,8 +1606,8 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   move_imm_reg((size_t)instr, X1);
   move_imm_reg(instr_id, X0);
   
-  move_imm_reg((size_t)JitCompilerA64::JitStackCallback, X9);
-  call_reg(X9);
+  move_imm_reg((size_t)JitCompilerA64::JitStackCallback, X10);
+  call_reg(X10);
   
   // restore register values
   while(!dirty_regs.empty()) {
