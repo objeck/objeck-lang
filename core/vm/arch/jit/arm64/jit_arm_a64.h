@@ -43,7 +43,9 @@
 using namespace std;
 
 namespace Runtime {
-  // offsets for ARM A32 addresses
+  // realease +16
+
+  // offsets for ARM A64 addresses
 #define CLS_ID 88
 #define MTHD_ID 80
 #define CLASS_MEM 72
