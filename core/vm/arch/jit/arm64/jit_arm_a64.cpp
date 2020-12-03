@@ -69,8 +69,13 @@ void JitCompilerA64::Prolog() {
     0xf90017e6, // str x6, [sp, #40]
     0xf90013e7, // str x7, [sp, #32]
     0xf9000fe8, // str x8, [sp, #24]
+#ifdef _DEBUG
     0xf9000be9, // str x9, [sp, #16]
     0xf90007ea  // str x10, [sp, #8]
+#else
+    0xf9000bea, // str x10, [sp, #16]
+    0xf90007eb  // str x11, [sp, #8]
+#endif
   };
   
   // copy setup
