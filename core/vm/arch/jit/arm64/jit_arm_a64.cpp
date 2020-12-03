@@ -2471,7 +2471,7 @@ void JitCompilerA64::call_reg(Register reg) {
   move_reg_mem(LR, TMP_REG_LR, SP);
 
   uint32_t op_code = 0xD63F0000;
-  op_code |= reg;
+  op_code |= reg << 5;
   AddMachineCode(op_code);
   
   move_mem_reg(TMP_REG_LR, SP, LR);
