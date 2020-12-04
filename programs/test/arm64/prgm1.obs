@@ -3,8 +3,8 @@ class Test {
 		Foo(19,12)->PrintLine();
 	}
 
-	function : Foo() ~ Nil {
-		"Foo"->PrintLine();
+	function : Foo(a : Int) ~ Int {
+		return a + 8;
 	}
 
 	function : Bar(a : Int) ~ Nil {
@@ -12,8 +12,8 @@ class Test {
 	}
 
 	function : native : Foo(a : Int, b : Int) ~ Int {
-		Foo();
+		return Foo(b);
 #		Bar(a + b);
-		return a+b+1;
+#		return a+b+1;
 	}
 }
