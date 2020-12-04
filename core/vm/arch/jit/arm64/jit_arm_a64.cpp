@@ -1592,10 +1592,8 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   
   // set parameters
   move_imm_mem(instr_index - 1, 8, SP);
-  RegisterHolder* reg_holder = GetRegister();
-  move_mem_reg(CALL_STACK_POS, SP, reg_holder->GetRegister());
-  move_reg_mem(reg_holder->GetRegister(), 0, SP);
-  ReleaseRegister(reg_holder);
+  move_mem_reg(CALL_STACK_POS, SP, X10);
+  move_reg_mem(X10, 0, SP);
   
   move_mem_reg(CALL_STACK, SP, X7);
   move_mem_reg(OP_STACK_POS, SP, X6);

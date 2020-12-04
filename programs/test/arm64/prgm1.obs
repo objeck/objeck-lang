@@ -12,8 +12,8 @@ class Test {
 	}
 
 	function : native : Foo(a : Int, b : Int) ~ Int {
-#		Foo();
+		Foo();
 #		Bar(a + b);
-		return a+b;
+		return a+b+1;
 	}
 }
