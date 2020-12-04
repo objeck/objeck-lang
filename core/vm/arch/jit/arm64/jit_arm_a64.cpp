@@ -4775,8 +4775,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     unordered_map<long, long> int_pool_cache;
     multimap<long, long>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
-      const int32_t const_value = int_pool_iter->first;
-      const int32_t src_offset = int_pool_iter->second;
+      const long const_value = int_pool_iter->first;
+      const long src_offset = int_pool_iter->second;
       
       // 12-bit max for ldr offset
       if(ints_index >= MAX_INTS) {
