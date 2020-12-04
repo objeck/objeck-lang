@@ -46,6 +46,7 @@ namespace Runtime {
   // realease +16
 
   // offsets for ARM A64 addresses
+#define INT_CONSTS 96
 #define CLS_ID 88
 #define MTHD_ID 80
 #define CLASS_MEM 72
@@ -56,19 +57,18 @@ namespace Runtime {
 #define CALL_STACK_POS 32
 #define JIT_MEM 24
 #define JIT_OFFSET 16
-#define INT_CONSTS 96
   // float temps
-#define TMP_D_0 96+8
-#define TMP_D_1 104+8
-#define TMP_D_2 112+8
-#define TMP_D_3 120+8
+#define TMP_D_0 104
+#define TMP_D_1 112
+#define TMP_D_2 120
+#define TMP_D_3 128
   // integer temps
-#define TMP_REG_0 128+8
-#define TMP_REG_1 136+8
-#define TMP_REG_2 136+8
-#define TMP_REG_3 144+8
+#define TMP_REG_0 136
+#define TMP_REG_1 144
+#define TMP_REG_2 152
+#define TMP_REG_3 160
   // holds $lr for callbacks
-#define TMP_REG_LR 152+8
+#define TMP_REG_LR 168
 
 #define MAX_INTS 256
 #define MAX_DBLS 128
