@@ -4692,9 +4692,12 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       const long offset = dest_offset - src_offset;
       
       // unconditional jump
+
       if(code[src_offset] == B_INSTR) {
         if(offset < 0) {
-          code[src_offset] |= offset & 0x00ffffff;
+          uint32_t value = 0x17000000;
+          value |= offset & 0x00ffffff;
+          code[src_offset] = value;
         }
         else {
           code[src_offset] |= offset;

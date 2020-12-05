@@ -1,16 +1,14 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo(101,13)->PrintLine();
+		Foo(99,13)->PrintLine();
 	}
 
 	function : native : Foo(a : Int, b : Int) ~ Int {
 		c : Int;
 
-		if(a < 101) {
-			c := 13;
-		}
-		else {
-			c := 7;
+		while(a < 101) {
+			c := 13 + a;
+			a += 1;
 		};
 
 		return c;
