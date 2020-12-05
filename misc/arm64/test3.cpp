@@ -2,12 +2,12 @@
 
 long Foo(long a, long b) {
 	int c = 0;
-	if(a < 101) {
+
+	while(a < 101) {
 		c = 13;
+		a--;
 	}
-	else {
-		c = 7;
-	}
+
 	return c;
 }
 
