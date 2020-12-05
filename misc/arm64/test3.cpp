@@ -1,7 +1,7 @@
 #include<iostream>
 
 long Foo(long a, long b) {
-	long c = a >= 101;
+	long c = a < b;
 	return c;
 }
 

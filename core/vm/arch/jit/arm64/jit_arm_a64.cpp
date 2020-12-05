@@ -2628,12 +2628,10 @@ void JitCompilerA64::cmp_reg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [cmp " << GetRegisterName(dest)
        << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-  uint32_t op_code = 0xe1500000;
+  uint32_t op_code = 0xEB00001F;
   
-  uint32_t op_dest = dest << 16;
-  op_code |= op_dest;
-  
-  op_code |= src;
+  op_code |= dest << 5;
+  op_code |= src << 16;
   
   AddMachineCode(op_code);
 }
