@@ -3,7 +3,7 @@ class Test {
 		Foo(199,2)->PrintLine();
 	}
 
-	function : native : Foo(a : Int, b : Int) ~ Int {
-		return a xor b;
+	function : native : Foo(a : Int, b : Int) ~ Bool {
+		return a < 201;
 	}
 }
