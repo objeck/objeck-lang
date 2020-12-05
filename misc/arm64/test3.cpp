@@ -1,7 +1,13 @@
 #include<iostream>
 
 long Foo(long a, long b) {
-	long c = a < b;
+	int c = 0;
+	if(a < 101) {
+		c = 13;
+	}
+	else {
+		c = 7;
+	}
 	return c;
 }
 

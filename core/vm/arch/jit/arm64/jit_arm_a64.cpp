@@ -918,7 +918,7 @@ void JitCompilerA64::ProcessJump(StackInstr* instr) {
 #ifdef _DEBUG
       wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
 #endif
-      AddMachineCode(0xea000000);
+      AddMachineCode(0x14000000);
     }
     else {
       RegInstr* left = working_stack.front();
@@ -964,7 +964,7 @@ void JitCompilerA64::ProcessJump(StackInstr* instr) {
     }
     
     // store update index
-    jump_table.insert(pair<int32_t, StackInstr*>(code_index, instr));
+    jump_table.insert(pair<long, StackInstr*>(code_index, instr));
   }
   else {
     RegInstr* left = working_stack.front();
@@ -3142,11 +3142,12 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
       case LES_INT:
       case LES_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
-        AddMachineCode(0xaa000000);
+        AddMachineCode(0x5400000A);
         break;
 
+          // TODO: implement
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG
@@ -3155,6 +3156,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0xda000000);
         break;
 
+          // TODO: implement
       case EQL_INT:
       case EQL_FLOAT:
 #ifdef _DEBUG
@@ -3163,6 +3165,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x1a000000);
         break;
 
+          // TODO: implement
       case NEQL_INT:
       case NEQL_FLOAT:
 #ifdef _DEBUG
@@ -3171,6 +3174,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x0a000000);
         break;
 
+          // TODO: implement
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3179,6 +3183,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0xca000000);
         break;
         
+          // TODO: implement
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3192,7 +3197,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
       }
     }
     // store update index
-    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+    jump_table.insert(pair<long, StackInstr*>(code_index, next_instr));
     
     // temp offset
     skip_jump = true;
@@ -4676,26 +4681,41 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       return false;
     }
 
-/* TODO: update offsets
+
     // update jump addresses
-    unordered_map<int32_t, StackInstr*>::iterator jmp_iter;
+    unordered_map<long, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
       StackInstr* instr = jmp_iter->second;
-      const int32_t src_offset = jmp_iter->first - 1;
-      const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
-      const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-      const long offset = dest_offset - src_offset - 2;
-      if(offset < 0) {
-        code[src_offset] |= offset & 0x00ffffff;
+      const long src_offset = jmp_iter->first - 1;
+      const long dest_index = method->GetLabelIndex(instr->GetOperand());
+      const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
+      const long offset = dest_offset - src_offset;
+      
+      // unconditional
+      if(code[src_offset] == 0x14000000) {
+        if(offset < 0) {
+          code[src_offset] |= offset & 0x00ffffff;
+        }
+        else {
+          code[src_offset] |= offset;
+        }
       }
+      // conditional
       else {
-        code[src_offset] |= offset;
+        if(offset < 0) {
+          code[src_offset] |= (offset & 0x00ffffff) << 5;
+        }
+        else {
+          code[src_offset] |= offset << 5;
+        }
       }
+      
 #ifdef _DEBUG
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
     }
     
+/* TODO: update offsets
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const int32_t index = deref_offsets[i] - 1;

@@ -321,11 +321,11 @@ namespace Runtime {
     RegisterHolder* reg_eax;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    unordered_map<int32_t, StackInstr*> jump_table;
+    unordered_map<long, StackInstr*> jump_table;
     multimap<long, long> const_int_pool;
-    vector<int32_t> deref_offsets;          // -1
-    vector<int32_t> bounds_less_offsets;    // -2
-    vector<int32_t> bounds_greater_offsets; // -3
+    vector<long> deref_offsets;          // -1
+    vector<long> bounds_less_offsets;    // -2
+    vector<long> bounds_greater_offsets; // -3
     long local_space;
     bool realign_stack;
     StackMethod* method;
