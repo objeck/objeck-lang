@@ -6,10 +6,11 @@ class Test {
 	function : native : Foo(a : Int, b : Int) ~ Int {
 		c : Int;
 
-		while(a < 101) {
+		do {
 			c := 13 + a;
 			a += 1;
-		};
+		}
+		while(a < 101);
 
 		return c;
 	}

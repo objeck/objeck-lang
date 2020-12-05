@@ -3087,7 +3087,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-        AddMachineCode(0xba000000);
+        AddMachineCode(0x5400000B);
         break;
 
       case GTR_INT:
@@ -4705,8 +4705,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       // conditional jump
       else {
         if(offset < 0) {
-          // TODO: implement 
-          code[src_offset] |= (offset & 0x00ffffff) << 5;
+          code[src_offset] |= 0xFFFFE0;
+          code[src_offset] ^= (abs(offset) - 1) << 5;
         }
         else {
           code[src_offset] |= offset << 5;
