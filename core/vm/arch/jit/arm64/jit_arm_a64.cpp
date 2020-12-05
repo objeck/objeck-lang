@@ -918,7 +918,7 @@ void JitCompilerA64::ProcessJump(StackInstr* instr) {
 #ifdef _DEBUG
       wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
 #endif
-      AddMachineCode(0x14000000);
+      AddMachineCode(B_INSTR);
     }
     else {
       RegInstr* left = working_stack.front();
@@ -4691,8 +4691,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const long offset = dest_offset - src_offset;
       
-      // unconditional
-      if(code[src_offset] == 0x14000000) {
+      // unconditional jump
+      if(code[src_offset] == B_INSTR) {
         if(offset < 0) {
           code[src_offset] |= offset & 0x00ffffff;
         }
@@ -4700,7 +4700,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
           code[src_offset] |= offset;
         }
       }
-      // conditional
+      // conditional jump
       else {
         if(offset < 0) {
           code[src_offset] |= (offset & 0x00ffffff) << 5;

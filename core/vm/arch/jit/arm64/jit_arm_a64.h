@@ -74,6 +74,8 @@ namespace Runtime {
 #define MAX_DBLS 128
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
+
+#define B_INSTR 0x14000000
   
   // register type
   enum RegType {
