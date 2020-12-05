@@ -1,7 +1,7 @@
 /**
  * JIT compiler for ARMv8 architecture (A1 encoding)
  *
- * Copyright (c) 2020, Randy Hollines
+ * Copyright (c) 2020-2021, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2475,6 +2475,111 @@ void JitCompilerA64::call_reg(Register reg) {
   move_mem_reg(TMP_REG_LR, SP, LR);
 }
 
+void JitCompilerA64::and_reg_reg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [and " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0x8A000000;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::and_imm_reg(long imm, Register reg) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  and_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::and_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  and_reg_reg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder);
+}
+
+void JitCompilerA64::or_reg_reg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [orr " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0xAA000000;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::or_imm_reg(long imm, Register reg) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  or_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::or_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  or_reg_reg(src_holder->GetRegister(), dest);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::xor_reg_reg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [eor " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0xCA000000;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::xor_imm_reg(long imm, Register reg) {
+  RegisterHolder* src_holder = GetRegister();
+  move_imm_reg(imm, src_holder->GetRegister());
+  xor_reg_reg(src_holder->GetRegister(), reg);
+  ReleaseRegister(src_holder);
+}
+
+void JitCompilerA64::xor_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  xor_reg_reg(src_holder->GetRegister(), dest);
+  ReleaseRegister(src_holder);
+}
+
 //
 // -------- End: Port to A64 encoding --------
 //
@@ -2867,105 +2972,6 @@ void JitCompilerA64::cmp_mem_xreg(long offset, Register src, Register dest) {
   cmp_xreg_xreg(dest, holder->GetRegister());
   move_xreg_xreg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
-}
-
-void JitCompilerA64::and_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [and " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  uint32_t op_code = 0xe0000000;
-  
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-
-  op_dest = dest;
-  op_code |= op_dest;
-
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::and_imm_reg(long imm, Register reg) {
-  RegisterHolder* src_holder = GetRegister();
-  move_imm_reg(imm, src_holder->GetRegister());
-  and_reg_reg(src_holder->GetRegister(), reg);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::and_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, src, mem_holder->GetRegister());
-  and_reg_reg(mem_holder->GetRegister(), dest);
-  ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::or_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [orr " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  uint32_t op_code = 0xe1800000;
-  
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-
-  op_dest = dest;
-  op_code |= op_dest;
-
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::or_imm_reg(long imm, Register reg) {
-  RegisterHolder* src_holder = GetRegister();
-  move_imm_reg(imm, src_holder->GetRegister());
-  or_reg_reg(src_holder->GetRegister(), reg);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::or_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* src_holder = GetRegister();
-  move_mem_reg(offset, src, src_holder->GetRegister());
-  or_reg_reg(src_holder->GetRegister(), dest);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::xor_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [eor " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  uint32_t op_code = 0xe0200000;
-  
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-
-  op_dest = dest;
-  op_code |= op_dest;
-
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::xor_imm_reg(long imm, Register reg) {
-  RegisterHolder* src_holder = GetRegister();
-  move_imm_reg(imm, src_holder->GetRegister());
-  xor_reg_reg(src_holder->GetRegister(), reg);
-  ReleaseRegister(src_holder);
-}
-
-void JitCompilerA64::xor_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* src_holder = GetRegister();
-  move_mem_reg(offset, src, src_holder->GetRegister());
-  xor_reg_reg(src_holder->GetRegister(), dest);
-  ReleaseRegister(src_holder);
 }
 
 void JitCompilerA64::add_mem_xreg(long offset, Register src, Register dest) {
@@ -4584,14 +4590,10 @@ void JitCompilerA64::ProcessIndices()
     StackInstr* instr = (*value).second;
     // instance reference
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
-      // note: all instance variables are allocated in 4-byte blocks,
-      // for float_consts the assembler allocates 2 4-byte blocks
       instr->SetOperand3(instr->GetOperand() * sizeof(long));
     }
     // local reference
     else {
-      // note: all local variables are allocated in 4 or 8 bytes
-      // blocks depending upon type
       if(last_id != id) {
         if(instr->GetType() == LOAD_LOCL_INT_VAR ||
            instr->GetType() == LOAD_CLS_INST_INT_VAR ||
@@ -4624,7 +4626,6 @@ void JitCompilerA64::ProcessIndices()
 #endif
   }
   
-  // TOOD: adjust as needed
   // calculate local space (adjust for alignment)
   local_space += index;
   realign_stack = false;
@@ -4678,8 +4679,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aux_regs.push(new RegisterHolder(X13, false));
     aux_regs.push(new RegisterHolder(X12, false));
     aux_regs.push(new RegisterHolder(X11, false));
-    aux_regs.push(new RegisterHolder(X10, false));
-    aux_regs.push(new RegisterHolder(X9, false));
+    aux_regs.push(new RegisterHolder(X10, false)); // used
+    aux_regs.push(new RegisterHolder(X9, false)); // used
 */
     aux_regs.push(new RegisterHolder(X7, false));
     aux_regs.push(new RegisterHolder(X6, false));
