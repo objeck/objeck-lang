@@ -65,7 +65,7 @@ namespace Runtime {
 #define TMP_X0 144
 #define TMP_X1 152
 #define TMP_X2 160
-#define TMP_X3 158
+#define TMP_X3 168
   
   // buffer sizes
 #define MAX_INTS 256
