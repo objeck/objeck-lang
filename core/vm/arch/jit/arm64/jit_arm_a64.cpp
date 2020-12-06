@@ -183,7 +183,7 @@ void JitCompilerA64::RegisterRoot() {
   // zero out address and advance
   move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
   move_imm_mem(0, 0, cur_reg->GetRegister());
-  sub_imm_reg(4, start_reg->GetRegister());
+  sub_imm_reg(8, start_reg->GetRegister());
   
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
@@ -2247,7 +2247,7 @@ void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", " << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xF1000400;
+  uint32_t op_code = 0xF1000000;
   
   uint32_t op_src = reg << 5;
   op_code |= op_src;
@@ -3096,7 +3096,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-        AddMachineCode(0xca000000);
+        AddMachineCode(0x5400000C);
         break;
 
           // TODO: implement
@@ -3185,7 +3185,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-        AddMachineCode(0xca000000);
+        AddMachineCode(0x5400000C);
         break;
         
       case GTR_EQL_INT:
