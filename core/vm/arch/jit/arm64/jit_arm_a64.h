@@ -58,17 +58,17 @@ namespace Runtime {
 #define JIT_MEM 24
 #define JIT_OFFSET 16
   // float temps
-#define TMP_D_0 104
-#define TMP_D_1 112
-#define TMP_D_2 120
-#define TMP_D_3 128
+#define TMP_X0 104
+#define TMP_X1 112
+#define TMP_X2 120
+#define TMP_X3 128
   // integer temps
-#define TMP_REG_0 136
-#define TMP_REG_1 144
-#define TMP_REG_2 152
-#define TMP_REG_3 160
+#define TMP_D0 136
+#define TMP_D1 144
+#define TMP_D2 152
+#define TMP_D3 160
   // holds $lr for callbacks
-#define TMP_REG_LR 168
+#define TMP_LR 168
 
 #define MAX_INTS 256
 #define MAX_DBLS 128
