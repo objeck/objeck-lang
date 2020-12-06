@@ -51,7 +51,7 @@ void JitCompilerA64::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  const long final_local_space = local_space + 96;
+  const long final_local_space = local_space + INT_CONSTS;
   uint32_t sub_offset = 0xd10183ff;
   sub_offset |= final_local_space << 10;
   
@@ -118,7 +118,7 @@ void JitCompilerA64::Epilog() {
   };
   */
   
-  const long final_local_space = local_space + 96;
+  const long final_local_space = local_space + INT_CONSTS;
   uint32_t add_offset = 0x910183ff;
   add_offset |= final_local_space << 10;
   
@@ -136,23 +136,22 @@ void JitCompilerA64::Epilog() {
 }
 
 void JitCompilerA64::RegisterRoot() {
+  size_t offset = local_space - TMP_D3;
+  if(realign_stack) {
+    offset -= 8;
+  }
+  
   RegisterHolder* holder = GetRegister();
   RegisterHolder* mem_holder = GetRegister();
     
-  // offset required to get to the first local variable
-  long offset = local_space + INT_CONSTS + 8;
-  if(realign_stack) {
-    offset += 8;
-  }
-  
-  move_reg_reg(SP, holder->GetRegister());
-  sub_imm_reg(offset, holder->GetRegister());
+  move_sp_reg(holder->GetRegister());
+  add_imm_reg(offset, holder->GetRegister());
   
   // set JIT memory pointer to stack
   move_mem_reg(JIT_MEM, SP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  // set JIT offset to 0
+  // set JIT offset value
   move_mem_reg(JIT_OFFSET, SP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
   
@@ -160,25 +159,28 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
   
+/*
+   // -----------
+  
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
   RegisterHolder* end_reg = GetRegister();
   RegisterHolder* cur_reg = GetRegister();
   
   // set start
-  move_reg_reg(SP, start_reg->GetRegister());
+  move_sp_reg(start_reg->GetRegister());
   sub_imm_reg(TMP_X0, start_reg->GetRegister());
   
   // set end
-  move_reg_reg(SP, end_reg->GetRegister());
+  move_sp_reg(end_reg->GetRegister());
   add_imm_reg(offset, end_reg->GetRegister());
   
   // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
 #ifdef _DEBUG
-  std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+  std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-  AddMachineCode(0x5400000C);
+  AddMachineCode(0x5400000B);
   
   // zero out address and advance
   move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
@@ -192,7 +194,8 @@ void JitCompilerA64::RegisterRoot() {
   
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
-  ReleaseRegister(start_reg);
+  ReleaseRegister(start_reg)
+*/
 }
 
 void JitCompilerA64::ProcessParameters(long params) {
@@ -2065,9 +2068,20 @@ void JitCompilerA64::ProcessIntCalculation(StackInstr* instruction) {
 // -------- Start: Port to A64 encoding --------
 //
 
+void JitCompilerA64::move_sp_reg(Register dest) {
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(dest)<< L", sp, #0]" << endl;
+#endif
+  
+  uint32_t op_code = 0xD10003E0;
+  op_code |= dest;
+  AddMachineCode(op_code);
+}
+
 void JitCompilerA64::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG
+    assert(src != SP);
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(dest)
     << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
