@@ -1,5 +1,5 @@
 /**
- * JIT compiler for ARMv8 architecture (A1 encoding)
+ * JIT compiler for ARMv8 architecture
  *
  * Copyright (c) 2020-2021, Randy Hollines
  * All rights reserved.
@@ -160,6 +160,7 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
   
+  /*
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
   RegisterHolder* end_reg = GetRegister();
@@ -167,11 +168,11 @@ void JitCompilerA64::RegisterRoot() {
   
   // set start
   move_reg_reg(SP, start_reg->GetRegister());
-  sub_imm_reg(-TMP_REG_0, start_reg->GetRegister());
+  sub_imm_reg(TMP_X0, start_reg->GetRegister());
   
   // set end
   move_reg_reg(SP, end_reg->GetRegister());
-  sub_imm_reg(offset, end_reg->GetRegister());
+  add_imm_reg(offset, end_reg->GetRegister());
   
   // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
@@ -193,6 +194,7 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
+   */
 }
 
 void JitCompilerA64::ProcessParameters(long params) {
@@ -1545,11 +1547,11 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   
   stack<RegInstr*> regs;
   stack<int32_t> dirty_regs;
-  int32_t reg_offset = TMP_REG_0;
+  int32_t reg_offset = TMP_X0;
 
   stack<RegInstr*> fp_regs;
   stack<int32_t> dirty_fp_regs;
-  int32_t fp_offset = TMP_D_0;
+  int32_t fp_offset = TMP_D0;
   
   int32_t i = 0;
   for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
@@ -1579,8 +1581,8 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   }
 
 #ifdef _DEBUG
-  assert(reg_offset <= TMP_REG_3);
-  assert(fp_offset <= TMP_D_3);
+  assert(reg_offset <= TMP_X3);
+  assert(fp_offset <= TMP_D3);
 #endif
 
   if(dirty_regs.size() > 4 || dirty_fp_regs.size() > 4 ) {
@@ -2466,13 +2468,13 @@ void JitCompilerA64::call_reg(Register reg) {
   wcout << L"  " << (++instr_count) << L": [blr %" << GetRegisterName(reg) << L"]" << endl;
 #endif
   
-  move_reg_mem(LR, TMP_REG_LR, SP);
+  move_reg_mem(LR, TMP_LR, SP);
 
   uint32_t op_code = 0xD63F0000;
   op_code |= reg << 5;
   AddMachineCode(op_code);
   
-  move_mem_reg(TMP_REG_LR, SP, LR);
+  move_mem_reg(TMP_LR, SP, LR);
 }
 
 void JitCompilerA64::and_reg_reg(Register src, Register dest) {
@@ -3090,6 +3092,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x5400000B);
         break;
 
+          // TODO: implement
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG
@@ -3098,6 +3101,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0xca000000);
         break;
 
+          // TODO: implement
       case EQL_INT:
       case EQL_FLOAT:
 #ifdef _DEBUG
@@ -3106,6 +3110,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x0a000000);
         break;
 
+          // TODO: implement
       case NEQL_INT:
       case NEQL_FLOAT:
 #ifdef _DEBUG
@@ -3114,6 +3119,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x1a000000);
         break;
 
+          // TODO: implement
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3122,6 +3128,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0xda000000);
         break;
         
+          // TODO: implement
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3542,7 +3549,7 @@ void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
   // save D0, if needed
   RegisterHolder *holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    move_xreg_mem(D0, TMP_D_0, SP);
+    move_xreg_mem(D0, TMP_D0, SP);
   }
   
   // load D0
@@ -3585,15 +3592,15 @@ void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(X9, TMP_REG_0, SP);
+  move_reg_mem(X9, TMP_X0, SP);
   move_imm_reg((size_t)func_ptr, X9);
   call_reg(X9);
-  move_mem_reg(TMP_REG_0, SP, X9);
+  move_mem_reg(TMP_X0, SP, X9);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
   if(holder->GetRegister() != D0) {
-    move_mem_xreg(TMP_D_0, SP, D0);
+    move_mem_xreg(TMP_D0, SP, D0);
   }
   working_stack.push_front(new RegInstr(holder));
   
@@ -3617,9 +3624,9 @@ void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
   // save D0, if needed
   RegisterHolder *holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    move_xreg_mem(D0, TMP_D_0, SP);
+    move_xreg_mem(D0, TMP_D0, SP);
   }
-  move_xreg_mem(D1, TMP_D_1, SP);
+  move_xreg_mem(D1, TMP_D1, SP);
    
   // load D0
   move_mem_xreg(right->GetOperand(), SP, D0);
@@ -3642,16 +3649,16 @@ void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
   }
   
   // call function
-  move_reg_mem(X9, TMP_REG_0, SP);
+  move_reg_mem(X9, TMP_X0, SP);
   move_imm_reg((size_t)func_ptr, X9);
   call_reg(X9);
-  move_mem_reg(TMP_REG_0, SP, X9);
+  move_mem_reg(TMP_X0, SP, X9);
   
   // get return and restore D0, if needed
   move_xreg_xreg(D0, holder->GetRegister());
-  move_mem_xreg(TMP_D_1, SP, D1);
+  move_mem_xreg(TMP_D1, SP, D1);
   if(holder->GetRegister() != D0) {
-    move_mem_xreg(TMP_D_0, SP, D0);
+    move_mem_xreg(TMP_D0, SP, D0);
   }
   working_stack.push_front(new RegInstr(holder));
   
@@ -4534,7 +4541,7 @@ void JitCompilerA64::ProcessIndices()
     }
   }
   
-  long index = TMP_REG_LR;
+  long index = TMP_LR;
   long last_id = -1;
   multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
@@ -4658,9 +4665,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     // setup
     Prolog();
     
-    // TODO: register with memory manager
     // register root
-    // RegisterRoot();
+    RegisterRoot();
     
     // translate parameters
     ProcessParameters(method->GetParamCount());
