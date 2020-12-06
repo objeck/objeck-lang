@@ -141,9 +141,11 @@ void JitCompilerA64::RegisterRoot() {
     offset += 8;
   }
   
+/*
   RegisterHolder* holder = GetRegister();
   RegisterHolder* mem_holder = GetRegister();
-    
+ 
+  // TOOD: adjust...
   move_sp_reg(holder->GetRegister());
   add_imm_reg(offset, holder->GetRegister());
   
@@ -159,8 +161,7 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
   
-/*
-   // -----------
+*/
   
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
@@ -169,33 +170,35 @@ void JitCompilerA64::RegisterRoot() {
   
   // set start
   move_sp_reg(start_reg->GetRegister());
-  sub_imm_reg(TMP_X0, start_reg->GetRegister());
+  add_imm_reg(TMP_X0, start_reg->GetRegister());
   
   // set end
   move_sp_reg(end_reg->GetRegister());
-  add_imm_reg(offset, end_reg->GetRegister());
+  add_imm_reg(TMP_X0 + offset, end_reg->GetRegister());
   
   // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
 #ifdef _DEBUG
   std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-  AddMachineCode(0x5400000B);
+  AddMachineCode(0x540000cB);
   
   // zero out address and advance
   move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
   move_imm_mem(0, 0, cur_reg->GetRegister());
-  sub_imm_reg(8, start_reg->GetRegister());
+  add_imm_reg(8, start_reg->GetRegister());
   
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
 #endif
-  AddMachineCode(B_INSTR);
+  
+  uint32_t op_code = 0x17000000;
+  op_code |= -6 & 0x00ffffff;
+  AddMachineCode(op_code);
   
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
-  ReleaseRegister(start_reg)
-*/
+  ReleaseRegister(start_reg);
 }
 
 void JitCompilerA64::ProcessParameters(long params) {
