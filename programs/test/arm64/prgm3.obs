@@ -4,14 +4,16 @@ class Test {
 	}
 
 	function : native : Foo(a : Int, b : Int) ~ Int {
-		c : Int := 0;
-
+		c : Int;
+		d : Int;
+	
+		d += 1;
 		do {
 			a += 1;
 			c += a + 2;
 		}
 		while(a < 101);
 
-		return c;
+		return c + d;
 	}
 }

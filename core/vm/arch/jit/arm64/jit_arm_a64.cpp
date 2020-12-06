@@ -160,7 +160,6 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
   
-  /*
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
   RegisterHolder* end_reg = GetRegister();
@@ -179,7 +178,7 @@ void JitCompilerA64::RegisterRoot() {
 #ifdef _DEBUG
   std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-  AddMachineCode(0xca000004);
+  AddMachineCode(0x5400000C);
   
   // zero out address and advance
   move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
@@ -189,12 +188,11 @@ void JitCompilerA64::RegisterRoot() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
 #endif
-  AddMachineCode(0xeafffff8);
+  AddMachineCode(B_INSTR);
   
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
-   */
 }
 
 void JitCompilerA64::ProcessParameters(long params) {
@@ -3190,13 +3188,12 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0xca000000);
         break;
         
-          // TODO: implement
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-        AddMachineCode(0xba000000);
+        AddMachineCode(0x5400000B);
         break;
         
       default:
