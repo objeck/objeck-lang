@@ -43,9 +43,8 @@
 using namespace std;
 
 namespace Runtime {
-  // realease +16
-
   // offsets for ARM A64 addresses
+#define TMP_LR 104
 #define INT_CONSTS 96
 #define CLS_ID 88
 #define MTHD_ID 80
@@ -58,18 +57,17 @@ namespace Runtime {
 #define JIT_MEM 24
 #define JIT_OFFSET 16
   // float temps
-#define TMP_X0 104
-#define TMP_X1 112
-#define TMP_X2 120
-#define TMP_X3 128
+#define TMP_D0 112
+#define TMP_D1 120
+#define TMP_D2 128
+#define TMP_D3 136
   // integer temps
-#define TMP_D0 136
-#define TMP_D1 144
-#define TMP_D2 152
-#define TMP_D3 160
-  // holds $lr for callbacks
-#define TMP_LR 168
-
+#define TMP_X0 144
+#define TMP_X1 152
+#define TMP_X2 160
+#define TMP_X3 158
+  
+  // buffer sizes
 #define MAX_INTS 256
 #define MAX_DBLS 128
 #define BUFFER_SIZE 512
@@ -535,6 +533,7 @@ namespace Runtime {
     }
 
     // move instructions
+    void move_sp_reg(Register dest);
     void move_reg_mem8(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
