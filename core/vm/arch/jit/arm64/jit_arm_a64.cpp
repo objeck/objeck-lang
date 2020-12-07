@@ -3332,7 +3332,7 @@ void JitCompilerA64::math_reg_reg(Register src, Register dest, InstructionType t
     break;
 
   case MUL_INT:
-    mul_reg_reg(dest, src);
+    mul_reg_reg(src, dest);
     break;
 
   case DIV_INT:
