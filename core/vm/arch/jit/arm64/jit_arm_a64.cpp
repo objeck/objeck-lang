@@ -2170,7 +2170,7 @@ void JitCompilerA64::move_imm_reg(long imm, Register reg) {
     // save code index
     move_mem_reg(INT_CONSTS, SP, X9);
     move_mem_reg(0, X9, reg);
-    const_int_pool.insert(pair<long, long>(imm, code_index));
+    const_int_pool.insert(pair<long, long>(imm, code_index - 1));
   }
 }
 
@@ -4710,8 +4710,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
       
       return false;
     }
-
-
+    
     // update jump addresses
     unordered_map<long, StackInstr*>::iterator jmp_iter;
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
