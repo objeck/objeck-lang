@@ -3,10 +3,10 @@
 long Foo(long a, long b) {
 	int c = 0;
 
-//	while(a > 101) {
  do {
-		c = 13;
-		a--;
+	 	bool c = a == -5;
+		a -= 1;
+		std::wcout << c << std::endl;
 	}
   while(a > 101);
 

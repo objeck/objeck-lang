@@ -196,6 +196,8 @@ void JitCompilerA64::RegisterRoot() {
   op_code |= -6 & 0x00ffffff;
   AddMachineCode(op_code);
   
+  add_imm_reg(-2, X3);
+  
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
@@ -2142,7 +2144,7 @@ void JitCompilerA64::move_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitCompilerA64::move_imm_reg(long imm, Register reg) {
-  if(imm < 0 && imm >= -65536) {
+  if(imm >= -65536 && imm < 0) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -2153,7 +2155,7 @@ void JitCompilerA64::move_imm_reg(long imm, Register reg) {
 
     AddMachineCode(op_code);
   }
-  else if(imm <= 65535 && imm >= 0) {
+  else if(imm >= 0 && imm <= 65535 ) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -2194,24 +2196,34 @@ void JitCompilerA64::add_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerA64::add_imm_reg(long imm, Register reg) {
+  if(imm < 0) {
+    sub_imm_reg(abs(imm), reg);
+  }
+  else if(imm >= 0 && imm <= 65535 ) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(reg) << L", "
         << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
 #endif
-  
-  uint32_t op_code = 0x91000000;
-  
-  uint32_t op_src = reg << 5;
-  op_code |= op_src;
-  
-  uint32_t op_dest = reg;
-  op_code |= op_dest;
-  
-  uint32_t op_imm = imm << 10;
-  op_code |= op_imm;
-  
-  // encode
-  AddMachineCode(op_code);
+    uint32_t op_code = 0x91000000;
+      
+    uint32_t op_src = reg << 5;
+    op_code |= op_src;
+    
+    uint32_t op_dest = reg;
+    op_code |= op_dest;
+    
+    uint32_t op_imm = imm << 10;
+    op_code |= op_imm;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
+  else {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    add_reg_reg(reg, imm_holder->GetRegister());
+    ReleaseRegister(imm_holder);
+  }
 }
 
 void JitCompilerA64::add_mem_reg(long offset, Register src, Register dest) {
@@ -2260,22 +2272,33 @@ void JitCompilerA64::sub_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitCompilerA64::sub_imm_reg(long imm, Register reg) {
+  if(imm < 0) {
+    add_imm_reg(abs(imm), reg);
+  }
+  else if(imm >= 0 && imm <= 65535 ) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", " << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xF1000000;
-  
-  uint32_t op_src = reg << 5;
-  op_code |= op_src;
-  
-  uint32_t op_dest = reg;
-  op_code |= op_dest;
-  
-  op_code |= imm << 10;
-  
-  // encode
-  AddMachineCode(op_code);
+    uint32_t op_code = 0xF1000000;
+    
+    uint32_t op_src = reg << 5;
+    op_code |= op_src;
+    
+    uint32_t op_dest = reg;
+    op_code |= op_dest;
+    
+    op_code |= imm << 10;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
+  else {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    sub_reg_reg(reg, imm_holder->GetRegister());
+    ReleaseRegister(imm_holder);
+  }
 }
 
 void JitCompilerA64::sub_imm_mem(long imm, long offset, Register dest) {
@@ -2389,7 +2412,7 @@ void JitCompilerA64::shl_imm_reg(long value, Register dest) {
 
   // set bit field
   bitset<6> imm_bits;
-  imm_bits = value;
+  imm_bits = abs(value);
   imm_bits.flip();
   
   const uint8_t imms = imm_bits.to_ulong();
@@ -2443,7 +2466,7 @@ void JitCompilerA64::shr_imm_reg(long value, Register dest) {
   uint32_t op_src = dest;
   op_code |= op_src;
   
-  op_code |= value << 16;
+  op_code |= abs(value) << 16;
   
   AddMachineCode(op_code);
 }
@@ -2597,25 +2620,12 @@ void JitCompilerA64::xor_mem_reg(long offset, Register src, Register dest) {
   ReleaseRegister(src_holder);
 }
 
-// ----
-
 void JitCompilerA64::cmp_imm_reg(long imm, Register reg) {
+  if(imm >= 0 && imm <= 65536) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << endl;
 #endif
-  
-  if(imm < 0 && imm >= -65536) {
-    // TODO: implement
-    uint32_t op_code = 0xe3700000;
     
-    uint32_t op_dest = reg << 16;
-    op_code |= op_dest;
-  
-    op_code |= abs(imm);
-  
-    AddMachineCode(op_code);
-  }
-  else if(imm <= 65536 && imm >= 0) {
     uint32_t op_code = 0xF100001F;
     
     uint32_t op_dest = reg << 5;
