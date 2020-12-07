@@ -3,8 +3,8 @@ class Test {
 		Foo();
 	}
 
-#	function : native : Foo() ~ Nil {
-	function : Foo() ~ Nil {
+	function : native : Foo() ~ Nil {
+#	function : Foo() ~ Nil {
 		a : Int := 70;
 		(a / 2)->PrintLine();
 #~
