@@ -55,6 +55,5 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
    * Bitwise: ~~or_reg_reg, and_reg_reg, etc.~~
 * Callback to interpreter from machine code
    * ~~Need space to save volatile registers~~
-   * Wire up memory manager to work with JIT machine code (assume ARMv7 port)
-* ~~Assign a temporary intermediate register (have registers to spare)~~
-* Byte level operations (assume ARMv7 port with new encodings)
+   * Wire up memory manager to work with JIT machine code 
+* Byte level operations 
