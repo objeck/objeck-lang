@@ -43,9 +43,12 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 ### To do
 * Conditional branching
    * ~~Basic branching~~
-   * Logical comparison of negative numbers
+   * ~~Logical comparison of negative numbers~~
    * ~~Forward branching~~
-   * Backward branching
+   * ~~Backward branching~~
+* Types:
+   * Basic ~~ints~~, floats, chars and bytes
+   * Conversions between types
 * Operations: 
    * Mathematical: ~~mul_xxx_xxx and div_xxx_xx, etc.~~
    * Logical: ~~les_reg_reg, gtr_reg_reg, eql_reg_reg, neql_reg_reg, etc.~~
@@ -54,5 +57,4 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
    * ~~Need space to save volatile registers~~
    * Wire up memory manager to work with JIT machine code (assume ARMv7 port)
 * ~~Assign a temporary intermediate register (have registers to spare)~~
-* Support for floating point operations and conversions (assume ARMv7 port)
 * Byte level operations (assume ARMv7 port with new encodings)
