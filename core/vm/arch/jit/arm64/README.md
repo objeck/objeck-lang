@@ -38,7 +38,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 ### Optimizations
 * Take advantage of more register, trade off is storing volatile register between calls
-* Guard 5, 6, and 12-bit values in JIT code generation
+* Guard 5, 6, and ~~12-bit intermediate values~~ in JIT code generation
 
 ### To do
 * Conditional branching
