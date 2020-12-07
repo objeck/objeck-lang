@@ -2693,7 +2693,7 @@ void JitCompilerA32::shr_imm_reg(int32_t value, Register dest) {
   op_code |= op_dest;
 
   
-  uint32_t op_imm = value << 7;
+  uint32_t op_imm = abs(value) << 7;
   op_code |= op_imm;
   
   uint32_t op_src = dest;
@@ -2799,24 +2799,34 @@ void JitCompilerA32::add_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerA32::add_imm_reg(int32_t imm, Register reg) {
+  if(imm < 0) {
+    sub_imm_reg(abs(imm), reg);
+  }
+  else if(imm >= 0 && imm <= 65535 ) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(reg) << L", "
 	      << GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
-  
-  uint32_t op_code = 0xe2800000;
-  
-  uint32_t op_src = reg << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = reg << 12;
-  op_code |= op_dest;
-  
-  uint32_t op_imm = imm;
-  op_code |= op_imm;
-  
-  // encode
-  AddMachineCode(op_code);
+    uint32_t op_code = 0xe2800000;
+    
+    uint32_t op_src = reg << 16;
+    op_code |= op_src;
+    
+    uint32_t op_dest = reg << 12;
+    op_code |= op_dest;
+    
+    uint32_t op_imm = imm;
+    op_code |= op_imm;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
+  else {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    add_reg_reg(reg, imm_holder->GetRegister());
+    ReleaseRegister(imm_holder);
+  }
 }
 
 void JitCompilerA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
@@ -2866,24 +2876,34 @@ void JitCompilerA32::sub_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerA32::sub_imm_reg(int32_t imm, Register reg) {
+  if(imm < 0) {
+    add_imm_reg(abs(imm), reg);
+  }
+  else if(imm >= 0 && imm <= 65535 ) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
 #endif
-  
-  uint32_t op_code = 0xe2400000;
-  
-  uint32_t op_src = reg << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = reg << 12;
-  op_code |= op_dest;
-  
-  uint32_t op_imm = imm;
-  op_code |= op_imm;
-  
-  // encode
-  AddMachineCode(op_code);
+    uint32_t op_code = 0xe2400000;
+    
+    uint32_t op_src = reg << 16;
+    op_code |= op_src;
+    
+    uint32_t op_dest = reg << 12;
+    op_code |= op_dest;
+    
+    uint32_t op_imm = imm;
+    op_code |= op_imm;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
+  else {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    sub_reg_reg(reg, imm_holder->GetRegister());
+    ReleaseRegister(imm_holder);
+  }
 }
 
 void JitCompilerA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
@@ -2906,7 +2926,7 @@ void JitCompilerA32::shl_imm_reg(int32_t value, Register dest) {
   op_code |= op_dest;
 
   
-  uint32_t op_imm = value << 7;
+  uint32_t op_imm = abs(value) << 7;
   op_code |= op_imm;
   
   uint32_t op_src = dest;
@@ -3274,7 +3294,7 @@ void JitCompilerA32::math_reg_reg(Register src, Register dest, InstructionType t
     break;
 
   case MUL_INT:
-    mul_reg_reg(dest, src);
+    mul_reg_reg(src, dest);
     break;
 
   case DIV_INT:
