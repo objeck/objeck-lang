@@ -2798,21 +2798,23 @@ void JitCompilerA64::move_imm_mem(long imm, long offset, Register dest) {
 
 void JitCompilerA64::add_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vadd.f64 " << GetRegisterName(dest)
+  wcout << L"  " << (++instr_count) << L": [fadd " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xee300b00;
+  uint32_t op_code = 0x1E602800;
   
-  uint32_t op_src = dest << 16;
+  // rn <- src
+  uint32_t op_src = src << 16;
   op_code |= op_src;
   
-  uint32_t op_dest = dest << 12;
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
   op_code |= op_dest;
-  
-  op_code |= src;
-  
-  // encode
+
+  op_dest = dest;
+  op_code |= op_dest;
+
   AddMachineCode(op_code);
 }
 
