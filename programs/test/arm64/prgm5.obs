@@ -5,6 +5,6 @@ class Test {
 
 	function : native : Foo() ~ Float {
 		a := 13.5;
-		return a;
+		return a + 6.65;
 	}
 }
