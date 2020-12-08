@@ -38,21 +38,22 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 ### Optimizations
 * Take advantage of more register, trade off is storing volatile register between calls
-* Guard 5, 6, and 12-bit values in JIT code generation
+* Guard 5, 10, and ~~12-bit intermediate values~~ in JIT code generation
 
 ### To do
 * Conditional branching
    * ~~Basic branching~~
-   * Logical comparison of negative numbers
+   * ~~Logical comparison of negative numbers~~
    * ~~Forward branching~~
-   * Backward branching
+   * ~~Backward branching~~
+* Types:
+   * Basic ~~ints~~, floats, chars and bytes
+   * Conversions between types
 * Operations: 
    * Mathematical: ~~mul_xxx_xxx and div_xxx_xx, etc.~~
    * Logical: ~~les_reg_reg, gtr_reg_reg, eql_reg_reg, neql_reg_reg, etc.~~
    * Bitwise: ~~or_reg_reg, and_reg_reg, etc.~~
 * Callback to interpreter from machine code
    * ~~Need space to save volatile registers~~
-   * Wire up memory manager to work with JIT machine code (assume ARMv7 port)
-* ~~Assign a temporary intermediate register (have registers to spare)~~
-* Support for floating point operations and conversions (assume ARMv7 port)
-* Byte level operations (assume ARMv7 port with new encodings)
+   * Wire up memory manager to work with JIT machine code 
+* Byte level operations 
