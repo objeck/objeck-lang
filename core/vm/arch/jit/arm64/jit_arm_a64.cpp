@@ -2758,11 +2758,28 @@ void JitCompilerA64::move_imm_xreg(RegInstr* instr, Register reg) {
 }
 
 void JitCompilerA64::move_mem_xreg(long offset, Register src, Register dest) {
+  // TODO: working on...
+//  move_mem_reg(offset, src, src);
+  
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vldr " << offset << L"(%"
+  wcout << L"  " << (++instr_count) << L": [ldr " << offset << L"(%"
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   
+  uint32_t op_code = 0xFD400000;
+  uint32_t op_src = src << 5;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest;
+  op_code |= op_dest;
+  
+  uint32_t op_offset = abs(offset) / sizeof(long);
+  op_code |= op_offset << 10;
+  
+  // encode
+  AddMachineCode(op_code);
+  
+/*
   uint32_t op_code;
   if(offset >= 0) {
     // forward
@@ -2784,6 +2801,7 @@ void JitCompilerA64::move_mem_xreg(long offset, Register src, Register dest) {
   
   // encode
   AddMachineCode(op_code);
+*/
 }
 
 void JitCompilerA64::move_xreg_mem(Register src, long offset, Register dest) {

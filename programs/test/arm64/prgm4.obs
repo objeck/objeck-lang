@@ -3,12 +3,12 @@ class Test {
 		Foo();
 	}
 
-	function : native : Foo() ~ Nil {
-#	function : Foo() ~ Nil {
+#	function : native : Foo() ~ Nil {
+	function : Foo() ~ Nil {
 		a : Int := 70;
-#		(a / 2)->PrintLine();
+		(a / 2)->PrintLine();
 		(4 * a)->PrintLine();
-#~
+
 		(9 - a)->PrintLine();
 		(a - 9)->PrintLine();
 		(9 + a)->PrintLine();
@@ -24,6 +24,5 @@ class Test {
 		b := 13;
 		(a-b)->PrintLine();
 		(b-a)->PrintLine();
-~#
 	}
 }

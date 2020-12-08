@@ -252,7 +252,7 @@ namespace Runtime {
       return type;
     }
 
-    int32_t GetOperand() {
+    long GetOperand() {
       return operand;
     }
   };
