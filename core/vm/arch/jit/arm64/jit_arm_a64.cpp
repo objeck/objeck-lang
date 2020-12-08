@@ -2719,6 +2719,96 @@ void JitCompilerA64::move_imm_freg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
+void JitCompilerA64::add_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [fadd " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E602800;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::sub_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [fsub " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E603800;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+// ---
+
+void JitCompilerA64::mul_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vmul.f64 " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E600800;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::div_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [div.f64 " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1e601800;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
 //
 // -------- End: Port to A64 encoding --------
 //
@@ -2794,88 +2884,6 @@ void JitCompilerA64::move_imm_mem(long imm, long offset, Register dest) {
   move_imm_reg(imm, imm_holder->GetRegister());
   move_reg_mem(imm_holder->GetRegister(), offset, dest);
   ReleaseRegister(imm_holder);
-}
-
-void JitCompilerA64::add_freg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [fadd " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0x1E602800;
-  
-  // rn <- src
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  // rm=rd <- dest
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-
-  op_dest = dest;
-  op_code |= op_dest;
-
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::sub_freg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vsub.f64 " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xee300b40;
-  
-  uint32_t op_src = dest << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-  
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::mul_freg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vmul.f64 " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xee200b00;
-  
-  uint32_t op_src = dest << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-  
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::div_freg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [div.f64 " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xee800b00;
-  
-  uint32_t op_src = dest << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-  
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
 }
 
 void JitCompilerA64::add_imm_freg(RegInstr* instr, Register reg) {

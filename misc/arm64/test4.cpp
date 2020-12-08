@@ -2,7 +2,7 @@
 
 void Foo(long a, long b) {
 	double c = 13000.5;
-	double d = c + 6.66;
+	double d = c / 6.66;
 	std::wcout << d << std::endl;
 }
 
