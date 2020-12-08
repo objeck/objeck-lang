@@ -319,8 +319,8 @@ namespace Runtime {
     list<RegisterHolder*> used_regs;
     stack<RegisterHolder*> aux_regs;
     RegisterHolder* reg_eax;
-    vector<RegisterHolder*> aval_xregs;
-    list<RegisterHolder*> used_xregs;
+    vector<RegisterHolder*> aval_fregs;
+    list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
     multimap<long, long> const_int_pool;
     vector<long> deref_offsets;          // -1
@@ -486,20 +486,20 @@ namespace Runtime {
     // the pool of registers
     RegisterHolder* GetFpRegister() {
       RegisterHolder* holder;
-      if(aval_xregs.empty()) {
+      if(aval_fregs.empty()) {
         compile_success = false;
 #ifdef _DEBUG
         wcout << L">>> No D registers avaiable! <<<" << endl;
 #endif
-        aval_xregs.push_back(new RegisterHolder(D0, true));
-        holder = aval_xregs.back();
-        aval_xregs.pop_back();
-        used_xregs.push_back(holder);
+        aval_fregs.push_back(new RegisterHolder(D0, true));
+        holder = aval_fregs.back();
+        aval_fregs.pop_back();
+        used_fregs.push_back(holder);
       }
       else {
-        holder = aval_xregs.back();
-        aval_xregs.pop_back();
-        used_xregs.push_back(holder);
+        holder = aval_fregs.back();
+        aval_fregs.pop_back();
+        used_fregs.push_back(holder);
       }
 #ifdef _VERBOSE
       wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
@@ -513,8 +513,8 @@ namespace Runtime {
     void ReleaseFpRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->IsDouble());
-      for(size_t i = 0; i < aval_xregs.size(); ++i) {
-        assert(h != aval_xregs[i]);
+      for(size_t i = 0; i < aval_fregs.size(); ++i) {
+        assert(h != aval_fregs[i]);
       }
 #endif
 
@@ -522,8 +522,8 @@ namespace Runtime {
       wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister())
             << L" * " << endl;
 #endif
-      aval_xregs.push_back(h);
-      used_xregs.remove(h);
+      aval_fregs.push_back(h);
+      used_fregs.remove(h);
     }
 
     RegisterHolder* GetStackPosRegister() {
@@ -540,21 +540,21 @@ namespace Runtime {
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);
-    void move_imm_memx(RegInstr* instr, long offset, Register dest);
+    void move_imm_memf(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
     void move_imm_reg(long imm, Register reg);
-    void move_imm_xreg(RegInstr* instr, Register reg);
-    void move_mem_xreg(long offset, Register src, Register dest);
-    void move_xreg_mem(Register src, long offset, Register dest);
-    void move_xreg_xreg(Register src, Register dest);
+    void move_imm_freg(RegInstr* instr, Register reg);
+    void move_mem_freg(long offset, Register src, Register dest);
+    void move_freg_mem(Register src, long offset, Register dest);
+    void move_freg_freg(Register src, Register dest);
 
     // math instructions
     void math_imm_reg(long imm, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
     void math_mem_reg(long offset, Register reg, InstructionType type);
-    void math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, InstructionType type);
-    void math_mem_xreg(long offset, RegisterHolder *&reg, InstructionType type);
-    void math_xreg_xreg(Register src, RegisterHolder *&dest, InstructionType type);
+    void math_imm_freg(RegInstr *instr, RegisterHolder *&reg, InstructionType type);
+    void math_mem_freg(long offset, RegisterHolder *&reg, InstructionType type);
+    void math_freg_freg(Register src, RegisterHolder *&dest, InstructionType type);
     
     // logical
     void and_imm_reg(long imm, Register reg);
@@ -570,33 +570,33 @@ namespace Runtime {
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);
     void add_imm_reg(long imm, Register reg);
-    void add_imm_xreg(RegInstr* instr, Register reg);
-    void add_xreg_xreg(Register src, Register dest);
+    void add_imm_freg(RegInstr* instr, Register reg);
+    void add_freg_freg(Register src, Register dest);
     void add_mem_reg(long offset, Register src, Register dest);
-    void add_mem_xreg(long offset, Register src, Register dest);
+    void add_mem_freg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
 
     // sub instructions
-    void sub_imm_xreg(RegInstr* instr, Register reg);
-    void sub_xreg_xreg(Register src, Register dest);
-    void sub_mem_xreg(long offset, Register src, Register dest);
+    void sub_imm_freg(RegInstr* instr, Register reg);
+    void sub_freg_freg(Register src, Register dest);
+    void sub_mem_freg(long offset, Register src, Register dest);
     void sub_imm_reg(long imm, Register reg);
     void sub_imm_mem(long imm, long offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
     void sub_mem_reg(long offset, Register src, Register dest);
 
     // mul instructions
-    void mul_imm_xreg(RegInstr* instr, Register reg);
-    void mul_xreg_xreg(Register src, Register dest);
-    void mul_mem_xreg(long offset, Register src, Register dest);
+    void mul_imm_freg(RegInstr* instr, Register reg);
+    void mul_freg_freg(Register src, Register dest);
+    void mul_mem_freg(long offset, Register src, Register dest);
     void mul_imm_reg(long imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
     void mul_mem_reg(long offset, Register src, Register dest);
 
     // div instructions
-    void div_imm_xreg(RegInstr* instr, Register reg);
-    void div_xreg_xreg(Register src, Register dest);
-    void div_mem_xreg(long offset, Register src, Register dest);
+    void div_imm_freg(RegInstr* instr, Register reg);
+    void div_freg_freg(Register src, Register dest);
+    void div_mem_freg(long offset, Register src, Register dest);
     void div_imm_reg(long imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
@@ -606,9 +606,9 @@ namespace Runtime {
     void cmp_mem_reg(long offset, Register src, Register dest);
     void cmp_imm_reg(long imm, Register reg);
     
-    void cmp_xreg_xreg(Register src, Register dest);
-    void cmp_mem_xreg(long offset, Register src, Register dest);
-    void cmp_imm_xreg(RegInstr* instr, Register reg);
+    void cmp_freg_freg(Register src, Register dest);
+    void cmp_mem_freg(long offset, Register src, Register dest);
+    void cmp_imm_freg(RegInstr* instr, Register reg);
     
     void cmov_reg(Register reg, InstructionType oper);
 
@@ -633,15 +633,15 @@ namespace Runtime {
     void push_mem(long offset, Register src);
 
     // type conversion instructions
-    void round_imm_xreg(RegInstr* instr, Register reg, bool is_floor);
-    void round_mem_xreg(long offset, Register src, Register dest, bool is_floor);
-    void round_xreg_xreg(Register src, Register dest, bool is_floor);
-    void vcvt_xreg_reg(Register src, Register dest);
+    void round_imm_freg(RegInstr* instr, Register reg, bool is_floor);
+    void round_mem_freg(long offset, Register src, Register dest, bool is_floor);
+    void round_freg_freg(Register src, Register dest, bool is_floor);
+    void vcvt_freg_reg(Register src, Register dest);
     void vcvt_imm_reg(RegInstr* instr, Register reg);
     void vcvt_mem_reg(long offset, Register src, Register dest);
-    void vcvt_reg_xreg(Register src, Register dest);
-    void vcvt_imm_xreg(RegInstr* instr, Register reg);
-    void vcvt_mem_xreg(long offset, Register src, Register dest);
+    void vcvt_reg_freg(Register src, Register dest);
+    void vcvt_imm_freg(RegInstr* instr, Register reg);
+    void vcvt_mem_freg(long offset, Register src, Register dest);
 
     // function call instruction
     void call_reg(Register reg);
@@ -728,9 +728,9 @@ namespace Runtime {
         }
       }
 
-      while(!aval_xregs.empty()) {
-        RegisterHolder* holder = aval_xregs.back();
-        aval_xregs.pop_back();
+      while(!aval_fregs.empty()) {
+        RegisterHolder* holder = aval_fregs.back();
+        aval_fregs.pop_back();
         if(holder) {
           delete holder;
           holder = nullptr;
@@ -748,16 +748,16 @@ namespace Runtime {
       }
       used_regs.clear();
 
-      while(!used_xregs.empty()) {
-        RegisterHolder* holder = used_xregs.front();
+      while(!used_fregs.empty()) {
+        RegisterHolder* holder = used_fregs.front();
         if(holder) {
           delete holder;
           holder = nullptr;
         }
         // next
-        used_xregs.pop_front();
+        used_fregs.pop_front();
       }
-      used_xregs.clear();
+      used_fregs.clear();
 
       while(!aux_regs.empty()) {
         RegisterHolder* holder = aux_regs.top();
