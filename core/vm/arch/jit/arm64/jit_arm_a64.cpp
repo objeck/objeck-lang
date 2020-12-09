@@ -2847,7 +2847,7 @@ void JitCompilerA64::vcvt_mem_freg(long offset, Register src, Register dest) {
 
 void JitCompilerA64::vcvt_freg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src)
+  wcout << L"  " << (++instr_count) << L": [fcvtzs %" << GetRegisterName(src)
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   uint32_t op_code = 0x9E780000;
