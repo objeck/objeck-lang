@@ -2809,6 +2809,62 @@ void JitCompilerA64::div_freg_freg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
+void JitCompilerA64::vcvt_imm_reg(RegInstr* instr, Register reg) {
+  // copy address of imm value
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
+  vcvt_mem_reg(0, imm_holder->GetRegister(), reg);
+  ReleaseRegister(imm_holder);
+}
+
+void JitCompilerA64::vcvt_imm_freg(RegInstr* instr, Register reg) {
+  // copy address of imm value
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
+  vcvt_reg_freg(imm_holder->GetRegister(), reg);
+  ReleaseRegister(imm_holder);
+}
+
+void JitCompilerA64::vcvt_reg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [scvtf %" << GetRegisterName(src)
+        << L", %" << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0x9E620000;
+  
+  op_code |= dest;
+  op_code |= src << 5;
+  
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::vcvt_mem_freg(long offset, Register src, Register dest) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  vcvt_reg_freg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder);
+}
+
+void JitCompilerA64::vcvt_freg_reg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src)
+        << L", %" << GetRegisterName(dest) << L"]" << endl;
+#endif
+  uint32_t op_code = 0x9e780000;
+  
+  src = D7;
+  dest = X3;
+  
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::vcvt_mem_reg(long offset, Register src, Register dest) {
+  RegisterHolder* mem_holder = GetFpRegister();
+  move_mem_freg(offset, src, mem_holder->GetRegister());
+  vcvt_freg_reg(mem_holder->GetRegister(), dest);
+  ReleaseFpRegister(mem_holder);
+}
+
 //
 // -------- End: Port to A64 encoding --------
 //
@@ -3698,67 +3754,6 @@ void JitCompilerA64::push_imm(int32_t value) {
 
 void JitCompilerA64::pop_reg(Register reg) {
   throw runtime_error("Method 'pop_reg(..)' not implemented for ARM64 target");
-}
-
-void JitCompilerA64::vcvt_imm_reg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  vcvt_mem_reg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-}
-
-void JitCompilerA64::vcvt_imm_freg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  vcvt_reg_freg(imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-}
-
-void JitCompilerA64::vcvt_reg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src)
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
-  uint32_t op_code = 0xee070a90;
-  uint32_t op_dest = src << 12;
-  op_code |= op_dest;
-  AddMachineCode(op_code);
-  
-  op_code = 0xeeb80be7;
-  op_dest = dest << 12;
-  op_code |= op_dest;
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::vcvt_mem_freg(long offset, Register src, Register dest) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, src, mem_holder->GetRegister());
-  vcvt_reg_freg(mem_holder->GetRegister(), dest);
-  ReleaseRegister(mem_holder);
-}
-
-void JitCompilerA64::vcvt_freg_reg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vcvt.s32.f64 %" << GetRegisterName(dest)
-        << L", %" << GetRegisterName(src) << L"]" << endl;
-#endif
-  uint32_t op_code = 0xeefd7bc0;
-  op_code |= src;
-  AddMachineCode(op_code);
-  
-  op_code = 0xee170a90;
-  const uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::vcvt_mem_reg(long offset, Register src, Register dest) {
-  RegisterHolder* mem_holder = GetFpRegister();
-  move_mem_freg(offset, src, mem_holder->GetRegister());
-  vcvt_freg_reg(mem_holder->GetRegister(), dest);
-  ReleaseFpRegister(mem_holder);
 }
 
 void JitCompilerA64::round_imm_freg(RegInstr* instr, Register reg, bool is_floor) {
