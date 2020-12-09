@@ -2767,7 +2767,7 @@ void JitCompilerA64::sub_freg_freg(Register src, Register dest) {
 
 void JitCompilerA64::mul_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vmul.f64 " << GetRegisterName(dest)
+  wcout << L"  " << (++instr_count) << L": [fmul " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
@@ -2789,7 +2789,7 @@ void JitCompilerA64::mul_freg_freg(Register src, Register dest) {
 
 void JitCompilerA64::div_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [div.f64 " << GetRegisterName(dest)
+  wcout << L"  " << (++instr_count) << L": [fdiv " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
@@ -2850,10 +2850,10 @@ void JitCompilerA64::vcvt_freg_reg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src)
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
-  uint32_t op_code = 0x9e780000;
+  uint32_t op_code = 0x9E780000;
   
-  src = D7;
-  dest = X3;
+  op_code |= dest;
+  op_code |= src << 5;
   
   AddMachineCode(op_code);
 }
