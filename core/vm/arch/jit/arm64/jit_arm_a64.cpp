@@ -2865,69 +2865,6 @@ void JitCompilerA64::vcvt_mem_reg(long offset, Register src, Register dest) {
   ReleaseFpRegister(mem_holder);
 }
 
-//
-// -------- End: Port to A64 encoding --------
-//
-
-// --- 8-bit operations ---
-void JitCompilerA64::move_reg_mem8(Register src, long offset, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src)
-        << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
-#endif
-    
-  uint32_t op_code;
-  if(offset >= 0) {
-    // forward
-    op_code = 0xe5c00000;
-  }
-  else {
-    // backward
-    op_code = 0xe5400000;
-  }
-  
-  uint32_t op_dest = dest << 16;
-  op_code |= op_dest;
-  
-  uint32_t op_src = src << 12;
-  op_code |= op_src;
-  
-  uint32_t op_offset = abs(offset);
-  op_code |= op_offset;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::move_mem8_reg(long offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
-        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
-#endif
-    
-  uint32_t op_code;
-  if(offset >= 0) {
-    // forward
-    op_code = 0xe5d00000;
-  }
-  else {
-    // backward
-    op_code = 0xe5500000;
-  }
-  
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-  
-  uint32_t op_offset = abs(offset);
-  op_code |= op_offset;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-    
 void JitCompilerA64::move_imm_mem8(long imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
@@ -3055,46 +2992,6 @@ void JitCompilerA64::math_freg_freg(Register src, RegisterHolder *&dest, Instruc
   }
 }
 
-void JitCompilerA64::move_freg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vmov.f64 " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xeeb00b40;
-  
-  uint32_t op_src = dest << 12;
-  op_code |= op_src;
-  
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::cmp_freg_freg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vcmp.f64 " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
-#endif
-  
-  uint32_t op_code = 0xeeb40b40;
-  
-  uint32_t op_src = dest << 12;
-  op_code |= op_src;
-  
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
-
-  // update flags
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [vmrs APSR_nzcv, fpscr]" << endl;
-#endif
-  AddMachineCode(0xeef1fa10);
-}
-
 void JitCompilerA64::cmp_mem_freg(long offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
   move_mem_freg(offset, src, holder->GetRegister());
@@ -3141,147 +3038,6 @@ void JitCompilerA64::cmp_imm_freg(RegInstr* instr, Register reg) {
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cmp_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
-}
-
-bool JitCompilerA64::cond_jmp(InstructionType type) {
-  if(instr_index >= method->GetInstructionCount()) {
-    return false;
-  }
-  
-  StackInstr* next_instr = method->GetInstruction(instr_index);
-  if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
-    //
-    // jump if true
-    //
-    if(next_instr->GetOperand2() == 1) {
-      switch(type) {
-      case LES_INT:
-      case LES_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
-#endif
-        AddMachineCode(0x5400000B);
-        break;
-
-          // TODO: implement
-      case GTR_INT:
-      case GTR_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
-#endif
-        AddMachineCode(0x5400000C);
-        break;
-
-          // TODO: implement
-      case EQL_INT:
-      case EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
-#endif
-        AddMachineCode(0x0a000000);
-        break;
-
-          // TODO: implement
-      case NEQL_INT:
-      case NEQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
-#endif
-        AddMachineCode(0x1a000000);
-        break;
-
-          // TODO: implement
-      case LES_EQL_INT:
-      case LES_EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
-#endif
-        AddMachineCode(0xda000000);
-        break;
-        
-          // TODO: implement
-      case GTR_EQL_INT:
-      case GTR_EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
-#endif
-        AddMachineCode(0xaa000000);
-        break;
-        
-      default:
-        break;
-      }
-    }
-    //
-    // jump - false
-    //
-    else {
-      switch(type) {
-      case LES_INT:
-      case LES_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
-#endif
-        AddMachineCode(0x5400000A);
-        break;
-
-          // TODO: implement
-      case GTR_INT:
-      case GTR_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
-#endif
-        AddMachineCode(0xda000000);
-        break;
-
-          // TODO: implement
-      case EQL_INT:
-      case EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
-#endif
-        AddMachineCode(0x1a000000);
-        break;
-
-          // TODO: implement
-      case NEQL_INT:
-      case NEQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
-#endif
-        AddMachineCode(0x0a000000);
-        break;
-
-          // TODO: implement
-      case LES_EQL_INT:
-      case LES_EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
-#endif
-        AddMachineCode(0x5400000C);
-        break;
-        
-      case GTR_EQL_INT:
-      case GTR_EQL_FLOAT:
-#ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
-#endif
-        AddMachineCode(0x5400000B);
-        break;
-        
-      default:
-        break;
-      }
-    }
-    // store update index
-    jump_table.insert(pair<long, StackInstr*>(code_index, next_instr));
-    
-    // temp offset
-    skip_jump = true;
-    return true;
-  }
-  
-  return false;
 }
 
 void JitCompilerA64::math_imm_reg(long imm, Register reg, InstructionType type) {
@@ -3485,6 +3241,252 @@ void JitCompilerA64::math_mem_reg(long offset, Register reg, InstructionType typ
   }
 }
 
+//
+// -------- End: Port to A64 encoding --------
+//
+
+// --- 8-bit operations ---
+void JitCompilerA64::move_reg_mem8(Register src, long offset, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src)
+        << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+#endif
+    
+  uint32_t op_code;
+  if(offset >= 0) {
+    // forward
+    op_code = 0xe5c00000;
+  }
+  else {
+    // backward
+    op_code = 0xe5400000;
+  }
+  
+  uint32_t op_dest = dest << 16;
+  op_code |= op_dest;
+  
+  uint32_t op_src = src << 12;
+  op_code |= op_src;
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::move_mem8_reg(long offset, Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
+        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+#endif
+    
+  uint32_t op_code;
+  if(offset >= 0) {
+    // forward
+    op_code = 0xe5d00000;
+  }
+  else {
+    // backward
+    op_code = 0xe5500000;
+  }
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::move_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vmov.f64 " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xeeb00b40;
+  
+  uint32_t op_src = dest << 12;
+  op_code |= op_src;
+  
+  op_code |= src;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::cmp_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vcmp.f64 " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xeeb40b40;
+  
+  uint32_t op_src = dest << 12;
+  op_code |= op_src;
+  
+  op_code |= src;
+  
+  // encode
+  AddMachineCode(op_code);
+
+  // update flags
+#ifdef _DEBUG
+      wcout << L"  " << (++instr_count) << L": [vmrs APSR_nzcv, fpscr]" << endl;
+#endif
+  AddMachineCode(0xeef1fa10);
+}
+
+// TODO: WIP
+bool JitCompilerA64::cond_jmp(InstructionType type) {
+  if(instr_index >= method->GetInstructionCount()) {
+    return false;
+  }
+  
+  StackInstr* next_instr = method->GetInstruction(instr_index);
+  if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
+    //
+    // jump if true
+    //
+    if(next_instr->GetOperand2() == 1) {
+      switch(type) {
+      case LES_INT:
+      case LES_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
+#endif
+        AddMachineCode(0x5400000B);
+        break;
+
+          // TODO: implement
+      case GTR_INT:
+      case GTR_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+#endif
+        AddMachineCode(0x5400000C);
+        break;
+
+          // TODO: implement
+      case EQL_INT:
+      case EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+#endif
+        AddMachineCode(0x0a000000);
+        break;
+
+          // TODO: implement
+      case NEQL_INT:
+      case NEQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
+#endif
+        AddMachineCode(0x1a000000);
+        break;
+
+          // TODO: implement
+      case LES_EQL_INT:
+      case LES_EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
+#endif
+        AddMachineCode(0xda000000);
+        break;
+        
+          // TODO: implement
+      case GTR_EQL_INT:
+      case GTR_EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
+#endif
+        AddMachineCode(0xaa000000);
+        break;
+        
+      default:
+        break;
+      }
+    }
+    //
+    // jump - false
+    //
+    else {
+      switch(type) {
+      case LES_INT:
+      case LES_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
+#endif
+        AddMachineCode(0x5400000A);
+        break;
+
+          // TODO: implement
+      case GTR_INT:
+      case GTR_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
+#endif
+        AddMachineCode(0xda000000);
+        break;
+
+          // TODO: implement
+      case EQL_INT:
+      case EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
+#endif
+        AddMachineCode(0x1a000000);
+        break;
+
+          // TODO: implement
+      case NEQL_INT:
+      case NEQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+#endif
+        AddMachineCode(0x0a000000);
+        break;
+
+          // TODO: implement
+      case LES_EQL_INT:
+      case LES_EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+#endif
+        AddMachineCode(0x5400000C);
+        break;
+        
+      case GTR_EQL_INT:
+      case GTR_EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
+#endif
+        AddMachineCode(0x5400000B);
+        break;
+        
+      default:
+        break;
+      }
+    }
+    // store update index
+    jump_table.insert(pair<long, StackInstr*>(code_index, next_instr));
+    
+    // temp offset
+    skip_jump = true;
+    return true;
+  }
+  
+  return false;
+}
+
+// TODO: WIP
 void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
 {
   uint32_t op_code, op_dest;
@@ -3606,6 +3608,7 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
   AddMachineCode(op_code);
 }
 
+// TODO: WIP
 void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
 {
   RegInstr* left = working_stack.front();
@@ -3678,6 +3681,7 @@ void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
   left = nullptr;
 }
 
+// TODO: WIP
 void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
 {
   RegInstr* left = working_stack.front();
