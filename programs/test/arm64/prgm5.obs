@@ -3,8 +3,9 @@ class Test {
 		Foo()->PrintLine();
 	}
 
-	function : native : Foo() ~ Float {
+	function : native : Foo() ~ Int {
 		a := 13.5;
-		return a / 6.65;
+		b : Int := a / 6.65;
+		return b;
 	}
 }
