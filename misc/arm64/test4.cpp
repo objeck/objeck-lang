@@ -1,13 +1,15 @@
 #include<iostream>
 
 void Foo(long a, long b) {
-/*
 	double c = 13000.5;
 	double d = c / 6.66;
-*/
+	long i = c * d;
+
+/*
 	int c = 13;
 	double d = a * b;
-	std::wcout << d << std::endl;
+*/
+	std::wcout << i << std::endl;
 }
 
 int main() {
