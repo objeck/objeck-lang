@@ -37,20 +37,22 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 	```
 
 ### Optimizations
-* Take advantage of more register, trade off is storing volatile register between calls
-* Guard 5, 10, and ~~12-bit intermediate values~~ in JIT code generation
+* Take advantage of more registers, trade off is storing volatile registers between calls
+* Guard ~~12-bit intermediate values~~
 
 ### To do
+* Optimizations
+   * Eliminate redundancy register stores and loads
 * Conditional branching
    * ~~Basic branching~~
    * ~~Logical comparison of negative numbers~~
    * ~~Forward branching~~
    * ~~Backward branching~~
 * Types:
+   * Array support
    * Basic ~~ints~~, floats, chars and bytes
    * ~~Conversions between ints and floats~~
    * Conversions ints, char and bytes
-   * Array support
 * Operations: 
    * Mathematical: ~~mul_xxx_xxx and div_xxx_xx, etc.~~
    * Logical: ~~les_reg_reg, gtr_reg_reg, eql_reg_reg, neql_reg_reg, etc.~~
