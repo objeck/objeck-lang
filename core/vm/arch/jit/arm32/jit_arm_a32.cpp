@@ -3441,14 +3441,6 @@ void JitCompilerA32::cmov_reg(Register reg, InstructionType oper)
     
   case LES_FLOAT:
 #ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [movmi " << GetRegisterName(reg) << L", #1]" << endl;
-#endif
-    op_code = 0x43a00001;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
-
-#ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [movpl " << GetRegisterName(reg) << L", #0]" << endl;
 #endif
     op_code = 0x53a00000;
