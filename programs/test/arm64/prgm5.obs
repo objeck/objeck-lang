@@ -6,6 +6,9 @@ class Test {
 	function : native : Foo() ~ Bool {
 		a := 12.5;
 		b := 13.5;
+
+		Float->Sin(45.5)->PrintLine();
+
 		return a >= b;
 	}
 }

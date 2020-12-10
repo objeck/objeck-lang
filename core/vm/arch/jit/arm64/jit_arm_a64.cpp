@@ -3305,20 +3305,23 @@ void JitCompilerA64::move_mem8_reg(long offset, Register src, Register dest) {
 }
 
 void JitCompilerA64::move_freg_freg(Register src, Register dest) {
+  if(src != dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vmov.f64 " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(X10)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-  
-  uint32_t op_code = 0xeeb00b40;
-  
-  uint32_t op_src = dest << 12;
-  op_code |= op_src;
-  
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
+    uint32_t op_code = 0x9E67000A;
+    op_code |= src << 5;
+    AddMachineCode(op_code);
+    
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(X19) << L"]" << endl;
+#endif
+    op_code = 0x9E660140;
+    op_code |= dest;
+    AddMachineCode(op_code);
+  }
 }
 
 void JitCompilerA64::cmp_freg_freg(Register src, Register dest) {
@@ -3545,7 +3548,6 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
   AddMachineCode(op_code);
 }
 
-// TODO: WIP
 void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
 {
   RegInstr* left = working_stack.front();
