@@ -1,0 +1,14 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Foo(40)->PrintLine();
+	}
+
+	function : native : Foo(a : Int) ~ Int {
+		do {
+			a -= 3;
+		}
+		while(a >= 20);
+
+		return a;
+	}
+}

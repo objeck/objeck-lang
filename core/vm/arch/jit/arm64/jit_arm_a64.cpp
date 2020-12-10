@@ -179,7 +179,7 @@ void JitCompilerA64::RegisterRoot() {
   // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
 #ifdef _DEBUG
-  std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
+  std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
   AddMachineCode(0x540000cB);
   
@@ -962,9 +962,9 @@ void JitCompilerA64::ProcessJump(StackInstr* instr) {
 
       // compare with register
 #ifdef _DEBUG
-      std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+      std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
 #endif
-      AddMachineCode(0x0a000000);
+      AddMachineCode(0x54000000);
       
       // clean up
       delete left;
@@ -3369,45 +3369,43 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
 #endif
         AddMachineCode(0x5400000C);
         break;
 
-          // TODO: implement
       case EQL_INT:
       case EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
 #endif
-        AddMachineCode(0x0a000000);
+        AddMachineCode(0x54000000);
         break;
 
-          // TODO: implement
       case NEQL_INT:
       case NEQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
 #endif
-        AddMachineCode(0x1a000000);
+        AddMachineCode(0x54000001);
         break;
 
           // TODO: implement
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
 #endif
-        AddMachineCode(0xda000000);
+        AddMachineCode(0x5400000D);
         break;
         
           // TODO: implement
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
-        AddMachineCode(0xaa000000);
+        AddMachineCode(0x5400000A);
         break;
         
       default:
@@ -3431,34 +3429,32 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
 #endif
-        AddMachineCode(0xda000000);
+        AddMachineCode(0x5400000D);
         break;
-
-          // TODO: implement
+          
       case EQL_INT:
       case EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.ne]" << std::endl;
 #endif
-        AddMachineCode(0x1a000000);
+        AddMachineCode(0x54000001);
         break;
 
-          // TODO: implement
       case NEQL_INT:
       case NEQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
 #endif
-        AddMachineCode(0x0a000000);
+        AddMachineCode(0x54000000);
         break;
 
           // TODO: implement
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
 #endif
         AddMachineCode(0x5400000C);
         break;
@@ -3466,7 +3462,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
         AddMachineCode(0x5400000B);
         break;
