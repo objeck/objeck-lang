@@ -422,7 +422,8 @@ namespace Runtime {
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
         compile_success = false;
-        used_regs.push_back(new RegisterHolder(R0, false));
+        holder = new RegisterHolder(R0, false);
+        used_regs.push_back(holder);
       }
       else {
         holder = aval_regs.back();
