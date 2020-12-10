@@ -1014,7 +1014,7 @@ void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
 
   case MEM_INT: {    
     // movb can only use al, bl, cl and dl registers
-    RegisterHolder* holder = GetRegister(false);
+    RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
     move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
@@ -1026,7 +1026,7 @@ void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
     if(holder->GetRegister() == R12) {
-      RegisterHolder* tmp_holder = GetRegister(false);
+      RegisterHolder* tmp_holder = GetRegister();
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
       move_reg_mem8(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
       ReleaseRegister(tmp_holder);
@@ -1060,7 +1060,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
 
   case MEM_INT: {    
     // movb can only use al, bl, cl and dl registers
-    RegisterHolder* holder = GetRegister(false);
+    RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
@@ -1072,7 +1072,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
     if(holder->GetRegister() == R12) {
-      RegisterHolder* tmp_holder = GetRegister(false);
+      RegisterHolder* tmp_holder = GetRegister();
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
       move_reg_mem(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
       ReleaseRegister(tmp_holder);
