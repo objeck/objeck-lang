@@ -415,22 +415,14 @@ namespace Runtime {
     /***********************************
      * Gets an avaiable register from
      ***********************************/
-    RegisterHolder* GetRegister(bool use_aux = true) {
+    RegisterHolder* GetRegister() {
       RegisterHolder* holder;
-      if(aval_regs.empty()) {
-        if(use_aux && !aux_regs.empty()) {
-          holder = aux_regs.top();
-          aux_regs.pop();
-        }
-        else {
-          compile_success = false;
+      if(aval_regs.empty()) {        
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(R0, false));
-          holder = aux_regs.top();
-          aux_regs.pop();
-        }
+        compile_success = false;
+        used_regs.push_back(new RegisterHolder(R0, false));
       }
       else {
         holder = aval_regs.back();
