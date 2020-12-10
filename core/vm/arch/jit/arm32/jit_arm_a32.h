@@ -304,7 +304,6 @@ namespace Runtime {
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
-    stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
@@ -730,15 +729,6 @@ namespace Runtime {
         used_xregs.pop_front();
       }
       used_xregs.clear();
-
-      while(!aux_regs.empty()) {
-        RegisterHolder* holder = aux_regs.top();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
-        aux_regs.pop();
-      }
     }
 
     //

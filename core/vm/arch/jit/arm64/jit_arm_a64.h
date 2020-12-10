@@ -317,7 +317,6 @@ namespace Runtime {
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
-    stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_fregs;
     list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
@@ -431,19 +430,12 @@ namespace Runtime {
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
-        if(use_aux && !aux_regs.empty()) {
-          holder = aux_regs.top();
-          aux_regs.pop();
-        }
-        else {
-          compile_success = false;
 #ifdef _DEBUG
-          wcout << L">>> No general registers avaiable! <<<" << endl;
+        wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(X0, false));
-          holder = aux_regs.top();
-          aux_regs.pop();
-        }
+        compile_success = false;
+        holder = new RegisterHolder(X0, false);
+        used_regs.push_back(holder);
       }
       else {
         holder = aval_regs.back();
@@ -451,8 +443,7 @@ namespace Runtime {
         used_regs.push_back(holder);
       }
 #ifdef _VERBOSE
-      wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
-            << L" *" << endl;
+      wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister()) << L" *" << endl;
 #endif
 
       return holder;
@@ -745,15 +736,6 @@ namespace Runtime {
         used_fregs.pop_front();
       }
       used_fregs.clear();
-
-      while(!aux_regs.empty()) {
-        RegisterHolder* holder = aux_regs.top();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
-        aux_regs.pop();
-      }
     }
 
     //
