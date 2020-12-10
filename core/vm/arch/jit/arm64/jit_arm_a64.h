@@ -399,18 +399,23 @@ namespace Runtime {
     /**
      * Check for 'Nil' dereferencing
      */
+    // TODO: implement
     inline void CheckNilDereference(Register reg) {
+/*
       // less than zero
       cmp_imm_reg(0, reg);
       AddMachineCode(0x0a000000);
       deref_offsets.push_back(code_index);
       // jump to exit
+*/
     }
 
     /**
      * Checks array bounds
      */
+    // TODO: implement
     inline void CheckArrayBounds(Register reg, Register max_reg) {
+/*
       // less than zero
       cmp_imm_reg(0, reg);
       AddMachineCode(0xba000000);
@@ -422,6 +427,7 @@ namespace Runtime {
       AddMachineCode(0xaa000000);
       bounds_greater_offsets.push_back(code_index);
       // jump to exit
+*/
     }
     
     /**

@@ -5,61 +5,66 @@ class Test {
 
 #	function : native : Foo() ~ Nil {
 	function : Foo() ~ Nil {
-		b := 13;
-			(b-9.33)->PrintLine();
+#~		
+	b := 13;
+	(b-9.33)->PrintLine();
 
-			x := 1;
-			x += (8 * 2);
-			x->PrintLine();
+	x := 1;
+	x += (8 * 2);
+	x->PrintLine();
 
-#			y *= args->Size();
-#			y->PrintLine();
+	#	y *= args->Size();
+	#	y->PrintLine();
 
-#			"0x53f"->ToInt()->PrintLine();
-#			"0x1c72"->ToInt()->PrintLine();
-#			c := 55.141->As(Char);
-#			c->PrintLine();	
+	#	"0x53f"->ToInt()->PrintLine();
+	#	"0x1c72"->ToInt()->PrintLine();
+	~#
+	
+	c := 55.141->As(Char);
+	c->PrintLine();	
 
-			(9/3)->PrintLine();
-			(3-9)->PrintLine();
-		
-			a : Int := 70;
-			(a / 2)->PrintLine();
-			(4 * a)->PrintLine();
-			(9 - a)->PrintLine();
-			(a - 9)->PrintLine();
-			(9 + a)->PrintLine();
-			(a + 9)->PrintLine();
-			(9 / a)->PrintLine();
-			(a / 9)->PrintLine();
-			(9 * a)->PrintLine();
-			(a * 9)->PrintLine();
-			(9 % a)->PrintLine();
-			(a % 9)->PrintLine();
+#~
+	(9/3)->PrintLine();
+	(3-9)->PrintLine();
 
-			b := 13;
-			(a-b)->PrintLine();
-			(b-a)->PrintLine();
-			(13.5 - 5.0)->PrintLine();
-			
-			(9.33 - b)->PrintLine();
+	a : Int := 70;
+	(a / 2)->PrintLine();
+	(4 * a)->PrintLine();
+	(9 - a)->PrintLine();
+	(a - 9)->PrintLine();
+	(9 + a)->PrintLine();
+	(a + 9)->PrintLine();
+	(9 / a)->PrintLine();
+	(a / 9)->PrintLine();
+	(9 * a)->PrintLine();
+	(a * 9)->PrintLine();
+	(9 % a)->PrintLine();
+	(a % 9)->PrintLine();
 
-			(b/9.33)->PrintLine();
-			(9.33/b)->PrintLine();
-			(b+9.33)->PrintLine();
-			(9.33 + b)->PrintLine();
-			(b*9.33)->PrintLine();
-			(9.33*b)->PrintLine();
+	b := 13;
+	(a-b)->PrintLine();
+	(b-a)->PrintLine();
+	(13.5 - 5.0)->PrintLine();
+	
+	(9.33 - b)->PrintLine();
 
-			g : Float := 3;
-			c : Float := 3.1415;
-			(c-5.5)->PrintLine();
-			d : Float := 11.12;
-			h : Float := 11;
-			(c-d)->PrintLine();
-			(d-c)->PrintLine();		
+	(b/9.33)->PrintLine();
+	(9.33/b)->PrintLine();
+	(b+9.33)->PrintLine();
+	(9.33 + b)->PrintLine();
+	(b*9.33)->PrintLine();
+	(9.33*b)->PrintLine();
 
-			(g-h)->PrintLine();
-			(h-g)->PrintLine();	
+	g : Float := 3;
+	c : Float := 3.1415;
+	(c-5.5)->PrintLine();
+	d : Float := 11.12;
+	h : Float := 11;
+	(c-d)->PrintLine();
+	(d-c)->PrintLine();		
+
+	(g-h)->PrintLine();
+	(h-g)->PrintLine();	
+~#		
 	}
 }

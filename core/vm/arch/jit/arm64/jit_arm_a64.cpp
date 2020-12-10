@@ -4347,7 +4347,7 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
     exit(1);
     break;
   }
-  CheckNilDereference(array_holder->GetRegister());
+//  CheckNilDereference(array_holder->GetRegister());
   
   /* Algorithm:
      int32_t index = PopInt();
