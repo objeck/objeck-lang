@@ -3344,7 +3344,6 @@ void JitCompilerA64::cmp_freg_freg(Register src, Register dest) {
   AddMachineCode(0xeef1fa10);
 }
 
-// TODO: WIP
 bool JitCompilerA64::cond_jmp(InstructionType type) {
   if(instr_index >= method->GetInstructionCount()) {
     return false;
@@ -3365,7 +3364,6 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x5400000B);
         break;
 
-          // TODO: implement
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG
@@ -3390,7 +3388,6 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x54000001);
         break;
 
-          // TODO: implement
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3399,7 +3396,6 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x5400000D);
         break;
         
-          // TODO: implement
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3425,7 +3421,6 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x5400000A);
         break;
 
-          // TODO: implement
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG
@@ -3450,7 +3445,6 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
         AddMachineCode(0x54000000);
         break;
 
-          // TODO: implement
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG
@@ -3505,6 +3499,7 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
     op_code |= op_dest;
     AddMachineCode(op_code);
 
+      // TODO: implement
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [movpl " << GetRegisterName(reg) << L", #0]" << endl;
 #endif
@@ -3538,7 +3533,6 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
     AddMachineCode(0x1A9F07E9);
     break;
     
-      // TODO: implement
   case LES_EQL_INT:
 #ifdef _DEBUG
       std::wcout << L"  " << (++instr_count) << L": [cset  w9, le]" << std::endl;
@@ -3556,6 +3550,7 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
     op_code |= op_dest;
     AddMachineCode(op_code);
 
+      // TODO: implement
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [movhi]" << std::endl;
 #endif
@@ -3564,8 +3559,7 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
     op_code |= op_dest;
     AddMachineCode(op_code);
     break;
-        
-      // TODO: implement
+    
   case GTR_EQL_INT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [cset  w9, ge]" << std::endl;
@@ -4641,7 +4635,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     aval_regs.push_back(new RegisterHolder(X0, false));
     
     // aux general use registers
-/*  TODO: reserved for temp usage
+/*  other registers
     aux_regs.push(new RegisterHolder(X15, false));
     aux_regs.push(new RegisterHolder(X14, false));
     aux_regs.push(new RegisterHolder(X13, false));
