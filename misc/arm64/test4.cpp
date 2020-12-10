@@ -1,11 +1,12 @@
 #include<iostream>
 
-void Foo(long a, long b) {
-	double c = 13000.5;
-	double d = c / 6.66;
-	bool i = c >= d;
-
-	std::wcout << i << std::endl;
+void Foo(double a, long b) {
+	double c = sin(45.5);
+	double d = 13.5;
+	double e = c + d;
+	a = d;
+	b = e;
+	std::wcout << b << std::endl;
 }
 
 int main() {
