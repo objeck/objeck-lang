@@ -318,7 +318,6 @@ namespace Runtime {
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
     stack<RegisterHolder*> aux_regs;
-    RegisterHolder* reg_eax;
     vector<RegisterHolder*> aval_fregs;
     list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
@@ -472,14 +471,8 @@ namespace Runtime {
         assert(h != aval_regs[i]);
       }
 #endif
-
-      if(h->GetRegister() >= X4 && h->GetRegister() <= X7) {
-        aux_regs.push(h);
-      }
-      else {
-        aval_regs.push_back(h);
-        used_regs.remove(h);
-      }
+      aval_regs.push_back(h);
+      used_regs.remove(h);
     }
 
     // Gets an avaiable register from
@@ -524,12 +517,6 @@ namespace Runtime {
 #endif
       aval_fregs.push_back(h);
       used_fregs.remove(h);
-    }
-
-    RegisterHolder* GetStackPosRegister() {
-      RegisterHolder* op_stack_holder = GetRegister();
-      move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
-      return op_stack_holder;
     }
 
     // move instructions

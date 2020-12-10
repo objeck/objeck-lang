@@ -305,7 +305,6 @@ namespace Runtime {
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
     stack<RegisterHolder*> aux_regs;
-    RegisterHolder* reg_eax;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
@@ -459,14 +458,8 @@ namespace Runtime {
         assert(h != aval_regs[i]);
       }
 #endif
-
-      if(h->GetRegister() >= R4 && h->GetRegister() <= R7) {
-        aux_regs.push(h);
-      }
-      else {
-        aval_regs.push_back(h);
-        used_regs.remove(h);
-      }
+      aval_regs.push_back(h);
+      used_regs.remove(h);
     }
 
     // Gets an avaiable register from
