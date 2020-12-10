@@ -4435,10 +4435,6 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
     
   case INT_TYPE:
-    shl_imm_reg(3, index_holder->GetRegister());
-    shl_imm_reg(3, bounds_holder->GetRegister());
-    break;
-
   case FLOAT_TYPE:
     shl_imm_reg(3, index_holder->GetRegister());
     shl_imm_reg(3, bounds_holder->GetRegister());
