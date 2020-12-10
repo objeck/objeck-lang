@@ -168,7 +168,7 @@ void JitCompilerA32::RegisterRoot() {
 
 void JitCompilerA32::ProcessParameters(int32_t params) {
 #ifdef _DEBUG
-  wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+  wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << endl;
 #endif
   
   for(int32_t i = 0; i < params; ++i) {
@@ -231,7 +231,7 @@ void JitCompilerA32::ProcessParameters(int32_t params) {
 
 void JitCompilerA32::ProcessIntCallParameter() {
 #ifdef _DEBUG
-  wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+  wcout << L"INT_CALL: regs=" << aval_regs.size() << endl;
 #endif
   
   RegisterHolder* op_stack_holder = GetRegister();
@@ -252,7 +252,7 @@ void JitCompilerA32::ProcessIntCallParameter() {
 
 void JitCompilerA32::ProcessFunctionCallParameter() {
 #ifdef _DEBUG
-  wcout << L"FUNC_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+  wcout << L"FUNC_CALL: regs=" << aval_regs.size() << endl;
 #endif
   
   RegisterHolder* op_stack_holder = GetRegister();
@@ -281,7 +281,7 @@ void JitCompilerA32::ProcessFunctionCallParameter() {
 
 void JitCompilerA32::ProcessFloatCallParameter() {
 #ifdef _DEBUG
-  wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+  wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << endl;
 #endif
   
   RegisterHolder* op_stack_holder = GetRegister();
@@ -313,7 +313,7 @@ void JitCompilerA32::ProcessInstructions() {
     case LOAD_INT_LIT:
 #ifdef _DEBUG
       wcout << L"LOAD_INT: value=" << instr->GetOperand() 
-            << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << L"; regs=" << aval_regs.size() << endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
       break;
@@ -322,7 +322,7 @@ void JitCompilerA32::ProcessInstructions() {
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
-            << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << L"; regs=" << aval_regs.size() << endl;
 #endif
       float_consts[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(instr, &float_consts[floats_index++]));
@@ -331,7 +331,7 @@ void JitCompilerA32::ProcessInstructions() {
       // load self
     case LOAD_INST_MEM: {
 #ifdef _DEBUG
-      wcout << L"LOAD_INST_MEM; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"LOAD_INST_MEM; regs=" << aval_regs.size() << endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
     }
@@ -340,7 +340,7 @@ void JitCompilerA32::ProcessInstructions() {
       // load self
     case LOAD_CLS_MEM: {
 #ifdef _DEBUG
-      wcout << L"LOAD_CLS_MEM; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"LOAD_CLS_MEM; regs=" << aval_regs.size() << endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
     }
@@ -353,7 +353,7 @@ void JitCompilerA32::ProcessInstructions() {
     case LOAD_FUNC_VAR:
 #ifdef _DEBUG
       wcout << L"LOAD_INT_VAR/LOAD_FLOAT_VAR/LOAD_FUNC_VAR: id=" << instr->GetOperand() << L"; regs=" 
-            << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << aval_regs.size() << endl;
 #endif
       ProcessLoad(instr);
       break;
@@ -365,7 +365,7 @@ void JitCompilerA32::ProcessInstructions() {
     case STOR_FUNC_VAR:
 #ifdef _DEBUG
       wcout << L"STOR_INT_VAR/STOR_FLOAT_VAR/STOR_FUNC_VAR: id=" << instr->GetOperand() 
-            << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << L"; regs=" << aval_regs.size() << endl;
 #endif
       ProcessStore(instr);
       break;
@@ -376,7 +376,7 @@ void JitCompilerA32::ProcessInstructions() {
     case COPY_FLOAT_VAR:
 #ifdef _DEBUG
       wcout << L"COPY_INT_VAR/COPY_FLOAT_VAR: id=" << instr->GetOperand() 
-            << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << L"; regs=" << aval_regs.size() << endl;
 #endif
       ProcessCopy(instr);
       break;
@@ -403,7 +403,7 @@ void JitCompilerA32::ProcessInstructions() {
     case SHR_INT:
 #ifdef _DEBUG
       wcout << L"INT ADD/SUB/MUL/DIV/MOD/BIT_AND/BIT_OR/BIT_XOR/LES/GTR/EQL/NEQL/SHL_INT/SHR_INT:: regs=" 
-            << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << aval_regs.size() << endl;
 #endif
       ProcessIntCalculation(instr);
       break;
@@ -413,7 +413,7 @@ void JitCompilerA32::ProcessInstructions() {
     case MUL_FLOAT:
     case DIV_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOAT ADD/SUB/MUL/DIV/: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT ADD/SUB/MUL/DIV/: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
       break;
@@ -426,7 +426,7 @@ void JitCompilerA32::ProcessInstructions() {
     case ACOS_FLOAT:
     case LOG_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOAT SIN/COS/TAN/SQRT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -434,7 +434,7 @@ void JitCompilerA32::ProcessInstructions() {
     case ATAN2_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG
-      wcout << L"POW/ATAN2: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"POW/ATAN2: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatOperation2(instr);
       break;
@@ -447,14 +447,14 @@ void JitCompilerA32::ProcessInstructions() {
     case NEQL_FLOAT:
 
 #ifdef _DEBUG
-      wcout << L"FLOAT LES/GTR/EQL/NEQL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT LES/GTR/EQL/NEQL: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
       break;
       
     case RTRN:
 #ifdef _DEBUG
-      wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"RTRN: regs=" << aval_regs.size() << endl;
 #endif
       ProcessReturn();
       // teardown
@@ -468,7 +468,7 @@ void JitCompilerA32::ProcessInstructions() {
         assert(called_method);
         wcout << L"MTHD_CALL: name='" << called_method->GetName() << L"': id="<< instr->GetOperand() 
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1) 
-              << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+              << L": regs=" << aval_regs.size() << endl;
 #endif      
         // passing instance variable
         ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
@@ -479,7 +479,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case DYN_MTHD_CALL: {
 #ifdef _DEBUG
-      wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << endl;
 #endif  
       // passing instance variable
       ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 3);
@@ -490,7 +490,7 @@ void JitCompilerA32::ProcessInstructions() {
     case NEW_BYTE_ARY:
 #ifdef _DEBUG
       wcout << L"NEW_BYTE_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size()
-            << L"," << aux_regs.size() << endl;
+            << endl;
 #endif
       ProcessStackCallback(NEW_BYTE_ARY, instr, instr_index, instr->GetOperand());
       ProcessReturnParameters(INT_TYPE);
@@ -499,7 +499,7 @@ void JitCompilerA32::ProcessInstructions() {
     case NEW_CHAR_ARY:
 #ifdef _DEBUG
       wcout << L"NEW_CHAR_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size()
-            << L"," << aux_regs.size() << endl;
+            << endl;
 #endif
       ProcessStackCallback(NEW_CHAR_ARY, instr, instr_index, instr->GetOperand());
       ProcessReturnParameters(INT_TYPE);
@@ -508,7 +508,7 @@ void JitCompilerA32::ProcessInstructions() {
     case NEW_INT_ARY:
 #ifdef _DEBUG
       wcout << L"NEW_INT_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size() 
-            << L"," << aux_regs.size() << endl;
+            << endl;
 #endif
       ProcessStackCallback(NEW_INT_ARY, instr, instr_index, instr->GetOperand());
       ProcessReturnParameters(INT_TYPE);
@@ -517,7 +517,7 @@ void JitCompilerA32::ProcessInstructions() {
     case NEW_FLOAT_ARY:
 #ifdef _DEBUG
       wcout << L"NEW_FLOAT_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size() 
-            << L"," << aux_regs.size() << endl;
+            << endl;
 #endif
       ProcessStackCallback(NEW_FLOAT_ARY, instr, instr_index, instr->GetOperand());
       ProcessReturnParameters(INT_TYPE);
@@ -527,7 +527,7 @@ void JitCompilerA32::ProcessInstructions() {
 #ifdef _DEBUG
       StackClass* called_klass = program->GetClass(instr->GetOperand());      
       wcout << L"NEW_OBJ_INST: name='" << called_klass->GetName() << L"': id=" << instr->GetOperand() 
-            << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << L": regs=" << aval_regs.size() << endl;
 #endif
       // note: object id passed in instruction param
       ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
@@ -537,7 +537,7 @@ void JitCompilerA32::ProcessInstructions() {
      
     case THREAD_JOIN: {
 #ifdef _DEBUG
-      wcout << L"THREAD_JOIN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"THREAD_JOIN: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(THREAD_JOIN, instr, instr_index, 0);
     }
@@ -545,7 +545,7 @@ void JitCompilerA32::ProcessInstructions() {
 
     case THREAD_SLEEP: {
 #ifdef _DEBUG
-      wcout << L"THREAD_SLEEP: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"THREAD_SLEEP: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(THREAD_SLEEP, instr, instr_index, 1);
     }
@@ -553,7 +553,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case CRITICAL_START: {
 #ifdef _DEBUG
-      wcout << L"CRITICAL_START: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CRITICAL_START: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(CRITICAL_START, instr, instr_index, 1);
     }
@@ -561,7 +561,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case CRITICAL_END: {
 #ifdef _DEBUG
-      wcout << L"CRITICAL_END: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CRITICAL_END: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(CRITICAL_END, instr, instr_index, 1);
     }
@@ -569,7 +569,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case CPY_BYTE_ARY: {
 #ifdef _DEBUG
-      wcout << L"CPY_BYTE_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CPY_BYTE_ARY: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_BYTE_ARY, instr, instr_index, 5);
     }
@@ -577,7 +577,7 @@ void JitCompilerA32::ProcessInstructions() {
 
     case CPY_CHAR_ARY: {
 #ifdef _DEBUG
-      wcout << L"CPY_CHAR_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CPY_CHAR_ARY: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_CHAR_ARY, instr, instr_index, 5);
     }
@@ -585,7 +585,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case CPY_INT_ARY: {
 #ifdef _DEBUG
-      wcout << L"CPY_INT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CPY_INT_ARY: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_INT_ARY, instr, instr_index, 5);
     }
@@ -593,7 +593,7 @@ void JitCompilerA32::ProcessInstructions() {
 
     case CPY_FLOAT_ARY: {
 #ifdef _DEBUG
-      wcout << L"CPY_FLOAT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CPY_FLOAT_ARY: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_FLOAT_ARY, instr, instr_index, 5);
     }
@@ -601,7 +601,7 @@ void JitCompilerA32::ProcessInstructions() {
  
     case TRAP:
 #ifdef _DEBUG
-      wcout << L"TRAP: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"TRAP: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(TRAP, instr, instr_index, instr->GetOperand());
       break;
@@ -609,7 +609,7 @@ void JitCompilerA32::ProcessInstructions() {
     case TRAP_RTRN:
 #ifdef _DEBUG
       wcout << L"TRAP_RTRN: args=" << instr->GetOperand() << L"; regs=" 
-            << aval_regs.size() << L"," << aux_regs.size() << endl;
+            << aval_regs.size() << endl;
       assert(instr->GetOperand());
 #endif      
       ProcessStackCallback(TRAP_RTRN, instr, instr_index, instr->GetOperand());
@@ -618,37 +618,35 @@ void JitCompilerA32::ProcessInstructions() {
       
     case STOR_BYTE_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"STOR_BYTE_ARY_ELM: regs=" << aval_regs.size() << L"," 
-            << aux_regs.size() << endl;
+      wcout << L"STOR_BYTE_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStoreByteElement(instr);
       break;
 
     case STOR_CHAR_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"STOR_CHAR_ARY_ELM: regs=" << aval_regs.size() << L"," 
-            << aux_regs.size() << endl;
+      wcout << L"STOR_CHAR_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStoreCharElement(instr);
       break;
       
     case STOR_INT_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"STOR_INT_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"STOR_INT_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStoreIntElement(instr);
       break;
 
     case STOR_FLOAT_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"STOR_FLOAT_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"STOR_FLOAT_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStoreFloatElement(instr);
       break;
 
     case SWAP_INT: {
 #ifdef _DEBUG
-      wcout << L"SWAP_INT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"SWAP_INT: regs=" << aval_regs.size() << endl;
 #endif
       RegInstr* left = working_stack.front();
       working_stack.pop_front();
@@ -664,7 +662,7 @@ void JitCompilerA32::ProcessInstructions() {
     case POP_INT:
     case POP_FLOAT: {
 #ifdef _DEBUG
-      wcout << L"POP_INT/POP_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"POP_INT/POP_FLOAT: regs=" << aval_regs.size() << endl;
 #endif
       // note: there may be constants that aren't 
       // in registers and don't need to be popped
@@ -687,49 +685,49 @@ void JitCompilerA32::ProcessInstructions() {
 
     case FLOR_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOR_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOR_FLOAT: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloor(instr);
       break;
 
     case CEIL_FLOAT:
 #ifdef _DEBUG
-      wcout << L"CEIL_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"CEIL_FLOAT: regs=" << aval_regs.size() << endl;
 #endif
       ProcessCeiling(instr);
       break;
       
     case F2I:
 #ifdef _DEBUG
-      wcout << L"F2I: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"F2I: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatToInt(instr);
       break;
 
     case I2F:
 #ifdef _DEBUG
-      wcout << L"I2F: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"I2F: regs=" << aval_regs.size() << endl;
 #endif
       ProcessIntToFloat(instr);
       break;
 
     case I2S:
 #ifdef _DEBUG
-      wcout << L"I2S: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"I2S: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(I2S, instr, instr_index, 3);
       break;
       
     case F2S:
 #ifdef _DEBUG
-      wcout << L"F2S: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"F2S: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(F2S, instr, instr_index, 2);
       break;
       
     case S2F:
 #ifdef _DEBUG
-      wcout << L"S2F: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"S2F: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(S2F, instr, instr_index, 2);
       ProcessReturnParameters(FLOAT_TYPE);
@@ -737,7 +735,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case S2I:
 #ifdef _DEBUG
-      wcout << L"S2I: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"S2I: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(S2I, instr, instr_index, 2);
       ProcessReturnParameters(INT_TYPE);
@@ -745,7 +743,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case OBJ_TYPE_OF: {
 #ifdef _DEBUG
-      wcout << L"OBJ_TYPE_OF: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"OBJ_TYPE_OF: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(OBJ_TYPE_OF, instr, instr_index, 1);
       ProcessReturnParameters(INT_TYPE);
@@ -754,7 +752,7 @@ void JitCompilerA32::ProcessInstructions() {
       
     case OBJ_INST_CAST: {
 #ifdef _DEBUG
-      wcout << L"OBJ_INST_CAST: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"OBJ_INST_CAST: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(OBJ_INST_CAST, instr, instr_index, 1);
       ProcessReturnParameters(INT_TYPE);
@@ -763,7 +761,7 @@ void JitCompilerA32::ProcessInstructions() {
 
     case LOAD_ARY_SIZE: {
 #ifdef _DEBUG
-      wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << endl;
 #endif
       ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
       ProcessReturnParameters(INT_TYPE);
@@ -772,30 +770,28 @@ void JitCompilerA32::ProcessInstructions() {
       
     case LOAD_BYTE_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"LOAD_BYTE_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"LOAD_BYTE_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessLoadByteElement(instr);
       break;
 
     case LOAD_CHAR_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"LOAD_CHAR_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"LOAD_CHAR_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessLoadCharElement(instr);
       break;
       
     case LOAD_INT_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"LOAD_INT_ARY_ELM: regs=" << aval_regs.size() << L"," 
-            << aux_regs.size() << endl;
+      wcout << L"LOAD_INT_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessLoadIntElement(instr);
       break;
 
     case LOAD_FLOAT_ARY_ELM:
 #ifdef _DEBUG
-      wcout << L"LOAD_FLOAT_ARY_ELM: regs=" << aval_regs.size() << L"," 
-            << aux_regs.size() << endl;
+      wcout << L"LOAD_FLOAT_ARY_ELM: regs=" << aval_regs.size() << endl;
 #endif
       ProcessLoadFloatElement(instr);
       break;
@@ -883,7 +879,7 @@ void JitCompilerA32::ProcessJump(StackInstr* instr) {
   if(!skip_jump) {
 #ifdef _DEBUG
     wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size() 
-          << L"," << aux_regs.size() << endl;
+          << endl;
 #endif
     if(instr->GetOperand2() < 0) {
 #ifdef _DEBUG
@@ -2508,20 +2504,22 @@ void JitCompilerA32::math_xreg_xreg(Register src, RegisterHolder *&dest, Instruc
 }
 
 void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
+  if(src != dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [vmov.f64 " << GetRegisterName(dest) 
 	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xeeb00b40;
-  
-  uint32_t op_src = dest << 12;
-  op_code |= op_src;
-	
-  op_code |= src;
-  
-  // encode
-  AddMachineCode(op_code);
+    uint32_t op_code = 0xeeb00b40;
+    
+    uint32_t op_src = dest << 12;
+    op_code |= op_src;
+  	
+    op_code |= src;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
 }
 
 void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {  
@@ -4611,16 +4609,17 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     float_consts = new double[MAX_DBLS];
     
     local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
+    
     // general use registers
+    aval_regs.push_back(new RegisterHolder(R7, false));
+    aval_regs.push_back(new RegisterHolder(R6, false));  
+    aval_regs.push_back(new RegisterHolder(R5, false));
+    aval_regs.push_back(new RegisterHolder(R4, false));
     aval_regs.push_back(new RegisterHolder(R3, false));
     aval_regs.push_back(new RegisterHolder(R2, false));
     aval_regs.push_back(new RegisterHolder(R1, false));
     aval_regs.push_back(new RegisterHolder(R0, false));
-    // aux general use registers
-    aux_regs.push(new RegisterHolder(R7, false));
-    aux_regs.push(new RegisterHolder(R6, false));	
-    aux_regs.push(new RegisterHolder(R5, false));
-    aux_regs.push(new RegisterHolder(R4, false));
+
     // floating point registers
     aval_xregs.push_back(new RegisterHolder(D7, true));
     aval_xregs.push_back(new RegisterHolder(D6, true));
