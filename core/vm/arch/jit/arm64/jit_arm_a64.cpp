@@ -3470,7 +3470,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
 
 void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
 {
-  uint32_t op_code, op_dest;
+  uint32_t op_code;
   
   switch (oper) {
   case LES_INT:
