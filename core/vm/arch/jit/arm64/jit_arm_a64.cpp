@@ -3323,25 +3323,17 @@ void JitCompilerA64::move_freg_freg(Register src, Register dest) {
 
 void JitCompilerA64::cmp_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vcmp.f64 " << GetRegisterName(dest)
+  wcout << L"  " << (++instr_count) << L": [fcmp " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   
-  uint32_t op_code = 0xeeb40b40;
+  uint32_t op_code = 0x1E602000;
   
-  uint32_t op_src = dest << 12;
-  op_code |= op_src;
-  
-  op_code |= src;
+  op_code |= src << 16;
+  op_code |= dest << 5;
   
   // encode
   AddMachineCode(op_code);
-
-  // update flags
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [vmrs APSR_nzcv, fpscr]" << endl;
-#endif
-  AddMachineCode(0xeef1fa10);
 }
 
 bool JitCompilerA64::cond_jmp(InstructionType type) {
@@ -3476,7 +3468,6 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
   return false;
 }
 
-// TODO: WIP
 void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
 {
   uint32_t op_code, op_dest;
@@ -3488,25 +3479,12 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
 #endif
     AddMachineCode(0x1A9FA7E9);
     break;
-    
-      // TODO: implement
+      
   case LES_FLOAT:
 #ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [movmi " << GetRegisterName(reg) << L", #1]" << endl;
+    wcout << L"  " << (++instr_count) << L": [cset  w9, mi]" << endl;
 #endif
-    op_code = 0x43a00001;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
-
-      // TODO: implement
-#ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [movpl " << GetRegisterName(reg) << L", #0]" << endl;
-#endif
-    op_code = 0x53a00000;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
+    AddMachineCode(0x1A9F57E9);
     break;
     
   case GTR_INT:
@@ -3539,51 +3517,20 @@ void JitCompilerA64::cmov_reg(Register reg, InstructionType oper)
 #endif
     AddMachineCode(0x1A9FC7E9);
     break;
-
-      // TODO: implement
+    
   case LES_EQL_FLOAT:
 #ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [movls]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, ls]" << std::endl;
 #endif
-    op_code = 0x93a00001;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
-
-      // TODO: implement
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [movhi]" << std::endl;
-#endif
-    op_code = 0x83a00000;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
+    AddMachineCode(0X1A9F87E9);
     break;
     
   case GTR_EQL_INT:
+  case GTR_EQL_FLOAT:
 #ifdef _DEBUG
     std::wcout << L"  " << (++instr_count) << L": [cset  w9, ge]" << std::endl;
 #endif
     AddMachineCode(0x1A9FB7E9);
-    break;
-
-      // TODO: implement
-  case GTR_EQL_FLOAT:
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [movge]" << std::endl;
-#endif
-    op_code = 0xa3a00001;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
-
-#ifdef _DEBUG
-    std::wcout << L"  " << (++instr_count) << L": [movlt]" << std::endl;
-#endif
-    op_code = 0xb3a00000;
-    op_dest = reg << 12;
-    op_code |= op_dest;
-    AddMachineCode(op_code);
     break;
 
   default:

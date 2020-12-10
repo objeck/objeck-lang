@@ -3,9 +3,9 @@ class Test {
 		Foo()->PrintLine();
 	}
 
-	function : native : Foo() ~ Int {
-		a := 13.5;
-		b : Int := a / 6.65;
-		return b;
+	function : native : Foo() ~ Bool {
+		a := 12.5;
+		b := 13.5;
+		return a >= b;
 	}
 }
