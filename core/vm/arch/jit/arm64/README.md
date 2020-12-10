@@ -42,7 +42,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 ### To do
 * Optimizations
-   * Eliminate redundancy register stores and loads
+   * Eliminate redundant register stores and loads
 * Error Checking
    * Nil reference checking
    * Array bounds checking
