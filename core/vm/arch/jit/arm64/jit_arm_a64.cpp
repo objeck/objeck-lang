@@ -2117,30 +2117,26 @@ void JitCompilerA64::move_reg_mem(Register src, long offset, Register dest) {
     
   // encode
   AddMachineCode(op_code);
-  
-  SaveRegisterStore(src, offset, dest);
 }
 
 void JitCompilerA64::move_mem_reg(long offset, Register src, Register dest) {
-  if(NeedRegisterLoad(offset, src, dest)) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
     assert(offset > -1);
 #endif
   
-    uint32_t op_code = 0xF9400000;
-    uint32_t op_src = src << 5;
-    op_code |= op_src;
-    
-    uint32_t op_dest = dest;
-    op_code |= op_dest;
-    
-    uint32_t op_offset = abs(offset) / sizeof(long);
-    op_code |= op_offset << 10;
-    
-    // encode
-    AddMachineCode(op_code);
-  }
+  uint32_t op_code = 0xF9400000;
+  uint32_t op_src = src << 5;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest;
+  op_code |= op_dest;
+  
+  uint32_t op_offset = abs(offset) / sizeof(long);
+  op_code |= op_offset << 10;
+  
+  // encode
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA64::move_imm_reg(long imm, Register reg) {
@@ -4572,7 +4568,6 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     float_consts = new double[MAX_DBLS];
     local_space = floats_index = instr_index = code_index = instr_count = 0;
-    prev_code_index = -1;
     
     // general use registers
     aval_regs.push_back(new RegisterHolder(X7, false));
