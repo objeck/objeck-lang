@@ -339,6 +339,11 @@ namespace Runtime {
     bool compile_success;
     bool skip_jump;
     
+    Register prev_src;
+    long prev_offset;
+    Register prev_dest;
+    long prev_code_index;
+    
     // setup and teardown
     void Prolog();
     void Epilog();
@@ -433,7 +438,7 @@ namespace Runtime {
     /**
      * Gets an avaiable register from
      */
-    RegisterHolder* GetRegister(bool use_aux = true) {
+    inline RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
 #ifdef _DEBUG
@@ -456,7 +461,7 @@ namespace Runtime {
     }
 
     // Returns a register to the pool
-    void ReleaseRegister(RegisterHolder* h) {
+    inline void ReleaseRegister(RegisterHolder* h) {
 #ifdef _VERBOSE
       wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
             << L" *" << endl;
@@ -474,7 +479,7 @@ namespace Runtime {
 
     // Gets an avaiable register from
     // the pool of registers
-    RegisterHolder* GetFpRegister() {
+    inline RegisterHolder* GetFpRegister() {
       RegisterHolder* holder;
       if(aval_fregs.empty()) {
         compile_success = false;
@@ -500,7 +505,7 @@ namespace Runtime {
     }
 
     // Returns a register to the pool
-    void ReleaseFpRegister(RegisterHolder* h) {
+    inline void ReleaseFpRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->IsDouble());
       for(size_t i = 0; i < aval_fregs.size(); ++i) {
@@ -514,6 +519,23 @@ namespace Runtime {
 #endif
       aval_fregs.push_back(h);
       used_fregs.remove(h);
+    }
+    
+    // check stores and loads
+    inline void SaveRegisterStore(Register src, long offset, Register dest) {
+      prev_src = src;
+      prev_offset = offset;
+      prev_dest = dest;
+      prev_code_index = code_index;
+    }
+    
+    inline bool NeedRegisterLoad(long offset, Register src, Register dest) {
+      if(prev_code_index == code_index && prev_offset == offset && prev_dest == src) {
+        move_reg_reg(prev_src, dest);
+        return false;
+      }
+      
+      return true;
     }
 
     // move instructions
