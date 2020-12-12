@@ -4669,23 +4669,21 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const long index = deref_offsets[i];
-      long offset = epilog_index - index + 1;
+      const long offset = epilog_index - index + 1;
       code[index] |= offset << 5;
     }
     
-/* TODO: updates for error checking
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
-      const int32_t index = bounds_less_offsets[i] - 1;
-      long offset = epilog_index - index - 2 + 5;
-      code[index] |= offset;
+      const long index = bounds_less_offsets[i];
+      const long offset = epilog_index - index + 3;
+      code[index] |= offset << 5;
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
-      const int32_t index = bounds_greater_offsets[i]  - 1;
-      long offset = epilog_index - index - 2 + 3;
-      code[index] |= offset;
+      const long index = bounds_greater_offsets[i];
+      const long offset = epilog_index - index + 5;
+      code[index] |= offset << 5;
     }
-*/
     
     // update consts pools
     int ints_index = 0;

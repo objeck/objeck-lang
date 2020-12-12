@@ -404,10 +404,10 @@ namespace Runtime {
       // less than zero
       cmp_imm_reg(0, reg);
  #ifdef _DEBUG
-      std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
+      std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
  #endif
       deref_offsets.push_back(code_index);
-      AddMachineCode(0x5400000D);
+      AddMachineCode(0x54000000);
       
       
       // jump to exit
@@ -419,24 +419,26 @@ namespace Runtime {
      */
     // TODO: implement
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-/*
       // less than zero
       cmp_imm_reg(0, reg);
  #ifdef _DEBUG
       std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
  #endif
-      AddMachineCode(0x5400000B);
       bounds_less_offsets.push_back(code_index);
+      AddMachineCode(0x5400000B);
       // jump to exit
-
+      // ...
+      
       // greater-equal than max
       cmp_reg_reg(max_reg, reg);
-      AddMachineCode(0xaa000000);
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
+#endif
       bounds_greater_offsets.push_back(code_index);
+      AddMachineCode(0x5400000A);
       
       // jump to exit
       // ...
-*/
     }
     
     /**
