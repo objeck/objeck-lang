@@ -1074,7 +1074,6 @@ void JitCompilerIA32::ProcessStoreCharElement(StackInstr* instr) {
 #else
     move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
 #endif
-    ReleaseRegister(elem_holder);
     break;
 
   case MEM_INT: {    
@@ -1087,7 +1086,6 @@ void JitCompilerIA32::ProcessStoreCharElement(StackInstr* instr) {
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
 #endif
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
@@ -1112,13 +1110,14 @@ void JitCompilerIA32::ProcessStoreCharElement(StackInstr* instr) {
 #endif
     }
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
   default:
     break;
   }
+
+  ReleaseRegister(elem_holder);
   
   delete left;
   left = nullptr;
