@@ -101,26 +101,20 @@ void JitCompilerA64::Epilog() {
   // nullptr deref
   move_imm_reg(-1, X0);
   op_code = B_INSTR;
-  op_code |= 2;
+  op_code |= 6;
   AddMachineCode(op_code);
-
-/*
+  
   // under bounds
   move_imm_reg(-2, X0);
-  AddMachineCode(0xea000002);
+  op_code = B_INSTR;
+  op_code |= 4;
+  AddMachineCode(op_code);
 
   // over bounds
   move_imm_reg(-3, X0);
-  AddMachineCode(0xea000000);
-    
-  move_imm_reg(0, X0);
-  uint32_t teardown_code[] = {
-    0xe24bd000, // sub sp, fp, #0
-    0xe8bd01f0, // pop {X4-X7}‬
-    0xe49db004, // pop {fp}
-    0xe12fff1e  // bx  lr
-  };
-*/
+  op_code = B_INSTR;
+  op_code |= 2;
+  AddMachineCode(op_code);
   
   const long final_local_space = local_space + TMP_X3;
   uint32_t add_offset = 0x910183ff;
