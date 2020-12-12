@@ -10,6 +10,10 @@ class Test {
 		Float->Sin(45.5)->PrintLine();
 		Float->Power(5,3)->PrintLine();
 
+		dd := Float->New[5];
+		dd[3] := 13.5;
+		dd[3]->PrintLine();
+
 		return a >= b;
 	}
 }
