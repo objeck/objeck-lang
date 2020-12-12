@@ -1009,7 +1009,6 @@ void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
   switch(left->GetType()) {
   case IMM_INT:
     move_imm_mem8(left->GetOperand(), 0, elem_holder->GetRegister());
-    ReleaseRegister(elem_holder);
     break;
 
   case MEM_INT: {    
@@ -1018,24 +1017,13 @@ void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
     move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
     move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
   case REG_INT: {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
-    if(holder->GetRegister() == R12) {
-      RegisterHolder* tmp_holder = GetRegister();
-      move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
-      move_reg_mem8(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
-      ReleaseRegister(tmp_holder);
-    }
-    else {
-      move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());      
-    }
-    ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
+    move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
   }
     break;
 
@@ -1043,6 +1031,8 @@ void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
     break;
   }
   
+  ReleaseRegister(elem_holder);
+
   delete left;
   left = nullptr;
 }
@@ -1054,8 +1044,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-  move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
-    ReleaseRegister(elem_holder);
+  move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());    
     break;
 
   case MEM_INT: {    
@@ -1064,30 +1053,22 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
     move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
   case REG_INT: {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
-    if(holder->GetRegister() == R12) {
-      RegisterHolder* tmp_holder = GetRegister();
-      move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
-      move_reg_mem(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
-      ReleaseRegister(tmp_holder);
-    }
-    else {
-      move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
-    }
+    move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
   default:
     break;
   }
+
+  ReleaseRegister(elem_holder);
   
   delete left;
   left = nullptr;

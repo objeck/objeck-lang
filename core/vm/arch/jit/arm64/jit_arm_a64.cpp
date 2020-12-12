@@ -1046,7 +1046,6 @@ void JitCompilerA64::ProcessStoreByteElement(StackInstr* instr) {
     break;
 
   case MEM_INT: {
-    // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
     move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
     move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
@@ -1056,17 +1055,8 @@ void JitCompilerA64::ProcessStoreByteElement(StackInstr* instr) {
     break;
 
   case REG_INT: {
-    // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
-    if(holder->GetRegister() == X12) {
-      RegisterHolder* tmp_holder = GetRegister(false);
-      move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
-      move_reg_mem8(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
-      ReleaseRegister(tmp_holder);
-    }
-    else {
-      move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
-    }
+    move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
   }
