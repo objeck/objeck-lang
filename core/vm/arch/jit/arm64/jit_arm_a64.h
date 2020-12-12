@@ -533,8 +533,8 @@ namespace Runtime {
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
-    void move_imm_mem8(long imm, long offset, Register dest);
-    void move_imm_mem32(long imm, long offset, Register dest);
+    void move_imm_mem8(int8_t imm, long offset, Register dest);
+    void move_imm_mem32(int32_t imm, long offset, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);

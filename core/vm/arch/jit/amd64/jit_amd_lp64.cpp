@@ -2420,7 +2420,7 @@ void JitCompilerIA64::move_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_mem_reg32(int32_t offset, Register src, Register dest) {
+void JitCompilerIA64::move_mem_reg32(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl " << offset << L"(%"
     << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2441,7 +2441,7 @@ void JitCompilerIA64::move_imm_memx(RegInstr* instr, long offset, Register dest)
   ReleaseXmmRegister(tmp_holder);
 }
 
-void JitCompilerIA64::move_imm_mem8(long imm, long offset, Register dest) {
+void JitCompilerIA64::move_imm_mem8(int8_t imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2457,7 +2457,7 @@ void JitCompilerIA64::move_imm_mem8(long imm, long offset, Register dest) {
   AddMachineCode((unsigned char)imm);
 }
 
-void JitCompilerIA64::move_imm_mem16(int32_t imm, int32_t offset, Register dest) {
+void JitCompilerIA64::move_imm_mem16(int16_t imm, int32_t offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset
     << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2473,8 +2473,8 @@ void JitCompilerIA64::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
   AddImm16(imm);
 }
 
-void JitCompilerIA64::move_imm_mem32(long imm, long offset, Register dest) {
-  move_imm_mem((int32_t)imm, offset, dest);
+void JitCompilerIA64::move_imm_mem32(int32_t imm, long offset, Register dest) {
+  move_imm_mem(imm, offset, dest);
 }
 
 void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
