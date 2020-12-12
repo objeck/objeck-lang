@@ -541,7 +541,7 @@ namespace Runtime {
     void move_imm_memf(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
     void move_imm_reg(long imm, Register reg);
-    void move_imm_reg32(long imm, Register reg);
+    void move_imm_reg32(int32_t imm, Register reg);
     void move_imm_freg(RegInstr* instr, Register reg);
     void move_mem_freg(long offset, Register src, Register dest);
     void move_freg_mem(Register src, long offset, Register dest);

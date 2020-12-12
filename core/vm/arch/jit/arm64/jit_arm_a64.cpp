@@ -2195,8 +2195,8 @@ void JitCompilerA64::move_imm_reg(long imm, Register reg) {
   }
 }
 
-void JitCompilerA64::move_imm_reg32(long imm, Register reg) {
-  move_imm_reg((int32_t)imm, reg);
+void JitCompilerA64::move_imm_reg32(int32_t imm, Register reg) {
+  move_imm_reg(imm, reg);
 }
 
 void JitCompilerA64::add_reg_reg(Register src, Register dest) {
