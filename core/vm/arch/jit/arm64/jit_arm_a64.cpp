@@ -2778,8 +2778,6 @@ void JitCompilerA64::sub_freg_freg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-// ---
-
 void JitCompilerA64::mul_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [fmul " << GetRegisterName(dest)
@@ -3626,7 +3624,6 @@ void JitCompilerA64::ProcessFloatOperation(StackInstr* instruction)
   left = nullptr;
 }
 
-// TODO: WIP
 void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
 {
   RegInstr* left = working_stack.front();
