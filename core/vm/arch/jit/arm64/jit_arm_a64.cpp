@@ -2890,9 +2890,9 @@ void JitCompilerA64::vcvt_mem_reg(long offset, Register src, Register dest) {
   ReleaseFpRegister(mem_holder);
 }
 
-void JitCompilerA64::move_imm_mem8(long imm, long offset, Register dest) {
+void JitCompilerA64::move_imm_mem8(int8_t imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg32((uint8_t)imm, imm_holder->GetRegister());
+  move_imm_reg32(imm, imm_holder->GetRegister());
   move_reg_mem8(imm_holder->GetRegister(), offset, dest);
   ReleaseRegister(imm_holder);
 }
@@ -2904,7 +2904,7 @@ void JitCompilerA64::move_imm_mem(long imm, long offset, Register dest) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA64::move_imm_mem32(long imm, long offset, Register dest) {
+void JitCompilerA64::move_imm_mem32(int32_t imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg32(imm, imm_holder->GetRegister());
   move_reg_mem(imm_holder->GetRegister(), offset, dest);
