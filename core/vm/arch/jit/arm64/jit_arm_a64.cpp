@@ -2892,7 +2892,7 @@ void JitCompilerA64::vcvt_mem_reg(long offset, Register src, Register dest) {
 
 void JitCompilerA64::move_imm_mem8(long imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(imm, imm_holder->GetRegister());
+  move_imm_reg((uint8_t)imm, imm_holder->GetRegister());
   move_reg_mem8(imm_holder->GetRegister(), offset, dest);
   ReleaseRegister(imm_holder);
 }
@@ -3273,69 +3273,6 @@ void JitCompilerA64::math_mem_reg(long offset, Register reg, InstructionType typ
   }
 }
 
-//
-// -------- End: Port to A64 encoding --------
-//
-
-// --- 8-bit operations ---
-void JitCompilerA64::move_reg_mem8(Register src, long offset, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src)
-        << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
-#endif
-    
-  uint32_t op_code;
-  if(offset >= 0) {
-    // forward
-    op_code = 0xe5c00000;
-  }
-  else {
-    // backward
-    op_code = 0xe5400000;
-  }
-  
-  uint32_t op_dest = dest << 16;
-  op_code |= op_dest;
-  
-  uint32_t op_src = src << 12;
-  op_code |= op_src;
-  
-  uint32_t op_offset = abs(offset);
-  op_code |= op_offset;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
-void JitCompilerA64::move_mem8_reg(long offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
-        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
-#endif
-    
-  uint32_t op_code;
-  if(offset >= 0) {
-    // forward
-    op_code = 0xe5d00000;
-  }
-  else {
-    // backward
-    op_code = 0xe5500000;
-  }
-  
-  uint32_t op_src = src << 16;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest << 12;
-  op_code |= op_dest;
-  
-  uint32_t op_offset = abs(offset);
-  op_code |= op_offset;
-  
-  // encode
-  AddMachineCode(op_code);
-}
-
 void JitCompilerA64::move_freg_freg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG
@@ -3370,6 +3307,53 @@ void JitCompilerA64::cmp_freg_freg(Register src, Register dest) {
   // encode
   AddMachineCode(op_code);
 }
+
+// --- 8-bit operations ---
+void JitCompilerA64::move_reg_mem8(Register src, long offset, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src)
+        << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+  assert(offset > -1);
+#endif
+  
+  uint32_t op_code = 0x39000000;
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+  
+  uint32_t op_src = src;
+  op_code |= op_src;
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset / sizeof(long) << 10;
+    
+  // encode
+  AddMachineCode(op_code);
+}
+
+void JitCompilerA64::move_mem8_reg(long offset, Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
+        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+  assert(offset > -1);
+#endif
+
+uint32_t op_code = 0x39400000;
+uint32_t op_src = src << 5;
+op_code |= op_src;
+
+uint32_t op_dest = dest;
+op_code |= op_dest;
+
+uint32_t op_offset = abs(offset) / sizeof(long);
+op_code |= op_offset << 10;
+
+// encode
+AddMachineCode(op_code);
+}
+
+//
+// -------- End: Port to A64 encoding --------
+//
 
 bool JitCompilerA64::cond_jmp(InstructionType type) {
   if(instr_index >= method->GetInstructionCount()) {
