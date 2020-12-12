@@ -93,14 +93,18 @@ void JitCompilerA64::Epilog() {
   
   epilog_index = code_index;
   
-  /*
   // nominal
-  AddMachineCode(0xea000005);
+  uint32_t op_code = B_INSTR;
+  op_code |= 5;
+  AddMachineCode(op_code);
   
   // nullptr deref
   move_imm_reg(-1, X0);
-  AddMachineCode(0xea000004);
+  op_code = B_INSTR;
+  op_code |= 2;
+  AddMachineCode(op_code);
 
+/*
   // under bounds
   move_imm_reg(-2, X0);
   AddMachineCode(0xea000002);
@@ -116,7 +120,7 @@ void JitCompilerA64::Epilog() {
     0xe49db004, // pop {fp}
     0xe12fff1e  // bx  lr
   };
-  */
+*/
   
   const long final_local_space = local_space + TMP_X3;
   uint32_t add_offset = 0x910183ff;
@@ -3350,7 +3354,7 @@ bool JitCompilerA64::cond_jmp(InstructionType type) {
       case LES_INT:
       case LES_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
         AddMachineCode(0x5400000B);
         break;
@@ -4347,7 +4351,7 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
     exit(1);
     break;
   }
-//  CheckNilDereference(array_holder->GetRegister());
+  CheckNilDereference(array_holder->GetRegister());
   
   /* Algorithm:
      int32_t index = PopInt();
@@ -4668,14 +4672,14 @@ bool JitCompilerA64::Compile(StackMethod* cm)
 #endif
     }
     
-/* TODO: update offsets
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
-      const int32_t index = deref_offsets[i] - 1;
-      long offset = epilog_index - index - 2 + 1;
-      code[index] |= offset;
+      const long index = deref_offsets[i];
+      long offset = epilog_index - index + 1;
+      code[index] |= offset << 5;
     }
-
+    
+/* TODO: updates for error checking
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const int32_t index = bounds_less_offsets[i] - 1;
       long offset = epilog_index - index - 2 + 5;
