@@ -2892,7 +2892,7 @@ void JitCompilerA64::vcvt_mem_reg(long offset, Register src, Register dest) {
 
 void JitCompilerA64::move_imm_mem8(long imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg((uint8_t)imm, imm_holder->GetRegister());
+  move_imm_reg32((uint8_t)imm, imm_holder->GetRegister());
   move_reg_mem8(imm_holder->GetRegister(), offset, dest);
   ReleaseRegister(imm_holder);
 }
