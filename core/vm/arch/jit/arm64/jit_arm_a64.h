@@ -530,14 +530,18 @@ namespace Runtime {
     // move instructions
     void move_sp_reg(Register dest);
     void move_reg_mem8(Register src, long offset, Register dest);
+    void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
+    void move_mem32_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
+    void move_imm_mem32(long imm, long offset, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);
     void move_imm_memf(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
     void move_imm_reg(long imm, Register reg);
+    void move_imm_reg32(long imm, Register reg);
     void move_imm_freg(RegInstr* instr, Register reg);
     void move_mem_freg(long offset, Register src, Register dest);
     void move_freg_mem(Register src, long offset, Register dest);

@@ -735,6 +735,7 @@ namespace Runtime {
     void move_reg_mem16(Register src, int32_t offset, Register dest);
     void move_mem16_reg(int32_t offset, Register src, Register dest);
     void move_imm_mem16(int32_t imm, int32_t offset, Register dest);
+    void move_imm_mem32(int32_t imm, int32_t offset, Register dest);
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
