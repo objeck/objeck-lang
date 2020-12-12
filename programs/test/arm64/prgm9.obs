@@ -1,12 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		aa := Char->New[3];
-		Foo(aa, 'x');
+		aa := Byte->New[3];
+		Foo(aa, 13);
 		aa[1]->PrintLine();
 	}
 
-function : native : Foo(aa : Char[], a : Char) ~ Nil {
-# function : Foo(aa : Char[]) ~ Nil {
+function : native : Foo(aa : Byte[], a : Byte) ~ Nil {
+# function : Foo(aa : Byte[]) ~ Nil {
 #		aa[0] := 'o';
 		aa[1] := a;
 #		aa[2] := 'k';
