@@ -95,7 +95,7 @@ void JitCompilerA64::Epilog() {
   
   // nominal
   uint32_t op_code = B_INSTR;
-  op_code |= 5;
+  op_code |= 8;
   AddMachineCode(op_code);
   
   // nullptr deref
@@ -347,8 +347,7 @@ void JitCompilerA64::ProcessInstructions() {
     case LOAD_CHAR_LIT:
     case LOAD_INT_LIT:
 #ifdef _DEBUG
-      wcout << L"LOAD_INT: value=" << instr->GetOperand()
-            << L"; regs=" << aval_regs.size() << endl;
+      wcout << L"LOAD_INT: value=" << instr->GetOperand() << L"; regs=" << aval_regs.size() << endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
       break;
@@ -1089,7 +1088,7 @@ void JitCompilerA64::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-  move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
     ReleaseRegister(elem_holder);
     break;
 
@@ -4385,11 +4384,10 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
   }
 
-  const int32_t dim = instr->GetOperand();
+  const long dim = instr->GetOperand();
   for(int i = 1; i < dim; ++i) {
     // index *= array[i];
-    mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(),
-                index_holder->GetRegister());
+    mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(), index_holder->GetRegister());
     if(holder) {
       delete holder;
       holder = nullptr;

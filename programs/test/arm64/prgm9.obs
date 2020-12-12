@@ -1,0 +1,18 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		aa := Char->New[3];
+		Foo(aa);
+		aa[0]->PrintLine();
+		aa[2]->PrintLine();
+	}
+
+function : native : Foo(aa : Char[]) ~ Nil {
+# function : Foo(aa : Char[]) ~ Nil {
+		aa[0] := 'o';
+		aa[1] := 'b';
+		aa[2] := 'k';
+	
+		c := aa[1];
+		c->PrintLine();
+	}
+}
