@@ -1,7 +1,7 @@
 /**
- * JIT compiler for ARMv8 architecture (A1 instruction encoding)
+ * JIT compiler for ARMv8 architecture (Apple Silicon)
  *
- * Copyright (c) 2020-2021f, Randy Hollines
+ * Copyright (c) 2020-2021, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
