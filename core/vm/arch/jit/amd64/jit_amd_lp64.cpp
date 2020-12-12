@@ -1114,7 +1114,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
 #ifdef _WIN64     
       move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
 #else
-      move_imm_mem(left->GetOperand(), 0, holder->GetRegister());
+      move_imm_mem32(left->GetOperand(), 0, holder->GetRegister());
 #endif    
       ReleaseRegister(holder);
     }
@@ -1122,9 +1122,8 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
 #ifdef _WIN64  
       move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
 #else    
-    move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
-#endif    
-      ReleaseRegister(elem_holder);
+      move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
+#endif
     }
     break;
 
@@ -1138,7 +1137,6 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
     move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
 #endif  
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
@@ -1163,13 +1161,14 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
 #endif    
     }
     ReleaseRegister(holder);
-    ReleaseRegister(elem_holder);
   }
     break;
 
   default:
     break;
   }
+
+  ReleaseRegister(elem_holder);
   
   delete left;
   left = nullptr;
@@ -2472,6 +2471,10 @@ void JitCompilerIA64::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
   // write value
   AddImm(offset);
   AddImm16(imm);
+}
+
+void JitCompilerIA64::move_imm_mem32(long imm, long offset, Register dest) {
+  move_imm_mem((int32_t)imm, offset, dest);
 }
 
 void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
