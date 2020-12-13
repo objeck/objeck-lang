@@ -36,20 +36,19 @@
 
 // basic VM tuning parameters
 
-/* FOR DEBUGGING ONLY */
+/* FOR DEBUGGING ONLY
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
 #define MEM_MAX 1024 * 3
 #else
 #define MEM_MAX 1024 * 2
 #endif
+*/
 
-/*
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
 #define MEM_MAX 4096 * 256 * 2
 #else
 #define MEM_MAX 4096 * 256 * 1
 #endif
-*/
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
