@@ -1692,7 +1692,7 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
 #endif
 
   long size = (long)instr->GetOperand();
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   size *= 2;
 #endif
 
@@ -1720,7 +1720,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   }
 
   size_t* mem;  
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #else
   if(is_float) {
@@ -2748,7 +2748,7 @@ long Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, con
 #endif
 
   // 64-bit bounds check
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   if(index < 0 || index >= size) {
     wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
     StackErrorUnwind();

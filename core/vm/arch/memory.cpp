@@ -255,7 +255,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   size_t* mem = nullptr;
   if(cls) {
     long size = cls->GetInstanceMemorySize();
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
     // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
     // memory for floats (a.k.a double) than needed.
@@ -862,7 +862,7 @@ void* MemoryManager::CollectMemory(void* arg)
         assert(cls);
 #endif
         if(cls) {
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
           mem_size = cls->GetInstanceMemorySize() * 2;
 #else
           mem_size = cls->GetInstanceMemorySize();
@@ -1041,7 +1041,11 @@ void* MemoryManager::CheckJitRoots(void* arg)
       }
 
       StackDclr** dclrs = method->GetDeclarations();
-      for(int j = dclrs_num - 1; j > -1; j--) {
+#ifdef _ARM64
+      for(int j = 0; j < dclrs_num; ++j) {
+#else
+      for(int j = dclrs_num - 1; j > -1; --j) {
+#endif
         // update address based upon type
         switch(dclrs[j]->type) {
         case FUNC_PARM: {
@@ -1078,7 +1082,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif
           // update
           // TODO: mapped such that all 64-bit values the same size
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
           mem++;
 #else
           mem += 2;
