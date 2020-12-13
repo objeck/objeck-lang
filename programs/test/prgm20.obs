@@ -35,7 +35,8 @@ bundle Default {
 			DoStuff();
 		}
 
-		function : native : DoStuff() ~ Nil {
+		function : DoStuff() ~ Nil {
+#		function : native : DoStuff() ~ Nil {
 
 			bar : Bar := Bar->New();
 			bar->GetId()->PrintLine();

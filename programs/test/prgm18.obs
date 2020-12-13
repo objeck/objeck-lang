@@ -5,7 +5,8 @@ bundle Default {
       Parent(@foo->GetValue1(), @foo->GetValue2());
     }
     
-    method : public : native : DoStuff() ~ Float {
+#    method : public : native : DoStuff() ~ Float {
+    method : public : DoStuff() ~ Float {
       a : Int := 13;
       return value1 * a - value2;
     }
@@ -34,8 +35,8 @@ bundle Default {
       Run();
     }
     
-    # function : Run() ~ Nil {
-    function : native : Run() ~ Nil {
+    function : Run() ~ Nil {
+#    function : native : Run() ~ Nil {
       foo : Foo := Foo->New(7, 3.1415);
       foo->GetValue2()->PrintLine();
       
