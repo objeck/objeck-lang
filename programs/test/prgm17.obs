@@ -15,13 +15,15 @@ bundle Default {
                         return i * f;
 		}
 
-		method : public : native : GetFloat2() ~ Float {
+		method : public : GetFloat2() ~ Float {
+#		method : public : native : GetFloat2() ~ Float {
 			# a : Float := 45.5;
 			# (50.0 - a)->PrintLine();
 			return 3 / f;
 		}
 
-		method : public : native : GetInt2() ~ Int {
+		method : public : GetInt2() ~ Int {
+#		method : public : native : GetInt2() ~ Int {
 			return 13;
 		}	
 	}

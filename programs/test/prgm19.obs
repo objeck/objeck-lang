@@ -18,8 +18,8 @@ bundle Test {
 			@pos := 0;
 		}
 		
-		method : public : native : Append(array : Char[]) ~ Nil {
-#		method : public : Append(array : Char[]) ~ Nil {
+#		method : public : native : Append(array : Char[]) ~ Nil {
+		method : public : Append(array : Char[]) ~ Nil {
 			v : Int := @pos + array->Size() * 4.9;
 			v->PrintLine();
 

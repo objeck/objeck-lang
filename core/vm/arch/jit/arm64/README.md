@@ -42,7 +42,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 ### To do
 * Run [test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
-   * Manually validate the first 20 (16 of 20 validated)
+   * ~~Manually validate first 20~~
    * Automate validation of the first 100
 * Error Checking
    * ~~Nil reference checking~~
