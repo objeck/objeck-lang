@@ -74,8 +74,8 @@ void JitCompilerA64::Prolog() {
   };
   
   // copy setup
-  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
-  for(int32_t i = 0; i < setup_size; ++i) {
+  const int setup_size = sizeof(setup_code) / sizeof(uint32_t);
+  for(int i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
 }
@@ -122,8 +122,8 @@ void JitCompilerA64::Epilog() {
   };
   
   // copy teardown
-  const int32_t teardown_size = sizeof(teardown_code) / sizeof(int32_t);
-  for(int32_t i = 0; i < teardown_size; ++i) {
+  const int teardown_size = sizeof(teardown_code) / sizeof(uint32_t);
+  for(int i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
   }
 }
@@ -232,7 +232,7 @@ void JitCompilerA64::ProcessParameters(long params) {
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(-(long)(sizeof(long)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
+      move_mem_reg(-(long)(sizeof(size_t)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
       
       move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
       dec_mem(0, stack_pos_holder->GetRegister());
@@ -851,7 +851,7 @@ void JitCompilerA64::ProcessLoad(StackInstr* instr) {
   if(instr->GetOperand2() == LOCL) {
     if(instr->GetType() == LOAD_FUNC_VAR) {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(instr->GetOperand3() + sizeof(long), SP, holder->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(size_t), SP, holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
       
       RegisterHolder* holder2 = GetRegister();
@@ -886,7 +886,7 @@ void JitCompilerA64::ProcessLoad(StackInstr* instr) {
     // function value
     else if(instr->GetType() == LOAD_FUNC_VAR) {
       RegisterHolder* holder2 = GetRegister();
-      move_mem_reg(instr->GetOperand3() + sizeof(long), holder->GetRegister(), holder2->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(size_t), holder->GetRegister(), holder2->GetRegister());
       working_stack.push_front(new RegInstr(holder2));
       
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
@@ -1335,7 +1335,7 @@ void JitCompilerA64::ProcessStore(StackInstr* instr) {
       
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(long), dest);
+      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = nullptr;
@@ -1354,7 +1354,7 @@ void JitCompilerA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       move_mem_reg(left2->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = nullptr;
@@ -1375,7 +1375,7 @@ void JitCompilerA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       RegisterHolder* holder2  = left2->GetRegister();
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
+      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
       ReleaseRegister(holder2);
 
       delete left2;
@@ -1635,7 +1635,7 @@ void JitCompilerA64::ProcessReturn(long params) {
         case IMM_INT:
           move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
           inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+          add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
           break;
   
         case MEM_INT: {
@@ -1643,7 +1643,7 @@ void JitCompilerA64::ProcessReturn(long params) {
             move_mem_reg(left->GetOperand(), SP, temp_holder->GetRegister());
             move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
             ReleaseRegister(temp_holder);
           }
           break;
@@ -1651,7 +1651,7 @@ void JitCompilerA64::ProcessReturn(long params) {
         case REG_INT:
           move_reg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
           inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+          add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
           break;
   
         case IMM_FLOAT:
@@ -2084,7 +2084,7 @@ void JitCompilerA64::move_reg_mem(Register src, long offset, Register dest) {
   op_code |= op_src;
   
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(long) << 10;
+  op_code |= op_offset / sizeof(size_t) << 10;
     
   // encode
   AddMachineCode(op_code);
@@ -2104,7 +2104,7 @@ void JitCompilerA64::move_reg_mem32(Register src, long offset, Register dest) {
   op_code |= op_src;
   
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(long) << 10;
+  op_code |= op_offset / sizeof(size_t) << 10;
     
   // encode
   AddMachineCode(op_code);
@@ -2123,7 +2123,7 @@ void JitCompilerA64::move_mem_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
   
-  uint32_t op_offset = abs(offset) / sizeof(long);
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
   op_code |= op_offset << 10;
   
   // encode
@@ -2143,7 +2143,7 @@ void JitCompilerA64::move_mem32_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
   
-  uint32_t op_offset = abs(offset) / sizeof(long);
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
   op_code |= op_offset << 10;
   
   // encode
@@ -2687,7 +2687,7 @@ void JitCompilerA64::move_mem_freg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
   
-  uint32_t op_offset = abs(offset) / sizeof(long);
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
   op_code |= op_offset << 10;
   
   // encode
@@ -2709,7 +2709,7 @@ void JitCompilerA64::move_freg_mem(Register src, long offset, Register dest) {
   op_code |= op_src;
   
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(long) << 10;
+  op_code |= op_offset / sizeof(size_t) << 10;
     
   // encode
   AddMachineCode(op_code);
@@ -3308,7 +3308,7 @@ void JitCompilerA64::move_reg_mem8(Register src, long offset, Register dest) {
   op_code |= op_src;
   
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(long) << 10;
+  op_code |= op_offset / sizeof(size_t) << 10;
     
   // encode
   AddMachineCode(op_code);
@@ -3328,7 +3328,7 @@ op_code |= op_src;
 uint32_t op_dest = dest;
 op_code |= op_dest;
 
-uint32_t op_offset = abs(offset) / sizeof(long);
+uint32_t op_offset = abs(offset) / sizeof(size_t);
 op_code |= op_offset << 10;
 
 // encode
@@ -4393,7 +4393,7 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
   const long dim = instr->GetOperand();
   for(int i = 1; i < dim; ++i) {
     // index *= array[i];
-    mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(), index_holder->GetRegister());
+    mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());
     if(holder) {
       delete holder;
       holder = nullptr;
@@ -4449,7 +4449,7 @@ RegisterHolder* JitCompilerA64::ArrayIndex(StackInstr* instr, MemoryType type)
   ReleaseRegister(bounds_holder);
 
   // skip first 2 integers (size and dimension) and all dimension indices
-  add_imm_reg((instr->GetOperand() + 2) * sizeof(long), index_holder->GetRegister());
+  add_imm_reg((instr->GetOperand() + 2) * sizeof(size_t), index_holder->GetRegister());
   add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
   ReleaseRegister(index_holder);
 
@@ -4495,7 +4495,7 @@ void JitCompilerA64::ProcessIndices()
     StackInstr* instr = (*value).second;
     // instance reference
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
-      instr->SetOperand3(instr->GetOperand() * sizeof(long));
+      instr->SetOperand3(instr->GetOperand() * sizeof(size_t));
     }
     // local reference
     else {
@@ -4506,11 +4506,11 @@ void JitCompilerA64::ProcessIndices()
            instr->GetType() == STOR_CLS_INST_INT_VAR ||
            instr->GetType() == COPY_LOCL_INT_VAR ||
            instr->GetType() == COPY_CLS_INST_INT_VAR) {
-          index += sizeof(long);
+          index += sizeof(size_t);
         }
         else if(instr->GetType() == LOAD_FUNC_VAR ||
                 instr->GetType() == STOR_FUNC_VAR) {
-          index += sizeof(long) * 2;
+          index += sizeof(size_t) * 2;
         }
         else {
           index += sizeof(double);
@@ -4729,7 +4729,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
 #ifdef _DEBUG
     wcout << L"------------------------" << endl;
     wcout << L"int const pool: size=" << int_pool_cache.size() << L" ["
-          << int_pool_cache.size() * sizeof(long) << L" of " << sizeof(long) * MAX_INTS << L" byte(s)]" << endl;
+          << int_pool_cache.size() * sizeof(size_t) << L" of " << sizeof(size_t) * MAX_INTS << L" byte(s)]" << endl;
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     
