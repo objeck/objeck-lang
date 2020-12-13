@@ -42,7 +42,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 ### To do
 * Testing
-   * First 20 test cases: 9 of 20
+   * First 20 test cases: 10 of 20
    * First 100 test cases
 * Error Checking
    * ~~Nil reference checking~~
