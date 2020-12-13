@@ -41,9 +41,9 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * Guard ~~12-bit intermediate values~~
 
 ### To do
-* Validate against [test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
-   * First 20 test cases: 15 of 20
-   * First 100 test cases (via automation)
+* Run [test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
+   * Manually validate the first 20 (16 of 20 validated)
+   * Automate validation of the first 100
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~

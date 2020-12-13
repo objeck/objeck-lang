@@ -13,7 +13,8 @@ bundle Default {
 			Run();
 		}
 
-		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
 			10->PrintLine();
 #			Color->Green;
 			Color->Green->PrintLine();
