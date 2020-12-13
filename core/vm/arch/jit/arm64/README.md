@@ -2,7 +2,7 @@
 While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers. Values stored in volatile registers need to saved between function calls. ARMv8 does not support novel conditional instruction execution.
 
 ### Registers
-Currently plan to only use 8-registers, note on Intel only 5-6 are used for applications.
+Using 8 registers for general usage and an additional 2 for conversions. Using 8 floating point registers for general calculations.
 
 Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * X0-X7 - arguments and return value (volatile)
