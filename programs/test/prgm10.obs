@@ -47,8 +47,8 @@ bundle Default {
       Run();
     }
     
-     function : Run() ~ Nil {
-#    function : native : Run() ~ Nil {
+#     function : Run() ~ Nil {
+    function : native : Run() ~ Nil {
       foo : Foo := Foo->New(7, 3.1415);
       foo->GetValue2()->PrintLine();
       
