@@ -425,8 +425,10 @@ void JitCompilerA32::ProcessInstructions() {
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case LOG_FLOAT:
+    case FLOR_FLOAT:
+    case CEIL_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOAT SIN/COS/TAN/SQRT: regs=" << aval_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT/FLOR/CEIL: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -681,20 +683,6 @@ void JitCompilerA32::ProcessInstructions() {
         left = nullptr;
       }
     }
-      break;
-
-    case FLOR_FLOAT:
-#ifdef _DEBUG
-      wcout << L"FLOR_FLOAT: regs=" << aval_regs.size() << endl;
-#endif
-      ProcessFloor(instr);
-      break;
-
-    case CEIL_FLOAT:
-#ifdef _DEBUG
-      wcout << L"CEIL_FLOAT: regs=" << aval_regs.size() << endl;
-#endif
-      ProcessCeiling(instr);
       break;
       
     case F2I:
@@ -3618,6 +3606,14 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
 
   case LOG_FLOAT:
     func_ptr = log;
+    break;
+
+  case FLOR_FLOAT:
+    func_ptr = floor;
+    break;
+        
+  case CEIL_FLOAT:
+    func_ptr = ceil;
     break;
       
   default:
