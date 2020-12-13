@@ -179,7 +179,7 @@ namespace Runtime {
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
       (*stack_pos)++;
 #else
       (*stack_pos) += 2;
@@ -199,7 +199,7 @@ namespace Runtime {
     // pops a double from the calculation stack
     //
     inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
       (*stack_pos)--;
 #else
       (*stack_pos) -= 2;
@@ -235,7 +235,7 @@ namespace Runtime {
     // execution stack.
     //
     inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
       long index = (*stack_pos) - 1;
 #else
       long index = (*stack_pos) - 2;

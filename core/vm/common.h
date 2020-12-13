@@ -267,7 +267,7 @@ class NativeCode {
     delete[] ints;
     ints = nullptr;
 #endif
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
 #ifdef _WIN64
     VirtualFree(floats, 0, MEM_RELEASE);
 #else
@@ -582,7 +582,7 @@ class StackClass {
   bool is_debug;
 
   long InitializeClassMemory(long size) {
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
     // In 64-bit mode integers and floats are 8-bytes. This approach allocates more
     // memory for floats (a.k.a double) than needed.
@@ -1432,7 +1432,7 @@ class TrapProcessor {
 #endif
     memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
 
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     (*stack_pos)++;
 #else
     (*stack_pos) += 2;
@@ -1454,7 +1454,7 @@ class TrapProcessor {
   static inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     (*stack_pos)--;
 #else
     (*stack_pos) -= 2;
@@ -1489,7 +1489,7 @@ class TrapProcessor {
   static inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
-#if defined(_WIN64) || defined(_X64)
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     long index = (*stack_pos) - 1;
 #else
     long index = (*stack_pos) - 2;

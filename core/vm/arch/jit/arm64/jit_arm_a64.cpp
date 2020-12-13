@@ -51,14 +51,14 @@ void JitCompilerA64::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  const long final_local_space = local_space + TMP_X3;
+  const long final_local_space = local_space + TMP_X5;
   uint32_t sub_offset = 0xd10183ff;
   sub_offset |= final_local_space << 10;
   
   uint32_t setup_code[] = {
-    0xF94003E9, // ldr x8, [sp, #0]
-    0xF94007E8, // ldr x9, [sp, #8]
-    0xF9400BE8, // ldr x10, [sp, #16]
+    0xF94003E8, // ldr x8, [sp, #0]
+    0xF94007E9, // ldr x9, [sp, #8]
+    0xF9400BEA, // ldr x10, [sp, #16]
     sub_offset, // sub sp, sp, #final_local_space
     0xf9002fe0, // str x0, [sp, #88]
     0xf9002be1, // str x1, [sp, #80]
@@ -69,13 +69,8 @@ void JitCompilerA64::Prolog() {
     0xf90017e6, // str x6, [sp, #40]
     0xf90013e7, // str x7, [sp, #32]
     0xf9000fe8, // str x8, [sp, #24]
-#ifdef _DEBUG
     0xf9000be9, // str x9, [sp, #16]
-    0xF90033Ea  // str x10, [sp, #8]
-#else
-    0xf9000bea, // str x10, [sp, #16]
-    0xF90033Eb  // str x11, [sp, #8]
-#endif
+    0xF90033Ea  // str x10, [sp, #96]
   };
   
   // copy setup
@@ -116,7 +111,7 @@ void JitCompilerA64::Epilog() {
   op_code |= 2;
   AddMachineCode(op_code);
   
-  const long final_local_space = local_space + TMP_X3;
+  const long final_local_space = local_space + TMP_X5;
   uint32_t add_offset = 0x910183ff;
   add_offset |= final_local_space << 10;
   
@@ -133,33 +128,34 @@ void JitCompilerA64::Epilog() {
   }
 }
 
+// TODO: regiser with memory mangaer
 void JitCompilerA64::RegisterRoot() {
   size_t offset = local_space - TMP_D3;
   if(realign_stack) {
     offset += 8;
   }
   
-/*
+// -----
   RegisterHolder* holder = GetRegister();
   RegisterHolder* mem_holder = GetRegister();
  
   // TOOD: adjust...
   move_sp_reg(holder->GetRegister());
-  add_imm_reg(offset, holder->GetRegister());
+  add_imm_reg(TMP_X5 + 8, holder->GetRegister());
   
   // set JIT memory pointer to stack
   move_mem_reg(JIT_MEM, SP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
-  
+
   // set JIT offset value
   move_mem_reg(JIT_OFFSET, SP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
-  
+
   // clean up
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
   
-*/
+// -----
   
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
@@ -1558,7 +1554,7 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   }
 
 #ifdef _DEBUG
-  assert(reg_offset <= TMP_X3);
+  assert(reg_offset <= TMP_X5);
   assert(fp_offset <= TMP_D3);
 #endif
 
@@ -4491,7 +4487,7 @@ void JitCompilerA64::ProcessIndices()
     }
   }
   
-  long index = TMP_X3;
+  long index = TMP_X5;
   long last_id = -1;
   multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
