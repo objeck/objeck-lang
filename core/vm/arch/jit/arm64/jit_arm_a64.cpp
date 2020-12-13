@@ -135,11 +135,9 @@ void JitCompilerA64::RegisterRoot() {
     offset += 8;
   }
   
-// -----
   RegisterHolder* holder = GetRegister();
   RegisterHolder* mem_holder = GetRegister();
  
-  // TOOD: adjust...
   move_sp_reg(holder->GetRegister());
   add_imm_reg(TMP_X5 + 8, holder->GetRegister());
   
@@ -154,9 +152,7 @@ void JitCompilerA64::RegisterRoot() {
   // clean up
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
-  
-// -----
-  
+    
   // zero out memory
   RegisterHolder* start_reg = GetRegister();
   RegisterHolder* end_reg = GetRegister();
