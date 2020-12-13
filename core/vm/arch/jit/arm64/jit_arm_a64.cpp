@@ -318,7 +318,7 @@ void JitCompilerA64::ProcessFloatCallParameter() {
   move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
   
   RegisterHolder* dest_holder = GetFpRegister();
-  sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
+  dec_mem(0, stack_pos_holder->GetRegister());
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
@@ -1640,7 +1640,7 @@ void JitCompilerA64::ProcessReturn(long params) {
   
         case IMM_FLOAT:
           move_imm_memf(left, 0, op_stack_holder->GetRegister());
-          add_imm_mem(2, 0, stack_pos_holder->GetRegister());
+          inc_mem(0, stack_pos_holder->GetRegister());
           add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
           break;
   
@@ -1648,7 +1648,7 @@ void JitCompilerA64::ProcessReturn(long params) {
             RegisterHolder* temp_holder = GetFpRegister();
             move_mem_freg(left->GetOperand(), SP, temp_holder->GetRegister());
             move_freg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-            add_imm_mem(2, 0, stack_pos_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
             add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
             ReleaseFpRegister(temp_holder);
           }
@@ -1656,7 +1656,7 @@ void JitCompilerA64::ProcessReturn(long params) {
   
         case REG_FLOAT:
           move_freg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-          add_imm_mem(2, 0, stack_pos_holder->GetRegister());
+          inc_mem(0, stack_pos_holder->GetRegister());
           add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
           break;
         }
