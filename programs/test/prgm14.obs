@@ -4,7 +4,8 @@ bundle Default {
 			A();
 		}
 
-		function : native : A() ~ Nil {
+#		function : native : A() ~ Nil {
+		function : A() ~ Nil {
 			"Hello"->Size()->PrintLine();
 			"Hello"->Size()->PrintLine();
 			(9/3)->PrintLine();
@@ -31,7 +32,8 @@ bundle Default {
 			return ccc->ToCharArray();
 		}
 
-		function : native : C() ~ Nil {
+		function : C() ~ Nil {
+#		function : native : C() ~ Nil {
 			13->PrintLine();
 			c : System.String := "A string.";
 			c->PrintLine();		
