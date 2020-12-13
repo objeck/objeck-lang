@@ -5,7 +5,7 @@ class Test {
 		f := "./prgm9.obs";
 #		f := ".";
 		File->GetFullName(f)->PrintLine();
-		Directory->Exists(f)->PrintLine();
-		File->Exists(f)->PrintLine();
+#		Directory->Exists(f)->PrintLine();
+#		File->Exists(f)->PrintLine();
 	}
 }
