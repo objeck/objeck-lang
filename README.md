@@ -1,4 +1,6 @@
 # Objeck
+Active: [Apple Silicon Port](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64)
+
 Objeck is an object-oriented computer language with functional features. The language has ties with Java, Scheme and UML. In this language all data types, except for higher-order functions, are treated as objects.
 
 Objeck is a general-purpose programming language with an emphasis placed on simplicity. The programming environment consists of a compiler, virtual machine and command line debugger.
