@@ -5,8 +5,8 @@ bundle Default {
 			"Hello"->PrintLine();
 		}
 		
-#		function : Run() ~ Nil {
-		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
 			aa : Int[,,] := Int->New[3,5,2];			
 			
 
@@ -26,8 +26,8 @@ bundle Default {
 
 		}
 
-#		function : PrintLine(aa : Int[,,]) ~ Nil {
-		function : native : PrintLine(aa : Int[,,]) ~ Nil {
+		function : PrintLine(aa : Int[,,]) ~ Nil {
+#		function : native : PrintLine(aa : Int[,,]) ~ Nil {
 			for(i : Int := 0; i < 3; i := i + 1;) {
 				for(j : Int := 0; j < 5; j := j + 1;) {
 					for(k : Int := 0; k < 2; k := k + 1;) {

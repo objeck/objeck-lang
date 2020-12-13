@@ -41,24 +41,25 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * Guard ~~12-bit intermediate values~~
 
 ### To do
-* Optimizations
-   * Eliminate redundant register stores and loads
+* Testing
+   * First 20 test cases: 8 of 20
+   * First 100 test cases
 * Error Checking
-   * Nil reference checking
-   * Array bounds checking
+   * ~~Nil reference checking~~
+   * ~~Array bounds checking~~
 * Conditional branching
    * ~~Basic branching~~
    * ~~Logical comparison of negative numbers~~
    * ~~Forward branching~~
    * ~~Backward branching~~
 * Types:
-   * Array support
-   * Basic ~~ints, floats,~~ chars and bytes
+   * ~~Array support~~
+   * ~~Basic ints, floats, chars and bytes~~
    * ~~Conversions between ints and floats~~
 * Operations: 
-   * Mathematical: ~~mul_xxx_xxx and div_xxx_xx, etc.~~
-   * Logical: ~~les_reg_reg, gtr_reg_reg, eql_reg_reg, neql_reg_reg, etc.~~
-   * Bitwise: ~~or_reg_reg, and_reg_reg, etc.~~
+   * ~~Mathematical:mul_xxx_xxx and div_xxx_xx, etc.~~
+   * ~~Logical: les_reg_reg, gtr_reg_reg, eql_reg_reg, neql_reg_reg, etc.~~
+   * ~~Bitwise: or_reg_reg, and_reg_reg, etc.~~
 * Callback to interpreter from machine code
    * ~~Need space to save volatile registers~~
-   * Wire up memory manager to work with JIT machine code
+   * ~~Wire up memory manager to work with JIT machine code~~

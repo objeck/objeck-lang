@@ -4,8 +4,8 @@ bundle Default {
 			Run();
 		}
 		
-#		function : Run() ~ Nil {
-		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
 			ss : System.String := "Blah";
 			ii : Byte[,,] := Byte->New[2,2,2];
 
