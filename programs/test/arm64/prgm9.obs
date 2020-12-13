@@ -1,17 +1,26 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		aa := Byte->New[3];
-		Foo(aa, 13);
-		aa[1]->PrintLine();
+		Foo(10);
 	}
 
-function : native : Foo(aa : Byte[], a : Byte) ~ Nil {
-# function : Foo(aa : Byte[]) ~ Nil {
-#		aa[0] := 'o';
-		aa[1] := a;
-#		aa[2] := 'k';
-	
-		c := aa[1];
-		c->PrintLine();
+# function : native : Foo(a : Int) ~ Nil {
+	function : Foo(a : Int) ~ Nil {
+		select(a) {
+			label 5: {
+				"-5-"->PrintLine();
+			}
+
+			label 13: {
+				"-13- "->PrintLine();
+			}
+
+			label 7: {
+				"-7-"->PrintLine();
+			}
+
+			other: {
+				"other"->PrintLine();
+			}
+		};
 	}
 }
