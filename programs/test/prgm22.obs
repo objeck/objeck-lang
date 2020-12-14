@@ -4,7 +4,8 @@ bundle Default {
 			DoStuff();
 		}
 
-		function : native : DoStuff() ~ Nil {
+#		function : native : DoStuff() ~ Nil {
+		function : DoStuff() ~ Nil {
 			x : Color := Color->Black;
 		
 			b : Bool := Dog->Boxer = Dog->Pug;
@@ -12,7 +13,8 @@ bundle Default {
 			b->PrintLine();
 		}
 
-		function : native : Blah() ~ Color {
+		function : Blah() ~ Color {
+#		function : native : Blah() ~ Color {
 			return Color->Red;
 		}
 	}
