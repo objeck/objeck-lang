@@ -2135,7 +2135,7 @@ void JitCompilerA64::move_mem32_reg(long offset, Register src, Register dest) {
 }
 
 void JitCompilerA64::move_imm_reg(long imm, Register reg) {
-  if(imm >= -65536 && imm < 0) {
+  if(imm >= -4096 && imm < 0) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
@@ -2616,7 +2616,7 @@ void JitCompilerA64::xor_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitCompilerA64::cmp_imm_reg(long imm, Register reg) {
-  if(imm >= 0 && imm <= 65536) {
+  if(imm >= 0 && imm <= 4096) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << endl;
 #endif
@@ -4787,7 +4787,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
 PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
-    holders.push_back(new PageHolder(2048 * i));
+    holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
   }
 }
 

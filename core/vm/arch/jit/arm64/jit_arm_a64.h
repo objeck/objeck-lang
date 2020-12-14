@@ -274,7 +274,7 @@ namespace Runtime {
       int factor = byte_size / PAGE_SIZE + 1;
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
-      buffer = (uint32_t*)mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
+      buffer = (uint32_t*)mmap(nullptr, alloc_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);
       if(buffer == MAP_FAILED) {
         cerr << "unable to mmap!" << endl;
         exit(1);

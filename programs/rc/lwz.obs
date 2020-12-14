@@ -8,7 +8,8 @@ class LZW {
     decompressed->PrintLine();
 	}
 
-	function : native : Compress(uncompressed : String) ~ IntVector {
+#	function : native : Compress(uncompressed : String) ~ IntVector {
+	function : Compress(uncompressed : String) ~ IntVector {
 		# Build the dictionary.
     dictSize := 256;
       dictionary := StringMap->New();
@@ -67,7 +68,7 @@ class LZW {
       k := compressed->Get(i);
 
       entry : String;
-      if (dictionary->Has(k)) {			
+      if (dictionary->HasEntry(k)) {			
         entry := dictionary->Find(k)->As(String);
       }
       else if (k = dictSize) {

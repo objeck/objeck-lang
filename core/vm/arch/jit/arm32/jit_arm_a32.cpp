@@ -4780,7 +4780,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
 PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
-    holders.push_back(new PageHolder(2048 * i));
+    holders.push_back(new PageHolder(2048 * (i + 1));
   }
 }
 
