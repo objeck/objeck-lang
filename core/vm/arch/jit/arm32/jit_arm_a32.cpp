@@ -2769,7 +2769,7 @@ void JitCompilerA32::add_imm_reg(int32_t imm, Register reg) {
   if(imm < 0) {
     sub_imm_reg(abs(imm), reg);
   }
-  else if(imm >= 0 && imm <= 65535 ) {
+  else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(reg) << L", "
 	      << GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
@@ -2846,7 +2846,7 @@ void JitCompilerA32::sub_imm_reg(int32_t imm, Register reg) {
   if(imm < 0) {
     add_imm_reg(abs(imm), reg);
   }
-  else if(imm >= 0 && imm <= 65535 ) {
+  else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
