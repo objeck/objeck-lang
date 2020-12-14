@@ -12,8 +12,7 @@ bundle Default {
 			};
 
 ~#
-			1201.51->ToString()->PrintLine();
-#~
+			1201.51->PrintLine();
 			F1();
 
 			str : System.String := 10->ToString();
@@ -29,12 +28,11 @@ bundle Default {
 			F3();
 
 			0xd->PrintLine();
-~#
 		}
 
 		function : native : F1() ~ Nil {
-			2313->ToString()->PrintLine();
-			0->ToString()->PrintLine();
+			2313->PrintLine();
+			0->PrintLine();
 			a : Int := 15;
 			a->ToString()->PrintLine();
 
