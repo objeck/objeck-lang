@@ -1035,6 +1035,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif
 
     if(mem) {
+#ifdef _ARM64
+      size_t* start = mem;
+#endif
+      
       // check self
       if(!method->IsLambda()) {
         CheckObject(self, true, 1);
@@ -1188,6 +1192,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifdef _ARM32
       // for ARM32, skip the link register
       for(int i = 1; i <= 6; ++i) {
+#elif _ARM64
+      mem = start;
+      for(int i = -1; i >= -6; --i) {
 #else
       for(int i = 0; i < 6; ++i) {
 #endif
