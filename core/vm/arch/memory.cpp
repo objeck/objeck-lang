@@ -1551,8 +1551,8 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       for(int i = 0; i < depth; ++i) {
         wcout << L"\t";
       }
-      wcout << L"\t----- object: addr=" << mem << L"(" << (size_t)mem << L"), num="
-            << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
+      wcout << L"\t----- object: addr=" << mem << L"(" << (size_t)mem << L"), name='"
+            << cls->GetName() << L"', num=" << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
 #endif
 
       // mark data

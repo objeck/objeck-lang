@@ -131,15 +131,17 @@ void JitCompilerA64::Epilog() {
 // TODO: regiser with memory mangaer
 void JitCompilerA64::RegisterRoot() {
   size_t offset = local_space - TMP_D3;
+  size_t mem_offset = TMP_X5 + 8;
   if(realign_stack) {
     offset += 8;
+    mem_offset += 8;
   }
   
   RegisterHolder* holder = GetRegister();
   RegisterHolder* mem_holder = GetRegister();
  
   move_sp_reg(holder->GetRegister());
-  add_imm_reg(TMP_X5 + 8, holder->GetRegister());
+  add_imm_reg(mem_offset, holder->GetRegister());
   
   // set JIT memory pointer to stack
   move_mem_reg(JIT_MEM, SP, mem_holder->GetRegister());
