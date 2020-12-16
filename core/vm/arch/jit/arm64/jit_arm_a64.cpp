@@ -1542,7 +1542,7 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
   assert(fp_offset <= TMP_D3);
 #endif
 
-  if(dirty_regs.size() > 4 || dirty_fp_regs.size() > 4 ) {
+  if(dirty_regs.size() > 6 || dirty_fp_regs.size() > 4 ) {
     compile_success = false;
   }
 

@@ -1,26 +1,15 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo(10);
+		Foo();
 	}
 
-# function : native : Foo(a : Int) ~ Nil {
-	function : Foo(a : Int) ~ Nil {
-		select(a) {
-			label 5: {
-				"-5-"->PrintLine();
-			}
-
-			label 13: {
-				"-13- "->PrintLine();
-			}
-
-			label 7: {
-				"-7-"->PrintLine();
-			}
-
-			other: {
-				"other"->PrintLine();
-			}
+ function : native : Foo() ~ Nil {
+#	function : Foo() ~ Nil {
+		x := 13;
+		for(i := 0; i < 128; i += 1;) {
+			a := Int->New[4096];
+			a[513] := 100;
 		};
+		y := 26;
 	}
 }
