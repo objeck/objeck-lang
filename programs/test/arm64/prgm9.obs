@@ -6,10 +6,13 @@ class Test {
  function : native : Foo() ~ Nil {
 #	function : Foo() ~ Nil {
 		x := 13;
+		s := "foo";
 		for(i := 0; i < 128; i += 1;) {
 			a := Int->New[4096];
 			a[513] := 100;
+			s += "bar";	
 		};
 		y := 26;
+		s->Size()->PrintLine();
 	}
 }
