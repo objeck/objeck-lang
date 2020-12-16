@@ -131,10 +131,10 @@ void JitCompilerA64::Epilog() {
 // TODO: regiser with memory mangaer
 void JitCompilerA64::RegisterRoot() {
   size_t offset = local_space - TMP_D3;
-  size_t mem_offset = TMP_X5 + 8;
+  size_t mem_offset = TMP_X5+ sizeof(size_t);
   if(realign_stack) {
-    offset += 8;
-    mem_offset += 8;
+    offset += sizeof(size_t);
+    mem_offset += sizeof(size_t);
   }
   
   RegisterHolder* holder = GetRegister();
@@ -1521,14 +1521,14 @@ void JitCompilerA64::ProcessStackCallback(long instr_id, StackInstr* instr, long
         move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, SP);
         dirty_regs.push(reg_offset);
         regs.push(left);
-        reg_offset += 8;
+        reg_offset += sizeof(size_t);
         break;
 
       case REG_FLOAT:
         move_freg_mem(left->GetRegister()->GetRegister(), fp_offset, SP);
         dirty_fp_regs.push(fp_offset);
         fp_regs.push(left);
-        fp_offset += 8;
+        fp_offset += sizeof(size_t);
         break;
 
       default:
@@ -4529,7 +4529,7 @@ void JitCompilerA64::ProcessIndices()
   local_space += index;
   realign_stack = false;
   if(local_space % 16 == 0) {
-    local_space += 8;
+    local_space += sizeof(size_t);
     realign_stack = true;
   }
   
