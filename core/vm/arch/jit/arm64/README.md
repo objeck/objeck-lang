@@ -58,7 +58,10 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
      * Automate validation of the first 100
    * [Examples](https://github.com/objeck/objeck-lang/tree/master/programs/deploy)
      * ~~XML parsing~~
+     * ~~HTTPS client~~
      * ~~JSON web service client~~
+     * ~~Lambda expressions~~
+     * ~~Closures~~
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~
