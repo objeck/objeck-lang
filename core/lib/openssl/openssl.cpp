@@ -1,7 +1,7 @@
 /***************************************************************************
  * OpenSSL support for Objeck
  *
- * Copyright (c) 2011-2013, Randy Hollines
+ * Copyright (c) 2011-2020, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
