@@ -337,7 +337,6 @@ extern "C" {
 
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
     size_t length = BIO_read(bio, buffer, (int)input.size());
-    // assert(length == decodeLen); //length should equal decodeLen, else something went horribly wrong
     BIO_free_all(bio);
 
     APITools_SetStringValue(context, 0, BytesToUnicode(buffer));
