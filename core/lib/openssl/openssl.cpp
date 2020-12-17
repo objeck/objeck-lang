@@ -273,81 +273,77 @@ extern "C" {
     size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
   }
-}
 
 //
 // Base64
-// Ported from Barry Steyn: https://gist.github.com/barrysteyn/7308212
+//
+// The MIT License(MIT)
+// Copyright(c) 2013 Barry Steyn
+// https://gist.github.com/barrysteyn/7308212
 // 
 #ifdef _WIN32
-__declspec(dllexport)
+  __declspec(dllexport)
 #endif
-void openssl_encrypt_base64(VMContext& context) {
-  const wstring w_input = APITools_GetStringValue(context, 1);
-  const string input = UnicodeToBytes(w_input);
+  void openssl_encrypt_base64(VMContext& context) {
+    const wstring w_input = APITools_GetStringValue(context, 1);
+    const string input = UnicodeToBytes(w_input);
 
-  cout << input << endl;
+    BIO* b64 = BIO_new(BIO_f_base64());
+    BIO* bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
 
-  BIO* b64 = BIO_new(BIO_f_base64());
-  BIO* bio = BIO_new(BIO_s_mem());
-  bio = BIO_push(b64, bio);
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
+    BIO_write(bio, input.c_str(), (int)input.size());
+    BIO_flush(bio);
 
-  BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-  BIO_write(bio, input.c_str(), (int)input.size());
-  BIO_flush(bio);
+    BUF_MEM* bufferPtr;
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    BIO_set_close(bio, BIO_NOCLOSE);
+    BIO_free_all(bio);
 
-  BUF_MEM* bufferPtr;
-  BIO_get_mem_ptr(bio, &bufferPtr);
-  BIO_set_close(bio, BIO_NOCLOSE);
-  BIO_free_all(bio);
-
-  cout << (*bufferPtr).data << endl;
-
-  const wstring return_value = BytesToUnicode((*bufferPtr).data);
-  APITools_SetStringValue(context, 0, return_value);
-}
-
-size_t calcDecodeLength(const char* b64input) { //Calculates the length of a decoded string
-  size_t len = strlen(b64input),
-    padding = 0;
-
-  if (b64input[len - 1] == '=' && b64input[len - 2] == '=') //last two chars are =
-    padding = 2;
-  else if (b64input[len - 1] == '=') //last char is =
-    padding = 1;
-
-  return (len * 3) / 4 - padding;
-}
-
-#ifdef _WIN32
-__declspec(dllexport)
-#endif
-void openssl_decrypt_base64(VMContext& context) {
-  const wstring w_input = APITools_GetStringValue(context, 1);
-  const string input = UnicodeToBytes(w_input);
-
-  size_t decodeLen = calcDecodeLength(input.c_str());
-  char* buffer = new char[decodeLen + 1];
-  buffer[decodeLen] = '\0';
-
-  BIO* bio = BIO_new_mem_buf(input.c_str(), -1);
-  BIO* b64 = BIO_new(BIO_f_base64());
-  bio = BIO_push(b64, bio);
-
-  BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
-  size_t length = BIO_read(bio, buffer, (int)strlen(input.c_str()));
-  // assert(length == decodeLen); //length should equal decodeLen, else something went horribly wrong
-  BIO_free_all(bio);
-  
-  if(buffer) {
-    const wstring return_value = BytesToUnicode(buffer);
+    const string return_buffer(bufferPtr->data, bufferPtr->length);
+    const wstring return_value = BytesToUnicode(return_buffer);
     APITools_SetStringValue(context, 0, return_value);
   }
-  else {
-    APITools_SetStringValue(context, 0, L"");
+
+  size_t calcDecodeLength(const char* b64input) { //Calculates the length of a decoded string
+    size_t len = strlen(b64input);
+    size_t padding = 0;
+
+    if(b64input[len - 1] == '=' && b64input[len - 2] == '=') { //last two chars are =
+      padding = 2;
+    }
+    else if (b64input[len - 1] == '=') { //last char is =
+      padding = 1;
+    }
+
+    return (len * 3) / 4 - padding;
   }
 
-  delete[] buffer;
-  buffer = nullptr;
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void openssl_decrypt_base64(VMContext& context) {
+    const wstring w_input = APITools_GetStringValue(context, 1);
+    const string input = UnicodeToBytes(w_input);
+
+    const size_t decodeLen = calcDecodeLength(input.c_str());
+    char* buffer = new char[decodeLen + 1];
+    buffer[decodeLen] = '\0';
+
+    BIO* bio = BIO_new_mem_buf(input.c_str(), -1);
+    BIO* b64 = BIO_new(BIO_f_base64());
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
+    size_t length = BIO_read(bio, buffer, (int)input.size());
+    // assert(length == decodeLen); //length should equal decodeLen, else something went horribly wrong
+    BIO_free_all(bio);
+
+    APITools_SetStringValue(context, 0, BytesToUnicode(buffer));
+
+    delete[] buffer;
+    buffer = nullptr;
+  }
 }
 

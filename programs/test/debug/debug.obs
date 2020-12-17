@@ -1,7 +1,8 @@
 use Encryption;
 
 class Base64Program {
-	function : Main(args: String[]) ~ Nil {
+	function : Main(args: String[]) ~ Nil {		
+
 		s1 := "string";
 		s1->PrintLine();
 		Encrypt->Base64(s1)->PrintLine();
@@ -11,11 +12,15 @@ class Base64Program {
 		Encrypt->Base64(s2)->PrintLine();
 		
 		s3 := "poop";
-		s3->PrintLine();
-		Encrypt->Base64(s3)->PrintLine();
-		
+		out := Encrypt->Base64(s3);
+
+		out->PrintLine();
+		Decrypt->Base64(out)->PrintLine();
+
+
 		s4 := "e";
-		s->PrintLine();
-		Encrypt->Base64(s3)->PrintLine();
+		s4->PrintLine();
+		Encrypt->Base64(s4)->PrintLine();
+
 	}
 }
