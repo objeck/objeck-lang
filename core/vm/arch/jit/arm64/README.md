@@ -41,6 +41,17 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * Guard ~~12-bit intermediate values~~
 
 ### To do
+* General
+  * ~~Port compiler~~
+  * Port VM
+    * ~~Memory manager~~ (testing)
+    * ~~JIT compiler~~ (testing)
+  * Port debugger
+  * Port libraries
+    * SDL2 support
+    * ~~OpenSSL support~~
+    * ~~zlib support~~
+    * ~~ODBC support~~
 * Testing
    * [Test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
      * ~~Manually validate first 20~~
@@ -48,11 +59,6 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
    * [Examples](https://github.com/objeck/objeck-lang/tree/master/programs/deploy)
      * ~~XML parsing~~
      * ~~JSON web service client~~
-* Library support
-   * SDL2 support
-   * ~~OpenSSL support~~
-   * ~~zlib support~~
-   * ~~ODBC support~~
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~
