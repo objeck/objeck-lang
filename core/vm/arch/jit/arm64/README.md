@@ -52,7 +52,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
    * SDL2 support
    * ~~OpenSSL support~~
    * ~~zlib support~~
-   * ODBC support
+   * ~~ODBC support~~
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~
