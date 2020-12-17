@@ -286,6 +286,8 @@ void openssl_encrypt_base64(VMContext& context) {
   const wstring w_input = APITools_GetStringValue(context, 1);
   const string input = UnicodeToBytes(w_input);
 
+  cout << input << endl;
+
   BIO* b64 = BIO_new(BIO_f_base64());
   BIO* bio = BIO_new(BIO_s_mem());
   bio = BIO_push(b64, bio);
@@ -298,6 +300,8 @@ void openssl_encrypt_base64(VMContext& context) {
   BIO_get_mem_ptr(bio, &bufferPtr);
   BIO_set_close(bio, BIO_NOCLOSE);
   BIO_free_all(bio);
+
+  cout << (*bufferPtr).data << endl;
 
   const wstring return_value = BytesToUnicode((*bufferPtr).data);
   APITools_SetStringValue(context, 0, return_value);
