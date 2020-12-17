@@ -1,5 +1,5 @@
 /**
- * JIT compiler for ARMv8 architecture ((Apple Silicon))
+ * JIT compiler for ARMv8 architecture (Apple Silicon)
  *
  * Copyright (c) 2020-2021, Randy Hollines
  * All rights reserved.
@@ -45,7 +45,7 @@ void JitCompilerA64::Initialize(StackProgram* p) {
   page_manager = new PageManager;
 }
 
-// setup of stackframe
+// setup of stack frame
 void JitCompilerA64::Prolog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
@@ -80,7 +80,7 @@ void JitCompilerA64::Prolog() {
   }
 }
 
-// teardown of stackframe
+// tear down of stack frame
 void JitCompilerA64::Epilog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
@@ -121,14 +121,14 @@ void JitCompilerA64::Epilog() {
     0xd65f03c0  // ret
   };
   
-  // copy teardown
+  // copy tear down
   const int teardown_size = sizeof(teardown_code) / sizeof(uint32_t);
   for(int i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
   }
 }
 
-// TODO: regiser with memory mangaer
+// register with memory manager
 void JitCompilerA64::RegisterRoot() {
   size_t offset = local_space - TMP_D3;
   size_t mem_offset = TMP_X5+ sizeof(size_t);
