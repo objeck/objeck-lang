@@ -62,6 +62,9 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
      * ~~JSON web service client~~
      * ~~Lambda expressions~~
      * ~~Closures~~
+     * RegEx
+     * Encryption
+     * ODBC
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~
