@@ -1,11 +1,21 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		map := Collection.Generic.Hash->New()<IntHolder, IntHolder>;
-		map->Insert(1, 101);
-		map->Insert(1, 201);
-		map->Size()->PrintLine();
+use Encryption;
 
-		map->Remove(1);
-		map->Find(1)->PrintLine();
+class Base64Program {
+	function : Main(args: String[]) ~ Nil {
+		s1 := "string";
+		s1->PrintLine();
+		Encrypt->Base64(s1)->PrintLine();
+		
+		s2 := "hello";
+		s2->PrintLine();
+		Encrypt->Base64(s2)->PrintLine();
+		
+		s3 := "poop";
+		s3->PrintLine();
+		Encrypt->Base64(s3)->PrintLine();
+		
+		s4 := "e";
+		s->PrintLine();
+		Encrypt->Base64(s3)->PrintLine();
 	}
 }
