@@ -65,17 +65,21 @@ int main(int argc, char* argv[])
   usage += VERSION_STRING;
   
 #if defined(_WIN64) && defined(_WIN32)
-  usage += L" (x86_64 Windows)";
+  usage += L" (Windows x86_64)";
 #elif _WIN32
-  usage += L" (x86 Windows)";
+  usage += L" (Windows x86)";
 #elif _OSX
-  usage += L" (x86_64 macOS)";
-#elif _X64
-  usage += L" (x86_64 Linux)";
-#elif _ARM32
-  usage += L" (ARMv7 Linux)";
+#ifdef _ARM64
+  usage += L" (macOS ARMv8)";
 #else
-  usage += L" (x86 Linux)";
+  usage += L" (macOS x86_64)";
+#endif
+#elif _X64
+  usage += L" (Linux x86_64)";
+#elif _ARM32
+  usage += L" (Linux ARMv7)";
+#else
+  usage += L" (Linux x86)";
 #endif
 
   int status;
