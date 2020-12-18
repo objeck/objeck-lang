@@ -18,7 +18,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * V8-V15 - callee saved registers (non-volatile, used for temp vars by compilers)
 
 ### Security
-* macOS 11 has added security for code execution use:    
+* macOS 11 has added security for buffer code execution
 * Allocating memory: ```mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);```
 * Writing to memory:    
     ```
