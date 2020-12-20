@@ -130,11 +130,10 @@ void JitCompilerA64::Epilog() {
 
 // register with memory manager
 void JitCompilerA64::RegisterRoot() {
+  const size_t mem_offset = TMP_X5 + sizeof(size_t) * 2;
   size_t offset = local_space - TMP_D3;
-  size_t mem_offset = TMP_X5+ sizeof(size_t);
   if(realign_stack) {
     offset += sizeof(size_t);
-    mem_offset += sizeof(size_t);
   }
   
   RegisterHolder* holder = GetRegister();
