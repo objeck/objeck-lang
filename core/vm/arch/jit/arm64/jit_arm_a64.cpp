@@ -51,7 +51,7 @@ void JitCompilerA64::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  const long final_local_space = local_space + TMP_X5;
+  const long final_local_space = local_space + RED_ZONE;
   uint32_t sub_offset = 0xd10183ff;
   sub_offset |= final_local_space << 10;
   
@@ -111,7 +111,7 @@ void JitCompilerA64::Epilog() {
   op_code |= 2;
   AddMachineCode(op_code);
   
-  const long final_local_space = local_space + TMP_X5;
+  const long final_local_space = local_space + RED_ZONE;
   uint32_t add_offset = 0x910183ff;
   add_offset |= final_local_space << 10;
   
@@ -130,7 +130,7 @@ void JitCompilerA64::Epilog() {
 
 // register with memory manager
 void JitCompilerA64::RegisterRoot() {
-  const size_t mem_offset = TMP_X5 + sizeof(size_t) * 2;
+  const size_t mem_offset = RED_ZONE + sizeof(size_t) * 2;
   size_t offset = local_space - TMP_D3;
   if(realign_stack) {
     offset += sizeof(size_t);
@@ -4480,7 +4480,7 @@ void JitCompilerA64::ProcessIndices()
     }
   }
   
-  long index = TMP_X5;
+  long index = RED_ZONE;
   long last_id = -1;
   multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
@@ -4527,7 +4527,7 @@ void JitCompilerA64::ProcessIndices()
   // calculate local space (adjust for alignment)
   local_space += index;
   realign_stack = false;
-  if(local_space % 16 == 0) {
+  if(local_space % 16 != 0) {
     local_space += sizeof(size_t);
     realign_stack = true;
   }
