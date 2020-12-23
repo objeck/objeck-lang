@@ -407,7 +407,7 @@ namespace Runtime {
     inline void CheckNilDereference(Register reg) {
       // less than zero
       cmp_imm_reg(0, reg);
- #ifdef _DEBUG
+ #ifdef _DEBUG_JIT
       std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
  #endif
       deref_offsets.push_back(code_index);
@@ -425,7 +425,7 @@ namespace Runtime {
     inline void CheckArrayBounds(Register reg, Register max_reg) {
       // less than zero
       cmp_imm_reg(0, reg);
- #ifdef _DEBUG
+ #ifdef _DEBUG_JIT
       std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
  #endif
       bounds_less_offsets.push_back(code_index);
@@ -435,7 +435,7 @@ namespace Runtime {
       
       // greater-equal than max
       cmp_reg_reg(max_reg, reg);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
       bounds_greater_offsets.push_back(code_index);
@@ -451,7 +451,7 @@ namespace Runtime {
     inline RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
         compile_success = false;
@@ -477,7 +477,7 @@ namespace Runtime {
             << L" *" << endl;
 #endif
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       assert(!h->IsDouble());
       for(size_t i  = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
@@ -493,7 +493,7 @@ namespace Runtime {
       RegisterHolder* holder;
       if(aval_fregs.empty()) {
         compile_success = false;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         wcout << L">>> No D registers avaiable! <<<" << endl;
 #endif
         aval_fregs.push_back(new RegisterHolder(D0, true));
@@ -516,7 +516,7 @@ namespace Runtime {
 
     // Returns a register to the pool
     inline void ReleaseFpRegister(RegisterHolder* h) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       assert(h->IsDouble());
       for(size_t i = 0; i < aval_fregs.size(); ++i) {
         assert(h != aval_fregs[i]);
