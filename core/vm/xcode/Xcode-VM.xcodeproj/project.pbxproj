@@ -430,7 +430,8 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_OSX,
 					_ARM64,
-					_DEBUG,
+					_DEBUG_GC,
+					_DEBUG_JIT,
 					_GC_SERIAL,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
