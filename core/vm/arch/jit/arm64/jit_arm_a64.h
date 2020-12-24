@@ -70,7 +70,6 @@ namespace Runtime {
 #define TMP_X5 184
 #define RED_ZONE 192
 
-  
   // buffer sizes
 #define MAX_INTS 256
 #define MAX_DBLS 128
