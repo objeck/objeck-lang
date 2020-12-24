@@ -3,16 +3,29 @@ class Test {
 		Foo();
 	}
 
- function : native : Foo() ~ Nil {
+ function : native : Bar() ~ Nil {
+		a : Int[];
+		x := 66;
+		for(i := 0; i < 128; i += 1;) {
+			a := Int->New[123];
+			a[13] := 100;
+		};
+		z := 99;
+		a->Size()->PrintLine();
+	}
+
+ 	function : native : Foo() ~ Nil {
 #	function : Foo() ~ Nil {
 		x := 13;
 		s := "foo";
+		y := 26;
 		for(i := 0; i < 128; i += 1;) {
-			a := Int->New[4096];
+			a := Int->New[1023];
 			a[513] := 100;
 			s += "bar";	
+			Bar();
 		};
-		y := 26;
-		s->Size()->PrintLine();
+		z := 119;
+		(z +s->Size())->PrintLine();
 	}
 }
