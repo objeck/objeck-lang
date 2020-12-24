@@ -1046,8 +1046,14 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       StackDclr** dclrs = method->GetDeclarations();
 #ifdef _ARM64
+      // front to back...
+      if(method->HasAndOr()) {
+        mem++;
+      }
+      
       for(int j = 0; j < dclrs_num; ++j) {
 #else
+      // front to back...
       for(int j = dclrs_num - 1; j > -1; --j) {
 #endif
         // update address based upon type
@@ -1188,7 +1194,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       }
 
       // NOTE: this marks temporary variables that are stored in JIT memory
-      // during some method calls. there are 6 integer temp addresses
+      // during some method calls. There are 6 integer temp addresses
+      // TODO: for non-ARM64 targets, skip 'has_and_or' variable addressd
 #ifdef _ARM32
       // for ARM32, skip the link register
       for(int i = 1; i <= 6; ++i) {
