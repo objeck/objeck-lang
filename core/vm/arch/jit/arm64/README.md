@@ -17,7 +17,7 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * V0-V7, V16-V31 - volatile NEON and FP registers
 * V8-V15 - callee saved registers (non-volatile, used for temp vars by compilers)
 
-The processor stack grows up, the memory manager was updated to accommodate.
+The processor stack grows up, memory manager was updated to accommodate.
 
 ### Security
 * macOS 11 has added security for buffer code execution
