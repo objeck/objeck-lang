@@ -1,7 +1,7 @@
 ## JIT Compiler for Apple Silicon (ARMv8) 
 While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers. Values stored in volatile registers need to saved between function calls. ARMv8 does not support novel conditional instruction execution.
 
-### Registers
+### Registers and Stack
 Using 8 registers for general usage and an additional 2 for conversions. Using 8 floating point registers for general calculations.
 
 Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
@@ -16,6 +16,8 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 * SP - stack pointer and zero (XZR)
 * V0-V7, V16-V31 - volatile NEON and FP registers
 * V8-V15 - callee saved registers (non-volatile, used for temp vars by compilers)
+
+The processor stack grows up, the memory manager was updated to accommodate.
 
 ### Security
 * macOS 11 has added security for buffer code execution
