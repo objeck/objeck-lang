@@ -195,6 +195,9 @@ void JitCompilerA64::RegisterRoot() {
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
+  
+  move_imm_mem(13, TMP_X0, SP);
+  move_imm_mem(7, TMP_X5, SP);
 }
 
 void JitCompilerA64::ProcessParameters(long params) {
