@@ -1036,7 +1036,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
     if(mem) {
 #ifdef _ARM64
-      size_t* start = mem;
+      size_t* start = mem - 1;
 #endif
       
       // check self
@@ -1201,7 +1201,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       for(int i = 1; i <= 6; ++i) {
 #elif _ARM64
       mem = start;
-      for(int i = -1; i >= -6; --i) {
+      for(int i = 0; i > -6; --i) {
 #else
       for(int i = 0; i < 6; ++i) {
 #endif
