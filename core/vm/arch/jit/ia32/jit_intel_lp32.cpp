@@ -47,7 +47,7 @@ void JitCompilerIA32::Initialize(StackProgram* p) {
 
 // setup of stack frame
 void JitCompilerIA32::Prolog() {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
@@ -76,7 +76,7 @@ void JitCompilerIA32::Prolog() {
 
 // teardown of stackframe
 void JitCompilerIA32::Epilog() {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
 
@@ -158,7 +158,7 @@ void JitCompilerIA32::RegisterRoot() {
 }
 
 void JitCompilerIA32::ProcessParameters(int32_t params) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
   
@@ -226,7 +226,7 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
 }
 
 void JitCompilerIA32::ProcessIntCallParameter() {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
   
@@ -247,7 +247,7 @@ void JitCompilerIA32::ProcessIntCallParameter() {
 }
 
 void JitCompilerIA32::ProcessFunctionCallParameter() {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"FUNC_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
   
@@ -276,7 +276,7 @@ void JitCompilerIA32::ProcessFunctionCallParameter() {
 }
 
 void JitCompilerIA32::ProcessFloatCallParameter() {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
   
@@ -307,7 +307,7 @@ void JitCompilerIA32::ProcessInstructions() {
       // load literal
     case LOAD_CHAR_LIT:
     case LOAD_INT_LIT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_INT: value=" << instr->GetOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -316,7 +316,7 @@ void JitCompilerIA32::ProcessInstructions() {
 
       // float literal
     case LOAD_FLOAT_LIT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -326,7 +326,7 @@ void JitCompilerIA32::ProcessInstructions() {
       
       // load self
     case LOAD_INST_MEM: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_INST_MEM; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
@@ -335,7 +335,7 @@ void JitCompilerIA32::ProcessInstructions() {
 
       // load self
     case LOAD_CLS_MEM: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_CLS_MEM; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
@@ -347,7 +347,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case LOAD_CLS_INST_INT_VAR:
     case LOAD_FLOAT_VAR:
     case LOAD_FUNC_VAR:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_INT_VAR/LOAD_FLOAT_VAR/LOAD_FUNC_VAR: id=" << instr->GetOperand() << L"; regs=" 
             << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -359,7 +359,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case STOR_CLS_INST_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"STOR_INT_VAR/STOR_FLOAT_VAR/STOR_FUNC_VAR: id=" << instr->GetOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -370,7 +370,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case COPY_LOCL_INT_VAR: 
     case COPY_CLS_INST_INT_VAR:
     case COPY_FLOAT_VAR:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"COPY_INT_VAR/COPY_FLOAT_VAR: id=" << instr->GetOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -397,7 +397,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case NEQL_INT:
     case SHL_INT:
     case SHR_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"INT ADD/SUB/MUL/DIV/MOD/BIT_AND/BIT_OR/BIT_XOR/LES/GTR/EQL/NEQL/SHL_INT/SHR_INT:: regs=" 
             << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -408,7 +408,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case SUB_FLOAT:
     case MUL_FLOAT:
     case DIV_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"FLOAT ADD/SUB/MUL/DIV/: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
@@ -423,7 +423,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case ATAN2_FLOAT:
     case POW_FLOAT:
     case LOG_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
@@ -435,7 +435,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case GTR_EQL_FLOAT:
     case EQL_FLOAT:
     case NEQL_FLOAT: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"FLOAT LES/GTR/EQL/NEQL: regs=" << aval_regs.size() << L"," 
             << aux_regs.size() << endl;
 #endif
@@ -456,7 +456,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case RTRN:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessReturn();
@@ -467,7 +467,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case MTHD_CALL: {
       StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(called_method) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         assert(called_method);
         wcout << L"MTHD_CALL: name='" << called_method->GetName() << L"': id="<< instr->GetOperand() 
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1) 
@@ -481,7 +481,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case DYN_MTHD_CALL: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif  
       // passing instance variable
@@ -491,7 +491,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case NEW_BYTE_ARY:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"NEW_BYTE_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size()
             << L"," << aux_regs.size() << endl;
 #endif
@@ -500,7 +500,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case NEW_CHAR_ARY:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"NEW_CHAR_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size()
             << L"," << aux_regs.size() << endl;
 #endif
@@ -509,7 +509,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case NEW_INT_ARY:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"NEW_INT_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size() 
             << L"," << aux_regs.size() << endl;
 #endif
@@ -518,7 +518,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case NEW_FLOAT_ARY:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"NEW_FLOAT_ARY: dim=" << instr->GetOperand() << L" regs=" << aval_regs.size() 
             << L"," << aux_regs.size() << endl;
 #endif
@@ -527,7 +527,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case NEW_OBJ_INST: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       StackClass* called_klass = program->GetClass(instr->GetOperand());      
       wcout << L"NEW_OBJ_INST: name='" << called_klass->GetName() << L"': id=" << instr->GetOperand() 
             << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
@@ -539,7 +539,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
      
     case THREAD_JOIN: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"THREAD_JOIN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(THREAD_JOIN, instr, instr_index, 0);
@@ -547,7 +547,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case THREAD_SLEEP: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"THREAD_SLEEP: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(THREAD_SLEEP, instr, instr_index, 1);
@@ -555,7 +555,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case CRITICAL_START: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CRITICAL_START: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(CRITICAL_START, instr, instr_index, 1);
@@ -563,7 +563,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case CRITICAL_END: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CRITICAL_END: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(CRITICAL_END, instr, instr_index, 1);
@@ -571,7 +571,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case CPY_BYTE_ARY: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CPY_BYTE_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_BYTE_ARY, instr, instr_index, 5);
@@ -579,7 +579,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case CPY_CHAR_ARY: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CPY_CHAR_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_CHAR_ARY, instr, instr_index, 5);
@@ -587,7 +587,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case CPY_INT_ARY: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CPY_INT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_INT_ARY, instr, instr_index, 5);
@@ -595,7 +595,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case CPY_FLOAT_ARY: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CPY_FLOAT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(CPY_FLOAT_ARY, instr, instr_index, 5);
@@ -603,14 +603,14 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
  
     case TRAP:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"TRAP: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(TRAP, instr, instr_index, instr->GetOperand());
       break;
 
     case TRAP_RTRN:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"TRAP_RTRN: args=" << instr->GetOperand() << L"; regs=" 
             << aval_regs.size() << L"," << aux_regs.size() << endl;
       assert(instr->GetOperand());
@@ -620,7 +620,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case STOR_BYTE_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"STOR_BYTE_ARY_ELM: regs=" << aval_regs.size() << L"," 
             << aux_regs.size() << endl;
 #endif
@@ -628,7 +628,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case STOR_CHAR_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"STOR_CHAR_ARY_ELM: regs=" << aval_regs.size() << L"," 
             << aux_regs.size() << endl;
 #endif
@@ -636,21 +636,21 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case STOR_INT_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"STOR_INT_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStoreIntElement(instr);
       break;
 
     case STOR_FLOAT_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"STOR_FLOAT_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStoreFloatElement(instr);
       break;
 
     case SWAP_INT: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"SWAP_INT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       RegInstr* left = working_stack.front();
@@ -666,7 +666,7 @@ void JitCompilerIA32::ProcessInstructions() {
 
     case POP_INT:
     case POP_FLOAT: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"POP_INT/POP_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       // note: there may be constants that aren't 
@@ -689,42 +689,42 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case FLOR_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"FLOR_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloor(instr);
       break;
 
     case CEIL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"CEIL_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessCeiling(instr);
       break;
       
     case F2I:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"F2I: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatToInt(instr);
       break;
 
     case I2F:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"I2F: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessIntToFloat(instr);
       break;
 
     case I2S:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"I2S: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(I2S, instr, instr_index, 3);
       break;
       
       case S2I:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"S2I: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(S2I, instr, instr_index, 2);
@@ -732,14 +732,14 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
       case F2S:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"F2S: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(F2S, instr, instr_index, 2);
       break;
       
       case S2F:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"S2F: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(S2F, instr, instr_index, 2);
@@ -747,7 +747,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case OBJ_TYPE_OF: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"OBJ_TYPE_OF: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(OBJ_TYPE_OF, instr, instr_index, 1);
@@ -756,7 +756,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case OBJ_INST_CAST: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"OBJ_INST_CAST: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(OBJ_INST_CAST, instr, instr_index, 1);
@@ -765,7 +765,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case LOAD_ARY_SIZE: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
@@ -774,21 +774,21 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case LOAD_BYTE_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_BYTE_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessLoadByteElement(instr);
       break;
 
     case LOAD_CHAR_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_CHAR_ARY_ELM: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessLoadCharElement(instr);
       break;
       
     case LOAD_INT_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_INT_ARY_ELM: regs=" << aval_regs.size() << L"," 
             << aux_regs.size() << endl;
 #endif
@@ -796,7 +796,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
     case LOAD_FLOAT_ARY_ELM:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LOAD_FLOAT_ARY_ELM: regs=" << aval_regs.size() << L"," 
             << aux_regs.size() << endl;
 #endif
@@ -808,7 +808,7 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case LBL:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"LBL: id=" << instr->GetOperand() << endl;
 #endif
       break;
@@ -884,7 +884,7 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
 
 void JitCompilerIA32::ProcessJump(StackInstr* instr) {
   if(!skip_jump) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size() 
           << L"," << aux_regs.size() << endl;
 #endif
@@ -923,7 +923,7 @@ void JitCompilerIA32::ProcessJump(StackInstr* instr) {
         break;
       }
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
       // compare with register
@@ -1546,7 +1546,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
     non_params = working_stack.size() - params;
   }
   
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
 #endif
   
@@ -1585,7 +1585,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
     }
   }
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   assert(reg_offset >= TMP_REG_5);
   assert(xmm_offset >= TMP_XMM_2);
 #endif
@@ -1652,7 +1652,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
     else {
       non_params = working_stack.size() - params;
     }
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
 #endif
     
@@ -2145,7 +2145,7 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
   working_stack.pop_front();
 
   InstructionType type = instruction->GetType();
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   assert(left->GetType() == MEM_FLOAT);
 #endif
 
@@ -2192,7 +2192,7 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     break;
 
   default:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     assert(false);
 #endif
     break;
@@ -2211,7 +2211,7 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
 
 void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"  " << (++instr_count) << L": [movl %" << GetRegisterName(src) 
           << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -2226,7 +2226,7 @@ void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::move_reg_mem16(Register src, int32_t offset, Register dest) { 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
         << endl;
@@ -2240,7 +2240,7 @@ void JitCompilerIA32::move_reg_mem16(Register src, int32_t offset, Register dest
 }
 
 void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
         << endl;
@@ -2253,7 +2253,7 @@ void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest)
 }
     
 void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) { 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
         << endl;
@@ -2266,7 +2266,7 @@ void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) 
 }
 
 void JitCompilerIA32::move_mem8_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
         << L"]" << endl;
@@ -2280,7 +2280,7 @@ void JitCompilerIA32::move_mem8_reg(int32_t offset, Register src, Register dest)
 }
 
 void JitCompilerIA32::move_mem16_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
         << L"]" << endl;
@@ -2294,7 +2294,7 @@ void JitCompilerIA32::move_mem16_reg(int32_t offset, Register src, Register dest
 }
 
 void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
         << L"]" << endl;
@@ -2314,7 +2314,7 @@ void JitCompilerIA32::move_imm_memx(RegInstr* instr, int32_t offset, Register de
 }
 
 void JitCompilerIA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
@@ -2329,7 +2329,7 @@ void JitCompilerIA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) 
 }
 
 void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
@@ -2345,7 +2345,7 @@ void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
 }
 
 void JitCompilerIA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
@@ -2360,7 +2360,7 @@ void JitCompilerIA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
 }
 
 void JitCompilerIA32::move_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl $" << imm << L", %" 
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -2381,7 +2381,7 @@ void JitCompilerIA32::move_imm_xreg(RegInstr* instr, Register reg) {
 }
     
 void JitCompilerIA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movsd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
         << L"]" << endl;
@@ -2396,7 +2396,7 @@ void JitCompilerIA32::move_mem_xreg(int32_t offset, Register src, Register dest)
 }
     
 void JitCompilerIA32::move_xreg_mem(Register src, int32_t offset, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
         << endl;
@@ -2412,7 +2412,7 @@ void JitCompilerIA32::move_xreg_mem(Register src, int32_t offset, Register dest)
 
 void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
   if(src != dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
           << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -2435,7 +2435,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 
   StackInstr* next_instr = method->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     std::wcout << L"JMP: id=" << next_instr->GetOperand() << L", regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
     AddMachineCode(0x0f);
@@ -2446,14 +2446,14 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
     if(next_instr->GetOperand2() == 1) {
       switch(type) {
       case LES_INT:	
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jl]" << std::endl;
 #endif
         AddMachineCode(0x8c);
         break;
 
       case GTR_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jg]" << std::endl;
 #endif
         AddMachineCode(0x8f);
@@ -2461,7 +2461,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 
       case EQL_INT:
       case EQL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
         AddMachineCode(0x84);
@@ -2469,21 +2469,21 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 
       case NEQL_INT:
       case NEQL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jne]" << std::endl;
 #endif
         AddMachineCode(0x85);
         break;
 
       case LES_EQL_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jle]" << std::endl;
 #endif
         AddMachineCode(0x8e);
         break;
         
       case GTR_EQL_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jge]" << std::endl;
 #endif
         AddMachineCode(0x8d);
@@ -2515,14 +2515,14 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
     else {
       switch(type) {
       case LES_INT:	
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jge]" << std::endl;
 #endif
         AddMachineCode(0x8d);
         break;
 
       case GTR_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jle]" << std::endl;
 #endif
         AddMachineCode(0x8e);
@@ -2530,7 +2530,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 
       case EQL_INT:
       case EQL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jne]" << std::endl;
 #endif
         AddMachineCode(0x85);
@@ -2538,49 +2538,49 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 
       case NEQL_INT:
       case NEQL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
         AddMachineCode(0x84);
         break;
 
       case LES_EQL_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jg]" << std::endl;
 #endif
         AddMachineCode(0x8f);
         break;
         
       case GTR_EQL_INT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jl]" << std::endl;
 #endif
         AddMachineCode(0x8c);
         break;
 
       case LES_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
         AddMachineCode(0x86);
         break;
 				
       case GTR_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
         AddMachineCode(0x86);
         break;
 
       case LES_EQL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
 #endif
         AddMachineCode(0x82);
         break;
 				
       case GTR_EQL_FLOAT:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
 #endif
         AddMachineCode(0x82);
@@ -2868,7 +2868,7 @@ RegisterHolder* JitCompilerIA32::call_xfunc2(double(*func_ptr)(double, double), 
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   assert(right->GetType() == MEM_FLOAT);
 #endif
 
@@ -2939,7 +2939,7 @@ void JitCompilerIA32::math_xreg_xreg(Register src, Register dest, InstructionTyp
 }    
 
 void JitCompilerIA32::cmp_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpll %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -2953,7 +2953,7 @@ void JitCompilerIA32::cmp_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -2966,7 +2966,7 @@ void JitCompilerIA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
 }
     
 void JitCompilerIA32::cmp_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpl $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -2984,7 +2984,7 @@ void JitCompilerIA32::cmov_reg(Register reg, InstructionType oper) {
   move_imm_reg(0, reg);
   RegisterHolder* true_holder = GetRegister();
   move_imm_reg(1, true_holder->GetRegister());
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmovl %" << GetRegisterName(reg) << L", %" 
         << GetRegisterName(true_holder->GetRegister()) << L" ]" << endl;
 #endif
@@ -3047,7 +3047,7 @@ void JitCompilerIA32::cmov_reg(Register reg, InstructionType oper) {
 }
 
 void JitCompilerIA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addl $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(dest) << L")]" << endl;
 #endif
@@ -3060,7 +3060,7 @@ void JitCompilerIA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
 }
     
 void JitCompilerIA32::add_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addl $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -3106,7 +3106,7 @@ void JitCompilerIA32::mul_imm_xreg(RegInstr* instr, Register reg) {
 }
 
 void JitCompilerIA32::add_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addl %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3120,7 +3120,7 @@ void JitCompilerIA32::add_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::sub_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3136,7 +3136,7 @@ void JitCompilerIA32::sub_xreg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::mul_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [mulsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3152,7 +3152,7 @@ void JitCompilerIA32::mul_xreg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::div_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [divsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3168,7 +3168,7 @@ void JitCompilerIA32::div_xreg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3184,7 +3184,7 @@ void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
 }
     
 void JitCompilerIA32::add_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3197,7 +3197,7 @@ void JitCompilerIA32::add_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 void JitCompilerIA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addsd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3220,7 +3220,7 @@ void JitCompilerIA32::sub_mem_xreg(int32_t offset, Register src, Register dest) 
 }
 
 void JitCompilerIA32::mul_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [mulsd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3242,7 +3242,7 @@ void JitCompilerIA32::div_mem_xreg(int32_t offset, Register src, Register dest) 
 }
 
 void JitCompilerIA32::sub_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subl $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -3255,7 +3255,7 @@ void JitCompilerIA32::sub_imm_reg(int32_t imm, Register reg) {
 }
 
 void JitCompilerIA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subl $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(dest) << L")]" << endl;
 #endif
@@ -3268,7 +3268,7 @@ void JitCompilerIA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
 }
 
 void JitCompilerIA32::sub_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subl %" << GetRegisterName(src)
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3282,7 +3282,7 @@ void JitCompilerIA32::sub_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3296,7 +3296,7 @@ void JitCompilerIA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 void JitCompilerIA32::mul_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [imul $" << imm 
         << L", %"<< GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -3312,7 +3312,7 @@ void JitCompilerIA32::mul_imm_reg(int32_t imm, Register reg) {
 }
 
 void JitCompilerIA32::mul_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [imul %" 
         << GetRegisterName(src) << L", %"<< GetRegisterName(dest) 
         << L"]" << endl;
@@ -3328,7 +3328,7 @@ void JitCompilerIA32::mul_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::mul_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [imul " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3372,7 +3372,7 @@ void JitCompilerIA32::div_mem_reg(int32_t offset, Register src, Register dest, b
   // write value
   AddImm(offset);
   
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   if(is_mod) {
     wcout << L"  " << (++instr_count) << L": [imod " << offset << L"(%" 
           << GetRegisterName(src) << L")]" << endl;
@@ -3432,7 +3432,7 @@ void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
     RegisterEncode3(code, 5, src);
     AddMachineCode(code);
     
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     if(is_mod) {
       wcout << L"  " << (++instr_count) << L": [imod %" 
             << GetRegisterName(src) << L"]" << endl;
@@ -3455,7 +3455,7 @@ void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
       AddImm(TMP_REG_1);
     }
     
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     if(is_mod) {
       wcout << L"  " << (++instr_count) << L": [imod " << TMP_REG_0 << L"(%" 
             << GetRegisterName(EBP) << L")]" << endl;
@@ -3494,7 +3494,7 @@ void JitCompilerIA32::dec_reg(Register dest) {
   unsigned char code = 0x48;
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [decl %" 
         << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3506,7 +3506,7 @@ void JitCompilerIA32::dec_mem(int32_t offset, Register dest) {
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddImm(offset);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [decl " << offset << L"(%" 
         << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
@@ -3518,7 +3518,7 @@ void JitCompilerIA32::inc_mem(int32_t offset, Register dest) {
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddImm(offset);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [incl " << offset << L"(%" 
         << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
@@ -3530,7 +3530,7 @@ void JitCompilerIA32::shl_imm_reg(int32_t value, Register dest) {
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddMachineCode(value);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [shl $" << value << L", %" 
         << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3561,7 +3561,7 @@ void JitCompilerIA32::shl_reg_reg(Register src, Register dest)
   RegisterEncode3(code, 2, ESP);
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [shl %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3592,7 +3592,7 @@ void JitCompilerIA32::shr_imm_reg(int32_t value, Register dest) {
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddMachineCode(value);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [shr $" << value << L", %" 
         << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3623,7 +3623,7 @@ void JitCompilerIA32::shr_reg_reg(Register src, Register dest)
   RegisterEncode3(code, 2, EBP);
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [shr %" << GetRegisterName(ECX) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3654,7 +3654,7 @@ void JitCompilerIA32::push_mem(int32_t offset, Register dest) {
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddImm(offset);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [pushl " << offset << L"(%" 
         << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
@@ -3664,7 +3664,7 @@ void JitCompilerIA32::push_reg(Register reg) {
   unsigned char code = 0x50;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [pushl %" << GetRegisterName(reg) 
         << L"]" << endl;
 #endif
@@ -3673,7 +3673,7 @@ void JitCompilerIA32::push_reg(Register reg) {
 void JitCompilerIA32::push_imm(int32_t value) {
   AddMachineCode(0x68);
   AddImm(value);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [pushl $" << value << L"]" << endl;
 #endif
 }
@@ -3682,7 +3682,7 @@ void JitCompilerIA32::pop_reg(Register reg) {
   unsigned char code = 0x58;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [popl %" << GetRegisterName(reg) 
         << L"]" << endl;
 #endif
@@ -3693,14 +3693,14 @@ void JitCompilerIA32::call_reg(Register reg) {
   unsigned char code = 0xd0;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [call %" << GetRegisterName(reg)
         << L"]" << endl;
 #endif
 }
 
 void JitCompilerIA32::cmp_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [ucomisd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3716,7 +3716,7 @@ void JitCompilerIA32::cmp_xreg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [ucomisd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3739,7 +3739,7 @@ void JitCompilerIA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
 }
 
 void JitCompilerIA32::cvt_xreg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsd2si %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3763,7 +3763,7 @@ void JitCompilerIA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floo
 }
 
 void JitCompilerIA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
         << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3786,7 +3786,7 @@ void JitCompilerIA32::round_mem_xreg(int32_t offset, Register src, Register dest
 }
 
 void JitCompilerIA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
         << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3818,7 +3818,7 @@ void JitCompilerIA32::cvt_imm_reg(RegInstr* instr, Register reg) {
 }
 
 void JitCompilerIA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsd2si " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3833,7 +3833,7 @@ void JitCompilerIA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 void JitCompilerIA32::cvt_reg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3857,7 +3857,7 @@ void JitCompilerIA32::cvt_imm_xreg(RegInstr* instr, Register reg) {
 }
 
 void JitCompilerIA32::cvt_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3872,7 +3872,7 @@ void JitCompilerIA32::cvt_mem_xreg(int32_t offset, Register src, Register dest) 
 }
 
 void JitCompilerIA32::and_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [andl $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -3886,7 +3886,7 @@ void JitCompilerIA32::and_imm_reg(int32_t imm, Register reg) {
 }
 
 void JitCompilerIA32::and_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [andl %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3900,7 +3900,7 @@ void JitCompilerIA32::and_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::and_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [andl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3913,7 +3913,7 @@ void JitCompilerIA32::and_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 void JitCompilerIA32::or_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [orl $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -3928,7 +3928,7 @@ void JitCompilerIA32::or_imm_reg(int32_t imm, Register reg) {
 
 
 void JitCompilerIA32::or_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [orl %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3942,7 +3942,7 @@ void JitCompilerIA32::or_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::or_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [orl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3955,7 +3955,7 @@ void JitCompilerIA32::or_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 void JitCompilerIA32::xor_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [xorl $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
 #endif
@@ -3969,7 +3969,7 @@ void JitCompilerIA32::xor_imm_reg(int32_t imm, Register reg) {
 }
 
 void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [xor %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3983,7 +3983,7 @@ void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
 }
 
 void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [xorl " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
         << L"]" << endl;
@@ -3998,7 +3998,7 @@ void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
 // --- x87 ---
 
 void JitCompilerIA32::fld_mem(int32_t offset, Register src) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%" 
         << GetRegisterName(src) << L")]" << endl;
 #endif
@@ -4010,7 +4010,7 @@ void JitCompilerIA32::fld_mem(int32_t offset, Register src) {
 }
 
 void JitCompilerIA32::fstp_mem(int32_t offset, Register src) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%" 
         << GetRegisterName(src) << L")]" << endl;
 #endif
@@ -4195,7 +4195,7 @@ std::wstring JitCompilerIA32::GetRegisterName(Register reg)
 
 void JitCompilerIA32::RegisterEncode3(unsigned char& code, int32_t offset, Register reg)
 {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   assert(offset == 2 || offset == 5);
 #endif
 
@@ -4255,7 +4255,7 @@ void JitCompilerIA32::RegisterEncode3(unsigned char& code, int32_t offset, Regis
 
 void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, const int32_t ip)
 {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"Stack Call: instr=" << instr_id
     << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2()
     << L", oper_3=" << instr->GetOperand3() << L", self=" << inst << L"(" << (size_t)inst << L"), stack="
@@ -4264,7 +4264,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
   switch(instr_id) {
   case MTHD_CALL:
   case DYN_MTHD_CALL: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
     StackInterpreter intpr(call_stack, call_stack_pos);
@@ -4302,7 +4302,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     memcpy(mem + 2, indices, dim * sizeof(int32_t));
     PushInt(op_stack, stack_pos, (int32_t)mem);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: NEW_BYTE_ARY: dim=" << dim << L"; size=" << size
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
@@ -4328,7 +4328,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     memcpy(mem + 2, indices, dim * sizeof(int32_t));
     PushInt(op_stack, stack_pos, (int32_t)mem);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: NEW_CHAR_ARY: dim=" << dim << L"; size=" << size
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
@@ -4348,7 +4348,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     }
 
     int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
@@ -4373,7 +4373,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
 
     size *= 2;
     int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
@@ -4385,7 +4385,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     break;
 
   case NEW_OBJ_INST: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
     int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
@@ -4461,7 +4461,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
     break;
     
   case S2I: {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
 #endif
 
@@ -4522,7 +4522,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
   case OBJ_INST_CAST: {
     int32_t* mem = (int32_t*)PopInt(op_stack, stack_pos);
     int32_t to_id = instr->GetOperand();
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl;
 #endif	
     int32_t result = (int32_t)MemoryManager::ValidObjectCast((size_t*)mem, to_id, program->GetHierarchy(), program->GetInterfaces());
@@ -4737,7 +4737,7 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
   }
                   break;
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   default:
     wcerr << L"Unknown callback!" << endl;
     break;
@@ -4890,7 +4890,7 @@ RegisterHolder* JitCompilerIA32::ArrayIndex(StackInstr* instr, MemoryType type)
 
 void JitCompilerIA32::ProcessIndices()
 {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"Calculating indices for variables..." << endl;
 #endif
   multimap<int32_t, StackInstr*> values;
@@ -4952,7 +4952,7 @@ void JitCompilerIA32::ProcessIndices()
       instr->SetOperand3(index);
       last_id = id;
     }
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
       wcout << L"native memory: index=" << instr->GetOperand() << L"; jit index="
         << instr->GetOperand3() << endl;
@@ -4965,7 +4965,7 @@ void JitCompilerIA32::ProcessIndices()
   }
   local_space = -(index + TMP_REG_5);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"Local space required: " << (local_space + 8) << L" byte(s)" << endl;
 #endif
 }
@@ -4980,7 +4980,7 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
 
     int32_t cls_id = method->GetClass()->GetId();
     int32_t mthd_id = method->GetId();
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L","
       << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params="
       << method->GetParamCount() << L" ----------" << endl;
@@ -5016,7 +5016,7 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
     aval_xregs.push_back(new RegisterHolder(XMM2));
     aval_xregs.push_back(new RegisterHolder(XMM1));
     aval_xregs.push_back(new RegisterHolder(XMM0));
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"Compiling code for IA-32 architecture..." << endl;
 #endif
 
@@ -5049,7 +5049,7 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const int32_t offset = dest_offset - src_offset - 4;
       memcpy(&code[src_offset], &offset, 4);
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
     }
@@ -5072,7 +5072,7 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
       memcpy(&code[index], &offset, 4);
     }
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
     wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
@@ -5103,7 +5103,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   const long mthd_id = method->GetId();
   NativeCode* native_code = method->GetNativeCode();
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
         << L"'; self=" << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos="
         << (*stack_pos) << L"; params=" << method->GetParamCount() << L"; code=" << (size_t*)native_code->GetCode() << L"; code_index="
@@ -5118,7 +5118,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
                               stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
   wcout << L"JIT return=: " << status << endl;
 #endif 
 

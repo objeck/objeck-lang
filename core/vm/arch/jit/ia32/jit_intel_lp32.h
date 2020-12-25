@@ -194,7 +194,7 @@ namespace Runtime {
         break;
 
       default:
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         assert(false);
 #endif
         break;
@@ -479,7 +479,7 @@ namespace Runtime {
         }
         else {
           compile_success = false;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
           aux_regs.push(reg_eax);
@@ -507,7 +507,7 @@ namespace Runtime {
             << L" *" << endl;
 #endif
 
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       assert(h->GetRegister() < XMM0);
       for(size_t i  = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
@@ -529,7 +529,7 @@ namespace Runtime {
       RegisterHolder* holder;
       if(aval_xregs.empty()) {
         compile_success = false;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
         wcout << L">>> No XMM registers avaiable! <<<" << endl;
 #endif
         aval_xregs.push_back(new RegisterHolder(XMM0));
@@ -552,7 +552,7 @@ namespace Runtime {
 
     // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       assert(h->GetRegister() >= XMM0);
       for(size_t i = 0; i < aval_xregs.size(); ++i) {
         assert(h != aval_xregs[i]);
@@ -703,7 +703,7 @@ namespace Runtime {
 
     inline static int32_t PopInt(size_t* op_stack, int32_t *stack_pos) {
       int32_t value = op_stack[--(*stack_pos)];
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"\t[pop_i: value=" << (int32_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
 
@@ -712,7 +712,7 @@ namespace Runtime {
 
     inline static void PushInt(size_t* op_stack, int32_t *stack_pos, int32_t value) {
       op_stack[(*stack_pos)++] = value;
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"\t[push_i: value=" << (int32_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
     }
@@ -720,7 +720,7 @@ namespace Runtime {
     inline static FLOAT_VALUE PopFloat(size_t* op_stack, int32_t* stack_pos) {
       (*stack_pos) -= 2;
       
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << endl;
       return v;
@@ -730,7 +730,7 @@ namespace Runtime {
     }
     
     inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, int32_t* stack_pos) {
-#ifdef _DEBUG
+#ifdef _DEBUG_JIT
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; call_pos=" << (*stack_pos) << endl;
 #endif
