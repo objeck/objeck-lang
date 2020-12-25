@@ -19,6 +19,8 @@ Link: (https://stackoverflow.com/questions/28109826/arm64-using-gas-on-ios)
 
 The processor stack grows up, memory manager was updated to accommodate.
 
+Save the link register between function calls out of the JIT'ed code.
+
 ### Security
 * macOS 11 has added security for buffer code execution
 * Allocating memory: ```mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);```
@@ -50,7 +52,7 @@ The processor stack grows up, memory manager was updated to accommodate.
     * ~~JIT compiler~~ (testing)
   * Port debugger
   * Port libraries
-    * SDL2 support
+    * SDL2 support (waiting on official port)
     * ~~OpenSSL support~~
     * ~~zlib support~~
     * ~~ODBC support~~
@@ -64,8 +66,8 @@ The processor stack grows up, memory manager was updated to accommodate.
      * ~~JSON web service client~~
      * ~~Lambda expressions~~
      * ~~Closures~~
-     * RegEx
-     * Encryption
+     * ~~RegEx~~
+     * ~~Encryption~~
      * ODBC
 * Error Checking
    * ~~Nil reference checking~~
