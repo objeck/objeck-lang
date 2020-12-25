@@ -190,14 +190,11 @@ void JitCompilerA64::RegisterRoot() {
   op_code |= -6 & 0x00ffffff;
   AddMachineCode(op_code);
   
-  add_imm_reg(-2, X3);
+  sub_imm_reg(2, X3);
   
   ReleaseRegister(cur_reg);
   ReleaseRegister(end_reg);
   ReleaseRegister(start_reg);
-  
-  move_imm_mem(13, TMP_X0, SP);
-  move_imm_mem(7, TMP_X5, SP);
 }
 
 void JitCompilerA64::ProcessParameters(long params) {
