@@ -90,7 +90,7 @@ void JitCompilerA64::Epilog() {
   
   // nominal
   uint32_t op_code = B_INSTR;
-  op_code |= 8;
+  op_code |= 7;
   AddMachineCode(op_code);
   
   // nullptr deref
