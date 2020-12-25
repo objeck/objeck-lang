@@ -1060,7 +1060,7 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-    move_imm_mem8(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem8((int8_t)left->GetOperand(), 0, elem_holder->GetRegister());
     ReleaseRegister(elem_holder);
     break;
 
@@ -1112,7 +1112,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
       move_reg_reg(elem_holder->GetRegister(), holder->GetRegister());
       ReleaseRegister(elem_holder);
 #ifdef _WIN64     
-      move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
+      move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
 #else
       move_imm_mem32(left->GetOperand(), 0, holder->GetRegister());
 #endif    
@@ -1120,7 +1120,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
     }
     else {
 #ifdef _WIN64  
-      move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
+      move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
 #else    
       move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
 #endif
