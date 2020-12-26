@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2517DFA117EE60CC0098D0DE /* Xcode_Compiler.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 2517DFA017EE60CC0098D0DE /* Xcode_Compiler.1 */; };
 		2517DFC017EE61410098D0DE /* compiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFA717EE61410098D0DE /* compiler.cpp */; };
 		2517DFC117EE61410098D0DE /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFA917EE61410098D0DE /* context.cpp */; };
 		2517DFC217EE61410098D0DE /* intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFAB17EE61410098D0DE /* intermediate.cpp */; };
@@ -29,15 +28,13 @@
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
-				2517DFA117EE60CC0098D0DE /* Xcode_Compiler.1 in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		2517DF9B17EE60CC0098D0DE /* Xcode-Compiler */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Xcode-Compiler"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2517DFA017EE60CC0098D0DE /* Xcode_Compiler.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = Xcode_Compiler.1; sourceTree = "<group>"; };
+		2517DF9B17EE60CC0098D0DE /* obc */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obc; sourceTree = BUILT_PRODUCTS_DIR; };
 		2517DFA717EE61410098D0DE /* compiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = compiler.cpp; path = ../../compiler.cpp; sourceTree = "<group>"; };
 		2517DFA817EE61410098D0DE /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = compiler.h; path = ../../compiler.h; sourceTree = "<group>"; };
 		2517DFA917EE61410098D0DE /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../../context.cpp; sourceTree = "<group>"; tabWidth = 2; };
@@ -55,8 +52,6 @@
 		2517DFB517EE61410098D0DE /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../../scanner.h; sourceTree = "<group>"; };
 		2517DFB817EE61410098D0DE /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../../tree.cpp; sourceTree = "<group>"; };
 		2517DFB917EE61410098D0DE /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../../tree.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
-		2517DFBC17EE61410098D0DE /* Xcode_Compiler.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = Xcode_Compiler.1; sourceTree = "<group>"; };
-		2517DFBD17EE61410098D0DE /* Xcode-Compiler.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Xcode-Compiler.xcodeproj"; sourceTree = "<group>"; };
 		2517DFCA17EE622E0098D0DE /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../types.cpp; sourceTree = "<group>"; };
 		253FF1E21FF1A1130039C622 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../../emit.cpp; sourceTree = "<group>"; };
 		253FF1E31FF1A1140039C622 /* emit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = emit.h; path = ../../emit.h; sourceTree = "<group>"; };
@@ -78,7 +73,7 @@
 		2517DF9217EE60CC0098D0DE = {
 			isa = PBXGroup;
 			children = (
-				2517DF9D17EE60CC0098D0DE /* Xcode-Compiler */,
+				2517DF9D17EE60CC0098D0DE /* Compiler */,
 				2517DF9C17EE60CC0098D0DE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,12 +81,12 @@
 		2517DF9C17EE60CC0098D0DE /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2517DF9B17EE60CC0098D0DE /* Xcode-Compiler */,
+				2517DF9B17EE60CC0098D0DE /* obc */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		2517DF9D17EE60CC0098D0DE /* Xcode-Compiler */ = {
+		2517DF9D17EE60CC0098D0DE /* Compiler */ = {
 			isa = PBXGroup;
 			children = (
 				ED9B87E8228CC17800860E8D /* logger.h */,
@@ -116,40 +111,16 @@
 				2517DFB517EE61410098D0DE /* scanner.h */,
 				2517DFB817EE61410098D0DE /* tree.cpp */,
 				2517DFB917EE61410098D0DE /* tree.h */,
-				2517DFBA17EE61410098D0DE /* Xcode-Compiler */,
-				2517DFA017EE60CC0098D0DE /* Xcode_Compiler.1 */,
 			);
-			path = "Xcode-Compiler";
-			sourceTree = "<group>";
-		};
-		2517DFBA17EE61410098D0DE /* Xcode-Compiler */ = {
-			isa = PBXGroup;
-			children = (
-				2517DFBB17EE61410098D0DE /* Xcode-Compiler */,
-				2517DFBD17EE61410098D0DE /* Xcode-Compiler.xcodeproj */,
-			);
-			name = "Xcode-Compiler";
-			sourceTree = SOURCE_ROOT;
-		};
-		2517DFBB17EE61410098D0DE /* Xcode-Compiler */ = {
-			isa = PBXGroup;
-			children = (
-				2517DFBC17EE61410098D0DE /* Xcode_Compiler.1 */,
-			);
-			path = "Xcode-Compiler";
-			sourceTree = "<group>";
-		};
-		2517DFBE17EE61410098D0DE /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
+			path = Compiler;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2517DF9A17EE60CC0098D0DE /* Xcode-Compiler */ = {
+		2517DF9A17EE60CC0098D0DE /* Compiler */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2517DFA417EE60CC0098D0DE /* Build configuration list for PBXNativeTarget "Xcode-Compiler" */;
+			buildConfigurationList = 2517DFA417EE60CC0098D0DE /* Build configuration list for PBXNativeTarget "Compiler" */;
 			buildPhases = (
 				2517DF9717EE60CC0098D0DE /* Sources */,
 				2517DF9817EE60CC0098D0DE /* Frameworks */,
@@ -159,9 +130,9 @@
 			);
 			dependencies = (
 			);
-			name = "Xcode-Compiler";
+			name = Compiler;
 			productName = "Xcode-Compiler";
-			productReference = 2517DF9B17EE60CC0098D0DE /* Xcode-Compiler */;
+			productReference = 2517DF9B17EE60CC0098D0DE /* obc */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -170,10 +141,10 @@
 		2517DF9317EE60CC0098D0DE /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1020;
+				LastUpgradeCheck = 1230;
 				ORGANIZATIONNAME = "Randy Hollines";
 			};
-			buildConfigurationList = 2517DF9617EE60CC0098D0DE /* Build configuration list for PBXProject "Xcode-Compiler" */;
+			buildConfigurationList = 2517DF9617EE60CC0098D0DE /* Build configuration list for PBXProject "Compiler" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -184,15 +155,9 @@
 			mainGroup = 2517DF9217EE60CC0098D0DE;
 			productRefGroup = 2517DF9C17EE60CC0098D0DE /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = 2517DFBE17EE61410098D0DE /* Products */;
-					ProjectRef = 2517DFBD17EE61410098D0DE /* Xcode-Compiler.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
-				2517DF9A17EE60CC0098D0DE /* Xcode-Compiler */,
+				2517DF9A17EE60CC0098D0DE /* Compiler */,
 			);
 		};
 /* End PBXProject section */
@@ -242,6 +207,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -295,6 +261,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -322,23 +289,25 @@
 		2517DFA517EE60CC0098D0DE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = obc;
 			};
 			name = Debug;
 		};
 		2517DFA617EE60CC0098D0DE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = obc;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2517DF9617EE60CC0098D0DE /* Build configuration list for PBXProject "Xcode-Compiler" */ = {
+		2517DF9617EE60CC0098D0DE /* Build configuration list for PBXProject "Compiler" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2517DFA217EE60CC0098D0DE /* Debug */,
@@ -347,7 +316,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2517DFA417EE60CC0098D0DE /* Build configuration list for PBXNativeTarget "Xcode-Compiler" */ = {
+		2517DFA417EE60CC0098D0DE /* Build configuration list for PBXNativeTarget "Compiler" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2517DFA517EE60CC0098D0DE /* Debug */,
