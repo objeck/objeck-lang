@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		255B2D631966EF5400AF1F2E /* Xcode_VM.1 in Copy Files */ = {isa = PBXBuildFile; fileRef = 255B2D621966EF5400AF1F2E /* Xcode_VM.1 */; };
 		255B2D731966EFB700AF1F2E /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D691966EFB700AF1F2E /* common.cpp */; };
 		255B2D741966EFB700AF1F2E /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6B1966EFB700AF1F2E /* interpreter.cpp */; };
 		255B2D751966EFB700AF1F2E /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6E1966EFB700AF1F2E /* loader.cpp */; };
@@ -22,7 +21,6 @@
 		EDFEDD84256EE38100382F3F /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D701966EFB700AF1F2E /* posix_main.cpp */; };
 		EDFEDD85256EE38100382F3F /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED0340C8216A6B920091732E /* memory.cpp */; };
 		EDFEDD86256EE38100382F3F /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D691966EFB700AF1F2E /* common.cpp */; };
-		EDFEDD8B256EE38100382F3F /* Xcode_VM.1 in Copy Files */ = {isa = PBXBuildFile; fileRef = 255B2D621966EF5400AF1F2E /* Xcode_VM.1 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -32,7 +30,6 @@
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
-				255B2D631966EF5400AF1F2E /* Xcode_VM.1 in Copy Files */,
 			);
 			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 1;
@@ -43,7 +40,6 @@
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
-				EDFEDD8B256EE38100382F3F /* Xcode_VM.1 in Copy Files */,
 			);
 			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 1;
@@ -51,8 +47,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		255B2D5D1966EF5400AF1F2E /* Xcode-VM-X64 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Xcode-VM-X64"; sourceTree = BUILT_PRODUCTS_DIR; };
-		255B2D621966EF5400AF1F2E /* Xcode_VM.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = Xcode_VM.1; sourceTree = "<group>"; };
+		255B2D5D1966EF5400AF1F2E /* obr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obr; sourceTree = BUILT_PRODUCTS_DIR; };
 		255B2D691966EFB700AF1F2E /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = common.cpp; path = ../../common.cpp; sourceTree = "<group>"; };
 		255B2D6A1966EFB700AF1F2E /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../common.h; sourceTree = "<group>"; };
 		255B2D6B1966EFB700AF1F2E /* interpreter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = interpreter.cpp; path = ../../interpreter.cpp; sourceTree = "<group>"; };
@@ -67,10 +62,10 @@
 		ED0340C8216A6B920091732E /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/memory.cpp; sourceTree = "<group>"; };
 		ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
 		ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
-		ED563F572570075600791CB7 /* Xcode-VM-A64.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Xcode-VM-A64.entitlements"; sourceTree = "<group>"; };
+		ED563F572570075600791CB7 /* VM-A64.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "VM-A64.entitlements"; sourceTree = "<group>"; };
 		ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
 		ED56FE55256F367D00DFB0F9 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
-		EDFEDD8F256EE38100382F3F /* Xcode-VM-A64 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Xcode-VM-A64"; sourceTree = BUILT_PRODUCTS_DIR; };
+		EDFEDD8F256EE38100382F3F /* obr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obr; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,10 +89,9 @@
 		255B2D541966EF5400AF1F2E = {
 			isa = PBXGroup;
 			children = (
-				ED563F572570075600791CB7 /* Xcode-VM-A64.entitlements */,
-				255B2D5F1966EF5400AF1F2E /* Xcode-VM */,
+				ED563F572570075600791CB7 /* VM-A64.entitlements */,
+				255B2D5F1966EF5400AF1F2E /* VM */,
 				255B2D5E1966EF5400AF1F2E /* Products */,
-				25DC32171FF1A92A0040A5BE /* Frameworks */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -106,13 +100,13 @@
 		255B2D5E1966EF5400AF1F2E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				255B2D5D1966EF5400AF1F2E /* Xcode-VM-X64 */,
-				EDFEDD8F256EE38100382F3F /* Xcode-VM-A64 */,
+				255B2D5D1966EF5400AF1F2E /* obr */,
+				EDFEDD8F256EE38100382F3F /* obr */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		255B2D5F1966EF5400AF1F2E /* Xcode-VM */ = {
+		255B2D5F1966EF5400AF1F2E /* VM */ = {
 			isa = PBXGroup;
 			children = (
 				ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */,
@@ -131,24 +125,16 @@
 				255B2D701966EFB700AF1F2E /* posix_main.cpp */,
 				255B2D711966EFB700AF1F2E /* vm.cpp */,
 				255B2D721966EFB700AF1F2E /* vm.h */,
-				255B2D621966EF5400AF1F2E /* Xcode_VM.1 */,
 			);
-			path = "Xcode-VM";
-			sourceTree = "<group>";
-		};
-		25DC32171FF1A92A0040A5BE /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
+			path = VM;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		255B2D5C1966EF5400AF1F2E /* Xcode-VM-X64 */ = {
+		255B2D5C1966EF5400AF1F2E /* VM-X64 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 255B2D661966EF5400AF1F2E /* Build configuration list for PBXNativeTarget "Xcode-VM-X64" */;
+			buildConfigurationList = 255B2D661966EF5400AF1F2E /* Build configuration list for PBXNativeTarget "VM-X64" */;
 			buildPhases = (
 				255B2D591966EF5400AF1F2E /* Sources */,
 				255B2D5A1966EF5400AF1F2E /* Frameworks */,
@@ -158,14 +144,14 @@
 			);
 			dependencies = (
 			);
-			name = "Xcode-VM-X64";
+			name = "VM-X64";
 			productName = "Xcode-VM";
-			productReference = 255B2D5D1966EF5400AF1F2E /* Xcode-VM-X64 */;
+			productReference = 255B2D5D1966EF5400AF1F2E /* obr */;
 			productType = "com.apple.product-type.tool";
 		};
-		EDFEDD7E256EE38100382F3F /* Xcode-VM-A64 */ = {
+		EDFEDD7E256EE38100382F3F /* VM-A64 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = EDFEDD8C256EE38100382F3F /* Build configuration list for PBXNativeTarget "Xcode-VM-A64" */;
+			buildConfigurationList = EDFEDD8C256EE38100382F3F /* Build configuration list for PBXNativeTarget "VM-A64" */;
 			buildPhases = (
 				EDFEDD7F256EE38100382F3F /* Sources */,
 				EDFEDD87256EE38100382F3F /* Frameworks */,
@@ -175,9 +161,9 @@
 			);
 			dependencies = (
 			);
-			name = "Xcode-VM-A64";
+			name = "VM-A64";
 			productName = "Xcode-VM";
-			productReference = EDFEDD8F256EE38100382F3F /* Xcode-VM-A64 */;
+			productReference = EDFEDD8F256EE38100382F3F /* obr */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -195,7 +181,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 255B2D581966EF5400AF1F2E /* Build configuration list for PBXProject "Xcode-VM" */;
+			buildConfigurationList = 255B2D581966EF5400AF1F2E /* Build configuration list for PBXProject "VM" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -208,8 +194,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				255B2D5C1966EF5400AF1F2E /* Xcode-VM-X64 */,
-				EDFEDD7E256EE38100382F3F /* Xcode-VM-A64 */,
+				255B2D5C1966EF5400AF1F2E /* VM-X64 */,
+				EDFEDD7E256EE38100382F3F /* VM-A64 */,
 			);
 		};
 /* End PBXProject section */
@@ -377,7 +363,7 @@
 					"-lz",
 				);
 				PRELINK_LIBS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = obr;
 			};
 			name = Debug;
 		};
@@ -410,7 +396,7 @@
 					"-lz",
 				);
 				PRELINK_LIBS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = obr;
 			};
 			name = Release;
 		};
@@ -418,7 +404,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_WARN_INT_CONVERSION = YES;
-				CODE_SIGN_ENTITLEMENTS = "Xcode-VM-A64.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "VM-A64.entitlements";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
@@ -447,7 +433,7 @@
 					"-lz",
 				);
 				PRELINK_LIBS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = obr;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -456,7 +442,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_WARN_INT_CONVERSION = YES;
-				CODE_SIGN_ENTITLEMENTS = "Xcode-VM-A64.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "VM-A64.entitlements";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
@@ -486,7 +472,7 @@
 					"-lz",
 				);
 				PRELINK_LIBS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = obr;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
@@ -494,7 +480,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		255B2D581966EF5400AF1F2E /* Build configuration list for PBXProject "Xcode-VM" */ = {
+		255B2D581966EF5400AF1F2E /* Build configuration list for PBXProject "VM" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				255B2D641966EF5400AF1F2E /* Debug */,
@@ -503,7 +489,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		255B2D661966EF5400AF1F2E /* Build configuration list for PBXNativeTarget "Xcode-VM-X64" */ = {
+		255B2D661966EF5400AF1F2E /* Build configuration list for PBXNativeTarget "VM-X64" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				255B2D671966EF5400AF1F2E /* Debug */,
@@ -512,7 +498,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EDFEDD8C256EE38100382F3F /* Build configuration list for PBXNativeTarget "Xcode-VM-A64" */ = {
+		EDFEDD8C256EE38100382F3F /* Build configuration list for PBXNativeTarget "VM-A64" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EDFEDD8D256EE38100382F3F /* Debug */,
