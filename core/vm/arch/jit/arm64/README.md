@@ -67,7 +67,7 @@ Save the link register between function calls out of the JIT'ed code.
      * ~~Lambda expressions~~
      * ~~Closures~~
      * ~~RegEx~~
-     * Encryption
+     * Encryption (loading libraries at runtime is locked down, need to find a solution)
      * ODBC
 * Error Checking
    * ~~Nil reference checking~~
