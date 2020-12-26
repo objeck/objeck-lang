@@ -93,9 +93,9 @@
 				255B2D5F1966EF5400AF1F2E /* VM */,
 				255B2D5E1966EF5400AF1F2E /* Products */,
 			);
-			indentWidth = 2;
+			indentWidth = 3;
 			sourceTree = "<group>";
-			tabWidth = 2;
+			tabWidth = 3;
 		};
 		255B2D5E1966EF5400AF1F2E /* Products */ = {
 			isa = PBXGroup;
