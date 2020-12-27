@@ -39,6 +39,8 @@ Save the link register between function calls out of the JIT'ed code.
 	<dict>
 		<key>com.apple.security.cs.allow-jit</key>
 		<true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
 	</dict>
 	```
 
@@ -53,7 +55,7 @@ Save the link register between function calls out of the JIT'ed code.
     * ~~Memory manager~~
     * ~~JIT compiler~~
   * Port debugger
-  * Port libraries
+  * Port libraries (enable 'Testability')
     * SDL2 support (waiting for official port)
     * ODBC support
     * ~~OpenSSL support~~
