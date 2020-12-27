@@ -50,14 +50,14 @@ Save the link register between function calls out of the JIT'ed code.
 * General
   * ~~Port compiler~~
   * Port VM
-    * ~~Memory manager~~ (testing)
-    * ~~JIT compiler~~ (testing)
+    * ~~Memory manager~~
+    * ~~JIT compiler~~
   * Port debugger
   * Port libraries
     * SDL2 support (waiting for official port)
+    * ODBC support
     * ~~OpenSSL support~~
     * ~~zlib support~~
-    * ODBC support
 * Testing
    * [Test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
      * ~~Manually validate first 20~~
