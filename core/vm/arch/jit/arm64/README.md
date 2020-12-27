@@ -54,10 +54,10 @@ Save the link register between function calls out of the JIT'ed code.
     * ~~JIT compiler~~ (testing)
   * Port debugger
   * Port libraries
-    * SDL2 support (waiting on official port)
+    * SDL2 support (waiting for official port)
     * ~~OpenSSL support~~
     * ~~zlib support~~
-    * ~~ODBC support~~
+    * ODBC support
 * Testing
    * [Test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
      * ~~Manually validate first 20~~
@@ -69,8 +69,7 @@ Save the link register between function calls out of the JIT'ed code.
      * ~~Lambda expressions~~
      * ~~Closures~~
      * ~~RegEx~~
-     * ~~Encryption~~
-     * ODBC
+   * ~~Intergation with build process~~
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~
