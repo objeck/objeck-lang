@@ -51,7 +51,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 ## Binaries
 Get the latest [binaries](https://sourceforge.net/projects/objeck-lang/).
 
-## Development 
+## Design and Development 
 ![alt text](images/design2.png "Compiler & VM")
 
 Building on Linux and macOS:
