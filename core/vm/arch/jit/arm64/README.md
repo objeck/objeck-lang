@@ -36,12 +36,12 @@ Save the link register between function calls out of the JIT'ed code.
 * Application entitlements:
 	Consider 'Allow Unsigned Executable Memory' option for shipping vs. signing for code execution
 	```
-<dict>
-    <key>com.apple.security.cs.allow-jit</key>
-    <true/>
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
-</dict>
+	<dict>
+      <key>com.apple.security.cs.allow-jit</key>
+      <true/>
+      <key>com.apple.security.cs.disable-library-validation</key>
+      <true/>
+	</dict>
 	```
 
 ### Optimizations
