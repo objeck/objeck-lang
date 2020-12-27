@@ -1,0 +1,18 @@
+#~
+# compile: obc -src https_1.obs -lib gen_collect,net' -dest https_1.obe
+# run: obr https_1.obe
+~#
+
+use Web.HTTP;
+
+class HttpsTest {
+	function : Main(args : String[]) ~ Nil {
+		html := HttpsClient->New()->GetAll("https://www.nasa.gov");
+		if(html = Nil) {
+			"--- Unable to fetch URL ---"->ErrorLine();
+		}
+		else {
+			html->PrintLine();
+		};
+	}
+}

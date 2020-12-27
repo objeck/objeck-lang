@@ -2715,7 +2715,6 @@ void Runtime::StackInterpreter::StackErrorUnwind()
               << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
       }
     }
-    pos = 0;
   }
   wcerr << L"  ..." << endl;
 #else

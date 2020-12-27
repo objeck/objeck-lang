@@ -76,7 +76,9 @@
 				2517DF9D17EE60CC0098D0DE /* Compiler */,
 				2517DF9C17EE60CC0098D0DE /* Products */,
 			);
+			indentWidth = 3;
 			sourceTree = "<group>";
+			tabWidth = 3;
 		};
 		2517DF9C17EE60CC0098D0DE /* Products */ = {
 			isa = PBXGroup;

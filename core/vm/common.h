@@ -437,7 +437,7 @@ class StackMethod {
     return dclrs;
   }
 
-  inline const int GetNumberDeclarations() {
+  inline const long GetNumberDeclarations() {
     return num_dclrs;
   }
 
@@ -686,7 +686,7 @@ class StackClass {
     return cls_dclrs;
   }
 
-  inline int GetNumberClassDeclarations() const {
+  inline long GetNumberClassDeclarations() const {
     return cls_num_dclrs;
   }
 
@@ -698,7 +698,7 @@ class StackClass {
     return closure_dclrs[id];
   }
 
-  inline int GetNumberInstanceDeclarations() const {
+  inline long GetNumberInstanceDeclarations() const {
     return inst_num_dclrs;
   }
 
@@ -1009,7 +1009,7 @@ class StackProgram {
     string_cls_id = id;
   }
 
-  int GetClassObjectId() {
+   const long GetClassObjectId() {
     if(cls_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.Class");
       if(!cls) {
@@ -1022,7 +1022,7 @@ class StackProgram {
     return cls_cls_id;
   }
 
-  int GetMethodObjectId() {
+   const long GetMethodObjectId() {
     if(mthd_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.Method");
       if(!cls) {
@@ -1035,7 +1035,7 @@ class StackProgram {
     return mthd_cls_id;
   }
 
-  int GetSocketObjectId() {
+   const long GetSocketObjectId() {
     if(sock_cls_id < 0) {
       StackClass* cls = GetClass(L"System.IO.Net.TCPSocket");
       if(!cls) {
@@ -1048,7 +1048,7 @@ class StackProgram {
     return sock_cls_id;
   }
 
-  int GetDataTypeObjectId() {
+   const long GetDataTypeObjectId() {
     if(data_type_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.DataType");
       if(!cls) {
