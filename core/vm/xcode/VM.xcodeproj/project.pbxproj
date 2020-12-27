@@ -280,7 +280,7 @@
 			buildSettings = {
 				CLANG_WARN_INT_CONVERSION = YES;
 				CODE_SIGN_ENTITLEMENTS = "VM-A64.entitlements";
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -320,7 +320,7 @@
 			buildSettings = {
 				CLANG_WARN_INT_CONVERSION = YES;
 				CODE_SIGN_ENTITLEMENTS = "VM-A64.entitlements";
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				ENABLE_HARDENED_RUNTIME = YES;
