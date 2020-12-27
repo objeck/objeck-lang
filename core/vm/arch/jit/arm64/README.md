@@ -1,4 +1,6 @@
 ## JIT Compiler for Apple Silicon (ARMv8) 
+Beta candidate build functional. Currently missing is SDL2 and ODBC support.
+
 While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers. Values stored in volatile registers need to saved between function calls. ARMv8 does not support novel conditional instruction execution.
 
 ### Registers and Stack
@@ -67,7 +69,7 @@ Save the link register between function calls out of the JIT'ed code.
      * ~~Lambda expressions~~
      * ~~Closures~~
      * ~~RegEx~~
-     * Encryption (loading libraries at runtime is locked down, need to find a solution)
+     * ~~Encryption~~
      * ODBC
 * Error Checking
    * ~~Nil reference checking~~
