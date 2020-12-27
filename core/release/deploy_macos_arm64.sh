@@ -12,8 +12,8 @@ mkdir deploy/doc
 
 # build compiler
 cd ../compiler
+xcodebuild -project xcode/Compiler.xcodeproj clean
 xcodebuild -project xcode/Compiler.xcodeproj build
-# make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp xcode/build/Release/obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
@@ -21,33 +21,23 @@ rm ../release/deploy/lib/gtk2.obl
 
 # build VM
 cd ../vm
+xcodebuild -project xcode/VM.xcodeproj clean
 xcodebuild -project xcode/VM.xcodeproj build
 cp xcode/build/Release/obr ../release/deploy/bin
 
 # build debugger
 cd ../debugger
-: '
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp make/Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp make/Makefile.OSX.64 Makefile
-else
-	cp make/Makefile.64 Makefile
-fi
-make clean; make -j3
-cp obd ../release/deploy/bin
+xcodebuild -project xcode/Debugger.xcodeproj clean
+xcodebuild -project xcode/Debugger.xcodeproj build
+cp xcode/build/Release/obd ../release/deploy/bin
 
 # build libraries
+cd ../lib/openssl
+xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean
+xcodebuild -project macos/xcode/objk_openssl.xcodeproj build
+cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 
-cd ../lib/odbc
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	./build_osx_x64.sh odbc
-	cp odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
-else
-	./build_linux.sh odbc
-	cp odbc.so ../../release/deploy/lib/native/libobjk_odbc.so
-fi
-
+:'
 cd ../sdl
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh sdl
@@ -57,11 +47,16 @@ else
 	cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 fi
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
-'
 
-cd ../lib/openssl
-xcodebuild -project macos/xcode/objk_openssl.xcodeproj build
-cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
+cd ../odbc
+if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+	./build_osx_x64.sh odbc
+	cp odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
+else
+	./build_linux.sh odbc
+	cp odbc.so ../../release/deploy/lib/native/libobjk_odbc.so
+fi
+'
 
 # copy docs
 cd ../../..
