@@ -71,7 +71,7 @@ Save the link register between function calls out of the JIT'ed code.
      * ~~Lambda expressions~~
      * ~~Closures~~
      * ~~RegEx~~
-   * ~~Intergation with build process~~
+   * ~~Integration with build process~~
 * Error Checking
    * ~~Nil reference checking~~
    * ~~Array bounds checking~~
