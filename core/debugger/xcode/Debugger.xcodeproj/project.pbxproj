@@ -31,7 +31,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		ED4797F82599037700E103DA /* obc */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obc; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED4797F82599037700E103DA /* obd */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obd; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED479808259903B800E103DA /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../../parser.h; sourceTree = "<group>"; };
 		ED479809259903B800E103DA /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../../scanner.cpp; sourceTree = "<group>"; };
 		ED47980A259903B800E103DA /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../../scanner.h; sourceTree = "<group>"; };
@@ -76,7 +76,7 @@
 		ED4797F92599037700E103DA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				ED4797F82599037700E103DA /* obc */,
+				ED4797F82599037700E103DA /* obd */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -123,7 +123,7 @@
 			);
 			name = Debugger;
 			productName = xcode;
-			productReference = ED4797F82599037700E103DA /* obc */;
+			productReference = ED4797F82599037700E103DA /* obd */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -305,7 +305,7 @@
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
 				);
-				PRODUCT_NAME = obc;
+				PRODUCT_NAME = obd;
 			};
 			name = Debug;
 		};
@@ -325,7 +325,7 @@
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
 				);
-				PRODUCT_NAME = obc;
+				PRODUCT_NAME = obd;
 			};
 			name = Release;
 		};
