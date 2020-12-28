@@ -305,7 +305,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_ARM64,
+					_OSX,
+					_DEBUG,
+					"$(inherited)",
+				);
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = obc;
 			};
 			name = Debug;
@@ -314,7 +321,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_ARM64,
+					_OSX,
+				);
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = obc;
 			};
 			name = Release;
