@@ -1333,7 +1333,7 @@ extern "C" {
   {
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
-    int value_size = APITools_GetArraySize(byte_array);
+    const long value_size = APITools_GetArraySize(byte_array);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		
@@ -1564,7 +1564,7 @@ extern "C" {
   {
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* buffer = (char*)APITools_GetByteArray(byte_array);
-    int buffer_size = APITools_GetArraySize(byte_array);
+    const long buffer_size = APITools_GetArraySize(byte_array);
 		
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -1601,7 +1601,7 @@ extern "C" {
 
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* buffer = (char*)APITools_GetByteArray(byte_array);
-    int buffer_size = APITools_GetArraySize(byte_array);
+    const long buffer_size = APITools_GetArraySize(byte_array);
 
     const wchar_t* name = APITools_GetStringValue(context, 2);		
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);

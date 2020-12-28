@@ -592,7 +592,7 @@ void MemoryManager::ClearFreeMemory(bool all) {
   }
 }
 
-size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
+size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces)
 {
   // invalid array cast  
   long id = GetObjectID(mem);
@@ -613,8 +613,8 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarc
   // check interfaces
   cls_id = id;
   while (cls_id != -1) {
-    int* interfaces = cls_interfaces[cls_id];
-    if (interfaces) {
+    long* interfaces = cls_interfaces[cls_id];
+    if(interfaces) {
       int i = 0;
       int inf_id = interfaces[i];
       while (inf_id > -1) {

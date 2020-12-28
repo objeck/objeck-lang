@@ -233,8 +233,8 @@ char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
 void Loader::LoadClasses()
 {
   const int number = ReadInt();
-  int* cls_hierarchy = new int[number];
-  int** cls_interfaces = new int*[number];
+  long* cls_hierarchy = new long[number];
+  long** cls_interfaces = new long*[number];
   StackClass** classes = new StackClass*[number];
 
 #ifdef _DEBUG
@@ -251,7 +251,7 @@ void Loader::LoadClasses()
     // read interface ids
     const int interface_size = ReadInt();
     if(interface_size > 0) {
-      int* interfaces = new int[interface_size + 1];
+      long* interfaces = new long[interface_size + 1];
       int j = 0;
       while(j < interface_size) {
         interfaces[j++] = ReadInt();

@@ -12,8 +12,7 @@ mkdir deploy/doc
 
 # build compiler
 cd ../compiler
-xcodebuild -project xcode/Compiler.xcodeproj clean
-xcodebuild -project xcode/Compiler.xcodeproj build
+xcodebuild -project xcode/Compiler.xcodeproj clean build
 cp xcode/build/Release/obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
@@ -21,20 +20,17 @@ rm ../release/deploy/lib/gtk2.obl
 
 # build VM
 cd ../vm
-xcodebuild -project xcode/VM.xcodeproj clean
-xcodebuild -project xcode/VM.xcodeproj build
+xcodebuild -project xcode/VM.xcodeproj clean build
 cp xcode/build/Release/obr ../release/deploy/bin
 
 # build debugger
 cd ../debugger
-xcodebuild -project xcode/Debugger.xcodeproj clean
-xcodebuild -project xcode/Debugger.xcodeproj build
+xcodebuild -project xcode/Debugger.xcodeproj clean build
 cp xcode/build/Release/obd ../release/deploy/bin
 
 # build libraries
 cd ../lib/openssl
-xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean
-xcodebuild -project macos/xcode/objk_openssl.xcodeproj build
+xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 
 :'
@@ -47,16 +43,11 @@ else
 	cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 fi
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
+'
 
 cd ../odbc
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	./build_osx_x64.sh odbc
-	cp odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
-else
-	./build_linux.sh odbc
-	cp odbc.so ../../release/deploy/lib/native/libobjk_odbc.so
-fi
-'
+xcodebuild -project macos/xcode/ODBC.xcodeproj clean build
+cp macos/xcode/build/Release/libobjk_odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 
 # copy docs
 cd ../../..

@@ -819,14 +819,14 @@ class StackClass {
 class StackProgram {
   map<wstring, StackClass*> cls_map;
   StackClass** classes;
-  int class_num;
-  int* cls_hierarchy;
-  int** cls_interfaces;
-  int string_cls_id;
-  int cls_cls_id;
-  int mthd_cls_id;
-  int sock_cls_id;
-  int data_type_cls_id;
+  long class_num;
+  long* cls_hierarchy;
+  long** cls_interfaces;
+  long string_cls_id;
+  long cls_cls_id;
+  long mthd_cls_id;
+  long sock_cls_id;
+  long data_type_cls_id;
   StackMethod* init_method;
   static map<wstring, wstring> properties_map;
 
@@ -1001,7 +1001,7 @@ class StackProgram {
     return init_method;
   }
 
-  int GetStringObjectId() const {
+  const long GetStringObjectId() const {
     return string_cls_id;
   }
 
@@ -1111,19 +1111,19 @@ class StackProgram {
     return nullptr;
   }
 
-  void SetHierarchy(int* h) {
+  void SetHierarchy(long* h) {
     cls_hierarchy = h;
   }
 
-  inline int* GetHierarchy() const {
+  inline long* GetHierarchy() const {
     return cls_hierarchy;
   }
 
-  void SetInterfaces(int** i) {
+  void SetInterfaces(long** i) {
     cls_interfaces = i;
   }
 
-  inline int** GetInterfaces() const {
+  inline long** GetInterfaces() const {
     return cls_interfaces;
   }  
 
@@ -1139,7 +1139,7 @@ class StackProgram {
     return classes;
   }
 
-  inline int GetClassNumber() const {  
+  inline long GetClassNumber() const {
     return class_num;
   }
 
@@ -1198,14 +1198,14 @@ class ObjectSerializer
     map<size_t*, long>::iterator find = serial_ids.find(mem);
     if(find != serial_ids.end()) {
       cur_id = find->second;
-      SerializeInt(cur_id);
+      SerializeInt((int32_t)cur_id);
 
       return true;
     }
     next_id++;
     cur_id = next_id * -1;
     serial_ids.insert(pair<size_t*, long>(mem, next_id));
-    SerializeInt(cur_id);
+    SerializeInt((int32_t)cur_id);
 
     return false;
   }
