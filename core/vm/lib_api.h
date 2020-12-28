@@ -63,7 +63,7 @@ enum FunctionId {
 };
 
 // gets the size of an Object[] array
-int APITools_GetArgumentCount(VMContext& context) {
+const long APITools_GetArgumentCount(VMContext& context) {
   if(context.data_array) {
     return (long)context.data_array[0];
   }
@@ -149,7 +149,7 @@ wchar_t* APITools_GetCharArray(size_t * array) {
   return nullptr;
 }
 
-int APITools_GetArraySize(size_t * array) {
+long APITools_GetArraySize(size_t * array) {
   if(array) {
     return (long)array[0];
   }
@@ -206,7 +206,7 @@ size_t * APITools_MakeCharArray(VMContext & context, const long char_array_size)
 }
 
 // gets the requested function ID from an Object[]
-int APITools_GetFunctionValue(VMContext & context, int index, FunctionId id) {
+long APITools_GetFunctionValue(VMContext & context, int index, FunctionId id) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
