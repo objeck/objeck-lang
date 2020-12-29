@@ -601,7 +601,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierar
   }
 
   // upcast
-  int cls_id = id;
+  long cls_id = id;
   while (cls_id != -1) {
     if (cls_id == to_id) {
       return mem;
@@ -616,7 +616,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierar
     long* interfaces = cls_interfaces[cls_id];
     if(interfaces) {
       int i = 0;
-      int inf_id = interfaces[i];
+      long inf_id = interfaces[i];
       while (inf_id > -1) {
         if (inf_id == to_id) {
           return mem;
