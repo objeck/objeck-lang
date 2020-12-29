@@ -298,6 +298,7 @@
 					_OSX,
 					_DEBUGGER,
 					_DEBUG,
+					_DEBUG_GC,
 				);
 				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
 				OTHER_LDFLAGS = (

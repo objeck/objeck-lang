@@ -1702,7 +1702,11 @@ int main(int argc, char** argv)
 #elif _WIN32
  usage += L" (x86 Windows)";
 #elif _OSX
- usage += L" (x86-64 macOS)";
+#ifdef _ARM64
+    usage += L" (macOS ARMv8)";
+#else
+    usage += L" (macOS x86_64)";
+#endif
 #elif _X64
  usage += L" (x86-64 Linux)";
 #elif _ARM32
