@@ -169,10 +169,6 @@ class MemoryManager {
   }
 
   static size_t* GetMemory(size_t alloc_size);
-
-  static void ReleaseMemory(size_t* mem) {
-    AddFreeMemory(mem - 1);
-  }
   static void AddFreeMemory(size_t* raw_mem);
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);  
   static size_t* GetFreeMemory(size_t size);

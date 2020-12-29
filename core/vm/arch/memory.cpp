@@ -379,6 +379,9 @@ size_t* MemoryManager::GetMemory(size_t size) {
 
   size_t alloc_size = size + sizeof(size_t);
   size_t* raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
+#ifdef _DEBUG_GC
+  wcout << L"*** Raw allocation: address=" << raw_mem << L" ***" << endl;
+#endif
   raw_mem[0] = size;
   return raw_mem + 1;
 }
@@ -885,7 +888,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
-      ReleaseMemory(tmp);
+      AddFreeMemory(tmp - 1);
 #ifdef _DEBUG_GC
       wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;

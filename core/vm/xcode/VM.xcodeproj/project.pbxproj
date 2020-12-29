@@ -68,9 +68,9 @@
 				255B2D5F1966EF5400AF1F2E /* VM */,
 				255B2D5E1966EF5400AF1F2E /* Products */,
 			);
-			indentWidth = 3;
+			indentWidth = 2;
 			sourceTree = "<group>";
-			tabWidth = 3;
+			tabWidth = 2;
 		};
 		255B2D5E1966EF5400AF1F2E /* Products */ = {
 			isa = PBXGroup;
@@ -292,7 +292,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_OSX,
 					_ARM64,
-					_DEBUG,
+					_DEBUG_GC,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
