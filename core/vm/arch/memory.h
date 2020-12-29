@@ -190,7 +190,7 @@ class MemoryManager {
 
     for(set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
       size_t* mem = *iter;
-      mem -= EXTRA_BUF_SIZE;
+      mem -= EXTRA_BUF_SIZE + 1;
       free(mem);
       mem = nullptr;
     }
