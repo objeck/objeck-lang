@@ -8,29 +8,19 @@
 
 /* Begin PBXBuildFile section */
 		ED2B5A42259CF06D00668C70 /* SDL2_rotozoom.c in Sources */ = {isa = PBXBuildFile; fileRef = ED2B5A38259CF06D00668C70 /* SDL2_rotozoom.c */; };
-		ED2B5A43259CF06D00668C70 /* SDL2_rotozoom.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B5A39259CF06D00668C70 /* SDL2_rotozoom.h */; };
 		ED2B5A44259CF06D00668C70 /* SDL2_gfxPrimitives.c in Sources */ = {isa = PBXBuildFile; fileRef = ED2B5A3A259CF06D00668C70 /* SDL2_gfxPrimitives.c */; };
-		ED2B5A45259CF06D00668C70 /* SDL2_framerate.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B5A3B259CF06D00668C70 /* SDL2_framerate.h */; };
-		ED2B5A46259CF06D00668C70 /* SDL2_gfxPrimitives.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B5A3C259CF06D00668C70 /* SDL2_gfxPrimitives.h */; };
 		ED2B5A47259CF06D00668C70 /* sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B5A3D259CF06D00668C70 /* sdl.cpp */; };
-		ED2B5A48259CF06D00668C70 /* SDL2_gfxPrimitives_font.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B5A3E259CF06D00668C70 /* SDL2_gfxPrimitives_font.h */; };
 		ED2B5A49259CF06D00668C70 /* SDL2_framerate.c in Sources */ = {isa = PBXBuildFile; fileRef = ED2B5A3F259CF06D00668C70 /* SDL2_framerate.c */; };
 		ED2B5A4A259CF06D00668C70 /* SDL2_imageFilter.c in Sources */ = {isa = PBXBuildFile; fileRef = ED2B5A40259CF06D00668C70 /* SDL2_imageFilter.c */; };
-		ED2B5A4B259CF06D00668C70 /* SDL2_imageFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B5A41259CF06D00668C70 /* SDL2_imageFilter.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		ED2B5A28259CF03C00668C70 /* libxcode.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libxcode.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED2B5A28259CF03C00668C70 /* libobjk_openssl.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libobjk_openssl.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED2B5A38259CF06D00668C70 /* SDL2_rotozoom.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SDL2_rotozoom.c; path = ../../../SDL2_rotozoom.c; sourceTree = "<group>"; };
-		ED2B5A39259CF06D00668C70 /* SDL2_rotozoom.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDL2_rotozoom.h; path = ../../../SDL2_rotozoom.h; sourceTree = "<group>"; };
 		ED2B5A3A259CF06D00668C70 /* SDL2_gfxPrimitives.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SDL2_gfxPrimitives.c; path = ../../../SDL2_gfxPrimitives.c; sourceTree = "<group>"; };
-		ED2B5A3B259CF06D00668C70 /* SDL2_framerate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDL2_framerate.h; path = ../../../SDL2_framerate.h; sourceTree = "<group>"; };
-		ED2B5A3C259CF06D00668C70 /* SDL2_gfxPrimitives.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDL2_gfxPrimitives.h; path = ../../../SDL2_gfxPrimitives.h; sourceTree = "<group>"; };
 		ED2B5A3D259CF06D00668C70 /* sdl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdl.cpp; path = ../../../sdl.cpp; sourceTree = "<group>"; };
-		ED2B5A3E259CF06D00668C70 /* SDL2_gfxPrimitives_font.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDL2_gfxPrimitives_font.h; path = ../../../SDL2_gfxPrimitives_font.h; sourceTree = "<group>"; };
 		ED2B5A3F259CF06D00668C70 /* SDL2_framerate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SDL2_framerate.c; path = ../../../SDL2_framerate.c; sourceTree = "<group>"; };
 		ED2B5A40259CF06D00668C70 /* SDL2_imageFilter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SDL2_imageFilter.c; path = ../../../SDL2_imageFilter.c; sourceTree = "<group>"; };
-		ED2B5A41259CF06D00668C70 /* SDL2_imageFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDL2_imageFilter.h; path = ../../../SDL2_imageFilter.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,7 +45,7 @@
 		ED2B5A29259CF03C00668C70 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				ED2B5A28259CF03C00668C70 /* libxcode.dylib */,
+				ED2B5A28259CF03C00668C70 /* libobjk_openssl.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -65,14 +55,9 @@
 			children = (
 				ED2B5A3D259CF06D00668C70 /* sdl.cpp */,
 				ED2B5A3F259CF06D00668C70 /* SDL2_framerate.c */,
-				ED2B5A3B259CF06D00668C70 /* SDL2_framerate.h */,
-				ED2B5A3E259CF06D00668C70 /* SDL2_gfxPrimitives_font.h */,
 				ED2B5A3A259CF06D00668C70 /* SDL2_gfxPrimitives.c */,
-				ED2B5A3C259CF06D00668C70 /* SDL2_gfxPrimitives.h */,
 				ED2B5A40259CF06D00668C70 /* SDL2_imageFilter.c */,
-				ED2B5A41259CF06D00668C70 /* SDL2_imageFilter.h */,
 				ED2B5A38259CF06D00668C70 /* SDL2_rotozoom.c */,
-				ED2B5A39259CF06D00668C70 /* SDL2_rotozoom.h */,
 			);
 			path = xcode;
 			sourceTree = "<group>";
@@ -84,20 +69,15 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED2B5A46259CF06D00668C70 /* SDL2_gfxPrimitives.h in Headers */,
-				ED2B5A43259CF06D00668C70 /* SDL2_rotozoom.h in Headers */,
-				ED2B5A48259CF06D00668C70 /* SDL2_gfxPrimitives_font.h in Headers */,
-				ED2B5A4B259CF06D00668C70 /* SDL2_imageFilter.h in Headers */,
-				ED2B5A45259CF06D00668C70 /* SDL2_framerate.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		ED2B5A27259CF03B00668C70 /* xcode */ = {
+		ED2B5A27259CF03B00668C70 /* SDL2 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = ED2B5A33259CF03C00668C70 /* Build configuration list for PBXNativeTarget "xcode" */;
+			buildConfigurationList = ED2B5A33259CF03C00668C70 /* Build configuration list for PBXNativeTarget "SDL2" */;
 			buildPhases = (
 				ED2B5A24259CF03B00668C70 /* Headers */,
 				ED2B5A25259CF03B00668C70 /* Sources */,
@@ -107,9 +87,9 @@
 			);
 			dependencies = (
 			);
-			name = xcode;
+			name = SDL2;
 			productName = xcode;
-			productReference = ED2B5A28259CF03C00668C70 /* libxcode.dylib */;
+			productReference = ED2B5A28259CF03C00668C70 /* libobjk_openssl.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
 /* End PBXNativeTarget section */
@@ -125,7 +105,7 @@
 					};
 				};
 			};
-			buildConfigurationList = ED2B5A23259CF03B00668C70 /* Build configuration list for PBXProject "xcode" */;
+			buildConfigurationList = ED2B5A23259CF03B00668C70 /* Build configuration list for PBXProject "SDL2" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -138,7 +118,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				ED2B5A27259CF03B00668C70 /* xcode */,
+				ED2B5A27259CF03B00668C70 /* SDL2 */,
 			);
 		};
 /* End PBXProject section */
@@ -276,16 +256,33 @@
 				CODE_SIGN_STYLE = Automatic;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_TESTABILITY = YES;
+				EXCLUDED_ARCHS = x86_64;
 				EXECUTABLE_PREFIX = lib;
+				FRAMEWORK_SEARCH_PATHS = "";
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					__NCURSES_H,
+					_ARM64,
+					_OSX,
+					_THREAD_SAFE,
+				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				HEADER_SEARCH_PATHS = (
 					../../../openssl/macos/include,
 					/opt/homebrew/include,
 					/opt/homebrew/include/SDL2,
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib/;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-lSDL2",
+					"-lSDL2_image",
+					"-lSDL2_ttf",
+					"-lSDL2_mixer",
+				);
+				PRODUCT_NAME = objk_openssl;
 				SKIP_INSTALL = YES;
 			};
 			name = Debug;
@@ -296,16 +293,33 @@
 				CODE_SIGN_STYLE = Automatic;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_TESTABILITY = YES;
+				EXCLUDED_ARCHS = x86_64;
 				EXECUTABLE_PREFIX = lib;
+				FRAMEWORK_SEARCH_PATHS = "";
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					__NCURSES_H,
+					_ARM64,
+					_OSX,
+					_THREAD_SAFE,
+				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				HEADER_SEARCH_PATHS = (
 					../../../openssl/macos/include,
 					/opt/homebrew/include,
 					/opt/homebrew/include/SDL2,
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib/;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-lSDL2",
+					"-lSDL2_image",
+					"-lSDL2_ttf",
+					"-lSDL2_mixer",
+				);
+				PRODUCT_NAME = objk_openssl;
 				SKIP_INSTALL = YES;
 			};
 			name = Release;
@@ -313,7 +327,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		ED2B5A23259CF03B00668C70 /* Build configuration list for PBXProject "xcode" */ = {
+		ED2B5A23259CF03B00668C70 /* Build configuration list for PBXProject "SDL2" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ED2B5A31259CF03C00668C70 /* Debug */,
@@ -322,7 +336,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		ED2B5A33259CF03C00668C70 /* Build configuration list for PBXNativeTarget "xcode" */ = {
+		ED2B5A33259CF03C00668C70 /* Build configuration list for PBXNativeTarget "SDL2" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ED2B5A34259CF03C00668C70 /* Debug */,
