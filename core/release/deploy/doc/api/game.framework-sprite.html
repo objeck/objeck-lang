@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Sprite</h2><p>Bitmap sprite</p><p>Implements: <i><a href='game.framework-shape.html' target='main'>Shape</a></i></p><strong>Operations</strong><ul><li><a href='#sprite-addx'>AddX</a></li><li><a href='#sprite-addy'>AddY</a></li><li><a href='#sprite-free'>Free</a></li><li><a href='#sprite-getbottom'>GetBottom</a></li><li><a href='#sprite-getcenterx'>GetCenterX</a></li><li><a href='#sprite-getcentery'>GetCenterY</a></li><li><a href='#sprite-getheight'>GetHeight</a></li><li><a href='#sprite-getleft'>GetLeft</a></li><li><a href='#sprite-getposition'>GetPosition</a></li><li><a href='#sprite-getright'>GetRight</a></li><li><a href='#sprite-getscale'>GetScale</a></li><li><a href='#sprite-gettop'>GetTop</a></li><li><a href='#sprite-getwidth'>GetWidth</a></li><li><a href='#sprite-set'>Set</a></li><li><a href='#sprite-setalpha'>SetAlpha</a></li><li><a href='#sprite-setblendmode'>SetBlendMode</a></li><li><a href='#sprite-setbottom'>SetBottom</a></li><li><a href='#sprite-setcenter'>SetCenter</a></li><li><a href='#sprite-setcenterx'>SetCenterX</a></li><li><a href='#sprite-setcentery'>SetCenterY</a></li><li><a href='#sprite-setcolor'>SetColor</a></li><li><a href='#sprite-setleft'>SetLeft</a></li><li><a href='#sprite-setpostion'>SetPostion</a></li><li><a href='#sprite-setright'>SetRight</a></li><li><a href='#sprite-setscale'>SetScale</a></li><li><a href='#sprite-settop'>SetTop</a></li></ul><hr/><h3>AddX</h3><a id='sprite-addx'></a><p><strong>Increments the current x-position</strong></p><code>method : public : AddX(x:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>increment to the current x-position</td></tr></table><h3>AddY</h3><a id='sprite-addy'></a><p><strong>Increments the current y-position</strong></p><code>method : public : AddY(y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>increment to the current y-position</td></tr></table><h3>Free</h3><a id='sprite-free'></a><p><strong>Destroys and frees sprite resources</strong></p><code>method : public : Free() ~ Nil</code><h3>GetBottom</h3><a id='sprite-getbottom'></a><p><strong>Gets bottom position</strong></p><code>method : public : GetBottom() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>bottom position</td></tr></table><br/><h3>GetCenterX</h3><a id='sprite-getcenterx'></a><p><strong>Gets the center x-position</strong></p><code>method : public : GetCenterX() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>center x-position</td></tr></table><br/><h3>GetCenterY</h3><a id='sprite-getcentery'></a><p><strong>Gets the center y-position</strong></p><code>method : public : GetCenterY() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>center y-position</td></tr></table><br/><h3>GetHeight</h3><a id='sprite-getheight'></a><p><strong>Gets sprite height</strong></p><code>method : public : GetHeight() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>sprite height</td></tr></table><br/><h3>GetLeft</h3><a id='sprite-getleft'></a><p><strong>Gets left position</strong></p><code>method : public : GetLeft() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>left position</td></tr></table><br/><h3>GetPosition</h3><a id='sprite-getposition'></a><p><strong>Gets sprite position</strong></p><code>method : public : GetPosition() ~ Position</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.framework-position.html' target='main'>Position</a></td><td>sprite position</td></tr></table><br/><h3>GetRight</h3><a id='sprite-getright'></a><p><strong>Gets right position</strong></p><code>method : public : GetRight() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>right position</td></tr></table><br/><h3>GetScale</h3><a id='sprite-getscale'></a><p><strong>Gets scaling percentage</strong></p><code>method : public : GetScale() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>scaling percentage</td></tr></table><br/><h3>GetTop</h3><a id='sprite-gettop'></a><p><strong>Gets top position</strong></p><code>method : public : GetTop() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>top position</td></tr></table><br/><h3>GetWidth</h3><a id='sprite-getwidth'></a><p><strong>Gets sprite width</strong></p><code>method : public : GetWidth() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>sprite width</td></tr></table><br/><h3>Set</h3><a id='sprite-set'></a><p><strong>Sets upper left position</strong></p><code>method : public : Set(x:Int, y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><p><strong>Sets position</strong></p><code>method : public : Set(v2:Vector2) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>v2</td><td><a href='game.framework-vector2.html' target='main'>Vector2</a></td><td>vector position</td></tr></table><h3>SetAlpha</h3><a id='sprite-setalpha'></a><p><strong>Sets alpha</strong></p><code>method : public : SetAlpha(alpha:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>alpha</td><td><a href='system-int.html' target='main'>Int</a></td><td>setting</td></tr></table><h3>SetBlendMode</h3><a id='sprite-setblendmode'></a><p><strong>Sets blend mode</strong></p><code>method : public : SetBlendMode(blending:BlendMode) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>blending</td><td>BlendMode</td><td>blend mode</td></tr></table><h3>SetBottom</h3><a id='sprite-setbottom'></a><p><strong>Sets bottom position</strong></p><code>method : public : SetBottom(y2:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y2</td><td><a href='system-int.html' target='main'>Int</a></td><td>bottom position</td></tr></table><h3>SetCenter</h3><a id='sprite-setcenter'></a><p><strong>Sets cener position</strong></p><code>method : public : SetCenter(x:Int, y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><h3>SetCenterX</h3><a id='sprite-setcenterx'></a><p><strong>Sets center x-position</strong></p><code>method : public : SetCenterX(x:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>center x-position</td></tr></table><h3>SetCenterY</h3><a id='sprite-setcentery'></a><p><strong>Sets center y-position</strong></p><code>method : public : SetCenterY(y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>center y-position</td></tr></table><h3>SetColor</h3><a id='sprite-setcolor'></a><p><strong>Sets the color</strong></p><code>method : public : SetColor(red:Int, green:Int, blue:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>red</td><td><a href='system-int.html' target='main'>Int</a></td><td>red</td></tr><tr><td>green</td><td><a href='system-int.html' target='main'>Int</a></td><td>green</td></tr><tr><td>blue</td><td><a href='system-int.html' target='main'>Int</a></td><td>blue</td></tr></table><h3>SetLeft</h3><a id='sprite-setleft'></a><p><strong>Sets left position</strong></p><code>method : public : SetLeft(x:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>left position</td></tr></table><h3>SetPostion</h3><a id='sprite-setpostion'></a><p><strong>Sets the current x-position</strong></p><code>method : public : SetPostion(position:Position) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>position</td><td><a href='game.framework-position.html' target='main'>Position</a></td><td>new position</td></tr></table><h3>SetRight</h3><a id='sprite-setright'></a><p><strong>Sets right position</strong></p><code>method : public : SetRight(x2:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x2</td><td><a href='system-int.html' target='main'>Int</a></td><td>right position</td></tr></table><h3>SetScale</h3><a id='sprite-setscale'></a><p><strong>Sets scaling percentage</strong></p><code>method : public : SetScale(scale:Float) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>scale</td><td><a href='system-float.html' target='main'>Float</a></td><td>scaling percentage</td></tr></table><h3>SetTop</h3><a id='sprite-settop'></a><p><strong>Sets top position</strong></p><code>method : public : SetTop(y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>top position</td></tr></table></body></html>

@@ -1,0 +1,57 @@
+dependencies: \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/odbc.cpp \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/odbc.h \
+  ../include/sql.h ../include/sqltypes.h ../include/iodbcunix.h \
+  ../include/sqlext.h ../include/sqlucode.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../vm/lib_api.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../vm/common.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../vm/../shared/instrs.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../vm/../shared/sys.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../vm/../shared/logger.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../vm/../shared/traps.h \
+  ../../../openssl/macos/include/openssl/bio.h \
+  ../../../openssl/macos/include/openssl/e_os2.h \
+  ../../../openssl/macos/include/openssl/opensslconf.h \
+  ../../../openssl/macos/include/openssl/opensslv.h \
+  ../../../openssl/macos/include/openssl/crypto.h \
+  ../../../openssl/macos/include/openssl/safestack.h \
+  ../../../openssl/macos/include/openssl/stack.h \
+  ../../../openssl/macos/include/openssl/ossl_typ.h \
+  ../../../openssl/macos/include/openssl/cryptoerr.h \
+  ../../../openssl/macos/include/openssl/symhacks.h \
+  ../../../openssl/macos/include/openssl/bioerr.h \
+  ../../../openssl/macos/include/openssl/ssl.h \
+  ../../../openssl/macos/include/openssl/comp.h \
+  ../../../openssl/macos/include/openssl/comperr.h \
+  ../../../openssl/macos/include/openssl/lhash.h \
+  ../../../openssl/macos/include/openssl/pem.h \
+  ../../../openssl/macos/include/openssl/evp.h \
+  ../../../openssl/macos/include/openssl/evperr.h \
+  ../../../openssl/macos/include/openssl/objects.h \
+  ../../../openssl/macos/include/openssl/obj_mac.h \
+  ../../../openssl/macos/include/openssl/asn1.h \
+  ../../../openssl/macos/include/openssl/asn1err.h \
+  ../../../openssl/macos/include/openssl/objectserr.h \
+  ../../../openssl/macos/include/openssl/x509.h \
+  ../../../openssl/macos/include/openssl/buffer.h \
+  ../../../openssl/macos/include/openssl/buffererr.h \
+  ../../../openssl/macos/include/openssl/ec.h \
+  ../../../openssl/macos/include/openssl/ecerr.h \
+  ../../../openssl/macos/include/openssl/sha.h \
+  ../../../openssl/macos/include/openssl/x509err.h \
+  ../../../openssl/macos/include/openssl/x509_vfy.h \
+  ../../../openssl/macos/include/openssl/pkcs7.h \
+  ../../../openssl/macos/include/openssl/pkcs7err.h \
+  ../../../openssl/macos/include/openssl/pemerr.h \
+  ../../../openssl/macos/include/openssl/hmac.h \
+  ../../../openssl/macos/include/openssl/async.h \
+  ../../../openssl/macos/include/openssl/asyncerr.h \
+  ../../../openssl/macos/include/openssl/ct.h \
+  ../../../openssl/macos/include/openssl/cterr.h \
+  ../../../openssl/macos/include/openssl/sslerr.h \
+  ../../../openssl/macos/include/openssl/ssl2.h \
+  ../../../openssl/macos/include/openssl/ssl3.h \
+  ../../../openssl/macos/include/openssl/tls1.h \
+  ../../../openssl/macos/include/openssl/dtls1.h \
+  ../../../openssl/macos/include/openssl/srtp.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/odbc/../../shared/sys.h

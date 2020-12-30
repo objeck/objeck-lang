@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>FloatSet</h2><p>Set of float values</p><strong>Operations</strong><ul><li><a href='#floatset-new'>New</a></li><li><a href='#floatset-empty'>Empty</a></li><li><a href='#floatset-filter'>Filter</a></li><li><a href='#floatset-getkeys'>GetKeys</a></li><li><a href='#floatset-has'>Has</a></li><li><a href='#floatset-insert'>Insert</a></li><li><a href='#floatset-isempty'>IsEmpty</a></li><li><a href='#floatset-remove'>Remove</a></li><li><a href='#floatset-size'>Size</a></li></ul><hr/><h3>New</h3><a id='floatset-new'></a><p><strong>Default constructor</strong></p><code>New()</code><h3>Empty</h3><a id='floatset-empty'></a><p><strong>Clears the set</strong></p><code>method : public : Empty() ~ Nil</code><h3>Filter</h3><a id='floatset-filter'></a><p><strong>Uses the given function to filter out values</strong></p><code>method : public : Filter(f:(Float)~Bool) ~ FloatSet</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(<a href='system-float.html' target='main'>Float</a>)~<a href='system-bool.html' target='main'>Bool</a></td><td>function to use a filter. If the function evaluates to true the value is added to the collection.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-floatset.html' target='main'>FloatSet</a></td><td>filter vector</td></tr></table><br/><h3>GetKeys</h3><a id='floatset-getkeys'></a><p><strong>Get a collection of keys</strong></p><code>method : public : native : GetKeys() ~ FloatVector</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-floatvector.html' target='main'>FloatVector</a></td><td>vector of keys</td></tr></table><br/><h3>Has</h3><a id='floatset-has'></a><p><strong>Checks for key in set</strong></p><code>method : public : Has(key:Float) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-float.html' target='main'>Float</a></td><td>search key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if found, false otherwise</td></tr></table><br/><h3>Insert</h3><a id='floatset-insert'></a><p><strong>Inserts a key into the set</strong></p><code>method : public : Insert(key:Float) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-float.html' target='main'>Float</a></td><td>key</td></tr></table><h3>IsEmpty</h3><a id='floatset-isempty'></a><p><strong>Checks to see if the map is empty</strong></p><code>method : public : IsEmpty() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if empty, false otherwise</td></tr></table><br/><h3>Remove</h3><a id='floatset-remove'></a><p><strong>Removes a key from the set</strong></p><code>method : public : Remove(key:Float) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-float.html' target='main'>Float</a></td><td>key for value to remove</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if removed, false otherwise</td></tr></table><br/><h3>Size</h3><a id='floatset-size'></a><p><strong>Size of map</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of queue</td></tr></table><br/></body></html>
