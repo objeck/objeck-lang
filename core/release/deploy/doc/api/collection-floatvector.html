@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>FloatVector</h2><p>Holds a growable array of float values</p><strong>Operations</strong><ul><li><a href='#floatvector-new'>New</a></li><li><a href='#floatvector-addback'>AddBack</a></li><li><a href='#floatvector-apply'>Apply</a></li><li><a href='#floatvector-average'>Average</a></li><li><a href='#floatvector-binarysearch'>BinarySearch</a></li><li><a href='#floatvector-empty'>Empty</a></li><li><a href='#floatvector-filter'>Filter</a></li><li><a href='#floatvector-find'>Find</a></li><li><a href='#floatvector-get'>Get</a></li><li><a href='#floatvector-has'>Has</a></li><li><a href='#floatvector-max'>Max</a></li><li><a href='#floatvector-min'>Min</a></li><li><a href='#floatvector-reduce'>Reduce</a></li><li><a href='#floatvector-remove'>Remove</a></li><li><a href='#floatvector-removeback'>RemoveBack</a></li><li><a href='#floatvector-set'>Set</a></li><li><a href='#floatvector-size'>Size</a></li><li><a href='#floatvector-sort'>Sort</a></li><li><a href='#floatvector-swap'>Swap</a></li><li><a href='#floatvector-toarray'>ToArray</a></li></ul><hr/><h3>New</h3><a id='floatvector-new'></a><p><strong>Default constructor</strong></p><code>New()</code><p><strong>Copy constructor</strong></p><code>New(values:FloatVector)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>values</td><td><a href='collection-floatvector.html' target='main'>FloatVector</a></td><td>values to copy</td></tr></table><p><strong>Copy constructor</strong></p><code>New(values:Float[])</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>values</td><td><a href='system-float.html' target='main'>Float[]</a></td><td>values to copy</td></tr></table><h3>AddBack</h3><a id='floatvector-addback'></a><p><strong>Adds a vector of values to the end of the vector</strong></p><code>method : public : AddBack(values:FloatVector) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>values</td><td><a href='collection-floatvector.html' target='main'>FloatVector</a></td><td>values to append</td></tr></table><p><strong>Adds a value to the end</strong></p><code>method : public : AddBack(value:Float) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to append</td></tr></table><h3>Apply</h3><a id='floatvector-apply'></a><p><strong>Applies the given function to each value in the vector</strong></p><code>method : public : Apply(f:(Float)~Float) ~ FloatVector</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(<a href='system-float.html' target='main'>Float</a>)~<a href='system-float.html' target='main'>Float</a></td><td>function to apply</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-floatvector.html' target='main'>FloatVector</a></td><td>newly calculated vector</td></tr></table><br/><h3>Average</h3><a id='floatvector-average'></a><p><strong>Calculates the average of the values in the vector</strong></p><code>method : public : native : Average() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>calculated average</td></tr></table><br/><h3>BinarySearch</h3><a id='floatvector-binarysearch'></a><p><strong>Performs a binary search O(log n)</strong></p><code>method : public : native : BinarySearch(value:Float) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to search for</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>index of found value, -1 if not found</td></tr></table><br/><h3>Empty</h3><a id='floatvector-empty'></a><p><strong>Checks to see if the vector is empty</strong></p><code>method : public : Empty() ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td>Nil</td><td>true if empty, false otherwise</td></tr></table><br/><h3>Filter</h3><a id='floatvector-filter'></a><p><strong>Uses the given function to filter out values</strong></p><code>method : public : Filter(f:(Float)~Bool) ~ FloatVector</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(<a href='system-float.html' target='main'>Float</a>)~<a href='system-bool.html' target='main'>Bool</a></td><td>function to use a filter. If the function evaluates to true the value is added to the collection.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-floatvector.html' target='main'>FloatVector</a></td><td>filter vector</td></tr></table><br/><h3>Find</h3><a id='floatvector-find'></a><p><strong>Finds a given value in the vector via linear search</strong></p><code>method : public : native : Find(value:Float) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to search for</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>index of found value, -1 if not found</td></tr></table><br/><h3>Get</h3><a id='floatvector-get'></a><p><strong>Gets an indexed value</strong></p><code>method : public : Get(index:Int) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>index</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr></table><br/><h3>Has</h3><a id='floatvector-has'></a><p><strong>Check of the given value is in the vector</strong></p><code>method : public : Has(value:Float) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to check for</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if found, false otherwise</td></tr></table><br/><h3>Max</h3><a id='floatvector-max'></a><p><strong>Finds the largest value in the vector</strong></p><code>method : public : native : Max() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>largest found value</td></tr></table><br/><h3>Min</h3><a id='floatvector-min'></a><p><strong>Finds the smallest value in the vector</strong></p><code>method : public : native : Min() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>smallest found value</td></tr></table><br/><h3>Reduce</h3><a id='floatvector-reduce'></a><p><strong>Reduces elements in the vector</strong></p><code>method : public : Reduce(f:(Float,Float)~Float) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(<a href='system-float.html' target='main'>Float</a>,<a href='system-float.html' target='main'>Float</a>)~<a href='system-float.html' target='main'>Float</a></td><td>function to apply</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>reduced value</td></tr></table><br/><p><strong>Reduces elements in the vector</strong></p><code>method : public : Reduce(f:(Float,Float)~Float, num:Int) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(<a href='system-float.html' target='main'>Float</a>,<a href='system-float.html' target='main'>Float</a>)~<a href='system-float.html' target='main'>Float</a></td><td>function to apply</td></tr><tr><td>num</td><td><a href='system-int.html' target='main'>Int</a></td><td>number of elements to reduce</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>reduced value</td></tr></table><br/><h3>Remove</h3><a id='floatvector-remove'></a><p><strong>Removes an indexed value</strong></p><code>method : public : Remove(i:Int) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>i</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr></table><br/><h3>RemoveBack</h3><a id='floatvector-removeback'></a><p><strong>Removes the last value</strong></p><code>method : public : RemoveBack() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr></table><br/><h3>Set</h3><a id='floatvector-set'></a><p><strong>Sets an indexed value</strong></p><code>method : public : Set(value:Float, index:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr><tr><td>index</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><h3>Size</h3><a id='floatvector-size'></a><p><strong>Size of vector</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of vector</td></tr></table><br/><h3>Sort</h3><a id='floatvector-sort'></a><p><strong>Sorts the values in the vector</strong></p><code>method : public : Sort() ~ Nil</code><h3>Swap</h3><a id='floatvector-swap'></a><p><strong>Swap two values in the vector</strong></p><code>method : public : Swap(a:Int, b:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>a</td><td><a href='system-int.html' target='main'>Int</a></td><td>first value</td></tr><tr><td>b</td><td><a href='system-int.html' target='main'>Int</a></td><td>second value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if values were swapped</td></tr></table><br/><h3>ToArray</h3><a id='floatvector-toarray'></a><p><strong>Converts the vector into an float array</strong></p><code>method : public : ToArray() ~ Float[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float[]</a></td><td>float array</td></tr></table><br/></body></html>

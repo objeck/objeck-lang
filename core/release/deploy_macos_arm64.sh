@@ -33,17 +33,10 @@ cd ../lib/openssl
 xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 
-:'
 cd ../sdl
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	./build_osx_x64.sh sdl
-	cp sdl.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
-else
-	./build_linux.sh sdl
-	cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
-fi
+./build_osx_arm64.sh sdl
+cp sdl.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
-'
 
 cd ../odbc
 xcodebuild -project macos/xcode/ODBC.xcodeproj clean build

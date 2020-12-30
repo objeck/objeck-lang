@@ -1,0 +1,20 @@
+#~
+# compile: obc -src fs_query_12.obs -lib query,gen_collect,regex,misc' -dest fs_query_12.obe
+# run: obr fs_query_12.obe
+~#
+
+use Query.Structured;
+
+class Example {
+	function : Main(args : String[]) ~ Nil {
+		table := Finder->New(".");
+		if(table <> Nil) {
+			results := table->FindFiles("from files")<String>;
+			if(results <> Nil) {
+				each(i : results) {
+					results->Get(i)->PrintLine();
+				};
+			};
+		};
+	}
+}

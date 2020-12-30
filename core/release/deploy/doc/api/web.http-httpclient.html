@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>HttpClient</h2><p>HTTP client</p><strong>Operations</strong><ul><li><a href='#httpclient-new'>New</a></li><li><a href='#httpclient-addheader'>AddHeader</a></li><li><a href='#httpclient-cookiesenabled'>CookiesEnabled</a></li><li><a href='#httpclient-get'>Get</a></li><li><a href='#httpclient-getall'>GetAll</a></li><li><a href='#httpclient-getcookies'>GetCookies</a></li><li><a href='#httpclient-getheaders'>GetHeaders</a></li><li><a href='#httpclient-post'>Post</a></li><li><a href='#httpclient-postall'>PostAll</a></li><li><a href='#httpclient-setcookie'>SetCookie</a></li></ul><hr/><h3>New</h3><a id='httpclient-new'></a><p><strong>Default constructor</strong></p><code>New()</code><h3>AddHeader</h3><a id='httpclient-addheader'></a><p><strong>Adds a HTTP request header</strong></p><code>method : public : AddHeader(name:String, value:String) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>header name</td></tr><tr><td>value</td><td><a href='system-string.html' target='main'>String</a></td><td>header value</td></tr></table><h3>CookiesEnabled</h3><a id='httpclient-cookiesenabled'></a><p><strong>Sets cookie support</strong></p><code>method : public : CookiesEnabled(cookies_enabled:Bool) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>cookies_enabled</td><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if cookies are enabled, false otherwise</td></tr></table><h3>Get</h3><a id='httpclient-get'></a><p><strong>Performs a HTTP GET</strong></p><code>method : public : Get(url:String) ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>vector of read strings</td></tr></table><br/><p><strong>Performs a HTTP GET</strong></p><code>method : public : Get(url:String, content_type:String) ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr><tr><td>content_type</td><td><a href='system-string.html' target='main'>String</a></td><td>content type</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>vector of read strings</td></tr></table><br/><h3>GetAll</h3><a id='httpclient-getall'></a><p><strong>Performs a HTTP GET and returns results as a String</strong></p><code>function : public : GetAll(url:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>output as one string</td></tr></table><br/><h3>GetCookies</h3><a id='httpclient-getcookies'></a><p><strong>Gets the cookies</strong></p><code>method : public : GetCookies() ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>vector of cookies</td></tr></table><br/><h3>GetHeaders</h3><a id='httpclient-getheaders'></a><p><strong>Gets the HTTP headers</strong></p><code>method : public : GetHeaders() ~ Hash&lt;String,String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-hash_k-compare_v_.html' target='main'>Hash</a>&lt;<a href='system-string.html' target='main'>String</a>,<a href='system-string.html' target='main'>String</a>&gt;</td><td>HTTP headers</td></tr></table><br/><h3>Post</h3><a id='httpclient-post'></a><p><strong>Performs a HTTP POST</strong></p><code>method : public : Post(url:String, data:String) ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr><tr><td>data</td><td><a href='system-string.html' target='main'>String</a></td><td>data to post</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>vector of read strings</td></tr></table><br/><p><strong>Performs a HTTP POST</strong></p><code>method : public : Post(url:String, data:String, content_type:String) ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr><tr><td>data</td><td><a href='system-string.html' target='main'>String</a></td><td>data to post</td></tr><tr><td>content_type</td><td><a href='system-string.html' target='main'>String</a></td><td>content type</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>vector of read strings</td></tr></table><br/><h3>PostAll</h3><a id='httpclient-postall'></a><p><strong>Performs a HTTP POST</strong></p><code>function : public : PostAll(url:String, data:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr><tr><td>data</td><td><a href='system-string.html' target='main'>String</a></td><td>data to post</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>read strings</td></tr></table><br/><p><strong>Performs a HTTP POST</strong></p><code>function : public : PostAll(url:String, data:String, content_type:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>URL</td></tr><tr><td>data</td><td><a href='system-string.html' target='main'>String</a></td><td>data to post</td></tr><tr><td>content_type</td><td><a href='system-string.html' target='main'>String</a></td><td>content type</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>read strings</td></tr></table><br/><h3>SetCookie</h3><a id='httpclient-setcookie'></a><p><strong>Sets a cookie</strong></p><code>method : public : SetCookie(cookie:String) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>cookie</td><td><a href='system-string.html' target='main'>String</a></td><td>cookie nane and value</td></tr></table></body></html>

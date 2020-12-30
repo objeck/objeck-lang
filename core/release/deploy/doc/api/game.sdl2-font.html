@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Font</h2><p>TrueType font rendering</p><strong>Operations</strong><ul><li><a href='#font-new'>New</a></li><li><a href='#font-init'>Init</a></li><li><a href='#font-isnull'>IsNull</a></li><li><a href='#font-quit'>Quit</a></li><li><a href='#font-rendertextblended'>RenderTextBlended</a></li><li><a href='#font-rendertextshaded'>RenderTextShaded</a></li><li><a href='#font-rendertextsolid'>RenderTextSolid</a></li><li><a href='#font-renderutf8blended'>RenderUTF8Blended</a></li><li><a href='#font-renderutf8shaded'>RenderUTF8Shaded</a></li><li><a href='#font-renderutf8solid'>RenderUTF8Solid</a></li></ul><hr/><h3>New</h3><a id='font-new'></a><p><strong>Load file for use as a font, this can load TTF and FON files.</strong></p><code>New(file:String, ptsize:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>file</td><td><a href='system-string.html' target='main'>String</a></td><td>file name to load font from.</td></tr><tr><td>ptsize</td><td><a href='system-int.html' target='main'>Int</a></td><td>Point size (based on 72DPI) to load font as</td></tr></table><p><strong>Load file for use as a font, this can load TTF and FON files.</strong></p><code>New(file:String, ptsize:Int, index:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>file</td><td><a href='system-string.html' target='main'>String</a></td><td>file name to load font from.</td></tr><tr><td>ptsize</td><td><a href='system-int.html' target='main'>Int</a></td><td>Point size (based on 72DPI) to load font as</td></tr><tr><td>index</td><td><a href='system-int.html' target='main'>Int</a></td><td>choose a font face from a file containing multiple font faces. The first face is always index 0.</td></tr></table><h3>Init</h3><a id='font-init'></a><p><strong>Initialize the TrueType font APIs</strong></p><code>function : public : Init() ~ Int</code><h3>IsNull</h3><a id='font-isnull'></a><p><strong>Determines if the underlying SDL C-struct is NULL</strong></p><code>method : public : IsNull() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if NULL, false otherwise</td></tr></table><br/><h3>Quit</h3><a id='font-quit'></a><p><strong>Shutdown and cleanup the TrueType font APIs</strong></p><code>function : public : Quit() ~ Nil</code><h3>RenderTextBlended</h3><a id='font-rendertextblended'></a><p><strong>Render the LATIN1 encoded text blended</strong></p><code>method : public : RenderTextBlended(text:String, fg:Color) ~ Surface</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>text</td><td><a href='system-string.html' target='main'>String</a></td><td>the LATIN1 null terminated string to render.</td></tr><tr><td>fg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the text in. This becomes colormap index 1.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-surface.html' target='main'>Surface</a></td><td>Surface instance, caller responsible for freeing</td></tr></table><br/><h3>RenderTextShaded</h3><a id='font-rendertextshaded'></a><p><strong>Render the LATIN1 encoded text shaded</strong></p><code>method : public : RenderTextShaded(text:String, fg:Color, bg:Color) ~ Surface</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>text</td><td><a href='system-string.html' target='main'>String</a></td><td>the LATIN1 null terminated string to render.</td></tr><tr><td>fg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the text in. This becomes colormap index 1.</td></tr><tr><td>bg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the background box in. This becomes colormap index 0.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-surface.html' target='main'>Surface</a></td><td>Surface instance, caller responsible for freeing</td></tr></table><br/><h3>RenderTextSolid</h3><a id='font-rendertextsolid'></a><p><strong>Render the LATIN1 encoded text blended</strong></p><code>method : public : RenderTextSolid(text:String, fg:Color) ~ Surface</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>text</td><td><a href='system-string.html' target='main'>String</a></td><td>the LATIN1 null terminated string to render.</td></tr><tr><td>fg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the text in. This becomes colormap index 1.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-surface.html' target='main'>Surface</a></td><td>Surface instance, caller responsible for freeing</td></tr></table><br/><h3>RenderUTF8Blended</h3><a id='font-renderutf8blended'></a><p><strong>Render the UTF8 encoded text blended</strong></p><code>method : public : RenderUTF8Blended(text:String, fg:Color) ~ Surface</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>text</td><td><a href='system-string.html' target='main'>String</a></td><td>the LATIN1 null terminated string to render.</td></tr><tr><td>fg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the text in. This becomes colormap index 1.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-surface.html' target='main'>Surface</a></td><td>Surface instance, caller responsible for freeing</td></tr></table><br/><h3>RenderUTF8Shaded</h3><a id='font-renderutf8shaded'></a><p><strong>Render the UTF8 encoded text shaded</strong></p><code>method : public : RenderUTF8Shaded(text:String, fg:Color, bg:Color) ~ Surface</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>text</td><td><a href='system-string.html' target='main'>String</a></td><td>the LATIN1 null terminated string to render.</td></tr><tr><td>fg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the text in. This becomes colormap index 1.</td></tr><tr><td>bg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the background box in. This becomes colormap index 0.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-surface.html' target='main'>Surface</a></td><td>Surface instance, caller responsible for freeing</td></tr></table><br/><h3>RenderUTF8Solid</h3><a id='font-renderutf8solid'></a><p><strong>Render the UTF8 encoded text blended</strong></p><code>method : public : RenderUTF8Solid(text:String, fg:Color) ~ Surface</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>text</td><td><a href='system-string.html' target='main'>String</a></td><td>the LATIN1 null terminated string to render.</td></tr><tr><td>fg</td><td><a href='game.sdl2-color.html' target='main'>Color</a></td><td>the color to render the text in. This becomes colormap index 1.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-surface.html' target='main'>Surface</a></td><td>Surface instance, caller responsible for freeing</td></tr></table><br/></body></html>
