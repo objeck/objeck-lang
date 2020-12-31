@@ -404,7 +404,7 @@ BOOL InitEnvironment()
   std::wstring pathText;
   pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt (v";
   pathText += VERSION_STRING;
-  pathText += L")\r\n@echo Copyright(c) 2008-2020, Randy Hollines\r\n@echo =========================================";
+  pathText += L")\r\n@echo Copyright(c) 2008-2021, Randy Hollines\r\n@echo =========================================";
   WriteLineToFile(cmdFile, pathText);
 
   pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
