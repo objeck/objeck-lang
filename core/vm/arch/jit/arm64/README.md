@@ -55,7 +55,7 @@ Save the link register between function calls out of the JIT'ed code.
   * Port VM
     * ~~Memory manager~~
     * ~~JIT compiler~~
-  * Port debugger
+  * ~~Port debugger~~
   * Port libraries (enable 'Testability')
     * ~~SDL2 support~~
     * ODBC support
@@ -63,8 +63,7 @@ Save the link register between function calls out of the JIT'ed code.
     * ~~zlib support~~
 * Testing
    * [Test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
-     * ~~Manually validate first 50~
-     * Automate validation of the first 100
+     * ~~Manually validate first 50~~
    * [Examples](https://github.com/objeck/objeck-lang/tree/master/programs/deploy)
      * ~~XML parsing~~
      * ~~HTTPS client~~
@@ -81,11 +80,11 @@ Save the link register between function calls out of the JIT'ed code.
    * ~~Logical comparison of negative numbers~~
    * ~~Forward branching~~
    * ~~Backward branching~~
-* Types:
+* Types
    * ~~Array support~~
    * ~~Basic ints, floats, chars and bytes~~
    * ~~Conversions between ints and floats~~
-* Operations: 
+* Operations
    * ~~Mathematical:mul_xxx_xxx and div_xxx_xx, etc.~~
    * ~~Logical: les_reg_reg, gtr_reg_reg, eql_reg_reg, neql_reg_reg, etc.~~
    * ~~Bitwise: or_reg_reg, and_reg_reg, etc.~~
