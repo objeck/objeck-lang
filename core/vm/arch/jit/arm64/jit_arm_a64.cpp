@@ -246,7 +246,7 @@ void JitCompilerA64::ProcessParameters(long params) {
     }
     else {
       RegisterHolder* dest_holder = GetFpRegister();
-      sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
+      dec_mem(0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());

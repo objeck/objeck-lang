@@ -54,6 +54,10 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "../a.obe"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/randyhollines/Documents/Code/objeck-lang/programs/test/arm64/a.obe"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
