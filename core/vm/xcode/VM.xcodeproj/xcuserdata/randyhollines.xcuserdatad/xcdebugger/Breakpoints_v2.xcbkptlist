@@ -3,4 +3,22 @@
    uuid = "450E7F52-B750-4454-B03B-E97568AD48C2"
    type = "1"
    version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "683DAECB-EBCC-4504-87D8-046CD5569917"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../arch/jit/arm64/jit_arm_a64.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "4775"
+            endingLineNumber = "4775"
+            landmarkName = "JitExecutor::Execute(method, inst, op_stack, stack_pos, call_stack, call_stack_pos, frame)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
 </Bucket>
