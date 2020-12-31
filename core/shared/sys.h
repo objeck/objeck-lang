@@ -1,5 +1,5 @@
 /***************************************************************************
- * Copyright (c) 2008-2020, Randy Hollines
+ * Copyright (c) 2008-2021, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
