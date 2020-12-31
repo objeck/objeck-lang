@@ -50,19 +50,20 @@ Save the link register between function calls out of the JIT'ed code.
 
 ### To do
 * General
+  * ~~Automate build process~~
   * ~~Port compiler~~
   * Port VM
     * ~~Memory manager~~
     * ~~JIT compiler~~
   * Port debugger
   * Port libraries (enable 'Testability')
-    * SDL2 support (waiting for official port)
+    * ~~SDL2 support~~
     * ODBC support
     * ~~OpenSSL support~~
     * ~~zlib support~~
 * Testing
    * [Test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
-     * ~~Manually validate first 20~~
+     * ~~Manually validate first 50~
      * Automate validation of the first 100
    * [Examples](https://github.com/objeck/objeck-lang/tree/master/programs/deploy)
      * ~~XML parsing~~
