@@ -18,7 +18,6 @@ xmlns="http://www.w3.org/TR/REC-html40">
   <w:Zoom>110</w:Zoom>
   <w:DontDisplayPageBoundaries/>
   <w:SpellingState>Clean</w:SpellingState>
-  <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -730,7 +729,8 @@ p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
 a:link, span.MsoHyperlink
-	{mso-style-priority:99;
+	{mso-style-noshow:yes;
+	mso-style-priority:99;
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
@@ -825,9 +825,6 @@ span.InternetLink
 span.SpellE
 	{mso-style-name:"";
 	mso-spl-e:yes;}
-span.GramE
-	{mso-style-name:"";
-	mso-gram-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
@@ -1197,7 +1194,7 @@ Programming Language</span><span style='font-family:"Calibri",sans-serif;
 mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h1>
 
 <p class=MsoSubtitle style='margin-bottom:0in'><span style='font-size:10.0pt;
-line-height:105%;font-family:"Calibri",sans-serif'>v5.5.5 (December 17, 2020)</span><span
+line-height:105%;font-family:"Calibri",sans-serif'>v5.6.0 (December 31, 2020)</span><span
 style='font-family:"Calibri",sans-serif'><o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:12.0pt;line-height:105%;
@@ -1209,7 +1206,7 @@ notes</span><span style='font-family:"Calibri",sans-serif;mso-fareast-font-famil
 "Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>Bug fixes<o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>Apple Silicon support<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
@@ -1223,24 +1220,19 @@ style='font-family:"Calibri",sans-serif'>Highlights:<o:p></o:p></span></p>
 line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
 style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Fixed
-issues with ‘Base64’ encrypt and decrypt (bug)<o:p></o:p></span></p>
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Native
+support for Apple Silicon (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;margin-bottom:8.0pt;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
 text-indent:-.25in;line-height:normal;mso-list:l1 level1 lfo1'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-fareast-font-family:Calibri'><span
 style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>The
-macOS release is now compatible with Rosetta 2 (native M1 support is <a
-href="https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64">forthcoming</a>)<o:p></o:p></span></p>
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Fixed
+an issue with the debugger and memory (bug)<o:p></o:p></span></p>
 
-<p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'><o:p>&nbsp;</o:p></span></p>
-
-<p class=MsoNormal style='margin-bottom:0in;margin-bottom:8.0pt;mso-margin-bottom-alt:
-8.0pt;mso-margin-top-alt:0in;mso-add-space:auto'><span style='font-family:"Calibri",sans-serif'>Please
-refer to the <a href="http://www.objeck.org/"><span class=InternetLink><span
+<p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>Please refer
+to the <a href="http://www.objeck.org/"><span class=InternetLink><span
 style='font-family:"Calibri",sans-serif'>project website</span></span></a> for
 additional information about the language. The Programmer’s Guide is located
 the “doc” directory. Additional examples are available on the <a
@@ -1347,10 +1339,10 @@ and executing programs</span><span style='font-family:"Calibri",sans-serif;
 mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;line-height:normal'><span
-class=GramE><span style='font-family:"Calibri",sans-serif'>In order to</span></span><span
-style='font-family:"Calibri",sans-serif'> compile programs outside of the “bin”
-directory the “OBJECK_LIB_PATH” environment variable must be set. When this
-variable is set all library files must be in the directory specified. <o:p></o:p></span></p>
+style='font-family:"Calibri",sans-serif'>In order to compile programs outside
+of the “bin” directory the “OBJECK_LIB_PATH” environment variable must be set.
+When this variable is set all library files must be in the directory specified.
+<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
@@ -1360,8 +1352,8 @@ line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;<o:p></
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
 line-height:normal'><span style='font-family:"Calibri",sans-serif'>If the
 Windows installer is used these variables will be automatically set after the
-system is restarted. For Debian and <span class=GramE>Ubuntu</span> the
-location of the files is fixed by the installer so no variables are needed.<o:p></o:p></span></p>
+system is restarted. For Debian and Ubuntu the location of the files is fixed
+by the installer so no variables are needed.<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
@@ -1397,8 +1389,8 @@ line-height:normal'><span style='font-family:"Calibri",sans-serif'><o:p>&nbsp;</
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
-line-height:normal'><span style='font-family:"Calibri",sans-serif'>To manually
-setting the environment paths in macOS and Linux:<o:p></o:p></span></p>
+line-height:normal'><span style='font-family:"Calibri",sans-serif'>To manually setting
+the environment paths in macOS and Linux:<o:p></o:p></span></p>
 
 <ol style='margin-top:0in' start=1 type=1>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:
@@ -1466,7 +1458,7 @@ for code that has library dependencies:<o:p></o:p></span></p>
 margin-left:.5in;mso-add-space:auto;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>1.&nbsp;&nbsp;&nbsp; <span
 class=SpellE>obc</span> -<span class=SpellE>src</span> ..\examples\<span
-class=SpellE>xml_path.obs</span> -lib <span class=SpellE><span class=GramE>collect.obl,xml.obl</span></span>
+class=SpellE>xml_path.obs</span> -lib <span class=SpellE>collect.obl,xml.obl</span>
 -<span class=SpellE>dest</span> <span class=SpellE>xml_path.obe</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
@@ -1481,9 +1473,9 @@ line-height:normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;<o:p></
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:0in;margin-top:0in;
 mso-margin-bottom-alt:8.0pt;mso-margin-top-alt:0in;mso-add-space:auto;
 line-height:normal'><span style='font-family:"Calibri",sans-serif'>For OS X
-(10.9 or greater), <span class=GramE>you’ll</span> need to install OpenSSL in
-order to use encryption APIs as well as <span class=SpellE>iODBC</span> to
-enable database support. Please refer to the following <a
+(10.9 or greater), you’ll need to install OpenSSL in order to use encryption
+APIs as well as <span class=SpellE>iODBC</span> to enable database support.
+Please refer to the following <a
 href="http://mac-dev-env.patrickbougie.com/openssl"><span class=InternetLink><span
 style='font-family:"Calibri",sans-serif'>link</span></span></a> for OpenSSL
 directions and this <a
@@ -1516,10 +1508,10 @@ style='font-family:"Calibri",sans-serif'>1.</span><span style='font-size:7.0pt;
 font-family:"Calibri",sans-serif'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span
 class=SpellE><span style='font-family:"Calibri",sans-serif'>sudo</span></span><span
 style='font-family:"Calibri",sans-serif'> apt install libsdl1.2debian
-libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2
-libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg
-libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev
-libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev<o:p></o:p></span></p>
+libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2 libsdl-image1.2-dbg
+libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev
+libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2
+libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;mso-add-space:auto;line-height:normal'><span style='font-family:
@@ -1600,11 +1592,8 @@ mso-fareast-font-family:"Times New Roman"'><o:p></o:p></span></h2>
 0in;margin-left:.75in;mso-add-space:auto;text-indent:-.25in;mso-list:l3 level1 lfo5'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>On
-32-bit Windows, the ODBC driver must be a 32-bit for <a
-href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn"><span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'>compatibility</span></span></a>.
-<o:p></o:p></span></p>
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>Apple
+Silicon SDL2 support currently linked against homebrew libraries <o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;mso-add-space:auto;text-indent:-.25in;mso-list:l3 level1 lfo5'><![if !supportLists]><span
@@ -1619,14 +1608,6 @@ style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
 Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>By
 design, the regular expression class performs greedy pattern matching.<o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
-0in;margin-left:.75in;mso-add-space:auto;text-indent:-.25in;mso-list:l3 level1 lfo5'><![if !supportLists]><span
-style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif'>All
-unit tests executed successfully but <span class=GramE>I'm</span> sure there’s
-bugs. Send an e-mail <span class=GramE>I’ll</span> get them sorted.<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-size:8.5pt;
 line-height:105%;font-family:"Calibri",sans-serif;color:#212529;background:
