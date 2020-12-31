@@ -1,6 +1,7 @@
 #~
-# compile: obc -src hello_0.obs' -dest hello_0.obe
-# run: obr hello_0.obe
+# translation of: https://en.wikipedia.org/wiki/Visitor_pattern#C#_example
+# compile: obc -src visitor_20.obs -dest visitor_20.obe
+# run: obr visitor_20.obe
 ~#
 
 class ExpressionPrintingVisitor {
