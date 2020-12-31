@@ -59,7 +59,7 @@ Save the link register between function calls out of the JIT'ed code.
   * ~~Port debugger~~
   * Port libraries (enable 'Testability')
     * ~~SDL2 support~~
-    * ODBC support
+    * ODBC support (need to against a DB)
     * ~~OpenSSL support~~
     * ~~zlib support~~
 * Testing
