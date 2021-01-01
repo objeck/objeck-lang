@@ -16,7 +16,7 @@ bundle Encryption {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
-		function GetDllProxy() ~ DllProxy {
+		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
 				@lib_proxy := DllProxy->New("libobjk_openssl");
 			};
