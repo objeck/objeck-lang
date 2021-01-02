@@ -1,0 +1,63 @@
+class Computer {
+	@storage : Int;
+	@memory : Int;
+	@processor : String;
+
+	New(storage : Int, memory : Int, processor : String) {
+		@storage := storage;
+		@memory := memory;
+		@processor := processor;
+	}
+
+	method : public : GetStorage() ~ Int {
+		return @storage;
+	}
+
+	method : public : GetMemory() ~ Int {
+		return @memory;
+	}
+
+	method : public : GetProcessor() ~ String {
+		return @processor;
+	}
+}
+
+class ComputerBuilder {
+	@processor : String;
+
+	New() {
+	}
+
+	method : public : SetProcessor(processor : String) ~ Nil {
+		@processor := processor;
+	}
+
+	method : public : Build() ~ Computer {
+		return Nil;
+
+	}
+}
+
+class HP from Computer {
+	New(storage : Int, memory : Int, processor : String) {
+		Parent(2048, 16, "Intel 11th Generation");
+	}
+}
+
+class OrderBuilder {
+	New() {}
+
+	method : public : MakeComputer() ~ Computer {
+		return Nil;
+	}
+}
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+		
+	}
+
+	function : CoinToss() ~ Bool {
+		return Int->Random(1) % 2 = 0;
+	}
+}
