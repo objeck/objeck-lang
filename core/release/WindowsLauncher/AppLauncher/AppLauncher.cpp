@@ -477,6 +477,7 @@ int GetLocalVersion()
     return -1;
   }
 
+  FlushFileBuffers(hFile);
   CloseHandle(hFile);
 
   return atoi(buffer);

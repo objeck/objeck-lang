@@ -1,0 +1,110 @@
+# ---
+
+class Drink {
+	@id : Int;
+
+	New(id : Int) {
+		@id := id;		
+	}
+
+	method : virtual : public : GetDescription() ~ String;
+}
+
+class Pinot from Drink {
+	New(id : Int) {
+		Parent(id);
+	}
+	
+	method : public : GetDescription() ~ String {
+		return "light red";
+	}
+}
+
+class Chardonnay from Drink  {
+	New(id : Int) {
+		Parent(id);
+	}
+	
+	method : public : GetDescription() ~ String {
+		return "buttery white";
+	}
+}
+
+class Stout from Drink {
+	New(id : Int) {
+		Parent(id);
+	}
+	
+	method : public : GetDescription() ~ String {
+		return "like coffee";
+	}
+}
+
+class IPA from Drink {
+	New(id : Int) {
+		Parent(id);
+	}
+	
+	method : public : GetDescription() ~ String {
+		return "hoppy";
+	}
+}
+
+# ---
+
+class AbstractFactory {
+	method : virtual : public : MakeDrink() ~ Drink;
+}
+
+class BeerFactory from AbstractFactory {
+	New() {
+		Parent();
+	}
+
+	method : public : MakeDrink() ~ Drink {
+		if(Program->CoinToss()) {
+			return IPA->New(1);
+		}
+		else {
+			return Stout->New(2);
+		};
+	}
+}
+
+class WineFactory from AbstractFactory {
+	New() {
+		Parent();
+	}
+
+	method : public : MakeDrink() ~ Drink {
+		if(Program->CoinToss()) {
+			return Pinot->New(3);
+		}
+		else {
+			return Chardonnay->New(4);
+		};
+	}
+}
+
+# ---
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+		factory : AbstractFactory;
+		
+		if(CoinToss()) {
+			factory := BeerFactory->New();
+		}
+		else {
+			factory := WineFactory->New();	
+		};
+
+		each(i : 6) {
+			factory->MakeDrink()->GetDescription()->PrintLine();
+		};
+	}
+
+	function : CoinToss() ~ Bool {
+		return Int->Random(1) % 2 = 0;
+	}
+}
