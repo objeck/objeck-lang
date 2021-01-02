@@ -22,10 +22,36 @@ class Computer {
 	}
 }
 
-class ComputerBuilder {
-	@processor : String;
+class AbstractBuilder {
+	New() {}
 
-	New() {
+	method : virtual : public : SetProcessor(processor : String) ~ Nil;
+}
+
+class MacBuilder from AbstractBuilder {
+	@builder : AbstractBuilder;
+
+	New(builder : AbstractBuilder) {
+		Parent();
+		@builder := builder;
+	}
+
+	method : public : SetProcessor(processor : String) ~ Nil {
+		@processor := processor;
+	}
+
+	method : public : Build() ~ Computer {
+		return Nil;
+
+	}
+}
+
+class PcBuilder from AbstractBuilder {
+	@builder : AbstractBuilder;
+
+	New(builder : AbstractBuilder) {
+		Parent();
+		@builder := builder;
 	}
 
 	method : public : SetProcessor(processor : String) ~ Nil {
