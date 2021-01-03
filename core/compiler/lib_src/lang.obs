@@ -682,6 +682,15 @@ bundle System {
 			return result;
 		}
 
+
+		#~
+		Models a 50/50 coin flip
+		@return random true or false
+		}
+		function : CoinFlip() ~ Bool {
+			return Int->Random(1) % 2 = 0;
+		}
+
 		#~
 		Returns a random number within the given range
 		@param min minimal value
