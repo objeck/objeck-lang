@@ -688,7 +688,7 @@ bundle System {
 		@return random true or false
 		}
 		function : CoinFlip() ~ Bool {
-			return Int->Random(1) % 2 = 0;
+			return Random(1) % 2 = 0;
 		}
 
 		#~
