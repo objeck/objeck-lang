@@ -20,6 +20,10 @@ class Computer {
 	method : public : GetProcessor() ~ String {
 		return @processor;
 	}
+
+	method : public : ToString() ~ String {
+		return "{$@storage}, {$@memory}, {$@processor}";
+	}
 }
 
 class AbstractBuilder {
@@ -28,12 +32,11 @@ class AbstractBuilder {
 	method : virtual : public : SetProcessor(processor : String) ~ Nil;
 }
 
-class MacBuilder from AbstractBuilder {
-	@builder : AbstractBuilder;
+class ComputerBuilder from AbstractBuilder {
+	@processor : String;
 
-	New(builder : AbstractBuilder) {
+	New() {
 		Parent();
-		@builder := builder;
 	}
 
 	method : public : SetProcessor(processor : String) ~ Nil {
@@ -41,46 +44,26 @@ class MacBuilder from AbstractBuilder {
 	}
 
 	method : public : Build() ~ Computer {
-		return Nil;
-
-	}
-}
-
-class PcBuilder from AbstractBuilder {
-	@builder : AbstractBuilder;
-
-	New(builder : AbstractBuilder) {
-		Parent();
-		@builder := builder;
-	}
-
-	method : public : SetProcessor(processor : String) ~ Nil {
-		@processor := processor;
-	}
-
-	method : public : Build() ~ Computer {
-		return Nil;
-
+		if(Program->CoinToss()) {
+ 			return Computer->New(512, 8, @processor);
+ 		}
+ 		else {
+			return Computer->New(1024, 16, @processor);
+		};
 	}
 }
 
 class HP from Computer {
-	New(storage : Int, memory : Int, processor : String) {
-		Parent(2048, 16, "Intel 11th Generation");
-	}
-}
-
-class OrderBuilder {
-	New() {}
-
-	method : public : MakeComputer() ~ Computer {
-		return Nil;
+	New(processor : String) {
+		Parent(2048, 16, processor);
 	}
 }
 
 class Program {
 	function : Main(args : String[]) ~ Nil {
-		
+		builder := ComputerBuilder->New();
+		builder->SetProcessor("10th Generation Intel");
+		builder->Build()->ToString()->PrintLine();
 	}
 
 	function : CoinToss() ~ Bool {
