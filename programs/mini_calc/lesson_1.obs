@@ -29,7 +29,7 @@ class Evaluator {
 	method : Evaluate(node : Node) ~ Nil {
 		if(node <> Nil) {
 			type := node->GetType();
-			
+
 			if(type = Node->Type->NUM) {
 				@stack->Push(node->GetValue());
 			}
@@ -53,6 +53,10 @@ class Evaluator {
 
 					label Node->Type->DIV {
 						@stack->Push(@stack->Pop() / right);
+					}
+
+					label Node->Type->MOD {
+						@stack->Push(@stack->Pop() % right->Get());
 					}
 				};
 			};
@@ -91,23 +95,42 @@ class Parser {
 			select(GetToken()->GetType()) {
 				label Token->Type->ADD {
 					NextToken();
-					return Node->New(Node->Type->ADD, left, Term());
+
+					right := Term();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->ADD | right->GetType() = Node->Type->SUB) {
+						temp := Node->New(Node->Type->ADD, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->ADD, left, right);
+					};
 				}
 
 				label Token->Type->SUB {
 					NextToken();
-					return Node->New(Node->Type->SUB, left, Term());
-				}
 
-				label Token->Type->MUL
-				label Token->Type->DIV {
-					return Factor();
+					right := Term();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->ADD | right->GetType() = Node->Type->SUB) {
+						temp := Node->New(Node->Type->SUB, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->SUB, left, right);
+					};
 				}
-
+								
 				label Token->Type->EOS {
 					return left;
 				}
-
+				
 				other {
 					type := GetToken()->GetType()->As(Int);
 					"*** Unknown token: type={$type} ***"->ErrorLine();
@@ -126,12 +149,53 @@ class Parser {
 			select(GetToken()->GetType()) {
 				label Token->Type->MUL {
 					NextToken();
-					return Node->New(Node->Type->MUL, left, Factor());
+
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->MUL, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->MUL, left, right);
+					};
 				}
 
 				label Token->Type->DIV {
 					NextToken();
-					return Node->New(Node->Type->DIV, left, Factor());
+					
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->DIV, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->DIV, left, right);
+					};
+				}
+
+				label Token->Type->MOD {
+					NextToken();
+					
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->MOD, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->MOD, left, right);
+					};
 				}
 
 				label Token->Type->EOS {
@@ -169,7 +233,8 @@ class Node {
 		ADD,
 		SUB,
 		MUL,
-		DIV
+		DIV,
+		MOD
 	}
 
 	New(type : Node->Type, left : Node, right : Node) {
@@ -240,6 +305,10 @@ class Scanner {
 						tokens->AddBack(Token->New(Token->Type->DIV));
 					}
 
+					label '%' {
+						tokens->AddBack(Token->New(Token->Type->MOD));
+					}
+
 					label '=' {
 						if(index < input->Size() & input->Get(index + 1) = '=') {
 							index += 1;
@@ -278,6 +347,7 @@ class Token {
 		SUB,
 		MUL,
 		DIV,
+		MOD,
 		OTHER,
 		EOS
 	}
@@ -337,6 +407,10 @@ class Token {
 
 			label Type->DIV {
 				return "type=DIV";
+			}
+
+			label Type->MOD {
+				return "type=MOD";
 			}
 
 			label Type->MUL {
