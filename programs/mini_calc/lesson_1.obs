@@ -213,6 +213,7 @@ class Parser {
 			NextToken();
 			return node;
 		}
+		# TODO: add '()'
 		else {
 			type := GetToken()->GetType()->As(Int);
 			"*** Unknown token: type={$type} ***"->ErrorLine();
