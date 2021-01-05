@@ -86,6 +86,10 @@ class Parser {
 	}
 
 	method : public : Parse() ~ Node {
+		return Expression();
+	}
+
+	method : public : Expression() ~ Node {
 		return Term();
 	}
 
@@ -126,17 +130,6 @@ class Parser {
 					else {
 						return Node->New(Node->Type->SUB, left, right);
 					};
-				}
-				
-				label Token->Type->CPN				
-				label Token->Type->EOS {
-					return left;
-				}
-				
-				other {
-					token := GetToken();
-					"*** Unknown token: {$token} ***"->ErrorLine();
-					return Nil;
 				}
 			};
 		};
@@ -222,7 +215,7 @@ class Parser {
 
 			if(GetToken()->GetType() <> Token->Type->CPN) {
 				token := GetToken();
-				"*** Unknown token: {$token} ***"->ErrorLine();
+				"*** Unexpected token: {$token} ***"->ErrorLine();
 				return Nil;
 			};
 			NextToken();
@@ -230,7 +223,7 @@ class Parser {
 		}
 		else {
 			token := GetToken();
-			"*** Unknown token: {$token} ***"->ErrorLine();
+			"*** Unexpected token: {$token} ***"->ErrorLine();
 			return Nil;
 		};
 	}
