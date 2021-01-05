@@ -5,9 +5,10 @@ class Program {
 		if(args->Size() = 1) {
 			parser := Parser->New(Scanner->Scan(args[0]));
 			tree := parser->Parse();
-			
-			eval := Evaluator->New(tree);
-			eval->Evaluate();
+			if(tree <> Nil) {
+				eval := Evaluator->New(tree);
+				eval->Evaluate();
+			};
 		};
 	}
 }
@@ -126,14 +127,15 @@ class Parser {
 						return Node->New(Node->Type->SUB, left, right);
 					};
 				}
-								
+				
+				label Token->Type->CPN				
 				label Token->Type->EOS {
 					return left;
 				}
 				
 				other {
-					type := GetToken()->GetType()->As(Int);
-					"*** Unknown token: type={$type} ***"->ErrorLine();
+					id := GetToken()->GetType()->As(Int);
+					"*** 0: Unknown token: type={$id} ***"->ErrorLine();
 					return Nil;
 				}
 			};
@@ -208,15 +210,27 @@ class Parser {
 	}
 
 	method : Number() ~ Node {
-		if(GetToken()->GetType() = Token->Type->NUM) {
+		type := GetToken()->GetType();
+		if(type = Token->Type->NUM) {
 			node := Node->New(Node->Type->NUM, GetToken()->GetString()->ToInt());
 			NextToken();
 			return node;
 		}
-		# TODO: add '()'
+		else if(type = Token->Type->OPN) {
+			NextToken();
+			node := Term();
+
+			if(GetToken()->GetType() <> Token->Type->CPN) {
+				id := GetToken()->GetType()->As(Int);
+				"*** 1: Unknown token: type={$id} ***"->ErrorLine();
+				return Nil;
+			};
+			NextToken();
+			return node;
+		}
 		else {
-			type := GetToken()->GetType()->As(Int);
-			"*** Unknown token: type={$type} ***"->ErrorLine();
+			id := GetToken()->GetType()->As(Int);
+			"*** 2: Unknown token: type={$id} ***"->ErrorLine();
 			return Nil;
 		};
 	}
@@ -306,6 +320,14 @@ class Scanner {
 						tokens->AddBack(Token->New(Token->Type->DIV));
 					}
 
+					label '(' {
+						tokens->AddBack(Token->New(Token->Type->OPN));
+					}
+
+					label ')' {
+						tokens->AddBack(Token->New(Token->Type->CPN));
+					}
+
 					label '%' {
 						tokens->AddBack(Token->New(Token->Type->MOD));
 					}
@@ -349,6 +371,8 @@ class Token {
 		MUL,
 		DIV,
 		MOD,
+		OPN,
+		CPN,
 		OTHER,
 		EOS
 	}
@@ -382,6 +406,14 @@ class Token {
 
 	method : public : ToString() ~ String {
 		select(@type) {
+			label Type->OPN {
+				return "type=OPN";
+			}
+
+			label Type->CPN {
+				return "type=CPN";
+			}
+
 			label Type->IDENT {
 				return "type=IDENT, id='{$@string}'";
 			}
