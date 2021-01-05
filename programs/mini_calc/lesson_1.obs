@@ -134,8 +134,8 @@ class Parser {
 				}
 				
 				other {
-					id := GetToken()->GetType()->As(Int);
-					"*** 0: Unknown token: type={$id} ***"->ErrorLine();
+					token := GetToken();
+					"*** Unknown token: {$token} ***"->ErrorLine();
 					return Nil;
 				}
 			};
@@ -221,16 +221,16 @@ class Parser {
 			node := Term();
 
 			if(GetToken()->GetType() <> Token->Type->CPN) {
-				id := GetToken()->GetType()->As(Int);
-				"*** 1: Unknown token: type={$id} ***"->ErrorLine();
+				token := GetToken();
+				"*** Unknown token: {$token} ***"->ErrorLine();
 				return Nil;
 			};
 			NextToken();
 			return node;
 		}
 		else {
-			id := GetToken()->GetType()->As(Int);
-			"*** 2: Unknown token: type={$id} ***"->ErrorLine();
+			token := GetToken();
+			"*** Unknown token: {$token} ***"->ErrorLine();
 			return Nil;
 		};
 	}
@@ -407,47 +407,47 @@ class Token {
 	method : public : ToString() ~ String {
 		select(@type) {
 			label Type->OPN {
-				return "type=OPN";
+				return "OPN";
 			}
 
 			label Type->CPN {
-				return "type=CPN";
+				return "CPN";
 			}
 
 			label Type->IDENT {
-				return "type=IDENT, id='{$@string}'";
+				return "IDENT, string='{$@string}'";
 			}
 		
 			label Type->NUM {
-				return "type=NUM, value='{$@string}'";
+				return "NUM, value={$@string}";
 			}
 
 			label Type->EQL {
-				return "type=EQL";
+				return "EQL";
 			}
 
 			label Type->ASGN {
-				return "type=ASGN";
+				return "ASGN";
 			}
 
 			label Type->ADD {
-				return "type=ADD";
+				return "ADD";
 			}
 
 			label Type->SUB {
-				return "type=SUB";
+				return "SUB";
 			}
 
 			label Type->DIV {
-				return "type=DIV";
+				return "DIV";
 			}
 
 			label Type->MOD {
-				return "type=MOD";
+				return "MOD";
 			}
 
 			label Type->MUL {
-				return "type=MUL";
+				return "MUL";
 			}
 		};
 
