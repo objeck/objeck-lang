@@ -31,7 +31,7 @@ Notable features:
   * x86-64: Windows, macOS and Linux
   * x86: Windows and Linux
   * ARMv7: Linux (Raspberry Pi 3/4)
-  * ARMv8: macOS (Apple Silicon)
+  * ARM64: macOS (Apple Silicon)
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
   * Collections (vectors, queues, trees, hashes, etc.)
