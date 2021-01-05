@@ -74,8 +74,12 @@ class Parser {
 	}
 
 	method : GetToken() ~ Token {
-		if(@index < @tokens->Size()) {
-			return @tokens->Get(@index);
+		return GetToken(0);
+	}
+
+	method : GetToken(offset : Int) ~ Token {
+		if(@index + offset < @tokens->Size()) {
+			return @tokens->Get(@index + offset);
 		};
 
 		return Token->New(Token->Type->EOS);
@@ -86,7 +90,12 @@ class Parser {
 	}
 
 	method : public : Parse() ~ Node {
-		return Expression();
+		if(GetToken(1)->GetType() = Token->Type->IDENT) {
+			return Nil;
+		}
+		else {
+			return Expression();
+		};
 	}
 
 	method : public : Expression() ~ Node {
