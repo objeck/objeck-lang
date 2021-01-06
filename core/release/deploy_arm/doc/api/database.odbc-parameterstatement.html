@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>ParameterStatement</h2><p>ODBC parametrized statement that supports SQL variables</p><strong>Operations</strong><ul><li><a href='#parameterstatement-close'>Close</a></li><li><a href='#parameterstatement-select'>Select</a></li><li><a href='#parameterstatement-setbit'>SetBit</a></li><li><a href='#parameterstatement-setblob'>SetBlob</a></li><li><a href='#parameterstatement-setbytes'>SetBytes</a></li><li><a href='#parameterstatement-setdate'>SetDate</a></li><li><a href='#parameterstatement-setdouble'>SetDouble</a></li><li><a href='#parameterstatement-setint'>SetInt</a></li><li><a href='#parameterstatement-setreal'>SetReal</a></li><li><a href='#parameterstatement-setsmallint'>SetSmallInt</a></li><li><a href='#parameterstatement-settimestamp'>SetTimestamp</a></li><li><a href='#parameterstatement-setvarchar'>SetVarchar</a></li><li><a href='#parameterstatement-update'>Update</a></li></ul><hr/><h3>Close</h3><a id='parameterstatement-close'></a><p><strong>Closes the statement</strong></p><code>method : public : Close() ~ Nil</code><h3>Select</h3><a id='parameterstatement-select'></a><p><strong>Executes a SQL select statement</strong></p><code>method : public : Select() ~ ResultSet</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='database.odbc-resultset.html' target='main'>ResultSet</a></td><td>result set</td></tr></table><br/><h3>SetBit</h3><a id='parameterstatement-setbit'></a><p><strong>Sets a bit type to NULL</strong></p><code>method : public : SetBit(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a bit type</strong></p><code>method : public : SetBit(pos:Int, value:Bool) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='system-bool.html' target='main'>Bool</a></td><td>bit value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetBlob</h3><a id='parameterstatement-setblob'></a><p><strong>Sets a blob type to NULL</strong></p><code>method : public : SetBlob(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a blob type</strong></p><code>method : public : SetBlob(pos:Int, buffer:Byte[]) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>buffer</td><td><a href='system-byte.html' target='main'>Byte[]</a></td><td>byte buffer</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetBytes</h3><a id='parameterstatement-setbytes'></a><p><strong>Sets a stream of bytes</strong></p><code>method : public : SetBytes(pos:Int, buffer:Byte[], length:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>buffer</td><td><a href='system-byte.html' target='main'>Byte[]</a></td><td>byte buffer</td></tr><tr><td>length</td><td><a href='system-int.html' target='main'>Int</a></td><td>number of bytes to write</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetDate</h3><a id='parameterstatement-setdate'></a><p><strong>Sets a date type to NULL</strong></p><code>method : public : SetDate(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a date type</strong></p><code>method : public : SetDate(pos:Int, value:Date) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='database.odbc-date.html' target='main'>Date</a></td><td>date value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetDouble</h3><a id='parameterstatement-setdouble'></a><p><strong>Sets a double type to NULL</strong></p><code>method : public : SetDouble(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a double type</strong></p><code>method : public : SetDouble(pos:Int, value:Float) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>double value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetInt</h3><a id='parameterstatement-setint'></a><p><strong>Sets a integer type to NULL</strong></p><code>method : public : SetInt(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a integer type</strong></p><code>method : public : SetInt(pos:Int, value:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='system-int.html' target='main'>Int</a></td><td>integer value to set</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetReal</h3><a id='parameterstatement-setreal'></a><p><strong>Sets a real type to NULL</strong></p><code>method : public : SetReal(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a real type</strong></p><code>method : public : SetReal(pos:Int, value:Float) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>real value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetSmallInt</h3><a id='parameterstatement-setsmallint'></a><p><strong>Sets a small integer type to NULL</strong></p><code>method : public : SetSmallInt(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a small integer type</strong></p><code>method : public : SetSmallInt(pos:Int, value:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='system-int.html' target='main'>Int</a></td><td>small integer value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetTimestamp</h3><a id='parameterstatement-settimestamp'></a><p><strong>Sets a timestamp type to NULL</strong></p><code>method : public : SetTimestamp(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets a timestamp type</strong></p><code>method : public : SetTimestamp(pos:Int, value:Timestamp) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='database.odbc-timestamp.html' target='main'>Timestamp</a></td><td>timestamp value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>SetVarchar</h3><a id='parameterstatement-setvarchar'></a><p><strong>Sets varchar type to NULL</strong></p><code>method : public : SetVarchar(pos:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><p><strong>Sets varchar type</strong></p><code>method : public : SetVarchar(pos:Int, value:String) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>parameter position</td></tr><tr><td>value</td><td><a href='system-string.html' target='main'>String</a></td><td>string value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if set, false otherwise</td></tr></table><br/><h3>Update</h3><a id='parameterstatement-update'></a><p><strong>Executes a SQL update statement. Statement is closed after calling.</strong></p><code>method : public : Update() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>result code</td></tr></table><br/></body></html>

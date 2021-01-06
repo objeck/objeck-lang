@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>PixelFormat</h2><p>PixelFormat class</p><strong>Operations</strong><ul><li><a href='#pixelformat-getamask'>GetAmask</a></li><li><a href='#pixelformat-getbitsperpixel'>GetBitsPerPixel</a></li><li><a href='#pixelformat-getbmask'>GetBmask</a></li><li><a href='#pixelformat-getbytesperpixel'>GetBytesPerPixel</a></li><li><a href='#pixelformat-getformat'>GetFormat</a></li><li><a href='#pixelformat-getgmask'>GetGmask</a></li><li><a href='#pixelformat-getrmask'>GetRmask</a></li><li><a href='#pixelformat-maprgb'>MapRGB</a></li><li><a href='#pixelformat-maprgba'>MapRGBA</a></li><li><a href='#pixelformat-setamask'>SetAmask</a></li><li><a href='#pixelformat-setbitsperpixel'>SetBitsPerPixel</a></li><li><a href='#pixelformat-setbmask'>SetBmask</a></li><li><a href='#pixelformat-setbytesperpixel'>SetBytesPerPixel</a></li><li><a href='#pixelformat-setformat'>SetFormat</a></li><li><a href='#pixelformat-setgmask'>SetGmask</a></li><li><a href='#pixelformat-setrmask'>SetRmask</a></li></ul><hr/><h3>GetAmask</h3><a id='pixelformat-getamask'></a><p><strong>Get mask representing the location of the alpha component of the pixel or 0 if the pixel format doesn't have any alpha information</strong></p><code>method : public : GetAmask() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>pixel mask</td></tr></table><br/><h3>GetBitsPerPixel</h3><a id='pixelformat-getbitsperpixel'></a><p><strong>Get the number of significant bits in a pixel value</strong></p><code>method : public : GetBitsPerPixel() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>bits per pixel</td></tr></table><br/><h3>GetBmask</h3><a id='pixelformat-getbmask'></a><p><strong>Get mask representing the location of the blue component of the pixel</strong></p><code>method : public : GetBmask() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>pixel mask</td></tr></table><br/><h3>GetBytesPerPixel</h3><a id='pixelformat-getbytesperpixel'></a><p><strong>Get the number of bytes required to hold a pixel value</strong></p><code>method : public : GetBytesPerPixel() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>bytes per pixel</td></tr></table><br/><h3>GetFormat</h3><a id='pixelformat-getformat'></a><p><strong>Get pixel format</strong></p><code>method : public : GetFormat() ~ PixelValue</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-pixelvalue.html' target='main'>PixelValue</a></td><td>pixel format</td></tr></table><br/><h3>GetGmask</h3><a id='pixelformat-getgmask'></a><p><strong>Get mask representing the location of the green component of the pixel</strong></p><code>method : public : GetGmask() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>pixel mask</td></tr></table><br/><h3>GetRmask</h3><a id='pixelformat-getrmask'></a><p><strong>Get mask representing the location of the red component of the pixel</strong></p><code>method : public : GetRmask() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>pixel mask</td></tr></table><br/><h3>MapRGB</h3><a id='pixelformat-maprgb'></a><p><strong>Map an RGB triple to an opaque pixel value for a given pixel format</strong></p><code>method : public : MapRGB(r:Int, g:Int, b:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>r</td><td><a href='system-int.html' target='main'>Int</a></td><td>the red component of the pixel in the range 0-255</td></tr><tr><td>g</td><td><a href='system-int.html' target='main'>Int</a></td><td>the green component of the pixel in the range 0-255</td></tr><tr><td>b</td><td><a href='system-int.html' target='main'>Int</a></td><td>the blue component of the pixel in the range 0-255</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>returns a pixel value</td></tr></table><br/><h3>MapRGBA</h3><a id='pixelformat-maprgba'></a><p><strong>Map an RGBA quadruple to a pixel value for a given pixel format</strong></p><code>method : public : MapRGBA(r:Int, g:Int, b:Int, a:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>r</td><td><a href='system-int.html' target='main'>Int</a></td><td>the red component of the pixel in the range 0-255</td></tr><tr><td>g</td><td><a href='system-int.html' target='main'>Int</a></td><td>the green component of the pixel in the range 0-255</td></tr><tr><td>b</td><td><a href='system-int.html' target='main'>Int</a></td><td>the blue component of the pixel in the range 0-255</td></tr><tr><td>a</td><td><a href='system-int.html' target='main'>Int</a></td><td>the alpha component of the pixel in the range 0-255</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>returns a pixel value</td></tr></table><br/><h3>SetAmask</h3><a id='pixelformat-setamask'></a><p><strong>Set alpha mask</strong></p><code>method : public : SetAmask(a_mask:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>a_mask</td><td><a href='system-int.html' target='main'>Int</a></td><td>alpha mask</td></tr></table><h3>SetBitsPerPixel</h3><a id='pixelformat-setbitsperpixel'></a><p><strong>Set bits per pixel</strong></p><code>method : public : SetBitsPerPixel(bits_per_pixel:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>bits_per_pixel</td><td><a href='system-int.html' target='main'>Int</a></td><td>bits per pixel</td></tr></table><h3>SetBmask</h3><a id='pixelformat-setbmask'></a><p><strong>Set blue mask</strong></p><code>method : public : SetBmask(b_mask:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>b_mask</td><td><a href='system-int.html' target='main'>Int</a></td><td>blue mask</td></tr></table><h3>SetBytesPerPixel</h3><a id='pixelformat-setbytesperpixel'></a><p><strong>Set bytes per pixel</strong></p><code>method : public : SetBytesPerPixel(bytes_per_pixel:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>bytes_per_pixel</td><td><a href='system-int.html' target='main'>Int</a></td><td>bytes per pixel</td></tr></table><h3>SetFormat</h3><a id='pixelformat-setformat'></a><p><strong>Set pixel format</strong></p><code>method : public : SetFormat(format:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>format</td><td><a href='system-int.html' target='main'>Int</a></td><td>pixel format</td></tr></table><h3>SetGmask</h3><a id='pixelformat-setgmask'></a><p><strong>Set green mask</strong></p><code>method : public : SetGmask(g_mask:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>g_mask</td><td><a href='system-int.html' target='main'>Int</a></td><td>green mask</td></tr></table><h3>SetRmask</h3><a id='pixelformat-setrmask'></a><p><strong>Set red mask</strong></p><code>method : public : SetRmask(r_mask:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>r_mask</td><td><a href='system-int.html' target='main'>Int</a></td><td>red mask</td></tr></table></body></html>

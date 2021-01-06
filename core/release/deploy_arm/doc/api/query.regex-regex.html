@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>RegEx</h2><p>Regular expression engine. <p>Support for following matches:<p> <ul> <li>. &#8208; any</li> <li>? &#8208; optional</li> <li>* &#8208; zero or more repetitions</li> <li>+ &#8208; one or more repetitions</li> <li>^ &#8208; first single match</li> <li>$ &#8208; last single match</li> <li>group &#8208; (one|two|three)</li> <li>range &#8208; [start-end]</li> </ul> <p>Support for following special patterns:<p> <ul> <li>word &#8208; \w</li> <li>not word &#8208; \W</li> <li>digit &#8208; \d</li> <li>not digit &#8208; \D</li> <li>white space &#8208; \s</li> <li>not white space &#8208; \s</li> <li>repeat &#8208; {least, most} </ul></p><strong>Operations</strong><ul><li><a href='#regex-new'>New</a></li><li><a href='#regex-find'>Find</a></li><li><a href='#regex-findfirst'>FindFirst</a></li><li><a href='#regex-isok'>IsOk</a></li><li><a href='#regex-match'>Match</a></li><li><a href='#regex-matchexact'>MatchExact</a></li><li><a href='#regex-replaceall'>ReplaceAll</a></li><li><a href='#regex-replacefirst'>ReplaceFirst</a></li></ul><hr/><h3>New</h3><a id='regex-new'></a><p><strong>Default constructor</strong></p><code>New(input:String)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>regex pattern</td></tr></table><h3>Find</h3><a id='regex-find'></a><p><strong>Finds all occurrences</strong></p><code>method : public : native : Find(input:String) ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>vector of string matches</td></tr></table><br/><h3>FindFirst</h3><a id='regex-findfirst'></a><p><strong>Matches the first occurrence</strong></p><code>method : public : native : FindFirst(input:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>matched string if found, empty string otherwise</td></tr></table><br/><h3>IsOk</h3><a id='regex-isok'></a><p><strong>Check of the regex was parsed correctly</strong></p><code>method : public : IsOk() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if parsed, false otherwise</td></tr></table><br/><h3>Match</h3><a id='regex-match'></a><p><strong>Matches as much of the string as possible</strong></p><code>method : public : Match(input:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>matched string if found, empty string otherwise</td></tr></table><br/><p><strong>Matches as much of the string as possible</strong></p><code>method : public : Match(input:String, offset:Int) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr><tr><td>offset</td><td><a href='system-int.html' target='main'>Int</a></td><td>offset into the to match against</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>matched string if found, empty string otherwise</td></tr></table><br/><h3>MatchExact</h3><a id='regex-matchexact'></a><p><strong>Looks for an exact regex match</strong></p><code>method : public : MatchExact(input:String) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if exact, false otherwise</td></tr></table><br/><h3>ReplaceAll</h3><a id='regex-replaceall'></a><p><strong>Replaces all occurrences of the given string</strong></p><code>method : public : native : ReplaceAll(input:String, replace:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr><tr><td>replace</td><td><a href='system-string.html' target='main'>String</a></td><td>string to replace the match with</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>replaced string</td></tr></table><br/><h3>ReplaceFirst</h3><a id='regex-replacefirst'></a><p><strong>Replaces the first occurrence with the given string</strong></p><code>method : public : native : ReplaceFirst(input:String, replace:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>input</td><td><a href='system-string.html' target='main'>String</a></td><td>string to match against</td></tr><tr><td>replace</td><td><a href='system-string.html' target='main'>String</a></td><td>string to replace the match with</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>replaced string</td></tr></table><br/></body></html>
