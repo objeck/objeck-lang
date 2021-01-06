@@ -1,0 +1,458 @@
+use Collection.Generic;
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := Parser->New(Scanner->Scan(args[0]));
+			tree := parser->Parse();
+			if(tree <> Nil) {
+				eval := Evaluator->New(tree);
+				eval->Evaluate();
+			};
+		};
+	}
+}
+
+class Evaluator {
+	@root : Node;
+	@stack : Stack<IntHolder>;
+
+	New(root : Node) {
+		@root := root;
+		@stack := Stack->New()<IntHolder>;
+	}
+
+	method : public : Evaluate() ~ Nil {
+		Evaluate(@root);
+		@stack->Pop()->PrintLine();
+	}
+
+	method : Evaluate(node : Node) ~ Nil {
+		if(node <> Nil) {
+			type := node->GetType();
+
+			if(type = Node->Type->NUM) {
+				@stack->Push(node->GetValue());
+			}
+			else {
+				Evaluate(node->GetLeft());
+				Evaluate(node->GetRight());
+				
+				right := @stack->Pop();
+				select(type) {
+					label Node->Type->ADD {
+						@stack->Push(@stack->Pop() + right);
+					}
+
+					label Node->Type->SUB {
+						@stack->Push(@stack->Pop() - right);
+					}
+
+					label Node->Type->MUL {
+						@stack->Push(@stack->Pop() * right);
+					}
+
+					label Node->Type->DIV {
+						@stack->Push(@stack->Pop() / right);
+					}
+
+					label Node->Type->MOD {
+						@stack->Push(@stack->Pop() % right->Get());
+					}
+				};
+			};
+		};
+	}
+}
+
+class Parser {
+	@tokens : Vector<Token>;
+	@index : Int;
+
+	New(tokens : Vector<Token>) {
+		@tokens := tokens;
+	}
+
+	method : GetToken() ~ Token {
+		return GetToken(0);
+	}
+
+	method : GetToken(offset : Int) ~ Token {
+		if(@index + offset < @tokens->Size()) {
+			return @tokens->Get(@index + offset);
+		};
+
+		return Token->New(Token->Type->EOS);
+	}
+
+	method : NextToken() ~ Nil {
+		@index += 1;
+	}
+
+	method : public : Parse() ~ Node {
+		if(GetToken(1)->GetType() = Token->Type->IDENT) {
+			return Nil;
+		}
+		else {
+			return Expression();
+		};
+	}
+
+	method : public : Expression() ~ Node {
+		return Term();
+	}
+
+	method : Term() ~ Node {
+		left := Factor();
+
+		if(left <> Nil) {
+			select(GetToken()->GetType()) {
+				label Token->Type->ADD {
+					NextToken();
+
+					right := Term();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->ADD | right->GetType() = Node->Type->SUB) {
+						temp := Node->New(Node->Type->ADD, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->ADD, left, right);
+					};
+				}
+
+				label Token->Type->SUB {
+					NextToken();
+
+					right := Term();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->ADD | right->GetType() = Node->Type->SUB) {
+						temp := Node->New(Node->Type->SUB, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->SUB, left, right);
+					};
+				}
+			};
+		};
+
+		return left;
+	}
+
+	method : Factor() ~ Node {
+		left := Number();
+
+		if(left <> Nil) {
+			select(GetToken()->GetType()) {
+				label Token->Type->MUL {
+					NextToken();
+
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->MUL, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->MUL, left, right);
+					};
+				}
+
+				label Token->Type->DIV {
+					NextToken();
+					
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->DIV, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->DIV, left, right);
+					};
+				}
+
+				label Token->Type->MOD {
+					NextToken();
+					
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->MOD, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->MOD, left, right);
+					};
+				}
+
+				label Token->Type->EOS {
+					return left;
+				}
+			};
+		};
+
+		return left;
+	}
+
+	method : Number() ~ Node {
+		type := GetToken()->GetType();
+		if(type = Token->Type->NUM) {
+			node := Node->New(Node->Type->NUM, GetToken()->GetString()->ToInt());
+			NextToken();
+			return node;
+		}
+		else if(type = Token->Type->OPN) {
+			NextToken();
+			node := Term();
+
+			if(GetToken()->GetType() <> Token->Type->CPN) {
+				token := GetToken();
+				"*** Unexpected token: {$token} ***"->ErrorLine();
+				return Nil;
+			};
+			NextToken();
+			return node;
+		}
+		else {
+			token := GetToken();
+			"*** Unexpected token: {$token} ***"->ErrorLine();
+			return Nil;
+		};
+	}
+}
+
+class Node {
+	@type : Node->Type;
+	@value : Int;
+	@left : Node;
+	@right : Node;
+
+	enum Type {
+		IDENT,
+		NUM,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD
+	}
+
+	New(type : Node->Type, left : Node, right : Node) {
+		@type := type;
+		@left := left;
+		@right := right;
+	}
+
+	New(type : Node->Type, value : Int) {
+		@type := type;
+		@value := value;
+	}
+
+	method : public : GetType() ~ Node->Type {
+		return @type;
+	}
+
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+
+	method : public : GetLeft() ~ Node {
+		return @left;
+	}
+
+	method : public : GetRight() ~ Node {
+		return @right;
+	}
+}
+
+class Scanner {
+	function : Scan(input : String) ~ Vector<Token> {
+		tokens := Vector->New()<Token>;
+
+		index := start := end := 0;
+		while(index < input->Size()) {
+			if(input->Get(index)->IsChar()) {
+				start := index++;
+				while(index < input->Size() & (input->Get(index)->IsChar() | input->Get(index) = '_')) {
+					index += 1;
+				};
+				string := input->SubString(start, index - start);
+				tokens->AddBack(Token->New(Token->Type->IDENT, string));
+			}
+			else if(input->Get(index)->IsDigit()) {
+				start := index++;
+				while(index < input->Size() & (input->Get(index)->IsDigit() | input->Get(index) = '.')) {
+					index += 1;
+				};
+				string := input->SubString(start, index - start);
+				tokens->AddBack(Token->New(Token->Type->NUM, string));
+			}
+			else {
+				select(input->Get(index)) {
+					label '+' {
+						tokens->AddBack(Token->New(Token->Type->ADD));
+					}
+
+					label '-' {
+						tokens->AddBack(Token->New(Token->Type->SUB));
+					}
+
+					label '*' {
+						tokens->AddBack(Token->New(Token->Type->MUL));
+					}
+
+					label '/' {
+						tokens->AddBack(Token->New(Token->Type->DIV));
+					}
+
+					label '(' {
+						tokens->AddBack(Token->New(Token->Type->OPN));
+					}
+
+					label ')' {
+						tokens->AddBack(Token->New(Token->Type->CPN));
+					}
+
+					label '%' {
+						tokens->AddBack(Token->New(Token->Type->MOD));
+					}
+
+					label '=' {
+						if(index < input->Size() & input->Get(index + 1) = '=') {
+							index += 1;
+							tokens->AddBack(Token->New(Token->Type->EQL));
+						}
+						else {
+							tokens->AddBack(Token->New(Token->Type->ASGN));
+						};
+					}
+
+					other {
+						tokens->AddBack(Token->New(Token->Type->OTHER));
+					}
+				};
+
+				index += 1;
+			};
+		};
+
+		tokens->AddBack(Token->New(Token->Type->EOS));
+
+		return tokens;
+	}
+}
+
+class Token {
+	@type : Token->Type;
+	@string : String;
+
+	enum Type {
+		IDENT,
+		NUM,
+		EQL,
+		ASGN,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD,
+		OPN,
+		CPN,
+		OTHER,
+		EOS
+	}
+
+	New(type : Token->Type, left : Token, right : Token) {
+		@type := type;
+		@left := left;
+		@right := right;
+	}
+
+	New(type : Token->Type) {
+		@type := type;
+	}
+
+	New(type : Token->Type, string : String) {
+		@type := type;
+		@string := string;
+	}
+
+	method : public : GetType() ~ Token->Type {
+		return @type;
+	}
+
+	method : public : GetString() ~ String {
+		return @string;
+	}
+
+	method : public : SetValue(value : Int) ~ Nil {
+		@value := value;
+	}
+
+	method : public : ToString() ~ String {
+		select(@type) {
+			label Type->OPN {
+				return "OPN";
+			}
+
+			label Type->CPN {
+				return "CPN";
+			}
+
+			label Type->IDENT {
+				return "IDENT, string='{$@string}'";
+			}
+		
+			label Type->NUM {
+				return "NUM, value={$@string}";
+			}
+
+			label Type->EQL {
+				return "EQL";
+			}
+
+			label Type->ASGN {
+				return "ASGN";
+			}
+
+			label Type->ADD {
+				return "ADD";
+			}
+
+			label Type->SUB {
+				return "SUB";
+			}
+
+			label Type->DIV {
+				return "DIV";
+			}
+
+			label Type->MOD {
+				return "MOD";
+			}
+
+			label Type->MUL {
+				return "MUL";
+			}
+		};
+
+		return "<unknown>";
+	}
+}
