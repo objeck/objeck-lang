@@ -1,26 +1,12 @@
-use Encryption;
+class Program {
+	function : Main(args: String[]) ~ Nil {
+#		ii := Int->New[3];
+#		ii[2] := 13;
+		i := IntHolder->New(1);
+#		v := ii[i + 1];
+#		v->PrintLine();
 
-class Base64Program {
-	function : Main(args: String[]) ~ Nil {		
-
-		s1 := "string";
-		s1->PrintLine();
-		Encrypt->Base64(s1)->PrintLine();
-		
-		s2 := "hello";
-		s2->PrintLine();
-		Encrypt->Base64(s2)->PrintLine();
-		
-		s3 := "poop";
-		out := Encrypt->Base64(s3);
-
-		out->PrintLine();
-		Decrypt->Base64(out)->PrintLine();
-
-
-		s4 := "e";
-		s4->PrintLine();
-		Encrypt->Base64(s4)->PrintLine();
-
+		a := i % 3;
+		a->PrintLine();
 	}
 }

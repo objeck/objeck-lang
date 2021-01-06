@@ -3582,7 +3582,13 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 
       case CLASS_TYPE:
         if(!IsEnumExpression(expression)) {
-          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+          Expression* unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
+          if(unboxed_expresion) {
+            expressions.push_back(unboxed_expresion);
+          }
+          else {
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+          }
         }
         break;
 
@@ -4343,9 +4349,11 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, L"Invalid mathematical operation");
     }
-    else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
-      ProcessError(expression, L"Invalid mathematical operation");
+    else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) || ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+      const wstring cls_name = cls_type->GetName();
+      if(cls_name != L"System.ByteHolder" && cls_name != L"System.CharHolder" && cls_name != L"System.IntHolder") {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
     }
 
     if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
