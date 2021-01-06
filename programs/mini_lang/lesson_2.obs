@@ -198,13 +198,13 @@ class Parser {
 	method : public : Print() ~ Node {
 		NextToken();
 		left := Expression();
-		
+
 		if(GetType() <> Token->Type->SEMI) {
 			"*** Expected token: SEMI ***"->ErrorLine();
 			Runtime->Exit(1);
 		};
 		NextToken();
-		
+
 		return Node->New(Node->Type->PRINT, left);
 	}
 
@@ -424,10 +424,10 @@ class Scanner {
 
 		index := start := end := 0;
 		while(index < input->Size()) {
-			if(input->Get(index) = ' ' | input->Get(index) = '\t' | input->Get(index) = '\r' | input->Get(index) = '\n') {
+			while(index < input->Size() & (input->Get(index) = ' ' | input->Get(index) = '\t' | input->Get(index) = '\r' | input->Get(index) = '\n')) {
 				index += 1;
 			};
-
+			
 			if(input->Get(index)->IsChar()) {
 				start := index++;
 				while(index < input->Size() & (input->Get(index)->IsChar() | input->Get(index) = '_')) {
