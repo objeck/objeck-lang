@@ -4,9 +4,9 @@ class Program {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := Parser->New(Scanner->Scan(args[0]));
-			tree := parser->Parse();
-			if(tree <> Nil) {
-				eval := Evaluator->New(tree);
+			trees := parser->Parse();
+			if(trees <> Nil) {
+				eval := Evaluator->New(trees);
 				eval->Evaluate();
 			};
 		};
@@ -14,15 +14,15 @@ class Program {
 }
 
 class Evaluator {
-	@root : Node;
+	@trees : Vector<Node>;
 	@memory : Int[];
 	@stack : Int[];
 	@stack_pos : Int;
 	@sym_table : Hash<String, IntHolder>;
 	@sym_index : Int;
 
-	New(root : Node) {
-		@root := root;
+	New(trees : Vector<Node>) {
+		@trees := trees;
 		@stack := Int->New[8];
 		@memory := Int->New[4];
 		@sym_table := Hash->New()<String, IntHolder>;
@@ -37,13 +37,16 @@ class Evaluator {
 	}
 
 	method : public : Evaluate() ~ Nil {
-		Evaluate(@root);
+		each(i : @trees) {
+			Evaluate(@trees->Get(i));
+		};
+
 		each(i : @memory) {
 			value := @memory[i];
 			"{$i} -> {$value}"->PrintLine();
 		};
 	}
-	
+
 	method : Evaluate(node : Node) ~ Nil {
 		if(node->GetType() = Node->Type->ASGN) {
 			Assignment(node);			
@@ -140,23 +143,56 @@ class Parser {
 		@index += 1;
 	}
 
-	method : public : Parse() ~ Node {
-		return Expression();
+	method : public : Parse() ~ Vector<Node> {
+		statements := Vector->New()<Node>;
+
+		while(GetType() <> Token->Type->EOS) {
+			statements->AddBack(Statement());
+		};
+
+		return statements;
+	}
+
+	method : public : Statement() ~ Node {
+		# assignment
+		if(GetType() = Token->Type->IDENT & GetType(1) = Token->Type->ASGN) {
+			return Assignment();
+		}
+		# print
+		else if(GetType() = Token->Type->PRINT) {
+			return Print();
+		}
+		# other
+		else {
+			"*** Expected STATEMENT ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		return Nil;
+	}
+
+	method : public : Assignment() ~ Node {
+		left := Node->New(GetToken()->GetString());
+		NextToken();
+
+		NextToken();
+		right := Expression();
+
+		if(GetType() <> Token->Type->SEMI) {
+			"*** Expected token: SEMI ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		return Node->New(Node->Type->ASGN, left, right);
+	}
+
+	method : public : Print() ~ Node {
+		return Nil;
 	}
 
 	method : public : Expression() ~ Node {
-		if(GetType() = Token->Type->IDENT & GetType(1) = Token->Type->ASGN) {
-			left := Node->New(GetToken()->GetString());
-			NextToken();
-
-			NextToken();
-			right := Term();
-
-			return Node->New(Node->Type->ASGN, left, right);
-		}
-		else {
-			return Term();
-		};
+		return Term();
 	}
 
 	method : Term() ~ Node {
@@ -204,7 +240,7 @@ class Parser {
 	}
 
 	method : Factor() ~ Node {
-		left := Number();
+		left := Value();
 
 		if(left <> Nil) {
 			select(GetType()) {
@@ -268,10 +304,16 @@ class Parser {
 		return left;
 	}
 
-	method : Number() ~ Node {
+	method : Value() ~ Node {
 		type := GetType();
+		
 		if(type = Token->Type->NUM) {
 			node := Node->New(Node->Type->NUM, GetToken()->GetString()->ToInt());
+			NextToken();
+			return node;
+		}
+		else if(type = Token->Type->IDENT) {
+			node := Node->New(GetToken()->GetString());
 			NextToken();
 			return node;
 		}
@@ -310,6 +352,7 @@ class Node {
 		MUL,
 		DIV,
 		MOD,
+		PRINT,
 		ASGN
 	}
 
@@ -390,6 +433,10 @@ class Scanner {
 						tokens->AddBack(Token->New(Token->Type->DIV));
 					}
 
+					label ';' {
+						tokens->AddBack(Token->New(Token->Type->SEMI));
+					}
+
 					label '(' {
 						tokens->AddBack(Token->New(Token->Type->OPN));
 					}
@@ -443,6 +490,8 @@ class Token {
 		MOD,
 		OPN,
 		CPN,
+		SEMI,
+		PRINT,
 		OTHER,
 		EOS
 	}
@@ -478,6 +527,10 @@ class Token {
 		select(@type) {
 			label Type->OPN {
 				return "OPN";
+			}
+
+			label Type->SEMI {
+				return "SEMI";
 			}
 
 			label Type->CPN {
