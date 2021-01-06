@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Hash&lt;K:Compare,V&gt;</h2><p>Hash table of generics</p><strong>Operations</strong><ul><li><a href='#hash-new'>New</a></li><li><a href='#hash-empty'>Empty</a></li><li><a href='#hash-find'>Find</a></li><li><a href='#hash-getkeys'>GetKeys</a></li><li><a href='#hash-getvalues'>GetValues</a></li><li><a href='#hash-has'>Has</a></li><li><a href='#hash-insert'>Insert</a></li><li><a href='#hash-remove'>Remove</a></li><li><a href='#hash-size'>Size</a></li></ul><hr/><h3>New</h3><a id='hash-new'></a><p><strong>Default constructor</strong></p><code>New()</code><h3>Empty</h3><a id='hash-empty'></a><p><strong>Clears the map</strong></p><code>method : public : Empty() ~ Nil</code><h3>Find</h3><a id='hash-find'></a><p><strong>Searches for a value in a hash</strong></p><code>method : public : native : Find(key:K) ~ V</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td>K</td><td>search key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td>V</td><td>found value, Nil if not found</td></tr></table><br/><h3>GetKeys</h3><a id='hash-getkeys'></a><p><strong>Get a collection of keys</strong></p><code>method : public : native : GetKeys() ~ Vector&lt;K&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;K&gt;</td><td>vector of keys</td></tr></table><br/><h3>GetValues</h3><a id='hash-getvalues'></a><p><strong>Gets a collection of values</strong></p><code>method : public : native : GetValues() ~ Vector&lt;V&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;V&gt;</td><td>vector of values</td></tr></table><br/><h3>Has</h3><a id='hash-has'></a><p><strong>Checks for a value in a hash</strong></p><code>method : public : Has(key:K) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td>K</td><td>search key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if found, false otherwise</td></tr></table><br/><h3>Insert</h3><a id='hash-insert'></a><p><strong>Inserts a value into the hash</strong></p><code>method : public : Insert(key:K, value:V) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td>K</td><td>key</td></tr><tr><td>value</td><td>V</td><td>value</td></tr></table><h3>Remove</h3><a id='hash-remove'></a><p><strong>Removes a value from the hash</strong></p><code>method : public : native : Remove(key:K) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td>K</td><td>key for value to remove</td></tr></table><h3>Size</h3><a id='hash-size'></a><p><strong>Size of map</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of queue</td></tr></table><br/></body></html>

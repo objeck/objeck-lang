@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Joystick</h2><p>Handles inputs from joysticks</p><strong>Operations</strong><ul><li><a href='#joystick-new'>New</a></li><li><a href='#joystick-free'>Free</a></li><li><a href='#joystick-getname'>GetName</a></li><li><a href='#joystick-isnull'>IsNull</a></li><li><a href='#joystick-number'>Number</a></li></ul><hr/><h3>New</h3><a id='joystick-new'></a><p><strong>Open a joystick for use</strong></p><code>New(device_index:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>device_index</td><td><a href='system-int.html' target='main'>Int</a></td><td>index of the joystick to query</td></tr></table><h3>Free</h3><a id='joystick-free'></a><p><strong>Close joystick previously opened</strong></p><code>method : public : Free() ~ Nil</code><h3>GetName</h3><a id='joystick-getname'></a><p><strong>Get the implementation dependent name of a joystick</strong></p><code>method : public : GetName() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>name of the selected joystick. If no name can be found, this function returns NULL,</td></tr></table><br/><h3>IsNull</h3><a id='joystick-isnull'></a><p><strong>Determines if the underlying SDL C-struct is NULL</strong></p><code>method : public : IsNull() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if NULL, false otherwise</td></tr></table><br/><h3>Number</h3><a id='joystick-number'></a><p><strong>Count of the number of joysticks attached to the system</strong></p><code>function : public : Number() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of attached joysticks on success or a negative error code on failure</td></tr></table><br/></body></html>

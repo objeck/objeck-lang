@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>JSONElement</h2><p>JSON value element</p><strong>Operations</strong><ul><li><a href='#jsonelement-new'>New</a></li><li><a href='#jsonelement-decode'>Decode</a></li><li><a href='#jsonelement-encode'>Encode</a></li><li><a href='#jsonelement-findelements'>FindElements</a></li><li><a href='#jsonelement-get'>Get</a></li><li><a href='#jsonelement-getnames'>GetNames</a></li><li><a href='#jsonelement-gettype'>GetType</a></li><li><a href='#jsonelement-getvalue'>GetValue</a></li><li><a href='#jsonelement-matchtype'>MatchType</a></li><li><a href='#jsonelement-matchvalue'>MatchValue</a></li><li><a href='#jsonelement-size'>Size</a></li><li><a href='#jsonelement-tostring'>ToString</a></li></ul><hr/><h3>New</h3><a id='jsonelement-new'></a><p><strong>Constructor</strong></p><code>New(type:JSONType)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>type</td><td><a href='data.json-jsontype.html' target='main'>JSONType</a></td><td>JSON element type</td></tr></table><p><strong>Constructor</strong></p><code>New(type:JSONType, value:String)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>type</td><td><a href='data.json-jsontype.html' target='main'>JSONType</a></td><td>JSON element type</td></tr><tr><td>value</td><td><a href='system-string.html' target='main'>String</a></td><td>JSON string value</td></tr></table><p><strong>Constructor</strong></p><code>New(value:String)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-string.html' target='main'>String</a></td><td>JSON string value</td></tr></table><p><strong>Constructor</strong></p><code>New(value:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-int.html' target='main'>Int</a></td><td>JSON integer value</td></tr></table><p><strong>Constructor</strong></p><code>New(value:Float)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td><a href='system-float.html' target='main'>Float</a></td><td>JSON float value</td></tr></table><h3>Decode</h3><a id='jsonelement-decode'></a><p><strong>General decoding for JSON strings</strong></p><code>function : public : native : Decode(str:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>str</td><td><a href='system-string.html' target='main'>String</a></td><td>encoded string</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>decoded string</td></tr></table><br/><h3>Encode</h3><a id='jsonelement-encode'></a><p><strong>General encoding for JSON strings</strong></p><code>function : public : native : Encode(str:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>str</td><td><a href='system-string.html' target='main'>String</a></td><td>decoded string</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>encoding string</td></tr></table><br/><h3>FindElements</h3><a id='jsonelement-findelements'></a><p><strong>Queries the object graph. Object attributes referenced by '/' while array elements are referenced by '[index]'. Example "cars/[last]/make".</strong></p><code>method : public : FindElements(path:String) ~ JSONElement</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>path</td><td><a href='system-string.html' target='main'>String</a></td><td>query path</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='data.json-jsonelement.html' target='main'>JSONElement</a></td><td>matching element</td></tr></table><br/><h3>Get</h3><a id='jsonelement-get'></a><p><strong>Gets an indexed value from an array type</strong></p><code>method : public : Get(index:Int) ~ JSONElement</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>index</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='data.json-jsonelement.html' target='main'>JSONElement</a></td><td>indexed value</td></tr></table><br/><p><strong>Gets a named value from an object type</strong></p><code>method : public : Get(name:String) ~ JSONElement</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>element name</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='data.json-jsonelement.html' target='main'>JSONElement</a></td><td>element value</td></tr></table><br/><h3>GetNames</h3><a id='jsonelement-getnames'></a><p><strong>Gets the names of object attributes</strong></p><code>method : public : GetNames() ~ Vector&lt;String&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='system-string.html' target='main'>String</a>&gt;</td><td>object attribute names</td></tr></table><br/><h3>GetType</h3><a id='jsonelement-gettype'></a><p><strong>Gets the type</strong></p><code>method : public : GetType() ~ JSONType</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='data.json-jsontype.html' target='main'>JSONType</a></td><td>type</td></tr></table><br/><h3>GetValue</h3><a id='jsonelement-getvalue'></a><p><strong>Gets the value</strong></p><code>method : public : GetValue() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>value</td></tr></table><br/><h3>MatchType</h3><a id='jsonelement-matchtype'></a><p><strong>Checks a node's type</strong></p><code>function : public : MatchType(elem:JSONElement, type:JSONType) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>elem</td><td><a href='data.json-jsonelement.html' target='main'>JSONElement</a></td><td>element to check</td></tr><tr><td>type</td><td><a href='data.json-jsontype.html' target='main'>JSONType</a></td><td>type to check</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of matching, false otherwise</td></tr></table><br/><h3>MatchValue</h3><a id='jsonelement-matchvalue'></a><p><strong>Checks a node's type</strong></p><code>function : public : MatchValue(elem:JSONElement, value:String) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>elem</td><td><a href='data.json-jsonelement.html' target='main'>JSONElement</a></td><td>element to check</td></tr><tr><td>value</td><td><a href='system-string.html' target='main'>String</a></td><td>value to check</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of matching, false otherwise</td></tr></table><br/><h3>Size</h3><a id='jsonelement-size'></a><p><strong>Gets the size of an array or object value</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of an array or object value</td></tr></table><br/><h3>ToString</h3><a id='jsonelement-tostring'></a><p><strong>Format the element into a JSON string</strong></p><code>method : public : ToString() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>JSON string</td></tr></table><br/></body></html>

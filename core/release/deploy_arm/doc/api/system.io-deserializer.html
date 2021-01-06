@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Deserializer</h2><p>Used to deserialize objects</p><strong>Operations</strong><ul><li><a href='#deserializer-new'>New</a></li><li><a href='#deserializer-readbool'>ReadBool</a></li><li><a href='#deserializer-readboolarray'>ReadBoolArray</a></li><li><a href='#deserializer-readbytearray'>ReadByteArray</a></li><li><a href='#deserializer-readchar'>ReadChar</a></li><li><a href='#deserializer-readchararray'>ReadCharArray</a></li><li><a href='#deserializer-readfloat'>ReadFloat</a></li><li><a href='#deserializer-readfloatarray'>ReadFloatArray</a></li><li><a href='#deserializer-readint'>ReadInt</a></li><li><a href='#deserializer-readintarray'>ReadIntArray</a></li><li><a href='#deserializer-readobject'>ReadObject</a></li><li><a href='#deserializer-readobjectarray'>ReadObjectArray</a></li></ul><hr/><h3>New</h3><a id='deserializer-new'></a><p><strong>Default constructor</strong></p><code>New(buffer:Byte[])</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>buffer</td><td><a href='system-byte.html' target='main'>Byte[]</a></td><td>input byte buffer to read from</td></tr></table><h3>ReadBool</h3><a id='deserializer-readbool'></a><p><strong>Reads a value</strong></p><code>method : public : ReadBool() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>value read</td></tr></table><br/><h3>ReadBoolArray</h3><a id='deserializer-readboolarray'></a><p><strong>Reads an array of values</strong></p><code>method : public : ReadBoolArray() ~ Bool[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool[]</a></td><td>array of values</td></tr></table><br/><h3>ReadByteArray</h3><a id='deserializer-readbytearray'></a><p><strong>Reads an array of values</strong></p><code>method : public : ReadByteArray() ~ Byte[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-byte.html' target='main'>Byte[]</a></td><td>array of values</td></tr></table><br/><h3>ReadChar</h3><a id='deserializer-readchar'></a><p><strong>Reads a value</strong></p><code>method : public : ReadChar() ~ Char</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char</a></td><td>value read</td></tr></table><br/><h3>ReadCharArray</h3><a id='deserializer-readchararray'></a><p><strong>Reads an array of values</strong></p><code>method : public : ReadCharArray() ~ Char[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char[]</a></td><td>array of values</td></tr></table><br/><h3>ReadFloat</h3><a id='deserializer-readfloat'></a><p><strong>Reads a value</strong></p><code>method : public : ReadFloat() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value read</td></tr></table><br/><h3>ReadFloatArray</h3><a id='deserializer-readfloatarray'></a><p><strong>Reads an array of values</strong></p><code>method : public : ReadFloatArray() ~ Float[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float[]</a></td><td>array of values</td></tr></table><br/><h3>ReadInt</h3><a id='deserializer-readint'></a><p><strong>Reads a value</strong></p><code>method : public : ReadInt() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>value read</td></tr></table><br/><h3>ReadIntArray</h3><a id='deserializer-readintarray'></a><p><strong>Reads an array of values</strong></p><code>method : public : ReadIntArray() ~ Int[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int[]</a></td><td>array of values</td></tr></table><br/><h3>ReadObject</h3><a id='deserializer-readobject'></a><p><strong>Reads an object</strong></p><code>method : public : ReadObject() ~ Base</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-base.html' target='main'>Base</a></td><td>value read</td></tr></table><br/><h3>ReadObjectArray</h3><a id='deserializer-readobjectarray'></a><p><strong>Reads an object array</strong></p><code>method : public : ReadObjectArray() ~ Base[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-base.html' target='main'>Base[]</a></td><td>value read</td></tr></table><br/></body></html>

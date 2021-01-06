@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Char</h2><p>Character class represents a Unicode character value.</p><strong>Operations</strong><ul><li><a href='#char-compare'>Compare</a></li><li><a href='#char-error'>Error</a></li><li><a href='#char-errorline'>ErrorLine</a></li><li><a href='#char-ischar'>IsChar</a></li><li><a href='#char-isdigit'>IsDigit</a></li><li><a href='#char-islower'>IsLower</a></li><li><a href='#char-isupper'>IsUpper</a></li><li><a href='#char-max'>Max</a></li><li><a href='#char-min'>Min</a></li><li><a href='#char-print'>Print</a></li><li><a href='#char-sort'>Sort</a></li><li><a href='#char-tobyte'>ToByte</a></li><li><a href='#char-tofloat'>ToFloat</a></li><li><a href='#char-toint'>ToInt</a></li><li><a href='#char-tolower'>ToLower</a></li><li><a href='#char-tostring'>ToString</a></li><li><a href='#char-toupper'>ToUpper</a></li></ul><hr/><h3>Compare</h3><a id='char-compare'></a><p><strong>Compares two values</strong></p><code>function : public : native : Compare(l:Char, r:Char) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>l</td><td><a href='system-char.html' target='main'>Char</a></td><td>left compare object</td></tr><tr><td>r</td><td><a href='system-char.html' target='main'>Char</a></td><td>right compare object</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>0 if equal, -1 if types differ, 1 if equal</td></tr></table><br/><h3>Error</h3><a id='char-error'></a><p><strong>Prints error value</strong></p><code>function : public : Error() ~ Nil</code><h3>ErrorLine</h3><a id='char-errorline'></a><p><strong>Prints error value with newline</strong></p><code>function : public : ErrorLine() ~ Nil</code><h3>IsChar</h3><a id='char-ischar'></a><p><strong>Checks of the character is a alpha digit</strong></p><code>function : public : native : IsChar() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if alpha digit, false otherwise</td></tr></table><br/><h3>IsDigit</h3><a id='char-isdigit'></a><p><strong>Checks of the character is a numeric digit</strong></p><code>function : public : native : IsDigit() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if numeric digit, false otherwise</td></tr></table><br/><h3>IsLower</h3><a id='char-islower'></a><p><strong>Checks if the character is lower-case</strong></p><code>function : public : native : IsLower() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if lower-case, false otherwise</td></tr></table><br/><h3>IsUpper</h3><a id='char-isupper'></a><p><strong>Checks if the character is upper-case</strong></p><code>function : public : native : IsUpper() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if upper-case, false otherwise</td></tr></table><br/><h3>Max</h3><a id='char-max'></a><p><strong>Returns the largest byte value</strong></p><code>function : public : native : Max(l:Char, r:Char) ~ Char</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>l</td><td><a href='system-char.html' target='main'>Char</a></td><td>value to compare</td></tr><tr><td>r</td><td><a href='system-char.html' target='main'>Char</a></td><td>value to compare</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char</a></td><td>largest byte value</td></tr></table><br/><h3>Min</h3><a id='char-min'></a><p><strong>Returns the smallest byte value</strong></p><code>function : public : native : Min(l:Char, r:Char) ~ Char</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>l</td><td><a href='system-char.html' target='main'>Char</a></td><td>value to compare</td></tr><tr><td>r</td><td><a href='system-char.html' target='main'>Char</a></td><td>value to compare</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char</a></td><td>smallest byte value</td></tr></table><br/><h3>Print</h3><a id='char-print'></a><p><strong>Prints value</strong></p><code>function : public : Print() ~ Nil</code><h3>Sort</h3><a id='char-sort'></a><p><strong>Prints value with newline</strong></p><code>function : public : native : Sort() ~ Char[]</code><h3>ToByte</h3><a id='char-tobyte'></a><p><strong>Returns the Character value</strong></p><code>function : public : ToByte() ~ Byte</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-byte.html' target='main'>Byte</a></td><td>value</td></tr></table><br/><h3>ToFloat</h3><a id='char-tofloat'></a><p><strong>Returns the Float value</strong></p><code>function : public : ToFloat() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr></table><br/><h3>ToInt</h3><a id='char-toint'></a><p><strong>Returns the Int value</strong></p><code>function : public : ToInt() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>value</td></tr></table><br/><h3>ToLower</h3><a id='char-tolower'></a><p><strong>Converts character to lower-case</strong></p><code>function : public : native : ToLower() ~ Char</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char</a></td><td>lower-case representation</td></tr></table><br/><h3>ToString</h3><a id='char-tostring'></a><p><strong>Returns a string representation of the value</strong></p><code>function : public : native : ToString() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>string representation of the value</td></tr></table><br/><h3>ToUpper</h3><a id='char-toupper'></a><p><strong>Converts character to upper-case</strong></p><code>function : public : native : ToUpper() ~ Char</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char</a></td><td>upper-case representation</td></tr></table><br/></body></html>

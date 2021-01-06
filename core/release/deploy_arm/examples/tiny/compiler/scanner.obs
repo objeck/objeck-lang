@@ -1,0 +1,409 @@
+use System.IO.File;
+use Collection;
+
+class Scanner {
+	@file : String;
+	@tokens : Vector;
+	@strings : Vector;
+	@line : String;
+	@line_num : Int;
+	@index : Int;
+	
+	New(file : String) {
+		@file ← file;
+		@tokens ← Vector → New();
+		@strings ← Vector → New();
+	}
+	
+	method : public : GetTokens() ~ Vector {
+		return @tokens;
+	}
+	
+	method : public : GetStrings() ~ Vector {
+		return @strings;
+	}
+	
+	method : NextLine(reader : FileReader) ~ Nil {
+		@line ← reader → ReadString();
+		@line_num += 1;
+		@index ← 0;
+	}
+	
+	method : Whitespace() ~ Nil {
+		while(@index < @line → Size() & (@line → Get(@index) = ' ' | @line → Get(@index) = '\t')) {
+			@index += 1;
+		};
+	}
+	
+	method : Comments(reader : FileReader) ~ Bool {
+		if(@index + 1 < @line → Size()) {
+			if(@line → Get(@index) = '/') {
+				if(@line → Get(@index + 1) = '/') {
+					@line ← reader → ReadString();
+					@line_num += 1;
+					@index ← 0;  
+					while(@index < @line → Size() & (@line → Get(@index) = ' ' | @line → Get(@index) = '\t')) {
+						@index += 1;
+					};										
+				}
+				else if(@line → Get(@index + 1) = '*') {
+					@index += 2;
+					
+					comment_end := false;
+					while(<>comment_end) {
+						while(@index < @line → Size() & <>comment_end) {
+							if(@index + 1 < @line → Size() & (@line → Get(@index) = '*' | @line → Get(@index + 1) = '/')) {
+								comment_end := true;
+								@index += 1;
+							};
+							@index += 1;
+						};
+						
+						if(@index = @line → Size()) {
+							NextLine(reader);
+						};						
+					};
+					Whitespace();
+					
+					if(@index = @line → Size() & <>reader → IsEOF()) {
+						NextLine(reader);
+						Whitespace();
+					};
+					Comments(reader);
+					
+					return reader → IsEOF();
+				};
+			};			
+		};
+		
+		return false;
+	}
+	
+	method : public : native : Scan() ~ Bool {
+		reserved ← StringMap → New();
+		reserved → Insert("while", IntHolder → New(Token → Type → WHILE → As(Int)));
+		reserved → Insert("if", IntHolder → New(Token → Type → IF → As(Int)));
+		reserved → Insert("else", IntHolder → New(Token → Type → ELSE → As(Int)));
+		reserved → Insert("print", IntHolder → New(Token → Type → PRINT → As(Int)));
+		reserved → Insert("puti", IntHolder → New(Token → Type → PUTI → As(Int)));
+		reserved → Insert("putc", IntHolder → New(Token → Type → PUTC → As(Int)));
+		reserved → Insert("puts", IntHolder → New(Token → Type → PUTS → As(Int)));
+		
+		reader ← FileReader → New(@file);
+		leaving {
+			reader → Close();
+		};
+		
+		string_count ← 0;
+		@line_num ← 0;
+		while(<>reader → IsEOF()) {
+			# get line
+			NextLine(reader);
+			
+			while(@index < @line → Size()) { 
+				# skip whitespace
+				Whitespace();
+				
+				# parse the @line
+				if(@index < @line → Size() & <>Comments(reader)) {
+					# variable
+					if(@line → Get(@index) → IsChar() | @line → Get(@index) = '_') {
+						string ← "";
+						while(@line → Get(@index) → IsChar() | @line → Get(@index) → IsDigit() | @line → Get(@index) = '_') {
+							string → Append(@line → Get(@index));
+							@index += 1;
+						};
+					
+						token ← reserved → Find(string) → As(IntHolder);
+						if(token <> Nil) {
+							type ← token → Get() → As(Token → Type);
+							@tokens → AddBack(Token → New(@line_num, type, string));
+						}
+						else {
+							@tokens → AddBack(Token → New(@line_num, Token → Type → VAR, string));
+						};
+					}
+					# number
+					else if(@line → Get(@index) → IsDigit()) {
+						number ← "";
+						while(@line → Get(@index) → IsDigit()) {
+							number → Append(@line → Get(@index));
+							@index += 1;
+						};						
+						@tokens → AddBack(Token → New(@line_num, Token → Type → NUM, "num", number → ToInt()));
+					}
+					# char
+					else if(@line → Get(@index) = '\'') {
+						@index += 1;
+						if(@line → Get(@index) = '\\') {
+							@index += 1;
+							select(@line → Get(@index)) {
+								label 'r': {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → CHAR, "char", '\r'));
+									@index += 1;
+								}
+								
+								label 'n': {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → CHAR, "char", '\n'));
+									@index += 1;
+								}
+								
+								label 't': {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → CHAR, "char", '\t'));
+									@index += 1;
+								}
+								
+								label '\\': {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → CHAR, "char", '\\'));
+									@index += 1;
+								}
+							};
+						}
+						else {
+							@tokens → AddBack(Token → New(@line_num, Token → Type → CHAR, "char", @line → Get(@index)));
+							@index += 1;
+						};
+						
+						if(@line → Get(@index) <> '\'') {
+							System.IO.Console → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
+							System.Runtime → Exit(1);
+						};
+						@index += 1;
+					}
+					# string
+					else if(@line → Get(@index) = '"') {
+						@index += 1;
+						string ← "";
+						while(@line → Get(@index) <> '"' & @line → Get(@index) <> '\0') {
+							string → Append(@line → Get(@index));
+							@index += 1;
+						};
+						@strings → AddBack(string);
+						
+						@tokens → AddBack(Token → New(@line_num, Token → Type → STR_REF, "string", string_count));						
+						string_count += 1;
+						@index += 1;
+					}
+					# other
+					else {
+						select(@line → Get(@index)) {
+							label ',': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → COMMA, "comma"));
+							}
+							
+							label '(': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → OPREN, "opren"));
+							}
+						
+							label ')': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → CPREN, "cpren"));
+							}
+				
+							label '{': {
+								
+								@tokens → AddBack(Token → New(@line_num, Token → Type → OCBRACE, "ocbrace"));
+							}
+				
+							label '}': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → CCBRACE, "ccbrace"));
+							}
+						
+							label '/': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → DIV, "div"));
+							}
+							
+							label '%': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → MOD, "mod"));
+							}
+
+							label '*': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → MUL, "mul"));
+							}
+
+							label '+': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → ADD, "add"));
+							}
+
+							label '-': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → SUB, "sub"));
+							}
+						
+							label ';': {
+								@tokens → AddBack(Token → New(@line_num, Token → Type → SEMI, "semi-colon"));
+							}
+							
+							label '<': {
+								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → LESS_EQL, "equal"));
+									@index += 1;
+								}
+								else {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → LESS, "less"));
+								};
+							}
+							
+							label '>': {
+								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → GTR_EQL, "equal"));
+									@index += 1;
+								}
+								else {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → GTR, "gtr"));
+								};
+							}
+							
+							label '=': {
+								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → EQL, "equal"));
+									@index += 1;
+								}
+								else {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → ASGN, "asgn"));
+								};
+							}
+							
+							label '&': {
+								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '&') {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → AND, "and"));
+									@index += 1;
+								}
+								else {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → OTHER, "OTHER"));
+								};
+							}
+							
+							label '|': {
+								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '|') {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → OR, "or"));
+									@index += 1;
+								}
+								else {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → OTHER, "OTHER"));
+								};
+							}
+							
+							label '!': {
+								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → NEQL, "neql"));
+									@index += 1;
+								}
+								else {
+									@tokens → AddBack(Token → New(@line_num, Token → Type → NOT, "not"));
+								};
+							}
+							
+							other: {
+								System.IO.Console → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
+								System.Runtime → Exit(1);
+							}
+						};
+						@index += 1;
+					};  
+				};
+			};
+		};
+		@tokens → AddBack(Token → New(@line_num, Token → Type → EOS, "eos"));
+		
+		return true;
+	}
+	
+	function : DumpTokens(tokens : Vector) ~ Nil {
+		each(@index : tokens) {
+			token ← tokens → Get(@index) → As(Token);
+			name ← token → GetName();
+			
+			select(token → GetType()) {
+				label Token → Type → VAR: {
+					"var: name={$name}" → PrintLine();
+				}
+				
+				label Token → Type → STR_REF: {
+					value ← token → GetValue();
+					"str_ref: id={$value}" → PrintLine();
+				}
+				
+				label Token → Type → NUM: {
+					value ← token → GetValue();
+					"num: value={$value}" → PrintLine();
+				}
+				
+				other : {
+					name → PrintLine();
+				}
+			};
+		};
+	}
+}
+
+class Token {
+	@@line_num : Int;
+	@type : Token → Type;
+	@name : String;
+	@value : Int;
+
+	enum Type ← -32 {
+		ASGN,
+		WHILE,
+		ELSE,
+		IF,
+		PRINT,
+		PUTC,
+		PUTI,
+		PUTS,
+		NUM,
+		CHAR,
+		STR_REF,
+		VAR,
+		OPREN,
+		CPREN,
+		OCBRACE,
+		CCBRACE,
+		AND,
+		OR,
+		DIV,
+		MOD,
+		MUL,
+		ADD,
+		SUB,
+		SEMI,
+		COMMA,
+		LESS,
+		LESS_EQL,
+		GTR,
+		GTR_EQL,
+		EQL,
+		NEQL,
+		NOT,
+		EOS,
+		OTHER
+	}
+	
+	New(@line_num : Int, type : Token → Type, name : String) {
+		@@line_num ← @line_num;
+		@type ← type;
+		@name ← name;
+	}
+	
+	New(@line_num : Int, type : Token → Type, name : String, value : Int) {
+		@@line_num ← @line_num;
+		@type ← type;
+		@value ← value;
+		@name ← name;
+	}
+	
+	method : public : GetLine() ~ Int {
+		return @@line_num;
+	}
+	
+	method : public : GetType() ~ Token → Type {
+		return @type;
+	}
+	
+	method : public : GetName() ~ String {
+		return @name;
+	}
+	
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+}
