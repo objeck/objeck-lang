@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>JoyButtonEvent</h2><p>Joysticks button event</p><strong>Operations</strong><ul><li><a href='#joybuttonevent-getbutton'>GetButton</a></li><li><a href='#joybuttonevent-getstate'>GetState</a></li><li><a href='#joybuttonevent-gettimestamp'>GetTimestamp</a></li><li><a href='#joybuttonevent-gettype'>GetType</a></li><li><a href='#joybuttonevent-getwhich'>GetWhich</a></li></ul><hr/><h3>GetButton</h3><a id='joybuttonevent-getbutton'></a><p><strong>Index of the button that changed</strong></p><code>method : public : GetButton() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>button index</td></tr></table><br/><h3>GetState</h3><a id='joybuttonevent-getstate'></a><p><strong>State of the button</strong></p><code>method : public : GetState() ~ KeyState</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-keystate.html' target='main'>KeyState</a></td><td>KeyState->SDL_PRESSED or KeyState->SDL_RELEASED</td></tr></table><br/><h3>GetTimestamp</h3><a id='joybuttonevent-gettimestamp'></a><p><strong>Timestamp of the event</strong></p><code>method : public : GetTimestamp() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>event timestamp</td></tr></table><br/><h3>GetType</h3><a id='joybuttonevent-gettype'></a><p><strong>Event type</strong></p><code>method : public : GetType() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>EventType->SDL_JOYBUTTONDOWN or EventType->SDL_JOYBUTTONUP</td></tr></table><br/><h3>GetWhich</h3><a id='joybuttonevent-getwhich'></a><p><strong>Instance ID of the joystick that reported the event</strong></p><code>method : public : GetWhich() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>joystick ID</td></tr></table><br/></body></html>

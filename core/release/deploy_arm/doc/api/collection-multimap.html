@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>MultiMap</h2><p>Binary tree that holds multiple values with the same key</p><strong>Operations</strong><ul><li><a href='#multimap-new'>New</a></li><li><a href='#multimap-empty'>Empty</a></li><li><a href='#multimap-filter'>Filter</a></li><li><a href='#multimap-find'>Find</a></li><li><a href='#multimap-getkeys'>GetKeys</a></li><li><a href='#multimap-getvalues'>GetValues</a></li><li><a href='#multimap-has'>Has</a></li><li><a href='#multimap-insert'>Insert</a></li><li><a href='#multimap-isempty'>IsEmpty</a></li><li><a href='#multimap-remove'>Remove</a></li><li><a href='#multimap-size'>Size</a></li><li><a href='#multimap-totalsize'>TotalSize</a></li></ul><hr/><h3>New</h3><a id='multimap-new'></a><p><strong>Default constructor</strong></p><code>New()</code><h3>Empty</h3><a id='multimap-empty'></a><p><strong>Clears the set</strong></p><code>method : public : Empty() ~ Nil</code><h3>Filter</h3><a id='multimap-filter'></a><p><strong>Uses the given function to filter out values</strong></p><code>method : public : Filter(f:(Compare)~Bool) ~ MultiMap</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(<a href='system-compare.html' target='main'>Compare</a>)~<a href='system-bool.html' target='main'>Bool</a></td><td>function to use a filter. If the function evaluates to true the value is added to the collection.</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-multimap.html' target='main'>MultiMap</a></td><td>filter vector</td></tr></table><br/><h3>Find</h3><a id='multimap-find'></a><p><strong>Checks for a value in a map</strong></p><code>method : public : Find(key:Compare) ~ Vector</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-compare.html' target='main'>Compare</a></td><td>search key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-vector.html' target='main'>Vector</a></td><td>true if found, false otherwise</td></tr></table><br/><h3>GetKeys</h3><a id='multimap-getkeys'></a><p><strong>Get a collection of keys</strong></p><code>method : public : GetKeys() ~ CompareVector</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-comparevector.html' target='main'>CompareVector</a></td><td>vector of keys</td></tr></table><br/><h3>GetValues</h3><a id='multimap-getvalues'></a><p><strong>Gets a collection of values</strong></p><code>method : public : GetValues() ~ Vector</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection-vector.html' target='main'>Vector</a></td><td>vector of values</td></tr></table><br/><h3>Has</h3><a id='multimap-has'></a><p><strong>Checks for a value in a map</strong></p><code>method : public : Has(key:Compare) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-compare.html' target='main'>Compare</a></td><td>search key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if found, false otherwise</td></tr></table><br/><h3>Insert</h3><a id='multimap-insert'></a><p><strong>Inserts a value into the map</strong></p><code>method : public : Insert(key:Compare, value:Base) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-compare.html' target='main'>Compare</a></td><td>key</td></tr><tr><td>value</td><td><a href='system-base.html' target='main'>Base</a></td><td>value</td></tr></table><h3>IsEmpty</h3><a id='multimap-isempty'></a><p><strong>Checks to see if the queue is empty</strong></p><code>method : public : IsEmpty() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if empty, false otherwise</td></tr></table><br/><h3>Remove</h3><a id='multimap-remove'></a><p><strong>Removes a set of values from the map</strong></p><code>method : public : Remove(key:Compare) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>key</td><td><a href='system-compare.html' target='main'>Compare</a></td><td>key for values to remove</td></tr></table><h3>Size</h3><a id='multimap-size'></a><p><strong>Size of unique keys</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of unique keys</td></tr></table><br/><h3>TotalSize</h3><a id='multimap-totalsize'></a><p><strong>Size of values</strong></p><code>method : public : TotalSize() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of values</td></tr></table><br/></body></html>

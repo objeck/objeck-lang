@@ -1,0 +1,9 @@
+{
+	"env": { 
+		"OBJECK_LIB_PATH": "<install_path>/lib", 
+		"PATH": "<install_path>/bin"
+	},
+	"cmd": ["<install_path>/bin/obc", "-src", "$file", "-lib", "collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl", "-dest", "$file_base_name.obe"],
+	"selector": "source.objeck-obs",
+	"file_regex": "^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$"
+}
