@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
   usage += L" (Windows x86)";
 #elif _OSX
 #ifdef _ARM64
-  usage += L" (macOS ARMv8)";
+  usage += L" (macOS ARM64)";
 #else
   usage += L" (macOS x86_64)";
 #endif
