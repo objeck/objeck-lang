@@ -15,55 +15,92 @@ class Program {
 
 class Evaluator {
 	@root : Node;
-	@stack : Stack<IntHolder>;
+	@memory : Int[];
+	@stack : Int[];
+	@stack_pos : Int;
+	@sym_table : Hash<String, IntHolder>;
+	@sym_index : Int;
 
 	New(root : Node) {
 		@root := root;
-		@stack := Stack->New()<IntHolder>;
+		@stack := Int->New[8];
+		@memory := Int->New[4];
+		@sym_table := Hash->New()<String, IntHolder>;
+	}
+
+	method : Push(value : Int) ~ Nil {
+		@stack[@stack_pos++] := value;
+	}
+
+	method : Pop() ~ Int {
+		return @stack[--@stack_pos];
 	}
 
 	method : public : Evaluate() ~ Nil {
 		Evaluate(@root);
-		@stack->Pop()->PrintLine();
-	}
-
-	method : Evaluate(node : Node) ~ Nil {
-		if(node->GetType() = Node->Type->ASGN) {
-			Caculate(node->GetRight());
+		each(i : @memory) {
+			value := @memory[i];
+			"{$i} -> {$value}"->PrintLine();
 		};
 	}
 	
+	method : Evaluate(node : Node) ~ Nil {
+		if(node->GetType() = Node->Type->ASGN) {
+			Assignment(node);			
+		};
+	}
+
+	method : Assignment(node : Node) ~ Nil {
+		ident := node->GetLeft()->GetStringValue();
+		index := @sym_table->Find(ident);
+		if(index = Nil) {
+			index := @sym_index++;
+			@sym_table->Insert(ident, index);				
+		};
+		Caculate(node->GetRight());
+		@memory[index->Get()] := Pop();
+	}
+
 	method : Caculate(node : Node) ~ Nil {
 		if(node <> Nil) {
 			type := node->GetType();
 
 			if(type = Node->Type->NUM) {
-				@stack->Push(node->GetIntValue());
+				Push(node->GetIntValue());
+			}
+			else if(type = Node->Type->IDENT) {
+				ident := node->GetStringValue();
+				index := @sym_table->Find(ident);
+				if(index = Nil) {
+					"*** Undefined variable: {$ident} ***"->ErrorLine();
+					Runtime->Exit(1);
+				};
+				Push(@memory[index->Get()]);
 			}
 			else {
 				Caculate(node->GetLeft());
 				Caculate(node->GetRight());
 				
-				right := @stack->Pop();
+				right := Pop();
 				select(type) {
 					label Node->Type->ADD {
-						@stack->Push(@stack->Pop() + right);
+						Push(Pop() + right);
 					}
 
 					label Node->Type->SUB {
-						@stack->Push(@stack->Pop() - right);
+						Push(Pop() - right);
 					}
 
 					label Node->Type->MUL {
-						@stack->Push(@stack->Pop() * right);
+						Push(Pop() * right);
 					}
 
 					label Node->Type->DIV {
-						@stack->Push(@stack->Pop() / right);
+						Push(Pop() / right);
 					}
 
 					label Node->Type->MOD {
-						@stack->Push(@stack->Pop() % right->Get());
+						Push(Pop() % right);
 					}
 				};
 			};
