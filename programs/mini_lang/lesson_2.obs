@@ -18,14 +18,14 @@ class Evaluator {
 	@memory : Int[];
 	@stack : Int[];
 	@stack_pos : Int;
-	@sym_table : Hash<String, IntHolder>;
-	@sym_index : Int;
+	@symbol_table : Hash<String, IntHolder>;
+	@symbol_index : Int;
 
 	New(trees : Vector<Node>) {
 		@trees := trees;
 		@stack := Int->New[8];
 		@memory := Int->New[4];
-		@sym_table := Hash->New()<String, IntHolder>;
+		@symbol_table := Hash->New()<String, IntHolder>;
 	}
 
 	method : Push(value : Int) ~ Nil {
@@ -50,15 +50,23 @@ class Evaluator {
 	method : Evaluate(node : Node) ~ Nil {
 		if(node->GetType() = Node->Type->ASGN) {
 			Assignment(node);			
+		}
+		else if(node->GetType() = Node->Type->PRINT) {
+			Print(node);			
 		};
+	}
+
+	method : Print(node : Node) ~ Nil {
+		Caculate(node->GetLeft());
+		Pop()->PrintLine();
 	}
 
 	method : Assignment(node : Node) ~ Nil {
 		ident := node->GetLeft()->GetStringValue();
-		index := @sym_table->Find(ident);
+		index := @symbol_table->Find(ident);
 		if(index = Nil) {
-			index := @sym_index++;
-			@sym_table->Insert(ident, index);				
+			index := @symbol_index++;
+			@symbol_table->Insert(ident, index);				
 		};
 		Caculate(node->GetRight());
 		@memory[index->Get()] := Pop();
@@ -73,7 +81,7 @@ class Evaluator {
 			}
 			else if(type = Node->Type->IDENT) {
 				ident := node->GetStringValue();
-				index := @sym_table->Find(ident);
+				index := @symbol_table->Find(ident);
 				if(index = Nil) {
 					"*** Undefined variable: {$ident} ***"->ErrorLine();
 					Runtime->Exit(1);
@@ -188,7 +196,16 @@ class Parser {
 	}
 
 	method : public : Print() ~ Node {
-		return Nil;
+		NextToken();
+		left := Expression();
+		
+		if(GetType() <> Token->Type->SEMI) {
+			"*** Expected token: SEMI ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+		
+		return Node->New(Node->Type->PRINT, left);
 	}
 
 	method : public : Expression() ~ Node {
@@ -362,6 +379,11 @@ class Node {
 		@right := right;
 	}
 
+	New(type : Node->Type, left : Node) {
+		@type := type;
+		@left := left;
+	}
+
 	New(type : Node->Type, int_value : Int) {
 		@type := type;
 		@int_value := int_value;
@@ -395,6 +417,9 @@ class Node {
 
 class Scanner {
 	function : Scan(input : String) ~ Vector<Token> {
+		keywords := Hash->New()<String, Token->Type>;
+		keywords->Insert("print", Token->Type->PRINT);
+
 		tokens := Vector->New()<Token>;
 
 		index := start := end := 0;
@@ -409,7 +434,14 @@ class Scanner {
 					index += 1;
 				};
 				string := input->SubString(start, index - start);
-				tokens->AddBack(Token->New(Token->Type->IDENT, string));
+
+				result := keywords->Find(string);
+				if(result <> Nil) {
+					tokens->AddBack(Token->New(result));
+				}
+				else {
+					tokens->AddBack(Token->New(Token->Type->IDENT, string));
+				};
 			}
 			else if(input->Get(index)->IsDigit()) {
 				start := index++;
