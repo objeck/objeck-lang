@@ -399,6 +399,10 @@ class Scanner {
 
 		index := start := end := 0;
 		while(index < input->Size()) {
+			if(input->Get(index) = ' ' | input->Get(index) = '\t' | input->Get(index) = '\r' | input->Get(index) = '\n') {
+				index += 1;
+			};
+
 			if(input->Get(index)->IsChar()) {
 				start := index++;
 				while(index < input->Size() & (input->Get(index)->IsChar() | input->Get(index) = '_')) {
