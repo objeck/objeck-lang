@@ -6,7 +6,7 @@ JIT compilers favor translation speed vs. code optimization. Compilers iterate o
 
 Machine code is generated for general runtime error checking such as Nil deferences and array bounds checks. JIT compilers callback to interpreted code as needed.
 
-![alt text](../../../images/jit_design.png "JIT Code Layout")
+![alt text](../../../../images/jit_design.png "JIT Code Layout")
 
 ### Implementation
 C++ using the STL.
