@@ -41,6 +41,7 @@ class Evaluator {
 			Evaluate(@trees->Get(i));
 		};
 
+		"---"->PrintLine();
 		each(i : @memory) {
 			value := @memory[i];
 			"{$i} -> {$value}"->PrintLine();
