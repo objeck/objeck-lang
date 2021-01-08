@@ -240,6 +240,10 @@ class Parser {
 		else if(GetType() = Token->Type->IF) {
 			return If();
 		}
+		# while
+		else if(GetType() = Token->Type->WHILE) {
+			return While();
+		}
 		# other
 		else {
 			"*** Expected STATEMENT ***"->ErrorLine();
@@ -267,13 +271,71 @@ class Parser {
 
 	method : public : If() ~ Node {
 		NextToken();
-		
+
+		return Nil;
+	}
+
+	method : public : While() ~ Node {
+		NextToken();
+
+		# logic
+		if(GetType() <> Token->Type->OBR) {
+			"*** Expected token: '(' ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		left := Expression();
+
+		if(GetType() <> Token->Type->CBR) {
+			"*** Expected token: ')' ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		# statements
+		if(GetType() <> Token->Type->OPN) {
+			"*** Expected token: '{' ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		statements := Vector->New()<Node>;
+		while(GetType() <> Token->Type->EOS & GetType() <> Token->Type->CPN) {
+			statements->AddBack(Statement());
+		};
+
+		if(GetType() <> Token->Type->CPN) {
+			"*** Expected token: '}' ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		if(GetType() <> Token->Type->SEMI) {
+			"*** Expected token: SEMI ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
 		return Nil;
 	}
 
 	method : public : Print() ~ Node {
 		NextToken();
+
+		if(GetType() <> Token->Type->OBR) {
+			"*** Expected token: '(' ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
 		left := Expression();
+
+		if(GetType() <> Token->Type->CBR) {
+			"*** Expected token: ')' ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
 
 		if(GetType() <> Token->Type->SEMI) {
 			"*** Expected token: SEMI ***"->ErrorLine();
@@ -410,11 +472,11 @@ class Parser {
 			NextToken();
 			return node;
 		}
-		else if(type = Token->Type->OPN) {
+		else if(type = Token->Type->OBR) {
 			NextToken();
 			node := Term();
 
-			if(GetType() <> Token->Type->CPN) {
+			if(GetType() <> Token->Type->CBR) {
 				token := GetToken();
 				"*** Unexpected token: {$token} ***"->ErrorLine();
 				return Nil;
@@ -553,10 +615,18 @@ class Scanner {
 						}
 
 						label '(' {
-							tokens->AddBack(Token->New(Token->Type->OPN));
+							tokens->AddBack(Token->New(Token->Type->OBR));
 						}
 
 						label ')' {
+							tokens->AddBack(Token->New(Token->Type->CBR));
+						}
+
+						label '{' {
+							tokens->AddBack(Token->New(Token->Type->OPN));
+						}
+
+						label '}' {
 							tokens->AddBack(Token->New(Token->Type->CPN));
 						}
 
@@ -604,6 +674,8 @@ class Token {
 		MUL,
 		DIV,
 		MOD,
+		OBR,
+		CBR,
 		OPN,
 		CPN,
 		SEMI,
@@ -643,16 +715,24 @@ class Token {
 
 	method : public : ToString() ~ String {
 		select(@type) {
+			label Type->OBR {
+				return "OBR";
+			}
+
+			label Type->CBR {
+				return "CBR";
+			}
+
 			label Type->OPN {
 				return "OPN";
 			}
 
-			label Type->SEMI {
-				return "SEMI";
-			}
-
 			label Type->CPN {
 				return "CPN";
+			}
+
+			label Type->SEMI {
+				return "SEMI";
 			}
 
 			label Type->IDENT {
