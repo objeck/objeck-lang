@@ -8,7 +8,10 @@ class Program {
 			trees := parser->Parse();
 			if(trees <> Nil) {
 				emitter := Emitter->New(trees);
-				emitter->Emit();
+				instructions := emitter->Emit();
+				each(i : instructions) {
+					instructions->Get(i)->ToString()->PrintLine();
+				};
 			};
 		};
 	}
@@ -18,16 +21,20 @@ class Emitter {
 	@trees : Vector<Node>;
 	@symbol_table : Hash<String, IntHolder>;
 	@symbol_index : Int;
+	@instructions : Vector<Instruction>;
 
 	New(trees : Vector<Node>) {
 		@trees := trees;
 		@symbol_table := Hash->New()<String, IntHolder>;
+		@instructions := Vector->New()<Instruction>;
 	}
 
-	method : public : Emit() ~ Nil {
+	method : public : Emit() ~ Vector<Instruction> {
 		each(i : @trees) {
 			Emit(@trees->Get(i));
 		};
+
+		return @instructions;
 	}
 
 	method : Emit(node : Node) ~ Nil {
@@ -41,7 +48,7 @@ class Emitter {
 
 	method : Print(node : Node) ~ Nil {
 		Caculate(node->GetLeft());
-		"PRINT"->PrintLine();
+		@instructions->AddBack(Instruction->New(Instruction->Type->PRINT));
 	}
 
 	method : Assignment(node : Node) ~ Nil {
@@ -52,7 +59,7 @@ class Emitter {
 			@symbol_table->Insert(ident, index);				
 		};
 		Caculate(node->GetRight());
-		"STOR_VAR {$index}"->PrintLine();
+		@instructions->AddBack(Instruction->New(Instruction->Type->STOR_VAR, index->Get()));
 	}
 
 	method : Caculate(node : Node) ~ Nil {
@@ -61,7 +68,7 @@ class Emitter {
 
 			if(type = Node->Type->NUM) {
 				value := node->GetIntValue();
-				"PUSH_LIT {$value}"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->LOAD_LIT, value));
 			}
 			else if(type = Node->Type->IDENT) {
 				ident := node->GetStringValue();
@@ -70,7 +77,7 @@ class Emitter {
 					"*** Undefined variable: {$ident} ***"->ErrorLine();
 					Runtime->Exit(1);
 				};
-				"PUSH_VAR {$index}"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->LOAD_VAR, index->Get()));
 			}
 			else {
 				Caculate(node->GetLeft());
@@ -78,27 +85,103 @@ class Emitter {
 				
 				select(type) {
 					label Node->Type->ADD {
-						"ADD"->PrintLine();
+						@instructions->AddBack(Instruction->New(Instruction->Type->ADD));
 					}
 
 					label Node->Type->SUB {
-						"SUB"->PrintLine();
+						@instructions->AddBack(Instruction->New(Instruction->Type->SUB));
 					}
 
 					label Node->Type->MUL {
-						"MUL"->PrintLine();
+						@instructions->AddBack(Instruction->New(Instruction->Type->MUL));
 					}
 
 					label Node->Type->DIV {
-						"DIV"->PrintLine();
+						@instructions->AddBack(Instruction->New(Instruction->Type->DIV));
 					}
 
 					label Node->Type->MOD {
-						"MOD"->PrintLine();
+						@instructions->AddBack(Instruction->New(Instruction->Type->MOD));
 					}
 				};
 			};
 		};
+	}
+}
+
+class Instruction {
+	@type : Instruction->Type;
+	@operand : Int;
+
+	enum Type {
+		LOAD_LIT,
+		LOAD_VAR,
+		STOR_VAR,
+		PRINT,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD
+	}
+
+	New(type : Instruction->Type) {
+		@type := type;
+	}
+
+	New(type : Instruction->Type, operand : Int) {
+		@type := type;
+		@operand := operand;
+	}
+
+	method : public : GetType() ~ Instruction->Type {
+		return @type;
+	}
+
+	method : public : GetOperand() ~ Int {
+		return @operand;
+	}
+
+	method : public : ToString() ~ String {
+		select(@type) {
+			label Instruction->Type->LOAD_LIT {
+				return "LOAD_LIT: value={$@operand}";
+			}
+
+			label Instruction->Type->LOAD_VAR {
+				return "LOAD_VAR: id={$@operand}";
+			}
+			
+			label Instruction->Type->STOR_VAR {
+				return "STOR_VAR: id={$@operand}";
+			}
+			
+			label Instruction->Type->PRINT {
+				return "PRINT";
+			}
+		
+			label Instruction->Type->ADD {
+				return "ADD";
+			}
+		
+			label Instruction->Type->SUB {
+				return "SUB";
+			}
+		
+			label Instruction->Type->MUL {
+				return "MUL";
+			}
+		
+			label Instruction->Type->DIV {
+				return "DIV";
+			}
+		
+			label Instruction->Type->MOD {
+				return "MOD";
+			}
+		};
+
+		return "<UNKNOWN>";
 	}
 }
 
@@ -153,6 +236,10 @@ class Parser {
 		else if(GetType() = Token->Type->PRINT) {
 			return Print();
 		}
+		# if
+		else if(GetType() = Token->Type->IF) {
+			return If();
+		}
 		# other
 		else {
 			"*** Expected STATEMENT ***"->ErrorLine();
@@ -176,6 +263,12 @@ class Parser {
 		NextToken();
 
 		return Node->New(Node->Type->ASGN, left, right);
+	}
+
+	method : public : If() ~ Node {
+		NextToken();
+		
+		return Nil;
 	}
 
 	method : public : Print() ~ Node {
@@ -402,6 +495,8 @@ class Scanner {
 	function : Scan(input : String) ~ Vector<Token> {
 		keywords := Hash->New()<String, Token->Type>;
 		keywords->Insert("print", Token->Type->PRINT);
+		keywords->Insert("if", Token->Type->IF);
+		keywords->Insert("while", Token->Type->WHILE);
 
 		tokens := Vector->New()<Token>;
 
@@ -513,6 +608,8 @@ class Token {
 		CPN,
 		SEMI,
 		PRINT,
+		IF,
+		WHILE,
 		OTHER,
 		EOS
 	}
@@ -595,6 +692,6 @@ class Token {
 			}
 		};
 
-		return "<unknown>";
+		return "<UNKNOWN>";
 	}
 }
