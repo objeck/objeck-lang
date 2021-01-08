@@ -3,11 +3,11 @@ use Collection.Generic;
 class Program {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			parser := Parser->New(Scanner->Scan(args[0]));
+			input := System.IO.File.FileReader->ReadFile(args[0]);
+			parser := Parser->New(Scanner->Scan(input));
 			trees := parser->Parse();
 			if(trees <> Nil) {
-				eval := Evaluator->New(trees);
-				eval->Evaluate();
+				Evaluator->New(trees)->Evaluate();
 			};
 		};
 	}
@@ -429,79 +429,81 @@ class Scanner {
 				index += 1;
 			};
 			
-			if(input->Get(index)->IsChar()) {
-				start := index++;
-				while(index < input->Size() & (input->Get(index)->IsChar() | input->Get(index) = '_')) {
-					index += 1;
-				};
-				string := input->SubString(start, index - start);
+			if(index < input->Size()) {
+				if(input->Get(index)->IsChar()) {
+					start := index++;
+					while(index < input->Size() & (input->Get(index)->IsChar() | input->Get(index) = '_')) {
+						index += 1;
+					};
+					string := input->SubString(start, index - start);
 
-				result := keywords->Find(string);
-				if(result <> Nil) {
-					tokens->AddBack(Token->New(result));
+					result := keywords->Find(string);
+					if(result <> Nil) {
+						tokens->AddBack(Token->New(result));
+					}
+					else {
+						tokens->AddBack(Token->New(Token->Type->IDENT, string));
+					};
+				}
+				else if(input->Get(index)->IsDigit()) {
+					start := index++;
+					while(index < input->Size() & (input->Get(index)->IsDigit() | input->Get(index) = '.')) {
+						index += 1;
+					};
+					string := input->SubString(start, index - start);
+					tokens->AddBack(Token->New(Token->Type->NUM, string));
 				}
 				else {
-					tokens->AddBack(Token->New(Token->Type->IDENT, string));
-				};
-			}
-			else if(input->Get(index)->IsDigit()) {
-				start := index++;
-				while(index < input->Size() & (input->Get(index)->IsDigit() | input->Get(index) = '.')) {
+					select(input->Get(index)) {
+						label '+' {
+							tokens->AddBack(Token->New(Token->Type->ADD));
+						}
+
+						label '-' {
+							tokens->AddBack(Token->New(Token->Type->SUB));
+						}
+
+						label '*' {
+							tokens->AddBack(Token->New(Token->Type->MUL));
+						}
+
+						label '/' {
+							tokens->AddBack(Token->New(Token->Type->DIV));
+						}
+
+						label ';' {
+							tokens->AddBack(Token->New(Token->Type->SEMI));
+						}
+
+						label '(' {
+							tokens->AddBack(Token->New(Token->Type->OPN));
+						}
+
+						label ')' {
+							tokens->AddBack(Token->New(Token->Type->CPN));
+						}
+
+						label '%' {
+							tokens->AddBack(Token->New(Token->Type->MOD));
+						}
+
+						label '=' {
+							if(index < input->Size() & input->Get(index + 1) = '=') {
+								index += 1;
+								tokens->AddBack(Token->New(Token->Type->EQL));
+							}
+							else {
+								tokens->AddBack(Token->New(Token->Type->ASGN));
+							};
+						}
+
+						other {
+							tokens->AddBack(Token->New(Token->Type->OTHER));
+						}
+					};
+
 					index += 1;
 				};
-				string := input->SubString(start, index - start);
-				tokens->AddBack(Token->New(Token->Type->NUM, string));
-			}
-			else {
-				select(input->Get(index)) {
-					label '+' {
-						tokens->AddBack(Token->New(Token->Type->ADD));
-					}
-
-					label '-' {
-						tokens->AddBack(Token->New(Token->Type->SUB));
-					}
-
-					label '*' {
-						tokens->AddBack(Token->New(Token->Type->MUL));
-					}
-
-					label '/' {
-						tokens->AddBack(Token->New(Token->Type->DIV));
-					}
-
-					label ';' {
-						tokens->AddBack(Token->New(Token->Type->SEMI));
-					}
-
-					label '(' {
-						tokens->AddBack(Token->New(Token->Type->OPN));
-					}
-
-					label ')' {
-						tokens->AddBack(Token->New(Token->Type->CPN));
-					}
-
-					label '%' {
-						tokens->AddBack(Token->New(Token->Type->MOD));
-					}
-
-					label '=' {
-						if(index < input->Size() & input->Get(index + 1) = '=') {
-							index += 1;
-							tokens->AddBack(Token->New(Token->Type->EQL));
-						}
-						else {
-							tokens->AddBack(Token->New(Token->Type->ASGN));
-						};
-					}
-
-					other {
-						tokens->AddBack(Token->New(Token->Type->OTHER));
-					}
-				};
-
-				index += 1;
 			};
 		};
 
