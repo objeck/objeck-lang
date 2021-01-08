@@ -1,0 +1,600 @@
+use Collection.Generic;
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			input := System.IO.File.FileReader->ReadFile(args[0]);
+			parser := Parser->New(Scanner->Scan(input));
+			trees := parser->Parse();
+			if(trees <> Nil) {
+				emitter := Emitter->New(trees);
+				emitter->Emit();
+			};
+		};
+	}
+}
+
+class Emitter {
+	@trees : Vector<Node>;
+	@symbol_table : Hash<String, IntHolder>;
+	@symbol_index : Int;
+
+	New(trees : Vector<Node>) {
+		@trees := trees;
+		@symbol_table := Hash->New()<String, IntHolder>;
+	}
+
+	method : public : Emit() ~ Nil {
+		each(i : @trees) {
+			Emit(@trees->Get(i));
+		};
+	}
+
+	method : Emit(node : Node) ~ Nil {
+		if(node->GetType() = Node->Type->ASGN) {
+			Assignment(node);			
+		}
+		else if(node->GetType() = Node->Type->PRINT) {
+			Print(node);			
+		};
+	}
+
+	method : Print(node : Node) ~ Nil {
+		Caculate(node->GetLeft());
+		"PRINT"->PrintLine();
+	}
+
+	method : Assignment(node : Node) ~ Nil {
+		ident := node->GetLeft()->GetStringValue();
+		index := @symbol_table->Find(ident);
+		if(index = Nil) {
+			index := @symbol_index++;
+			@symbol_table->Insert(ident, index);				
+		};
+		Caculate(node->GetRight());
+		"STOR_VAR {$index}"->PrintLine();
+	}
+
+	method : Caculate(node : Node) ~ Nil {
+		if(node <> Nil) {
+			type := node->GetType();
+
+			if(type = Node->Type->NUM) {
+				value := node->GetIntValue();
+				"PUSH_LIT {$value}"->PrintLine();
+			}
+			else if(type = Node->Type->IDENT) {
+				ident := node->GetStringValue();
+				index := @symbol_table->Find(ident);
+				if(index = Nil) {
+					"*** Undefined variable: {$ident} ***"->ErrorLine();
+					Runtime->Exit(1);
+				};
+				"PUSH_VAR {$index}"->PrintLine();
+			}
+			else {
+				Caculate(node->GetLeft());
+				Caculate(node->GetRight());
+				
+				select(type) {
+					label Node->Type->ADD {
+						"ADD"->PrintLine();
+					}
+
+					label Node->Type->SUB {
+						"SUB"->PrintLine();
+					}
+
+					label Node->Type->MUL {
+						"MUL"->PrintLine();
+					}
+
+					label Node->Type->DIV {
+						"DIV"->PrintLine();
+					}
+
+					label Node->Type->MOD {
+						"MOD"->PrintLine();
+					}
+				};
+			};
+		};
+	}
+}
+
+class Parser {
+	@tokens : Vector<Token>;
+	@index : Int;
+
+	New(tokens : Vector<Token>) {
+		@tokens := tokens;
+	}
+
+	method : GetToken() ~ Token {
+		return GetToken(0);
+	}
+
+	method : GetToken(offset : Int) ~ Token {
+		if(@index + offset < @tokens->Size()) {
+			return @tokens->Get(@index + offset);
+		};
+
+		return Token->New(Token->Type->EOS);
+	}
+
+	method : GetType() ~ Token->Type {
+		return GetToken()->GetType();
+	}
+
+	method : GetType(offset : Int) ~ Token->Type {
+		return GetToken(offset)->GetType();
+	}
+
+	method : NextToken() ~ Nil {
+		@index += 1;
+	}
+
+	method : public : Parse() ~ Vector<Node> {
+		statements := Vector->New()<Node>;
+
+		while(GetType() <> Token->Type->EOS) {
+			statements->AddBack(Statement());
+		};
+
+		return statements;
+	}
+
+	method : public : Statement() ~ Node {
+		# assignment
+		if(GetType() = Token->Type->IDENT & GetType(1) = Token->Type->ASGN) {
+			return Assignment();
+		}
+		# print
+		else if(GetType() = Token->Type->PRINT) {
+			return Print();
+		}
+		# other
+		else {
+			"*** Expected STATEMENT ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		return Nil;
+	}
+
+	method : public : Assignment() ~ Node {
+		left := Node->New(GetToken()->GetString());
+		NextToken();
+
+		NextToken();
+		right := Expression();
+
+		if(GetType() <> Token->Type->SEMI) {
+			"*** Expected token: SEMI ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		return Node->New(Node->Type->ASGN, left, right);
+	}
+
+	method : public : Print() ~ Node {
+		NextToken();
+		left := Expression();
+
+		if(GetType() <> Token->Type->SEMI) {
+			"*** Expected token: SEMI ***"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		NextToken();
+
+		return Node->New(Node->Type->PRINT, left);
+	}
+
+	method : public : Expression() ~ Node {
+		return Term();
+	}
+
+	method : Term() ~ Node {
+		left := Factor();
+
+		if(left <> Nil) {
+			select(GetType()) {
+				label Token->Type->ADD {
+					NextToken();
+
+					right := Term();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->ADD | right->GetType() = Node->Type->SUB) {
+						temp := Node->New(Node->Type->ADD, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->ADD, left, right);
+					};
+				}
+
+				label Token->Type->SUB {
+					NextToken();
+
+					right := Term();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->ADD | right->GetType() = Node->Type->SUB) {
+						temp := Node->New(Node->Type->SUB, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->SUB, left, right);
+					};
+				}
+			};
+		};
+
+		return left;
+	}
+
+	method : Factor() ~ Node {
+		left := Value();
+
+		if(left <> Nil) {
+			select(GetType()) {
+				label Token->Type->MUL {
+					NextToken();
+
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->MUL, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->MUL, left, right);
+					};
+				}
+
+				label Token->Type->DIV {
+					NextToken();
+					
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->DIV, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->DIV, left, right);
+					};
+				}
+
+				label Token->Type->MOD {
+					NextToken();
+					
+					right := Factor();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					if(right->GetType() = Node->Type->MUL | right->GetType() = Node->Type->DIV | right->GetType() = Node->Type->MOD) {
+						temp := Node->New(Node->Type->MOD, left, right->GetLeft());
+						return Node->New(right->GetType(), temp, right->GetRight());
+					}
+					else {
+						return Node->New(Node->Type->MOD, left, right);
+					};
+				}
+
+				label Token->Type->EOS {
+					return left;
+				}
+			};
+		};
+
+		return left;
+	}
+
+	method : Value() ~ Node {
+		type := GetType();
+		
+		if(type = Token->Type->NUM) {
+			node := Node->New(Node->Type->NUM, GetToken()->GetString()->ToInt());
+			NextToken();
+			return node;
+		}
+		else if(type = Token->Type->IDENT) {
+			node := Node->New(GetToken()->GetString());
+			NextToken();
+			return node;
+		}
+		else if(type = Token->Type->OPN) {
+			NextToken();
+			node := Term();
+
+			if(GetType() <> Token->Type->CPN) {
+				token := GetToken();
+				"*** Unexpected token: {$token} ***"->ErrorLine();
+				return Nil;
+			};
+			NextToken();
+			return node;
+		}
+		else {
+			token := GetToken();
+			"*** Unexpected token: {$token} ***"->ErrorLine();
+			return Nil;
+		};
+	}
+}
+
+class Node {
+	@type : Node->Type;
+	@int_value : Int;
+	@str_value : String;
+	@left : Node;
+	@right : Node;
+
+	enum Type {
+		IDENT,
+		NUM,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD,
+		PRINT,
+		ASGN
+	}
+
+	New(type : Node->Type, left : Node, right : Node) {
+		@type := type;
+		@left := left;
+		@right := right;
+	}
+
+	New(type : Node->Type, left : Node) {
+		@type := type;
+		@left := left;
+	}
+
+	New(type : Node->Type, int_value : Int) {
+		@type := type;
+		@int_value := int_value;
+	}
+
+	New(str_value : String) {
+		@type := Node->Type->IDENT;
+		@str_value := str_value;
+	}
+
+	method : public : GetType() ~ Node->Type {
+		return @type;
+	}
+
+	method : public : GetIntValue() ~ Int {
+		return @int_value;
+	}
+
+	method : public : GetStringValue() ~ String {
+		return @str_value;
+	}
+
+	method : public : GetLeft() ~ Node {
+		return @left;
+	}
+
+	method : public : GetRight() ~ Node {
+		return @right;
+	}
+}
+
+class Scanner {
+	function : Scan(input : String) ~ Vector<Token> {
+		keywords := Hash->New()<String, Token->Type>;
+		keywords->Insert("print", Token->Type->PRINT);
+
+		tokens := Vector->New()<Token>;
+
+		index := start := end := 0;
+		while(index < input->Size()) {
+			while(index < input->Size() & (input->Get(index) = ' ' | input->Get(index) = '\t' | input->Get(index) = '\r' | input->Get(index) = '\n')) {
+				index += 1;
+			};
+			
+			if(index < input->Size()) {
+				if(input->Get(index)->IsChar()) {
+					start := index++;
+					while(index < input->Size() & (input->Get(index)->IsChar() | input->Get(index) = '_')) {
+						index += 1;
+					};
+					string := input->SubString(start, index - start);
+
+					result := keywords->Find(string);
+					if(result <> Nil) {
+						tokens->AddBack(Token->New(result));
+					}
+					else {
+						tokens->AddBack(Token->New(Token->Type->IDENT, string));
+					};
+				}
+				else if(input->Get(index)->IsDigit()) {
+					start := index++;
+					while(index < input->Size() & (input->Get(index)->IsDigit() | input->Get(index) = '.')) {
+						index += 1;
+					};
+					string := input->SubString(start, index - start);
+					tokens->AddBack(Token->New(Token->Type->NUM, string));
+				}
+				else {
+					select(input->Get(index)) {
+						label '+' {
+							tokens->AddBack(Token->New(Token->Type->ADD));
+						}
+
+						label '-' {
+							tokens->AddBack(Token->New(Token->Type->SUB));
+						}
+
+						label '*' {
+							tokens->AddBack(Token->New(Token->Type->MUL));
+						}
+
+						label '/' {
+							tokens->AddBack(Token->New(Token->Type->DIV));
+						}
+
+						label ';' {
+							tokens->AddBack(Token->New(Token->Type->SEMI));
+						}
+
+						label '(' {
+							tokens->AddBack(Token->New(Token->Type->OPN));
+						}
+
+						label ')' {
+							tokens->AddBack(Token->New(Token->Type->CPN));
+						}
+
+						label '%' {
+							tokens->AddBack(Token->New(Token->Type->MOD));
+						}
+
+						label '=' {
+							if(index < input->Size() & input->Get(index + 1) = '=') {
+								index += 1;
+								tokens->AddBack(Token->New(Token->Type->EQL));
+							}
+							else {
+								tokens->AddBack(Token->New(Token->Type->ASGN));
+							};
+						}
+
+						other {
+							tokens->AddBack(Token->New(Token->Type->OTHER));
+						}
+					};
+
+					index += 1;
+				};
+			};
+		};
+
+		tokens->AddBack(Token->New(Token->Type->EOS));
+
+		return tokens;
+	}
+}
+
+class Token {
+	@type : Token->Type;
+	@string : String;
+
+	enum Type {
+		IDENT,
+		NUM,
+		EQL,
+		ASGN,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD,
+		OPN,
+		CPN,
+		SEMI,
+		PRINT,
+		OTHER,
+		EOS
+	}
+
+	New(type : Token->Type, left : Token, right : Token) {
+		@type := type;
+		@left := left;
+		@right := right;
+	}
+
+	New(type : Token->Type) {
+		@type := type;
+	}
+
+	New(type : Token->Type, string : String) {
+		@type := type;
+		@string := string;
+	}
+
+	method : public : GetType() ~ Token->Type {
+		return @type;
+	}
+
+	method : public : GetString() ~ String {
+		return @string;
+	}
+
+	method : public : SetValue(value : Int) ~ Nil {
+		@int_value := value;
+	}
+
+	method : public : ToString() ~ String {
+		select(@type) {
+			label Type->OPN {
+				return "OPN";
+			}
+
+			label Type->SEMI {
+				return "SEMI";
+			}
+
+			label Type->CPN {
+				return "CPN";
+			}
+
+			label Type->IDENT {
+				return "IDENT, string='{$@string}'";
+			}
+		
+			label Type->NUM {
+				return "NUM, value={$@string}";
+			}
+
+			label Type->EQL {
+				return "EQL";
+			}
+
+			label Type->ASGN {
+				return "ASGN";
+			}
+
+			label Type->ADD {
+				return "ADD";
+			}
+
+			label Type->SUB {
+				return "SUB";
+			}
+
+			label Type->DIV {
+				return "DIV";
+			}
+
+			label Type->MOD {
+				return "MOD";
+			}
+
+			label Type->MUL {
+				return "MUL";
+			}
+		};
+
+		return "<unknown>";
+	}
+}
