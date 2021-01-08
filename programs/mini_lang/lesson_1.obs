@@ -453,6 +453,6 @@ class Token {
 			}
 		};
 
-		return "<unknown>";
+		return "<UNKNOWN>";
 	}
 }
