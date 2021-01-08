@@ -115,17 +115,22 @@ class Emitter {
 	}
 
 	method : Statement(node : Node) ~ Nil {
-		if(node->GetType() = Node->Type->ASGN) {
-			Assignment(node);			
-		}
-		else if(node->GetType() = Node->Type->PRINT) {
-			Print(node);			
-		}
-		else if(node->GetType() = Node->Type->IF) {
-			If(node);			
-		}
-		else if(node->GetType() = Node->Type->WHILE) {
-			While(node);			
+		select(node->GetType()) {
+			label Node->Type->ASGN {
+				Assignment(node);			
+			}
+
+			label Node->Type->PRINT {
+				Print(node);			
+			}
+
+			label Node->Type->IF {
+				If(node);			
+			}
+
+			label Node->Type->WHILE {
+				While(node);			
+			}
 		};
 	}
 
