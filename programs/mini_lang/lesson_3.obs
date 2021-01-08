@@ -21,6 +21,7 @@ class Emitter {
 	@trees : Vector<Node>;
 	@symbol_table : Hash<String, IntHolder>;
 	@symbol_index : Int;
+	@jump_id : Int;
 	@instructions : Vector<Instruction>;
 
 	New(trees : Vector<Node>) {
@@ -30,25 +31,48 @@ class Emitter {
 	}
 
 	method : public : Emit() ~ Vector<Instruction> {
-		each(i : @trees) {
-			Emit(@trees->Get(i));
-		};
-
+		Statements(@trees);
 		return @instructions;
 	}
 
-	method : Emit(node : Node) ~ Nil {
+	method : Statements(statements : Vector<Node>) ~ Nil {
+		each(i : statements) {
+			Statement(statements->Get(i));
+		};
+	}
+
+	method : Statement(node : Node) ~ Nil {
 		if(node->GetType() = Node->Type->ASGN) {
 			Assignment(node);			
 		}
 		else if(node->GetType() = Node->Type->PRINT) {
 			Print(node);			
+		}
+		else if(node->GetType() = Node->Type->IF) {
+			If(node);			
+		}
+		else if(node->GetType() = Node->Type->WHILE) {
+			While(node);			
 		};
 	}
 
 	method : Print(node : Node) ~ Nil {
 		Caculate(node->GetLeft());
 		@instructions->AddBack(Instruction->New(Instruction->Type->PRINT));
+	}
+
+	method : If(node : Node) ~ Nil {
+		Caculate(node->GetLeft());
+		@instructions->AddBack(Instruction->New(Instruction->Type->JMP_ZERO, @jump_id));
+		Statements(node->GetStatements());
+		@instructions->AddBack(Instruction->New(Instruction->Type->LBL, @jump_id));
+		@jump_id += 1;
+	}
+
+	# TODO: While
+	method : While(node : Node) ~ Nil {
+		Caculate(node->GetLeft());
+		Statements(node->GetStatements());
 	}
 
 	method : Assignment(node : Node) ~ Nil {
@@ -122,7 +146,10 @@ class Instruction {
 		SUB,
 		MUL,
 		DIV,
-		MOD
+		MOD,
+		LBL,
+		JMP_ZERO,
+		JMP
 	}
 
 	New(type : Instruction->Type) {
@@ -154,6 +181,18 @@ class Instruction {
 			
 			label Instruction->Type->STOR_VAR {
 				return "STOR_VAR: id={$@operand}";
+			}
+
+			label Instruction->Type->JMP_ZERO {
+				return "JMP_ZERO: id={$@operand}";
+			}
+
+			label Instruction->Type->LBL {
+				return "LBL: id={$@operand}";
+			}
+
+			label Instruction->Type->JMP {
+				return "JMP: id={$@operand}";
 			}
 			
 			label Instruction->Type->PRINT {
@@ -238,11 +277,11 @@ class Parser {
 		}
 		# if
 		else if(GetType() = Token->Type->IF) {
-			return If();
+			return IfWhile(true);
 		}
 		# while
 		else if(GetType() = Token->Type->WHILE) {
-			return While();
+			return IfWhile(false);
 		}
 		# other
 		else {
@@ -269,13 +308,7 @@ class Parser {
 		return Node->New(Node->Type->ASGN, left, right);
 	}
 
-	method : public : If() ~ Node {
-		NextToken();
-
-		return Nil;
-	}
-
-	method : public : While() ~ Node {
+	method : public : IfWhile(is_if : Bool) ~ Node {
 		NextToken();
 
 		# logic
@@ -311,13 +344,12 @@ class Parser {
 		};
 		NextToken();
 
-		if(GetType() <> Token->Type->SEMI) {
-			"*** Expected token: SEMI ***"->ErrorLine();
-			Runtime->Exit(1);
+		if(is_if) {
+			return Node->New(Node->Type->IF, left, statements);
+		}
+		else {
+			return Node->New(Node->Type->WHILE, left, statements);
 		};
-		NextToken();
-
-		return Nil;
 	}
 
 	method : public : Print() ~ Node {
@@ -498,6 +530,7 @@ class Node {
 	@str_value : String;
 	@left : Node;
 	@right : Node;
+	@statements : Vector<Node>;
 
 	enum Type {
 		IDENT,
@@ -508,7 +541,15 @@ class Node {
 		DIV,
 		MOD,
 		PRINT,
+		IF,
+		WHILE,
 		ASGN
+	}
+
+	New(type : Node->Type, left : Node, statements : Vector<Node>) {
+		@type := type;
+		@left := left;
+		@statements := statements;
 	}
 
 	New(type : Node->Type, left : Node, right : Node) {
@@ -550,6 +591,10 @@ class Node {
 
 	method : public : GetRight() ~ Node {
 		return @right;
+	}
+
+	method : public : GetStatements() ~ Vector<Node> {
+		return @statements;
 	}
 }
 
