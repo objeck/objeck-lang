@@ -4,15 +4,88 @@ class Program {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			input := System.IO.File.FileReader->ReadFile(args[0]);
+			input->PrintLine();
+			"---"->PrintLine();
 			parser := Parser->New(Scanner->Scan(input));
 			trees := parser->Parse();
 			if(trees <> Nil) {
 				emitter := Emitter->New(trees);
-				instructions := emitter->Emit();
-				each(i : instructions) {
-					instructions->Get(i)->ToString()->PrintLine();
-				};
+				Print(emitter->Emit());
+				"---"->PrintLine();
+				Execute(emitter->Emit());
 			};
+		};
+	}
+
+	function : Execute(instructions : Vector<Instruction>) ~ Nil {
+		ip := stack_pos := 0;
+		stack := Int->New[8];
+		mem := Int->New[8];
+		
+		instr := instructions->Get(ip++);
+		while(instr->GetType() <> Instruction->Type->HALT) {
+			select(instr->GetType()) {
+				label Instruction->Type->LOAD_LIT {
+					stack[stack_pos++] := instr->GetOperand();
+				}
+
+				label Instruction->Type->LOAD_VAR {
+					stack[stack_pos++] := mem[instr->GetOperand()];
+				}
+				
+				label Instruction->Type->STOR_VAR {
+					mem[instr->GetOperand()] := stack[--stack_pos];
+				}
+				
+				label Instruction->Type->PRINT {
+					stack[--stack_pos]->PrintLine();
+				}
+				
+				label Instruction->Type->ADD {
+					right := stack[--stack_pos];
+					stack[stack_pos++] := stack[--stack_pos] + right;
+				}
+				
+				label Instruction->Type->SUB {
+					right := stack[--stack_pos];
+					stack[stack_pos++] := stack[--stack_pos] - right;
+				}
+				
+				label Instruction->Type->MUL {
+					right := stack[--stack_pos];
+					stack[stack_pos++] := stack[--stack_pos] * right;
+				}
+				
+				label Instruction->Type->DIV {
+					right := stack[--stack_pos];
+					stack[stack_pos++] := stack[--stack_pos] / right;
+				}
+				
+				label Instruction->Type->MOD {
+					right := stack[--stack_pos];
+					stack[stack_pos++] := stack[--stack_pos] % right;
+				}
+				
+				label Instruction->Type->JMP_ZERO {
+					if(stack[--stack_pos] = 0) {
+						ip := instr->GetOperand();
+					};
+				}
+				
+				label Instruction->Type->JMP {
+					ip := instr->GetOperand();
+				}
+			};
+
+			# update
+			instr := instructions->Get(ip++);
+		};
+	}
+
+	function : Print(instructions : Vector<Instruction>) ~ Nil {
+		each(index : instructions) {
+			instr := instructions->Get(index)->ToString();
+			"{$index}: {$instr}"->PrintLine();
 		};
 	}
 }
@@ -21,7 +94,6 @@ class Emitter {
 	@trees : Vector<Node>;
 	@symbol_table : Hash<String, IntHolder>;
 	@symbol_index : Int;
-	@jump_id : Int;
 	@instructions : Vector<Instruction>;
 
 	New(trees : Vector<Node>) {
@@ -32,6 +104,7 @@ class Emitter {
 
 	method : public : Emit() ~ Vector<Instruction> {
 		Statements(@trees);
+		@instructions->AddBack(Instruction->New(Instruction->Type->HALT));
 		return @instructions;
 	}
 
@@ -63,16 +136,24 @@ class Emitter {
 
 	method : If(node : Node) ~ Nil {
 		Caculate(node->GetLeft());
-		@instructions->AddBack(Instruction->New(Instruction->Type->JMP_ZERO, @jump_id));
+		test_instr := Instruction->New(Instruction->Type->JMP_ZERO);
+		@instructions->AddBack(test_instr);
 		Statements(node->GetStatements());
-		@instructions->AddBack(Instruction->New(Instruction->Type->LBL, @jump_id));
+		test_id := @instructions->Size();
+		test_instr->SetOperand(test_id);
 		@jump_id += 1;
 	}
 
-	# TODO: While
 	method : While(node : Node) ~ Nil {
+		jmp_index := @instructions->Size();
 		Caculate(node->GetLeft());
+		test_instr := Instruction->New(Instruction->Type->JMP_ZERO);
+		@instructions->AddBack(test_instr);
 		Statements(node->GetStatements());
+		@instructions->AddBack(Instruction->New(Instruction->Type->JMP, jmp_index));
+		test_id := @instructions->Size();
+		test_instr->SetOperand(test_id);
+		@jump_id += 1;
 	}
 
 	method : Assignment(node : Node) ~ Nil {
@@ -147,9 +228,9 @@ class Instruction {
 		MUL,
 		DIV,
 		MOD,
-		LBL,
 		JMP_ZERO,
-		JMP
+		JMP,
+		HALT
 	}
 
 	New(type : Instruction->Type) {
@@ -167,6 +248,10 @@ class Instruction {
 
 	method : public : GetOperand() ~ Int {
 		return @operand;
+	}
+
+	method : public : SetOperand(operand : Int) ~ Nil {
+		@operand := operand;
 	}
 
 	method : public : ToString() ~ String {
@@ -187,16 +272,16 @@ class Instruction {
 				return "JMP_ZERO: id={$@operand}";
 			}
 
-			label Instruction->Type->LBL {
-				return "LBL: id={$@operand}";
-			}
-
 			label Instruction->Type->JMP {
 				return "JMP: id={$@operand}";
 			}
 			
 			label Instruction->Type->PRINT {
 				return "PRINT";
+			}
+
+			label Instruction->Type->HALT {
+				return "HALT";
 			}
 		
 			label Instruction->Type->ADD {
