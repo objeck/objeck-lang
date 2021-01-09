@@ -1,5 +1,0 @@
-[Project]
-libraries=lang.obl;collect.obl
-name=FooBar
-output=a.obe
-source=C:\Users\Randy\Documents\Code\objeck-lang\src\objeck\deploy\examples\hello.obs;
