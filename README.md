@@ -51,8 +51,8 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 ## Binaries
 Get the latest [binaries](https://sourceforge.net/projects/objeck-lang/).
 
-## Design and Development
-Component Docs 
+## Design
+Components 
 *  [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md)
 *  [VM](https://github.com/objeck/objeck-lang/blob/master/core/vm/README.md)
 *  [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger/README.md)
