@@ -1,2 +1,2 @@
 ## Miscellaneous
-This is a laboratory containing snippets of code used for prototyping various concepts many of which never came to fruition. In here you'll also find some the last Java [code](folding) I've written.
+Colleciton of scratch code and other odds and ends.
