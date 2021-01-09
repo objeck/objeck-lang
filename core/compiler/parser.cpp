@@ -497,7 +497,7 @@ Enum* Parser::ParseEnum(int depth)
     wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
     if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum))) {
-      ProcessError(L"Duplicate enum label name '" + enum_name + L"'", TOKEN_CLOSED_BRACE);
+      ProcessError(L"Duplicate enum label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
     }
 
     if(Match(TOKEN_COMMA)) {
