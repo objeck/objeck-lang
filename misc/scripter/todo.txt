@@ -1,6 +1,0 @@
-2/26/2017
-	* Refactor 'TargetEmitter' to emit a VM runtime model
-	* Wire up 'Scrpter::GetProgram()'
-	* Test reflection
-	* Test lib_api.h libraries
-	* Check to ensure all compiler memory is freed before the VM runs
