@@ -1,12 +1,5 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
-#		ii := Int->New[3];
-#		ii[2] := 13;
-		i := IntHolder->New(1);
-#		v := ii[i + 1];
-#		v->PrintLine();
-
-		a := i % 3;
-		a->PrintLine();
+		10->Print();
 	}
 }
