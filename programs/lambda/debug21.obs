@@ -32,14 +32,11 @@ class Func2Composer<X, X> {
 	}
 
 	method : public : Apply(x : X) ~ X {
-		param_func := @param->Get();
-
 		if(@caller = Nil) {
-			return param_func(x);
+			return @param->Apply(x);
 		}
 		else {
-			caller_func := @caller->Get();
-			return caller_func(param_func(x));
+			return @caller->Apply(@param->Apply(x));
 		};
 	}
 
