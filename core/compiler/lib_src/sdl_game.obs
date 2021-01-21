@@ -596,6 +596,8 @@ bundle Game.Framework {
 
 		#~
 		Renders sprite
+		@param x x position
+		@param y y position
 		@param clip clipping rectangle
 		@param angle clipping rectangle
 		@param center center point
