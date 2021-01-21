@@ -4526,8 +4526,8 @@ bundle Game.SDL2 {
 	class Image {
 		#~ 
 		Initialize by loading support as indicated by the flags
-		@parma flags OR'd values ImageFlags->IMG_INIT_JPG, 
-		ImageFlags->IMG_INIT_PNG and ImageFlags->IMG_INIT_TIF
+		@param flags OR'd values ImageFlags->IMG_INIT_JPG, ImageFlags->IMG_INIT_PNG and ImageFlags->IMG_INIT_TIF
+		@return status code
 		~#
 		function : Init(flags : Int) ~ Int {
 	        array_args := Base->New[2];
@@ -4703,7 +4703,7 @@ bundle Game.SDL2 {
 
 		#~
 		Create a 2D software rendering context for a surface
-		@paam surface Surface representing the surface where rendering is done
+		@param surface Surface representing the surface where rendering is done
 		@return valid rendering context
 		~#
 		function : CreateSoftwareRenderer(surface : Surface) ~ Renderer {
@@ -4884,7 +4884,7 @@ bundle Game.SDL2 {
 
 		#~
 		Get the drawing area for the current target
-		@paam rect Rect filled in with the current drawing area
+		@param rect Rect filled in with the current drawing area
 		~#
 		method : public : GetViewport(rect : Rect) ~ Nil {
 			if(@renderer <> 0) {

@@ -219,7 +219,7 @@ class SnippetParser {
 				"\tProcessed class: name='{$class_inf_name}'"->PrintLine();
 				@bundle_block->AddClass(@class_inf_block);
 			}
-			else {
+			else if(<>block->Has("private")) {
 				"*** Unable to parse class block. Text='{$block}' ***"->ErrorLine();
 			};
 		}
@@ -236,7 +236,9 @@ class SnippetParser {
 			};
 		}
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
-			@class_inf_block->AddFunction(block);
+			if(<>@class_inf_block->AddFunction(block) & <>block->StartsWith("#~~")) {
+				"ERROR: '{$block}'"->ErrorLine();
+			};
 		};
 		block := "";
 	}
@@ -1192,8 +1194,7 @@ class FuncSnippet from Snippet {
 				return false;
 			};
 		
-			type_name := "";
-			type_param := ParseType(param_name, type_name);
+			type_param := ParseType(param_name);
 			if(type_param <> Nil) {
 				@func_types->AddBack(type_param);
 				MatchChar(',');
@@ -1211,9 +1212,14 @@ class FuncSnippet from Snippet {
 
 			# return type
 			rtrn_name := ParseName();
-			if(rtrn_name->Size() = 0) {
-				return false;
-			};		
+			if(rtrn_name->IsEmpty()) {
+				func_rtrn_type := ParseType(rtrn_name);
+				if(func_rtrn_type = Nil) {
+					return false;
+				};
+				rtrn_name := func_rtrn_type->GetTypeName();
+			};
+
 			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
 			if(rtrn_type <> Nil) {
 				@return_type := SnippetType->New("", rtrn_name, rtrn_type->Get()->As(SnippetType->Type));
@@ -1245,15 +1251,26 @@ class FuncSnippet from Snippet {
 				mid := ParseIdent();
 			};
 			start->Pop();
+			NextChar();
 
 			start += "&gt;";
+		}
+		else if(MatchChar('>')) {
+			start += "&gt;";
+			start += ParseIdent();
+		}
+		else if(MatchChar(':')) {
+			while(@cur_char <> ',' & @cur_char <> ')') {
+			 	NextChar();
+			 };
 		};
-
 
 		return start;
 	}
 	
-	method : ParseType(param_name : String, type_name : String) ~ SnippetType {
+	method : ParseType(param_name : String) ~ SnippetType {
+		type_name := "";
+
 		if(MatchChar('(')) {
 			type_name->Append('(');
 
