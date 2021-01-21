@@ -421,7 +421,7 @@ bundle Query.Structured {
 		#~
 		Loads a table from a CSV file
 		@param table_name table name
-		@path path to CSV
+		@param path to CSV
 		@return new table
 		~#
 		function : FromCsv(table_name : String, path : String) ~ Table {
@@ -499,7 +499,7 @@ bundle Query.Structured {
 		#~
 		Loads a table from a directory file system. Columns are: path_name, create_date, owner, is_dir and is_readonly.
 		@param table_name table name
-		@path path to directory
+		@param path to directory
 		@return new table
 		~#
 		function : FromFilesystem(table_name : String, path : String) ~ Table {

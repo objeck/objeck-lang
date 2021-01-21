@@ -509,7 +509,7 @@ class HtmlMaker {
 		};
 
 		start := type_name->Find('&');
-		if(start > - 1) {
+		if(start > - 1 & type_name->Find('-') < 0) {
 			value := GetGenericLink(start, type_name);
 			if(array_count > 0) {
 				value += '[';
