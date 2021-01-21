@@ -1182,7 +1182,7 @@ bundle System {
 		
 		#~
 		Calculates the arc-tangent value
-		@ignore-params f
+		@ignore-params
 		@return arc-tangent value
 		~#
 		function : ArcTan(f : Float) ~ Float {
@@ -3796,7 +3796,7 @@ bundle System.Time {
 		@param day day of month
 		@param month day of year
 		@param year year
-		@hours hours
+		@param hours hours
 		@param mins minutes
 		@param secs seconds
 		@param gmt true of time is in GMT, false for system time zone

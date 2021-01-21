@@ -97,7 +97,7 @@ bundle Data.CSV {
 		
 		#~
 		Appends value to the end of the row
-		@value value to append
+		@param value to append
 		~#
 		method : public : Append(value : String) ~ Nil {
 			@columns->AddBack(value);

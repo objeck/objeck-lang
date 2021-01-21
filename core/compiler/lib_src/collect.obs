@@ -1366,7 +1366,7 @@ bundle Collection {
 		
 		#~
 		Pushes a value onto the stack
-		@value value to push
+		@param value to push
 		~#
 		method : public: Push(value : Int) ~ Nil {
 			@values->AddBack(value);
@@ -1438,7 +1438,7 @@ bundle Collection {
 		
 		#~
 		Pushes a value onto the stack
-		@value value to push
+		@param value to push
 		~#
 		method : public : Push(value : Float) ~ Nil {
 			@values->AddBack(value);
@@ -1510,7 +1510,7 @@ bundle Collection {
 		
 		#~
 		Pushes a value onto the stack
-		@value value to push
+		@param value to push
 		~#
 		method : public: Push(value : Base) ~ Nil {
 			@values->AddBack(value);
