@@ -2141,7 +2141,7 @@ bundle System {
 		method : public : Set(func : (X) ~ R) ~ Nil {
 			@func := func;
 		}
-
+		
 		#~
 		Apply function
 		@param arg argument

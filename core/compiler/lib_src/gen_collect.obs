@@ -554,11 +554,11 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Applies the given function to each value in the list 
+		Maps the given function to each value in the list 
 		@param f function to apply
 		@return newly calculated list
 		~#
-		method : public : Apply(f : (H) ~ H) ~ CompareList<H> {
+		method : public : Map(f : (H) ~ H) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
 			
 			start := @head;
@@ -1003,11 +1003,11 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Applies the given function to each value in the list 
+		Maps the given function to each value in the list 
 		@param f function to apply
 		@return newly calculated list
 		~#
-		method : public : Apply(f : (H) ~ H) ~ List<H> {
+		method : public : Map(f : (H) ~ H) ~ List<H> {
 			list : List<H> := List->New()<H>;
 			
 			start := @head;
@@ -1414,11 +1414,11 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Applies the given function to each value in the vector 
+		Maps the given function to each value in the vector 
 		@param f function to apply
 		@return newly calculated vector
 		~#
-		method : public : Apply(f : (H) ~ H) ~ Vector<H> {
+		method : public : Map(f : (H) ~ H) ~ Vector<H> {
 			array : H[] := H->New[@size];
 			for(i : Int := 0; i < @size; i += 1;) {
 				array[i] := f(@values[i]);
@@ -1648,11 +1648,11 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Applies the given function to each value in the vector 
+		Maps the given function to each value in the vector 
 		@param f function to apply
 		@return newly calculated vector
 		~#
-		method : public : Apply(f : (H) ~ H) ~ CompareVector<H> {
+		method : public : Map(f : (H) ~ H) ~ CompareVector<H> {
 			array : H[] := H->New[@size];
 
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -2579,6 +2579,23 @@ bundle Collection.Generic {
 		~#
 		method : public : TotalSize() ~ Int {
 			return @map->GetValues()->Size();
+		}
+	}
+
+	class Func2Composer<X, R> {
+		@func : Func2Holder<X, R>;
+
+		New(first : Func2Holder<X, R>) {
+			@func := first;
+		}
+
+		method : public : Apply(x : X) ~ R {		
+			func := @func->Get();
+			return func(x);
+		}
+
+		method : public : Compose(before : Func2Holder<Base, X>) ~ Func2Composer<Base, R> {
+			return Nil;
 		}
 	}
 }
