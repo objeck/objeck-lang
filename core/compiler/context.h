@@ -344,6 +344,9 @@ class ContextAnalyzer {
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
+  // get generic types
+  vector<Type*> GetMethodCallGenerics(MethodCall* method_call);
+
   // resolve generic type
   Type* ResolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
 
