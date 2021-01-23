@@ -328,7 +328,7 @@ void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* kl
         }
 
         if(!default_params) {
-          ProcessError(declarations[0], L"Only trailing parameters may have default values");
+          ProcessError(declarations.front(), L"Only trailing parameters may have default values");
           return;
         }
       }
@@ -1016,13 +1016,13 @@ Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
-    Method* alt_mthd = alt_mthds[0];
+    Method* alt_mthd = alt_mthds.front();
     vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
-    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry() && 
-       alt_mthd_types[0]->GetEntry()->GetType()->GetType() == FUNC_TYPE) {
+    if(alt_mthd_types.size() == 1 && alt_mthd_types.front()->GetEntry() && 
+       alt_mthd_types.front()->GetEntry()->GetType()->GetType() == FUNC_TYPE) {
       // set parameters
       vector<Type*> inferred_type_params;
-      Type* alt_mthd_type = alt_mthd_types[0]->GetEntry()->GetType();
+      Type* alt_mthd_type = alt_mthd_types.front()->GetEntry()->GetType();
       const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         inferred_type_params.push_back(ResolveGenericType(func_params[i], lambda_inferred_call, alt_mthd->GetClass(), nullptr));
@@ -1047,12 +1047,12 @@ LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(vector<LibraryMethod*>& al
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
-    LibraryMethod* alt_mthd = alt_mthds[0];
+    LibraryMethod* alt_mthd = alt_mthds.front();
     vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
-    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetType() == FUNC_TYPE) {
+    if(alt_mthd_types.size() == 1 && alt_mthd_types.front()->GetType() == FUNC_TYPE) {
       // set parameters
       vector<Type*> inferred_type_params;
-      Type* alt_mthd_type = alt_mthd_types[0];
+      Type* alt_mthd_type = alt_mthd_types.front();
       const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         inferred_type_params.push_back(ResolveGenericType(func_params[i], lambda_inferred_call, NULL, alt_mthd->GetLibraryClass()));
@@ -2643,6 +2643,23 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
 
       // looks for a relative match
       if(method_type->GetDimension() == 0) {
+        if(IsHolderType(method_type->GetName())) {
+          switch (calling_type->GetType()) {
+          case BYTE_TYPE:
+            calling_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.ByteHolder");
+            break;
+          case CHAR_TYPE:
+            calling_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.CharHolder");
+            break;
+          case INT_TYPE:
+            calling_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.IntHolder");
+            break;
+          case FLOAT_TYPE:
+            calling_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.FloatHolder");
+            break;
+          }
+        }
+
         switch(calling_type->GetType()) {
         case NIL_TYPE:
           if(method_type->GetType() == CLASS_TYPE) {
@@ -3903,7 +3920,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
   const wstring concrete_type_name = concrete_type->GetName();
   Class* concrete_klass = nullptr; LibraryClass* concrete_lib_klass = nullptr;
   if(!GetProgramLibraryClass(concrete_type, concrete_klass, concrete_lib_klass)) {
-    concrete_klass = current_class->GetGenericClass(concrete_type_name);
+     concrete_klass = current_class->GetGenericClass(concrete_type_name);
   }
 
   if(concrete_klass || concrete_lib_klass) {
@@ -7068,7 +7085,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
             const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
-                const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
+                const vector<Type*> map_types = GetMethodCallGenerics(method_call);
                 if(i < map_types.size()) {
                   ResolveClassEnumType(map_types[i]);
                 }
@@ -7077,7 +7094,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                 }
               }
               else if(lib_klass && method_call->GetEvalType()) {
-                const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
+                const vector<Type*> map_types = GetMethodCallGenerics(method_call);
                 if(i < map_types.size()) {
                   Type* map_type = map_types[i];
                   ResolveClassEnumType(map_type);
@@ -7097,7 +7114,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   }
                   else {
                     const vector<Type*> from_concrete_types = concrete_types;
-                    const vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
+                    const vector<Type*> to_concrete_types = GetMethodCallGenerics(method_call);
                     if(from_concrete_types.size() == to_concrete_types.size()) {
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
                         Type* from_concrete_type = from_concrete_types[j];
@@ -7148,12 +7165,19 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         else if(method_call->GetCallType() == NEW_INST_CALL) {
           concrete_types = GetConcreteTypes(method_call);
         }
-        else if(!method_call->GetConcreteTypes().empty()) {
-          concrete_types = method_call->GetConcreteTypes();
-        }
         else if(method_call->GetEvalType()) {
-          concrete_types = method_call->GetEvalType()->GetGenerics();
-          method_call->SetConcreteTypes(concrete_types);
+          Expression* prev_call = method_call;
+          while(prev_call->GetPreviousExpression()) {
+            prev_call = prev_call->GetPreviousExpression();
+          }
+
+          if(prev_call->GetExpressionType() == METHOD_CALL_EXPR) {
+            MethodCall* first_call = static_cast<MethodCall*>(prev_call);
+            concrete_types = first_call->GetEntry()->GetType()->GetGenerics();
+            while(concrete_types.size() == 1 && concrete_types.front()->GetGenerics().size()) {
+              concrete_types = concrete_types.front()->GetGenerics();
+            }
+          }
         }
 
         // get concrete type
@@ -7250,8 +7274,8 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
   }
   // single match
   else if(valid_matches.size() == 1) {
-    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetCallingParameters());
-    return valid_matches[0]->GetLibraryMethod();
+    method_call->GetCallingParameters()->SetExpressions(valid_matches.front()->GetCallingParameters());
+    return valid_matches.front()->GetLibraryMethod();
   }
 
   int match_index = -1;
@@ -7292,8 +7316,8 @@ Method* MethodCallSelector::GetSelection()
   }
   // single match
   else if(valid_matches.size() == 1) {
-    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetCallingParameters());
-    return valid_matches[0]->GetMethod();
+    method_call->GetCallingParameters()->SetExpressions(valid_matches.front()->GetCallingParameters());
+    return valid_matches.front()->GetMethod();
   }
 
   int match_index = -1;
@@ -7324,4 +7348,24 @@ Method* MethodCallSelector::GetSelection()
 
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
+}
+
+vector<Type*> ContextAnalyzer::GetMethodCallGenerics(MethodCall* method_call)
+{
+  vector<Type*> concrete_types;
+
+  Expression* prev_call = method_call;
+  while(prev_call->GetPreviousExpression()) {
+    prev_call = prev_call->GetPreviousExpression();
+  }
+
+  if(prev_call->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* first_call = static_cast<MethodCall*>(prev_call);
+    concrete_types = first_call->GetEntry()->GetType()->GetGenerics();
+    while(concrete_types.size() == 1 && concrete_types.front()->GetGenerics().size()) {
+      concrete_types = concrete_types.front()->GetGenerics();
+    }
+  }
+
+  return concrete_types;
 }

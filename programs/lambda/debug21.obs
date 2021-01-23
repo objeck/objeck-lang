@@ -5,8 +5,8 @@ class Test {
 		
 		composer := Func2Composer->New(f)<IntHolder, IntHolder>;
 		
-		composer->Compose(g)->Apply(4)<IntHolder>->PrintLine();
-		composer->Then(g)->Apply(4)<IntHolder>->PrintLine();
+		composer->Compose(g)->Apply(4)->PrintLine();
+		composer->Then(g)->Apply(4)->PrintLine();
 	}
 
 	function : F(a : IntHolder) ~ IntHolder {
