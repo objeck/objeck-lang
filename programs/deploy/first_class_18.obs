@@ -1,5 +1,5 @@
 #~
-# compile: obc -src first_class_18.obs -lib gen_collect' -dest first_class_18.obe
+# compile: obc -src first_class_18.obs -lib gen_collect -dest first_class_18.obe
 # run: obr first_class_18.obe
 ~#
 
@@ -21,7 +21,7 @@ class FirstClass {
 		# process collection
 		each(i : vector) {
 			# return value of other functions and pass argument to other function
-			Show(vector->Get(i)<Func2Holder>->Get()<FloatHolder, FloatHolder>);
+			Show(vector->Get(i)->Get());
 		};
 	}
 
