@@ -2046,6 +2046,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
       }
+      AnalyzeGenericMethodCall(method_call, depth+ 1);
       return;
     }
     // library call
@@ -2057,6 +2058,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       }
+      AnalyzeGenericMethodCall(method_call, depth + 1);
       return;
     }
 
@@ -2453,6 +2455,45 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth
     }
     else {
       ProcessError(static_cast<Expression*>(method_call), L"Class has no parent");
+    }
+  }
+}
+
+/****************************
+ * Analyzes generic method call
+ ****************************/
+void ContextAnalyzer::AnalyzeGenericMethodCall(MethodCall* method_call, const int depth)
+{
+  if(method_call->GetEvalType() && method_call->GetEvalType()->HasGenerics()) {
+    vector<Type*> entry_generics;
+    if(method_call->GetEntry()) {
+      entry_generics = method_call->GetEntry()->GetType()->GetGenerics();
+    }
+    else if(method_call->GetVariable()) {
+      entry_generics = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
+    }
+
+    if(!entry_generics.empty()) {
+      if(method_call->GetMethod()) {
+        Class* klass = method_call->GetMethod()->GetClass();
+        vector<Class*> klass_generics = klass->GetGenericClasses();
+        if(entry_generics.size() == klass_generics.size()) {
+
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+        }
+      }
+      else if(method_call->GetLibraryMethod()) {
+        LibraryClass* lib_klass = method_call->GetLibraryMethod()->GetLibraryClass();
+        vector<LibraryClass*> klass_generics = lib_klass->GetGenericClasses();
+        if(entry_generics.size() == klass_generics.size()) {
+
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+        }
+      }
     }
   }
 }
