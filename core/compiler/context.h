@@ -513,6 +513,7 @@ class ContextAnalyzer {
   MethodCall* BoxUnboxingReturn(Type* to_type, Expression* from_expr, const int depth);
   void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
+  void AnalyzeGenericMethodCall(MethodCall* method_call, const int depth);
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
                                    Class* &klass, LibraryClass* &lib_klass);
