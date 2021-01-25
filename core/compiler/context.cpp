@@ -2526,9 +2526,11 @@ void ContextAnalyzer::AnalyzeGenericMethodCall(MethodCall* method_call, const in
           method_call->GetEvalType()->SetGenerics(mapped_types);
           method_call->SetConcreteTypes(mapped_types);
         }
+        /*
         else {
           ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
         }
+        */
         // update
         method_call = method_call->GetMethodCall();
       }
