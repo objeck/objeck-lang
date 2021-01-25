@@ -2479,77 +2479,58 @@ void ContextAnalyzer::AnalyzeGenericMethodCall(MethodCall* method_call, const in
           entry_generics = method_call->GetPreviousExpression()->GetEvalType()->GetGenerics();
         }
 
+        // get generic names
+        vector<wstring> klass_generic_names;
         vector<Type*> eval_types = method_call->GetEvalType()->GetGenerics();
         if(method_call->GetMethod()) {
           Class* klass = method_call->GetMethod()->GetClass();
           vector<Class*> klass_generics = klass->GetGenericClasses();
-          if(entry_generics.size() >= klass_generics.size()) {
-            vector<Type*> mapped_types;
-            if(klass_generics.size() == 1) {
-              mapped_types.push_back(entry_generics.front());
-            }
-            else {
-              // build map
-              map<wstring, Type*> type_map;
-              for(size_t i = 0; i < klass_generics.size(); ++i) {
-                type_map[klass_generics[i]->GetName()] = entry_generics[i];
-              }
-              // map types
-              for(size_t i = 0; i < eval_types.size(); ++i) {
-                const wstring eval_type_name = eval_types[i]->GetName();
-                Type* mapped_type = type_map[eval_type_name];
-                if(mapped_type) {
-                  mapped_types.push_back(mapped_type);
-                }
-                else {
-                  ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping type'" + eval_type_name + L"'");
-                }
-              }
-            }
-            // update with mapped types
-            method_call->GetEvalType()->SetGenerics(mapped_types);
-            method_call->SetConcreteTypes(mapped_types);
-          }
-          else {
-            ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          for(size_t i = 0; i < klass_generics.size(); ++i) {
+            klass_generic_names.push_back(klass_generics[i]->GetName());
           }
         }
-        else if(method_call->GetLibraryMethod()) {
+        else {
           LibraryClass* lib_klass = method_call->GetLibraryMethod()->GetLibraryClass();
           vector<LibraryClass*> lib_klass_generics = lib_klass->GetGenericClasses();
-          if(entry_generics.size() >= lib_klass_generics.size()) {            
-            vector<Type*> mapped_types;
-            if(lib_klass_generics.size() == 1) {
-              mapped_types.push_back(entry_generics.front());
-            }
-            else {
-              // build map
-              map<wstring, Type*> type_map;
-              for(size_t i = 0; i < lib_klass_generics.size(); ++i) {
-                type_map[lib_klass_generics[i]->GetName()] = entry_generics[i];
-              }
-              // map types
-              for(size_t i = 0; i < eval_types.size(); ++i) {
-                const wstring eval_type_name = eval_types[i]->GetName();
-                Type* mapped_type = type_map[eval_type_name];
-                if(mapped_type) {
-                  mapped_types.push_back(mapped_type);
-                }
-                else {
-                  ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping type'" + eval_type_name + L"'");
-                }
-              }
-            }
-            // update with mapped types
-            method_call->GetEvalType()->SetGenerics(mapped_types);
-            method_call->SetConcreteTypes(mapped_types);
+          for(size_t i = 0; i < lib_klass_generics.size(); ++i) {
+            klass_generic_names.push_back(lib_klass_generics[i]->GetName());
+          }
+        }
+
+        if(entry_generics.size() >= klass_generic_names.size()) {
+          vector<Type*> mapped_types;
+          if(klass_generic_names.size() == 1) {
+            mapped_types.push_back(entry_generics.front());
           }
           else {
-            ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+            // build map
+            map<wstring, Type*> type_map;
+            for(size_t i = 0; i < klass_generic_names.size(); ++i) {
+              type_map[klass_generic_names[i]] = entry_generics[i];
+            }
+            // map types
+            for(size_t i = 0; i < eval_types.size(); ++i) {
+              const wstring eval_type_name = eval_types[i]->GetName();
+              Type* mapped_type = type_map[eval_type_name];
+              if(mapped_type) {
+                mapped_types.push_back(mapped_type);
+              }
+              /*
+              else {
+                ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping type'" + eval_type_name + L"'");
+              }
+              */
+            }
           }
-          // next call
-          method_call = method_call->GetMethodCall();
+          // update with mapped types
+          method_call->GetEvalType()->SetGenerics(mapped_types);
+          method_call->SetConcreteTypes(mapped_types);
         }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+        }
+        // update
+        method_call = method_call->GetMethodCall();
       }
     }
   }
