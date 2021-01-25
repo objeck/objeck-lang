@@ -2464,34 +2464,63 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth
  ****************************/
 void ContextAnalyzer::AnalyzeGenericMethodCall(MethodCall* method_call, const int depth)
 {
-  if(method_call->GetEvalType() && method_call->GetEvalType()->HasGenerics()) {
+  if(method_call->GetEntry() || method_call->GetVariable()) {
     vector<Type*> entry_generics;
     if(method_call->GetEntry()) {
       entry_generics = method_call->GetEntry()->GetType()->GetGenerics();
     }
-    else if(method_call->GetVariable()) {
+    else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
       entry_generics = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
     }
 
     if(!entry_generics.empty()) {
-      if(method_call->GetMethod()) {
-        Class* klass = method_call->GetMethod()->GetClass();
-        vector<Class*> klass_generics = klass->GetGenericClasses();
-        if(entry_generics.size() == klass_generics.size()) {
+      while(method_call && method_call->GetEvalType()) {
+        if(method_call->GetPreviousExpression()) {
+          // TODO: set prior
+          entry_generics = method_call->GetPreviousExpression()->GetEvalType()->GetGenerics();
+        }
 
+        vector<Type*> eval_types = method_call->GetEvalType()->GetGenerics();
+        if(method_call->GetMethod()) {
+          Class* klass = method_call->GetMethod()->GetClass();
+          vector<Class*> klass_generics = klass->GetGenericClasses();
+          if(entry_generics.size() >= klass_generics.size()) {
+            // TODO
+          }
+          else {
+            ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          }
         }
-        else {
-          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
-        }
-      }
-      else if(method_call->GetLibraryMethod()) {
-        LibraryClass* lib_klass = method_call->GetLibraryMethod()->GetLibraryClass();
-        vector<LibraryClass*> klass_generics = lib_klass->GetGenericClasses();
-        if(entry_generics.size() == klass_generics.size()) {
+        else if(method_call->GetLibraryMethod()) {
+          LibraryClass* lib_klass = method_call->GetLibraryMethod()->GetLibraryClass();
+          vector<LibraryClass*> klass_generics = lib_klass->GetGenericClasses();
+          if(entry_generics.size() >= klass_generics.size()) {            
+            vector<Type*> mapped_types;
+            if(klass_generics.size() == 1) {
+              mapped_types.push_back(entry_generics.front());
+            }
+            else {
+              // build map
+              map<wstring, Type*> type_map;
+              for(size_t i = 0; i < klass_generics.size(); ++i) {
+                type_map[klass_generics[i]->GetName()] = entry_generics[i];
+              }
+              // ...              
+              for(size_t i = 0; i < eval_types.size(); ++i) {
+                Type* mapped_type = type_map[eval_types[i]->GetName()];
+                if(mapped_type) {
+                  mapped_types.push_back(mapped_type);
+                }
+              }
+            }
+            // update eval type
+            method_call->GetEvalType()->SetGenerics(mapped_types);
+          }
+          else {
+            ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          }
 
-        }
-        else {
-          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          method_call = method_call->GetMethodCall();
         }
       }
     }
