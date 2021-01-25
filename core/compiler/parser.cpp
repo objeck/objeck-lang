@@ -3818,7 +3818,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, L"");
   }
 
-  // generics
+  /*
+  // generics  
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
     (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX))) {
     vector<Type*> generic_dclrs = ParseGenericTypes(depth);
@@ -3826,6 +3827,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       method_call->SetConcreteTypes(generic_dclrs);
     }
   }
+  */
   
   // subsequent method calls
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
