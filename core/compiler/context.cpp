@@ -2027,12 +2027,12 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     else if(capture_lambda) {
       const wstring full_class_name = GetProgramLibraryClassName(variable_name);
       if(!HasProgramLibraryEnum(full_class_name) && !HasProgramLibraryClass(full_class_name)) {
-  Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
-                   static_cast<Expression*>(method_call)->GetLineNumber(),
-                   full_class_name);
-  AnalyzeVariable(variable, depth + 1);
-  method_call->SetVariable(variable);
-  entry = GetEntry(method_call, full_class_name, depth);
+        Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
+          static_cast<Expression*>(method_call)->GetLineNumber(),
+          full_class_name);
+        AnalyzeVariable(variable, depth + 1);
+        method_call->SetVariable(variable);
+        entry = GetEntry(method_call, full_class_name, depth);
       }
     }
     
@@ -2045,8 +2045,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
+        AnalyzeGenericMethodCall(method_call, 0);
       }
-      AnalyzeGenericMethodCall(method_call, depth+ 1);
       return;
     }
     // library call
@@ -2057,8 +2057,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
-      }
-      AnalyzeGenericMethodCall(method_call, depth + 1);
+        AnalyzeGenericMethodCall(method_call, 0);
+      }      
       return;
     }
 
@@ -2489,7 +2489,7 @@ void ContextAnalyzer::AnalyzeGenericMethodCall(MethodCall* method_call, const in
             klass_generic_names.push_back(klass_generics[i]->GetName());
           }
         }
-        else {
+        else if(method_call->GetLibraryMethod()) {
           LibraryClass* lib_klass = method_call->GetLibraryMethod()->GetLibraryClass();
           vector<LibraryClass*> lib_klass_generics = lib_klass->GetGenericClasses();
           for(size_t i = 0; i < lib_klass_generics.size(); ++i) {
@@ -2515,22 +2515,14 @@ void ContextAnalyzer::AnalyzeGenericMethodCall(MethodCall* method_call, const in
               if(mapped_type) {
                 mapped_types.push_back(mapped_type);
               }
-              /*
-              else {
-                ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping type'" + eval_type_name + L"'");
-              }
-              */
             }
           }
           // update with mapped types
-          method_call->GetEvalType()->SetGenerics(mapped_types);
-          method_call->SetConcreteTypes(mapped_types);
+          if(method_call->GetConcreteTypes().empty() && !method_call->GetEvalType()->GetGenerics().empty()) {
+            method_call->GetEvalType()->SetGenerics(mapped_types);            
+            method_call->SetConcreteTypes(mapped_types);
+          }
         }
-        /*
-        else {
-          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
-        }
-        */
         // update
         method_call = method_call->GetMethodCall();
       }
@@ -3256,7 +3248,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                                         bool is_virtual, bool is_expr, const int depth)
 {
-  if(lib_method) {
+  if(lib_method) {    
     ExpressionList* call_params = method_call->GetCallingParameters();
     vector<Expression*> expressions = call_params->GetExpressions();
 
@@ -7146,7 +7138,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         return TypeParser::ParseType(func_name);
       }
     }
-    else {
+    else {      
       // find concrete index
       int concrete_index = -1;
       ResolveClassEnumType(candidate_type);
