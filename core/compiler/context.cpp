@@ -2730,6 +2730,8 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           case FLOAT_TYPE:
             calling_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.FloatHolder");
             break;
+          default:
+            break;
           }
         }
 
