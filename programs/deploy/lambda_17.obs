@@ -41,7 +41,6 @@ class Test {
 		};
 		PrintTwo(f2);
 		
-
 		map := Map->New()<IntHolder, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
