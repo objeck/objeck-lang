@@ -14,7 +14,7 @@ class Capture {
 		 };
 
 		 each(i : funcs) {
-		 	func := funcs->Get(i)->Get();
+		 	func := funcs->Get(i)->Get()<IntHolder>;
 		 	func()->Get()->PrintLine();
 		 };
 	}
