@@ -344,9 +344,6 @@ class ContextAnalyzer {
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
-  // get generic types
-  vector<Type*> GetMethodCallGenerics(MethodCall* method_call);
-
   // resolve generic type
   Type* ResolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
 
@@ -513,7 +510,6 @@ class ContextAnalyzer {
   MethodCall* BoxUnboxingReturn(Type* to_type, Expression* from_expr, const int depth);
   void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
-  void AnalyzeGenericMethodCall(MethodCall* method_call, const int depth);
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
                                    Class* &klass, LibraryClass* &lib_klass);
