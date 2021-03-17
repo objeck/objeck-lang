@@ -33,7 +33,7 @@ Save the link register between function calls out of the JIT'ed code.
     __clear_cache(temp, temp + byte_size);
     pthread_jit_write_protect_np(true);
     ```
-    [Hidden gem for ARM](https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/caches-and-self-modifying-code)
+    [Hidden gem about ARM cache management](https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/caches-and-self-modifying-code)
 * Application entitlements:
 	Consider 'Allow Unsigned Executable Memory' option for shipping vs. signing for code execution
 	```
