@@ -23,8 +23,7 @@ class FirstClass {
 		each(i : numlist) {
 			v := numlist->Get(i); vi := numlisti->Get(i);
 			mult := Multiplier(v, vi);
-			r := mult(0.5);
-			""->PrintLine();
+			mult(0.5)->PrintLine();
 		};
 	}
 	
