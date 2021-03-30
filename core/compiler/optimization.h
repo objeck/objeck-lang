@@ -61,7 +61,6 @@ class ItermediateOptimizer {
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
   vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
-  vector<IntermediateBlock*> FinalizeJumps(vector<IntermediateBlock*> inputs);
 
   // inline setters/getters
   IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
@@ -73,9 +72,6 @@ class ItermediateOptimizer {
   // advanced method inlining
   IntermediateBlock* InlineMethod(IntermediateBlock* inputs);
 
-  // finalizing jump positions
-  IntermediateBlock* FinalizeJumps(IntermediateBlock* inputs);
-  
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
   void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack,
