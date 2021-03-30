@@ -67,7 +67,7 @@ int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
       // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_lib, is_debug);
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_debug);
       optimizer.Optimize();
       // emit target code
       FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, show_asm, arguments[L"dest"]);
