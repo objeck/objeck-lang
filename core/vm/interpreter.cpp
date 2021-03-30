@@ -491,23 +491,11 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       wcout << L"stack oper: JMP; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      if(!instr->GetOperand3()) {
-        if(instr->GetOperand2() < 0) {
-          ip = (*frame)->method->GetLabelIndex(instr->GetOperand()) + 1;
-          instr->SetOperand3(ip);
-        }
-        else if((long)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
-          ip = (*frame)->method->GetLabelIndex(instr->GetOperand()) + 1;
-          instr->SetOperand3(ip);
-        }
+      if(instr->GetOperand2() < 0) {
+        ip = instr->GetOperand();
       }
-      else {
-        if(instr->GetOperand2() < 0) {
-          ip = instr->GetOperand3();
-        }
-        else if((long)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
-          ip = instr->GetOperand3();
-        }
+      else if((long)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+        ip = instr->GetOperand();
       }
       break;
 
