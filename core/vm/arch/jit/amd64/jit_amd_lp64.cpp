@@ -5450,7 +5450,7 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
     for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
       StackInstr* instr = iter->second;
       const long src_offset = iter->first;
-      const long dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+      const long dest_index = instr->GetOperand();
       const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const long offset = dest_offset - src_offset - 4; // 64-bit jump offset
       memcpy(&code[src_offset], &offset, 4);
