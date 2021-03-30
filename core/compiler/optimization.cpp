@@ -150,6 +150,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::FinalizeJumps(vector<Intermedia
     delete tmp;
     tmp = nullptr;
   }
+  
   return outputs;
 }
 
@@ -904,7 +905,6 @@ void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, Inte
 IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs)
 {
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  IntermediateBlock* outputs = new IntermediateBlock;
   unordered_map<int, size_t> jmp_labels;
 
   for(size_t i = 0; i < input_instrs.size(); ++i) {
@@ -940,7 +940,7 @@ IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs
     }
   }
 
-  return outputs;
+  return inputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
