@@ -56,9 +56,8 @@ class ItermediateOptimizer {
   int unconditional_label;
   IntermediateMethod* current_method;
   bool merge_blocks;
-  bool is_lib;
   int cur_line_num;
-  
+
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
   vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
 
@@ -74,44 +73,44 @@ class ItermediateOptimizer {
 
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
-  void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack,
-                        IntermediateBlock* outputs);
+  void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*>& calc_stack,
+    IntermediateBlock* outputs);
 
   // float constant folding
   IntermediateBlock* FoldFloatConstants(IntermediateBlock* input);
   void CalculateFloatFold(IntermediateInstruction* instr,
-                          deque<IntermediateInstruction*> &calc_stack,
-                          IntermediateBlock* outputs);
+    deque<IntermediateInstruction*>& calc_stack,
+    IntermediateBlock* outputs);
   // strength reduction
   IntermediateBlock* StrengthReduction(IntermediateBlock* inputs);
   void CalculateReduction(IntermediateInstruction* instr,
-                          deque<IntermediateInstruction*> &calc_stack,
-                          IntermediateBlock* outputs);
+    deque<IntermediateInstruction*>& calc_stack,
+    IntermediateBlock* outputs);
 
   void ApplyReduction(IntermediateInstruction* test,
-                      IntermediateInstruction* instr,
-                      IntermediateInstruction* top_instr,
-                      deque<IntermediateInstruction*> &calc_stack,
-                      IntermediateBlock* outputs);
+    IntermediateInstruction* instr,
+    IntermediateInstruction* top_instr,
+    deque<IntermediateInstruction*>& calc_stack,
+    IntermediateBlock* outputs);
 
   void AddBackReduction(IntermediateInstruction* instr,
-                        IntermediateInstruction* top_instr,
-                        deque<IntermediateInstruction*> &calc_stack,
-                        IntermediateBlock* outputs);
-  
+    IntermediateInstruction* top_instr,
+    deque<IntermediateInstruction*>& calc_stack,
+    IntermediateBlock* outputs);
+
   // instruction replacement
   IntermediateBlock* InstructionReplacement(IntermediateBlock* inputs);
   void ReplacementInstruction(IntermediateInstruction* instr,
-                              deque<IntermediateInstruction*> &calc_stack,
-                              IntermediateBlock* outputs);
+    deque<IntermediateInstruction*>& calc_stack,
+    IntermediateBlock* outputs);
 
-  bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets);
-  
+  bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*>& inlined_mthds, set<int>& lbl_jmp_offsets);
+
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);
-  
- public:
-  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d);
-  
+
+public:
+  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d);
+
   ~ItermediateOptimizer() {
   }
 
