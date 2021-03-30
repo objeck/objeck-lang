@@ -39,7 +39,7 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstrin
   cur_line_num = -1;
   merge_blocks = false;
   unconditional_label = u;
-  is_debug = d;
+  is_lib = l;
 
   if(d) {
     optimization_level = 0;
@@ -127,7 +127,7 @@ void ItermediateOptimizer::Optimize()
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
 
-    if(!is_debug) {
+    if(!is_lib) {
       for(size_t j = 0; j < methods.size(); ++j) {
         current_method = methods[j];
 #ifdef _DEBUG
