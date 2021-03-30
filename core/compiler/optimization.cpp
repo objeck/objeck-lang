@@ -911,7 +911,7 @@ IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case LBL:
-      jmp_labels.insert(pair<int, size_t>(instr->GetOperand(), i));
+      jmp_labels.insert(pair<int, size_t>(instr->GetOperand(), i + 1));
       break;
 
     default:
@@ -931,7 +931,7 @@ IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs
         exit(1);
 #endif
       }
-      instr->SetOperand((int)result->second + 1);
+      instr->SetOperand((int)result->second);
     }
       break;
 
