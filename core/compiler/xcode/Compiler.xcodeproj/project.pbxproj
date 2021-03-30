@@ -7,18 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2517DFC017EE61410098D0DE /* compiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFA717EE61410098D0DE /* compiler.cpp */; };
-		2517DFC117EE61410098D0DE /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFA917EE61410098D0DE /* context.cpp */; };
-		2517DFC217EE61410098D0DE /* intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFAB17EE61410098D0DE /* intermediate.cpp */; };
-		2517DFC317EE61410098D0DE /* linker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFAD17EE61410098D0DE /* linker.cpp */; };
-		2517DFC417EE61410098D0DE /* optimization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFAF17EE61410098D0DE /* optimization.cpp */; };
-		2517DFC517EE61410098D0DE /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB117EE61410098D0DE /* parser.cpp */; };
-		2517DFC617EE61410098D0DE /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB317EE61410098D0DE /* posix_main.cpp */; };
-		2517DFC717EE61410098D0DE /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB417EE61410098D0DE /* scanner.cpp */; };
-		2517DFC917EE61410098D0DE /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB817EE61410098D0DE /* tree.cpp */; };
-		2517DFCB17EE622E0098D0DE /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFCA17EE622E0098D0DE /* types.cpp */; };
-		253FF1E41FF1A1140039C622 /* emit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 253FF1E21FF1A1130039C622 /* emit.cpp */; };
-		ED9B87E7228CC15200860E8D /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9B87E6228CC15200860E8D /* logger.cpp */; };
+		ED5393FC261368B70085A5F8 /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393E7261368B60085A5F8 /* scanner.cpp */; };
+		ED5393FD261368B70085A5F8 /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393E8261368B60085A5F8 /* context.cpp */; };
+		ED5393FE261368B70085A5F8 /* intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393E9261368B60085A5F8 /* intermediate.cpp */; };
+		ED5393FF261368B70085A5F8 /* optimization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393EA261368B60085A5F8 /* optimization.cpp */; };
+		ED539400261368B70085A5F8 /* emit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393EE261368B60085A5F8 /* emit.cpp */; };
+		ED539401261368B70085A5F8 /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F0261368B70085A5F8 /* parser.cpp */; };
+		ED539402261368B70085A5F8 /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F2261368B70085A5F8 /* tree.cpp */; };
+		ED539403261368B70085A5F8 /* compiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F4261368B70085A5F8 /* compiler.cpp */; };
+		ED539404261368B70085A5F8 /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F7261368B70085A5F8 /* types.cpp */; };
+		ED539405261368B70085A5F8 /* linker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393F9261368B70085A5F8 /* linker.cpp */; };
+		ED539406261368B70085A5F8 /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5393FA261368B70085A5F8 /* posix_main.cpp */; };
+		ED53940E261368F20085A5F8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53940C261368F20085A5F8 /* logger.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,28 +35,34 @@
 
 /* Begin PBXFileReference section */
 		2517DF9B17EE60CC0098D0DE /* obc */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obc; sourceTree = BUILT_PRODUCTS_DIR; };
-		2517DFA717EE61410098D0DE /* compiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = compiler.cpp; path = ../../compiler.cpp; sourceTree = "<group>"; };
-		2517DFA817EE61410098D0DE /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = compiler.h; path = ../../compiler.h; sourceTree = "<group>"; };
-		2517DFA917EE61410098D0DE /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../../context.cpp; sourceTree = "<group>"; tabWidth = 2; };
-		2517DFAA17EE61410098D0DE /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = context.h; path = ../../context.h; sourceTree = "<group>"; };
-		2517DFAB17EE61410098D0DE /* intermediate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = intermediate.cpp; path = ../../intermediate.cpp; sourceTree = "<group>"; };
-		2517DFAC17EE61410098D0DE /* intermediate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = intermediate.h; path = ../../intermediate.h; sourceTree = "<group>"; };
-		2517DFAD17EE61410098D0DE /* linker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = linker.cpp; path = ../../linker.cpp; sourceTree = "<group>"; };
-		2517DFAE17EE61410098D0DE /* linker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = linker.h; path = ../../linker.h; sourceTree = "<group>"; };
-		2517DFAF17EE61410098D0DE /* optimization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = optimization.cpp; path = ../../optimization.cpp; sourceTree = "<group>"; };
-		2517DFB017EE61410098D0DE /* optimization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = optimization.h; path = ../../optimization.h; sourceTree = "<group>"; };
-		2517DFB117EE61410098D0DE /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../../parser.cpp; sourceTree = "<group>"; };
-		2517DFB217EE61410098D0DE /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../../parser.h; sourceTree = "<group>"; };
-		2517DFB317EE61410098D0DE /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../../posix_main.cpp; sourceTree = "<group>"; };
-		2517DFB417EE61410098D0DE /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../../scanner.cpp; sourceTree = "<group>"; };
-		2517DFB517EE61410098D0DE /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../../scanner.h; sourceTree = "<group>"; };
-		2517DFB817EE61410098D0DE /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../../tree.cpp; sourceTree = "<group>"; };
-		2517DFB917EE61410098D0DE /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../../tree.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
-		2517DFCA17EE622E0098D0DE /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../types.cpp; sourceTree = "<group>"; };
-		253FF1E21FF1A1130039C622 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../../emit.cpp; sourceTree = "<group>"; };
-		253FF1E31FF1A1140039C622 /* emit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = emit.h; path = ../../emit.h; sourceTree = "<group>"; };
-		ED9B87E6228CC15200860E8D /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../../shared/logger.cpp; sourceTree = "<group>"; };
-		ED9B87E8228CC17800860E8D /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../../shared/logger.h; sourceTree = "<group>"; };
+		ED5393E6261368B60085A5F8 /* emit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = emit.h; path = ../emit.h; sourceTree = "<group>"; };
+		ED5393E7261368B60085A5F8 /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../scanner.cpp; sourceTree = "<group>"; };
+		ED5393E8261368B60085A5F8 /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../context.cpp; sourceTree = "<group>"; };
+		ED5393E9261368B60085A5F8 /* intermediate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = intermediate.cpp; path = ../intermediate.cpp; sourceTree = "<group>"; };
+		ED5393EA261368B60085A5F8 /* optimization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = optimization.cpp; path = ../optimization.cpp; sourceTree = "<group>"; };
+		ED5393EB261368B60085A5F8 /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = compiler.h; path = ../compiler.h; sourceTree = "<group>"; };
+		ED5393EC261368B60085A5F8 /* linker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = linker.h; path = ../linker.h; sourceTree = "<group>"; };
+		ED5393ED261368B60085A5F8 /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../parser.h; sourceTree = "<group>"; };
+		ED5393EE261368B60085A5F8 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../emit.cpp; sourceTree = "<group>"; };
+		ED5393EF261368B60085A5F8 /* optimization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = optimization.h; path = ../optimization.h; sourceTree = "<group>"; };
+		ED5393F0261368B70085A5F8 /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../parser.cpp; sourceTree = "<group>"; };
+		ED5393F1261368B70085A5F8 /* regress.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = regress.sh; path = ../regress.sh; sourceTree = "<group>"; };
+		ED5393F2261368B70085A5F8 /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../tree.cpp; sourceTree = "<group>"; };
+		ED5393F3261368B70085A5F8 /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = context.h; path = ../context.h; sourceTree = "<group>"; };
+		ED5393F4261368B70085A5F8 /* compiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = compiler.cpp; path = ../compiler.cpp; sourceTree = "<group>"; };
+		ED5393F5261368B70085A5F8 /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../tree.h; sourceTree = "<group>"; };
+		ED5393F6261368B70085A5F8 /* intermediate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = intermediate.h; path = ../intermediate.h; sourceTree = "<group>"; };
+		ED5393F7261368B70085A5F8 /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../types.cpp; sourceTree = "<group>"; };
+		ED5393F8261368B70085A5F8 /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../scanner.h; sourceTree = "<group>"; };
+		ED5393F9261368B70085A5F8 /* linker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = linker.cpp; path = ../linker.cpp; sourceTree = "<group>"; };
+		ED5393FA261368B70085A5F8 /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../posix_main.cpp; sourceTree = "<group>"; };
+		ED5393FB261368B70085A5F8 /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = types.h; path = ../types.h; sourceTree = "<group>"; };
+		ED539408261368F20085A5F8 /* sys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sys.h; path = ../../shared/sys.h; sourceTree = "<group>"; };
+		ED539409261368F20085A5F8 /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = version.h; path = ../../shared/version.h; sourceTree = "<group>"; };
+		ED53940A261368F20085A5F8 /* traps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = traps.h; path = ../../shared/traps.h; sourceTree = "<group>"; };
+		ED53940B261368F20085A5F8 /* instrs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = instrs.h; path = ../../shared/instrs.h; sourceTree = "<group>"; };
+		ED53940C261368F20085A5F8 /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../shared/logger.cpp; sourceTree = "<group>"; };
+		ED53940D261368F20085A5F8 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../shared/logger.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,7 +79,7 @@
 		2517DF9217EE60CC0098D0DE = {
 			isa = PBXGroup;
 			children = (
-				2517DF9D17EE60CC0098D0DE /* Compiler */,
+				ED5393E5261366DD0085A5F8 /* Compiler */,
 				2517DF9C17EE60CC0098D0DE /* Products */,
 			);
 			indentWidth = 3;
@@ -88,33 +94,39 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		2517DF9D17EE60CC0098D0DE /* Compiler */ = {
+		ED5393E5261366DD0085A5F8 /* Compiler */ = {
 			isa = PBXGroup;
 			children = (
-				ED9B87E8228CC17800860E8D /* logger.h */,
-				ED9B87E6228CC15200860E8D /* logger.cpp */,
-				253FF1E21FF1A1130039C622 /* emit.cpp */,
-				253FF1E31FF1A1140039C622 /* emit.h */,
-				2517DFCA17EE622E0098D0DE /* types.cpp */,
-				2517DFA717EE61410098D0DE /* compiler.cpp */,
-				2517DFA817EE61410098D0DE /* compiler.h */,
-				2517DFA917EE61410098D0DE /* context.cpp */,
-				2517DFAA17EE61410098D0DE /* context.h */,
-				2517DFAB17EE61410098D0DE /* intermediate.cpp */,
-				2517DFAC17EE61410098D0DE /* intermediate.h */,
-				2517DFAD17EE61410098D0DE /* linker.cpp */,
-				2517DFAE17EE61410098D0DE /* linker.h */,
-				2517DFAF17EE61410098D0DE /* optimization.cpp */,
-				2517DFB017EE61410098D0DE /* optimization.h */,
-				2517DFB117EE61410098D0DE /* parser.cpp */,
-				2517DFB217EE61410098D0DE /* parser.h */,
-				2517DFB317EE61410098D0DE /* posix_main.cpp */,
-				2517DFB417EE61410098D0DE /* scanner.cpp */,
-				2517DFB517EE61410098D0DE /* scanner.h */,
-				2517DFB817EE61410098D0DE /* tree.cpp */,
-				2517DFB917EE61410098D0DE /* tree.h */,
+				ED53940B261368F20085A5F8 /* instrs.h */,
+				ED53940C261368F20085A5F8 /* logger.cpp */,
+				ED53940D261368F20085A5F8 /* logger.h */,
+				ED539408261368F20085A5F8 /* sys.h */,
+				ED53940A261368F20085A5F8 /* traps.h */,
+				ED539409261368F20085A5F8 /* version.h */,
+				ED5393F4261368B70085A5F8 /* compiler.cpp */,
+				ED5393EB261368B60085A5F8 /* compiler.h */,
+				ED5393E8261368B60085A5F8 /* context.cpp */,
+				ED5393F3261368B70085A5F8 /* context.h */,
+				ED5393EE261368B60085A5F8 /* emit.cpp */,
+				ED5393E6261368B60085A5F8 /* emit.h */,
+				ED5393E9261368B60085A5F8 /* intermediate.cpp */,
+				ED5393F6261368B70085A5F8 /* intermediate.h */,
+				ED5393F9261368B70085A5F8 /* linker.cpp */,
+				ED5393EC261368B60085A5F8 /* linker.h */,
+				ED5393EA261368B60085A5F8 /* optimization.cpp */,
+				ED5393EF261368B60085A5F8 /* optimization.h */,
+				ED5393F0261368B70085A5F8 /* parser.cpp */,
+				ED5393ED261368B60085A5F8 /* parser.h */,
+				ED5393FA261368B70085A5F8 /* posix_main.cpp */,
+				ED5393F1261368B70085A5F8 /* regress.sh */,
+				ED5393E7261368B60085A5F8 /* scanner.cpp */,
+				ED5393F8261368B70085A5F8 /* scanner.h */,
+				ED5393F2261368B70085A5F8 /* tree.cpp */,
+				ED5393F5261368B70085A5F8 /* tree.h */,
+				ED5393F7261368B70085A5F8 /* types.cpp */,
+				ED5393FB261368B70085A5F8 /* types.h */,
 			);
-			path = Compiler;
+			name = Compiler;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -143,7 +155,7 @@
 		2517DF9317EE60CC0098D0DE /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1230;
+				LastUpgradeCheck = 1240;
 				ORGANIZATIONNAME = "Randy Hollines";
 				TargetAttributes = {
 					2517DF9A17EE60CC0098D0DE = {
@@ -175,18 +187,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2517DFCB17EE622E0098D0DE /* types.cpp in Sources */,
-				2517DFC317EE61410098D0DE /* linker.cpp in Sources */,
-				2517DFC017EE61410098D0DE /* compiler.cpp in Sources */,
-				ED9B87E7228CC15200860E8D /* logger.cpp in Sources */,
-				2517DFC217EE61410098D0DE /* intermediate.cpp in Sources */,
-				2517DFC917EE61410098D0DE /* tree.cpp in Sources */,
-				2517DFC117EE61410098D0DE /* context.cpp in Sources */,
-				253FF1E41FF1A1140039C622 /* emit.cpp in Sources */,
-				2517DFC517EE61410098D0DE /* parser.cpp in Sources */,
-				2517DFC417EE61410098D0DE /* optimization.cpp in Sources */,
-				2517DFC717EE61410098D0DE /* scanner.cpp in Sources */,
-				2517DFC617EE61410098D0DE /* posix_main.cpp in Sources */,
+				ED539405261368B70085A5F8 /* linker.cpp in Sources */,
+				ED539403261368B70085A5F8 /* compiler.cpp in Sources */,
+				ED5393FF261368B70085A5F8 /* optimization.cpp in Sources */,
+				ED53940E261368F20085A5F8 /* logger.cpp in Sources */,
+				ED5393FC261368B70085A5F8 /* scanner.cpp in Sources */,
+				ED5393FE261368B70085A5F8 /* intermediate.cpp in Sources */,
+				ED539400261368B70085A5F8 /* emit.cpp in Sources */,
+				ED539401261368B70085A5F8 /* parser.cpp in Sources */,
+				ED5393FD261368B70085A5F8 /* context.cpp in Sources */,
+				ED539402261368B70085A5F8 /* tree.cpp in Sources */,
+				ED539404261368B70085A5F8 /* types.cpp in Sources */,
+				ED539406261368B70085A5F8 /* posix_main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -308,6 +320,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_ARM64,
 					_OSX,
@@ -327,6 +340,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_ARM64,
 					_OSX,

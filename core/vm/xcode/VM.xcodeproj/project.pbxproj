@@ -7,13 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ED56FE56256F367D00DFB0F9 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */; };
-		EDFEDD80256EE38100382F3F /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D711966EFB700AF1F2E /* vm.cpp */; };
-		EDFEDD81256EE38100382F3F /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6B1966EFB700AF1F2E /* interpreter.cpp */; };
-		EDFEDD83256EE38100382F3F /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6E1966EFB700AF1F2E /* loader.cpp */; };
-		EDFEDD84256EE38100382F3F /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D701966EFB700AF1F2E /* posix_main.cpp */; };
-		EDFEDD85256EE38100382F3F /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED0340C8216A6B920091732E /* memory.cpp */; };
-		EDFEDD86256EE38100382F3F /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D691966EFB700AF1F2E /* common.cpp */; };
+		ED53941F261369610085A5F8 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539413261369610085A5F8 /* common.cpp */; };
+		ED539421261369610085A5F8 /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539417261369610085A5F8 /* loader.cpp */; };
+		ED539422261369610085A5F8 /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539419261369610085A5F8 /* interpreter.cpp */; };
+		ED539423261369610085A5F8 /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53941B261369610085A5F8 /* posix_main.cpp */; };
+		ED539424261369610085A5F8 /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53941E261369610085A5F8 /* vm.cpp */; };
+		ED539428261369760085A5F8 /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539426261369760085A5F8 /* memory.cpp */; };
+		ED53942C2613698C0085A5F8 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53942A2613698C0085A5F8 /* jit_arm_a64.cpp */; };
+		ED539434261369A20085A5F8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539432261369A20085A5F8 /* logger.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -30,23 +31,27 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		255B2D691966EFB700AF1F2E /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = common.cpp; path = ../../common.cpp; sourceTree = "<group>"; };
-		255B2D6A1966EFB700AF1F2E /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../common.h; sourceTree = "<group>"; };
-		255B2D6B1966EFB700AF1F2E /* interpreter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = interpreter.cpp; path = ../../interpreter.cpp; sourceTree = "<group>"; };
-		255B2D6C1966EFB700AF1F2E /* interpreter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = interpreter.h; path = ../../interpreter.h; sourceTree = "<group>"; };
-		255B2D6D1966EFB700AF1F2E /* lib_api.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lib_api.h; path = ../../lib_api.h; sourceTree = "<group>"; };
-		255B2D6E1966EFB700AF1F2E /* loader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = loader.cpp; path = ../../loader.cpp; sourceTree = "<group>"; };
-		255B2D6F1966EFB700AF1F2E /* loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = loader.h; path = ../../loader.h; sourceTree = "<group>"; };
-		255B2D701966EFB700AF1F2E /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../../posix_main.cpp; sourceTree = "<group>"; };
-		255B2D711966EFB700AF1F2E /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../../vm.cpp; sourceTree = "<group>"; };
-		255B2D721966EFB700AF1F2E /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../../vm.h; sourceTree = "<group>"; };
-		ED0340C7216A6B920091732E /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../arch/memory.h; sourceTree = "<group>"; };
-		ED0340C8216A6B920091732E /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/memory.cpp; sourceTree = "<group>"; };
-		ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
-		ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
+		ED539413261369610085A5F8 /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = common.cpp; path = ../common.cpp; sourceTree = "<group>"; };
+		ED539415261369610085A5F8 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../common.h; sourceTree = "<group>"; };
+		ED539416261369610085A5F8 /* loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = loader.h; path = ../loader.h; sourceTree = "<group>"; };
+		ED539417261369610085A5F8 /* loader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = loader.cpp; path = ../loader.cpp; sourceTree = "<group>"; };
+		ED539419261369610085A5F8 /* interpreter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = interpreter.cpp; path = ../interpreter.cpp; sourceTree = "<group>"; };
+		ED53941A261369610085A5F8 /* lib_api.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lib_api.h; path = ../lib_api.h; sourceTree = "<group>"; };
+		ED53941B261369610085A5F8 /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../posix_main.cpp; sourceTree = "<group>"; };
+		ED53941C261369610085A5F8 /* interpreter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = interpreter.h; path = ../interpreter.h; sourceTree = "<group>"; };
+		ED53941D261369610085A5F8 /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../vm.h; sourceTree = "<group>"; };
+		ED53941E261369610085A5F8 /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../vm.cpp; sourceTree = "<group>"; };
+		ED539426261369760085A5F8 /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../arch/memory.cpp; sourceTree = "<group>"; };
+		ED539427261369760085A5F8 /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../arch/memory.h; sourceTree = "<group>"; };
+		ED53942A2613698C0085A5F8 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
+		ED53942B2613698C0085A5F8 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
+		ED53942E261369A20085A5F8 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../shared/logger.h; sourceTree = "<group>"; };
+		ED53942F261369A20085A5F8 /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = version.h; path = ../../shared/version.h; sourceTree = "<group>"; };
+		ED539430261369A20085A5F8 /* instrs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = instrs.h; path = ../../shared/instrs.h; sourceTree = "<group>"; };
+		ED539431261369A20085A5F8 /* traps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = traps.h; path = ../../shared/traps.h; sourceTree = "<group>"; };
+		ED539432261369A20085A5F8 /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../shared/logger.cpp; sourceTree = "<group>"; };
+		ED539433261369A20085A5F8 /* sys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sys.h; path = ../../shared/sys.h; sourceTree = "<group>"; };
 		ED563F572570075600791CB7 /* VM-A64.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "VM-A64.entitlements"; sourceTree = "<group>"; };
-		ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
-		ED56FE55256F367D00DFB0F9 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
 		EDFEDD8F256EE38100382F3F /* obr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obr; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -64,8 +69,8 @@
 		255B2D541966EF5400AF1F2E = {
 			isa = PBXGroup;
 			children = (
+				ED539412261369390085A5F8 /* VM */,
 				ED563F572570075600791CB7 /* VM-A64.entitlements */,
-				255B2D5F1966EF5400AF1F2E /* VM */,
 				255B2D5E1966EF5400AF1F2E /* Products */,
 			);
 			indentWidth = 2;
@@ -80,27 +85,31 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		255B2D5F1966EF5400AF1F2E /* VM */ = {
+		ED539412261369390085A5F8 /* VM */ = {
 			isa = PBXGroup;
 			children = (
-				ED56FE54256F367D00DFB0F9 /* jit_arm_a64.cpp */,
-				ED56FE55256F367D00DFB0F9 /* jit_arm_a64.h */,
-				ED31B186256F341C00FD5C27 /* jit_amd_lp64.cpp */,
-				ED31B187256F341C00FD5C27 /* jit_amd_lp64.h */,
-				ED0340C8216A6B920091732E /* memory.cpp */,
-				ED0340C7216A6B920091732E /* memory.h */,
-				255B2D691966EFB700AF1F2E /* common.cpp */,
-				255B2D6A1966EFB700AF1F2E /* common.h */,
-				255B2D6B1966EFB700AF1F2E /* interpreter.cpp */,
-				255B2D6C1966EFB700AF1F2E /* interpreter.h */,
-				255B2D6D1966EFB700AF1F2E /* lib_api.h */,
-				255B2D6E1966EFB700AF1F2E /* loader.cpp */,
-				255B2D6F1966EFB700AF1F2E /* loader.h */,
-				255B2D701966EFB700AF1F2E /* posix_main.cpp */,
-				255B2D711966EFB700AF1F2E /* vm.cpp */,
-				255B2D721966EFB700AF1F2E /* vm.h */,
+				ED539430261369A20085A5F8 /* instrs.h */,
+				ED539432261369A20085A5F8 /* logger.cpp */,
+				ED53942E261369A20085A5F8 /* logger.h */,
+				ED539433261369A20085A5F8 /* sys.h */,
+				ED539431261369A20085A5F8 /* traps.h */,
+				ED53942F261369A20085A5F8 /* version.h */,
+				ED53942A2613698C0085A5F8 /* jit_arm_a64.cpp */,
+				ED53942B2613698C0085A5F8 /* jit_arm_a64.h */,
+				ED539426261369760085A5F8 /* memory.cpp */,
+				ED539427261369760085A5F8 /* memory.h */,
+				ED539413261369610085A5F8 /* common.cpp */,
+				ED539415261369610085A5F8 /* common.h */,
+				ED539419261369610085A5F8 /* interpreter.cpp */,
+				ED53941C261369610085A5F8 /* interpreter.h */,
+				ED53941A261369610085A5F8 /* lib_api.h */,
+				ED539417261369610085A5F8 /* loader.cpp */,
+				ED539416261369610085A5F8 /* loader.h */,
+				ED53941B261369610085A5F8 /* posix_main.cpp */,
+				ED53941E261369610085A5F8 /* vm.cpp */,
+				ED53941D261369610085A5F8 /* vm.h */,
 			);
-			path = VM;
+			name = VM;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -161,13 +170,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EDFEDD80256EE38100382F3F /* vm.cpp in Sources */,
-				EDFEDD81256EE38100382F3F /* interpreter.cpp in Sources */,
-				ED56FE56256F367D00DFB0F9 /* jit_arm_a64.cpp in Sources */,
-				EDFEDD83256EE38100382F3F /* loader.cpp in Sources */,
-				EDFEDD84256EE38100382F3F /* posix_main.cpp in Sources */,
-				EDFEDD85256EE38100382F3F /* memory.cpp in Sources */,
-				EDFEDD86256EE38100382F3F /* common.cpp in Sources */,
+				ED53942C2613698C0085A5F8 /* jit_arm_a64.cpp in Sources */,
+				ED539422261369610085A5F8 /* interpreter.cpp in Sources */,
+				ED53941F261369610085A5F8 /* common.cpp in Sources */,
+				ED539434261369A20085A5F8 /* logger.cpp in Sources */,
+				ED539421261369610085A5F8 /* loader.cpp in Sources */,
+				ED539424261369610085A5F8 /* vm.cpp in Sources */,
+				ED539428261369760085A5F8 /* memory.cpp in Sources */,
+				ED539423261369610085A5F8 /* posix_main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
