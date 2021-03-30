@@ -4633,7 +4633,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
       StackInstr* instr = jmp_iter->second;
       const long src_offset = jmp_iter->first - 1;
-      const long dest_index = method->GetLabelIndex(instr->GetOperand());
+      const long dest_index = method->GetLabelIndex(instr->GetOperand()) - 1;
       const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const long offset = dest_offset - src_offset;
       
