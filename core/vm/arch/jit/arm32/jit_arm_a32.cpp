@@ -4643,7 +4643,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
       StackInstr* instr = jmp_iter->second;
       const int32_t src_offset = jmp_iter->first - 1;
-      const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
+      const int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) - 1;
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const int32_t offset = dest_offset - src_offset - 2;
       if(offset < 0) {
