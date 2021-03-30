@@ -56,7 +56,6 @@ class ItermediateOptimizer {
   int unconditional_label;
   IntermediateMethod* current_method;
   bool merge_blocks;
-  bool is_lib;
   int cur_line_num;
 
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
