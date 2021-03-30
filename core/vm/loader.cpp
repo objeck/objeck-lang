@@ -697,7 +697,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LBL: {
       const long id = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LBL, id);
-      // method->AddLabel(id, i);
+      method->AddLabel(id, i);
     }
       break;
 
