@@ -911,7 +911,7 @@ IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case LBL:
-      jmp_labels[instr->GetOperand()] = i;
+      jmp_labels.insert(pair<int, size_t>(instr->GetOperand(), i));
       break;
 
     default:
@@ -923,8 +923,15 @@ IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case JMP: {
-      const int pos = (int)jmp_labels[instr->GetOperand()];
-      instr->SetOperand(pos);
+      const int lbl_pos = instr->GetOperand();
+      unordered_map<int, size_t>::iterator result = jmp_labels.find(lbl_pos);
+      if(result == jmp_labels.end()) {
+#ifdef _DEBUG
+        GetLogger() << L"*** Unable to find label! ***" << endl;
+        exit(1);
+#endif
+      }
+      instr->SetOperand((int)result->second + 1);
     }
       break;
 
