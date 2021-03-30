@@ -56,6 +56,7 @@ class ItermediateOptimizer {
   int unconditional_label;
   IntermediateMethod* current_method;
   bool merge_blocks;
+  bool is_lib;
   int cur_line_num;
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
@@ -113,7 +114,7 @@ class ItermediateOptimizer {
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);
   
  public:
-  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d);
+  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d);
   
   ~ItermediateOptimizer() {
   }

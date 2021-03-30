@@ -33,9 +33,10 @@
 
 using namespace backend;
 
-ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d)
+ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d)
 {
   program = p;
+  is_lib = l;
   cur_line_num = -1;
   merge_blocks = false;
   unconditional_label = u;
@@ -126,12 +127,14 @@ void ItermediateOptimizer::Optimize()
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
 
-    for(size_t j = 0; j < methods.size(); ++j) {
-      current_method = methods[j];
+    if(!is_lib) {
+      for(size_t j = 0; j < methods.size(); ++j) {
+        current_method = methods[j];
 #ifdef _DEBUG
-      GetLogger() << L"Optimizing method, pass 3: name='" << current_method->GetName() << "'" << endl;
+        GetLogger() << L"Optimizing method, pass 3: name='" << current_method->GetName() << "'" << endl;
 #endif
-      current_method->SetBlocks(FinalizeJumps(current_method->GetBlocks()));
+        current_method->SetBlocks(FinalizeJumps(current_method->GetBlocks()));
+      }
     }
   }
 }
