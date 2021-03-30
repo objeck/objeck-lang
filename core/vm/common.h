@@ -323,7 +323,6 @@ class StackMethod {
   bool is_lambda;
   StackInstr** instrs;  
   int instr_count;  
-  unordered_map<long, long> jump_table;
   long param_count;
   long mem_size;
   NativeCode* native_code;
@@ -451,19 +450,6 @@ class StackMethod {
 
   MemoryType GetReturn() const {
     return rtrn_type;
-  }
-
-  inline void AddLabel(long label_id, long index) {
-    jump_table.insert(pair<long, long>(label_id, index));
-  }
-
-  inline long GetLabelIndex(long label_id) {
-    unordered_map<long, long>::iterator found = jump_table.find(label_id);
-    if(found != jump_table.end()) {
-      return found->second;
-    }    
-
-    return -1;
   }
 
   void SetInstructions(StackInstr** ii, int ic) {
