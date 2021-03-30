@@ -33,10 +33,9 @@
 
 using namespace backend;
 
-ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d)
+ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d)
 {
   program = p;
-  is_lib = l;
   cur_line_num = -1;
   merge_blocks = false;
   unconditional_label = u;
