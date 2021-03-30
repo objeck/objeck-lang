@@ -33,10 +33,9 @@
 
 using namespace backend;
 
-ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d)
+ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d)
 {
   program = p;
-  is_lib = l;
   cur_line_num = -1;
   merge_blocks = false;
   unconditional_label = u;
@@ -118,7 +117,7 @@ void ItermediateOptimizer::Optimize()
 #endif
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
-    
+
     for(size_t j = 0; j < methods.size(); ++j) {
       current_method = methods[j];
 #ifdef _DEBUG
@@ -170,7 +169,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     delete tmp;
     tmp = nullptr;
   }
-  
+
   vector<IntermediateBlock*> useless_instrs_blocks;
   // remove useless instructions
 #ifdef _DEBUG
@@ -184,7 +183,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     delete tmp;
     tmp = nullptr;
   }
-  
+
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
     vector<IntermediateBlock*> getter_setter_blocks;
@@ -200,7 +199,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-        
+
     // fold integers
 #ifdef _DEBUG
     GetLogger() << L"  Folding integers..." << endl;
@@ -214,7 +213,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-    
+
     // fold floats
 #ifdef _DEBUG
     GetLogger() << L"  Folding floats..." << endl;
@@ -227,7 +226,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-  } 
+  }
   else {
     return useless_instrs_blocks;
   }
@@ -246,7 +245,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-  } 
+  }
   else {
     return folded_float_blocks;
   }
@@ -265,11 +264,11 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-  } 
+  }
   else {
     return strength_reduced_blocks;
   }
-  
+
   return instruction_replaced_blocks;
 }
 
@@ -277,7 +276,7 @@ IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateB
 {
   IntermediateBlock* outputs = new IntermediateBlock;
   deque<IntermediateInstruction*> working_stack;
-  
+
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
@@ -295,10 +294,10 @@ IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateB
         outputs->AddInstruction(instr);
       }
       break;
-      
+
     case STOR_INT_VAR:
-      if(instr->GetOperand2() == LOCL && !working_stack.empty() && 
-         working_stack.front()->GetType() == LOAD_INT_VAR) {
+      if(instr->GetOperand2() == LOCL && !working_stack.empty() &&
+        working_stack.front()->GetType() == LOAD_INT_VAR) {
         if(instr->GetOperand() == working_stack.front()->GetOperand()) {
           working_stack.pop_front();
         }
@@ -318,7 +317,7 @@ IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateB
         outputs->AddInstruction(instr);
       }
       break;
-     
+
     default:
       while(!working_stack.empty()) {
         outputs->AddInstruction(working_stack.back());
@@ -328,8 +327,8 @@ IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateB
       break;
     }
   }
-  
-  return outputs; 
+
+  return outputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
@@ -348,8 +347,8 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 
     case LBL:
       // ignore jump to next instruction
-      if(!working_stack.empty() && working_stack.front()->GetType() == JMP && 
-         working_stack.front()->GetOperand() == instr->GetOperand()) {
+      if(!working_stack.empty() && working_stack.front()->GetType() == JMP &&
+        working_stack.front()->GetOperand() == instr->GetOperand()) {
         working_stack.pop_front();
       }
       // add back in reverse order
@@ -382,7 +381,7 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-  
+
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
@@ -423,7 +422,7 @@ IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock*
       outputs->AddInstruction(instr);
     }
   }
-  
+
   return outputs;
 }
 
@@ -435,7 +434,7 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
   size_t i = 0;
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   while(i < input_instrs.size() && (input_instrs[i]->GetType() == STOR_INT_VAR ||
-                                    input_instrs[i]->GetType() == STOR_FLOAT_VAR)) {
+    input_instrs[i]->GetType() == STOR_FLOAT_VAR)) {
     outputs->AddInstruction(input_instrs[i++]);
   }
 
@@ -462,7 +461,7 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
         working_stack.push_front(instr);
       }
       break;
-      
+
     default:
       // order matters...
       while(!working_stack.empty()) {
@@ -483,23 +482,23 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
 }
 
 void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr,
-                                                  deque<IntermediateInstruction*> &working_stack,
-                                                  IntermediateBlock* outputs)
+  deque<IntermediateInstruction*>& working_stack,
+  IntermediateBlock* outputs)
 {
   if(!working_stack.empty()) {
     IntermediateInstruction* top_instr = working_stack.front();
     if(top_instr->GetType() == STOR_INT_VAR && instr->GetType() == LOAD_INT_VAR &&
-       instr->GetOperand() == top_instr->GetOperand() &&
-       instr->GetOperand2() == top_instr->GetOperand2()) {
+      instr->GetOperand() == top_instr->GetOperand() &&
+      instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_INT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
       working_stack.pop_front();
-    } 
+    }
     else if(top_instr->GetType() == STOR_FLOAT_VAR && instr->GetType() == LOAD_FLOAT_VAR &&
-            instr->GetOperand() == top_instr->GetOperand() &&
-            instr->GetOperand2() == top_instr->GetOperand2()) {
+      instr->GetOperand() == top_instr->GetOperand() &&
+      instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_FLOAT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
       working_stack.pop_front();
-    } 
+    }
     else {
       // order matters...
       while(!working_stack.empty()) {
@@ -508,7 +507,7 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
       }
       outputs->AddInstruction(instr);
     }
-  } 
+  }
   else {
     outputs->AddInstruction(instr);
   }
@@ -518,49 +517,49 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
 {
   // don't inline the same method more then once, since you'll have label/jump conflicts
   set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
-  if (found != inlined_mthds.end()) {
+  if(found != inlined_mthds.end()) {
     return false;
   }
 
   // don't inline recursive calls
-  if (mthd_called == current_method) {
+  if(mthd_called == current_method) {
     return false;
   }
 
   // don't inline parameter calls
-  if (mthd_called->GetName().find(current_method->GetName()) != string::npos) {
+  if(mthd_called->GetName().find(current_method->GetName()) != string::npos) {
     return false;
   }
 
   // don't inline method calls for primitive objects
-  if (mthd_called->GetClass()->GetName().find(L'$') != wstring::npos) {
+  if(mthd_called->GetClass()->GetName().find(L'$') != wstring::npos) {
     set<wstring>::iterator result = can_inline.find(mthd_called->GetName());
-    if (result == can_inline.end()) {
+    if(result == can_inline.end()) {
       return false;
     };
   }
 
-  if (current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
+  if(current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
     return false;
   }
 
   // ignore constructors
   const wstring called_mthd_name = mthd_called->GetName();
-  if (called_mthd_name.find(L":New:") != wstring::npos) {
+  if(called_mthd_name.find(L":New:") != wstring::npos) {
     return false;
   }
 
   // don't inline into "main" since it's not JTI compiled
   const wstring curr_mthd_name = current_method->GetName();
-  if (curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
+  if(curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
     return false;
   }
 
-  
+
 
   // check instructions
   vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
-  if (mthd_called_blocks.empty()) {
+  if(mthd_called_blocks.empty()) {
     return false;
   }
 
@@ -607,7 +606,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
     case instructions::LIB_OBJ_INST_CAST:
     case instructions::LIB_FUNC_DEF:
       return false;
-      
+
     case instructions::LOAD_CLS_MEM:
       if(mthd_called->GetClass() != current_method->GetClass()) {
         return false;
@@ -656,9 +655,9 @@ int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
     //
     if(instrs.size() == 3) {
       if(instrs[0]->GetType() == LOAD_INST_MEM &&
-         instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR ||
-         instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
-         instrs[2]->GetType() == RTRN) {
+        instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR ||
+          instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
+        instrs[2]->GetType() == RTRN) {
         return 0;
       }
       return -1;
@@ -668,7 +667,7 @@ int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
     //
     else if(instrs.size() == 2) {
       if((instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
-         instrs[1]->GetType() == RTRN) {
+        instrs[1]->GetType() == RTRN) {
         return 1;
       }
       return -1;
@@ -681,27 +680,27 @@ int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
       // character print pattern
       //
       if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-         instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-         instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
-         instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2 &&
-         instrs[4]->GetType() == RTRN) {
+        instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+        instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
+        instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2 &&
+        instrs[4]->GetType() == RTRN) {
         return 2;
       }
       //
       // setter instance pattern
       //
       else if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-              instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-              instrs[2]->GetType() == LOAD_INST_MEM &&
-              instrs[3]->GetType() == STOR_INT_VAR && instrs[3]->GetOperand2() == INST &&
-              instrs[4]->GetType() == RTRN) {
+        instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+        instrs[2]->GetType() == LOAD_INST_MEM &&
+        instrs[3]->GetType() == STOR_INT_VAR && instrs[3]->GetOperand2() == INST &&
+        instrs[4]->GetType() == RTRN) {
         return 3;
       }
       else if(instrs[0]->GetType() == STOR_FLOAT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-              instrs[1]->GetType() == LOAD_FLOAT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-              instrs[2]->GetType() == LOAD_INST_MEM &&
-              instrs[3]->GetType() == STOR_FLOAT_VAR && instrs[3]->GetOperand2() == INST &&
-              instrs[4]->GetType() == RTRN) {
+        instrs[1]->GetType() == LOAD_FLOAT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+        instrs[2]->GetType() == LOAD_INST_MEM &&
+        instrs[3]->GetType() == STOR_FLOAT_VAR && instrs[3]->GetOperand2() == INST &&
+        instrs[4]->GetType() == RTRN) {
         return 3;
       }
 
@@ -754,8 +753,8 @@ IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* in
 }
 
 void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
-                                              deque<IntermediateInstruction*> &working_stack,
-                                              IntermediateBlock* outputs)
+  deque<IntermediateInstruction*>& working_stack,
+  IntermediateBlock* outputs)
 {
   if(working_stack.size() > 1) {
     IntermediateInstruction* top_instr = working_stack.front();
@@ -763,23 +762,23 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
     if(top_instr->GetType() == LOAD_INT_LIT) {
       if(working_stack.front()->GetType() == LOAD_INT_VAR && top_instr->GetOperand2() == LOCL) {
         ApplyReduction(top_instr, instr, top_instr, working_stack, outputs);
-      } 
+      }
       else {
         AddBackReduction(instr, top_instr, working_stack, outputs);
       }
-    } 
+    }
     else if(working_stack.front()->GetType() == LOAD_INT_LIT) {
       if(top_instr->GetType() == LOAD_INT_VAR && top_instr->GetOperand2() == LOCL) {
         ApplyReduction(working_stack.front(), instr, top_instr, working_stack, outputs);
-      } 
+      }
       else {
         AddBackReduction(instr, top_instr, working_stack, outputs);
       }
-    } 
+    }
     else {
       AddBackReduction(instr, top_instr, working_stack, outputs);
     }
-  } 
+  }
   else {
     // order matters...
     while(!working_stack.empty()) {
@@ -790,9 +789,9 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
   }
 }
 
-void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, 
-                                          IntermediateInstruction* top_instr, deque<IntermediateInstruction*> &working_stack, 
-                                          IntermediateBlock* outputs)
+void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr,
+  IntermediateInstruction* top_instr, deque<IntermediateInstruction*>& working_stack,
+  IntermediateBlock* outputs)
 {
   int shift = 0;
   switch(test->GetOperand()) {
@@ -847,18 +846,18 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
     // shift left or right
     if(instr->GetType() == MUL_INT) {
       rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHL_INT, shift));
-    } 
+    }
     else {
       rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHR_INT, shift));
     }
   }
-  
+
   // add original instructions
   while(!working_stack.empty()) {
     outputs->AddInstruction(working_stack.back());
     working_stack.pop_back();
   }
-  
+
   // add rewritten instructions
   for(size_t i = 0; i < rewrite_instrs.size(); ++i) {
     outputs->AddInstruction(rewrite_instrs[i]);
@@ -866,7 +865,7 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
 }
 
 void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, IntermediateInstruction* top_instr,
-                                            deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
+  deque<IntermediateInstruction*>& working_stack, IntermediateBlock* outputs)
 {
   // order matters...
   while(!working_stack.empty()) {
@@ -1034,13 +1033,14 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
   return outputs;
 }
 
-void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
+void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*>& working_stack, IntermediateBlock* outputs)
 {
   if(working_stack.size() == 1) {
     outputs->AddInstruction(working_stack.front());
     working_stack.pop_front();
     outputs->AddInstruction(instr);
-  } else if(working_stack.size() > 1) {
+  }
+  else if(working_stack.size() > 1) {
     IntermediateInstruction* left = working_stack.front();
     working_stack.pop_front();
 
@@ -1052,54 +1052,54 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, dequ
       INT_VALUE value = left->GetOperand() + right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+                break;
 
     case SUB_INT: {
       INT_VALUE value = left->GetOperand() - right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+                break;
 
     case MUL_INT: {
       INT_VALUE value = left->GetOperand() * right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+                break;
 
     case DIV_INT: {
       INT_VALUE value = left->GetOperand() / right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+                break;
 
     case MOD_INT: {
       INT_VALUE value = left->GetOperand() % right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
-      
+                break;
+
     case BIT_AND_INT: {
       INT_VALUE value = left->GetOperand() & right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+        break;
 
     case BIT_OR_INT: {
       INT_VALUE value = left->GetOperand() | right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+       break;
 
     case BIT_XOR_INT: {
       INT_VALUE value = left->GetOperand() ^ right->GetOperand();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-      break;
+        break;
 
     default:
       break;
     }
-  } 
+  }
   else {
     outputs->AddInstruction(instr);
   }
@@ -1145,13 +1145,13 @@ IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* i
   return outputs;
 }
 
-void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
+void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, deque<IntermediateInstruction*>& working_stack, IntermediateBlock* outputs)
 {
   if(working_stack.size() == 1) {
     outputs->AddInstruction(working_stack.front());
     working_stack.pop_front();
     outputs->AddInstruction(instr);
-  } 
+  }
   else if(working_stack.size() > 1) {
     IntermediateInstruction* left = working_stack.front();
     working_stack.pop_front();
@@ -1177,17 +1177,17 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, de
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
-    
+
     case DIV_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() / right->GetOperand4();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
-      
+
     default:
       break;
     }
-  } 
+  }
   else {
     outputs->AddInstruction(instr);
   }
