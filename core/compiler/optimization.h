@@ -57,7 +57,7 @@ class ItermediateOptimizer {
   IntermediateMethod* current_method;
   bool merge_blocks;
   int cur_line_num;
-  bool is_debug;
+  bool is_lib;
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
   vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
