@@ -1022,6 +1022,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
 IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* inputs)
 {
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  IntermediateBlock* outputs = new IntermediateBlock;
 
   unordered_map<int, int> lbl_offsets;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
@@ -1035,7 +1036,7 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
       break;
     }
   }
-
+  
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
@@ -1044,16 +1045,17 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 #ifdef _DEBUG
       assert(result != lbl_offsets.end());
 #endif
-      instr->SetOperand(result->second);
+      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, result->second, instr->GetOperand2()));
     }
       break;
 
     default:
+      outputs->AddInstruction(instr);
       break;
     }
   }
 
-  return inputs;
+  return outputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)
