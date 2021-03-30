@@ -57,10 +57,12 @@ class ItermediateOptimizer {
   IntermediateMethod* current_method;
   bool merge_blocks;
   int cur_line_num;
+  bool is_debug;
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
   vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
-
+  vector<IntermediateBlock*> JumpToLocation(vector<IntermediateBlock*> inputs);
+  
   // inline setters/getters
   IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
 
@@ -70,6 +72,9 @@ class ItermediateOptimizer {
 
   // advanced method inlining
   IntermediateBlock* InlineMethod(IntermediateBlock* inputs);
+
+  // jump to address
+  IntermediateBlock* JumpToLocation(IntermediateBlock* inputs);
 
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
@@ -109,7 +114,7 @@ class ItermediateOptimizer {
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);
   
  public:
-  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d);
+   ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d);
   
   ~ItermediateOptimizer() {
   }

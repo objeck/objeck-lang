@@ -33,12 +33,13 @@
 
 using namespace backend;
 
-ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d)
+ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d)
 {
   program = p;
   cur_line_num = -1;
   merge_blocks = false;
   unconditional_label = u;
+  is_debug = d;
 
   if(d) {
     optimization_level = 0;
@@ -125,6 +126,16 @@ void ItermediateOptimizer::Optimize()
 #endif
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
+
+    if(!is_debug) {
+      for(size_t j = 0; j < methods.size(); ++j) {
+        current_method = methods[j];
+#ifdef _DEBUG
+        GetLogger() << L"Optimizing jumps, pass 2: name='" << current_method->GetName() << "'" << endl;
+#endif
+        current_method->SetBlocks(JumpToLocation(current_method->GetBlocks()));
+      }
+    }
   }
 }
 
@@ -150,6 +161,24 @@ vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<Intermediat
   else {
     return inputs;
   }
+}
+
+vector<IntermediateBlock*> ItermediateOptimizer::JumpToLocation(vector<IntermediateBlock*> inputs)
+{
+#ifdef _DEBUG
+  GetLogger() << L"  Method inlining..." << endl;
+#endif
+  vector<IntermediateBlock*> outputs;
+  while(!inputs.empty()) {
+    IntermediateBlock* tmp = inputs.front();
+    outputs.push_back(JumpToLocation(tmp));
+    // delete old block
+    inputs.erase(inputs.begin());
+    delete tmp;
+    tmp = nullptr;
+  }
+
+  return outputs;
 }
 
 vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<IntermediateBlock*> inputs)
@@ -987,6 +1016,46 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
   }
 
   return outputs;
+}
+
+
+IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* inputs)
+{
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
+  unordered_map<int, int> lbl_offsets;
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+    switch(instr->GetType()) {
+    case LBL:
+      lbl_offsets.insert(pair<int, int>(instr->GetOperand(), (int)i + 1));
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      IntermediateInstruction* instr = input_instrs[i];
+      switch(instr->GetType()) {
+      case JMP: {
+        unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
+#ifdef _DEBUG
+        assert(result != lbl_offsets.end());
+#endif
+        instr->SetOperand(result->second);
+      }
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  return inputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)
