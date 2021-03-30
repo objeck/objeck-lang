@@ -175,10 +175,6 @@ namespace backend {
       return operand4;
     }
 
-    void SetOperand(int o1) {
-      operand = o1;
-    }
-
     void SetOperand3(int o3) {
       operand3 = o3;
     }
