@@ -1,12 +1,14 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
-#		ii := Int->New[3];
-#		ii[2] := 13;
-		i := IntHolder->New(1);
-#		v := ii[i + 1];
-#		v->PrintLine();
-
-		a := i % 3;
-		a->PrintLine();
+		a := 13;
+		if(a < 10) {
+			a->PrintLine();
+		}
+		else if(a <= 20) {
+			20->PrintLine();
+		}
+		else {
+			"other"->PrintLine();
+		};
 	}
 }
