@@ -461,7 +461,7 @@ class StackMethod {
     unordered_map<long, long>::iterator found = jump_table.find(label_id);
     if(found != jump_table.end()) {
       return found->second;
-    }
+    }    
 
     return -1;
   }
