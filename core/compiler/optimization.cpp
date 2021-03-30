@@ -1037,21 +1037,19 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   }
 
   for(size_t i = 0; i < input_instrs.size(); ++i) {
-    for(size_t i = 0; i < input_instrs.size(); ++i) {
-      IntermediateInstruction* instr = input_instrs[i];
-      switch(instr->GetType()) {
-      case JMP: {
-        unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
+    IntermediateInstruction* instr = input_instrs[i];
+    switch(instr->GetType()) {
+    case JMP: {
+      unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
 #ifdef _DEBUG
-        assert(result != lbl_offsets.end());
+      assert(result != lbl_offsets.end());
 #endif
-        instr->SetOperand(result->second);
-      }
-        break;
+      instr->SetOperand(result->second);
+    }
+      break;
 
-      default:
-        break;
-      }
+    default:
+      break;
     }
   }
 
