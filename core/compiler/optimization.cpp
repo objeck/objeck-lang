@@ -126,35 +126,7 @@ void ItermediateOptimizer::Optimize()
 #endif
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
-
-    if(!is_lib) {
-      for(size_t j = 0; j < methods.size(); ++j) {
-        current_method = methods[j];
-#ifdef _DEBUG
-        GetLogger() << L"Optimizing method, pass 3: name='" << current_method->GetName() << "'" << endl;
-#endif
-        current_method->SetBlocks(FinalizeJumps(current_method->GetBlocks()));
-      }
-    }
   }
-}
-
-vector<IntermediateBlock*> ItermediateOptimizer::FinalizeJumps(vector<IntermediateBlock*> inputs)
-{
-#ifdef _DEBUG
-  GetLogger() << L"  Method finalizing jump positions..." << endl;
-#endif
-  vector<IntermediateBlock*> outputs;
-  while(!inputs.empty()) {
-    IntermediateBlock* tmp = inputs.front();
-    outputs.push_back(FinalizeJumps(tmp));
-    // delete old block
-    inputs.erase(inputs.begin());
-    delete tmp;
-    tmp = nullptr;
-  }
-  
-  return outputs;
 }
 
 vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<IntermediateBlock*> inputs)
@@ -903,47 +875,6 @@ void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, Inte
   }
   outputs->AddInstruction(top_instr);
   outputs->AddInstruction(instr);
-}
-
-IntermediateBlock* ItermediateOptimizer::FinalizeJumps(IntermediateBlock* inputs)
-{
-  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  unordered_map<int, size_t> jmp_labels;
-
-  for(size_t i = 0; i < input_instrs.size(); ++i) {
-    IntermediateInstruction* instr = input_instrs[i];
-    switch(instr->GetType()) {
-    case LBL:
-      jmp_labels.insert(pair<int, size_t>(instr->GetOperand(), i + 1));
-      break;
-
-    default:
-      break;
-    }
-  }
-
-  for(size_t i = 0; i < input_instrs.size(); ++i) {
-    IntermediateInstruction* instr = input_instrs[i];
-    switch(instr->GetType()) {
-    case JMP: {
-      const int lbl_pos = instr->GetOperand();
-      unordered_map<int, size_t>::iterator result = jmp_labels.find(lbl_pos);
-      if(result == jmp_labels.end()) {
-#ifdef _DEBUG
-        GetLogger() << L"*** Unable to find label! ***" << endl;
-        exit(1);
-#endif
-      }
-      instr->SetOperand((int)result->second);
-    }
-      break;
-
-    default:
-      break;
-    }
-  }
-
-  return inputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
