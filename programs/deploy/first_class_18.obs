@@ -21,7 +21,8 @@ class FirstClass {
 		# process collection
 		each(i : vector) {
 			# return value of other functions and pass argument to other function
-			Show(vector->Get(i)->Get());
+			func : \Func->Double := vector->Get(i)->Get();
+			Show(func);
 		};
 	}
 
