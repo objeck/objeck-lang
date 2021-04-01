@@ -126,14 +126,19 @@ void ItermediateOptimizer::Optimize()
 #endif
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
-    
-    if(!is_lib) {
+  }
+
+  if(!is_lib) {
+    vector<IntermediateClass*> klasses = program->GetClasses();
+    for(size_t i = 0; i < klasses.size(); ++i) {
+      vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
       for(size_t j = 0; j < methods.size(); ++j) {
         current_method = methods[j];
 #ifdef _DEBUG
         GetLogger() << L"Optimizing jumps, pass 2: name='" << current_method->GetName() << "'" << endl;
 #endif
         current_method->SetBlocks(JumpToLocation(current_method->GetBlocks()));
+
       }
     }
   }
@@ -645,7 +650,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
       // look for conflicting jump offsets
     case instructions::LBL:
     case instructions::JMP:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) == lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
