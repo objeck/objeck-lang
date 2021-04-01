@@ -19,7 +19,7 @@ jit_amd_lp64.a:
 	cd $(JIT_PATH); make -f Makefile.OSX.64
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< -I/usr/local/include 
+	$(CC) -m64 $(ARGS) -c $< -I../lib/openssl/macos/include
 
 clean:
 	cd $(MEM_PATH); make -f Makefile.OSX.64 clean

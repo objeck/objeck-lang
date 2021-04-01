@@ -11,7 +11,7 @@ $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< -I/usr/local/ssl/include 
+	$(CC) -m64 $(ARGS) -c $< -I../../lib/openssl/macos/include
 
 clean:
 	rm -f *.o *~ $(LIB)
