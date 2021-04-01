@@ -1759,6 +1759,8 @@ int filledCircleRGBA(SDL_Renderer * renderer, Sint16 x, Sint16 y, Sint16 rad, Ui
 /* Windows targets do not have lrint, so provide a local inline version */
 #if defined(_MSC_VER)
 /* Detect 64bit and use intrinsic version */
+
+/* TODO: now defined
 #ifdef _M_X64
 #include <emmintrin.h>
 static __inline long 
@@ -1778,7 +1780,8 @@ __inline long int
 	};
 	return intgr;
 }
-#elif defined(_M_ARM)
+*/
+#if defined(_M_ARM)
 #include <armintr.h>
 #pragma warning(push)
 #pragma warning(disable: 4716)
@@ -1791,8 +1794,6 @@ __declspec(naked) long int
 	__emit(0xE12FFF1E); // bx     lr
 }
 #pragma warning(pop)
-#else
-#error lrint needed for MSVC on non X86/AMD64/ARM targets.
 #endif
 #endif
 
