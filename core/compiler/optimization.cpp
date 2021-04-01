@@ -126,7 +126,7 @@ void ItermediateOptimizer::Optimize()
 #endif
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
-
+    
     if(!is_lib) {
       for(size_t j = 0; j < methods.size(); ++j) {
         current_method = methods[j];
@@ -645,7 +645,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
       // look for conflicting jump offsets
     case instructions::LBL:
     case instructions::JMP:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) == lbl_jmp_offsets.end()) {
         return false;
       }
       break;
