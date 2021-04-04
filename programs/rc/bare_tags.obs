@@ -14,7 +14,7 @@ class Program {
 
 		each(i : tasks) {
 			task := tasks[i];
-			"Processing {$task}..."->PrintLine();	
+			"Processing '{$task}'..."->PrintLine();	
 			matches := ProcessTask(task);
 			langs := matches->GetKeys()<String>;
 			each(j : langs) {
@@ -83,7 +83,7 @@ class Program {
 				value := values->Get(j);
 				buffer += "[[{$value}]]";
 				if(j + 1 < values->Size()) {
-					", "->Print();
+					buffer += ", ";
 				};
 			};
 			buffer += ")";
