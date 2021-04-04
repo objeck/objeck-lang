@@ -1,51 +1,65 @@
-use System.IO.File;
+use Web.HTTP;
 use Query.RegEx;
 use Collection.Generic;
 
-# https://rosettacode.org/mw/index.php?action=raw&title=100_doors
-
 class Program {
 	function : Main(args : String[]) ~ Nil {
-		file := FileReader->New(args[0]);
-		leaving {
-			file->Close();
-		};
-
-		results := ProcessFile(file);
-		keys := results->GetKeys()<String>;
-		each(i : keys) {
-			keys->Get(i)->PrintLine();
-		};
+		master_tasks := ProcessTasks(["100_doors", "99_bottles_of_beer", "Filter", "Array_length"]);
+		"---"->PrintLine();
+		PrintTasks(master_tasks);
 	}
 
-	function : ProcessFile(file : FileReader) ~ Set<String> {
-		results := Set->New()<String>;
+	function : ProcessTasks(tasks : String[]) ~ MultiMap<String, String> {
+		master_tasks := MultiMap->New()<String, String>;
 
-		header_regex := RegEx->New("==\\{\\{header\\|\\w*\\}\\}==");
-		lang_regex := RegEx->New(".*<(\\w*)lang(\\w*)>.*");
-		line := file->ReadString()->Trim();
-		lang : String;
-		while(line <> Nil) {
-			lang_str := header_regex->Match(line);
-			if(<>lang_str->IsEmpty()) {
-				lang := lang_str;
-			}
-			else if(lang_regex->MatchExact(line)) {
-				if(lang <> Nil) {
-					results->Insert(GetHeaderName(lang));
-				}
-				else {
-					results->Insert("no language");
-				};
+		each(i : tasks) {
+			task := tasks[i];
+			"Processing {$task}..."->PrintLine();	
+			matches := ProcessTask(task);
+			langs := matches->GetKeys()<String>;
+			each(j : langs) {
+				master_tasks->Insert(langs->Get(j), task);
+			};
+		};
+
+		return master_tasks;
+	}
+
+	function : ProcessTask(task : String) ~ Set<String> {
+		langs := Set->New()<String>;
+
+		header_regex := RegEx->New("==\\{\\{header\\|(\\w)+\\}\\}==");
+		lang_regex := RegEx->New("<(\\s)*lang(\\s)*>");
+
+		url := "http://rosettacode.org/mw/index.php?action=raw&title={$task}";
+		lines := HttpClient->New()->GetAll(url)->Split("\n");
+
+		last_header : String;
+		each(i : lines) {
+			line := lines[i];
+			
+			# get header
+			header := header_regex->FindFirst(line);
+			if(<>header->IsEmpty()) {
+				last_header := HeaderName(header);
 			};
 
-			line := file->ReadString();
+			# get language			
+			lang := lang_regex->FindFirst(line);
+			if(lang->Size() > 0) {
+				if(last_header <> Nil) {
+					langs->Insert("{$last_header}");
+				}
+				else {
+					langs->Insert("no language");
+				};
+			};
 		};
 
-		return results;
+		return langs;
 	}
 
-	function : GetHeaderName(lang_str : String) ~ String {
+	function : HeaderName(lang_str : String) ~ String {
 		start := lang_str->Find('|');
 		if(start > -1) {
 			start += 1;
@@ -54,5 +68,27 @@ class Program {
 		};
 
 		return "";
+	}
+
+	function : PrintTasks(tasks : MultiMap<String, String>) ~ Nil {
+		keys := tasks->GetKeys()<String>;
+		each(i : keys) {
+			buffer := "";
+
+			key := keys->Get(i);
+			values := tasks->Find(key)<String>;
+			count := values->Size();
+			buffer += "{$count} in {$key} (";
+			each(j : values) {
+				value := values->Get(j);
+				buffer += "[[{$value}]]";
+				if(j + 1 < values->Size()) {
+					", "->Print();
+				};
+			};
+			buffer += ")";
+
+			buffer->PrintLine();
+		};
 	}
 }
