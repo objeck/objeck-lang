@@ -1,0 +1,58 @@
+use System.IO.File;
+use Query.RegEx;
+use Collection.Generic;
+
+# https://rosettacode.org/mw/index.php?action=raw&title=100_doors
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+		file := FileReader->New(args[0]);
+		leaving {
+			file->Close();
+		};
+
+		results := ProcessFile(file);
+		keys := results->GetKeys()<String>;
+		each(i : keys) {
+			keys->Get(i)->PrintLine();
+		};
+	}
+
+	function : ProcessFile(file : FileReader) ~ Set<String> {
+		results := Set->New()<String>;
+
+		header_regex := RegEx->New("==\\{\\{header\\|\\w*\\}\\}==");
+		lang_regex := RegEx->New(".*<(\\w*)lang(\\w*)>.*");
+		line := file->ReadString()->Trim();
+		lang : String;
+		while(line <> Nil) {
+			lang_str := header_regex->Match(line);
+			if(<>lang_str->IsEmpty()) {
+				lang := lang_str;
+			}
+			else if(lang_regex->MatchExact(line)) {
+				if(lang <> Nil) {
+					results->Insert(GetHeaderName(lang));
+				}
+				else {
+					results->Insert("no language");
+				};
+			};
+
+			line := file->ReadString();
+		};
+
+		return results;
+	}
+
+	function : GetHeaderName(lang_str : String) ~ String {
+		start := lang_str->Find('|');
+		if(start > -1) {
+			start += 1;
+			end := lang_str->Find(start, '}');
+			return lang_str->SubString(start, end - start);
+		};
+
+		return "";
+	}
+}
