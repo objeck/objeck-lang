@@ -6078,11 +6078,12 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
             klass = program->GetClass(uses[i] + L"." + klass_name);
           }
         }
+        // check class
         if(klass) {
           encoded_name += klass->GetName();
           variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()), true);
         }
-        // search libaraires
+        // search libraries
         else {
           LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses(current_class->GetFileName()));
           if(lib_klass) {
@@ -6092,6 +6093,13 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
           else {
             encoded_name += variable->GetName();
             variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, variable->GetName()), true);
+          }
+        }
+        // generics
+        if(variable->HasConcreteTypes()) {
+          const vector<Type*> generic_types = variable->GetConcreteTypes();
+          for(size_t j = 0; j < generic_types.size(); ++j) {
+            encoded_name += L"|" + generic_types[j]->GetName();
           }
         }
       }
@@ -7041,7 +7049,14 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
           const wstring find_name = generic_classes[i]->GetName();
           Type* to_type = ResolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name), method_call, klass, lib_klass, false);
           const wstring from_name = L"o." + generic_classes[i]->GetName();
-          const wstring to_name = L"o." + to_type->GetName();
+          wstring to_name = L"o." + to_type->GetName();
+          // generics
+          if(to_type->HasGenerics()) {
+            const vector<Type*> generic_types = to_type->GetGenerics();
+            for(size_t j = 0; j < generic_types.size(); ++j) {
+              to_name += L"|" + generic_types[j]->GetName();
+            }
+          }
           ReplaceAllSubstrings(func_name, from_name, to_name);
         }
 
