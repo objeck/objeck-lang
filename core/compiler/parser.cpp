@@ -2704,7 +2704,8 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 #endif
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, ident);
-  if(Match(TOKEN_LES)) {
+  if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) && 
+      (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
     vector<Type*> generic_dclrs = ParseGenericTypes(depth);
     variable->SetConcreteTypes(generic_dclrs);
   }
