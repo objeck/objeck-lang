@@ -865,6 +865,7 @@ namespace frontend {
     bool checked_pre_operation;
     OperationAssignment* post_operation;
     bool checked_post_operation;
+    vector<Type*> concrete_types;
 
     Variable(const wstring& file_name, const int line_num, const wstring& n) : Expression(file_name, line_num) {
       name = n;
@@ -905,6 +906,18 @@ namespace frontend {
 
     void SetIndices(ExpressionList* i) {
       indices = i;
+    }
+
+    const vector<Type*> GetConcreteTypes() {
+      return concrete_types;
+    }
+
+    bool HasConcreteTypes() {
+      return concrete_types.size() > 0;
+    }
+
+    void SetConcreteTypes(vector<Type*>& c) {
+      concrete_types = c;
     }
 
     ExpressionList* GetIndices() {
