@@ -1,14 +1,11 @@
+use Collection.Generic;
+
 class Program {
 	function : Main(args: String[]) ~ Nil {
-		a := 13;
-		if(a < 10) {
-			a->PrintLine();
-		}
-		else if(a <= 20) {
-			20->PrintLine();
-		}
-		else {
-			"other"->PrintLine();
-		};
+		m : Map<String, Vector<String>>;
+		m->Each(Foo(String, Vector<String>) ~ Nil);
+	}
+
+	function : Foo(k : String, v : Vector<String>) ~ Nil {
 	}
 }
