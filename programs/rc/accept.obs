@@ -6,63 +6,115 @@
 ~#
 
 class Program {
+	@is_debug : static : Bool;
 	function : Main(args : String[]) ~ Nil {
-#		Test(["( + 20 )", "( + 1 234 )", "( * ( + 1 2 ) ( + 1 3 ) )", "( * 2 ) )"]);
-#		Test(["( + 2 )"]);
-#		Test(["( * ( + 1 2 ) ( + 1 3 ) )"]);
-		Test(["( * ( + 1 2 ) ( + 3 4 ) )"]);
+		@is_debug := false;
 
+		Tests(["234", "( + 20 )", "( + 1 234 )", "( + 2 10 200 )", "( * ( + 1 2 ) ( + 1 3 ) )", "( * ( + 1 2 ) ( + 1 3 ) ( * 2 3 ) )"]);
+		"==="->PrintLine();
+		Tests(["( * 2 ", "( * 2 ) )", "( + 2 (3 4 ) )", "( * (+ 1 2 ) ( 1 + 3 ) ( * 2 3) )"]);
 	}
 
-	function : Test(tests : String[]) ~ Nil {
+	function : Tests(tests : String[]) ~ Nil {
 		each(i : tests) {
-			tokens := tests[i]->Split(" ");
-			each(j : tokens) {
-				token := tokens[j];
-				"{$j}: {$token}"->PrintLine();
+			tokens := ScanTokens(tests[i]);
+			if(@is_debug) {
+				each(j : tokens) {
+					token := tokens[j];
+					"{$j}: {$token}"->PrintLine();
+				};
+			}
+			else {
+				tests[i]->PrintLine();
 			};
+
 			IsExpr(tokens, 0, tokens->Size() - 1)->PrintLine();
 			"---"->PrintLine();
 		};
 	}
 
 	function : IsExpr(tokens : String[], start : Int, end : Int) ~ Bool {
+		if(@is_debug) {
+			"=IsExpr: {$start}, {$end}--"->PrintLine();
+		};
+
 		if(start > end) {
 			return false;
 		}
 		else if(tokens[start]->Equals("(") & tokens[end]->Equals(")")) {
-"=IsExpr"->PrintLine();			
 			return (tokens[start + 1]->Equals("+") | tokens[start + 1]->Equals("*")) & IsOperands(tokens, start + 2, end - 1);
 		}
 		else {
-"--0: {$start}, {$end}--"->PrintLine();
 			return IsId(tokens, start, end);
 		};
 	}
 
 	function : IsOperands(tokens : String[], start : Int, end : Int) ~ Bool {
-		while(IsInteger(tokens, start, end) & start < end) {
-			start += 1;
+		if(@is_debug) {
+			"=IsOperands: {$start}, {$end}--"->PrintLine();
 		};
 
-		
-		
-		
+		if(tokens[start]->Equals("(")) {
+			pos := start;
+
+			while(pos < end) {
+				pos := start;
+				while(<>tokens[pos]->Equals(")")) {
+					pos += 1;
+				};
+
+				if(<>IsExpr(tokens, start, pos)) {
+					return false;
+				};
+
+				start := pos + 1;
+			};
+		}
+		else {
+			while(start <= end) {
+				if(<>IsId(tokens, start, end)) {
+					return false;
+				};
+
+				start += 1;
+			};
+		};
+
 		return true;
 	}
 
 	function : IsId(tokens : String[], start : Int, end : Int) ~ Bool {
-		if(tokens[start]->Equals("(") & tokens[end]->Equals(")")) {
-			return IsExpr(tokens, start, end);
-		}
-		else {
-			return IsInteger(tokens, start, end);
+		if(@is_debug) {
+			"=IsId: {$start}, {$end}--"->PrintLine();
 		};
+
+		return IsInteger(tokens, start, end);
 	}
 
 	function : IsInteger(tokens : String[], start : Int, end : Int) ~ Bool {
 		value := tokens[start];
-"=IsInteger: '{$value}'"->PrintLine();				
-		return value->ToInt() <> 0;
+
+		if(@is_debug) {
+			"=IsInteger: '{$value}'"->PrintLine();
+		};
+
+		each(i : value) {
+			if(<>value->Get(i)->IsDigit()) {
+				return false;
+			};
+		};
+
+
+		return true;
+	}
+
+	function : ScanTokens(input : String) ~ String[] {
+		tokens := input->Split(" ");
+		if(tokens->Size() = 0) {
+			tokens := String->New[1];
+			tokens[0] := input;
+		};
+
+		return tokens;
 	}
 }
