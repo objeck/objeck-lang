@@ -9,7 +9,7 @@ use Collection.Generic;
 
 class Program {
 	@is_debug : static : Bool;
-	
+
 	function : Main(args : String[]) ~ Nil {
 		@is_debug := false;
 
@@ -31,8 +31,8 @@ class Program {
 				tests[i]->PrintLine();
 			};
 
-			IsExpr(tokens, 0, tokens->Size() - 1)->PrintLine();
-			"---"->PrintLine();
+			accept := IsExpr(tokens, 0, tokens->Size() - 1);
+			"Accept: {$accept}\n---"->PrintLine();
 		};
 	}
 
@@ -56,10 +56,10 @@ class Program {
 		if(@is_debug) {
 			"=IsOperands: {$start}, {$end}--"->PrintLine();
 		};
-		
+
 		if(tokens->Get(start)->Equals("(")) {
 			offset := start;
-			
+
 			while(offset < end) {
 				offset := start;
 				while(<>tokens->Get(offset)->Equals(")")) {
