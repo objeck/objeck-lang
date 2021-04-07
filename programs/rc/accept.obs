@@ -1,0 +1,68 @@
+#~
+<s> -> <expr>
+<expr> -> ( + <operands> ) | ( * <operands> ) | <id>
+<operands> -> <expr> <operands> | <id>
+<id> -> <integer>
+~#
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+#		Test(["( + 20 )", "( + 1 234 )", "( * ( + 1 2 ) ( + 1 3 ) )", "( * 2 ) )"]);
+#		Test(["( + 2 )"]);
+#		Test(["( * ( + 1 2 ) ( + 1 3 ) )"]);
+		Test(["( * ( + 1 2 ) ( + 3 4 ) )"]);
+
+	}
+
+	function : Test(tests : String[]) ~ Nil {
+		each(i : tests) {
+			tokens := tests[i]->Split(" ");
+			each(j : tokens) {
+				token := tokens[j];
+				"{$j}: {$token}"->PrintLine();
+			};
+			IsExpr(tokens, 0, tokens->Size() - 1)->PrintLine();
+			"---"->PrintLine();
+		};
+	}
+
+	function : IsExpr(tokens : String[], start : Int, end : Int) ~ Bool {
+		if(start > end) {
+			return false;
+		}
+		else if(tokens[start]->Equals("(") & tokens[end]->Equals(")")) {
+"=IsExpr"->PrintLine();			
+			return (tokens[start + 1]->Equals("+") | tokens[start + 1]->Equals("*")) & IsOperands(tokens, start + 2, end - 1);
+		}
+		else {
+"--0: {$start}, {$end}--"->PrintLine();
+			return IsId(tokens, start, end);
+		};
+	}
+
+	function : IsOperands(tokens : String[], start : Int, end : Int) ~ Bool {
+		while(IsInteger(tokens, start, end) & start < end) {
+			start += 1;
+		};
+
+		
+		
+		
+		return true;
+	}
+
+	function : IsId(tokens : String[], start : Int, end : Int) ~ Bool {
+		if(tokens[start]->Equals("(") & tokens[end]->Equals(")")) {
+			return IsExpr(tokens, start, end);
+		}
+		else {
+			return IsInteger(tokens, start, end);
+		};
+	}
+
+	function : IsInteger(tokens : String[], start : Int, end : Int) ~ Bool {
+		value := tokens[start];
+"=IsInteger: '{$value}'"->PrintLine();				
+		return value->ToInt() <> 0;
+	}
+}
