@@ -7,54 +7,82 @@
 
 use Collection.Generic;
 
-class Program {
-	@is_debug : static : Bool;
+class Lisp {
+	@is_debug : Bool;
+	@stack : Stack<String>;
 
 	function : Main(args : String[]) ~ Nil {
-		@is_debug := false;
-
-		Tests(["234", "(+ 20)", "(+ 1 234)", "(+ 2 10 200)", "(* (+ 1 2) (+ 1 3))", "(* (+ 1 2) (+ 1 3) (* 2 3))"]);
-		"==="->PrintLine();
-		Tests(["(* 2", "(* 2))", "(+ 2 (3 4))", "(* (+ 1 2) (1 + 3) (* 2 3))"]);
+		lisp := Lisp->New(true);
+#		lisp->Execute(["(* (+ 1 2) (+ 3 4 5))"]);
+#		lisp->Execute(["234", "(+ 20)", "(+ 1 234)", "(+ 2 10 200)", "(* (+ 1 2) (+ 1 3))", "(* (+ 1 2) (+ 1 3) (* 2 3))"]);
+		lisp->Execute(["123"]);
 	}
 
-	function : Tests(tests : String[]) ~ Nil {
-		each(i : tests) {
-			tokens := Tokenize(tests[i]);
+	New(is_debug : Bool) {
+		@is_debug := false;
+		@stack := Stack->New()<String>;
+	}
+
+	method : public : Execute(inputs : String[]) ~ Nil {
+		each(i : inputs) {
+			inputs[i]->PrintLine();
+			tokens := Tokenize(inputs[i]);
 			if(@is_debug) {
 				each(j : tokens) {
 					token := tokens->Get(j);
 					"{$j}: '{$token}'"->PrintLine();
 				};
-			}
-			else {
-				tests[i]->PrintLine();
 			};
 
 			accept := IsExpr(tokens, 0, tokens->Size() - 1);
-			"Accept: {$accept}\n---"->PrintLine();
+			"Accepted: {$accept}\n---"->PrintLine();
+			if(accept) {				
+				each(j : @stack) {
+					@stack->Pop()->PrintLine();
+				};
+			};
 		};
 	}
 
-	function : IsExpr(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
+	method : IsExpr(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
 		if(@is_debug) {
-			"=IsExpr: {$start}, {$end}--"->PrintLine();
+			"=IsExpr: {$start}, {$end}"->PrintLine();
 		};
 
 		if(start > end) {
 			return false;
 		}
 		else if(tokens->Get(start)->Equals("(") & tokens->Get(end)->Equals(")")) {
-			return (tokens->Get(start + 1)->Equals("+") | tokens->Get(start + 1)->Equals("*")) & IsOperands(tokens, start + 2, end - 1);
+			count := -1;
+
+			if(tokens->Get(start + 1)->Equals("+")) {
+				count := IsOperands(tokens, start + 2, end - 1);
+				for(i := 1; i < count; i += 1;) {
+					value := @stack->Pop()->ToInt() + @stack->Pop()->ToInt();
+					@stack->Push(value->ToString());
+				};
+			}
+			else if(tokens->Get(start + 1)->Equals("*")) {
+				count := IsOperands(tokens, start + 2, end - 1);
+				for(i := 1; i < count; i += 1;) {
+					value := @stack->Pop()->ToInt() * @stack->Pop()->ToInt();
+					@stack->Push(value->ToString());
+				};
+			};
+						
+			return count > -1;
+			
 		}
 		else {
 			return IsId(tokens, start, end);
 		};
 	}
 
-	function : IsOperands(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
+	method : IsOperands(tokens : Vector<String>, start : Int, end : Int) ~ Int {
+		count := 0;
+
 		if(@is_debug) {
-			"=IsOperands: {$start}, {$end}--"->PrintLine();
+			"=IsOperands: {$start}, {$end}"->PrintLine();
 		};
 
 		if(tokens->Get(start)->Equals("(")) {
@@ -67,8 +95,9 @@ class Program {
 				};
 
 				if(<>IsExpr(tokens, start, offset)) {
-					return false;
+					return -1;
 				};
+				count += 1;
 
 				start := offset + 1;
 			};
@@ -76,42 +105,43 @@ class Program {
 		else {
 			while(start <= end) {
 				if(<>IsId(tokens, start, end)) {
-					return false;
+					return -1;
 				};
+				count += 1;
 
 				start += 1;
 			};
 		};
 
-		return true;
+		return count;
 	}
 
-	function : IsId(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
+	method : IsId(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
 		if(@is_debug) {
-			"=IsId: {$start}, {$end}--"->PrintLine();
+			"=IsId: {$start}, {$end}"->PrintLine();
 		};
 
 		return IsInteger(tokens, start, end);
 	}
 
-	function : IsInteger(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
+	method : IsInteger(tokens : Vector<String>, start : Int, end : Int) ~ Bool {
 		value := tokens->Get(start);
-
 		if(@is_debug) {
-			"=IsInteger: '{$value}'"->PrintLine();
+			"=IsInteger: {$start}, {$end}: value='{$value}'"->PrintLine();
 		};
 
 		each(i : value) {
 			if(<>value->Get(i)->IsDigit()) {
 				return false;
 			};
+			@stack->Push(value);
 		};
 
 
 		return true;
 	}
 
-	function : Tokenize(input : String) ~ Vector<String> {
+	method : Tokenize(input : String) ~ Vector<String> {
 		tokens := Vector->New()<String>;
 
 		each(i : input) {
