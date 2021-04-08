@@ -13,9 +13,9 @@ class Lisp {
 
 	function : Main(args : String[]) ~ Nil {
 		lisp := Lisp->New(true);
-		lisp->Execute(["(* (+ 1 2) (+ 3 4 5))"]);
+#		lisp->Execute(["(* (+ 1 2) (+ 3 4 5))"]);
 #		lisp->Execute(["234", "(+ 20)", "(+ 1 234)", "(+ 2 10 200)", "(* (+ 1 2) (+ 1 3))", "(* (+ 1 2) (+ 1 3) (* 2 3))"]);
-#		lisp->Execute(["123"]);
+		lisp->Execute(["123"]);
 	}
 
 	New(is_debug : Bool) {
@@ -26,7 +26,7 @@ class Lisp {
 	method : public : Execute(inputs : String[]) ~ Nil {
 		each(i : inputs) {
 			inputs[i]->PrintLine();
-			tokens := Tokenize(inputs[i]);
+			tokens := System.Utility.Parser->Tokenize(inputs[i])<String>;
 			if(@is_debug) {
 				each(j : tokens) {
 					token := tokens->Get(j);
@@ -36,7 +36,7 @@ class Lisp {
 
 			accept := IsExpr(tokens, 0, tokens->Size() - 1);
 			"Accepted: {$accept}\n---"->PrintLine();
-			if(accept) {				
+			if(accept) {
 				each(j : @stack) {
 					@stack->Pop()->PrintLine();
 				};
@@ -134,44 +134,39 @@ class Lisp {
 			if(<>value->Get(i)->IsDigit()) {
 				return false;
 			};
-			@stack->Push(value);
 		};
-
+		@stack->Push(value);
 
 		return true;
 	}
+}
 
-	function : Tokenize(input : String) ~ Vector<String> {
-		tokens := Vector->New()<String>;
+class Value {
+	@type : Type;
+	@atom : String;
+	@list : Vector<String>;
 
-		each(i : input) {
-			# identifier
-			if(input->Get(i)->IsChar()) {
-				start := i;
-				while(input->Get(i)->IsChar() | input->Get(i) = '_') {
-					i += 1;
-				};
-				tokens->AddBack(input->SubString(start, i - start));
-				i -= 1;
-			}
-			# number
-			else if(input->Get(i)->IsDigit()) {
-				start := i;
-				while(input->Get(i)->IsDigit() | input->Get(i) = '.') {
-					i += 1;
-				};
-				tokens->AddBack(input->SubString(start, i - start));
-				i -= 1;
-			}
-			# other
-			else {
-				value := input->Get(i);
-				if(value <> ' ' & value <> '\t' & value <> '\r' & value <> '\n') {
-					tokens->AddBack(value->ToString());
-				};
-			};
-		};
+	enum Type {
+		ATOM,
+		LIST,
+		STRING
+	}
 
-		return tokens;
+	New(list : Vector<String>) {
+		@list := list;
+		@type := Type->LIST;
+	}
+
+	New(atom : String, type : Type := Type->ATOM) {
+		@atom := atom;
+		@type := type;
+	}
+
+	method : GetAtom() ~ String {
+		return @atom;
+	}
+
+	method : GetList() ~ Vector<String> {
+		return @list;
 	}
 }
