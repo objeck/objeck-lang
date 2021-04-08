@@ -190,3 +190,52 @@ bundle System.Time {
 		}
 	}
 }
+
+#~
+Provides support utilities (-lib misc)
+~#	
+bundle System.Utility {
+	#~
+	Utilities for parsing
+	~#
+	class Parser {
+		#~
+		Simple tokenizer 
+		@param input source input
+		@return vector of string tokens
+		~#
+		function : Tokenize(input : String) ~ Vector<String> {
+			tokens := Vector->New()<String>;
+
+			each(i : input) {
+				# identifier
+				if(input->Get(i)->IsChar()) {
+					start := i;
+					while(input->Get(i)->IsChar() | input->Get(i) = '_') {
+						i += 1;
+					};
+					tokens->AddBack(input->SubString(start, i - start));
+					i -= 1;
+				}
+				# number
+				else if(input->Get(i)->IsDigit()) {
+					start := i;
+					while(input->Get(i)->IsDigit() | input->Get(i) = '.') {
+						i += 1;
+					};
+					tokens->AddBack(input->SubString(start, i - start));
+					i -= 1;
+				}
+				# other
+				else {
+					value := input->Get(i);
+					if(value <> ' ' & value <> '\t' & value <> '\r' & value <> '\n') {
+						tokens->AddBack(value->ToString());
+					};
+				};
+			};
+
+			return tokens;
+		}
+	}
+}
