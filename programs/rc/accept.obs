@@ -12,8 +12,12 @@ class Lisp {
 	@stack : Stack<Value>;
 
 	function : Main(args : String[]) ~ Nil {
-		lisp := Lisp->New(true);
-		lisp->Execute(["(* (+ 1 2) (+ 3 4 5))"]);
+		if(args->Size() = 1) {
+			lisp := Lisp->New(true);
+			lisp->Execute(args[0]);
+		};
+
+#		lisp->Execute(["(+ (* 3 3) 10)"]);
 #		lisp->Execute(["234", "(+ 20)", "(+ 1 234)", "(+ 2 10 200)", "(* (+ 1 2) (+ 1 3))", "(* (+ 1 2) (+ 1 3) (* 2 3))"]);
 #		lisp->Execute(["123"]);
 	}
@@ -25,21 +29,25 @@ class Lisp {
 
 	method : public : Execute(inputs : String[]) ~ Nil {
 		each(i : inputs) {
-			inputs[i]->PrintLine();
-			tokens := System.Utility.Parser->Tokenize(inputs[i])<String>;
-			if(@is_debug) {
-				each(j : tokens) {
-					token := tokens->Get(j);
-					"{$j}: '{$token}'"->PrintLine();
-				};
-			};
+			Execute(inputs[i]);
+		};
+	}
 
-			accept := IsExpr(tokens, 0, tokens->Size() - 1);
-			"Accepted: {$accept}\n---"->PrintLine();
-			if(accept) {
-				each(j : @stack) {
-					@stack->Pop()->ToString()->PrintLine();
-				};
+	method : public : Execute(input : String) ~ Nil {
+		input->PrintLine();
+		tokens := System.Utility.Parser->Tokenize(input)<String>;
+		if(@is_debug) {
+			each(j : tokens) {
+				token := tokens->Get(j);
+				"{$j}: '{$token}'"->PrintLine();
+			};
+		};
+
+		accept := IsExpr(tokens, 0, tokens->Size() - 1);
+		"Accepted: {$accept}\n---"->PrintLine();
+		if(accept) {
+			each(j : @stack) {
+				@stack->Pop()->ToString()->PrintLine();
 			};
 		};
 	}
@@ -55,6 +63,7 @@ class Lisp {
 		else if(tokens->Get(start)->Equals("(") & tokens->Get(end)->Equals(")")) {
 			count := -1;
 
+			# operations
 			if(tokens->Get(start + 1)->Equals("+")) {
 				count := IsOperands(tokens, start + 2, end - 1);
 				for(i := 1; i < count; i += 1;) {
@@ -68,6 +77,15 @@ class Lisp {
 					value := @stack->Pop()->ToInt() * @stack->Pop()->ToInt();
 					@stack->Push(Value->New(value->ToString()));
 				};
+			}
+			# list
+			else if(tokens->Get(start + 1)->Equals("list")) {
+				count := IsOperands(tokens, start + 2, end - 1);
+				list := Value->New();
+				for(i := 0; i < count; i += 1;) {
+					list->Add(@stack->Pop());
+				};
+				@stack->Push(list);
 			};
 						
 			return count > -1;
@@ -144,7 +162,7 @@ class Lisp {
 class Value {
 	@type : Type;
 	@atom : String;
-	@list : Vector<String>;
+	@next : Value;
 
 	enum Type {
 		ATOM,
@@ -152,8 +170,7 @@ class Value {
 		STRING
 	}
 
-	New(list : Vector<String>) {
-		@list := list;
+	New() {
 		@type := Type->LIST;
 	}
 
@@ -162,12 +179,24 @@ class Value {
 		@type := type;
 	}
 
-	method : GetAtom() ~ String {
-		return @atom;
+	method : public : Size() ~ Int {
+		size := 0;
+
+		temp := @self->GetNext();
+		while(temp <> Nil) {
+			size += 1;
+			temp := temp->GetNext();
+		};
+
+		return size;
 	}
 
-	method : GetList() ~ Vector<String> {
-		return @list;
+	method : GetNext() ~ Value {
+		return @next;
+	}
+
+	method : SetNext(next : Value) ~ Nil {
+		@next := next;
 	}
 
 	method : public : ToInt() ~ Int {
@@ -179,11 +208,26 @@ class Value {
 	}
 
 	method : public : ToString() ~ String {
-		if(@type = Type->ATOM | @type = Type->STRING) {
+		if(@type = Type->STRING) {
+			return "\"{$@atom}\"";
+		}
+		else if(@type = Type->ATOM) {
 			return @atom;
 		}
 		else {
-			return "(TODO)";	
+			buffer := "(";
+
+			temp := @self->GetNext();
+			while(temp <> Nil) {
+				buffer += temp->ToString();
+				temp := temp->GetNext();
+				if(temp <> Nil) {
+					buffer += ", ";
+				};
+			};
+			buffer := ")";
+
+			return buffer;
 		};
 	}
 }
