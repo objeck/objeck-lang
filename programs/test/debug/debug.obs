@@ -1,11 +1,15 @@
-use Collection.Generic;
-
 class Program {
 	function : Main(args: String[]) ~ Nil {
-		m : Map<String, Vector<String>>;
-		m->Each(Foo(String, Vector<String>) ~ Nil);
+		f := Foo->New();
+		f := f->Next()<String>;
+	}
+}
+
+class Foo {
+	New() {
 	}
 
-	function : Foo(k : String, v : Vector<String>) ~ Nil {
+	method : public : Next() ~ Foo {
+		return Nil;
 	}
 }
