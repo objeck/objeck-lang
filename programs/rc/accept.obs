@@ -122,7 +122,7 @@ class Lisp {
 					if(list->GetType() = Value->Type->LIST) {
 						size := list->Size();
 						if(size > 0) {
-							@stack->Push(list->GetNext());
+							@stack->Push(list->GetCar());
 						}
 						else {
 							"*** Error 'car' list must contain at least 1 element ***"->ErrorLine();
@@ -134,6 +134,31 @@ class Lisp {
 				}
 				else {
 					"*** Error 'car' accepts 1 argument ***"->ErrorLine();
+				};
+			}
+			else if(tokens->Get(start + 1)->Equals("cdr")) {
+				if(@is_debug) {
+					"=cdr: {$start}, {$end}"->PrintLine();
+				};
+
+				count := IsOperands(tokens, start + 2, end - 1);
+				if(count = 1) {
+					list := @stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						size := list->Size();
+						if(size > 1) {
+							@stack->Push(list->GetCdr());
+						}
+						else {
+							"*** Error 'cdr' list must contain at least 2 element ***"->ErrorLine();
+						};
+					}
+					else {
+						"*** Error 'cdr' accept only accepts a list ***"->ErrorLine();
+					};
+				}
+				else {
+					"*** Error 'cdr' accepts 1 argument ***"->ErrorLine();
 				};
 			}
 			else if(tokens->Get(start + 1)->Equals("length")) {
@@ -261,6 +286,11 @@ class Value {
 		@type := Type->LIST;
 	}
 
+	New(value : Value) {
+		@type := Type->LIST;
+		@next := value;
+	}
+
 	New(atom : String, type : Type := Type->ATOM) {
 		@atom := atom;
 		@type := type;
@@ -273,17 +303,21 @@ class Value {
 	method : public : Size() ~ Int {
 		size := 0;
 
-		temp := @self->GetNext();
+		temp := @self->GetCar();
 		while(temp <> Nil) {
 			size += 1;
-			temp := temp->GetNext();
+			temp := temp->GetCar();
 		};
 
 		return size;
 	}
 
-	method : public : GetNext() ~ Value {
+	method : public : GetCar() ~ Value {
 		return @next;
+	}
+
+	method : public : GetCdr() ~ Value {	
+		return Value->New(@next->GetCar());
 	}
 
 	method : SetNext(value : Value) ~ Nil {
@@ -319,10 +353,10 @@ class Value {
 		else {
 			buffer := "(";
 
-			temp := @self->GetNext();
+			temp := @self->GetCar();
 			while(temp <> Nil) {
 				buffer += temp->ToString();
-				temp := temp->GetNext();
+				temp := temp->GetCar();
 				if(temp <> Nil) {
 					buffer += ", ";
 				};
