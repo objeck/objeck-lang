@@ -71,6 +71,26 @@ class Lisp {
 					@stack->Push(Value->New(value->ToString()));
 				};
 			}
+			else if(tokens->Get(start + 1)->Equals("-")) {
+				count := IsOperands(tokens, start + 2, end - 1);
+				if(count = 1) {
+					value := @stack->Pop()->ToInt();
+					@stack->Push(Value->New("-{$value}"));
+				}
+				else {
+					for(i := 1; i < count; i += 1;) {
+						value := @stack->Pop()->ToInt() - @stack->Pop()->ToInt();
+						@stack->Push(Value->New(value->ToString()));
+					};
+				};
+			}
+			else if(tokens->Get(start + 1)->Equals("/")) {
+				count := IsOperands(tokens, start + 2, end - 1);
+				for(i := 1; i < count; i += 1;) {
+					value := @stack->Pop()->ToInt() / @stack->Pop()->ToInt();
+					@stack->Push(Value->New(value->ToString()));
+				};
+			}
 			else if(tokens->Get(start + 1)->Equals("*")) {
 				count := IsOperands(tokens, start + 2, end - 1);
 				for(i := 1; i < count; i += 1;) {
