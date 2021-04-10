@@ -80,14 +80,63 @@ class Lisp {
 			}
 			# list
 			else if(tokens->Get(start + 1)->Equals("list")) {
+				if(@is_debug) {
+					"=list: {$start}, {$end}"->PrintLine();
+				};
+
 				count := IsOperands(tokens, start + 2, end - 1);
 				list := Value->New();
 				for(i := 0; i < count; i += 1;) {
 					list->Add(@stack->Pop());
 				};
 				@stack->Push(list);
+			}
+			else if(tokens->Get(start + 1)->Equals("car")) {
+				if(@is_debug) {
+					"=car: {$start}, {$end}"->PrintLine();
+				};
+
+				count := IsOperands(tokens, start + 2, end - 1);
+				if(count = 1) {
+					list := @stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						size := list->Size();
+						if(size > 0) {
+							@stack->Push(list->GetNext());
+						}
+						else {
+							"*** Error 'car' list must contain at least 1 element ***"->ErrorLine();
+						};
+					}
+					else {
+						"*** Error 'car' accept only accepts a list ***"->ErrorLine();
+					};
+				}
+				else {
+					"*** Error 'car' accepts 1 argument ***"->ErrorLine();
+				};
+			}
+			else if(tokens->Get(start + 1)->Equals("length")) {
+				if(@is_debug) {
+					"=length: {$start}, {$end}"->PrintLine();
+				};
+				
+				count := IsOperands(tokens, start + 2, end - 1);
+				if(count = 1) {
+					list := @stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						size := list->Size();
+						@stack->Push(Value->New(size->ToString()));
+					}
+					else {
+						"*** Error 'length' accept only accepts a list ***"->ErrorLine();
+					};
+				}
+				else {
+					"*** Error 'length' accepts 1 argument ***"->ErrorLine();
+				};
 			};
-						
+				
 			return count > -1;
 			
 		}
@@ -179,6 +228,10 @@ class Value {
 		@type := type;
 	}
 
+	method : public : GetType() ~ Value->Type {	
+		return @type;
+	}
+
 	method : public : Size() ~ Int {
 		size := 0;
 
@@ -191,12 +244,23 @@ class Value {
 		return size;
 	}
 
-	method : GetNext() ~ Value {
+	method : public : GetNext() ~ Value {
 		return @next;
 	}
 
-	method : SetNext(next : Value) ~ Nil {
-		@next := next;
+	method : SetNext(value : Value) ~ Nil {
+		@next := value;
+	}
+
+	method : public : Add(value : Value) ~ Nil {
+		if(@next = Nil) {
+			@next := value;
+		}
+		else {
+			temp := @next;
+			value->SetNext(@next);
+			@next := value;
+		};
 	}
 
 	method : public : ToInt() ~ Int {
@@ -225,7 +289,7 @@ class Value {
 					buffer += ", ";
 				};
 			};
-			buffer := ")";
+			buffer += ")";
 
 			return buffer;
 		};
