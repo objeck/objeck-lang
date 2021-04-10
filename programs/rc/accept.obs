@@ -120,7 +120,7 @@ class Lisp {
 				if(@is_debug) {
 					"=length: {$start}, {$end}"->PrintLine();
 				};
-				
+
 				count := IsOperands(tokens, start + 2, end - 1);
 				if(count = 1) {
 					list := @stack->Pop();
@@ -171,7 +171,12 @@ class Lisp {
 		}
 		else {
 			while(start <= end) {
-				if(<>IsId(tokens, start, end)) {
+				if(tokens->Get(start)->Equals("(")) {					
+"-- # {$start}, {$end} # --"->PrintLine();	
+					IsExpr(tokens, start, end);
+					return count;
+				}
+				else if(<>IsId(tokens, start, end)) {
 					return -1;
 				};
 				count += 1;
