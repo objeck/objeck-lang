@@ -29,34 +29,47 @@ class Parser {
 			"---"->PrintLine();
 		};
 
-		Expression(0);
+		root := Expression(0);
+
+		root->ToString()->PrintLine();
 	}
 
-	method : public : Expression(depth : Int) ~ Nil {
+	method : public : Expression(depth : Int) ~ Node {
+		node : Node;
+
 		if(@tokens->Get(@token_pos)->GetType() = Token->Type->OPRN) {
 			@token_pos += 1;
 			@level += 1;
 			
 			if(@tokens->Get(@token_pos)->GetType() = Token->Type->ADD) {
-				Show("[oper: '+']", depth);
+				node := Node->New(@tokens->Get(@token_pos));
 				@token_pos += 1;
 
-				temp := @level;
+				cur_level := @level;
 				do {
-					Expression(depth + 1);
+					child := Expression(depth + 1);
+					if(child <> Nil) {
+						node->AddChild(child);
+					};
 				}
-				while(@level >= temp);
+				while(cur_level <= @level);
 			};
 		}
 		else if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
 			@token_pos += 1;
 			@level -= 1;
 		}
-		else {
-			value := @tokens->Get(@token_pos);
-			Show("value={$value}", depth);
+		else if(@tokens->Get(@token_pos)->GetType() = Token->Type->INT) {
+			node := Node->New(@tokens->Get(@token_pos));
 			@token_pos += 1;
+		}
+		else {
+			"*** Error ***"->ErrorLine();
+			@token_pos += 1;
+			return Nil;
 		};
+
+		return node;
 	}
 
 	method : Scan(input : String) ~ Vector<Token> {
@@ -88,10 +101,10 @@ class Parser {
 
 				value := input->SubString(start, i - start);
 				if(is_real) {
-					tokens->AddBack(Token->New(value->ToInt()));
+					tokens->AddBack(Token->New(value->ToFloat()));
 				}
 				else {
-					tokens->AddBack(Token->New(value->ToFloat()));
+					tokens->AddBack(Token->New(value->ToInt()));
 				};
 				i -= 1;
 			}
@@ -128,6 +141,56 @@ class Parser {
 			"   "->Print();
 		};
 		msg->PrintLine();
+	}
+}
+
+class Node {
+	@token : Token;
+	@children : Vector<Node>;
+
+	New(token : Token) {
+		@token := token;
+	}
+
+	method : public : GetToken() ~ Token {
+		return @token;
+	}
+
+	method : public : AddChild(node : Node) ~ Nil {
+		if(@children = Nil) {
+			@children := Vector->New()<Node>;
+		};
+
+		@children->AddBack(node);
+	}
+
+	method : public : GetChildren() ~ Vector<Node> {
+		return @children;
+	}
+
+	method : public : ToString() ~ String {
+		return ToString(0);
+	}
+
+	method : public : ToString(level : Int) ~ String {
+		buffer := "";
+
+		each(l : level) {
+			buffer += "  ";
+		};
+		buffer += "[";
+
+		buffer += @token->ToString();
+		if(@children <> Nil) {
+			each(i : @children) {
+				buffer += '\n';
+				buffer += @children->Get(i)->ToString(level + 1);
+			};
+			
+		};
+		buffer += "]";
+
+		return buffer;
 	}
 }
 
