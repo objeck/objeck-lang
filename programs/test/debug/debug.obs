@@ -3,15 +3,20 @@ class Program {
 	}
 
 	method : Bar() ~ Nil {
-		Foo->Next();
+		Foo->GetClassID();
 	}
 }
 
-class Foo {
+class Foo from Fie {
 	New() {
+		Parent();
 	}
 
 	method : public : Next() ~ Foo {
 		return Nil;
 	}
 }
+
+class Fie {
+	New() {}
+} 
