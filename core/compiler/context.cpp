@@ -6350,7 +6350,19 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
     return true;
   }
   else if(!method_call->GetEntry() && !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD && 
-          method->GetMethodType() != NEW_PRIVATE_METHOD && method->GetClass() != current_class && method->GetClass()->GetName() != L"System.Base") {
+          method->GetMethodType() != NEW_PRIVATE_METHOD) {
+    // && method->GetClass() != current_class && method->GetClass()->GetName() != L"System.Base") {
+
+    bool found = false;
+    Class* method_class = method->GetClass();
+    Class* parent = current_method->GetClass();
+    while(parent && !found) {
+      if(method_class == parent) {
+        return false;
+      }
+      parent = parent->GetParent();
+    }
+
     return true;
   }
 
