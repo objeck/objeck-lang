@@ -2907,9 +2907,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
       (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       bool found = false;
+      Class* method_class = method->GetClass();
       Class* parent = current_method->GetClass()->GetParent();
       while(parent && !found) {
-        if(method->GetClass() == parent) {
+        if(method_class == parent) {
           found = true;
         }
         // update
@@ -6349,17 +6350,14 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 
     return true;
   }
-  else if(!method_call->GetEntry() && !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD && 
-          method->GetMethodType() != NEW_PRIVATE_METHOD) {
-    // && method->GetClass() != current_class && method->GetClass()->GetName() != L"System.Base") {
-
-    bool found = false;
+  else if(!method_call->GetEntry() && !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
     Class* method_class = method->GetClass();
     Class* parent = current_method->GetClass();
-    while(parent && !found) {
+    while(parent) {
       if(method_class == parent) {
         return false;
       }
+      // update
       parent = parent->GetParent();
     }
 
