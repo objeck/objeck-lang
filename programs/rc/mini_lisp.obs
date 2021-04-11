@@ -122,7 +122,8 @@ class Parser {
 	@debug : Bool;
 	
 	New(input : String) {
-		@tokens := Scanner->Scan(input)<Token>;
+		scanner := Scanner->New();
+		@tokens := scanner->Scan(input);
 		@debug := true;
 	}
 
@@ -298,7 +299,7 @@ class Scanner {
 		@keywords->Insert("write", Token->Type->WRITE);
 	}
 
-	method : Scan(input : String) ~ Vector<Token> {
+	method : public : Scan(input : String) ~ Vector<Token> {
 		tokens := Vector->New()<Token>;
 
 		each(i : input) {
