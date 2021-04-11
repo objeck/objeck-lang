@@ -6349,7 +6349,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 
     return true;
   }
-  else if(!method_call->GetEntry() && !current_method->IsStatic() && !method->IsStatic() && 
+  else if(!method_call->GetEntry() && !method->IsStatic() && !method->IsStatic() &&
           method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
     return true;
   }
