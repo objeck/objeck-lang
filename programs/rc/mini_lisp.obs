@@ -45,7 +45,7 @@ class Evaluator {
 
 			label Token->Type->ADD {
 				children := node->GetChildren();
-				each(i : children) {
+				for(i := children->Size() - 1; i >= 0; i -= 1;) {
 					Evaluate(children->Get(i));
 				};
 
@@ -53,6 +53,58 @@ class Evaluator {
 				for(i := 1;	 i < children->Size(); i += 1;) {
 					right := @stack->Pop();
 					left->SetInt(left->GetInt() + right->GetInt());
+				};
+				@stack->Push(left);
+			}
+
+			label Token->Type->MUL {
+				children := node->GetChildren();
+				for(i := children->Size() - 1; i >= 0; i -= 1;) {
+					Evaluate(children->Get(i));
+				};
+
+				left := @stack->Pop();
+				for(i := 1;	 i < children->Size(); i += 1;) {
+					right := @stack->Pop();
+					left->SetInt(left->GetInt() * right->GetInt());
+				};
+				@stack->Push(left);
+			}
+
+			label Token->Type->SUB {
+				children := node->GetChildren();
+				for(i := children->Size() - 1; i >= 0; i -= 1;) {
+					Evaluate(children->Get(i));
+				};
+
+				left := @stack->Pop();
+				if(children->Size() = 1) {
+					left->SetInt(left->GetInt() * -1);
+				}
+				else {
+					for(i := 1;	 i < children->Size(); i += 1;) {
+						right := @stack->Pop();
+						left->SetInt(left->GetInt() - right->GetInt());
+					};
+				};
+				@stack->Push(left);
+			}
+
+			label Token->Type->DIV {
+				children := node->GetChildren();
+				for(i := children->Size() - 1; i >= 0; i -= 1;) {
+					Evaluate(children->Get(i));
+				};
+
+				left := @stack->Pop();
+				if(children->Size() = 1) {
+					left->SetReal(1.0 / left->GetInt()->ToFloat());
+				}
+				else {
+					for(i := 1;	 i < children->Size(); i += 1;) {
+						right := @stack->Pop();
+						left->SetInt(left->GetInt() - right->GetInt());
+					};
 				};
 				@stack->Push(left);
 			}
@@ -108,22 +160,44 @@ class Parser {
 				@token_pos += 1;
 				@level += 1;
 				
-				if(@tokens->Get(@token_pos)->GetType() = Token->Type->ADD) {
-					node := Node->New(@tokens->Get(@token_pos));
-					@token_pos += 1;
+				if(@token_pos + 2 < length) {
+					select(@tokens->Get(@token_pos)->GetType()) {
+						label Token->Type->ADD:
+						label Token->Type->SUB:
+						label Token->Type->MUL:
+						label Token->Type->DIV: {
+							node := Node->New(@tokens->Get(@token_pos));
+							@token_pos += 1;
 
-					cur_level := @level;
-					do {
-						child := Expression(depth + 1);
-						if(@error) {
+							cur_level := @level;
+							do {
+								child := Expression(depth + 1);
+								if(@error) {
+									return Nil;
+								};
+
+								if(child <> Nil) {
+									node->AddChild(child);
+								};
+							}
+							while(cur_level <= @level);
+						}
+
+						label Token->Type->WRITE: {
+
+						}
+
+						other: {
+							@error := true;
+							"*** Error: unknown operation ***"->ErrorLine();
 							return Nil;
-						};
-
-						if(child <> Nil) {
-							node->AddChild(child);
-						};
-					}
-					while(cur_level <= @level);
+						}
+					};
+				}
+				else {
+					@error := true;
+					"*** Error: operation requires at least 1 operand ***"->ErrorLine();
+					return Nil;
 				};
 			}
 			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
@@ -270,6 +344,14 @@ class Scanner {
 						tokens->AddBack(Token->New(Token->Type->SUB));
 					}
 
+					label '*' {
+						tokens->AddBack(Token->New(Token->Type->MUL));
+					}
+
+					label '/' {
+						tokens->AddBack(Token->New(Token->Type->DIV));
+					}
+
 					other {
 						tokens->AddBack(Token->New(Token->Type->OTHER));
 					}
@@ -288,10 +370,13 @@ class Token {
 	@real : Float;
 
 	enum Type {
+		WRITE,
 		OPRN,
 		CPRN,
 		ADD,
 		SUB,
+		MUL,
+		DIV,
 		IDENT,
 		INT,
 		REAL,
@@ -330,6 +415,7 @@ class Token {
 	}
 
 	method : public : SetInt(int : Int) ~ Nil {
+		@type := Type->INT;
 		@int := int;
 	}
 
@@ -338,6 +424,7 @@ class Token {
 	}
 
 	method : public : SetReal(real : Float) ~ Nil {
+		@type := Type->REAL;
 		@real := real;
 	}
 
@@ -357,6 +444,14 @@ class Token {
 			
 			label Type->SUB {
 				return "-";
+			}
+
+			label Type->MUL {
+				return "*";
+			}
+			
+			label Type->DIV {
+				return "/";
 			}
 			
 			label Type->IDENT {
