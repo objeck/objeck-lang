@@ -1,9 +1,10 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
+
 	}
 
 	method : Bar() ~ Nil {
-		Foo->GetClassID();
+		Foo->After();
 	}
 }
 
@@ -13,10 +14,15 @@ class Foo from Fie {
 	}
 
 	method : public : Next() ~ Foo {
+		After();
 		return Nil;
 	}
 }
 
 class Fie {
 	New() {}
+
+	method : public : After() ~ Fie {
+		return Nil;
+	}
 } 
