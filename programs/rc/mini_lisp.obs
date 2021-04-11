@@ -1,0 +1,221 @@
+use Collection.Generic;
+
+class MiniLisp {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := Parser->New(args[0]);
+			parser->Parse();
+		};
+	}
+}
+
+class Parser {
+	@tokens : Vector<Token>;
+	@token_pos : Int;
+	@level : Int;
+	@debug : Bool;
+
+	New(input : String) {
+		@tokens := Scan(input)<Token>;
+		@debug := true;
+	}
+
+	method : public : Parse() ~ Nil {
+		if(@debug) {
+			each(i : @tokens) {
+				value := @tokens->Get(i);
+				"{$i}: {$value}"->PrintLine();
+			};
+			"---"->PrintLine();
+		};
+
+		Expression(0);
+	}
+
+	method : public : Expression(depth : Int) ~ Nil {
+		if(@tokens->Get(@token_pos)->GetType() = Token->Type->OPRN) {
+			@token_pos += 1;
+			@level += 1;
+			
+			if(@tokens->Get(@token_pos)->GetType() = Token->Type->ADD) {
+				Show("[oper: '+']", depth);
+				@token_pos += 1;
+
+				temp := @level;
+				do {
+					Expression(depth + 1);
+				}
+				while(@level >= temp);
+			};
+		}
+		else if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
+			@token_pos += 1;
+			@level -= 1;
+		}
+		else {
+			value := @tokens->Get(@token_pos);
+			Show("value={$value}", depth);
+			@token_pos += 1;
+		};
+	}
+
+	method : Scan(input : String) ~ Vector<Token> {
+		tokens := Vector->New()<Token>;
+
+		each(i : input) {
+			while(input->Get(i) = ' ' | input->Get(i) = '\r' | input->Get(i) = '\n' | input->Get(i) = '\t') {
+				i += 1;
+			};
+
+			if(input->Get(i)->IsChar()) {
+				start := i;
+				while(input->Get(i)->IsChar() | input->Get(i) = '_') {
+					i += 1;
+				};
+				tokens->AddBack(Token->New(Token->Type->IDENT, input->SubString(start, i - start)));
+				i -= 1;
+			}
+			else if(input->Get(i)->IsDigit()) {
+				is_real := false;
+
+				start := i;
+				while(input->Get(i)->IsDigit() | input->Get(i) = '.') {
+					if(input->Get(i) = '.') {
+						is_real := true;
+					};
+					i += 1;
+				};
+
+				value := input->SubString(start, i - start);
+				if(is_real) {
+					tokens->AddBack(Token->New(value->ToInt()));
+				}
+				else {
+					tokens->AddBack(Token->New(value->ToFloat()));
+				};
+				i -= 1;
+			}
+			else {
+				select(input->Get(i)) {
+					label '(' {
+						tokens->AddBack(Token->New(Token->Type->OPRN));
+					}
+
+					label ')' {
+						tokens->AddBack(Token->New(Token->Type->CPRN));
+					}
+
+					label '+' {
+						tokens->AddBack(Token->New(Token->Type->ADD));
+					}
+
+					label '-' {
+						tokens->AddBack(Token->New(Token->Type->SUB));
+					}
+
+					other {
+						tokens->AddBack(Token->New(Token->Type->OTHER));
+					}
+				};
+			};
+		};
+
+		return tokens;
+	}
+
+	function : Show(msg : String, depth : Int) ~ Nil {
+		each(i : depth) {
+			"   "->Print();
+		};
+		msg->PrintLine();
+	}
+}
+
+class Token {
+	@type : Type;
+	@ident : String;
+	@int : Int;
+	@real : Float;
+
+	enum Type {
+		OPRN,
+		CPRN,
+		ADD,
+		SUB,
+		IDENT,
+		INT,
+		REAL,
+		OTHER
+	}
+
+	New(type : Token->Type) {
+		@type := type;
+	}
+
+	New(type : Token->Type, ident : String) {
+		@type := type;
+		@ident := ident;
+	}
+
+	New(int : Int) {
+		@type := Type->INT;
+		@int := int;
+	}
+
+	New(real : Float) {
+		@type := Type->REAL;
+		@real := real;
+	}
+
+	method : public : GetType() ~ Token->Type {
+		return @type;
+	}
+
+	method : public : GetIdent() ~ String {
+		return @ident;
+	}
+
+	method : public : GetInt() ~ Int {
+		return @int;
+	}
+
+	method : public : GetReal() ~ Float {
+		return @real;
+	}
+
+	method : public : ToString() ~ String {
+		select(@type) {
+			label Type->OPRN {
+				return ")";
+			}
+
+			label Type->CPRN {
+				return ")";
+			}
+			
+			label Type->ADD {
+				return "+";
+			}
+			
+			label Type->SUB {
+				return "-";
+			}
+			
+			label Type->IDENT {
+				return @ident;
+			}
+			
+			label Type->INT {
+				return @int->ToString();
+			}
+			
+			label Type->REAL {
+				return @real->ToString();
+			}
+
+			other {
+				return "?";
+			}
+		};
+	}
+}
