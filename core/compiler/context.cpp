@@ -6354,7 +6354,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
     bool found = false;
     Class* parent = method->GetClass()->GetParent();
     while(parent && !found) {
-      if(method->GetClass() == parent) {
+      if(current_method->GetClass() == parent) {
         found = true;
       }
       // update
