@@ -4,67 +4,146 @@ class MiniLisp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := Parser->New(args[0]);
-			parser->Parse();
+			root := parser->Parse();
+			if(root <> Nil) {
+				evaluator := Evaluator->New(root);
+				evaluator->Evaluate();
+			};
 		};
 	}
 }
+
+#--- Evaluator ---
+
+class Evaluator {
+	@root : Node;
+	@stack : Stack<Token>;
+	@debug : Bool;
+
+	New(root : Node) {
+		@root := root;
+		@stack := Stack->New()<Token>;
+		@debug := true;
+	}
+
+	method : public : Evaluate() ~ Nil {
+		Evaluate(@root);
+		if(@debug) {
+			"--- Results ---"->PrintLine();
+			each(i : @stack) {
+				value := @stack->Pop()->ToString();
+				"{$i}: {$value}"->PrintLine();
+			};
+		};
+	}
+
+	method : Evaluate(node : Node) ~ Nil {
+		select(node->GetType()) {
+			label Token->Type->INT {
+				@stack->Push(node->GetToken());
+			}
+
+			label Token->Type->ADD {
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
+
+				left := @stack->Pop();
+				for(i := 1;	 i < children->Size(); i += 1;) {
+					right := @stack->Pop();
+					left->SetInt(left->GetInt() + right->GetInt());
+				};
+				@stack->Push(left);
+			}
+		};
+	}
+}
+
+#--- Parser ---
 
 class Parser {
 	@tokens : Vector<Token>;
 	@token_pos : Int;
 	@level : Int;
+	@error : Bool;
 	@debug : Bool;
-
+	
 	New(input : String) {
-		@tokens := Scan(input)<Token>;
+		@tokens := Scanner->Scan(input)<Token>;
 		@debug := true;
 	}
 
-	method : public : Parse() ~ Nil {
+	method : public : Parse() ~ Node {
 		if(@debug) {
+			"--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
 				"{$i}: {$value}"->PrintLine();
 			};
-			"---"->PrintLine();
+			"--- Expressions ---"->PrintLine();
 		};
 
 		root := Expression(0);
+		if(@debug) {
+			if(root <> Nil) {
+				"--- Tree ---"->PrintLine();
+				root->ToString()->PrintLine();
+			};
+		};
 
-		root->ToString()->PrintLine();
+		return root;
 	}
 
 	method : public : Expression(depth : Int) ~ Node {
 		node : Node;
+		length := @tokens->Size();
 
-		if(@tokens->Get(@token_pos)->GetType() = Token->Type->OPRN) {
-			@token_pos += 1;
-			@level += 1;
-			
-			if(@tokens->Get(@token_pos)->GetType() = Token->Type->ADD) {
+		if(@debug) {
+			"=Expression: pos=({$@token_pos},{$length}); depth={$depth}"->PrintLine();
+		};
+
+		if(@token_pos < length) {
+			if(@tokens->Get(@token_pos)->GetType() = Token->Type->OPRN) {
+				@token_pos += 1;
+				@level += 1;
+				
+				if(@tokens->Get(@token_pos)->GetType() = Token->Type->ADD) {
+					node := Node->New(@tokens->Get(@token_pos));
+					@token_pos += 1;
+
+					cur_level := @level;
+					do {
+						child := Expression(depth + 1);
+						if(@error) {
+							return Nil;
+						};
+
+						if(child <> Nil) {
+							node->AddChild(child);
+						};
+					}
+					while(cur_level <= @level);
+				};
+			}
+			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
+				@token_pos += 1;
+				@level -= 1;
+			}
+			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->INT) {
 				node := Node->New(@tokens->Get(@token_pos));
 				@token_pos += 1;
-
-				cur_level := @level;
-				do {
-					child := Expression(depth + 1);
-					if(child <> Nil) {
-						node->AddChild(child);
-					};
-				}
-				while(cur_level <= @level);
+			}
+			else {
+				@error := true;
+				"*** Error: unknown token ***"->ErrorLine();
+				@token_pos += 1;
+				return Nil;
 			};
 		}
-		else if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
-			@token_pos += 1;
-			@level -= 1;
-		}
-		else if(@tokens->Get(@token_pos)->GetType() = Token->Type->INT) {
-			node := Node->New(@tokens->Get(@token_pos));
-			@token_pos += 1;
-		}
 		else {
-			"*** Error ***"->ErrorLine();
+			@error := true;
+			"*** Error: expected token ***"->ErrorLine();
 			@token_pos += 1;
 			return Nil;
 		};
@@ -72,7 +151,72 @@ class Parser {
 		return node;
 	}
 
-	method : Scan(input : String) ~ Vector<Token> {
+	function : Show(msg : String, depth : Int) ~ Nil {
+		each(i : depth) {
+			"   "->Print();
+		};
+		msg->PrintLine();
+	}
+}
+
+class Node {
+	@token : Token;
+	@children : Vector<Node>;
+
+	New(token : Token) {
+		@token := token;
+	}
+
+	method : public : GetToken() ~ Token {
+		return @token;
+	}
+
+	method : public : GetType() ~ Token->Type {
+		return @token->GetType();
+	}
+
+	method : public : AddChild(node : Node) ~ Nil {
+		if(@children = Nil) {
+			@children := Vector->New()<Node>;
+		};
+
+		@children->AddBack(node);
+	}
+
+	method : public : GetChildren() ~ Vector<Node> {
+		return @children;
+	}
+
+	method : public : ToString() ~ String {
+		return ToString(0);
+	}
+
+	method : public : ToString(level : Int) ~ String {
+		buffer := "";
+
+		each(l : level) {
+			buffer += "  ";
+		};
+		buffer += "[";
+
+		buffer += @token->ToString();
+		if(@children <> Nil) {
+			each(i : @children) {
+				buffer += '\n';
+				buffer += @children->Get(i)->ToString(level + 1);
+			};
+			
+		};
+		buffer += "]";
+
+		return buffer;
+	}
+}
+
+#--- Scanner ---
+
+class Scanner {
+	function : Scan(input : String) ~ Vector<Token> {
 		tokens := Vector->New()<Token>;
 
 		each(i : input) {
@@ -135,63 +279,6 @@ class Parser {
 
 		return tokens;
 	}
-
-	function : Show(msg : String, depth : Int) ~ Nil {
-		each(i : depth) {
-			"   "->Print();
-		};
-		msg->PrintLine();
-	}
-}
-
-class Node {
-	@token : Token;
-	@children : Vector<Node>;
-
-	New(token : Token) {
-		@token := token;
-	}
-
-	method : public : GetToken() ~ Token {
-		return @token;
-	}
-
-	method : public : AddChild(node : Node) ~ Nil {
-		if(@children = Nil) {
-			@children := Vector->New()<Node>;
-		};
-
-		@children->AddBack(node);
-	}
-
-	method : public : GetChildren() ~ Vector<Node> {
-		return @children;
-	}
-
-	method : public : ToString() ~ String {
-		return ToString(0);
-	}
-
-	method : public : ToString(level : Int) ~ String {
-		buffer := "";
-
-		each(l : level) {
-			buffer += "  ";
-		};
-		buffer += "[";
-
-		buffer += @token->ToString();
-		if(@children <> Nil) {
-			each(i : @children) {
-				buffer += '\n';
-				buffer += @children->Get(i)->ToString(level + 1);
-			};
-			
-		};
-		buffer += "]";
-
-		return buffer;
-	}
 }
 
 class Token {
@@ -242,8 +329,16 @@ class Token {
 		return @int;
 	}
 
+	method : public : SetInt(int : Int) ~ Nil {
+		@int := int;
+	}
+
 	method : public : GetReal() ~ Float {
 		return @real;
+	}
+
+	method : public : SetReal(real : Float) ~ Nil {
+		@real := real;
 	}
 
 	method : public : ToString() ~ String {

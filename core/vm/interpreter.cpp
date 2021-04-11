@@ -2712,7 +2712,7 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   if(pos != 0) {
     while(--pos && pos > -1) {
       wcerr << L"  method: pos=" << pos << L", name='"
-            << call_stack[pos]->method->GetName() << L"'" << endl;
+            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << endl;
     }
   }
   wcerr << L"  ..." << endl;
