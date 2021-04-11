@@ -6349,19 +6349,9 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 
     return true;
   }
-  else if(!method_call->GetEntry() && !method->IsStatic() && 
-          method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
-    bool found = false;
-    Class* parent = method->GetClass()->GetParent();
-    while(parent && !found) {
-      if(current_method->GetClass() == parent) {
-        found = true;
-      }
-      // update
-      parent = parent->GetParent();
-    }
-
-    return !found;
+  else if(!method_call->GetEntry() && !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD && 
+          method->GetMethodType() != NEW_PRIVATE_METHOD && method->GetClass() != current_class) {
+    return true;
   }
 
   return false;
