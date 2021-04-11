@@ -39,11 +39,11 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
-			label Token->Type->INT {
+			label Node->Type->INT {
 				@stack->Push(node->GetToken());
 			}
 
-			label Token->Type->ADD {
+			label Node->Type->ADD {
 				children := node->GetChildren();
 				for(i := children->Size() - 1; i >= 0; i -= 1;) {
 					Evaluate(children->Get(i));
@@ -57,7 +57,7 @@ class Evaluator {
 				@stack->Push(left);
 			}
 
-			label Token->Type->MUL {
+			label Node->Type->MUL {
 				children := node->GetChildren();
 				for(i := children->Size() - 1; i >= 0; i -= 1;) {
 					Evaluate(children->Get(i));
@@ -71,7 +71,7 @@ class Evaluator {
 				@stack->Push(left);
 			}
 
-			label Token->Type->SUB {
+			label Node->Type->SUB {
 				children := node->GetChildren();
 				for(i := children->Size() - 1; i >= 0; i -= 1;) {
 					Evaluate(children->Get(i));
@@ -90,7 +90,7 @@ class Evaluator {
 				@stack->Push(left);
 			}
 
-			label Token->Type->DIV {
+			label Node->Type->DIV {
 				children := node->GetChildren();
 				for(i := children->Size() - 1; i >= 0; i -= 1;) {
 					Evaluate(children->Get(i));
@@ -236,18 +236,60 @@ class Parser {
 
 class Node {
 	@token : Token;
+	@type : Type;
 	@children : Vector<Node>;
+
+	enum Type {
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		INT,
+		REAL,
+		LIST
+	}
+
+	New(type : Node->Type) {
+		@type := type;
+	}
 
 	New(token : Token) {
 		@token := token;
+
+		select(@token->GetType()) {
+			label Token->Type->ADD {
+				@type := Node->Type->ADD;
+			}
+
+			label Token->Type->SUB {
+				@type := Node->Type->SUB;
+			}
+			
+			label Token->Type->MUL {
+				@type := Node->Type->MUL;
+			}
+			
+			label Token->Type->DIV {
+				@type := Node->Type->DIV;
+			}
+			
+			label Token->Type->INT {
+				@type := Node->Type->INT;
+			}
+			
+			label Token->Type->REAL {
+				@type := Node->Type->REAL;
+			}
+		};
 	}
 
 	method : public : GetToken() ~ Token {
 		return @token;
 	}
 
-	method : public : GetType() ~ Token->Type {
-		return @token->GetType();
+	# TODO:
+	method : public : GetType() ~ Node->Type {
+		return @type;
 	}
 
 	method : public : AddChild(node : Node) ~ Nil {
@@ -382,7 +424,7 @@ class Scanner {
 }
 
 class Token {
-	@type : Type;
+	@type : Token->Type;
 	@ident : String;
 	@int : Int;
 	@real : Float;
@@ -426,6 +468,11 @@ class Token {
 
 	method : public : GetIdent() ~ String {
 		return @ident;
+	}
+
+	method : public : SetIdent(ident : String) ~ Nil {
+		@type := Type->IDENT;
+		@ident := ident;
 	}
 
 	method : public : GetInt() ~ Int {
