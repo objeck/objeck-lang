@@ -1,7 +1,9 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
-		f := Foo->New();
-		f := f->Next()<String>;
+	}
+
+	method : Bar() ~ Nil {
+		Foo->Next();
 	}
 }
 

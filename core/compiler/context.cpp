@@ -6332,9 +6332,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 {
   // same class, calling method static and called method not static,
   // called method not new, called method not from a variable
-  if(current_method->IsStatic() &&
-     !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
-     method->GetMethodType() != NEW_PRIVATE_METHOD) {
+  if(current_method->IsStatic() && !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
     SymbolEntry* entry = GetEntry(method_call->GetVariableName());
     if(entry && (entry->IsLocal() || entry->IsStatic())) {
       return false;
@@ -6348,6 +6346,9 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
       }
     }
 
+    return true;
+  }
+  else if(!method_call->GetEntry() && !method->IsStatic()) {
     return true;
   }
 
