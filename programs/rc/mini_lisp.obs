@@ -24,6 +24,8 @@ class Evaluator {
 		@root := root;
 		@stack := Stack->New()<Value>;
 		@debug := true;
+
+		Value->Init();
 	}
 
 	method : public : Evaluate() ~ Nil {
@@ -39,6 +41,19 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
+			label Node->Type->LIST {
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
+
+				left := Value->New(Value->Type->LIST);
+				each(i : children) {
+					left->Append(@stack->Pop());
+				};
+				@stack->Push(left);
+			}
+
 			label Node->Type->INT_LIT {
 				@stack->Push(Value->New(node->GetIntValue()));
 			}
@@ -114,15 +129,22 @@ class Evaluator {
 
 class Value {
 	@type : Type;
+	@nil_type : static : Value;
 	@car : Value;
 	@int_value : Int;
 	@real_value : Float;
 	@str_value : String;
 
 	enum Type {
+		LIST,
+		NIL_TYPE,
 		INT_TYPE,
 		REAL_TYPE,
 		STRING_TYPE
+	}
+
+	function : Init() ~ Nil {
+		@nil_type := Value->New(Value->Type->NIL_TYPE);
 	}
 
 	New(int_value : Int) {
@@ -135,17 +157,43 @@ class Value {
 		@real_value := real_value;
 	}
 
+	New(type : Value->Type) {
+		@type := type;
+
+		if(@type = Value->Type->LIST) {
+			@car := @nil_type;
+		};
+	}
+
 	# list operations
 	method : public : GetCar() ~ Value {
+		if(@car = @nil_type) {
+			return @nil_type;
+		};
+
 		return @car;
 	}
 
+	method : SetCar(value : Value) ~ Nil {
+		@car := value;
+	}
+
 	method : public : GetCdr() ~ Value {
-		return Nil;
+		if(@car = @nil_type) {
+			return @nil_type;
+		};
+
+		if(@car->GetCar() = @nil_type) {
+			return @nil_type;
+		};
+
+		return @car->GetCar();
 	}
 
 	method : public : Append(value : Value) ~ Nil {
-
+		temp := @car;
+		value->SetCar(@car);
+		@car := value;
 	}	
 
 	# atom operations
@@ -182,6 +230,26 @@ class Value {
 
 			label Value->Type->STRING_TYPE {
 				buffer += @str_value;
+			}
+
+			label Value->Type->LIST {
+				buffer += "(";
+				
+				temp := @car;
+				while(temp <> @nil_type) {
+					buffer += temp->ToString();					
+					temp := temp->GetCar();
+
+					if(temp <> @nil_type) {
+						buffer += ", ";
+					};
+				};
+				
+				buffer += ")";
+			}
+
+			label Value->Type->NIL_TYPE {
+				buffer += "NIL";
 			}
 		};
 
@@ -245,12 +313,12 @@ class Parser {
 						label Token->Type->MUL:
 						label Token->Type->DIV: {
 							node := Node->New(@tokens->Get(@token_pos)->GetType());
-							@token_pos += 1;
 							Operands(node, depth);
 						}
 
 						label Token->Type->LIST_KEYWORD: {
-
+							node := Node->New(Node->Type->LIST);
+							Operands(node, depth);
 						}
 
 						label Token->Type->WRITE_KEYWORD: {
@@ -296,6 +364,8 @@ class Parser {
 	}
 
 	method : Operands(node : Node, depth : Int) ~ Nil {
+		@token_pos += 1;
+
 		cur_level := @level;
 		do {
 			child := Expression(depth + 1);
@@ -330,6 +400,7 @@ class Node {
 		SUB,
 		MUL,
 		DIV,
+		LIST,
 		INT_LIT,
 		REAL_LIT,
 		STRING_LIT
@@ -348,6 +419,10 @@ class Node {
 	New(str_value : String) {
 		@type := Node->Type->STRING_LIT;
 		@str_value := str_value;
+	}
+
+	New(type : Node->Type) {
+		@type := type;
 	}
 
 	New(type : Token->Type) {
@@ -409,6 +484,10 @@ class Node {
 		select(@type) {
 			label Node->Type->ADD {
 				buffer += "+";
+			}
+
+			label Node->Type->LIST {
+				buffer += "list";
 			}
 
 			label Node->Type->SUB {
