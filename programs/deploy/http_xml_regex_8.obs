@@ -1,101 +1,100 @@
 ﻿#~
-compile: obc -src http_xml_regex_8.obs -lib net,xml,regex,gen_collect' -dest http_xml_regex_8.obe
+compile: obc -src http_xml_regex_8.obs -lib net,regex,gen_collect -dest http_xml_regex_8.obe
 run: obr http_xml_regex_8.obe
 note: may a few seconds to run as it's querying wiki pages
 ~#
 
 use Web.HTTP;
 use Query.RegEx;
-use Data.XML;
 use Collection.Generic;
 
-class RosettaRank {
+class Program {
 	function : Main(args : String[]) ~ Nil {
-		langs := GetLanguages();
-		langs_counts := GetLanguageRank(langs);
-		
-		keys := langs_counts->GetKeys()<IntHolder>;
-		count := 1;
-		for(i := keys->Size() - 1; i >= 0; i -=1;) {
-			key := keys->Get(i)->Get();
-			value := langs_counts->Find(key);
-			"{$count}. {$key} - {$value}"->PrintLine();
-			count += 1;
-		};
+		master_tasks := ProcessTasks(["100_doors", "99_bottles_of_beer", "Filter", "Array_length", "Greatest_common_divisor", "Greatest_element_of_a_list", "Greatest_subsequential_sum"]);
+		"---"->PrintLine();
+		PrintTasks(master_tasks);
 	}
-	
-	function : GetLanguages() ~ Set<String> {
-		langs_xml := "";
-		client := HttpClient->New();
-		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml")<String>;
-		if(in = Nil) {
-			return Nil;
-		};
-		each(i : in) {
-			langs_xml += in->Get(i)->As(String);
-		};
-		
-		langs := Set->New()<String>;
-		parser := XmlParser->New(langs_xml);
-		if(parser->Parse()) {
-			# get first item
-			results := parser->FindElements("/api/query/categorymembers/cm")<XmlElement>;
-			each(i : results) {
-				element := results->Get(i)->As(XmlElement);
-				name := element->GetAttribute("title")->GetValue();
-				offset := name->Find(':');
-				if(offset > -1) {
-					lang := name->SubString(offset + 1, name->Size() - offset - 1);
-					langs->Insert(lang->ReplaceAll("&#x20;", " "));
-				};	
+
+	function : ProcessTasks(tasks : String[]) ~ MultiMap<String, String> {
+		master_tasks := MultiMap->New()<String, String>;
+
+		each(i : tasks) {
+			task := tasks[i];
+			"Processing '{$task}'..."->PrintLine();	
+			matches := ProcessTask(task);
+			langs := matches->GetKeys()<String>;
+			each(j : langs) {
+				master_tasks->Insert(langs->Get(j), task);
 			};
 		};
-		
+
+		return master_tasks;
+	}
+
+	function : ProcessTask(task : String) ~ Set<String> {
+		langs := Set->New()<String>;
+
+		header_regex := RegEx->New("==\\{\\{header\\|(\\w|/|-|_)+\\}\\}==");
+		lang_regex := RegEx->New("<(\\s)*lang(\\s)*>");
+
+		url := "http://rosettacode.org/mw/index.php?action=raw&title={$task}";
+		lines := HttpClient->New()->GetAll(url)->Split("\n");
+
+		last_header : String;
+		each(i : lines) {
+			line := lines[i];
+			
+			# get header
+			header := header_regex->FindFirst(line);
+			if(<>header->IsEmpty()) {
+				last_header := HeaderName(header);
+			};
+
+			# get language			
+			lang := lang_regex->FindFirst(line);
+			if(lang->Size() > 0) {
+				if(last_header <> Nil) {
+					langs->Insert("{$last_header}");
+				}
+				else {
+					langs->Insert("no language");
+				};
+			};
+		};
+
 		return langs;
 	}
-	
-	function : GetLanguageRank(langs : Set<String>) ~ Map<IntHolder, String> {
-		langs_counts := Map->New()<IntHolder, String>;
-		client := HttpClient->New();
-		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=1000")<String>;
-		each(i : html) {
-			lines := html->Get(i)->As(String);
-			html_elements := lines->Split("\n");
-			each(j : html_elements) {
-				element := html_elements[j];					
-				name : String; count : String;
-				regex := RegEx->New("<li><a href=\"(\\w|\\s|/|\\?|\\&|;|:|#)+\"\\stitle=\"Category:(\\w|\\s|#)+\">");
-				found := regex->FindFirst(element);
-				if(found <> Nil) {
-					group1 := found->Size();
-					regex := RegEx->New("(\\w|\\s)+");
-					found := regex->Match(element, group1);
-					if(found <> Nil & found->Size() > 0) {
-						name := found;
-						# skip over some junk characters 
-						group2 := group1 + found->Size() + 10;
-						regex := RegEx->New("\\s\\(");
-						found := regex->Match(element, group2);
-						if(found <> Nil) {
-							group3 := group2 + found->Size();
-							regex := RegEx->New("\\d+");
-							found := regex->Match(element, group3);
-							if(found <> Nil & found->Size() > 0) {
-								count := found;
-							};
-						};
-					};
-				};
-				
-				if(name <> Nil & count <> Nil) {
-					if(langs->Has(name)) {
-						langs_counts->Insert(count->ToInt(), name);
-					};
-					name := Nil; count := Nil;
-				};	
-			};
+
+	function : HeaderName(lang_str : String) ~ String {
+		start := lang_str->Find('|');
+		if(start > -1) {
+			start += 1;
+			end := lang_str->Find(start, '}');
+			return lang_str->SubString(start, end - start);
 		};
-		
-		return langs_counts;
+
+		return "";
+	}
+
+	function : PrintTasks(tasks : MultiMap<String, String>) ~ Nil {
+		keys := tasks->GetKeys()<String>;
+		each(i : keys) {
+			buffer := "";
+
+			key := keys->Get(i);
+			values := tasks->Find(key)<String>;
+			count := values->Size();
+			buffer += "{$count} in {$key} (";
+			each(j : values) {
+				value := values->Get(j);
+				buffer += "[[{$value}]]";
+				if(j + 1 < values->Size()) {
+					buffer += ", ";
+				};
+			};
+			buffer += ")";
+
+			buffer->PrintLine();
+		};
 	}
 }
