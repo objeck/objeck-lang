@@ -1,5 +1,5 @@
 ﻿#~
-# compile: obc -src encrypt_7.obs -lib encrypt' -dest encrypt_7.obe
+# compile: obc -src encrypt_7.obs -lib encrypt -dest encrypt_7.obe
 # run: obr encrypt_7.obe
 ~#
 

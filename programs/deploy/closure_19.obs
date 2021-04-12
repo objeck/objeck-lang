@@ -1,5 +1,5 @@
 #~
-# compile: obc -src closure_19.obs -lib gen_collect' -dest closure_19.obe
+# compile: obc -src closure_19.obs -lib gen_collect -dest closure_19.obe
 # run: obr closure_19.obe
 ~#
 

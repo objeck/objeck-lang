@@ -1,5 +1,5 @@
 #~
-compile: obc -src serial_14.obs -lib collect.obl' -dest serial_14.obe
+compile: obc -src serial_14.obs -lib collect.obl -dest serial_14.obe
 run: obr serial_14.obe (write|read)
 ~#
 
