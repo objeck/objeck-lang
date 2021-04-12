@@ -17,12 +17,12 @@ class MiniLisp {
 
 class Evaluator {
 	@root : Node;
-	@stack : Stack<Token>;
+	@stack : Stack<Value>;
 	@debug : Bool;
 
 	New(root : Node) {
 		@root := root;
-		@stack := Stack->New()<Token>;
+		@stack := Stack->New()<Value>;
 		@debug := true;
 	}
 
@@ -32,15 +32,15 @@ class Evaluator {
 			"--- Results ---"->PrintLine();
 			each(i : @stack) {
 				value := @stack->Pop()->ToString();
-				"{$i}: {$value}"->PrintLine();
+				"{$i} => {$value}"->PrintLine();
 			};
 		};
 	}
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
-			label Node->Type->INT {
-				@stack->Push(node->GetToken());
+			label Node->Type->INT_LIT {
+				@stack->Push(Value->New(node->GetIntValue()));
 			}
 
 			label Node->Type->ADD {
@@ -109,6 +109,83 @@ class Evaluator {
 				@stack->Push(left);
 			}
 		};
+	}
+}
+
+class Value {
+	@type : Type;
+	@car : Value;
+	@int_value : Int;
+	@real_value : Float;
+	@str_value : String;
+
+	enum Type {
+		INT_TYPE,
+		REAL_TYPE,
+		STRING_TYPE
+	}
+
+	New(int_value : Int) {
+		@type := Value->Type->INT_TYPE;
+		@int_value := int_value;
+	}
+
+	New(real_value : Float) {
+		@type := Value->Type->REAL_TYPE;
+		@real_value := real_value;
+	}
+
+	# list operations
+	method : public : GetCar() ~ Value {
+		return @car;
+	}
+
+	method : public : GetCdr() ~ Value {
+		return Nil;
+	}
+
+	method : public : Append(value : Value) ~ Nil {
+
+	}	
+
+	# atom operations
+	method : public : GetIntValue() ~ Int {
+		return @int_value;
+	}
+
+	method : public : SetIntValue(int_value : Int) ~ Nil {
+		@type := Value->Type->INT_TYPE;
+		@int_value := int_value;
+	}
+
+	method : public : GetRealValue() ~ Float {
+		return @real_value;
+	}
+
+	method : public : SetRealValue(real_value : Float) ~ Nil {
+		@type := Value->Type->REAL_TYPE;
+		@real_value := real_value;
+	}
+
+	# other
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		select(@type) {
+			label Value->Type->INT_TYPE {
+				buffer += @int_value->ToString();
+			}
+
+			label Value->Type->REAL_TYPE {
+				buffer += @real_value->ToString();
+			}
+
+			label Value->Type->STRING_TYPE {
+				buffer += @str_value;
+			}
+		};
+
+		return buffer;
 	}
 }
 
@@ -184,8 +261,12 @@ class Parser {
 							while(cur_level <= @level);
 						}
 
-						label Token->Type->WRITE: {
+						label Token->Type->LIST_KEYWORD: {
+							
+						}
 
+						label Token->Type->WRITE_KEYWORD: {
+							
 						}
 
 						other: {
@@ -205,7 +286,7 @@ class Parser {
 				@token_pos += 1;
 				@level -= 1;
 			}
-			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->INT) {
+			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->INT_LIT) {
 				node := Node->New(@tokens->Get(@token_pos)->GetIntValue());
 				@token_pos += 1;
 			}
@@ -235,10 +316,10 @@ class Parser {
 }
 
 class Node {
-	@token : Token;
-	@type : Type;
+	@type : Node->Type;
 	@int_value : Int;
 	@real_value : Float;
+	@str_value : String;
 	@children : Vector<Node>;
 
 	enum Type {
@@ -246,19 +327,24 @@ class Node {
 		SUB,
 		MUL,
 		DIV,
-		INT,
-		REAL,
-		LIST
+		INT_LIT,
+		REAL_LIT,
+		STRING_LIT
 	}
 
 	New(int_value : Int) {
-		@type := Node->Type->INT;
+		@type := Node->Type->INT_LIT;
 		@int_value := int_value;
 	}
 
 	New(real_value : Float) {
-		@type := Node->Type->REAL;
+		@type := Node->Type->REAL_LIT;
 		@real_value := real_value;
+	}
+
+	New(str_value : String) {
+		@type := Node->Type->STRING_LIT;
+		@str_value := str_value;
 	}
 
 	New(type : Token->Type) {
@@ -281,11 +367,6 @@ class Node {
 		};
 	}
 
-	method : public : GetToken() ~ Token {
-		return @token;
-	}
-
-	# TODO:
 	method : public : GetType() ~ Node->Type {
 		return @type;
 	}
@@ -294,18 +375,8 @@ class Node {
 		return @int_value;
 	}
 
-	method : public : SetIntValue(int : Int) ~ Nil {
-		@type := Type->INT;
-		@int := int;
-	}
-
 	method : public : GetRealValue() ~ Float {
 		return @real_value;
-	}
-
-	method : public : SetRealValue(real_value : Float) ~ Nil {
-		@type := Type->REAL;
-		@real_value := real_value;
 	}
 
 	method : public : AddChild(node : Node) ~ Nil {
@@ -332,7 +403,36 @@ class Node {
 		};
 		buffer += "[";
 
-		buffer += @token->ToString();
+		select(@type) {
+			label Node->Type->ADD {
+				buffer += "+";
+			}
+
+			label Node->Type->SUB {
+				buffer += "-";
+			}
+
+			label Node->Type->MUL {
+				buffer += "*";
+			}
+
+			label Node->Type->DIV {
+				buffer += "/";
+			}
+
+			label Node->Type->INT_LIT {
+				buffer += @int_value->ToString();
+			}
+
+			label Node->Type->REAL_LIT {
+				buffer += @real_value->ToString();
+			}
+
+			label Node->Type->STRING_LIT {
+				buffer += @str_value;
+			}
+		};
+
 		if(@children <> Nil) {
 			each(i : @children) {
 				buffer += '\n';
@@ -354,7 +454,8 @@ class Scanner {
 	New() {
 		@keywords := Hash->New()<String, Token->Type>;
 
-		@keywords->Insert("write", Token->Type->WRITE);
+		@keywords->Insert("write", Token->Type->WRITE_KEYWORD);
+		@keywords->Insert("list", Token->Type->LIST_KEYWORD);
 	}
 
 	method : public : Scan(input : String) ~ Vector<Token> {
@@ -374,7 +475,7 @@ class Scanner {
 
 				found := @keywords->Find(ident);
 				if(found = Nil) {
-					tokens->AddBack(Token->New(Token->Type->IDENT, ident));
+					tokens->AddBack(Token->New(Token->Type->STR_LIT, ident));
 				}
 				else {
 					tokens->AddBack(Token->New(found));
@@ -441,21 +542,22 @@ class Scanner {
 
 class Token {
 	@type : Token->Type;
-	@ident : String;
-	@int : Int;
-	@real : Float;
+	@str_value : String;
+	@int_value : Int;
+	@real_value : Float;
 
 	enum Type {
-		WRITE,
+		WRITE_KEYWORD,
+		LIST_KEYWORD,
+		STR_LIT,
+		INT_LIT,
+		REAL_LIT,
 		OPRN,
 		CPRN,
 		ADD,
 		SUB,
 		MUL,
 		DIV,
-		IDENT,
-		INT,
-		REAL,
 		OTHER
 	}
 
@@ -468,30 +570,30 @@ class Token {
 		@ident := ident;
 	}
 
-	New(int : Int) {
-		@type := Type->INT;
-		@int := int;
+	New(int_value : Int) {
+		@type := Type->INT_LIT;
+		@int_value := int_value;
 	}
 
-	New(real : Float) {
-		@type := Type->REAL;
-		@real := real;
+	New(real_value : Float) {
+		@type := Type->REAL_LIT;
+		@real_value := real_value;
 	}
 
 	method : public : GetType() ~ Token->Type {
 		return @type;
 	}
 
-	method : public : GetIdent() ~ String {
-		return @ident;
+	method : public : GetStringValue() ~ String {
+		return @str_value;
 	}
 
 	method : public : GetIntValue() ~ Int {
-		return @int;
+		return @int_value;
 	}
 
 	method : public : GetRealValue() ~ Float {
-		return @real;
+		return @real_value;
 	}
 
 	method : public : ToString() ~ String {
@@ -520,16 +622,16 @@ class Token {
 				return "/";
 			}
 			
-			label Type->IDENT {
-				return @ident;
+			label Type->STR_LIT {
+				return @str_value;
 			}
 			
-			label Type->INT {
-				return @int->ToString();
+			label Type->INT_LIT {
+				return @int_value->ToString();
 			}
 			
-			label Type->REAL {
-				return @real->ToString();
+			label Type->REAL_LIT {
+				return @real_value->ToString();
 			}
 
 			other {
