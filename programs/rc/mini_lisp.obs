@@ -239,18 +239,23 @@ class Value {
 			}
 
 			label Value->Type->LIST {
-				buffer += "(";
-				
-				temp := @car;
-				while(temp <> @nil_value) {
-					buffer += temp->ToString();
-					temp := temp->GetCar();
-					if(temp <> @nil_value) {
-						buffer += ", ";
+				if(@car = @nil_value) {
+					buffer += "NIL";
+				}
+				else {
+					buffer += "(";
+					
+					temp := @car;
+					while(temp <> @nil_value) {
+						buffer += temp->ToString();
+						temp := temp->GetCar();
+						if(temp <> @nil_value) {
+							buffer += ", ";
+						};
 					};
+
+					buffer += ")";
 				};
-				
-				buffer += ")";
 			}
 
 			label Value->Type->NIL_TYPE {
