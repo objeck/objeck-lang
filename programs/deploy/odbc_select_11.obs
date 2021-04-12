@@ -1,5 +1,5 @@
 #~
-# compile: obc -src odbc_select_11.obs -lib collect,odbc' -dest odbc_select_11.obe
+# compile: obc -src odbc_select_11.obs -lib collect,odbc -dest odbc_select_11.obe
 # run: obr odbc_select_11.obe
 # odbc datasource: foo
 ~#
