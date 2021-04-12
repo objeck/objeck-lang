@@ -246,27 +246,15 @@ class Parser {
 						label Token->Type->DIV: {
 							node := Node->New(@tokens->Get(@token_pos)->GetType());
 							@token_pos += 1;
-
-							cur_level := @level;
-							do {
-								child := Expression(depth + 1);
-								if(@error) {
-									return Nil;
-								};
-
-								if(child <> Nil) {
-									node->AddChild(child);
-								};
-							}
-							while(cur_level <= @level);
+							Operands(node, depth);
 						}
 
 						label Token->Type->LIST_KEYWORD: {
-							
+
 						}
 
 						label Token->Type->WRITE_KEYWORD: {
-							
+
 						}
 
 						other: {
@@ -305,6 +293,21 @@ class Parser {
 		};
 
 		return node;
+	}
+
+	method : Operands(node : Node, depth : Int) ~ Nil {
+		cur_level := @level;
+		do {
+			child := Expression(depth + 1);
+			if(@error) {
+				return;
+			};
+
+			if(child <> Nil) {
+				node->AddChild(child);
+			};
+		}
+		while(cur_level <= @level);
 	}
 
 	function : Show(msg : String, depth : Int) ~ Nil {
