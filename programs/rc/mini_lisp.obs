@@ -129,7 +129,8 @@ class Evaluator {
 
 class Value {
 	@type : Type;
-	@nil_type : static : Value;
+	@nil_value : static : Value;
+	@empty_list_value : static : Value;
 	@car : Value;
 	@int_value : Int;
 	@real_value : Float;
@@ -144,9 +145,10 @@ class Value {
 	}
 
 	function : Init() ~ Nil {
-		@nil_type := Value->New(Value->Type->NIL_TYPE);
+		@nil_value := Value->New(Value->Type->NIL_TYPE);
+		@empty_list_value := Value->New(Value->Type->LIST);
 	}
-
+	
 	New(int_value : Int) {
 		@type := Value->Type->INT_TYPE;
 		@int_value := int_value;
@@ -161,14 +163,14 @@ class Value {
 		@type := type;
 
 		if(@type = Value->Type->LIST) {
-			@car := @nil_type;
+			@car := @nil_value;
 		};
 	}
 
 	# list operations
 	method : public : GetCar() ~ Value {
-		if(@car = @nil_type) {
-			return @nil_type;
+		if(@car = @nil_value) {
+			return @nil_value;
 		};
 
 		return @car;
@@ -179,12 +181,12 @@ class Value {
 	}
 
 	method : public : GetCdr() ~ Value {
-		if(@car = @nil_type) {
-			return @nil_type;
+		if(@car = @nil_value) {
+			return @nil_value;
 		};
 
-		if(@car->GetCar() = @nil_type) {
-			return @nil_type;
+		if(@car->GetCar() = @nil_value) {
+			return @nil_value;
 		};
 
 		return @car->GetCar();
@@ -236,11 +238,10 @@ class Value {
 				buffer += "(";
 				
 				temp := @car;
-				while(temp <> @nil_type) {
-					buffer += temp->ToString();					
+				while(temp <> @nil_value) {
+					buffer += temp->ToString();
 					temp := temp->GetCar();
-
-					if(temp <> @nil_type) {
+					if(temp <> @nil_value) {
 						buffer += ", ";
 					};
 				};
