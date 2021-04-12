@@ -54,6 +54,10 @@ class Evaluator {
 				@stack->Push(left);
 			}
 
+			label Node->Type->EMPTY_LIST {
+				@stack->Push(Value->New(Value->Type->LIST));
+			}
+
 			label Node->Type->INT_LIT {
 				@stack->Push(Value->New(node->GetIntValue()));
 			}
@@ -337,6 +341,11 @@ class Parser {
 						}
 					};
 				}
+				else if(@token_pos < length) {
+					if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
+						node := Node->New(Node->Type->EMPTY_LIST);
+					};
+				}
 				else {
 					@error := true;
 					"*** Error: operation requires at least 1 operand ***"->ErrorLine();
@@ -408,6 +417,7 @@ class Node {
 		MUL,
 		DIV,
 		LIST,
+		EMPTY_LIST,
 		INT_LIT,
 		REAL_LIT,
 		STRING_LIT
@@ -495,6 +505,10 @@ class Node {
 
 			label Node->Type->LIST {
 				buffer += "list";
+			}
+
+			label Node->Type->EMPTY_LIST {
+				buffer += "empty_list";
 			}
 
 			label Node->Type->SUB {
@@ -688,7 +702,7 @@ class Token {
 	method : public : ToString() ~ String {
 		select(@type) {
 			label Type->OPRN {
-				return ")";
+				return "(";
 			}
 
 			label Type->CPRN {
@@ -710,7 +724,15 @@ class Token {
 			label Type->DIV {
 				return "/";
 			}
-			
+
+			label Type->WRITE_KEYWORD {
+				return "write";
+			}
+
+			label Type->LIST_KEYWORD {
+				return "list";
+			}
+
 			label Type->STR_LIT {
 				return @str_value;
 			}
