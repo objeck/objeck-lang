@@ -167,14 +167,14 @@ class Value {
 		@type := type;
 
 		if(@type = Value->Type->LIST) {
-			@car := @nil_value;
+			@car := @empty_list_value;
 		};
 	}
 
 	# list operations
 	method : public : GetCar() ~ Value {
-		if(@car = @nil_value) {
-			return @nil_value;
+		if(@car = @empty_list_value) {
+			return @empty_list_value;
 		};
 
 		return @car;
@@ -185,12 +185,12 @@ class Value {
 	}
 
 	method : public : GetCdr() ~ Value {
-		if(@car = @nil_value) {
-			return @nil_value;
+		if(@car = @empty_list_value) {
+			return @empty_list_value;
 		};
 
-		if(@car->GetCar() = @nil_value) {
-			return @nil_value;
+		if(@car->GetCar() = @empty_list_value) {
+			return @empty_list_value;
 		};
 
 		return @car->GetCar();
@@ -239,17 +239,17 @@ class Value {
 			}
 
 			label Value->Type->LIST {
-				if(@car = @nil_value) {
+				if(@car = @empty_list_value) {
 					buffer += "NIL";
 				}
 				else {
 					buffer += "(";
 					
 					temp := @car;
-					while(temp <> @nil_value) {
+					while(temp <> @empty_list_value) {
 						buffer += temp->ToString();
 						temp := temp->GetCar();
-						if(temp <> @nil_value) {
+						if(temp <> @empty_list_value) {
 							buffer += ", ";
 						};
 					};
@@ -329,6 +329,13 @@ class Parser {
 						}
 
 						label Token->Type->LIST_KEYWORD: {
+							node := Node->New(Node->Type->LIST);
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
+						}
+
+						label Token->Type->CONS_KEYWORD: {
 							node := Node->New(Node->Type->LIST);
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -564,6 +571,7 @@ class Scanner {
 
 		@keywords->Insert("write", Token->Type->WRITE_KEYWORD);
 		@keywords->Insert("list", Token->Type->LIST_KEYWORD);
+		@keywords->Insert("cons", Token->Type->CONS_KEYWORD);
 	}
 
 	method : public : Scan(input : String) ~ Vector<Token> {
@@ -657,6 +665,7 @@ class Token {
 	enum Type {
 		WRITE_KEYWORD,
 		LIST_KEYWORD,
+		CONS_KEYWORD,
 		STR_LIT,
 		INT_LIT,
 		REAL_LIT,
