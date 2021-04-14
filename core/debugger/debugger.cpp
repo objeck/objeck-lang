@@ -137,7 +137,7 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
 
   wchar_t *state;
 #ifdef _WIN32
-  wchar_t* token = wcstok_s(buffer, L" ", &state);
+  wchar_t* token = wcstok_s(buffer, L"'", &state);
 #else
   wchar_t* token = wcstok(buffer, L" ", &state);
 #endif
