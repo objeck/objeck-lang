@@ -67,11 +67,10 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       // show break info
-      size_t mid_index = cls_mthd_name.find_last_of(':');
+      const size_t mid_index = cls_mthd_name.find_last_of(':');
       const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
       const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
-      wcout << L"break: file='" << file_name << L":" << line_num << L"', method='"
-            << cls_name << L"->" << mthd_name << L"(..)'" << endl;
+      wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << endl;
 
       // prompt for break command
       Command* command;
@@ -1229,6 +1228,11 @@ bool Runtime::Debugger::DeleteBreak(int line_num, const wstring& file_name)
   return false;
 }
 
+Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num)
+{
+  return FindBreak(line_num, cur_file_name);
+}
+
 Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& file_name)
 {
   if(cur_line_num < -1) {
@@ -1374,7 +1378,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
       const wstring &path = base_path + file_name;
       if(FileExists(path) && line_num > 0) {
-        SourceFile src_file(path, cur_line_num);
+        SourceFile src_file(path, cur_line_num, this);
         if(!src_file.Print(line_num)) {
           wcout << L"invalid line number." << endl;
           is_error = true;
@@ -1827,8 +1831,16 @@ bool Runtime::SourceFile::Print(int start)
       line = line.substr(leading);
     }
 
-    if(i + 1 == cur_line_num) {
+    const bool is_cur_line_num = i + 1 == cur_line_num;
+    const bool is_break_point = debugger->FindBreak(i + 1);
+    if(is_cur_line_num && is_break_point) {
+      wcout << right << L"#>" << setw(window) << (i + 1) << L": " << line << endl;
+    }
+    else if(is_cur_line_num) {
       wcout << right << L"=>" << setw(window) << (i + 1) << L": " << line << endl;
+    }
+    else if(is_break_point) {
+      wcout << right << L"#" << setw(window) << (i + 1) << L": " << line << endl;
     }
     else {
       wcout << right << setw(window + 2) << (i + 1) << L": " << line << endl;

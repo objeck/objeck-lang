@@ -51,6 +51,7 @@ using namespace std;
 
 namespace Runtime {
   class StackInterpreter;
+  class Debugger;
 
   typedef struct _UserBreak {
     int line_num;
@@ -64,11 +65,13 @@ namespace Runtime {
     wstring file_name;
     vector<wstring> lines;
     int cur_line_num;
+    Debugger* debugger;
 
   public:
-    SourceFile(const wstring &fn, int l) {
+    SourceFile(const wstring &fn, int l, class Debugger* d) {
       file_name = fn;
       cur_line_num = l;
+      debugger = d;
 
       const string name = UnicodeToBytes(fn);
       ifstream file_in (name.c_str());
@@ -136,7 +139,7 @@ namespace Runtime {
     bool DeleteBreak(int line_num, const wstring &file_name);
 
     // searches for a valid breakpoint based upon the line number provided
-    UserBreak* FindBreak(int line_num, const wstring &file_name);
+    UserBreak* FindBreak(int line_num, const wstring& file_name);
 
     // adds a break
     bool AddBreak(int line_num, const wstring &file_name);
@@ -224,9 +227,11 @@ namespace Runtime {
     // start debugger
     void Debug();
 
+    // searches for a valid breakpoint based upon the line number provided
+    UserBreak* FindBreak(int line_num);
+
     // runtime callback
-    void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
-      long call_stack_pos, StackFrame* frame);
+    void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame);
   };
 }
 #endif

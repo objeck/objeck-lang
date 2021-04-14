@@ -4759,64 +4759,57 @@ wstring MethodFormatter::Format(const wstring method_sig)
 
 wstring MethodFormatter::FormatParameters(const wstring param_str)
 {
-  int param_count = 0;
+  wchar_t param_name = L'a';
   wstring formatted_str = L"(";
   size_t index = 0;
 
-  while(index < param_str.size()) {
+  while(index < param_str.size() && param_name != L'{') {
     int dimension = 0;
     switch(param_str[index]) {
     case 'l':
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
       formatted_str += L"Boolean";
       index++;
       break;
 
     case 'b':
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
       formatted_str += L"Byte";
       index++;
       break;
 
     case 'i':
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
       formatted_str += L"Int";
       index++;
       break;
 
     case 'f':
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
       formatted_str += L"Float";
       index++;
       break;
 
     case 'c':
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
       formatted_str += L"Char";
       index++;
       break;
 
     case 'n':
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
       formatted_str += L"Nil";
       index++;
       break;
 
     case 'm': {
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
 
       size_t start = index;
@@ -4845,11 +4838,10 @@ wstring MethodFormatter::FormatParameters(const wstring param_str)
       const wstring name = param_str.substr(start, index - start - 1);
       formatted_str += FormatFunctionalType(name);
     }
-      break;
+            break;
 
     case 'o': {
-      formatted_str += L'p';
-      formatted_str += IntToString(param_count++);
+      formatted_str += param_name++;
       formatted_str += L':';
 
       index += 2;
@@ -4861,7 +4853,7 @@ wstring MethodFormatter::FormatParameters(const wstring param_str)
       const wstring cls_name = param_str.substr(start, end - start);
       formatted_str += cls_name;
     }
-      break;
+            break;
     }
 
     // set generics
@@ -4877,8 +4869,7 @@ wstring MethodFormatter::FormatParameters(const wstring param_str)
 
         const wstring generic_name = param_str.substr(start, end - start);
         formatted_str += generic_name;
-      } 
-      while(index < param_str.size() && param_str[index] == L'|');
+      }       while(index < param_str.size() && param_str[index] == L'|');
       formatted_str += L">";
     }
 
