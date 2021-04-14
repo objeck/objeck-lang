@@ -45,14 +45,18 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // enable Unicode console support
-    _setmode(_fileno(stdin), _O_U8TEXT);
-    _setmode(_fileno(stdout), _O_U8TEXT);
+    if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+      return 1;
+    }
 
+    if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+      return 1;
+    }
+    
     // initialize Winsock
     WSADATA data;
     int status;
-    int version = MAKEWORD(2, 2);
-    if(WSAStartup(version, &data)) {
+    if(WSAStartup(MAKEWORD(2, 2), &data)) {
       wcerr << L"Unable to load Winsock 2.2!" << endl;
       status = SYSTEM_ERROR;
     }
@@ -70,7 +74,7 @@ int main(const int argc, const char* argv[])
     usage += L"Usage: obr <program>\n\n";
     usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
-
+    
 #if defined(_WIN64) && defined(_WIN32)
     usage += L" (x86_64 Windows)";
 #elif _WIN32
@@ -88,8 +92,9 @@ int main(const int argc, const char* argv[])
 #else
     usage += L" (x86 Linux)";
 #endif
-
-    wcerr << usage << endl << endl;
+    
+    usage += L"\nWeb: www.objeck.org";
+    wcerr << usage << endl;
 
     return 1;
   }

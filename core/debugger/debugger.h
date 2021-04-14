@@ -102,8 +102,9 @@ namespace Runtime {
   * debugger
   ********************************/
   class Debugger {
-    wstring program_file;
-    wstring base_path;
+    wstring program_file_param;
+    wstring base_path_param;
+    wstring args_param;
     bool quit;
     // break info
     list<UserBreak*> breaks;
@@ -183,6 +184,7 @@ namespace Runtime {
     void ProcessExe(Load* load);
     void ProcessSrc(Load* load);
     void ProcessArgs(Load* load);
+    void ProcessArgs(const wstring& temp);
     void ProcessInfo(Info* info);
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();
@@ -199,9 +201,10 @@ namespace Runtime {
     void EvaluateCalculation(CalculatedExpression* expression);
 
   public:
-    Debugger(const wstring &fn, const wstring &bp) {
-      program_file = fn;
-      base_path = bp;
+    Debugger(const wstring &fn, const wstring &bp, const wstring &ap) {
+      program_file_param = fn;
+      base_path_param = bp;
+      args_param = ap;
       quit = false;
       // clear program
       interpreter = nullptr;
