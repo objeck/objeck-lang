@@ -126,7 +126,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   if (result == arguments.end()) {
     result = arguments.find(L"in");
     if (result == arguments.end()) {
-      wcerr << usage << endl << endl;
+      wcerr << usage << endl;
       return COMMAND_ERROR;
     }
     run_string = L"bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
@@ -141,7 +141,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check program output
   result = arguments.find(L"dest");
   if (result == arguments.end()) {
-    wcerr << usage << endl << endl;
+    wcerr << usage << endl;
     return COMMAND_ERROR;
   }
   argument_options.remove(L"dest");
@@ -160,7 +160,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   if (result != arguments.end()) {
     optimize = result->second;
     if (optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
-      wcerr << usage << endl << endl;
+      wcerr << usage << endl;
       return COMMAND_ERROR;
     }
     argument_options.remove(L"opt");
@@ -172,7 +172,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   if (result != arguments.end()) {
     target = result->second;
     if (target != L"lib" && target != L"web" && target != L"exe") {
-      wcerr << usage << endl << endl;
+      wcerr << usage << endl;
       return COMMAND_ERROR;
     }
     argument_options.remove(L"tar");
@@ -203,7 +203,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
 
   if (argument_options.size() != 0) {
-    wcerr << usage << endl << endl;
+    wcerr << usage << endl;
     return COMMAND_ERROR;
   }
 

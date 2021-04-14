@@ -56,7 +56,7 @@ int main(const int argc, const char* argv[])
     usage += L"Usage: obr <program>\n\n";
     usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
-
+    
 #if defined(_WIN64) && defined(_WIN32)
     usage += L" (Windows x86_64)";
 #elif _WIN32
@@ -75,7 +75,8 @@ int main(const int argc, const char* argv[])
     usage += L" (Linux x86)";
 #endif
     
-    wcerr << usage << endl << endl;
+    usage += L"\nWeb: www.objeck.org";
+    wcerr << usage << endl;
 
     return 1;
   }

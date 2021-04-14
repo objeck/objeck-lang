@@ -82,6 +82,8 @@ int main(int argc, char* argv[])
   usage += L" (Linux x86)";
 #endif
 
+  usage += L"\nWeb: www.objeck.org";
+
   int status;
   if(argc > 0) {
     // reconstruct command line
@@ -120,7 +122,7 @@ int main(int argc, char* argv[])
 #endif
   } 
   else {
-    wcerr << usage << endl << endl;
+    wcerr << usage << endl;
     status = USAGE_ERROR;
   }
 

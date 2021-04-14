@@ -579,7 +579,7 @@ bundle Web.HTTP {
 # post->PrintLine();					
 					
 					status_code := 500;
-					status_line := socket->ReadString();
+					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
@@ -592,7 +592,7 @@ bundle Web.HTTP {
 					if(status_code <> 500) {
 					  # get @headers
 						do {
-							line := socket->ReadString();
+							line := socket->ReadLine();
 							if(line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
@@ -609,14 +609,14 @@ bundle Web.HTTP {
 							done := false;
 							do {
 								size_line := "0x";
-								size_line->Append(socket->ReadString());
+								size_line->Append(socket->ReadLine());
 								chunk_size := size_line->ToInt();
 								line := "";
 								if(chunk_size > 0) {
 									for(i := 0; i < chunk_size; i += 1;) {
 										line->Append(socket->ReadByte());
 									};
-									socket->ReadString();
+									socket->ReadLine();
 									content->AddBack(line);
 								}
 								else {
@@ -741,7 +741,7 @@ bundle Web.HTTP {
 					socket->WriteString(get);
 					
 					status_code := 500;
-					status_line := socket->ReadString();
+					status_line := socket->ReadLine();
 # status_line->PrintLine();					
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
@@ -753,7 +753,7 @@ bundle Web.HTTP {
 					if(status_code <> 500) {
 						# get @headers
 						do {
-							line := socket->ReadString();
+							line := socket->ReadLine();
 							if(line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
@@ -783,7 +783,7 @@ bundle Web.HTTP {
 							done := false;
 							do {
 								size_line := "0x";
-								size_line->Append(socket->ReadString());
+								size_line->Append(socket->ReadLine());
 								chunk_size := size_line->ToInt();
 								buffer := Byte->New[chunk_size];
 								if(chunk_size > 0) {
@@ -824,7 +824,7 @@ bundle Web.HTTP {
 							else {
 								count := 0;
 								do {
-									line := socket->ReadString();
+									line := socket->ReadLine();
 									if(line->Size() = 0) {
 										count += 1;
 									}
@@ -1037,7 +1037,7 @@ bundle Web.HTTP {
 # post->PrintLine();					
 					
 					status_code := 500;
-					status_line := socket->ReadString();
+					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
@@ -1050,7 +1050,7 @@ bundle Web.HTTP {
 					if(status_code <> 500) {
 						# get @headers
 						do {
-							line := socket->ReadString();
+							line := socket->ReadLine();
 							if(line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
@@ -1068,7 +1068,7 @@ bundle Web.HTTP {
 							done := false;
 							do {
 								size_line := "0x";
-								size_line->Append(socket->ReadString());
+								size_line->Append(socket->ReadLine());
 								chunk_size := size_line->ToInt();
 								if(chunk_size > 0) {
 									buffer := Byte->New[chunk_size];
@@ -1212,7 +1212,7 @@ bundle Web.HTTP {
 					socket->WriteString(get);
 					
 					status_code := 500;
-					status_line := socket->ReadString();
+					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
@@ -1225,7 +1225,7 @@ bundle Web.HTTP {
 					if(status_code <> 500) {
 						# get @headers
 						do {
-							line := socket->ReadString();
+							line := socket->ReadLine();
 							if(line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
@@ -1253,7 +1253,7 @@ bundle Web.HTTP {
 							done := false;
 							do {
 								size_line := "0x";
-								size_line->Append(socket->ReadString());
+								size_line->Append(socket->ReadLine());
 								chunk_size := size_line->ToInt();
 								if(chunk_size > 0) {
 									buffer := Byte->New[chunk_size];
@@ -1286,7 +1286,7 @@ bundle Web.HTTP {
 							else {
 								count := 0;
 								do {
-									line := socket->ReadString();
+									line := socket->ReadLine();
 									if(line->Size() = 0) {
 										count += 1;
 									}

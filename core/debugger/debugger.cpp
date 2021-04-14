@@ -1,7 +1,7 @@
 /**************************************************************************
  * Runtime debugger
  *
- * Copyright (c) 2010-2019 Randy Hollines
+ * Copyright (c) 2010-2021 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -92,26 +92,27 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
   }
 }
 
-void Runtime::Debugger::ProcessSrc(Load* load) {
+void Runtime::Debugger::ProcessSrc(Load* load) 
+{
   if(interpreter) {
     wcout << L"unable to modify source path while program is running." << endl;
     return;
   }
 
-  if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
+  if(FileExists(program_file_param, true) && DirectoryExists(load->GetFileName())) {
     ClearReload();
 
-    base_path = load->GetFileName();
+    base_path_param = load->GetFileName();
 #ifdef _WIN32
-    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '\\') {
-      base_path += '\\';
+    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '\\') {
+      base_path_param += '\\';
     }
 #else
-    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '/') {
-      base_path += '/';
+    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '/') {
+      base_path_param += '/';
     }
 #endif
-    wcout << L"source files: path='" << base_path << L"'" << endl << endl;
+    wcout << L"source files: path='" << base_path_param << L"'" << endl << endl;
   }
   else {
     wcout << L"unable to locate base path." << endl;
@@ -119,13 +120,18 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
   }
 }
 
-void Runtime::Debugger::ProcessArgs(Load* load) {
+void Runtime::Debugger::ProcessArgs(Load* load)
+{
+  ProcessArgs(load->GetFileName());
+}
+
+void Runtime::Debugger::ProcessArgs(const wstring& temp)
+{
   // clear
   arguments.clear();
   arguments.push_back(L"obr");
-  arguments.push_back(program_file);
+  arguments.push_back(program_file_param);
   // parse arguments
-  const wstring temp = load->GetFileName();
   const size_t buffer_max = temp.size() + 1;
   wchar_t* buffer = (wchar_t*)calloc(sizeof(wchar_t), buffer_max);
 #ifdef _WIN32
@@ -161,16 +167,16 @@ void Runtime::Debugger::ProcessExe(Load* load) {
     return;
   }
 
-  if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path)) {
+  if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path_param)) {
     // clear program
     ClearReload();
     ClearBreaks();
-    program_file = load->GetFileName();
+    program_file_param = load->GetFileName();
     // reset arguments
     arguments.clear();
     arguments.push_back(L"obr");
-    arguments.push_back(program_file);
-    wcout << L"loaded executable: file='" << program_file << L"'" << endl;
+    arguments.push_back(program_file_param);
+    wcout << L"loaded executable: file='" << program_file_param << L"'" << endl;
   }
   else {
     wcout << L"program file doesn't exist." << endl;
@@ -179,7 +185,7 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 }
 
 void Runtime::Debugger::ProcessRun() {
-  if(loader && program_file.size() > 0) {
+  if(loader && program_file_param.size() > 0) {
     DoLoad();
     cur_program = loader->GetProgram();
     
@@ -254,7 +260,7 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
     file_name = cur_file_name;
   }
 
-  const wstring &path = base_path + file_name;
+  const wstring &path = base_path_param + file_name;
   if(file_name.size() != 0 && FileExists(path)) {
     if(AddBreak(line_num, file_name)) {
       wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
@@ -289,7 +295,7 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
     file_name = cur_file_name;
   }
 
-  const wstring &path = base_path + file_name;
+  const wstring &path = base_path_param + file_name;
   if(file_name.size() != 0 && FileExists(path)) {
     if(DeleteBreak(line_num, file_name)) {
       wcout << L"removed breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
@@ -355,8 +361,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
                   << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                    << reference->GetArraySize();
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -370,8 +375,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Char[], value=" << reference->GetIntValue()
                   << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                    << reference->GetArraySize();
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -385,8 +389,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue()
                   << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                    << reference->GetArraySize();
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -397,11 +400,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
           }
           else {
-            wcout << L"print: type=Float[], value=" << reference->GetIntValue()
-                  << L"(" << (void*)reference->GetIntValue() << L")";
+            wcout << L"print: type=Float[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                    << reference->GetArraySize();
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -413,17 +414,14 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             if(instance) {
               size_t* string_instance = (size_t*)instance[0];
               const wchar_t* char_string = (wchar_t*)(string_instance + 3);
-              wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
-                    << char_string << L"\"" << endl;
+              wcout << L"print: type=" << ref_klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-                    << (void*)reference->GetIntValue() << endl;
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
             }
           }
           else {
-            wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-                  << (void*)reference->GetIntValue() << endl;
+            wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
           }
           break;
 
@@ -433,7 +431,14 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             if(klass) {        
               size_t* instance = (size_t*)reference->GetIntValue();
               if(instance) {
-                wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
+                if(klass->GetName() == L"System.String") {
+                  size_t* string_instance = (size_t*)instance[0];
+                  const wchar_t* char_string = (wchar_t*)(string_instance + 3);
+                  wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
+                }
+                else {
+                  wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
+                }
               }
               else {
                 wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
@@ -446,8 +451,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else {
             wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                    << reference->GetArraySize();
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -1376,7 +1380,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         line_num = cur_line_num;
       }
 
-      const wstring &path = base_path + file_name;
+      const wstring &path = base_path_param + file_name;
       if(FileExists(path) && line_num > 0) {
         SourceFile src_file(path, cur_line_num, this);
         if(!src_file.Print(line_num)) {
@@ -1585,7 +1589,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     // general info
     else {
       wcout << L"general info:" << endl;
-      wcout << L"  program executable: file='" << program_file << L"'" << endl;
+      wcout << L"  program executable: file='" << program_file_param << L"'" << endl;
 
       // parse method and class names
       const wstring &long_name = cur_frame->method->GetName();
@@ -1655,13 +1659,13 @@ void Runtime::Debugger::Debug() {
   wcout << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << endl;
   wcout << L"-------------------------------------" << endl << endl;
 
-  if(FileExists(program_file, true) && DirectoryExists(base_path)) {
-    wcout << L"loaded executable: file='" << program_file << L"'" << endl;
-    wcout << L"source files: path='" << base_path << L"'" << endl << endl;
+  if(FileExists(program_file_param, true) && DirectoryExists(base_path_param)) {
+    wcout << L"loaded executable: file='" << program_file_param << L"'" << endl;
+    wcout << L"source files: path='" << base_path_param << L"'" << endl << endl;
     // clear arguments
     arguments.clear();
     arguments.push_back(L"obr");
-    arguments.push_back(program_file);
+    arguments.push_back(program_file_param);
   }
   else {
     wcerr << L"unable to load executable or locate base path." << endl;
@@ -1673,6 +1677,10 @@ void Runtime::Debugger::Debug() {
   StackMethod* start = loader->GetStartMethod();
   if(start) {
     cur_file_name = start->GetClass()->GetFileName();
+  }
+
+  if(!args_param.empty()) {
+    ProcessArgs(args_param);
   }
 
   // enter feedback loop
@@ -1694,10 +1702,11 @@ void Runtime::Debugger::Debug() {
 int main(int argc, char** argv)
 {
   wstring usage;
-  usage += L"Usage: obd -exe <program> [-src <source directory>]\n\n";
+  usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
   usage += L"Parameters:\n";
-  usage += L"  -exe: executable file\n";
-  usage += L"  -src: source directory path\n\n";
+  usage += L"  -exe:  [input]  executable file\n";
+  usage += L"  -src:  [option] source directory path, default is '.'\n\n";
+  usage += L"  -args: [option] list of arguments\n\n";
   usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
   usage += VERSION_STRING;
 
@@ -1718,16 +1727,22 @@ int main(int argc, char** argv)
 #else
  usage += L" (x86 Linux)";
 #endif 
+
+  usage += L"\nWeb: www.objeck.org";
   
   if(argc >= 3) {
 #ifdef _WIN32
     // enable Unicode console support
-    _setmode(_fileno(stdin), _O_U8TEXT);
-    _setmode(_fileno(stdout), _O_U8TEXT);
+    if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+      return 1;
+    }
+
+    if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+      return 1;
+    }
 
     WSADATA data;
-    int version = MAKEWORD(2, 2);
-    if(WSAStartup(version, &data)) {
+    if(WSAStartup(MAKEWORD(2, 2), &data)) {
       cerr << L"Unable to load Winsock 2.2!" << endl;
       exit(1);
     }
@@ -1749,29 +1764,35 @@ int main(int argc, char** argv)
     // start debugger
     map<const wstring, wstring>::iterator result = arguments.find(L"exe");
     if(result == arguments.end()) {
-      wcerr << usage << endl << endl;
+      wcerr << usage << endl;
       return 1;
     }
-    const wstring &file_name = arguments[L"exe"];
+    const wstring &file_name_param = arguments[L"exe"];
 
-    wstring base_path = L".";
+    wstring base_path_param = L".";
     result = arguments.find(L"src");
     if(result != arguments.end()) {
-      base_path = arguments[L"src"];
+      base_path_param = arguments[L"src"];
+    }
+
+    wstring args_param;
+    result = arguments.find(L"args");
+    if(result != arguments.end()) {
+      args_param = arguments[L"args"];
     }
 
 #ifdef _WIN32
-    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '\\') {
-      base_path += '\\';
+    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '\\') {
+      base_path_param += '\\';
     }
 #else
-    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '/') {
-      base_path += '/';
+    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '/') {
+      base_path_param += '/';
     }
 #endif
 
     // go debugger
-    Runtime::Debugger debugger(file_name, base_path);
+    Runtime::Debugger debugger(file_name_param, base_path_param, args_param);
     debugger.Debug();
 #ifdef _WIN32
     WSACleanup();
@@ -1783,7 +1804,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     WSACleanup();
 #endif
-    wcerr << usage << endl << endl;
+    wcerr << usage << endl;
     return 1;
   }
 
