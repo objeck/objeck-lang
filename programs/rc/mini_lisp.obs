@@ -41,17 +41,36 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
+			label Node->Type->PAIR {
+"## 0 ##"->PrintLine();							
+
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
+
+				pair := Value->New(Value->Type->PAIR);
+				
+				right := @stack->Pop();
+				pair->Append(right);
+
+				left := @stack->Pop();
+				pair->Append(left);
+
+				@stack->Push(pair);
+			}
+
 			label Node->Type->LIST {				
 				children := node->GetChildren();
 				each(i : children) {
 					Evaluate(children->Get(i));
 				};
 
-				left := Value->New(Value->Type->LIST);
+				list := Value->New(Value->Type->LIST);
 				each(i : children) {
-					left->Append(@stack->Pop());
+					list->Append(@stack->Pop());
 				};
-				@stack->Push(left);
+				@stack->Push(list);
 			}
 
 			label Node->Type->EMPTY_LIST {
@@ -141,6 +160,7 @@ class Value {
 	@str_value : String;
 
 	enum Type {
+		PAIR,
 		LIST,
 		NIL_TYPE,
 		INT_TYPE,
@@ -166,7 +186,7 @@ class Value {
 	New(type : Value->Type) {
 		@type := type;
 
-		if(@type = Value->Type->LIST) {
+		if(@type = Value->Type->LIST | @type = Value->Type->PAIR) {
 			@car := @empty_list_value;
 		};
 	}
@@ -238,7 +258,8 @@ class Value {
 				buffer += @str_value;
 			}
 
-			label Value->Type->LIST {
+			label Value->Type->PAIR:
+			label Value->Type->LIST: {
 				if(@car = @empty_list_value) {
 					buffer += "NIL";
 				}
@@ -752,6 +773,10 @@ class Token {
 
 			label Type->LIST_KEYWORD {
 				return "list";
+			}
+
+			label Type->CONS_KEYWORD {
+				return "cons";
 			}
 
 			label Type->STR_LIT {
