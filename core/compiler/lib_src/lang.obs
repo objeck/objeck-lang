@@ -5162,7 +5162,7 @@ bundle System.IO {
 			return @console;
 		}
 
-		method : public : ReadLine() ~ System.String {
+		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
 			return System.String->New(buffer);
