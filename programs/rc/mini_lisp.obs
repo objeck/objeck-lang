@@ -336,8 +336,14 @@ class Parser {
 						}
 
 						label Token->Type->CONS_KEYWORD: {
-							node := Node->New(Node->Type->LIST);
+							node := Node->New(Node->Type->PAIR);
 							if(<>Operands(node, depth)) {
+								return Nil;
+							};
+
+							if(node->GetChildren()->Size() <> 2) {
+								@error := true;
+								"*** 'cons' operation takes 2 operands ***"->ErrorLine();
 								return Nil;
 							};
 						}
@@ -428,6 +434,7 @@ class Node {
 		SUB,
 		MUL,
 		DIV,
+		PAIR,
 		LIST,
 		EMPTY_LIST,
 		INT_LIT,
