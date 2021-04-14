@@ -4763,7 +4763,7 @@ bundle System.IO {
 		Reads a string until a newline or character return is detected 
 		@return character string
 		~#
-		method : virtual : public : ReadString() ~ System.String;
+		method : virtual : public : ReadLine() ~ System.String;
 		
 		#~
 		Closes the stream
@@ -5162,7 +5162,7 @@ bundle System.IO {
 			return @console;
 		}
 
-		method : public : ReadString() ~ System.String {
+		method : public : ReadLine() ~ System.String {
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
 			return System.String->New(buffer);
@@ -5951,7 +5951,7 @@ bundle System.IO.File {
 		Reads a string until a newline or character return is detected 
 		@return character string
 		~#
-		method : public : ReadString() ~ System.String {
+		method : public : ReadLine() ~ System.String {
 			if(IsEOF()) {
 				return Nil;
 			};
@@ -6501,7 +6501,7 @@ bundle System.IO.Net {
 		Reads a string until a newline or character return is detected 
 		@return character string
 		~#
-		method : public : ReadString() ~ System.String {
+		method : public : ReadLine() ~ System.String {
 			if(<>IsOpen()) {
 				return Nil;
 			};
@@ -6678,7 +6678,7 @@ bundle System.IO.Net {
 		Reads a string until a newline or character return is detected 
 		@return character string
 		~#
-		method : public : native : ReadString() ~ System.String {
+		method : public : native : ReadLine() ~ System.String {
 			if(<>IsOpen()) {
 				return Nil;
 			};
