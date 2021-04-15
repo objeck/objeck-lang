@@ -43,8 +43,6 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const int line_num = instr->GetLineNumber();
     const wstring &file_name = frame->method->GetClass()->GetFileName();
 
-    // wcout << L"### file=" << file_name << L", line=" << line_num << L" ###" << endl;
-    
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
        (FindBreak(line_num, file_name) ||
@@ -63,7 +61,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
       // prompt for input
       const wstring &long_name = cur_frame->method->GetName();
-      size_t end_index = long_name.find_last_of(':');
+      const size_t end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       // show break info
@@ -1239,11 +1237,6 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num)
 
 Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& file_name)
 {
-  if(cur_line_num < -1) {
-    cur_line_num = line_num;
-    return nullptr;
-  }
-
   for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
     if(user_break->line_num == line_num && user_break->file_name == file_name) {
@@ -1462,7 +1455,6 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(!interpreter) {
         wcout << L"program is not running." << endl;
       }
-      cur_line_num = -2;
       break;
 
     case MEMORY_COMMAND:
@@ -1861,7 +1853,7 @@ bool Runtime::SourceFile::Print(int start)
       wcout << right << L"=>" << setw(window) << (i + 1) << L": " << line << endl;
     }
     else if(is_break_point) {
-      wcout << right << L"#" << setw(window) << (i + 1) << L": " << line << endl;
+      wcout << right << L"# " << setw(window) << (i + 1) << L": " << line << endl;
     }
     else {
       wcout << right << setw(window + 2) << (i + 1) << L": " << line << endl;
