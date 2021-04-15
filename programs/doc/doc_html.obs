@@ -612,7 +612,8 @@ class HtmlMaker {
 	DOC ME
 	~#
 	method : GetBundleClass(bundle_name : String, class_name : String) ~ ClassSnippet {
-		lookup_bundle := @parser->GetBundles()->Find(bundle_name);		
+		bundles := @parser->GetBundles()<String, BundleSnippet>;
+		lookup_bundle := bundles->Find(bundle_name);
 		if(lookup_bundle <> Nil) {
 			return lookup_bundle->GetClasses()->Find(class_name);
 		}
@@ -625,7 +626,8 @@ class HtmlMaker {
 	DOC ME
 	~#
 	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumConstSnippet {
-		lookup_bundle := @parser->GetBundles()->Find(bundle_name);		
+		bundles := @parser->GetBundles()<String, BundleSnippet>;
+		lookup_bundle := bundles->Find(bundle_name);
 		if(lookup_bundle <> Nil) {
 			return lookup_bundle->GetEnums()->Find(enum_name);
 		}
