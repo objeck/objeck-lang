@@ -41,7 +41,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 {
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
-    const wstring &file_name = frame->method->GetClass()->GetFileName();
+    const wstring& file_name = frame->method->GetClass()->GetFileName();
 
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
@@ -60,14 +60,14 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       is_jmp_out = is_next_line = false;
 
       // prompt for input
-      const wstring &long_name = cur_frame->method->GetName();
+      const wstring& long_name = cur_frame->method->GetName();
       const size_t end_index = long_name.find_last_of(':');
-      const wstring &cls_mthd_name = long_name.substr(0, end_index);
+      const wstring& cls_mthd_name = long_name.substr(0, end_index);
 
       // show break info
       const size_t mid_index = cls_mthd_name.find_last_of(':');
-      const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
-      const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
+      const wstring& cls_name = cls_mthd_name.substr(0, mid_index);
+      const wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
       wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << endl;
 
       // prompt for break command
@@ -83,12 +83,14 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         else {
           command = nullptr;
         }
-      }
-      while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != NEXT_COMMAND &&
-                         command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
+      } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != NEXT_COMMAND &&
+                           command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
     }
+
+    cur_line_num = line_num;
   }
 }
+  
 
 void Runtime::Debugger::ProcessSrc(Load* load) 
 {
