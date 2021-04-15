@@ -1,12 +1,12 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
-		Foo(5);
+		Foo(5, args[0]);
 	}
 
-	function : Foo(i : Int) ~ Nil {
+	function : Foo(i : Int, s : String) ~ Nil {
 		if(i > 0) {
-			i->PrintLine();
-			Foo(i - 1);
+			s->PrintLine();
+			Foo(i - 1, s);
 		};
 	}
 }
