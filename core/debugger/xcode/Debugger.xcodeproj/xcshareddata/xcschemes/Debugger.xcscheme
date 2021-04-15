@@ -59,7 +59,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-src ../examples -exe ../a.obe"
+            argument = "-exe mini_lisp.obe -args &apos;&quot;(cons 1 (cons 2 3))&quot; &quot;x&quot;&apos;"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

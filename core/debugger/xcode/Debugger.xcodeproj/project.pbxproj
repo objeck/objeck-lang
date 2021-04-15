@@ -34,6 +34,7 @@
 
 /* Begin PBXFileReference section */
 		ED4797F82599037700E103DA /* obd */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obd; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED4F5C2E2628CA130046B539 /* obd.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = obd.entitlements; sourceTree = "<group>"; };
 		ED53943B26136AEB0085A5F8 /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../scanner.h; sourceTree = "<group>"; };
 		ED53943C26136AEB0085A5F8 /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../parser.h; sourceTree = "<group>"; };
 		ED53943D26136AEB0085A5F8 /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../scanner.cpp; sourceTree = "<group>"; };
@@ -94,6 +95,7 @@
 		ED53943A26136AA60085A5F8 /* Debugger */ = {
 			isa = PBXGroup;
 			children = (
+				ED4F5C2E2628CA130046B539 /* obd.entitlements */,
 				ED53946126136B600085A5F8 /* jit_arm_a64.cpp */,
 				ED53946226136B600085A5F8 /* jit_arm_a64.h */,
 				ED53945826136B480085A5F8 /* common.cpp */,
@@ -311,6 +313,7 @@
 		ED4798002599037700E103DA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = obd.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
@@ -336,6 +339,7 @@
 		ED4798012599037700E103DA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = obd.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
