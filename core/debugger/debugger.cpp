@@ -33,6 +33,123 @@
 #include "../shared/sys.h"
 #include "../shared/version.h"
 
+ /********************************
+  * Debugger main
+  ********************************/
+int main(int argc, char** argv)
+{
+  wstring usage;
+  usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
+  usage += L"Parameters:\n";
+  usage += L"  -exe:  [input] executable file\n";
+  usage += L"  -src:  [option] source directory path, default is '.'\n";
+  usage += L"  -args: [option][end-flag] list of arguments\n\n";
+  usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
+  usage += VERSION_STRING;
+
+#if defined(_WIN64) && defined(_WIN32)
+  usage += L" (x86-64 Windows)";
+#elif _WIN32
+  usage += L" (x86 Windows)";
+#elif _OSX
+#ifdef _ARM64
+  usage += L" (macOS ARM64)";
+#else
+  usage += L" (macOS x86_64)";
+#endif
+#elif _X64
+  usage += L" (x86-64 Linux)";
+#elif _ARM32
+  usage += L" (ARMv7 Linux)";
+#else
+  usage += L" (x86 Linux)";
+#endif 
+
+  usage += L"\nWeb: www.objeck.org";
+
+  if(argc >= 3) {
+#ifdef _WIN32
+    // enable Unicode console support
+    if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+      return 1;
+    }
+
+    if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+      return 1;
+    }
+
+    WSADATA data;
+    if(WSAStartup(MAKEWORD(2, 2), &data)) {
+      cerr << L"Unable to load Winsock 2.2!" << endl;
+      exit(1);
+    }
+#else
+    // enable UTF-8 environment
+    setlocale(LC_ALL, "");
+    setlocale(LC_CTYPE, "UTF-8");
+#endif
+
+    // reconstruct path
+    string buffer;
+    for(int i = 1; i < argc; i++) {
+      buffer += " ";
+      buffer += argv[i];
+    }
+    const wstring path_string(buffer.begin(), buffer.end());
+    map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
+
+    // start debugger
+    map<const wstring, wstring>::iterator result = arguments.find(L"exe");
+    if(result == arguments.end()) {
+      wcerr << usage << endl;
+      return 1;
+    }
+    const wstring& file_name_param = arguments[L"exe"];
+
+    wstring base_path_param = L".";
+    result = arguments.find(L"src");
+    if(result != arguments.end()) {
+      base_path_param = arguments[L"src"];
+    }
+
+    wstring args_param;
+    const wstring args_str = L"args";
+    result = arguments.find(args_str);
+    if(result != arguments.end()) {
+      const size_t start = path_string.find(args_str) + args_str.size();
+      args_param = path_string.substr(start, path_string.size() - start);
+    }
+
+#ifdef _WIN32
+    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '\\') {
+      base_path_param += '\\';
+    }
+#else
+    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '/') {
+      base_path_param += '/';
+    }
+#endif
+
+    // go debugger
+    Runtime::Debugger debugger(file_name_param, base_path_param, args_param);
+    debugger.Debug();
+#ifdef _WIN32
+    WSACleanup();
+#endif
+
+    return 0;
+  }
+  else {
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    wcerr << usage << endl;
+    return 1;
+  }
+
+  return 1;
+}
+
 /********************************
  * Interactive command line
  * debugger
@@ -1690,124 +1807,6 @@ void Runtime::Debugger::Debug() {
       wcout << L"> ";
     }
   }
-}
-
-
-/********************************
- * Debugger main
- ********************************/
-int main(int argc, char** argv)
-{
-  wstring usage;
-  usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
-  usage += L"Parameters:\n";
-  usage += L"  -exe:  [input]  executable file\n";
-  usage += L"  -src:  [option] source directory path, default is '.'\n\n";
-  usage += L"  -args: [option:last] list of arguments\n\n";
-  usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
-  usage += VERSION_STRING;
-
-#if defined(_WIN64) && defined(_WIN32)
- usage += L" (x86-64 Windows)";
-#elif _WIN32
- usage += L" (x86 Windows)";
-#elif _OSX
-#ifdef _ARM64
-    usage += L" (macOS ARM64)";
-#else
-    usage += L" (macOS x86_64)";
-#endif
-#elif _X64
- usage += L" (x86-64 Linux)";
-#elif _ARM32
- usage += L" (ARMv7 Linux)";
-#else
- usage += L" (x86 Linux)";
-#endif 
-
-  usage += L"\nWeb: www.objeck.org";
-  
-  if(argc >= 3) {
-#ifdef _WIN32
-    // enable Unicode console support
-    if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
-      return 1;
-    }
-
-    if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
-      return 1;
-    }
-
-    WSADATA data;
-    if(WSAStartup(MAKEWORD(2, 2), &data)) {
-      cerr << L"Unable to load Winsock 2.2!" << endl;
-      exit(1);
-    }
-#else
-    // enable UTF-8 environment
-    setlocale(LC_ALL, "");
-    setlocale(LC_CTYPE, "UTF-8");
-#endif
-
-    // reconstruct path
-    string buffer;
-    for(int i = 1; i < argc; i++) {
-      buffer += " ";
-      buffer += argv[i];
-    }
-    const wstring path_string(buffer.begin(), buffer.end());
-    map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
-
-    // start debugger
-    map<const wstring, wstring>::iterator result = arguments.find(L"exe");
-    if(result == arguments.end()) {
-      wcerr << usage << endl;
-      return 1;
-    }
-    const wstring &file_name_param = arguments[L"exe"];
-
-    wstring base_path_param = L".";
-    result = arguments.find(L"src");
-    if(result != arguments.end()) {
-      base_path_param = arguments[L"src"];
-    }
-    
-    wstring args_param;
-    const wstring args_str = L"args";
-    result = arguments.find(args_str);
-    if(result != arguments.end()) {
-     const size_t start = path_string.find(args_str) + args_str.size();
-     args_param = path_string.substr(start, path_string.size() - start);
-    }
-    
-#ifdef _WIN32
-    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '\\') {
-      base_path_param += '\\';
-    }
-#else
-    if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '/') {
-      base_path_param += '/';
-    }
-#endif
-
-    // go debugger
-    Runtime::Debugger debugger(file_name_param, base_path_param, args_param);
-    debugger.Debug();
-#ifdef _WIN32
-    WSACleanup();
-#endif
-
-    return 0;
-  }
-  else {
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    wcerr << usage << endl;
-    return 1;
-  }
-
-  return 1;
 }
 
 bool Runtime::SourceFile::Print(int start)
