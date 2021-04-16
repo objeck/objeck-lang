@@ -144,14 +144,17 @@ void Runtime::Debugger::ProcessArgs(const wstring& temp)
 #ifdef _WIN32
   wchar_t* token = wcstok_s(buffer, L"'", &state);
 #else
-  wchar_t* token = wcstok(buffer, L" ", &state);
+  wchar_t* token = wcstok(buffer, L"'", &state);
 #endif
   while(token) {
-    arguments.push_back(token);
+    wstring str_token = Trim(token);
+    if(!str_token.empty()) {
+      arguments.push_back(str_token);
+    }
 #ifdef _WIN32
-    token = wcstok_s(nullptr, L" ", &state);
+    token = wcstok_s(nullptr, L"'", &state);
 #else
-    token = wcstok(nullptr, L" ", &state);
+    token = wcstok(nullptr, L"'", &state);
 #endif
   }
   wcout << L"program arguments sets." << endl;
@@ -1700,7 +1703,7 @@ int main(int argc, char** argv)
   usage += L"Parameters:\n";
   usage += L"  -exe:  [input]  executable file\n";
   usage += L"  -src:  [option] source directory path, default is '.'\n\n";
-  usage += L"  -args: [option] list of arguments\n\n";
+  usage += L"  -args: [option:last] list of arguments\n\n";
   usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
   usage += VERSION_STRING;
 
@@ -1768,13 +1771,15 @@ int main(int argc, char** argv)
     if(result != arguments.end()) {
       base_path_param = arguments[L"src"];
     }
-
+    
     wstring args_param;
-    result = arguments.find(L"args");
+    const wstring args_str = L"args";
+    result = arguments.find(args_str);
     if(result != arguments.end()) {
-      args_param = arguments[L"args"];
+     const size_t start = path_string.find(args_str) + args_str.size();
+     args_param = path_string.substr(start, path_string.size() - start);
     }
-
+    
 #ifdef _WIN32
     if(base_path_param.size() > 0 && base_path_param[base_path_param.size() - 1] != '\\') {
       base_path_param += '\\';
