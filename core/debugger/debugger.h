@@ -199,19 +199,16 @@ namespace Runtime {
     void EvaluateCharReference(Reference* reference, int index);
     void EvaluateIntFloatReference(Reference* reference, int index, bool is_float);
     void EvaluateCalculation(CalculatedExpression* expression);
-     
-   wstring Trim(const wstring& str, const wstring& whitespace = L" \t\r\n")
-   {
-      const size_t strBegin = str.find_first_not_of(whitespace);
-      if(strBegin == wstring::npos) {
-         return L"";
-      }
-      
-      const size_t strEnd = str.find_last_not_of(whitespace);
-      const size_t strRange = strEnd - strBegin + 1;
 
-      return str.substr(strBegin, strRange);
-   }
+    wstring Trim(const wstring& input, const wstring& whitespace = L" \t\r\n") {
+      const size_t start = input.find_first_not_of(whitespace);
+      if(start != wstring::npos) {
+        const size_t end = input.find_last_not_of(whitespace);
+        return input.substr(start, end - start + 1);
+      }
+
+      return L"";
+    }
 
   public:
     Debugger(const wstring &fn, const wstring &bp, const wstring &ap) {
