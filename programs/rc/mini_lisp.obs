@@ -47,27 +47,11 @@ class Evaluator {
 				each(i : children) {
 					Evaluate(children->Get(i));
 				};
-
-				pair := Value->New(Value->Type->PAIR);
 				
-				right := @stack->Pop();
-				pair->Append(right);
-type := right->GetInstanceID();
-"## r={$type}; {$right} ##"->PrintLine();				
-
-				left := @stack->Pop();
-				pair->Append(left);
-type := left->GetInstanceID();	
-"## l={$type} ##"->PrintLine();
-
-# pair->ToString()->PrintLine();
-
-type := pair->GetInstanceID();	
-"## p={$type}; {$pair} ##"->PrintLine();
+				pair := Value->New(Value->Type->PAIR);
+				pair->Append(@stack->Pop());
+				pair->Append(@stack->Pop());
 				@stack->Push(pair);
-
-							
-
 			}
 
 			label Node->Type->LIST {				
@@ -220,13 +204,15 @@ class Value {
 
 	method : public : Append(value : Value) ~ Nil {
 		temp := @car;
-		@car := value;
 
-		temp2 := value;
-		while(temp2->GetCar() <> Nil) {
-			temp2 := temp2->GetCar();
+		if(value->GetCar() = Nil) {
+			@car := value;
+		}
+		else {
+			@car := value->GetCar();
 		};
-		temp2->SetCar(temp);
+
+		value->SetCar(temp);
 	}	
 
 	# atom operations
