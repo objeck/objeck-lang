@@ -227,7 +227,6 @@ class Value {
 			temp2 := temp2->GetCar();
 		};
 		temp2->SetCar(temp);
-		
 	}	
 
 	# atom operations
