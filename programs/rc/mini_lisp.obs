@@ -42,7 +42,6 @@ class Evaluator {
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
 			label Node->Type->PAIR {
-"## 0 ##"->PrintLine();							
 
 				children := node->GetChildren();
 				each(i : children) {
@@ -53,11 +52,22 @@ class Evaluator {
 				
 				right := @stack->Pop();
 				pair->Append(right);
+type := right->GetInstanceID();
+"## r={$type}; {$right} ##"->PrintLine();				
 
 				left := @stack->Pop();
 				pair->Append(left);
+type := left->GetInstanceID();	
+"## l={$type} ##"->PrintLine();
 
+# pair->ToString()->PrintLine();
+
+type := pair->GetInstanceID();	
+"## p={$type}; {$pair} ##"->PrintLine();
 				@stack->Push(pair);
+
+							
+
 			}
 
 			label Node->Type->LIST {				
@@ -191,12 +201,12 @@ class Value {
 		};
 	}
 
+	method : public : GetType() ~ Value->Type {
+		return @type;
+	}
+
 	# list operations
 	method : public : GetCar() ~ Value {
-		if(@car = @empty_list_value) {
-			return @empty_list_value;
-		};
-
 		return @car;
 	}
 
@@ -205,21 +215,19 @@ class Value {
 	}
 
 	method : public : GetCdr() ~ Value {
-		if(@car = @empty_list_value) {
-			return @empty_list_value;
-		};
-
-		if(@car->GetCar() = @empty_list_value) {
-			return @empty_list_value;
-		};
-
 		return @car->GetCar();
 	}
 
 	method : public : Append(value : Value) ~ Nil {
 		temp := @car;
-		value->SetCar(@car);
 		@car := value;
+
+		temp2 := value;
+		while(temp2->GetCar() <> Nil) {
+			temp2 := temp2->GetCar();
+		};
+		temp2->SetCar(temp);
+		
 	}	
 
 	# atom operations
