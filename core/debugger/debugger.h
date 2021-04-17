@@ -215,7 +215,7 @@ namespace Runtime {
     void ReadLine(wstring &output) {
 #ifdef _WIN32
       wcout << L"> ";
-      getline(wcin, line);
+      getline(wcin, output);
 #else
       char* input = readline("> ");
       if(input) {
