@@ -167,7 +167,7 @@ class Value {
 	@real_value : Float;
 	@str_value : String;
 
-	enum Type {
+	enum Type := -300 {
 		LIST,
 		NIL_TYPE,
 		INT_TYPE,
@@ -509,7 +509,7 @@ class Node {
 	@str_value : String;
 	@children : Vector<Node>;
 
-	enum Type {
+	enum Type := -200 {
 		ADD,
 		SUB,
 		MUL,
@@ -679,11 +679,11 @@ class Scanner {
 				ident := input->SubString(start, i - start);
 
 				found := @keywords->Find(ident);
-				if(found = Nil) {
-					tokens->AddBack(Token->New(Token->Type->STR_LIT, ident));
+				if(found <> 0) {
+					tokens->AddBack(Token->New(found));					
 				}
 				else {
-					tokens->AddBack(Token->New(found));
+					tokens->AddBack(Token->New(Token->Type->STR_LIT, ident));
 				};
 
 				i -= 1;
@@ -751,12 +751,12 @@ class Token {
 	@int_value : Int;
 	@real_value : Float;
 
-	enum Type {
+	enum Type := -100 {
+		STR_LIT,
 		WRITE_KEYWORD,		
 		LIST_KEYWORD,
 		CONS_KEYWORD,
 		LENGTH_KEYWORD,
-		STR_LIT,
 		INT_LIT,
 		REAL_LIT,
 		OPRN,
@@ -804,6 +804,7 @@ class Token {
 	}
 
 	method : public : ToString() ~ String {
+@type->PrintLine();		
 		select(@type) {
 			label Type->OPRN {
 				return "(";
