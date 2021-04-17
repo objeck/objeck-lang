@@ -11,7 +11,7 @@ JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -ldl -lcrypto -lssl -lz 
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -ldl -lcrypto -lreadline -lssl -lz 
 
 ../vm/compiler.a:
 	cd $(VM_PATH); make -f make/Makefile.obd64

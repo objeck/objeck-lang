@@ -11,7 +11,7 @@ JIT_PATH=../vm/arch/jit/ia32
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -Wno-unused-function -ldl -pthread -lssl -lcrypto -lz -static-libstdc++ -static-libgcc
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -Wno-unused-function -ldl -pthread -lreadline -lssl -lcrypto -lz -static-libstdc++ -static-libgcc
 
 ../vm/compiler.a:
 	cd $(VM_PATH); make -f make/Makefile.obd32
