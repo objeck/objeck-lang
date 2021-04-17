@@ -9,7 +9,7 @@ JIT_PATH=../jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lcrypto -lssl
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lcrypto -lreadline -lssl
 
 compiler.a:
 	cd $(COMPILER_PATH); make -f Makefile.obd64

@@ -152,28 +152,7 @@ namespace Runtime {
 
     // prints declarations
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num);
-
-    wstring ToFloat(size_t value) {
-      wchar_t buffer[16];
-
-      if(value > 1000000) {
-#ifdef _WIN32
-        swprintf_s(buffer, L"%.2fM", (double)value / (double)1000000);
-#else
-        swprintf(buffer, 15, L"%.2fM", (double)value / (double)1000000);
-#endif
-      }
-      else {
-#ifdef _WIN32
-        swprintf_s(buffer, L"%.2fK", (double)value / (double)1000);
-#else
-        swprintf(buffer, 15, L"%.2fK", (double)value / (double)1000);
-#endif
-      }
-
-      return buffer;
-    }
-
+  
     void ClearProgram();
     void DoLoad();
     void ClearReload() {
@@ -202,6 +181,28 @@ namespace Runtime {
     void EvaluateIntFloatReference(Reference* reference, int index, bool is_float);
     void EvaluateCalculation(CalculatedExpression* expression);
 
+    // utility functions
+    wstring ToFloat(size_t value) {
+      wchar_t buffer[16];
+
+      if(value > 1000000) {
+#ifdef _WIN32
+        swprintf_s(buffer, L"%.2fM", (double)value / (double)1000000);
+#else
+        swprintf(buffer, 15, L"%.2fM", (double)value / (double)1000000);
+#endif
+      }
+      else {
+#ifdef _WIN32
+        swprintf_s(buffer, L"%.2fK", (double)value / (double)1000);
+#else
+        swprintf(buffer, 15, L"%.2fK", (double)value / (double)1000);
+#endif
+      }
+
+      return buffer;
+    }
+
     wstring Trim(const wstring& input, const wstring& whitespace = L" \t\r\n") {
       const size_t start = input.find_first_not_of(whitespace);
       if(start != wstring::npos) {
@@ -211,7 +212,7 @@ namespace Runtime {
 
       return L"";
     }
-     
+
     void ReadLine(wstring &output) {
 #ifdef _WIN32
       wcout << L"> ";
@@ -228,7 +229,7 @@ namespace Runtime {
       }
 #endif
     }
-    
+
   public:
     Debugger(const wstring &fn, const wstring &bp, const wstring &ap) {
       program_file_param = fn;
