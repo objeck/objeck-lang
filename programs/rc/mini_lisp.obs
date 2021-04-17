@@ -41,19 +41,6 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
-			label Node->Type->PAIR {
-
-				children := node->GetChildren();
-				each(i : children) {
-					Evaluate(children->Get(i));
-				};
-				
-				pair := Value->New(Value->Type->PAIR);
-				pair->Append(@stack->Pop());
-				pair->Append(@stack->Pop());
-				@stack->Push(pair);
-			}
-
 			label Node->Type->LIST {				
 				children := node->GetChildren();
 				each(i : children) {
@@ -62,13 +49,19 @@ class Evaluator {
 
 				list := Value->New(Value->Type->LIST);
 				each(i : children) {
-					list->Append(@stack->Pop());
+					child := @stack->Pop();
+					if(child->GetType() = Value->Type->LIST) {
+						list->AddList(child);
+					}
+					else {
+						list->AddElement(child);
+					};
 				};
 				@stack->Push(list);
 			}
 
 			label Node->Type->EMPTY_LIST {
-				@stack->Push(Value->New(Value->Type->LIST));
+				@stack->Push(Value->EmptyList());
 			}
 
 			label Node->Type->INT_LIT {
@@ -148,13 +141,13 @@ class Value {
 	@type : Type;
 	@nil_value : static : Value;
 	@empty_list_value : static : Value;
-	@car : Value;
+	@next_elem : Value;
+	@next_list : Value;
 	@int_value : Int;
 	@real_value : Float;
 	@str_value : String;
 
 	enum Type {
-		PAIR,
 		LIST,
 		NIL_TYPE,
 		INT_TYPE,
@@ -179,10 +172,10 @@ class Value {
 
 	New(type : Value->Type) {
 		@type := type;
+	}
 
-		if(@type = Value->Type->LIST | @type = Value->Type->PAIR) {
-			@car := @empty_list_value;
-		};
+	function : EmptyList() ~ Value {
+		return @empty_list_value;
 	}
 
 	method : public : GetType() ~ Value->Type {
@@ -190,30 +183,51 @@ class Value {
 	}
 
 	# list operations
-	method : public : GetCar() ~ Value {
-		return @car;
+	method : public : GetNextElement() ~ Value {
+		return @next_elem;
 	}
 
-	method : SetCar(value : Value) ~ Nil {
-		@car := value;
+	method : SetNextElement(next_elem : Value) ~ Nil {
+		@next_elem := next_elem;
 	}
 
-	method : public : GetCdr() ~ Value {
-		return @car->GetCar();
+	method : public : GetNextList() ~ Value {
+		return @next_list;
+	}
+	
+	method : SetNextList(next_list : Value) ~ Nil {
+		@next_list := next_list;
 	}
 
-	method : public : Append(value : Value) ~ Nil {
-		temp := @car;
+	method : public : AddElement(elem : Value) ~ Nil {
+		temp := @next_elem;
 
-		if(value->GetCar() = Nil | value->GetType() = Value->Type->LIST) {
-			@car := value;
+		if(elem->GetType() = Value->Type->LIST) {
+			@next_elem := elem->GetNextElement();
 		}
 		else {
-			@car := value->GetCar();
+			@next_elem := elem;
 		};
 
-		value->SetCar(temp);
+		elem->SetNextElement(temp);
 	}	
+
+	method : public : AddList(list : Value) ~ Nil {
+		if(list->GetType() = Value->Type->LIST) {
+"## 0 ##"->PrintLine();			
+			if(@next_list = Nil) {
+				@next_list := list;
+			}
+			else {
+"## 1 ##"->PrintLine();
+				temp := @next_list;
+				while(temp->GetNextList() <> Nil) {
+					temp := temp->GetNextList();
+				};
+				temp->SetNextList(list);
+			};
+		};
+	}
 
 	# atom operations
 	method : public : GetIntValue() ~ Int {
@@ -251,20 +265,33 @@ class Value {
 				buffer += @str_value;
 			}
 
-			label Value->Type->PAIR:
-			label Value->Type->LIST: {
-				if(@car = @empty_list_value) {
+			label Value->Type->LIST {
+				if(@next_elem = Nil & @next_list = Nil) {
 					buffer += "NIL";
 				}
 				else {
 					buffer += "(";
 					
-					temp := @car;
-					while(temp <> @empty_list_value) {
-						buffer += temp->ToString();
-						temp := temp->GetCar();
-						if(temp <> @empty_list_value) {
-							buffer += ", ";
+					elem := @next_elem;
+					list := @next_list;
+					if(elem <> Nil) {
+						while(elem <> Nil) {
+							buffer += elem->ToString();
+							elem := elem->GetNextElement();
+							if(elem <> Nil | list <> Nil) {
+								buffer += ", ";
+							};
+						};
+					};
+					
+					if(list <> Nil) {
+"## 2 ##"->PrintLine();			
+						while(list <> Nil) {
+							buffer += list->ToString();
+							list := list->GetNextList();
+							if(list <> Nil) {
+								buffer += ", ";
+							};
 						};
 					};
 
@@ -350,7 +377,7 @@ class Parser {
 						}
 
 						label Token->Type->CONS_KEYWORD: {
-							node := Node->New(Node->Type->PAIR);
+							node := Node->New(Node->Type->LIST);
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
@@ -448,7 +475,6 @@ class Node {
 		SUB,
 		MUL,
 		DIV,
-		PAIR,
 		LIST,
 		EMPTY_LIST,
 		INT_LIT,
