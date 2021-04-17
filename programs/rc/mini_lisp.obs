@@ -75,9 +75,14 @@ class Evaluator {
 				@stack->Pop()->ToString()->PrintLine();
 			}
 
-			# TODO
 			label Node->Type->LENGTH {
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
 
+				list := @stack->Pop();
+				@stack->Push(Value->New(list->GetListSize()));
 			}
 
 			label Node->Type->EMPTY_LIST {
@@ -245,6 +250,37 @@ class Value {
 				temp->SetNextList(list);
 			};
 		};
+	}
+
+	method : public : GetListSize() ~ Int {
+		if(@type = Value->Type->LIST) {
+			if(@next_elem = Nil & @next_list = Nil) {
+				return 0;
+			}
+			else {
+				count := 0;
+
+				elem := @next_elem;
+				list := @next_list;
+				if(elem <> Nil) {
+					while(elem <> Nil) {
+						count += 1;
+						elem := elem->GetNextElement();
+					};
+				};
+				
+				if(list <> Nil) {
+					while(list <> Nil) {
+						count += 1;
+						list := list->GetNextList();
+					};
+				};
+
+				return count;
+			};
+		};
+
+		return -1;
 	}
 
 	# atom operations
