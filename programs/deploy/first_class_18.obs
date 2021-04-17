@@ -11,7 +11,7 @@ alias Func {
 
 class FirstClass {
 	function : Main(args : String[]) ~ Nil {
-		vector := Vector->New()<Func2Holder <FloatHolder, FloatHolder> >;
+		vector := Vector->New()<Func2Holder <FloatHolder, FloatHolder>>;
 		# store functions in collections
 		vector->AddBack(Func2Holder->New(\Func->Double : (v) 
 			=>  v * v)<FloatHolder, FloatHolder>);
