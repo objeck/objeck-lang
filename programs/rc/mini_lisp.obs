@@ -776,6 +776,10 @@ class Scanner {
 						tokens->AddBack(Token->New(Token->Type->DIV));
 					}
 
+					label '\'' {
+						tokens->AddBack(Token->New(Token->Type->QUOTE));
+					}
+
 					other {
 						tokens->AddBack(Token->New(Token->Type->OTHER));
 					}
@@ -807,6 +811,7 @@ class Token {
 		SUB,
 		MUL,
 		DIV,
+		QUOTE,
 		OTHER
 	}
 
