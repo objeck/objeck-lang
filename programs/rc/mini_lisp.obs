@@ -468,9 +468,14 @@ class Parser {
 							};
 						}
 
+						label Token->Type->CPRN: {
+							node := Node->New(Node->Type->EMPTY_LIST);
+						}
+						
 						other: {
+							token_id := @tokens->Get(@token_pos)->GetType()->As(Int);
 							@error := true;
-							"*** Error: unknown operation ***"->ErrorLine();
+							"*** Error: unknown operation: id={$token_id} ***"->ErrorLine();
 							return Nil;
 						}
 					};
@@ -495,8 +500,9 @@ class Parser {
 				@token_pos += 1;
 			}
 			else {
+				token_id := @tokens->Get(@token_pos)->GetType()->As(Int);
 				@error := true;
-				"*** Error: unknown token ***"->ErrorLine();
+				"*** Error: unknown token: id={$token_id} ***"->ErrorLine();
 				@token_pos += 1;
 				return Nil;
 			};
@@ -840,7 +846,6 @@ class Token {
 	}
 
 	method : public : ToString() ~ String {
-@type->PrintLine();		
 		select(@type) {
 			label Type->OPRN {
 				return "(";
