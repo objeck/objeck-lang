@@ -205,7 +205,7 @@ class Value {
 	method : public : Append(value : Value) ~ Nil {
 		temp := @car;
 
-		if(value->GetCar() = Nil) {
+		if(value->GetCar() = Nil | value->GetType() = Value->Type->LIST) {
 			@car := value;
 		}
 		else {

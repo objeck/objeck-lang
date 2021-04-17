@@ -39,7 +39,7 @@
 		ED53943C26136AEB0085A5F8 /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../parser.h; sourceTree = "<group>"; };
 		ED53943D26136AEB0085A5F8 /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../scanner.cpp; sourceTree = "<group>"; };
 		ED53943E26136AEB0085A5F8 /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../tree.h; sourceTree = "<group>"; };
-		ED53943F26136AEB0085A5F8 /* debugger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = debugger.h; path = ../debugger.h; sourceTree = "<group>"; };
+		ED53943F26136AEB0085A5F8 /* debugger.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; name = debugger.h; path = ../debugger.h; sourceTree = "<group>"; tabWidth = 2; };
 		ED53944026136AEB0085A5F8 /* debugger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.cpp; name = debugger.cpp; path = ../debugger.cpp; sourceTree = "<group>"; tabWidth = 2; };
 		ED53944126136AEB0085A5F8 /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../parser.cpp; sourceTree = "<group>"; };
 		ED53944226136AEB0085A5F8 /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../tree.cpp; sourceTree = "<group>"; };
@@ -331,6 +331,7 @@
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
+					"-lreadline",
 				);
 				PRODUCT_NAME = obd;
 			};
@@ -355,6 +356,7 @@
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
+					"-lreadline",
 				);
 				PRODUCT_NAME = obd;
 			};
