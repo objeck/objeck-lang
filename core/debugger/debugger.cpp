@@ -189,13 +189,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
       // prompt for break command
       Command* command;
-      wcout << L"> ";
       do {
         wstring line;
-        getline(wcin, line);
+        ReadLine(line);
         if(line.size() > 0) {
           command = ProcessCommand(line);
-          wcout << L"> ";
         }
         else {
           command = nullptr;
@@ -1533,9 +1531,9 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       break;
 
     case CLEAR_COMMAND: {
-      wcout << L"  are sure you want to clear all breakpoints? [y/n] ";
+      wcout << L"  are sure you want to clear all breakpoints? [y/n]" << endl << L"  ";
       wstring line;
-      getline(wcin, line);
+      ReadLine(line);
       if(line == L"y" || line == L"yes") {
         ClearBreaks();
       }
@@ -1798,13 +1796,11 @@ void Runtime::Debugger::Debug() {
   }
 
   // enter feedback loop
-  wcout << L"> ";
-  while(true) {    
+  while(true) {
     wstring line;
-    getline(wcin, line);
+    ReadLine(line);
     if(line.size() > 0) {
       ProcessCommand(line);
-      wcout << L"> ";
     }
   }
 }
