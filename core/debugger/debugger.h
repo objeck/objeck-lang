@@ -45,6 +45,8 @@
 #include <io.h>
 #else
 #include <dirent.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #endif
 
 using namespace std;
@@ -209,7 +211,24 @@ namespace Runtime {
 
       return L"";
     }
-
+     
+    void ReadLine(wstring &output) {
+#ifdef _WIN32
+      wcout << L"> ";
+      getline(wcin, line);
+#else
+      char* input = readline("> ");
+      if(input) {
+        if(strlen(input) > 0) {
+          add_history(input);
+          BytesToUnicode(input, output);
+        }
+        free(input);
+        input = nullptr;
+      }
+#endif
+    }
+    
   public:
     Debugger(const wstring &fn, const wstring &bp, const wstring &ap) {
       program_file_param = fn;
