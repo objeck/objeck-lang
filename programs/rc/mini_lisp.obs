@@ -30,13 +30,6 @@ class Evaluator {
 
 	method : public : Evaluate() ~ Nil {
 		Evaluate(@root);
-		if(@debug) {
-			"--- Results ---"->PrintLine();
-			each(i : @stack) {
-				value := @stack->Pop()->ToString();
-				"{$i} => {$value}"->PrintLine();
-			};
-		};
 	}
 
 	method : Evaluate(node : Node) ~ Nil {
@@ -58,6 +51,33 @@ class Evaluator {
 					};
 				};
 				@stack->Push(list);
+			}
+
+			label Node->Type->CONS {				
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
+
+				list := Value->New(Value->Type->LIST);
+				each(i : children) {
+					list->AddElement(@stack->Pop());
+				};
+				@stack->Push(list);
+			}
+
+			label Node->Type->WRITE {
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
+
+				@stack->Pop()->ToString()->PrintLine();
+			}
+
+			# TODO
+			label Node->Type->LENGTH {
+
 			}
 
 			label Node->Type->EMPTY_LIST {
@@ -214,12 +234,10 @@ class Value {
 
 	method : public : AddList(list : Value) ~ Nil {
 		if(list->GetType() = Value->Type->LIST) {
-"## 0 ##"->PrintLine();			
 			if(@next_list = Nil) {
 				@next_list := list;
 			}
 			else {
-"## 1 ##"->PrintLine();
 				temp := @next_list;
 				while(temp->GetNextList() <> Nil) {
 					temp := temp->GetNextList();
@@ -285,7 +303,6 @@ class Value {
 					};
 					
 					if(list <> Nil) {
-"## 2 ##"->PrintLine();			
 						while(list <> Nil) {
 							buffer += list->ToString();
 							list := list->GetNextList();
@@ -377,7 +394,7 @@ class Parser {
 						}
 
 						label Token->Type->CONS_KEYWORD: {
-							node := Node->New(Node->Type->LIST);
+							node := Node->New(Node->Type->CONS);
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
@@ -390,7 +407,29 @@ class Parser {
 						}
 
 						label Token->Type->WRITE_KEYWORD: {
+							node := Node->New(Node->Type->WRITE);
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
 
+							if(node->GetChildren()->Size() <> 1) {
+								@error := true;
+								"*** 'write' operation takes 1 operand ***"->ErrorLine();
+								return Nil;
+							};
+						}
+
+						label Token->Type->LENGTH_KEYWORD: {
+							node := Node->New(Node->Type->LENGTH);
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
+
+							if(node->GetChildren()->Size() <> 1) {
+								@error := true;
+								"*** 'length' operation takes 1 operand ***"->ErrorLine();
+								return Nil;
+							};
 						}
 
 						other: {
@@ -476,6 +515,9 @@ class Node {
 		MUL,
 		DIV,
 		LIST,
+		CONS,
+		WRITE,
+		LENGTH,
 		EMPTY_LIST,
 		INT_LIT,
 		REAL_LIT,
@@ -615,10 +657,10 @@ class Scanner {
 
 	New() {
 		@keywords := Hash->New()<String, Token->Type>;
-
 		@keywords->Insert("write", Token->Type->WRITE_KEYWORD);
 		@keywords->Insert("list", Token->Type->LIST_KEYWORD);
 		@keywords->Insert("cons", Token->Type->CONS_KEYWORD);
+		@keywords->Insert("length", Token->Type->LENGTH_KEYWORD);
 	}
 
 	method : public : Scan(input : String) ~ Vector<Token> {
@@ -710,9 +752,10 @@ class Token {
 	@real_value : Float;
 
 	enum Type {
-		WRITE_KEYWORD,
+		WRITE_KEYWORD,		
 		LIST_KEYWORD,
 		CONS_KEYWORD,
+		LENGTH_KEYWORD,
 		STR_LIT,
 		INT_LIT,
 		REAL_LIT,
@@ -788,6 +831,10 @@ class Token {
 
 			label Type->WRITE_KEYWORD {
 				return "write";
+			}
+
+			label Type->LENGTH_KEYWORD {
+				return "length";
 			}
 
 			label Type->LIST_KEYWORD {
