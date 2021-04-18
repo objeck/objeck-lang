@@ -471,7 +471,7 @@ class Parser {
 							};
 
 							children := node->GetChildren();
-							if(children->Size() <> 1) {
+							if(children->IsEmpty()) {
 								@error := true;
 								"*** 'let' operation takes 1 operand ***"->ErrorLine();
 								return Nil;
@@ -751,6 +751,22 @@ class Node {
 
 			label Node->Type->LIST {
 				buffer += "list";
+			}
+
+			label Node->Type->WRITE {
+				buffer += "write";
+			}
+
+			label Node->Type->LENGTH {
+				buffer += "length";
+			}
+
+			label Node->Type->LET {
+				buffer += "let";
+			}
+
+			label Node->Type->LET_DEC {
+				buffer += "let_dec '{$@str_value}'";
 			}
 
 			label Node->Type->EMPTY_LIST {
