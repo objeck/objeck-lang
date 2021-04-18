@@ -473,10 +473,10 @@ class Parser {
 							children := node->GetChildren();
 							if(children->Size() <> 1) {
 								@error := true;
-								"*** 'let' operation takes 2 operands ***"->ErrorLine();
+								"*** 'let' operation takes 1 operand ***"->ErrorLine();
 								return Nil;
 							};
-							
+
 							if(children->Get(0)->GetType() <> Node->Type->LET_DEC) {
 								@error := true;
 								"*** expected 'let' declaration ***"->ErrorLine();
