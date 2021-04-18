@@ -41,8 +41,8 @@ int main(int argc, char** argv)
   wstring usage;
   usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
   usage += L"Parameters:\n";
-  usage += L"  -exe:  [input] executable file\n";
-  usage += L"  -src:  [option] source directory path, default is '.'\n";
+  usage += L"  -bin: [input] binary executable file\n";
+  usage += L"  -src_dir: [option] source directory path, default is '.'\n";
   usage += L"  -args: [option][end-flag] list of arguments\n\n";
   usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
   usage += VERSION_STRING;
@@ -99,17 +99,17 @@ int main(int argc, char** argv)
     map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
 
     // start debugger
-    map<const wstring, wstring>::iterator result = arguments.find(L"exe");
+    map<const wstring, wstring>::iterator result = arguments.find(L"bin");
     if(result == arguments.end()) {
       wcerr << usage << endl;
       return 1;
     }
-    const wstring& file_name_param = arguments[L"exe"];
+    const wstring& file_name_param = arguments[L"bin"];
 
     wstring base_path_param = L".";
-    result = arguments.find(L"src");
+    result = arguments.find(L"src_dir");
     if(result != arguments.end()) {
-      base_path_param = arguments[L"src"];
+      base_path_param = arguments[L"src_dir"];
     }
 
     wstring args_param;
