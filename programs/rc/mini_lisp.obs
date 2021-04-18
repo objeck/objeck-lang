@@ -480,9 +480,8 @@ class Parser {
 							if(@is_debug) {
 								"\tStr_Lit; value={$value}"->PrintLine();
 							};
+
 							node := Node->New(Node->Type->LET_DEC, value);
-							
-							node := Node->New(Node->Type->LET);
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
