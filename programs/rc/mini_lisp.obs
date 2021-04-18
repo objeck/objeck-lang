@@ -485,35 +485,38 @@ class Parser {
 						}
 
 						label Token->Type->OPRN: {
-							@token_pos += 1;
+							while(@tokens->Get(@token_pos)->GetType() = Token->Type->OPRN) {
+								@token_pos += 1;
 
-							if(@is_debug) {
-								"\tLet_Dec"->PrintLine();
+								if(@is_debug) {
+									"\tLet_Dec"->PrintLine();
+								};
+
+								if(@tokens->Get(@token_pos)->GetType() <> Token->Type->STR_LIT) {
+									@error := true;
+									"*** expected string ***"->ErrorLine();
+									return Nil;
+								};
+								value := @tokens->Get(@token_pos)->GetStringValue();
+								@token_pos += 1;
+
+
+	@tokens->Get(@token_pos)->GetType()->PrintLine();
+								node := Node->New(Node->Type->LET_DEC);
+								if(<>Operands(node, depth)) {
+									return Nil;
+								};
+
+								#---
+								if(@token_pos < length & @tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
+									@token_pos += 1;
+								};
 							};
 
-							if(@tokens->Get(@token_pos)->GetType() <> Token->Type->STR_LIT) {
-								@error := true;
-								"*** expected string ***"->ErrorLine();
-								return Nil;
-							};
-							value := @tokens->Get(@token_pos)->GetStringValue();
-							@token_pos += 1;
+							
 
+	@tokens->Get(@token_pos)->GetType()->PrintLine();							
 
-							node := Node->New(Node->Type->LET_DEC);
-							if(<>Operands(node, depth)) {
-								return Nil;
-							};
-
-							#---
-
-@tokens->Get(@token_pos)->GetType()->PrintLine();							
-
-							if(@token_pos < length & @tokens->Get(@token_pos)->GetType() <> Token->Type->CPRN) {
-								@error := true;
-								"*** expected ')' ***"->ErrorLine();
-								return Nil;
-							};
 						}
 
 						label Token->Type->WRITE_KEYWORD: {
@@ -922,17 +925,17 @@ class Token {
 		LIST_KEYWORD,
 		CONS_KEYWORD,
 		LENGTH_KEYWORD,
-		INT_LIT,
+		INT_LIT, # -95
 		REAL_LIT,
 		STR_LIT,
 		OPRN,
 		CPRN,
-		ADD,
+		ADD, # -90
 		SUB,
 		MUL,
 		DIV,
 		QUOTE,
-		OTHER
+		OTHER # -85
 	}
 
 	New(type : Token->Type) {
