@@ -465,7 +465,7 @@ class Parser {
 								"\tLet"->PrintLine();
 							};
 
-@token_pos += 1;
+							@token_pos += 1;
 
 							node := Node->New(Node->Type->LET);
 							if(<>Operands(node, depth)) {
@@ -473,6 +473,19 @@ class Parser {
 							};
 
 							@token_pos += 1;
+						}
+
+						label Token->Type->STR_LIT: {
+							value := @tokens->Get(@token_pos)->GetStringValue();
+							if(@is_debug) {
+								"\tStr_Lit; value={$value}"->PrintLine();
+							};
+							node := Node->New(Node->Type->LET_DEC, value);
+							
+							node := Node->New(Node->Type->LET);
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
 						}
 
 						label Token->Type->LENGTH_KEYWORD: {

@@ -159,7 +159,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
     const wstring& file_name = frame->method->GetClass()->GetFileName();
-
+    
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
        (FindBreak(line_num, file_name) ||
@@ -1556,6 +1556,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     case NEXT_LINE_COMMAND:
       if(interpreter) {
         is_next_line = true;
+        cur_line_num = -2;
       }
       else {
         wcout << L"program is not running." << endl;
