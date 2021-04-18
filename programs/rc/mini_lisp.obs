@@ -18,12 +18,12 @@ class MiniLisp {
 class Evaluator {
 	@root : Node;
 	@stack : Stack<Value>;
-	@debug : Bool;
+	@is_debug : Bool;
 
 	New(root : Node) {
 		@root := root;
 		@stack := Stack->New()<Value>;
-		@debug := true;
+		@is_debug := true;
 
 		Value->Init();
 	}
@@ -368,16 +368,16 @@ class Parser {
 	@token_pos : Int;
 	@level : Int;
 	@error : Bool;
-	@debug : Bool;
+	@is_debug : Bool;
 	
 	New(input : String) {
 		scanner := Scanner->New();
 		@tokens := scanner->Scan(input);
-		@debug := true;
+		@is_debug := true;
 	}
 
 	method : public : Parse() ~ Node {
-		if(@debug) {
+		if(@is_debug) {
 			"--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
@@ -387,7 +387,13 @@ class Parser {
 		};
 
 		root := Expression(0);
-		if(@debug) {
+		if(@token_pos <> @tokens->Size()) {
+			@error := true;
+			"*** unexpected tokens ***"->ErrorLine();
+			return Nil;
+		};
+
+		if(@is_debug) {
 			if(root <> Nil) {
 				"--- Tree ---"->PrintLine();
 				root->ToString()->PrintLine();
@@ -401,8 +407,8 @@ class Parser {
 		node : Node;
 		length := @tokens->Size();
 
-		if(@debug) {
-			"=Expression: pos=({$@token_pos},{$length}); depth={$depth}"->PrintLine();
+		if(@is_debug) {
+			"Expression: pos=({$@token_pos},{$length}); depth={$depth}"->PrintLine();
 		};
 
 		if(@token_pos < length) {
@@ -416,6 +422,10 @@ class Parser {
 						label Token->Type->SUB:
 						label Token->Type->MUL:
 						label Token->Type->DIV: {
+							if(@is_debug) {
+								"\t'+,-,*,/'"->PrintLine();
+							};
+
 							node := Node->New(@tokens->Get(@token_pos)->GetType());
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -423,6 +433,10 @@ class Parser {
 						}
 
 						label Token->Type->LIST_KEYWORD: {
+							if(@is_debug) {
+								"\tList"->PrintLine();
+							};
+
 							node := Node->New(Node->Type->LIST);
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -430,6 +444,10 @@ class Parser {
 						}
 
 						label Token->Type->CONS_KEYWORD: {
+							if(@is_debug) {
+								"\tCons"->PrintLine();
+							};
+
 							node := Node->New(Node->Type->CONS);
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -442,7 +460,68 @@ class Parser {
 							};
 						}
 
+						label Token->Type->LET_KEYWORD: {
+							if(@is_debug) {
+								"\tLet"->PrintLine();
+							};
+
+							node := Node->New(Node->Type->LET);
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
+
+							children := node->GetChildren();
+							if(children->Size() <> 1) {
+								@error := true;
+								"*** 'let' operation takes 2 operands ***"->ErrorLine();
+								return Nil;
+							};
+							
+							if(children->Get(0)->GetType() <> Node->Type->LET_DEC) {
+								@error := true;
+								"*** expected 'let' declaration ***"->ErrorLine();
+								return Nil;
+							};
+						}
+
+						label Token->Type->OPRN: {
+							@token_pos += 1;
+
+							if(@token_pos < length & @tokens->Get(@token_pos)->GetType() <> Token->Type->STR_LIT) {
+								@error := true;
+								"*** expected ')' ***"->ErrorLine();
+								return Nil;
+							};
+
+							value := @tokens->Get(@token_pos)->GetStringValue();	
+							if(@is_debug) {
+								"\tLet_Dec; value='{$value}'"->PrintLine();
+							};
+
+							node := Node->New(Node->Type->LET_DEC, value);
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
+
+							if(@token_pos < length & @tokens->Get(@token_pos)->GetType() <> Token->Type->CPRN) {
+								@error := true;
+								"*** expected ')' ***"->ErrorLine();
+								return Nil;
+							};
+							@token_pos += 1;
+
+							if(node->GetChildren()->Size() <> 1) {
+								@error := true;
+								"*** 'write' operation takes 1 operand ***"->ErrorLine();
+								return Nil;
+							};
+						}
+
 						label Token->Type->WRITE_KEYWORD: {
+							if(@is_debug) {
+								"\tWrite"->PrintLine();
+							};
+
 							node := Node->New(Node->Type->WRITE);
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -456,6 +535,10 @@ class Parser {
 						}
 
 						label Token->Type->LENGTH_KEYWORD: {
+							if(@is_debug) {
+								"\tLength"->PrintLine();
+							};
+
 							node := Node->New(Node->Type->LENGTH);
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -469,9 +552,13 @@ class Parser {
 						}
 
 						label Token->Type->CPRN: {
+							if(@is_debug) {
+								"\tEmpty_List"->PrintLine();
+							};
+
 							node := Node->New(Node->Type->EMPTY_LIST);
 						}
-						
+
 						other: {
 							token_id := @tokens->Get(@token_pos)->GetType()->As(Int);
 							@error := true;
@@ -480,10 +567,12 @@ class Parser {
 						}
 					};
 				}
-				else if(@token_pos < length) {
-					if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
-						node := Node->New(Node->Type->EMPTY_LIST);
+				else if(@tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
+					if(@is_debug) {
+						"\tEmpty_List"->PrintLine();
 					};
+
+					node := Node->New(Node->Type->EMPTY_LIST);
 				}
 				else {
 					@error := true;
@@ -496,7 +585,19 @@ class Parser {
 				@level -= 1;
 			}
 			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->INT_LIT) {
-				node := Node->New(@tokens->Get(@token_pos)->GetIntValue());
+				value := @tokens->Get(@token_pos)->GetIntValue();
+				if(@is_debug) {
+					"\tInt_Lit; value={$value}"->PrintLine();
+				};
+				node := Node->New(value);
+				@token_pos += 1;
+			}
+			else if(@tokens->Get(@token_pos)->GetType() = Token->Type->STR_LIT) {
+				value := @tokens->Get(@token_pos)->GetStringValue();
+				if(@is_debug) {
+					"\tStr_Lit; value={$value}"->PrintLine();
+				};
+				node := Node->New(Node->Type->STR_LIT, value);
 				@token_pos += 1;
 			}
 			else {
@@ -557,13 +658,15 @@ class Node {
 		MUL,
 		DIV,
 		LIST,
+		LET,
+		LET_DEC,
 		CONS,
 		WRITE,
 		LENGTH,
 		EMPTY_LIST,
 		INT_LIT,
 		REAL_LIT,
-		STRING_LIT
+		STR_LIT
 	}
 
 	New(int_value : Int) {
@@ -576,8 +679,8 @@ class Node {
 		@real_value := real_value;
 	}
 
-	New(str_value : String) {
-		@type := Node->Type->STRING_LIT;
+	New(type : Node->Type, str_value : String) {
+		@type := type;
 		@str_value := str_value;
 	}
 
@@ -674,7 +777,7 @@ class Node {
 				buffer += @real_value->ToString();
 			}
 
-			label Node->Type->STRING_LIT {
+			label Node->Type->STR_LIT {
 				buffer += @str_value;
 			}
 		};
@@ -699,6 +802,7 @@ class Scanner {
 
 	New() {
 		@keywords := Hash->New()<String, Token->Type>;
+		@keywords->Insert("let", Token->Type->LET_KEYWORD);
 		@keywords->Insert("write", Token->Type->WRITE_KEYWORD);
 		@keywords->Insert("list", Token->Type->LIST_KEYWORD);
 		@keywords->Insert("cons", Token->Type->CONS_KEYWORD);
@@ -798,13 +902,14 @@ class Token {
 	@real_value : Float;
 
 	enum Type := -100 {
-		STR_LIT,
-		WRITE_KEYWORD,		
+		WRITE_KEYWORD,
+		LET_KEYWORD,	
 		LIST_KEYWORD,
 		CONS_KEYWORD,
 		LENGTH_KEYWORD,
 		INT_LIT,
 		REAL_LIT,
+		STR_LIT,
 		OPRN,
 		CPRN,
 		ADD,
@@ -819,9 +924,9 @@ class Token {
 		@type := type;
 	}
 
-	New(type : Token->Type, ident : String) {
+	New(type : Token->Type, str_value : String) {
 		@type := type;
-		@ident := ident;
+		@str_value := str_value;
 	}
 
 	New(int_value : Int) {
@@ -890,6 +995,10 @@ class Token {
 
 			label Type->CONS_KEYWORD {
 				return "cons";
+			}
+
+			label Type->LET_KEYWORD {
+				return "let";
 			}
 
 			label Type->STR_LIT {
