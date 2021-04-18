@@ -487,32 +487,31 @@ class Parser {
 						label Token->Type->OPRN: {
 							@token_pos += 1;
 
-							if(@token_pos < length & @tokens->Get(@token_pos)->GetType() <> Token->Type->STR_LIT) {
+							if(@is_debug) {
+								"\tLet_Dec"->PrintLine();
+							};
+
+							if(@tokens->Get(@token_pos)->GetType() <> Token->Type->STR_LIT) {
 								@error := true;
-								"*** expected ')' ***"->ErrorLine();
+								"*** expected string ***"->ErrorLine();
 								return Nil;
 							};
+							value := @tokens->Get(@token_pos)->GetStringValue();
+							@token_pos += 1;
 
-							value := @tokens->Get(@token_pos)->GetStringValue();	
-							if(@is_debug) {
-								"\tLet_Dec; value='{$value}'"->PrintLine();
-							};
 
-							node := Node->New(Node->Type->LET_DEC, value);
+							node := Node->New(Node->Type->LET_DEC);
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
 
+							#---
+
+@tokens->Get(@token_pos)->GetType()->PrintLine();							
+
 							if(@token_pos < length & @tokens->Get(@token_pos)->GetType() <> Token->Type->CPRN) {
 								@error := true;
 								"*** expected ')' ***"->ErrorLine();
-								return Nil;
-							};
-							@token_pos += 1;
-
-							if(node->GetChildren()->Size() <> 1) {
-								@error := true;
-								"*** 'write' operation takes 1 operand ***"->ErrorLine();
 								return Nil;
 							};
 						}
