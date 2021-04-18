@@ -423,7 +423,7 @@ class Parser {
 						label Token->Type->MUL:
 						label Token->Type->DIV: {
 							if(@is_debug) {
-								"\t'+,-,*,/'"->PrintLine();
+								"\t[+,-,*,/]"->PrintLine();
 							};
 
 							node := Node->New(@tokens->Get(@token_pos)->GetType());
@@ -465,75 +465,14 @@ class Parser {
 								"\tLet"->PrintLine();
 							};
 
+@token_pos += 1;
+
 							node := Node->New(Node->Type->LET);
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
 
-							children := node->GetChildren();
-							if(children->IsEmpty()) {
-								@error := true;
-								"*** 'let' operation takes 1 operand ***"->ErrorLine();
-								return Nil;
-							};
-
-							if(children->Get(0)->GetType() <> Node->Type->LET_DEC) {
-								@error := true;
-								"*** expected 'let' declaration ***"->ErrorLine();
-								return Nil;
-							};
-						}
-
-						label Token->Type->OPRN: {
-							while(@tokens->Get(@token_pos)->GetType() = Token->Type->OPRN) {
-								@token_pos += 1;
-
-								if(@is_debug) {
-									"\tLet_Dec"->PrintLine();
-								};
-
-								if(@tokens->Get(@token_pos)->GetType() <> Token->Type->STR_LIT) {
-									@error := true;
-									"*** expected string ***"->ErrorLine();
-									return Nil;
-								};
-								value := @tokens->Get(@token_pos)->GetStringValue();
-								@token_pos += 1;
-
-
-	@tokens->Get(@token_pos)->GetType()->PrintLine();
-								node := Node->New(Node->Type->LET_DEC);
-								if(<>Operands(node, depth)) {
-									return Nil;
-								};
-
-								#---
-								if(@token_pos < length & @tokens->Get(@token_pos)->GetType() = Token->Type->CPRN) {
-									@token_pos += 1;
-								};
-							};
-
-							
-
-	@tokens->Get(@token_pos)->GetType()->PrintLine();							
-
-						}
-
-						label Token->Type->WRITE_KEYWORD: {
-							if(@is_debug) {
-								"\tWrite"->PrintLine();
-							};
-
-							node := Node->New(Node->Type->WRITE);
-							if(<>Operands(node, depth)) {
-								return Nil;
-							};
-
-							if(node->GetChildren()->Size() <> 1) {
-								@error := true;
-								"*** 'write' operation takes 1 operand ***"->ErrorLine();
-								return Nil;
-							};
+							@token_pos += 1;
 						}
 
 						label Token->Type->LENGTH_KEYWORD: {
