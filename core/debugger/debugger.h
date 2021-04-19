@@ -114,10 +114,11 @@ namespace Runtime {
     wstring cur_file_name;
     StackFrame** cur_call_stack;
     long cur_call_stack_pos;
+    long jump_stack_pos;
     bool is_error;
     bool is_step_into;
     bool is_next_line;
-    bool is_jmp_out;
+    bool is_step_out;
     size_t* ref_mem;
     StackClass* ref_klass;
     // interpreter variables
@@ -244,11 +245,11 @@ namespace Runtime {
       cur_frame = nullptr;
       cur_program = nullptr;
       cur_call_stack = nullptr;
-      cur_call_stack_pos = 0;
+      cur_call_stack_pos = jump_stack_pos = 0;
       is_error = false;
       ref_mem = nullptr;
       ref_mem = nullptr;
-      is_jmp_out = false;
+      is_step_out = false;
       loader = nullptr;
     }
 
