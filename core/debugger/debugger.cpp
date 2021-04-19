@@ -193,7 +193,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         wcout << L"--- NEXT_LINE --" << endl;
       }
 
-      const bool found_break = line_num != cur_line_num && FindBreak(line_num, file_name);
+      const bool found_break = line_num != cur_line_num && FindBreak(line_num, file_name) /*is_continue*/;
       if(found_break) {
         wcout << L"--- BREAK --" << endl;
       }
