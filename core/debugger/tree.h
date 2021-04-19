@@ -187,7 +187,7 @@ namespace frontend {
     NEXT_LINE_COMMAND,
     CONT_COMMAND,
     LIST_COMMAND,
-    JUMP_OUT_COMMAND,
+    STEP_OUT_COMMAND,
     STACK_COMMAND,
   };
 

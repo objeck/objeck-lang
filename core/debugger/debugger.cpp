@@ -184,6 +184,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       }
       */
 
+      const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
+      if(step_out) {
+        wcout << L"--- STEP_OUT --" << endl;
+      }
+
       const bool step_into = is_step_into && cur_frame && (frame->method != cur_frame->method || line_num != cur_line_num);
       if(step_into) {
         wcout << L"--- STEP_INTO --" << endl;
@@ -199,7 +204,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         wcout << L"--- BREAK --" << endl;
       }
 
-      if(found_break || found_next_line || step_into) {
+      if(found_break || found_next_line || step_into || step_out) {
         // set current line
         cur_line_num = line_num;
         cur_file_name = file_name;
@@ -207,7 +212,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         cur_call_stack = call_stack;
         cur_call_stack_pos = call_stack_pos;
 
-        is_step_into = is_next_line =  false;
+        is_step_into = is_step_out = is_next_line =  false;
 
         // prompt for input
         const wstring& long_name = cur_frame->method->GetName();
@@ -232,7 +237,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
             command = nullptr;
           }
         } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != STEP_IN_COMMAND &&
-                             command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
+                             command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != STEP_OUT_COMMAND));
       }
     }
   }
@@ -259,7 +264,7 @@ void Runtime::Debugger::ProcessSrc(Load* load)
       base_path_param += '/';
     }
 #endif
-    wcout << L"source files: path='" << base_path_param << L"'" << endl << endl;
+    wcout << L"source file path: '" << base_path_param << L"'" << endl << endl;
   }
   else {
     wcout << L"unable to locate base path." << endl;
@@ -326,10 +331,10 @@ void Runtime::Debugger::ProcessExe(Load* load) {
     arguments.clear();
     arguments.push_back(L"obr");
     arguments.push_back(program_file_param);
-    wcout << L"loaded executable: file='" << program_file_param << L"'" << endl;
+    wcout << L"loaded binary: '" << program_file_param << L"'" << endl;
   }
   else {
-    wcout << L"program file doesn't exist." << endl;
+    wcout << L"program binary does not exist." << endl;
     is_error = true;
   }
 }
@@ -1593,9 +1598,10 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       }
       break;
 
-    case JUMP_OUT_COMMAND:
+    case STEP_OUT_COMMAND:
       if(interpreter) {
-        is_jmp_out = true;
+        is_step_out = true;
+        jump_stack_pos = cur_call_stack_pos;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1788,14 +1794,14 @@ void Runtime::Debugger::ClearProgram() {
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
-  is_step_into = is_next_line = is_jmp_out = false;
+  is_step_into = is_next_line = is_step_out = false;
   cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;
   is_error = false;
   ref_mem = nullptr;
   ref_klass = nullptr;
-  is_jmp_out = false;
+  is_step_out = false;
 }
 
 void Runtime::Debugger::Debug() {
@@ -1804,8 +1810,8 @@ void Runtime::Debugger::Debug() {
   wcout << L"-------------------------------------" << endl << endl;
 
   if(FileExists(program_file_param, true) && DirectoryExists(base_path_param)) {
-    wcout << L"loaded executable: file='" << program_file_param << L"'" << endl;
-    wcout << L"source files: path='" << base_path_param << L"'" << endl << endl;
+    wcout << L"loaded binary: '" << program_file_param << L"'" << endl;
+    wcout << L"source file path: '" << base_path_param << L"'" << endl << endl;
     // clear arguments
     arguments.clear();
     arguments.push_back(L"obr");
