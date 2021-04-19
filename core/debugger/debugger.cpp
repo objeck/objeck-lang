@@ -162,9 +162,9 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
     if(line_num > -1) {
       // continue to next line
-      if(is_continue_state == 1 && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method) {
+      if(continue_state == 1 && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method) {
         // wcout << L"--- CONTINE_STATE " << is_continue_state << L" --" << endl;
-        is_continue_state++;
+        continue_state++;
       }
 
       const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
@@ -188,10 +188,10 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       }
       */
 
-      const bool found_break = (is_continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name);
+      const bool found_break = (continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name);
       if(found_break) {
         // wcout << L"--- BREAK_POINT --" << endl;
-        is_continue_state = 0;
+        continue_state = 0;
       }
       
 
@@ -1601,7 +1601,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
     case CONT_COMMAND:
       if(interpreter) {
-        is_continue_state = 1;
+        continue_state = 1;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1789,7 +1789,7 @@ void Runtime::Debugger::ClearProgram() {
   StackMethod::ClearVirtualEntries();
 
   is_step_into = is_next_line = is_step_out = false;
-  is_continue_state = 0;
+  continue_state = 0;
   cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;
