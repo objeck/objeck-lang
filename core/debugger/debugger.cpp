@@ -157,48 +157,43 @@ int main(int argc, char** argv)
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
   if(frame->method->GetClass()) {
-    
-/*
-    if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
-       // break point
-       (FindBreak(line_num, file_name) ||
-        // step command
-        (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
-        // next line
-        (is_next_line && ((cur_frame && frame->method == cur_frame->method) ||
-                          (call_stack_pos < cur_call_stack_pos))))) {
-
-
-                          bool is_next_line;
-    bool is_jmp_out;
-*/
-    
-
     const int line_num = instr->GetLineNumber();
     const wstring file_name = frame->method->GetClass()->GetFileName();
 
-    // const bool foo = is_continue && line_num == cur_line_num && cur_frame && frame->method == cur_frame->method;
-
     if(line_num > -1) {
+      // continue to next line
+      if(is_continue_state == 1 && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method) {
+        // wcout << L"--- CONTINE_STATE " << is_continue_state << L" --" << endl;
+        is_continue_state++;
+      }
+
       const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
+      /*
       if(step_out) {
         wcout << L"--- STEP_OUT --" << endl;
       }
+      */
 
       const bool step_into = is_step_into && cur_frame && (frame->method != cur_frame->method || line_num != cur_line_num);
+      /*
       if(step_into) {
         wcout << L"--- STEP_INTO --" << endl;
       }
+      */
 
       const bool found_next_line = is_next_line && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method;
+      /*
       if(found_next_line) {
         wcout << L"--- NEXT_LINE --" << endl;
       }
+      */
 
-      const bool found_break = (line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name) /*is_continue*/;
+      const bool found_break = (is_continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name);
       if(found_break) {
-        wcout << L"--- BREAK --" << endl;
+        // wcout << L"--- BREAK_POINT --" << endl;
+        is_continue_state = 0;
       }
+      
 
       if(found_break || found_next_line || step_into || step_out) {
         // set current line
@@ -208,7 +203,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         cur_call_stack = call_stack;
         cur_call_stack_pos = call_stack_pos;
 
-        is_step_into = is_step_out = is_next_line = is_continue =  false;
+        is_step_into = is_step_out = is_next_line = false;
 
         // prompt for input
         const wstring& long_name = cur_frame->method->GetName();
@@ -1606,7 +1601,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
     case CONT_COMMAND:
       if(interpreter) {
-        is_continue = true;
+        is_continue_state = 1;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1793,7 +1788,8 @@ void Runtime::Debugger::ClearProgram() {
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
-  is_step_into = is_next_line = is_step_out = is_continue = false;
+  is_step_into = is_next_line = is_step_out = false;
+  is_continue_state = 0;
   cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;
