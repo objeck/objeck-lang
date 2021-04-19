@@ -1,12 +1,11 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
-		Foo(5, args[0]);
-	}
+		"What is your name?"->PrintLine();
+		your_name := System.IO.Console->ReadString();
 
-	function : Foo(i : Int, s : String) ~ Nil {
-		if(i > 0) {
-			s->PrintLine();
-			Foo(i - 1, s);
-		};
+		"What is your age?"->PrintLine();
+		your_age := System.IO.Console->ReadString();
+
+		"Hi {$your_name}, you age is {$your_age}"->PrintLine();
 	}
 }

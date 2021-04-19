@@ -158,8 +158,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 {
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
-    const wstring& file_name = frame->method->GetClass()->GetFileName();
-    
+    const wstring file_name = frame->method->GetClass()->GetFileName();
+/*
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
        (FindBreak(line_num, file_name) ||
@@ -168,41 +168,73 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         // next line
         (is_next_line && ((cur_frame && frame->method == cur_frame->method) ||
                           (call_stack_pos < cur_call_stack_pos))))) {
-      // set current line
-      cur_line_num = line_num;
-      cur_file_name = file_name;
-      cur_frame = frame;
-      cur_call_stack = call_stack;
-      cur_call_stack_pos = call_stack_pos;
-      is_jmp_out = is_next_line = false;
 
-      // prompt for input
-      const wstring& long_name = cur_frame->method->GetName();
-      const size_t end_index = long_name.find_last_of(':');
-      const wstring& cls_mthd_name = long_name.substr(0, end_index);
 
-      // show break info
-      const size_t mid_index = cls_mthd_name.find_last_of(':');
-      const wstring& cls_name = cls_mthd_name.substr(0, mid_index);
-      const wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
-      wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << endl;
+                          bool is_next_line;
+    bool is_jmp_out;
+*/
+    
 
-      // prompt for break command
-      Command* command;
-      do {
-        wstring line;
-        ReadLine(line);
-        if(line.size() > 0) {
-          command = ProcessCommand(line);
-        }
-        else {
-          command = nullptr;
-        }
-      } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != NEXT_COMMAND &&
-                           command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
+    
+    if(line_num > -1) {
+      /*
+      const bool found_next = is_next && cur_frame && frame->method != cur_frame->method;
+      if(found_next) {
+        wcout << L"--- NEXT --" << endl;
+      }
+      */
+
+      const bool step_into = is_step_into && cur_frame && (frame->method != cur_frame->method || line_num != cur_line_num);
+      if(step_into) {
+        wcout << L"--- STEP_INTO --" << endl;
+      }
+
+      const bool found_next_line = is_next_line && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method;
+      if(found_next_line) {
+        wcout << L"--- NEXT_LINE --" << endl;
+      }
+
+      const bool found_break = line_num != cur_line_num && FindBreak(line_num, file_name);
+      if(found_break) {
+        wcout << L"--- BREAK --" << endl;
+      }
+
+      if(found_break || found_next_line || step_into) {
+        // set current line
+        cur_line_num = line_num;
+        cur_file_name = file_name;
+        cur_frame = frame;
+        cur_call_stack = call_stack;
+        cur_call_stack_pos = call_stack_pos;
+
+        is_step_into = is_next_line =  false;
+
+        // prompt for input
+        const wstring& long_name = cur_frame->method->GetName();
+        const size_t end_index = long_name.find_last_of(':');
+        const wstring& cls_mthd_name = long_name.substr(0, end_index);
+
+        // show break info
+        const size_t mid_index = cls_mthd_name.find_last_of(':');
+        const wstring& cls_name = cls_mthd_name.substr(0, mid_index);
+        const wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
+        wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << endl;
+
+        // prompt for break command
+        Command* command;
+        do {
+          wstring line;
+          ReadLine(line);
+          if(line.size() > 0) {
+            command = ProcessCommand(line);
+          }
+          else {
+            command = nullptr;
+          }
+        } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != STEP_IN_COMMAND &&
+                             command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
+      }
     }
-
-    cur_line_num = line_num;
   }
 }
   
@@ -384,7 +416,7 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
       wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
     }
     else {
-      wcout << L"breakpoint already exist." << endl;
+      wcout << L"breakpoint already exist or is invalid" << endl;
     }
   }
   else {
@@ -1369,7 +1401,7 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& fi
 
 bool Runtime::Debugger::AddBreak(int line_num, const wstring& file_name)
 {
-  if(!FindBreak(line_num, file_name)) {
+  if(line_num > 0 && !FindBreak(line_num, file_name)) {
     UserBreak* user_break = new UserBreak;
     user_break->line_num = line_num;
     user_break->file_name = file_name;
@@ -1450,7 +1482,6 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 #endif
 
   // parser input
-  is_next = is_next_line = false;
   Parser parser;
   Command* command = parser.Parse(L"?" + line);
   if(command) {
@@ -1544,9 +1575,9 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       ProcessDelete(static_cast<FilePostion*>(command));
       break;
 
-    case NEXT_COMMAND:
+    case STEP_IN_COMMAND:
       if(interpreter) {
-        is_next = true;
+        is_step_into = true;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1556,7 +1587,6 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     case NEXT_LINE_COMMAND:
       if(interpreter) {
         is_next_line = true;
-        cur_line_num = -2;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1758,6 +1788,7 @@ void Runtime::Debugger::ClearProgram() {
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
+  is_step_into = is_next_line = is_jmp_out = false;
   cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;
