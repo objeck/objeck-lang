@@ -4,7 +4,7 @@
 * Copyright (c) 2010-2019 Randy Hollines
 * All rights reserved.
 *
-* Reistribution and use in source and binary forms, with or without
+* Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
 *tree.o scanner.o parser.o test.o
 * - Redistributions of source code must retain the above copyright
@@ -115,7 +115,7 @@ namespace Runtime {
     StackFrame** cur_call_stack;
     long cur_call_stack_pos;
     bool is_error;
-    bool is_next;
+    bool is_step_into;
     bool is_next_line;
     bool is_jmp_out;
     size_t* ref_mem;
