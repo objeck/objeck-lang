@@ -111,6 +111,7 @@ namespace Runtime {
     // break info
     list<UserBreak*> breaks;
     int cur_line_num;
+    int continue_line_num;
     wstring cur_file_name;
     StackFrame** cur_call_stack;
     long cur_call_stack_pos;
@@ -119,7 +120,7 @@ namespace Runtime {
     bool is_step_into;
     bool is_next_line;
     bool is_step_out;
-    bool is_continue;
+    int is_continue_state;
     size_t* ref_mem;
     StackClass* ref_klass;
     // interpreter variables
