@@ -157,8 +157,7 @@ int main(int argc, char** argv)
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
   if(frame->method->GetClass()) {
-    const int line_num = instr->GetLineNumber();
-    const wstring file_name = frame->method->GetClass()->GetFileName();
+    
 /*
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
@@ -175,15 +174,10 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 */
     
 
-    
-    if(line_num > -1) {
-      /*
-      const bool found_next = is_next && cur_frame && frame->method != cur_frame->method;
-      if(found_next) {
-        wcout << L"--- NEXT --" << endl;
-      }
-      */
+    const int line_num = instr->GetLineNumber();
+    const wstring file_name = frame->method->GetClass()->GetFileName();
 
+    if(line_num > -1) {
       const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
       if(step_out) {
         wcout << L"--- STEP_OUT --" << endl;
@@ -212,7 +206,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         cur_call_stack = call_stack;
         cur_call_stack_pos = call_stack_pos;
 
-        is_step_into = is_step_out = is_next_line =  false;
+        is_step_into = is_step_out = is_next_line = is_continue =  false;
 
         // prompt for input
         const wstring& long_name = cur_frame->method->GetName();
@@ -1609,7 +1603,10 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       break;
 
     case CONT_COMMAND:
-      if(!interpreter) {
+      if(interpreter) {
+        is_continue = true;
+      }
+      else {
         wcout << L"program is not running." << endl;
       }
       break;
@@ -1794,7 +1791,7 @@ void Runtime::Debugger::ClearProgram() {
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
-  is_step_into = is_next_line = is_step_out = false;
+  is_step_into = is_next_line = is_step_out = is_continue = false;
   cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;

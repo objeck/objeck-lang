@@ -119,6 +119,7 @@ namespace Runtime {
     bool is_step_into;
     bool is_next_line;
     bool is_step_out;
+    bool is_continue;
     size_t* ref_mem;
     StackClass* ref_klass;
     // interpreter variables
