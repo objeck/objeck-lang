@@ -177,6 +177,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const int line_num = instr->GetLineNumber();
     const wstring file_name = frame->method->GetClass()->GetFileName();
 
+    // const bool foo = is_continue && line_num == cur_line_num && cur_frame && frame->method == cur_frame->method;
+
     if(line_num > -1) {
       const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
       if(step_out) {
@@ -193,7 +195,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         wcout << L"--- NEXT_LINE --" << endl;
       }
 
-      const bool found_break = line_num != cur_line_num && FindBreak(line_num, file_name) /*is_continue*/;
+      const bool found_break = (line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name) /*is_continue*/;
       if(found_break) {
         wcout << L"--- BREAK --" << endl;
       }
