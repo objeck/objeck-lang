@@ -485,7 +485,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"cannot reference scalar variable" << endl;
           }
           else {
-            wcout << L"print: type=Int, value=" << (int32_t)reference->GetIntValue() << endl;
+            wcout << L"print: type=Int/Byte/Bool, value=" << (int32_t)reference->GetIntValue() << endl;
           }
           break;
 
@@ -504,8 +504,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Byte, value=" << (unsigned char)reference->GetIntValue() << endl;
           }
           else {
-            wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
-                  << L"(" << (void*)reference->GetIntValue() << L")";
+            wcout << L"print: type=Byte[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
@@ -518,8 +517,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
           }
           else {
-            wcout << L"print: type=Char[], value=" << reference->GetIntValue()
-                  << L"(" << (void*)reference->GetIntValue() << L")";
+            wcout << L"print: type=Char[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
@@ -532,8 +530,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=Int, value=" << (long)reference->GetIntValue() << endl;
           }
           else {
-            wcout << L"print: type=Int[], value=" << reference->GetIntValue()
-                  << L"(" << (void*)reference->GetIntValue() << L")";
+            wcout << L"print: type=Int[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
