@@ -485,7 +485,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"cannot reference scalar variable" << endl;
           }
           else {
-            wcout << L"print: type=Int, value=" << (long)reference->GetIntValue() << endl;
+            wcout << L"print: type=Int, value=" << (int32_t)reference->GetIntValue() << endl;
           }
           break;
 
@@ -569,7 +569,25 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"System.IntHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << endl;
+              wcout << L"print: type=System.IntHolder, value=" << (int32_t)instance[0] << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"System.ByteHolder") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance) {
+              wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"System.CharHolder") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance) {
+              wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
             }
             else {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
@@ -597,9 +615,42 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               size_t* instance = (size_t*)reference->GetIntValue();
               if(instance) {
                 if(klass->GetName() == L"System.String") {
-                  size_t* string_instance = (size_t*)instance[0];
-                  const wchar_t* char_string = (wchar_t*)(string_instance + 3);
+                  size_t* value_instance = (size_t*)instance[0];
+                  const wchar_t* char_string = (wchar_t*)(value_instance + 3);
                   wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
+                }
+                else if(klass->GetName() == L"System.IntHolder") {
+                  if(instance) {
+                    wcout << L"print: type=System.IntHolder, value=" << (int32_t)instance[0] << endl;
+                  }
+                  else {
+                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+                  }
+                }
+                else if(klass->GetName() == L"System.ByteHolder") {
+                  if(instance) {
+                    wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
+                  }
+                  else {
+                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+                  }
+                }
+                else if(klass->GetName() == L"System.CharHolder") {
+                  if(instance) {
+                    wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
+                  }
+                  else {
+                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+                  }
+                }
+                else if(klass->GetName() == L"System.FloatHolder") {
+                  if(instance) {
+                    FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
+                    wcout << L"print: type=System.FloatHolder, value=" << value << endl;
+                  }
+                  else {
+                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+                  }
                 }
                 else {
                   wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
