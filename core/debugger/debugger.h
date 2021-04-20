@@ -217,11 +217,12 @@ namespace Runtime {
     }
 
     void ReadLine(wstring &output) {
-#ifdef _WIN32
+// #ifdef _WIN32
       wcout << L"> ";
       getline(wcin, output);
+/*
 #else
-      char* input = readline("> ");
+      char* input = readline(nullptr);
       if(input) {
         if(strlen(input) > 0) {
           add_history(input);
@@ -231,6 +232,7 @@ namespace Runtime {
         input = nullptr;
       }
 #endif
+*/
     }
 
   public:
