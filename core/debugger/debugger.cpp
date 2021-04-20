@@ -85,8 +85,8 @@ int main(int argc, char** argv)
     }
 #else
     // enable UTF-8 environment
-    setlocale(LC_ALL, "");
-    setlocale(LC_CTYPE, "UTF-8");
+//    setlocale(LC_ALL, "");
+ //   setlocale(LC_CTYPE, "UTF-8");
 #endif
 
     // reconstruct path
