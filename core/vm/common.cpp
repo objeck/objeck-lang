@@ -2439,7 +2439,7 @@ bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _DEBUG
   wcout << L"  STD_OUT_BYTE" << endl;
 #endif
-  wcout << (unsigned char)PopInt(op_stack, stack_pos);
+  wcout << (void*)((unsigned char)PopInt(op_stack, stack_pos));
 
   return true;
 }
