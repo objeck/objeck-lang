@@ -37,8 +37,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,7,4
- PRODUCTVERSION 5,7,4
+ FILEVERSION 5,7,5
+ PRODUCTVERSION 5,7,5
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -56,12 +56,12 @@ BEGIN
             VALUE "Comments", "Objeck Language Debugger"
             VALUE "CompanyName", "Randy Hollines"
             VALUE "FileDescription", "Objeck Language Debugger"
-            VALUE "FileVersion", "5.7.4"
+            VALUE "FileVersion", "5.7.5"
             VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (C) 2008-2019"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Lanuage Debugger"
-            VALUE "ProductVersion", "5.7.4"
+            VALUE "ProductVersion", "5.7.5"
         END
     END
     BLOCK "VarFileInfo"
