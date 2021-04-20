@@ -1,11 +1,9 @@
 class Program {
 	function : Main(args: String[]) ~ Nil {
-		"What is your name?"->PrintLine();
-		your_name := System.IO.Console->ReadString();
-
-		"What is your age?"->PrintLine();
-		your_age := System.IO.Console->ReadString();
-
-		"Hi {$your_name}, you age is {$your_age}"->PrintLine();
+		a := FloatHolder->New(13.5);
+		b := IntHolder->New(7);
+		
+		a->PrintLine();
+		b->PrintLine();
 	}
 }
