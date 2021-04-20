@@ -485,7 +485,8 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"cannot reference scalar variable" << endl;
           }
           else {
-            wcout << L"print: type=Int/Byte/Bool, value=" << (int32_t)reference->GetIntValue() << endl;
+            const int32_t value = (int32_t)reference->GetIntValue();
+            wcout << L"print: type=Int/Byte/Bool, value=" << value << L"/" << (void*)value << endl;
           }
           break;
 
@@ -501,7 +502,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case BYTE_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Byte, value=" << (unsigned char)reference->GetIntValue() << endl;
+            wcout << L"print: type=Byte, value=" << (void*)((unsigned char)reference->GetIntValue()) << endl;
           }
           else {
             wcout << L"print: type=Byte[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
@@ -527,7 +528,8 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Int, value=" << (long)reference->GetIntValue() << endl;
+            int32_t value = (int32_t)reference->GetIntValue();
+            wcout << L"print: type=Int, value=" << value << L"/" << (void*)value << endl;
           }
           else {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
@@ -575,7 +577,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"System.ByteHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
+              wcout << L"print: type=System.ByteHolder, value=" << (void*)((unsigned char)instance[0]) << endl;
             }
             else {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
