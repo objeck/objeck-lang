@@ -566,6 +566,25 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
             }
           }
+          else if(ref_klass && ref_klass->GetName() == L"System.IntHolder") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance) {
+              wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"System.FloatHolder") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance) {
+              FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
+              wcout << L"print: type=System.FloatHolder, value=" << value << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
           else {
             wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
           }
