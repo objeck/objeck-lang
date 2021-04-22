@@ -3,11 +3,9 @@ use Collection.Generic;
 class MiniLisp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			parser := Parser->New(args[0]);
-			root := parser->Parse();
+			root := Parser->New(args[0])->Parse();
 			if(root <> Nil) {
-				evaluator := Evaluator->New(root);
-				evaluator->Evaluate();
+				Evaluator->New(root)->Evaluate();
 			};
 		};
 	}
@@ -466,12 +464,18 @@ class Parser {
 							};
 
 							@token_pos += 1;
+							if(@tokens->Get(@token_pos)->GetType() <> Token->Type->OPRN) {
+								@error := true;
+								"*** expected '(' ***"->ErrorLine();
+								return Nil;
+							};
 
 							node := Node->New(Node->Type->LET);
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
 
+							
 							@token_pos += 1;
 						}
 
