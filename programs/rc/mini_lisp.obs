@@ -467,6 +467,10 @@ class Parser {
 		return Token->Type->OTHER;
 	}
 
+	method : Match(type : Token->Type) ~ Bool {
+		return GetTokenType() = type;
+	}
+
 	method : public : Expression(depth : Int) ~ Node {
 		node : Node;
 
@@ -475,7 +479,13 @@ class Parser {
 			"Expression: pos=({$@token_pos},{$length}); depth={$depth}"->PrintLine();
 		};
 
-		if(GetTokenType() = Token->Type->OPRN) {
+		is_eval := true;
+		if(Match(Token->Type->QUOTE)) {
+			is_eval := false;
+			NextToken();
+		};
+
+		if(Match(Token->Type->OPRN)) {
 			NextToken();
 			@level += 1;
 			
@@ -618,7 +628,7 @@ class Parser {
 					}
 				};
 			}
-			else if(GetTokenType() = Token->Type->CPRN) {
+			else if(Match(Token->Type->CPRN)) {
 				if(@is_debug) {
 					"\tEmpty_List"->PrintLine();
 				};
@@ -631,11 +641,11 @@ class Parser {
 				return Nil;
 			};
 		}
-		else if(GetTokenType() = Token->Type->CPRN) {
+		else if(Match(Token->Type->CPRN)) {
 			NextToken();
 			@level -= 1;
 		}
-		else if(GetTokenType() = Token->Type->INT_LIT) {
+		else if(Match(Token->Type->INT_LIT)) {
 			value := @tokens->Get(@token_pos)->GetIntValue();
 			if(@is_debug) {
 				"\tInt_Lit; value={$value}"->PrintLine();
@@ -643,7 +653,7 @@ class Parser {
 			node := Node->New(value);
 			NextToken();
 		}
-		else if(GetTokenType() = Token->Type->STR_LIT) {
+		else if(Match(Token->Type->STR_LIT)) {
 			value := @tokens->Get(@token_pos)->GetStringValue();
 			if(@is_debug) {
 				"\tStr_Lit; value={$value}"->PrintLine();
@@ -657,6 +667,10 @@ class Parser {
 			"*** Error: unknown token: id={$token_id} ***"->ErrorLine();
 			NextToken();
 			return Nil;
+		};
+
+		if(node <> Nil) {
+			node->SetEval(is_eval);
 		};
 
 		return node;
@@ -684,6 +698,7 @@ class Parser {
 
 class Node {
 	@type : Node->Type;
+	@is_eval : Bool;
 	@int_value : Int;
 	@real_value : Float;
 	@str_value : String;
@@ -743,6 +758,14 @@ class Node {
 				@type := Node->Type->DIV;
 			}
 		};
+	}
+
+	method : public : SetEval(is_eval : Bool) ~ Nil {
+		@is_eval := is_eval;
+	}
+
+	method : public : GetEval() ~ Bool {
+		return @is_eval;
 	}
 
 	method : public : GetType() ~ Node->Type {
