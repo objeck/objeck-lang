@@ -428,9 +428,8 @@ class Parser {
 		@tokens := Scanner->New()->Scan(@input);
 
 		if(@is_debug) {
-			"--- Input ---"->PrintLine();
-			"\"{$@input}\""->PrintLine();
-
+			"--- Input ---\n\"{$@input}\""->PrintLine();
+			
 			"\n--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
