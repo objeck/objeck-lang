@@ -29,22 +29,34 @@ class Evaluator {
 	}
 
 	method : public : Evaluate() ~ Nil {
+		if(@is_debug) {
+			"\n--- Evaluate ---"->PrintLine();
+		};
+
 		Evaluate(@root);
 	}
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
 			label Node->Type->STR_LIT {
-				# TODO: search stack
-				symbol_table := @symbol_tables->Front();
+				found := false;
 				name := node->GetStringValue();
-				value := symbol_table->Find(name);
-				if(value <> Nil) {
-					@stack->Push(value);
 
-				}
-				else {
-					"Unable to find {$name}"->ErrorLine();
+				@symbol_tables->Rewind();
+				while(@symbol_tables->More() & <>found) {
+					symbol_table := @symbol_tables->Get();
+					
+					value := symbol_table->Find(name);
+					if(value <> Nil) {
+						@stack->Push(value);
+						found := true;
+					};
+
+					@symbol_tables->Next();
+				};
+
+				if(<>found) {
+					"Unable to find variable '{$name}'"->ErrorLine();
 					Runtime->Exit(1);
 				};
 			}
@@ -400,6 +412,7 @@ class Value {
 #--- Parser ---
 
 class Parser {
+	@input : String;
 	@tokens : Vector<Token>;
 	@token_pos : Int;
 	@level : Int;
@@ -407,19 +420,23 @@ class Parser {
 	@is_debug : Bool;
 	
 	New(input : String) {
-		scanner := Scanner->New();
-		@tokens := scanner->Scan(input);
+		@input := input;
 		@is_debug := true;
 	}
 
 	method : public : Parse() ~ Node {
+		@tokens := Scanner->New()->Scan(@input);
+
 		if(@is_debug) {
-			"--- Tokens ---"->PrintLine();
+			"--- Input ---"->PrintLine();
+			"\"{$@input}\""->PrintLine();
+
+			"\n--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
-				"{$i}: {$value}"->PrintLine();
+				"{$i}: '{$value}'"->PrintLine();
 			};
-			"--- Expressions ---"->PrintLine();
+			"\n--- Expressions ---"->PrintLine();
 		};
 
 		root := Expression(0);
@@ -431,7 +448,7 @@ class Parser {
 
 		if(@is_debug) {
 			if(root <> Nil) {
-				"--- Tree ---"->PrintLine();
+				"\n--- Tree ---"->PrintLine();
 				root->ToString()->PrintLine();
 			};
 		};
