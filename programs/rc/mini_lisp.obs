@@ -41,12 +41,11 @@ class Evaluator {
 			label Node->Type->COND {
 				done := false;
 				children := node->GetChildren();
-children->Size()->PrintLine();				
 				for(i := 0; i < children->Size() & <>done; i += 2;) {
 					Evaluate(children->Get(i));
 					cond := @stack->Pop();
+					# TODO: type checking
 					if(cond->GetBoolValue()) {
-"--- WOW ---"->PrintLine();
 						Evaluate(children->Get(i + 1));
 						done := true;
 					};
@@ -585,7 +584,7 @@ class Parser {
 
 						node := Node->New(Node->Type->COND);
 						NextToken();
-						
+
 						while(GetTokenType() = Token->Type->OPRN) {
 							
 							if(<>Operands(node, depth)) {
