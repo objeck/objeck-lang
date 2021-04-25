@@ -134,7 +134,6 @@ public:
   Loader(const wchar_t* arg) {
     filename = arg;
     if(!EndsWith(filename, L".obe")) {
-
       filename += L".obe";
     }
 
