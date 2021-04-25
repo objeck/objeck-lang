@@ -157,7 +157,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check program libraries path
   wstring sys_lib_path;
   result = arguments.find(L"strict_lib");
-  if(result != arguments.end()) {
+  if(result == arguments.end()) {
     argument_options.remove(L"strict_lib");
 
     // check program libraries path
