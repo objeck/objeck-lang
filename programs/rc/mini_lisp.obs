@@ -250,6 +250,11 @@ class Evaluator {
 				};
 				@stack->Push(left);
 			}
+
+			other {
+				"Unknow expression"->ErrorLine();
+				Runtime->Exit(1);
+			}
 		};
 	}
 }
