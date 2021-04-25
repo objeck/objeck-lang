@@ -5039,3 +5039,12 @@ wstring MethodFormatter::FormatFunctionalType(const wstring func_str)
 
   return formatted_str;
 }
+
+bool EndsWith(wstring const& str, wstring const& ending)
+{
+  if(str.length() >= ending.length()) {
+    return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
+  }
+
+  return false;
+}

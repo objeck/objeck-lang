@@ -148,11 +148,14 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   wstring dest_file;
   result = arguments.find(L"dest");
   if(result == arguments.end()) {
-    wcerr << usage << endl;
-    return COMMAND_ERROR;
+    dest_file = src_file;
+    frontend::RemoveSubString(dest_file, L".obs");
+    dest_file += L".obe";
   }
-  dest_file = result->second;
-  argument_options.remove(L"dest");
+  else {
+    dest_file = result->second;
+    argument_options.remove(L"dest");
+  }
 
   // check program libraries path
   wstring sys_lib_path;
