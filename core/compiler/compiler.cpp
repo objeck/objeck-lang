@@ -155,9 +155,11 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   argument_options.remove(L"dest");
 
   // check program libraries path
-  result = arguments.find(L"strict_lib");
   wstring sys_lib_path;
+  result = arguments.find(L"strict_lib");
   if(result != arguments.end()) {
+    argument_options.remove(L"strict_lib");
+
     // check program libraries path
     sys_lib_path = L"lang,gen_collect";
     result = arguments.find(L"lib");
@@ -173,7 +175,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   else {
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
-      sys_lib_path = L"," + result->second;
+      sys_lib_path = result->second;
       argument_options.remove(L"lib");
     }
   }
