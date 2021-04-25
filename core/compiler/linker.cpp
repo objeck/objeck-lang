@@ -396,11 +396,8 @@ void Linker::Load()
     size_t index = master_path.find(',');
     while(index != wstring::npos) {
       // load library
-      const wstring file_name = master_path.substr(offset, index - offset);
+      const wstring file_name = master_path.substr(offset, index - offset) + L".obl";
       wstring file_path = path + file_name;
-      if(!frontend::EndsWith(file_path, L".obl")) {
-        file_path += L".obl";
-      }
       Library * library = new Library(file_path);
       library->Load();
       // insert library
@@ -414,11 +411,8 @@ void Linker::Load()
       index = master_path.find(',', offset);
     }
     // insert library
-    const wstring file = master_path.substr(offset, master_path.size());
+    const wstring file = master_path.substr(offset, master_path.size()) + L".obl";
     wstring file_path = path + file;
-    if(!frontend::EndsWith(file_path, L".obl")) {
-      file_path += L".obl";
-    }
     Library* library = new Library(file_path);
     library->Load();
     libraries.insert(pair<wstring, Library*>(file_path, library));
