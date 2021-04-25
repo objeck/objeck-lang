@@ -38,6 +38,19 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
+			label Node->Type->COND {
+				done := false;
+				children := node->GetChildren();
+				for(i := 0; i < children->Size() & <>done; i += 2;) {
+					Evaluate(children->Get(i));
+					cond := @stack->Pop();
+					if(cond->GetBoolValue()) {
+						Evaluate(children->Get(i + 1));
+						done := true;
+					};
+				};
+			}
+
 			label Node->Type->VAR {
 				found := false;
 				name := node->GetStringValue();
@@ -368,6 +381,10 @@ class Value {
 		return @int_value;
 	}
 
+	method : public : GetBoolValue() ~ Bool {
+		return @bool_value;
+	}
+
 	method : public : SetIntValue(int_value : Int) ~ Nil {
 		@type := Value->Type->INT_TYPE;
 		@int_value := int_value;
@@ -555,6 +572,24 @@ class Parser {
 
 						node := Node->New(Node->Type->LIST);
 						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+					}
+
+					label Token->Type->COND_KEYWORD: {
+						if(@is_debug) {
+							"\tCond"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->COND);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						children := node->GetChildren();
+						if(children->IsEmpty() | children->Size() % 2 <> 0) {
+							@error := true;
+							"*** 'cond' operation takes even pairs of operands ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -758,6 +793,7 @@ class Node {
 		LET,
 		LET_DEC,
 		CONS,
+		COND,
 		WRITE,
 		LENGTH,
 		EMPTY_LIST,
@@ -946,6 +982,7 @@ class Scanner {
 		@keywords->Insert("let", Token->Type->LET_KEYWORD);
 		@keywords->Insert("write", Token->Type->WRITE_KEYWORD);
 		@keywords->Insert("list", Token->Type->LIST_KEYWORD);
+		@keywords->Insert("cond", Token->Type->COND_KEYWORD);
 		@keywords->Insert("cons", Token->Type->CONS_KEYWORD);
 		@keywords->Insert("length", Token->Type->LENGTH_KEYWORD);
 	}
@@ -1058,7 +1095,7 @@ class Token {
 		LIST_KEYWORD,
 		CONS_KEYWORD,
 		LENGTH_KEYWORD,
-		LOOP_KEYWORD,
+		COND_KEYWORD,
 		INT_LIT,
 		REAL_LIT,
 		STR_LIT,
@@ -1145,7 +1182,7 @@ class Token {
 			}
 
 			label Type->LIST_KEYWORD {
-				return "list";
+				return "cond";
 			}
 
 			label Type->CONS_KEYWORD {
