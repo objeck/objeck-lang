@@ -1,4 +1,4 @@
-use Collection;
+use Collection.Generic;
 use System.API;
 
 #~
@@ -143,13 +143,13 @@ bundle Database.ODBC {
 		@native_stmt : Int;
 		@native_names : Int;
 		@exec_data : Int;
-		@params : Vector;
+		@params : Vector<Base>;
 		
 		New(native_stmt : Int, native_names : Int, exec_data : Int) {
 			@native_stmt := native_stmt;
 			@native_names := native_names;
 			@exec_data := exec_data;
-			@params := Vector->New();
+			@params := Vector->New()<Base>;
 		}
 		
 		#~
