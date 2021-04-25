@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "linker.h"
+#include "types.h"
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 
@@ -397,7 +398,7 @@ void Linker::Load()
       // load library
       const wstring file_name = master_path.substr(offset, index - offset);
       wstring file_path = path + file_name;
-      if(!EndsWith(file_path, L".obl")) {
+      if(!frontend::EndsWith(file_path, L".obl")) {
         file_path += L".obl";
       }
       Library * library = new Library(file_path);
@@ -415,7 +416,7 @@ void Linker::Load()
     // insert library
     const wstring file = master_path.substr(offset, master_path.size());
     wstring file_path = path + file;
-    if(!EndsWith(file_path, L".obl")) {
+    if(!frontend::EndsWith(file_path, L".obl")) {
       file_path += L".obl";
     }
     Library* library = new Library(file_path);

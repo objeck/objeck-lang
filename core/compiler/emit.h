@@ -912,14 +912,6 @@ namespace backend {
     bool is_web;
     bool show_asm;
 
-    bool EndsWith(wstring const &str, wstring const &ending) {
-      if(str.length() >= ending.length()) {
-        return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
-      } 
-
-      return false;
-    }
-
     string ReplaceExt(const string &org, const string &ext) {
       string str(org);
       

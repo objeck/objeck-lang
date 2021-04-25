@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #endif
 #include "compiler.h"
+#include "types.h"
 
 using namespace std;
 
@@ -45,18 +46,18 @@ using namespace std;
 /****************************
  * Starts the compilation process
  ****************************/
-int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
+int Compile(const wstring& src_file, const wstring& opt, const wstring& dest_file, const wstring &run_string, const wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
   // parse source code  
-  Parser parser(arguments[L"src"], alt_syntax, run_string);
-  if (parser.Parse()) {
+  Parser parser(src_file, alt_syntax, run_string);
+  if(parser.Parse()) {
     bool is_lib = false;
     bool is_web = false;
 
-    if (target == L"lib") {
+    if(target == L"lib") {
       is_lib = true;
     }
 
-    if (target == L"web") {
+    if(target == L"web") {
       is_web = true;
     }
     // analyze parse tree
@@ -67,10 +68,10 @@ int Compile(map<const wstring, wstring> &arguments, wstring &run_string, wstring
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
       // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_lib, is_debug);
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
       optimizer.Optimize();
       // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, show_asm, arguments[L"dest"]);
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, show_asm, dest_file);
       target.Emit();
 
       return SUCCESS;
@@ -98,7 +99,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
 
   // check for optimize flag
   map<const wstring, wstring>::iterator result = arguments.find(L"ver");
-  if (result != arguments.end()) {
+  if(result != arguments.end()) {
 #if defined(_WIN64) && defined(_WIN32)
     wcout << VERSION_STRING << L" Objeck (x86-64 Windows)" << endl;
 #elif _WIN32
@@ -122,34 +123,41 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
 
   // check source input
   wstring run_string;
+  wstring src_file;
   result = arguments.find(L"src");
-  if (result == arguments.end()) {
+  if(result == arguments.end()) {
     result = arguments.find(L"in");
-    if (result == arguments.end()) {
+    if(result == arguments.end()) {
       wcerr << usage << endl;
       return COMMAND_ERROR;
     }
-    run_string = L"bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
+    run_string = L"class Run { function : Main(args : String[]) ~ Nil {";
     run_string += arguments[L"in"];
-    run_string += L"} } }";
+    run_string += L"} }";
     argument_options.remove(L"in");
   }
   else {
     argument_options.remove(L"src");
+    src_file = result->second;
+    if(!frontend::EndsWith(src_file, L".obs")) {
+      src_file += L".obs";
+    }
   }
 
   // check program output
+  wstring dest_file;
   result = arguments.find(L"dest");
-  if (result == arguments.end()) {
+  if(result == arguments.end()) {
     wcerr << usage << endl;
     return COMMAND_ERROR;
   }
+  dest_file = result->second;
   argument_options.remove(L"dest");
 
   // check program libraries path
-  wstring sys_lib_path = L"lang.obl";
+  wstring sys_lib_path = L"lang.obl,gen_collect.obl";
   result = arguments.find(L"lib");
-  if (result != arguments.end()) {
+  if(result != arguments.end()) {
     sys_lib_path += L"," + result->second;
     argument_options.remove(L"lib");
   }
@@ -157,9 +165,9 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check for optimize flag
   wstring optimize;
   result = arguments.find(L"opt");
-  if (result != arguments.end()) {
+  if(result != arguments.end()) {
     optimize = result->second;
-    if (optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
+    if(optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
       wcerr << usage << endl;
       return COMMAND_ERROR;
     }
@@ -169,9 +177,9 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check program libraries path
   wstring target;
   result = arguments.find(L"tar");
-  if (result != arguments.end()) {
+  if(result != arguments.end()) {
     target = result->second;
-    if (target != L"lib" && target != L"web" && target != L"exe") {
+    if(target != L"lib" && target != L"web" && target != L"exe") {
       wcerr << usage << endl;
       return COMMAND_ERROR;
     }
@@ -181,7 +189,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // use alternate syntax
   bool alt_syntax = false;
   result = arguments.find(L"alt");
-  if (result != arguments.end()) {
+  if(result != arguments.end()) {
     alt_syntax = true;
     argument_options.remove(L"alt");
   }
@@ -189,7 +197,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check for debug flag
   bool is_debug = false;
   result = arguments.find(L"debug");
-  if (result != arguments.end()) {
+  if(result != arguments.end()) {
     is_debug = true;
     argument_options.remove(L"debug");
   }
@@ -202,10 +210,10 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     argument_options.remove(L"asm");
   }
 
-  if (argument_options.size() != 0) {
+  if(argument_options.size() != 0) {
     wcerr << usage << endl;
     return COMMAND_ERROR;
   }
 
-  return Compile(arguments, run_string, sys_lib_path, target, alt_syntax, is_debug, show_asm);
+  return Compile(src_file, optimize, dest_file, run_string, sys_lib_path, target, alt_syntax, is_debug, show_asm);
 }
