@@ -396,30 +396,40 @@ void Linker::Load()
     size_t index = master_path.find(',');
     while(index != wstring::npos) {
       // load library
-      const wstring file_name = master_path.substr(offset, index - offset) + L".obl";
-      wstring file_path = path + file_name;
-      Library * library = new Library(file_path);
-      library->Load();
-      // insert library
-      libraries.insert(pair<wstring, Library*>(file_path, library));
-      vector<wstring>::iterator found = find(paths.begin(), paths.end(), file_path);
-      if(found == paths.end()) {
-        paths.push_back(file_path);
+      const wstring file_name = master_path.substr(offset, index - offset);
+      if(!file_name.empty()) {
+        wstring file_path = path + file_name;
+        if(!frontend::EndsWith(file_path, L".obl")) {
+          file_path += L".obl";
+        }
+        Library * library = new Library(file_path);
+        library->Load();
+        // insert library
+        libraries.insert(pair<wstring, Library*>(file_path, library));
+        vector<wstring>::iterator found = find(paths.begin(), paths.end(), file_path);
+        if(found == paths.end()) {
+          paths.push_back(file_path);
+        }
+        // update
+        offset = index + 1;
+        index = master_path.find(',', offset);
       }
-      // update
-      offset = index + 1;
-      index = master_path.find(',', offset);
     }
     // insert library
-    const wstring file = master_path.substr(offset, master_path.size()) + L".obl";
-    wstring file_path = path + file;
-    Library* library = new Library(file_path);
-    library->Load();
-    libraries.insert(pair<wstring, Library*>(file_path, library));
-    paths.push_back(file_path);
+    const wstring file_name = master_path.substr(offset, master_path.size());
+    if(!file_name.empty()) {
+      wstring file_path = path + file_name;
+      if(!frontend::EndsWith(file_path, L".obl")) {
+        file_path += L".obl";
+      }
+      Library* library = new Library(file_path);
+      library->Load();
+      libraries.insert(pair<wstring, Library*>(file_path, library));
+      paths.push_back(file_path);
 #ifdef _DEBUG
-    GetLogger() << L"--------- End Linking ---------" << endl;
+      GetLogger() << L"--------- End Linking ---------" << endl;
 #endif
+    }
   }
 }
 
