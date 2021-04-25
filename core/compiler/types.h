@@ -435,6 +435,8 @@ namespace frontend {
     FLOAT_VALUE* value;
     int length;
   };
+
+  bool EndsWith(wstring const& str, wstring const& ending);
 }
 
 namespace backend {

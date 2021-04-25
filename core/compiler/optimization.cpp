@@ -551,41 +551,41 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
 {
   // don't inline the same method more then once, since you'll have label/jump conflicts
   set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
-  if (found != inlined_mthds.end()) {
+  if(found != inlined_mthds.end()) {
     return false;
   }
 
   // don't inline recursive calls
-  if (mthd_called == current_method) {
+  if(mthd_called == current_method) {
     return false;
   }
 
   // don't inline parameter calls
-  if (mthd_called->GetName().find(current_method->GetName()) != string::npos) {
+  if(mthd_called->GetName().find(current_method->GetName()) != string::npos) {
     return false;
   }
 
   // don't inline method calls for primitive objects
-  if (mthd_called->GetClass()->GetName().find(L'$') != wstring::npos) {
+  if(mthd_called->GetClass()->GetName().find(L'$') != wstring::npos) {
     set<wstring>::iterator result = can_inline.find(mthd_called->GetName());
-    if (result == can_inline.end()) {
+    if(result == can_inline.end()) {
       return false;
     };
   }
 
-  if (current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
+  if(current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
     return false;
   }
 
   // ignore constructors
   const wstring called_mthd_name = mthd_called->GetName();
-  if (called_mthd_name.find(L":New:") != wstring::npos) {
+  if(called_mthd_name.find(L":New:") != wstring::npos) {
     return false;
   }
 
   // don't inline into "main" since it's not JTI compiled
   const wstring curr_mthd_name = current_method->GetName();
-  if (curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
+  if(curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
     return false;
   }
 
@@ -593,7 +593,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
 
   // check instructions
   vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
-  if (mthd_called_blocks.empty()) {
+  if(mthd_called_blocks.empty()) {
     return false;
   }
 

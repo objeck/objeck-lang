@@ -4202,13 +4202,13 @@ For* Parser::ParseEach(bool reverse, int depth)
 
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
-  if (!Match(TOKEN_OPEN_PAREN)) {
+  if(!Match(TOKEN_OPEN_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
   // initialization statement
-  if (!Match(TOKEN_IDENT)) {
+  if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
   const wstring count_ident = scanner->GetToken()->GetIdentifier();
@@ -4224,11 +4224,11 @@ For* Parser::ParseEach(bool reverse, int depth)
 #endif
 
   bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-  if (!was_added) {
+  if(!was_added) {
     ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
   }
 
-  if (!Match(TOKEN_COLON)) {
+  if(!Match(TOKEN_COLON)) {
     ProcessError(L"Expected ':'", TOKEN_COLON);
   }
   NextToken();

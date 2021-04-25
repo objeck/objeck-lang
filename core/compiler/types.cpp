@@ -312,3 +312,12 @@ void TypeParser::ParseFunctionalType(frontend::Type* func_type)
     func_type->SetFunctionReturn(func_rtrn);
   }
 }
+
+bool frontend::EndsWith(wstring const& str, wstring const& ending)
+{
+  if(str.length() >= ending.length()) {
+    return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
+  }
+
+  return false;
+}
