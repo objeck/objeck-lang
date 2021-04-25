@@ -158,7 +158,10 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   wstring sys_lib_path = L"lang.obl,gen_collect.obl";
   result = arguments.find(L"lib");
   if(result != arguments.end()) {
-    sys_lib_path += L"," + result->second;
+    wstring lib_path = result->second;
+    frontend::RemoveSubString(lib_path, L".obl");
+    frontend::RemoveSubString(lib_path, L"gen_collect");
+    sys_lib_path += L"," + lib_path;
     argument_options.remove(L"lib");
   }
 

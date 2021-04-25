@@ -437,6 +437,7 @@ namespace frontend {
   };
 
   bool EndsWith(wstring const& str, wstring const& ending);
+  void RemoveSubString(wstring& str_in, const wstring& find);
 }
 
 namespace backend {
