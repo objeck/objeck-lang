@@ -157,9 +157,15 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check program libraries path
   wstring sys_lib_path;
   result = arguments.find(L"strict_lib");
-  if(result == arguments.end()) {
+  if(result != arguments.end()) {
+    result = arguments.find(L"lib");
+    if(result != arguments.end()) {
+      sys_lib_path = result->second;
+      argument_options.remove(L"lib");
+    }
     argument_options.remove(L"strict_lib");
-
+  }
+  else {
     // check program libraries path
     sys_lib_path = L"lang,gen_collect";
     result = arguments.find(L"lib");
@@ -169,13 +175,6 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
       frontend::RemoveSubString(lib_path, L".obl");
       frontend::RemoveSubString(lib_path, L"gen_collect");
       sys_lib_path += L"," + lib_path;
-      argument_options.remove(L"lib");
-    }
-  }
-  else {
-    result = arguments.find(L"lib");
-    if(result != arguments.end()) {
-      sys_lib_path = result->second;
       argument_options.remove(L"lib");
     }
   }
