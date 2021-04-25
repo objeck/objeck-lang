@@ -1,3 +1,12 @@
+#~~
+# Core collections for Objeck
+# Copyright (c) 2019-2021 Randy Hollines
+# 
+# credits:
+# H.W. Lang - merge sort implementation
+# Arne Andersson - map classes uses a red-black tree variant he created
+~~#
+
 #~
 Generic collections (-lib gen_collect)
 ~#	
