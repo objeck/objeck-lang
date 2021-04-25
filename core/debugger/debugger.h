@@ -165,7 +165,7 @@ namespace Runtime {
 
     Command* ProcessCommand(const wstring &line);
     void ProcessRun();
-    void ProcessExe(Load* load);
+    void ProcessBin(Load* load);
     void ProcessSrc(Load* load);
     void ProcessArgs(Load* load);
     void ProcessArgs(const wstring& temp);
