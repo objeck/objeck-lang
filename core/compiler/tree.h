@@ -2110,7 +2110,7 @@ namespace frontend {
       name = n;
       parent_name = p;
       is_interface = false;
-      is_public = false;
+      is_public = true;
       id = -1;
       lambda_id = 0;
       next_method_id = -1;
