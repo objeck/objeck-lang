@@ -313,11 +313,16 @@ void Runtime::Debugger::ProcessExe(Load* load) {
     return;
   }
 
-  if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path_param)) {
+  wstring file_param = load->GetFileName();
+  if(!EndsWith(file_param, L".obe")) {
+    file_param += L".obe";
+  }
+
+  if(FileExists(file_param, true) && DirectoryExists(base_path_param)) {
     // clear program
     ClearReload();
     ClearBreaks();
-    program_file_param = load->GetFileName();
+    program_file_param = file_param;
     // reset arguments
     arguments.clear();
     arguments.push_back(L"obr");
@@ -325,7 +330,7 @@ void Runtime::Debugger::ProcessExe(Load* load) {
     wcout << L"loaded binary: '" << program_file_param << L"'" << endl;
   }
   else {
-    wcout << L"program binary does not exist." << endl;
+    wcerr << L"unable to load executable='" << program_file_param << "' at locate base path='" << base_path_param << L"'" << endl;
     is_error = true;
   }
 }
@@ -1873,6 +1878,10 @@ void Runtime::Debugger::Debug() {
   wcout << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << endl;
   wcout << L"-------------------------------------" << endl << endl;
 
+  if(!EndsWith(program_file_param, L".obe")) {
+    program_file_param += L".obe";
+  }
+
   if(FileExists(program_file_param, true) && DirectoryExists(base_path_param)) {
     wcout << L"loaded binary: '" << program_file_param << L"'" << endl;
     wcout << L"source file path: '" << base_path_param << L"'" << endl << endl;
@@ -1882,7 +1891,7 @@ void Runtime::Debugger::Debug() {
     arguments.push_back(program_file_param);
   }
   else {
-    wcerr << L"unable to load executable or locate base path." << endl;
+    wcerr << L"unable to load executable='" << program_file_param << "' at locate base path='" << base_path_param << L"'" << endl;
     exit(1);
   }
 
