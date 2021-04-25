@@ -41,10 +41,12 @@ class Evaluator {
 			label Node->Type->COND {
 				done := false;
 				children := node->GetChildren();
+children->Size()->PrintLine();				
 				for(i := 0; i < children->Size() & <>done; i += 2;) {
 					Evaluate(children->Get(i));
 					cond := @stack->Pop();
 					if(cond->GetBoolValue()) {
+"--- WOW ---"->PrintLine();
 						Evaluate(children->Get(i + 1));
 						done := true;
 					};
@@ -582,15 +584,24 @@ class Parser {
 						};
 
 						node := Node->New(Node->Type->COND);
-						if(<>Operands(node, depth)) {
-							return Nil;
-						};
+						NextToken();
+						
+						while(GetTokenType() = Token->Type->OPRN) {
+							
+							if(<>Operands(node, depth)) {
+								return Nil;
+							};
 
-						children := node->GetChildren();
-						if(children->IsEmpty() | children->Size() % 2 <> 0) {
-							@error := true;
-							"*** 'cond' operation takes even pairs of operands ***"->ErrorLine();
-							return Nil;
+							children := node->GetChildren();
+							if(children->IsEmpty() | children->Size() % 2 <> 0) {
+								@error := true;
+								"*** 'cond' operation takes even pairs of operands ***"->ErrorLine();
+								return Nil;
+							};
+
+							if(GetTokenType() = Token->Type->CPRN) {
+								NextToken();
+							};
 						};
 					}
 
