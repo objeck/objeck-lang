@@ -61,6 +61,7 @@ int main(int argc, char* argv[])
   usage += L"  -opt:   [option] compiler optimizations s0-s3 (s3 being the most aggressive) default is s3\n";
   usage += L"  -alt:   [option][end-flag] allow use of C++ like syntax verses the UML like default\n";
   usage += L"  -debug: [option][end-flag] compile with debug symbols\n";
+  usage += L"  -strict [input][end-flag] exclude system libraries and provide manually\n";
   usage += L"\nExample: \"obc -src ../examples/hello.obs -dest hello.obe\"\n\nVersion: ";
   usage += VERSION_STRING;
   
