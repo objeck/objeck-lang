@@ -155,7 +155,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   argument_options.remove(L"dest");
 
   // check program libraries path
-  wstring sys_lib_path = L"lang.obl,gen_collect.obl";
+  wstring sys_lib_path = L"lang,gen_collect";
   result = arguments.find(L"lib");
   if(result != arguments.end()) {
     wstring lib_path = result->second;
