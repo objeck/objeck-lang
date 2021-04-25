@@ -155,14 +155,28 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   argument_options.remove(L"dest");
 
   // check program libraries path
-  wstring sys_lib_path = L"lang,gen_collect";
-  result = arguments.find(L"lib");
+  result = arguments.find(L"strict_lib");
+  wstring sys_lib_path;
   if(result != arguments.end()) {
-    wstring lib_path = result->second;
-    frontend::RemoveSubString(lib_path, L".obl");
-    frontend::RemoveSubString(lib_path, L"gen_collect");
-    sys_lib_path += L"," + lib_path;
-    argument_options.remove(L"lib");
+    // check program libraries path
+    sys_lib_path = L"lang,gen_collect";
+    result = arguments.find(L"lib");
+    if(result != arguments.end()) {
+      wstring lib_path = result->second;
+      // legacy clean up... remove soon?
+      frontend::RemoveSubString(lib_path, L".obl");
+      frontend::RemoveSubString(lib_path, L"gen_collect");
+      sys_lib_path += L"," + lib_path;
+      argument_options.remove(L"lib");
+    }
+  }
+  else {
+    sys_lib_path = L"lang";
+    result = arguments.find(L"lib");
+    if(result != arguments.end()) {
+      sys_lib_path += L"," + result->second;
+      argument_options.remove(L"lib");
+    }
   }
 
   // check for optimize flag
