@@ -327,5 +327,6 @@ void frontend::RemoveSubString(wstring& str_in, const wstring& find)
   size_t start = str_in.find(find);
   while(start != wstring::npos) {
     str_in.erase(start, find.size());
+    start = str_in.find(find);
   }
 }
