@@ -2238,6 +2238,10 @@ namespace frontend {
       return is_public;
     }
 
+    void SetPublic(bool p) {
+      is_public = p;
+    }
+
     bool HasGenerics() {
       return !generic_classes.empty();
     }

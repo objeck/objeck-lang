@@ -6,6 +6,6 @@ class CharCode {
 	function : native : Run() ~ Nil {
 		i := 'a'->As(Int);
 		i->PrintLine();
-		i->As(Char)->PrintLine();
+		i->ToChar()->PrintLine();
 	}
 }
