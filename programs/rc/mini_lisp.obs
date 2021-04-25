@@ -252,7 +252,7 @@ class Evaluator {
 			}
 
 			other {
-				"Unknow expression"->ErrorLine();
+				"Unknown expression"->ErrorLine();
 				Runtime->Exit(1);
 			}
 		};
