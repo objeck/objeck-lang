@@ -133,6 +133,10 @@ class Loader {
 public:
   Loader(const wchar_t* arg) {
     filename = arg;
+    if(!EndsWith(filename, L".obe")) {
+      filename += L".obe";
+    }
+
     string_cls_id = -1;
     is_web = false;
     ReadFile();
@@ -141,6 +145,10 @@ public:
 
   Loader(const int argc, wchar_t** argv) {
     filename = argv[1];
+    if(!EndsWith(filename, L".obe")) {
+      filename += L".obe";
+    }
+
     for(int i = 2; i < argc; ++i) {
       arguments.push_back(argv[i]);
     }

@@ -1751,6 +1751,8 @@ class TrapProcessor {
   static bool ProcessTrap(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
 };
 
+bool EndsWith(wstring const& str, wstring const& ending);
+
 /********************************
  * Call back for DLL method calls
  ********************************/
