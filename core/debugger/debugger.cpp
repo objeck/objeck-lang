@@ -307,7 +307,7 @@ void Runtime::Debugger::ProcessArgs(const wstring& temp)
   buffer = nullptr;
 }
 
-void Runtime::Debugger::ProcessExe(Load* load) {
+void Runtime::Debugger::ProcessBin(Load* load) {
   if(interpreter) {
     wcout << L"unable to load executable while program is running." << endl;
     return;
@@ -1557,7 +1557,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
   if(command) {
     switch(command->GetCommandType()) {
     case EXE_COMMAND:
-      ProcessExe(static_cast<Load*>(command));
+      ProcessBin(static_cast<Load*>(command));
       break;
 
     case SRC_COMMAND:
