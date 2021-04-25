@@ -171,10 +171,9 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     }
   }
   else {
-    sys_lib_path = L"lang";
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
-      sys_lib_path += L"," + result->second;
+      sys_lib_path = L"," + result->second;
       argument_options.remove(L"lib");
     }
   }
