@@ -1,8 +1,4 @@
-﻿interface Greetings {
-	method : virtual : public : SayHi() ~ Nil;
-}
-
-class Hello {
+﻿class Hello {
 	function : Main(args : String[]) ~ Nil {
 		english := Base->New() implements Greetings {
 			New() {}
@@ -29,4 +25,8 @@ class Hello {
 		greek->SayHi();
 		japanese->SayHi();
 	}
+}
+
+interface Greetings {
+	method : virtual : public : SayHi() ~ Nil;
 }

@@ -3952,7 +3952,6 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   NextToken();
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, method_call->GetVariableName(), interface_names);
-  klass->SetPublic(true);
 
   Class* prev_class = current_class;
   prev_method = current_method;
