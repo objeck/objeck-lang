@@ -171,10 +171,11 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
       wstring lib_path = result->second;
-      // legacy clean up... remove soon?
-      frontend::RemoveSubString(lib_path, L".obl");
+      // --start: legacy clean up
       frontend::RemoveSubString(lib_path, L"gen_collect,");
       frontend::RemoveSubString(lib_path, L"gen_collect");
+      frontend::RemoveSubString(lib_path, L".obl");
+      // --end
       sys_lib_path += L"," + lib_path;
       argument_options.remove(L"lib");
     }
