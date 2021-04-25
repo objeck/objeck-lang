@@ -74,21 +74,21 @@ void FileEmitter::Emit()
 
   // library target
   if(emit_lib) {
-    if(!EndsWith(file_name, L".obl")) {
+    if(!frontend::EndsWith(file_name, L".obl")) {
       wcerr << L"Error: Libraries must end in '.obl'" << endl;
       exit(1);
     }
   } 
   // web target
   else if(is_web) {
-    if(!EndsWith(file_name, L".obw")) {
+    if(!frontend::EndsWith(file_name, L".obw")) {
       wcerr << L"Error: Web applications must end in '.obw'" << endl;
       exit(1);
     }
   } 
   // application target
   else {
-    if(!EndsWith(file_name, L".obe")) {
+    if(!frontend::EndsWith(file_name, L".obe")) {
       wcerr << L"Error: Executables must end in '.obe'" << endl;
       exit(1);
     }

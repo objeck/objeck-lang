@@ -4842,7 +4842,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
-            else if (SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
+            else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -4875,7 +4875,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             }
-            else if (SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
+            else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif

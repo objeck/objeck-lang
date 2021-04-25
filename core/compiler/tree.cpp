@@ -511,9 +511,9 @@ void Method::EncodeUserName() {
   vector<Declaration*> declaration_list = declarations->GetDeclarations();
   for (size_t i = 0; i < declaration_list.size(); ++i) {
     SymbolEntry* entry = declaration_list[i]->GetEntry();
-    if (entry) {
+    if(entry) {
       user_name += EncodeUserType(entry->GetType());
-      if (i + 1 < declaration_list.size()) {
+      if(i + 1 < declaration_list.size()) {
         user_name += L", ";
       }
     }
