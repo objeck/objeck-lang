@@ -1,5 +1,5 @@
 #~
-# compile: obc -src https_1.obs -lib gen_collect,net -dest https_1.obe
+# compile: obc -src https_1.obs -lib net
 # run: obr https_1.obe
 ~#
 

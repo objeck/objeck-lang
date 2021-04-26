@@ -1,6 +1,6 @@
 #~
 # translation of: https://en.wikipedia.org/wiki/Visitor_pattern#C#_example
-# compile: obc -src visitor_20.obs -dest visitor_20.obe
+# compile: obc -src visitor_20.obs
 # run: obr visitor_20.obe
 ~#
 

@@ -1,9 +1,9 @@
 #~
-compile: obc -src serial_14.obs -lib collect.obl -dest serial_14.obe
+compile: obc -src serial_14.obs
 run: obr serial_14.obe (write|read)
 ~#
 
-use Collection;
+use Collection.Generic;
 use System.IO;
 use System.IO.File;
 
@@ -13,8 +13,8 @@ class Client {
 			if(args[0]->Equals("read")) {
 				ReadFile();
 			}
-			else {
-				values := StringMap->New();
+			else if(args[0]->Equals("write")) {
+				values := Map->New()<String, Compare>;
 				values->Insert("name", "Objeck");
 				values->Insert("age", IntHolder->New(10));
 				values->Insert("pi", FloatHolder->New(3.145));
@@ -42,7 +42,7 @@ class Client {
 		"server: file='{$file_name}', size={$size} bytes"->PrintLine();
 		
 		deserializer := Deserializer->New(bytes);
-		values := deserializer->ReadObject()->As(StringMap);
+		values := deserializer->ReadObject()->As(Map<String, Compare>);
 
 
 		values->Size()->PrintLine();

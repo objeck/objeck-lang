@@ -150,13 +150,16 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   if(result == arguments.end()) {
     dest_file = src_file;
     frontend::RemoveSubString(dest_file, L".obs");
-    dest_file += L".obe";
   }
   else {
     dest_file = result->second;
     argument_options.remove(L"dest");
   }
-
+   
+  if(!frontend::EndsWith(dest_file, L".obe")) {
+     dest_file += L".obe";
+  }
+  
   // check program libraries path
   wstring sys_lib_path;
   result = arguments.find(L"strict");
