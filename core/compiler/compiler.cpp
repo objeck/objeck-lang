@@ -156,11 +156,13 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     argument_options.remove(L"dest");
   }
    
-  if(!frontend::EndsWith(dest_file, L".obe")) {
+  if(!frontend::EndsWith(dest_file, L".obe") && 
+     !frontend::EndsWith(dest_file, L".obl") &&
+     !frontend::EndsWith(dest_file, L".obw")) {
      dest_file += L".obe";
   }
   
-  // check program libraries path
+  // check program libraries path and 'strict' usage
   wstring sys_lib_path;
   result = arguments.find(L"strict");
   if(result != arguments.end()) {
@@ -172,12 +174,11 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     argument_options.remove(L"strict");
   }
   else {
-    // check program libraries path
     sys_lib_path = L"lang,gen_collect";
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
       wstring lib_path = result->second;
-      // --- START: legacy clean up
+      // --- START: command line clean up
       frontend::RemoveSubString(lib_path, L".obl");
       frontend::RemoveSubString(lib_path, L"gen_collect,");
       frontend::RemoveSubString(lib_path, L"gen_collect");
@@ -190,7 +191,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     }
   }
 
-  // check for optimize flag
+  // check for optimization flags
   wstring optimize;
   result = arguments.find(L"opt");
   if(result != arguments.end()) {
@@ -202,7 +203,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     argument_options.remove(L"opt");
   }
 
-  // check program libraries path
+  // check program library paths
   wstring target;
   result = arguments.find(L"tar");
   if(result != arguments.end()) {
