@@ -1,5 +1,5 @@
 #~
-# compile: obc -src xml_2.obs -lib xml,gen_collect -dest xml_2.obe
+# compile: obc -src xml_2 -lib xml,gen_collect
 # run: obr xml_2.obe
 ~#
 
