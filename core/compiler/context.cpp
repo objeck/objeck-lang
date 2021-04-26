@@ -1673,8 +1673,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     lib_klass->SetCalled(true);
   }
   else {
-    ProcessError(char_str, L"Internal compiler error: Invalid class name");
-    exit(1);
+    ProcessError(char_str, L"Invalid class name='System.String' system 'lang.obl' bundle missing");
   }
 #endif
 
