@@ -92,8 +92,7 @@ int main(int argc, char* argv[])
     for(int i = 1; i < 32 && i < argc; ++i) {
       path += " ";
       char* cmd_param = argv[i];
-      if(strlen(cmd_param) > 0 && cmd_param[0]  != L'\'' && 
-        (strrchr(cmd_param, L' ') || strrchr(cmd_param, L'\t'))) {
+      if(strlen(cmd_param) > 0 && cmd_param[0]  != L'\'' && (strrchr(cmd_param, L' ') || strrchr(cmd_param, L'\t'))) {
           path += "'";
           path += cmd_param;
           path += "'";
