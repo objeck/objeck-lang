@@ -144,6 +144,18 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     }
   }
 
+  // check program target
+  wstring target;
+  result = arguments.find(L"tar");
+  if(result != arguments.end()) {
+    target = result->second;
+    if(target != L"lib" && target != L"web" && target != L"exe") {
+      wcerr << usage << endl;
+      return COMMAND_ERROR;
+    }
+    argument_options.remove(L"tar");
+  }
+
   // check program output
   wstring dest_file;
   result = arguments.find(L"dest");
@@ -155,13 +167,14 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     dest_file = result->second;
     argument_options.remove(L"dest");
   }
-   
-  if(!frontend::EndsWith(dest_file, L".obe") && 
-     !frontend::EndsWith(dest_file, L".obl") &&
-     !frontend::EndsWith(dest_file, L".obw")) {
-     dest_file += L".obe";
-  }
   
+  if((target.empty() || target == L"exe") && !frontend::EndsWith(dest_file, L".obe")) {
+    dest_file += L".obe";
+  }
+  else if(target == L"lib" && !frontend::EndsWith(dest_file, L".obl")) {
+    dest_file += L".obl";
+  }
+    
   // check program libraries path and 'strict' usage
   wstring sys_lib_path;
   result = arguments.find(L"strict");
@@ -202,19 +215,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     }
     argument_options.remove(L"opt");
   }
-
-  // check program library paths
-  wstring target;
-  result = arguments.find(L"tar");
-  if(result != arguments.end()) {
-    target = result->second;
-    if(target != L"lib" && target != L"web" && target != L"exe") {
-      wcerr << usage << endl;
-      return COMMAND_ERROR;
-    }
-    argument_options.remove(L"tar");
-  }
-
+  
   // use alternate syntax
   bool alt_syntax = false;
   result = arguments.find(L"alt");
