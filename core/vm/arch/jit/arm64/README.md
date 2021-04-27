@@ -1,5 +1,5 @@
 ## JIT Compiler for Apple Silicon (ARM64) 
-Release candidate is functional.
+Code was released in January 2021 and is stable.
 
 While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers. Values stored in volatile registers need to saved between function calls. ARMv8 does not support novel conditional instruction execution.
 
