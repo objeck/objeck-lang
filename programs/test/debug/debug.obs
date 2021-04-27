@@ -1,19 +1,5 @@
-class Program {
-	@a : Foo[];
-	New() {
-		
-	}
-
-	method : Foo() ~ Nil {
-		@a[0]->Hi();
-#		@a->Size();
-	}
-
-	function : Main(args: String[]) ~ Nil {
-	}
-}
-
 class Foo {
-	New(){}
-	method : public : Hi() ~ Nil {}
+	function : Main(args : String[]) ~ Nil {
+		"Hello World!"->PrintLine();
+	}
 }

@@ -410,7 +410,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
-    L"; virtual=" + ToString(klass->IsVirtual()) + L"]";
+    L"; virtual=" + (klass->IsVirtual() ? L"true" : L"false") + L"]";
   Debug(msg, klass->GetLineNumber(), depth);
 #endif
 
