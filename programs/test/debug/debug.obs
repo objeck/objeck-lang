@@ -1,9 +1,19 @@
 class Program {
-	function : Main(args: String[]) ~ Nil {
-		a := FloatHolder->New(13.5);
-		b := IntHolder->New(7);
+	@a : Foo[];
+	New() {
 		
-		a->PrintLine();
-		b->PrintLine();
 	}
+
+	method : Foo() ~ Nil {
+		@a[0]->Hi();
+#		@a->Size();
+	}
+
+	function : Main(args: String[]) ~ Nil {
+	}
+}
+
+class Foo {
+	New(){}
+	method : public : Hi() ~ Nil {}
 }

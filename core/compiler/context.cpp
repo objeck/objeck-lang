@@ -6349,7 +6349,8 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 
     return true;
   }
-  else if(!method_call->GetEntry() && !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
+  else if(!method_call->GetEntry() && !method_call->GetVariable() && !method->IsStatic() && 
+          method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
     Class* method_class = method->GetClass();
     Class* parent = current_method->GetClass();
     while(parent) {
