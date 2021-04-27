@@ -2,10 +2,6 @@ class Thes {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			reader := System.IO.File.FileReader->New(args[0]);
-			leaving {
-				
-			};
-
 			words := Collection.Generic.Vector->New()<String>;
 			line := reader->ReadLine();
 			while(line <> Nil) {
@@ -14,6 +10,7 @@ class Thes {
 				};
 				line := reader->ReadLine();
 			};
+			reader->Close();
 
 			found := words->Size();
 			"Found {$found} word(s):"->PrintLine();
