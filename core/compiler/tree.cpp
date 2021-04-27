@@ -743,7 +743,7 @@ SymbolEntry* SymbolTable::GetEntry(const wstring& name)
   return nullptr;
 }
 
-bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var /*= false*/)
+bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var)
 {
   // see of we have this entry
   ScopeTable* tmp;
@@ -752,6 +752,10 @@ bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var /*= false*/)
   }
   else {
     tmp = parse_ptr;
+  }
+
+  if(!tmp) {
+    return false;
   }
 
   while(tmp) {
