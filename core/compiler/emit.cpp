@@ -320,7 +320,7 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
 void IntermediateMethod::Debug() {
   GetLogger() << L"---------------------------------------------------------" << endl;
   GetLogger() << L"Method: id=" << klass->GetId() << L"," << id << L"; name='" << name << L"'; return='" << rtrn_name
-    << L"';\n  blocks=" << blocks.size() << L"; is_function=" << is_function << L"; num_params="
+    << L"';\n  blocks=" << blocks.size() << L"; is_function=" << (is_function ? L"true" : L"false") << L"; num_params="
     << params << L"; mem_size=" << space << endl;
   GetLogger() << L"---------------------------------------------------------" << endl;
   entries->Debug(has_and_or);
