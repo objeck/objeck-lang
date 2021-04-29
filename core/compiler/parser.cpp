@@ -2686,6 +2686,11 @@ StaticArray* Parser::ParseStaticArray(int depth) {
       ProcessError(L"Expected ']'", TOKEN_CLOSED_BRACKET);
     }
     NextToken();
+
+    // next row
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
   }
 
   return TreeFactory::Instance()->MakeStaticArray(file_name, line_num, expressions);
@@ -3586,7 +3591,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident);
       NextToken();
     }
-                                break;
+      break;
 
     case TOKEN_BAD_CHAR_STRING_LIT:
       ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
