@@ -1,5 +1,9 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		"Hello World!"->PrintLine();
+		nodes := [
+			["a", "b"], ["c", "d"]
+		];
+
+		a := 13;
 	}
 }
