@@ -15,7 +15,6 @@ class RotatingCube {
 	@edges : Int[,];
 
 	New() {
-		@initialized := true;
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Rotating Cube");
 
 		@nodes := [[-100.0, -100.0, -100.0], [-100.0, -100.0, 100.0], [-100.0, 100.0, -100.0],
@@ -28,11 +27,16 @@ class RotatingCube {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		RotatingCube->New()->Play();
+		RotatingCube->New()->Run();
 	}
 
-	method : Play() ~ Nil {
-		if(@initialized) {
+	method : Run() ~ Nil {
+		leaving {
+			@framework->FreeShapes();
+			@framework->Quit();
+		};
+
+		if(@framework->IsOk()) {
 			# initialization
 			@framework->SetClearColor(Color->New(0, 0, 0));
 			RotateCube(Float->Pi(), 2.0->SquareRoot()->ArcTan());
@@ -56,7 +60,7 @@ class RotatingCube {
 
 				@framework->FrameEnd();
 
-				# render
+				# render and pause
 				@framework->Show();
 
 				Timer->Delay(200);
@@ -67,10 +71,6 @@ class RotatingCube {
 		else {
 			"--- Error Initializing Environment ---"->ErrorLine();
 			return;
-		};
-
-		leaving {
-			@framework->FreeShapes();
 		};
 	}
 
