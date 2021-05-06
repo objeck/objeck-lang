@@ -107,8 +107,6 @@ class Loader {
   }
 
   inline FLOAT_VALUE ReadDouble() {
-    // FLOAT_VALUE value;
-    // memcpy(&value, buffer, sizeof(value));
     FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
     buffer += sizeof(value);
     return value;
