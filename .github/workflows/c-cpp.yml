@@ -9,13 +9,15 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     
     env:
       working-directory: ./core/release
     
     steps:
     - uses: actions/checkout@master
+    - name: update
+      run : apt-get update
     - name: configure
       run: sudo apt-get install build-essential libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev
     - name: build
