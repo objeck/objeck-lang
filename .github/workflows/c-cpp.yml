@@ -1,0 +1,23 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    env:
+      working-directory: ./core/release
+    
+    steps:
+    - uses: actions/checkout@master
+    - name: configure
+      run: sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev
+    - name: build
+      run: ./deploy_posix.sh 64 deploy
+    
