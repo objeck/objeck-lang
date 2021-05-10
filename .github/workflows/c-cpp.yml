@@ -14,15 +14,18 @@ jobs:
     
     steps:
     - uses: actions/checkout@master
+
     - name: update
       run : sudo apt-get update
+
     - name: configure
       run: sudo apt-get install build-essential libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev
+    
     - name: build
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
 
-    - name: unit-compile
+    - name: tests-compile
       working-directory: ./core/release/deploy/bin
       run: |
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs; \
@@ -44,7 +47,7 @@ jobs:
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/visitor_20.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
 
-    - name: unit-run
+    - name: tests-run
       working-directory: ./core/release/deploy/bin
       run: |
         ./obr ../../../../programs/deploy/calc_life_10.obe; \
@@ -66,7 +69,7 @@ jobs:
         ./obr ../../../../programs/deploy/visitor_20.obe; \
         ./obr ../../../../programs/deploy/xml_2.obe
 
-    - name: code-doc
+    - name: doc-apis
       working-directory: ./core/release/deploy/bin
       run: |
           mkdir ../html
