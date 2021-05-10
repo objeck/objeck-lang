@@ -211,7 +211,7 @@ bundle System.Utility {
 				# identifier
 				if(input->Get(i)->IsChar()) {
 					start := i;
-					while(input->Get(i)->IsChar() | input->Get(i) = '_') {
+					while(input->Get(i)->IsChar() | input->Get(i)->IsDigit() | input->Get(i) = '_') {
 						i += 1;
 					};
 					tokens->AddBack(input->SubString(start, i - start));
