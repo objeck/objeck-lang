@@ -25,7 +25,7 @@ jobs:
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
 
-    - name: compile-test
+    - name: compile-tests
       working-directory: ./core/release/deploy/bin
       run: |
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs; \
@@ -47,7 +47,7 @@ jobs:
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/visitor_20.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
 
-    - name: run-test
+    - name: run-tests
       working-directory: ./core/release/deploy/bin
       run: |
         ./obr ../../../../programs/deploy/calc_life_10.obe; \
@@ -74,4 +74,4 @@ jobs:
       run: |
           mkdir ../html
           ./obc -src ../../../../programs/doc/doc_html.obs,../../../../programs/doc/doc_parser.obs -dest code_doc.obe; \
-          ./obr code_doc.obe ../examples/doc/templates 0.0.10 ../../../compiler/lib_src/lang.obs ../../../compiler/lib_src/regex.obs ../../../compiler/lib_src/json.obs ../../../compiler/lib_src/xml.obs ../../../compiler/lib_src/encrypt.obs ../../../compiler/lib_src/odbc.obs ../../../compiler/lib_src/csv.obs ../../../compiler/lib_src/query.obs ../../../compiler/lib_src/sdl2.obs ../../../compiler/lib_src/sdl_game.obs ../../../compiler/lib_src/gen_collect.obs ../../../compiler/lib_src/net.obs ../../../compiler/lib_src/rss.obs ../../../compiler/lib_src/misc.obs
+          ./obr code_doc.obe ../examples/doc/templates 0.0.1 ../../../compiler/lib_src/lang.obs ../../../compiler/lib_src/regex.obs ../../../compiler/lib_src/json.obs ../../../compiler/lib_src/xml.obs ../../../compiler/lib_src/encrypt.obs ../../../compiler/lib_src/odbc.obs ../../../compiler/lib_src/csv.obs ../../../compiler/lib_src/query.obs ../../../compiler/lib_src/sdl2.obs ../../../compiler/lib_src/sdl_game.obs ../../../compiler/lib_src/gen_collect.obs ../../../compiler/lib_src/net.obs ../../../compiler/lib_src/rss.obs ../../../compiler/lib_src/misc.obs
