@@ -1,4 +1,8 @@
 # Objeck
+
+[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
+[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
+
 Latest: [Apple Silicon Port](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64)
 
 Objeck is an object-oriented computer language with functional features. Objeck emphasizes simplicity, portability and scalability. The programming environment consists of a compiler, virtual machine and command line debugger.
