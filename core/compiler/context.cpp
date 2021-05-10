@@ -4068,7 +4068,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   }
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->HasConcreteTypes()) {
     MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-    if(variable->GetEntry()->GetType()->GetGenerics().size() != mthd_call->GetConcreteTypes().size()) {
+    if(variable->GetEntry()->GetType() && variable->GetEntry()->GetType()->GetGenerics().size() != mthd_call->GetConcreteTypes().size()) {
       ProcessError(variable, L"Generic size mismatch");
     }
   }
