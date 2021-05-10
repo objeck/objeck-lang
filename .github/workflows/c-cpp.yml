@@ -54,13 +54,13 @@ jobs:
         ./obr ../../../../programs/deploy/fs_query_12.obe; \
         ./obr ../../../../programs/deploy/functions_5.obe; \
         ./obr ../../../../programs/deploy/hello_0.obe; \
-        ./obr ../../../../programs/deploy/http_regex_9.obe; \ https://www.google.org
+        ./obr ../../../../programs/deploy/http_regex_9.obe https://www.google.org; \
         ./obr ../../../../programs/deploy/https_1.obe; \
         ./obr ../../../../programs/deploy/http_xml_regex_8.obe; \
         ./obr ../../../../programs/deploy/json_3.obe; \
         ./obr ../../../../programs/deploy/lambda_17.obe; \
         ./obr ../../../../programs/deploy/regex_4.obe; \
-        ./obr ../../../../programs/deploy/rss_https_xml_15.obe; \ https://www.techmeme.com/feed.xml out.txt
+        ./obr ../../../../programs/deploy/rss_https_xml_15.obe https://www.techmeme.com/feed.xml out.txt; \
         ./obr ../../../../programs/deploy/serial_14.obe; \
         ./obr ../../../../programs/deploy/threads_6.obe; \
         ./obr ../../../../programs/deploy/visitor_20.obe; \
