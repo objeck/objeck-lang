@@ -15,17 +15,17 @@ jobs:
     steps:
     - uses: actions/checkout@master
 
-    - name: update
+    - name: update-env
       run : sudo apt-get update
 
-    - name: configure
+    - name: add-deps
       run: sudo apt-get install build-essential libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev
     
-    - name: build
+    - name: build-toolchain
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
 
-    - name: tests-compile
+    - name: compile-test
       working-directory: ./core/release/deploy/bin
       run: |
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs; \
@@ -47,7 +47,7 @@ jobs:
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/visitor_20.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
 
-    - name: tests-run
+    - name: run-test
       working-directory: ./core/release/deploy/bin
       run: |
         ./obr ../../../../programs/deploy/calc_life_10.obe; \
