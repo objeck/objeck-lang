@@ -11,15 +11,13 @@ class Fasta {
 						"\n"->Print();
 					};
 	            } 
-	            else {
-					if(is_line) {
-						"{$token}: "->Print();
-						is_line := false;
-					}
-					else {
-						token->Print();
-					};
-	            };
+	            else if(is_line) {
+					"{$token}: "->Print();
+					is_line := false;
+				}
+				else {
+					token->Print();
+				};
 			};
 		};
 	}
