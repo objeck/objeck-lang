@@ -3,7 +3,7 @@ name: C/C++ CI
 on:
   push:
     branches: [ master ]
-    
+
   pull_request:
     branches: [ master ]
 
@@ -22,8 +22,8 @@ jobs:
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
 
-    - name: test-compile
-      working-directory: ./core/release/bin
+    - name: unit-compile
+      working-directory: ./core/release/deploy/bin
       run: |
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/closure_19.obs; \
@@ -44,8 +44,8 @@ jobs:
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/visitor_20.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
 
-    - name: test-run
-      working-directory: ./core/release/bin
+    - name: unit-run
+      working-directory: ./core/release/deploy/bin
       run: |
         ./obr ../../../../programs/deploy/calc_life_10.obe; \
         ./obr ../../../../programs/deploy/closure_19.obe; \
