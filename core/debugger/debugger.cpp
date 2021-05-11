@@ -624,28 +624,13 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
                   wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
                 }
                 else if(klass->GetName() == L"System.IntHolder") {
-                  if(instance) {
-                    wcout << L"print: type=System.IntHolder, value=" << (int32_t)instance[0] << endl;
-                  }
-                  else {
-                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
-                  }
+                  wcout << L"print: type=System.IntHolder, value=" << (int32_t)instance[0] << endl;
                 }
                 else if(klass->GetName() == L"System.ByteHolder") {
-                  if(instance) {
-                    wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
-                  }
-                  else {
-                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
-                  }
+                  wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
                 }
                 else if(klass->GetName() == L"System.CharHolder") {
-                  if(instance) {
-                    wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
-                  }
-                  else {
-                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
-                  }
+                  wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
                 }
                 else if(klass->GetName() == L"System.FloatHolder") {
                   if(instance) {
