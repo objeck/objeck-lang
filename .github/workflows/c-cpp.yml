@@ -25,6 +25,7 @@ jobs:
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
 
+  test:
     - name: compile-tests
       working-directory: ./core/release/deploy/bin
       run: |
@@ -69,6 +70,7 @@ jobs:
         ./obr ../../../../programs/deploy/visitor_20.obe; \
         ./obr ../../../../programs/deploy/xml_2.obe
 
+  doc:
     - name: doc-apis
       working-directory: ./core/release/deploy/bin
       run: |
