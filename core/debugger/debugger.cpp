@@ -633,13 +633,8 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
                   wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
                 }
                 else if(klass->GetName() == L"System.FloatHolder") {
-                  if(instance) {
-                    FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
-                    wcout << L"print: type=System.FloatHolder, value=" << value << endl;
-                  }
-                  else {
-                    wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
-                  }
+                  FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
+                  wcout << L"print: type=System.FloatHolder, value=" << value << endl;
                 }
                 else {
                   wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
