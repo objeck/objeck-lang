@@ -49,9 +49,6 @@ Notable features:
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
-## Binaries
-Get the latest [binaries](https://sourceforge.net/projects/objeck-lang/).
-
 ## Design
 Components 
 *  [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
