@@ -161,7 +161,13 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   result = arguments.find(L"dest");
   if(result == arguments.end()) {
     dest_file = src_file;
-    frontend::RemoveSubString(dest_file, L".obs");
+    if(dest_file.find(L',') == string::npos) {
+      frontend::RemoveSubString(dest_file, L".obs");
+    }
+    else {
+      wcerr << usage << endl;
+      return COMMAND_ERROR;
+    }
   }
   else {
     dest_file = result->second;
