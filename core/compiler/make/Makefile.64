@@ -1,6 +1,7 @@
 CC=g++
 # ARGS=-g -D_DEBUG -Wall -Wno-unused-function
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++11
+# ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++11
+ARGS=-g -Wall -Wno-unused-function -D_X64 -std=c++11
 SRC=../shared/logger.o types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=logger.a
 LOGGER_PATH=../shared
