@@ -28,12 +28,6 @@ Notable features:
   * Type inference
   * Lambda expressions
   * Closures
-* Supported platforms (with JIT compilation)
-  * x86-64: Windows, macOS and Linux
-  * x86: Windows and Linux
-  * ARMv7: Linux (Raspberry Pi 3/4)
-  * ARM64: macOS (Apple Silicon)
-* Native support for threads, sockets, files, date/time, etc.
 * Libraries 
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (vectors, queues, trees, hashes, etc.)
   * [HTTP and HTTPS clients](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs)
@@ -43,8 +37,14 @@ Notable features:
   * [Database access](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/odbc.obs)
   * [Query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs)
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
+* Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
 * JIT support for all targets
+* Supported platforms
+  * x86-64: Windows, macOS and Linux
+  * x86: Windows and Linux
+  * ARMv7: Linux (Raspberry Pi 3/4)
+  * ARM64: macOS (Apple Silicon)
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
