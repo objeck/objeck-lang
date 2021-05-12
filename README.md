@@ -42,9 +42,9 @@ Notable features:
   * [Encryption](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/encrypt.obs)
   * [Database access](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/odbc.obs)
   * [Query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs)
-  * [2D Gaming Framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
+  * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
 * Garbage collection
-* JIT support for all supported platforms
+* JIT support for all targets
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
