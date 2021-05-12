@@ -40,7 +40,7 @@ Notable features:
 * Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
 * JIT support for all targets
-* Supported platforms
+* Supported targets
   * x86-64: Windows, macOS and Linux
   * x86: Windows and Linux
   * ARMv7: Linux (Raspberry Pi 3/4)
