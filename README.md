@@ -58,7 +58,7 @@ Components
 *  [VM](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 *  [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
 *  [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
-*  [JIT compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
+*  [JIT compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
 ![alt text](images/design2.png "Compiler & VM")
 
