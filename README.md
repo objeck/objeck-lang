@@ -35,14 +35,14 @@ Notable features:
   * ARM64: macOS (Apple Silicon)
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
-  * Collections (vectors, queues, trees, hashes, etc.)
-  * HTTP and HTTPS clients
-  * RegEx
-  * JSON, XML and CSV parsers
-  * Encryption
-  * Database access (via ODBC)
-  * Query framework
-  * 2D Gaming (via SDL2)
+  * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (vectors, queues, trees, hashes, etc.)
+  * [HTTP and HTTPS clients](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs)
+  * [RegEx](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs)
+  * [JSON](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [XML](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs) and [CSV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs) parsers
+  * [Encryption](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/encrypt.obs)
+  * [Database access](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/odbc.obs)
+  * [Query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs)
+  * [2D Gaming Framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
 * Garbage collection
 * JIT support for all supported platforms
 
