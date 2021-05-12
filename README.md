@@ -54,11 +54,11 @@ Get the latest [binaries](https://sourceforge.net/projects/objeck-lang/).
 
 ## Design
 Components 
-*  [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler/README.md)
-*  [VM](https://github.com/objeck/objeck-lang/blob/master/core/vm/README.md)
-*  [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger/README.md)
-*  [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/README.md)
-*  [JIT compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit/README.md)
+*  [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
+*  [VM](https://github.com/objeck/objeck-lang/blob/master/core/vm)
+*  [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
+*  [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
+*  [JIT compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 
 ![alt text](images/design2.png "Compiler & VM")
 
