@@ -609,6 +609,39 @@ class Parser {
 						};
 					}
 
+					label Token->Type->DEFUN_KEYWORD: {
+						if(@is_debug) {
+							"\tDefun"->PrintLine();
+						};
+						node := Node->New(Node->Type->DEFUN);
+"fdkfkd"->PrintLine();
+
+						NextToken();
+						if(GetTokenType() <> Token->Type->VAR) {
+							@error := true;
+							"*** expected string # ***"->ErrorLine();
+							return Nil;
+						};
+						value := @tokens->Get(@token_pos)->GetStringValue();
+value->PrintLine();
+						NextToken();
+						if(GetTokenType() <> Token->Type->OPRN) {
+							@error := true;
+							"*** expected '(' ***"->ErrorLine();
+							return Nil;
+						};
+value->PrintLine();
+
+						NextToken();
+						while(GetTokenType() = Token->Type->VAR) {
+							value := @tokens->Get(@token_pos)->GetStringValue();
+value->PrintLine();
+
+"-- 1 --"->PrintLine();
+							NextToken();
+						};
+					}
+
 					label Token->Type->WRITE_KEYWORD: {
 						if(@is_debug) {
 							"\tWrite"->PrintLine();
@@ -807,6 +840,7 @@ class Node {
 		LIST,
 		LET,
 		LET_DEC,
+		DEFUN,
 		CONS,
 		COND,
 		WRITE,
@@ -937,6 +971,10 @@ class Node {
 				buffer += "let_dec '{$@str_value}'";
 			}
 
+			label Node->Type->DEFUN {
+				buffer += "defun '{$@str_value}'";
+			}
+
 			label Node->Type->EMPTY_LIST {
 				buffer += "empty_list";
 			}
@@ -1000,6 +1038,7 @@ class Scanner {
 		@keywords->Insert("cond", Token->Type->COND_KEYWORD);
 		@keywords->Insert("cons", Token->Type->CONS_KEYWORD);
 		@keywords->Insert("length", Token->Type->LENGTH_KEYWORD);
+		@keywords->Insert("defun", Token->Type->DEFUN_KEYWORD);
 	}
 
 	method : public : Scan(input : String) ~ Vector<Token> {
@@ -1111,6 +1150,7 @@ class Token {
 		CONS_KEYWORD,
 		LENGTH_KEYWORD,
 		COND_KEYWORD,
+		DEFUN_KEYWORD,
 		INT_LIT,
 		REAL_LIT,
 		STR_LIT,
@@ -1206,6 +1246,10 @@ class Token {
 
 			label Type->LET_KEYWORD {
 				return "let";
+			}
+
+			label Type->DEFUN_KEYWORD {
+				return "defun";
 			}
 
 			label Type->VAR {
