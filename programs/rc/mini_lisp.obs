@@ -17,14 +17,16 @@ class MiniLisp {
 class Evaluator {
 	@main : Node;
 	@functions : Map<String, Node>;
-	@stack : Stack<Value>;
-	@symbol_tables : List<Hash<String, Value>>;
+	@exe_stack : Stack<Value>;
 	@is_debug : Bool;
+
+	# TODO: call stack
+	@symbol_tables : List<Hash<String, Value>>;
 
 	New(root : Node, functions : Map<String, Node>) {
 		@main := root;
 		@functions := functions;
-		@stack := Stack->New()<Value>;
+		@exe_stack := Stack->New()<Value>;
 		@symbol_tables := List->New()<Hash<String, Value>>;
 		@is_debug := true;
 
@@ -53,8 +55,12 @@ class Evaluator {
 				children := node->GetChildren();
 				for(i := 0; i < children->Size() & <>done; i += 2;) {
 					Evaluate(children->Get(i));
-					cond := @stack->Pop();
-					# TODO: type checking
+					cond := @exe_stack->Pop();
+					if(cond->GetType() <> Value->Type->BOOL_TYPE) {
+						"*** Runtime Error: Expected boolean type ***"->ErrorLine();
+						Runtime->Exit(1);
+					};
+
 					if(cond->GetBoolValue()) {
 						Evaluate(children->Get(i + 1));
 						done := true;
@@ -72,7 +78,7 @@ class Evaluator {
 					
 					value := symbol_table->Find(name);
 					if(value <> Nil) {
-						@stack->Push(value);
+						@exe_stack->Push(value);
 						found := true;
 					};
 
@@ -96,7 +102,7 @@ class Evaluator {
 						name := child->GetStringValue();
 						sub_child := child->GetChildren();
 						Evaluate(sub_child->Get(0));
-						table->Insert(name, @stack->Pop());
+						table->Insert(name, @exe_stack->Pop());
 					}
 					else {
 						Evaluate(child);
@@ -114,7 +120,7 @@ class Evaluator {
 
 				list := Value->New(Value->Type->LIST);
 				each(i : children) {
-					child := @stack->Pop();
+					child := @exe_stack->Pop();
 					if(child->GetType() = Value->Type->LIST) {
 						list->AddList(child);
 					}
@@ -122,7 +128,7 @@ class Evaluator {
 						list->AddElement(child);
 					};
 				};
-				@stack->Push(list);
+				@exe_stack->Push(list);
 			}
 
 			label Node->Type->CONS {
@@ -133,9 +139,9 @@ class Evaluator {
 
 				list := Value->New(Value->Type->LIST);
 				each(i : children) {
-					list->AddElement(@stack->Pop());
+					list->AddElement(@exe_stack->Pop());
 				};
-				@stack->Push(list);
+				@exe_stack->Push(list);
 			}
 
 			label Node->Type->WRITE {
@@ -144,7 +150,7 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				@stack->Pop()->ToString()->PrintLine();
+				@exe_stack->Pop()->ToString()->PrintLine();
 			}
 
 			label Node->Type->LENGTH {
@@ -153,16 +159,16 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				list := @stack->Pop();
-				@stack->Push(Value->New(list->GetListSize()));
+				list := @exe_stack->Pop();
+				@exe_stack->Push(Value->New(list->GetListSize()));
 			}
 
 			label Node->Type->EMPTY_LIST {
-				@stack->Push(Value->EmptyList());
+				@exe_stack->Push(Value->EmptyList());
 			}
 
 			label Node->Type->INT_LIT {
-				@stack->Push(Value->New(node->GetIntValue()));
+				@exe_stack->Push(Value->New(node->GetIntValue()));
 			}
 
 			label Node->Type->ADD {
@@ -171,12 +177,12 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				left := @stack->Pop();
+				left := @exe_stack->Pop();
 				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @stack->Pop();
+					right := @exe_stack->Pop();
 					left->SetIntValue(left->GetIntValue() + right->GetIntValue());
 				};
-				@stack->Push(left);
+				@exe_stack->Push(left);
 			}
 
 			label Node->Type->MUL {
@@ -185,12 +191,12 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				left := @stack->Pop();
+				left := @exe_stack->Pop();
 				reverse(i : children) {
-					right := @stack->Pop();
+					right := @exe_stack->Pop();
 					left->SetIntValue(left->GetIntValue() * right->GetIntValue());
 				};
-				@stack->Push(left);
+				@exe_stack->Push(left);
 			}
 
 			label Node->Type->SUB {
@@ -199,17 +205,17 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				left := @stack->Pop();
+				left := @exe_stack->Pop();
 				if(children->Size() = 1) {
 					left->SetIntValue(left->GetIntValue() * -1);
 				}
 				else {
 					for(i := 1;	 i < children->Size(); i += 1;) {
-						right := @stack->Pop();
+						right := @exe_stack->Pop();
 						left->SetIntValue(left->GetIntValue() - right->GetIntValue());
 					};
 				};
-				@stack->Push(left);
+				@exe_stack->Push(left);
 			}
 
 			label Node->Type->DIV {
@@ -218,17 +224,17 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				left := @stack->Pop();
+				left := @exe_stack->Pop();
 				if(children->Size() = 1) {
 					left->SetRealValue(1.0 / left->GetIntValue()->ToFloat());
 				}
 				else {
 					for(i := 1;	 i < children->Size(); i += 1;) {
-						right := @stack->Pop();
+						right := @exe_stack->Pop();
 						left->SetIntValue(left->GetIntValue() - right->GetIntValue());
 					};
 				};
-				@stack->Push(left);
+				@exe_stack->Push(left);
 			}
 
 			label Node->Type->EQL {
@@ -237,13 +243,13 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				left := @stack->Pop();
+				left := @exe_stack->Pop();
 				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @stack->Pop();
+					right := @exe_stack->Pop();
 					# TODO: type checking
 					left->SetBoolValue(left->GetIntValue() = right->GetIntValue());
 				};
-				@stack->Push(left);
+				@exe_stack->Push(left);
 			}
 
 			label Node->Type->NEQL {
@@ -252,13 +258,13 @@ class Evaluator {
 					Evaluate(children->Get(i));
 				};
 
-				left := @stack->Pop();
+				left := @exe_stack->Pop();
 				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @stack->Pop();
+					right := @exe_stack->Pop();
 					# TODO: type checking
 					left->SetBoolValue(left->GetIntValue() <> right->GetIntValue());
 				};
-				@stack->Push(left);
+				@exe_stack->Push(left);
 			}
 
 			label Node->Type->DEFUN {
@@ -513,7 +519,7 @@ class Parser {
 			"\n--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
-				"{$i}: '{$value}'"->PrintLine();
+				"{$i}: {$value}"->PrintLine();
 			};
 			"\n--- Expressions ---"->PrintLine();
 		};
@@ -555,6 +561,10 @@ class Parser {
 		
 		while(@token_pos <> @tokens->Size()) {
 			expr := Expression(depth + 1);
+			if(expr = Nil) {
+				return Nil;
+			};
+
 			if(expr = Node->Type->DEFUN) {
 				@functions->Insert(expr->GetStringValue(), expr);
 			}
@@ -630,7 +640,7 @@ class Parser {
 							children := node->GetChildren();
 							if(children->IsEmpty() | children->Size() % 2 <> 0) {
 								@error := true;
-								"*** 'cond' operation takes even pairs of operands ***"->ErrorLine();
+								"*** Syntax Error: The 'cond' operation takes even pairs of operands ***"->ErrorLine();
 								return Nil;
 							};
 
@@ -648,7 +658,7 @@ class Parser {
 						NextToken();
 						if(GetTokenType() <> Token->Type->VAR) {
 							@error := true;
-							"*** expected string # ***"->ErrorLine();
+							"*** Syntax Error: Expected string type ***"->ErrorLine();
 							return Nil;
 						};
 						value := @tokens->Get(@token_pos)->GetStringValue();						
@@ -657,7 +667,7 @@ class Parser {
 
 						if(GetTokenType() <> Token->Type->OPRN) {
 							@error := true;
-							"*** expected '(' ***"->ErrorLine();
+							"*** Syntax Error: Expected '(' ***"->ErrorLine();
 							return Nil;
 						};
 						NextToken();
@@ -672,20 +682,21 @@ class Parser {
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
-							"*** expected ')' ***"->ErrorLine();
+							"*** Syntax Error: Expected ')' ***"->ErrorLine();
 							return Nil;
 						};
 						NextToken();
 
 						# TODO: expressions
 						exprs := Expression(depth);
-						if(exprs <> Nil) {
-							node->AddChild(exprs);
+						if(exprs = Nil) {
+							return Nil;
 						};
-
+						node->AddChild(exprs);
+						
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
-							"*** expected ')' ***"->ErrorLine();
+							"*** Syntax Error: Expected ')' ***"->ErrorLine();
 							return Nil;
 						};
 						NextToken();
@@ -703,7 +714,7 @@ class Parser {
 
 						if(node->GetChildren()->Size() <> 1) {
 							@error := true;
-							"*** 'write' operation takes 1 operand ***"->ErrorLine();
+							"*** Syntax Error: The 'write' operation takes 1 operand ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -720,7 +731,7 @@ class Parser {
 
 						if(node->GetChildren()->Size() <> 2) {
 							@error := true;
-							"*** 'cons' operation takes 2 operands ***"->ErrorLine();
+							"*** Syntax Error: The 'cons' operation takes 2 operands ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -733,7 +744,7 @@ class Parser {
 						NextToken();
 						if(GetTokenType() <> Token->Type->OPRN) {
 							@error := true;
-							"*** expected '(' ***"->ErrorLine();
+							"*** Syntax Error: Expected '(' ***"->ErrorLine();
 							return Nil;
 						};
 
@@ -744,13 +755,14 @@ class Parser {
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							expr := Expression(depth);
-							if(expr <> Nil) {
-								node->AddChild(expr);
+							if(expr = Nil) {
+								return Nil;
 							};
-
+							node->AddChild(expr);
+							
 							if(GetTokenType() <> Token->Type->CPRN) {
 								@error := true;
-								"*** expected ')' ***"->ErrorLine();
+								"*** Syntax Error: Expected ')' ***"->ErrorLine();
 								return Nil;
 							};
 						};
@@ -782,7 +794,7 @@ class Parser {
 
 						if(node->GetChildren()->Size() <> 1) {
 							@error := true;
-							"*** 'length' operation takes 1 operand ***"->ErrorLine();
+							"*** Syntax Error: The 'length' operation takes 1 operand ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -798,7 +810,7 @@ class Parser {
 					other: {
 						token_id := GetTokenType()->As(Int);
 						@error := true;
-						"*** Error: unknown operation: id={$token_id} ***"->ErrorLine();
+						"*** Syntax Error: Unknown operation ({$token_id}) ***"->ErrorLine();
 						return Nil;
 					}
 				};
@@ -813,7 +825,7 @@ class Parser {
 			}
 			else {
 				@error := true;
-				"*** Error: operation requires at least 1 operand ***"->ErrorLine();
+				"*** Syntax Error: Operation requires at least 1 operand ***"->ErrorLine();
 				return Nil;
 			};
 		}
@@ -840,7 +852,7 @@ class Parser {
 		else {
 			token_id := GetTokenType()->As(Int);
 			@error := true;
-			"*** Error: unknown token: id={$token_id} ***"->ErrorLine();
+			"*** Syntax Error: Unknown token ({$token_id}) ***"->ErrorLine();
 			NextToken();
 			return Nil;
 		};
@@ -1022,6 +1034,10 @@ class Node {
 				buffer += "let";
 			}
 
+			label Node->Type->COND {
+				buffer += "cond";
+			}
+
 			label Node->Type->LET_DEC {
 				buffer += "let_dec '{$@str_value}'";
 			}
@@ -1059,11 +1075,11 @@ class Node {
 			}
 
 			label Node->Type->EQL {
-				return "=";
+				buffer += "=";
 			}
 
 			label Node->Type->NEQL {
-				return "/=";
+				buffer += "/=";
 			}
 		};
 
@@ -1299,6 +1315,10 @@ class Token {
 				return "cons";
 			}
 
+			label Type->COND_KEYWORD {
+				return "cond";
+			}
+
 			label Type->LET_KEYWORD {
 				return "let";
 			}
@@ -1308,15 +1328,17 @@ class Token {
 			}
 
 			label Type->VAR {
-				return @str_value;
+				return "string='{$@str_value}'";
 			}
 			
 			label Type->INT_LIT {
-				return @int_value->ToString();
+				value := @int_value->ToString();
+				return "int={$value}";
 			}
 			
 			label Type->REAL_LIT {
-				return @real_value->ToString();
+				value := @real_value->ToString();
+				return "real={$value}";
 			}
 
 			label Type->EQL {
@@ -1328,7 +1350,7 @@ class Token {
 			}
 
 			other {
-				return "?";
+				return "<unknown>";
 			}
 		};
 	}
