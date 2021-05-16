@@ -5,9 +5,7 @@ class MiniLisp {
 		if(args->Size() = 1) {
 			parser := Parser->New(args[0]);
 			main := parser->Parse();
-			if(main <> Nil) {
-				Evaluator->New(main, parser->GetFunctions())->Evaluate();
-			};
+			Evaluator->New(main, parser->GetFunctions())->Evaluate();
 		};
 	}
 }
@@ -524,7 +522,8 @@ class Parser {
 			"\n--- Expressions ---"->PrintLine();
 		};
 
-		expressions := Expressions(0);
+		expressions := Node->New(Node->Type->EXPRS);
+		Expressions(expressions, 0);
 
 		if(@is_debug) {
 			if(expressions <> Nil) {
@@ -554,26 +553,6 @@ class Parser {
 
 	method : Match(type : Token->Type) ~ Bool {
 		return GetTokenType() = type;
-	}
-
-	method : public : Expressions(depth : Int) ~ Node {
-		node := Node->New(Node->Type->EXPRS);
-		
-		while(@token_pos <> @tokens->Size()) {
-			expr := Expression(depth + 1);
-			if(expr = Nil) {
-				return Nil;
-			};
-
-			if(expr = Node->Type->DEFUN) {
-				@functions->Insert(expr->GetStringValue(), expr);
-			}
-			else {
-				node->AddChild(expr);
-			};
-		};
-
-		return node;
 	}
 
 	method : public : Expression(depth : Int) ~ Node {
@@ -631,6 +610,23 @@ class Parser {
 						node := Node->New(Node->Type->COND);
 						NextToken();
 
+						if(GetTokenType() <> Token->Type->OPRN) {
+							@error := true;
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+
+						Expressions(node, depth + 1);
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							@error := true;
+							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+
+#~
 						while(GetTokenType() = Token->Type->OPRN) {							
 							if(<>Operands(node, depth)) {
 								return Nil;
@@ -647,6 +643,7 @@ class Parser {
 								NextToken();
 							};
 						};
+~#						
 					}
 
 					label Token->Type->DEFUN_KEYWORD: {
@@ -657,7 +654,7 @@ class Parser {
 						NextToken();
 						if(GetTokenType() <> Token->Type->VAR) {
 							@error := true;
-							"*** Syntax Error: Expected string type ***"->ErrorLine();
+							"*** Syntax Error: Expected string type (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 						value := @tokens->Get(@token_pos)->GetStringValue();						
@@ -666,7 +663,7 @@ class Parser {
 
 						if(GetTokenType() <> Token->Type->OPRN) {
 							@error := true;
-							"*** Syntax Error: Expected '(' ***"->ErrorLine();
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 						NextToken();
@@ -681,7 +678,7 @@ class Parser {
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
-							"*** Syntax Error: Expected ')' ***"->ErrorLine();
+							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 						NextToken();
@@ -695,7 +692,7 @@ class Parser {
 						
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
-							"*** Syntax Error: Expected ')' ***"->ErrorLine();
+							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 						NextToken();
@@ -713,7 +710,7 @@ class Parser {
 
 						if(node->GetChildren()->Size() <> 1) {
 							@error := true;
-							"*** Syntax Error: The 'write' operation takes 1 operand ***"->ErrorLine();
+							"*** Syntax Error: The 'write' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -730,7 +727,7 @@ class Parser {
 
 						if(node->GetChildren()->Size() <> 2) {
 							@error := true;
-							"*** Syntax Error: The 'cons' operation takes 2 operands ***"->ErrorLine();
+							"*** Syntax Error: The 'cons' operation takes 2 operands (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -743,7 +740,7 @@ class Parser {
 						NextToken();
 						if(GetTokenType() <> Token->Type->OPRN) {
 							@error := true;
-							"*** Syntax Error: Expected '(' ***"->ErrorLine();
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 
@@ -761,7 +758,7 @@ class Parser {
 							
 							if(GetTokenType() <> Token->Type->CPRN) {
 								@error := true;
-								"*** Syntax Error: Expected ')' ***"->ErrorLine();
+								"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
 								return Nil;
 							};
 						};
@@ -793,7 +790,7 @@ class Parser {
 
 						if(node->GetChildren()->Size() <> 1) {
 							@error := true;
-							"*** Syntax Error: The 'length' operation takes 1 operand ***"->ErrorLine();
+							"*** Syntax Error: The 'length' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -824,7 +821,7 @@ class Parser {
 			}
 			else {
 				@error := true;
-				"*** Syntax Error: Operation requires at least 1 operand ***"->ErrorLine();
+				"*** Syntax Error: Operation requires at least 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 				return Nil;
 			};
 		}
@@ -878,6 +875,24 @@ class Parser {
 			};
 		}
 		while(cur_level <= @level);
+
+		return true;
+	}
+
+	method : public : Expressions(node : Node, depth : Int) ~ Bool {
+		while(GetTokenType() = Token->Type->OPRN) {
+			expr := Expression(depth + 1);
+			if(expr = Nil) {
+				return false;
+			};
+
+			if(expr = Node->Type->DEFUN) {
+				@functions->Insert(expr->GetStringValue(), expr);
+			}
+			else {
+				node->AddChild(expr);
+			};
+		};
 
 		return true;
 	}
