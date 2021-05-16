@@ -678,13 +678,13 @@ class Parser {
 						};
 						NextToken();
 
-						params := Node->New(Node->Type->LET);
+						parameters := Node->New(Node->Type->LET);
 						while(GetTokenType() = Token->Type->VAR) {
 							value := @tokens->Get(@token_pos)->GetStringValue();
-							params->AddChild(Node->New(Node->Type->LET_DEC, value));
+							parameters->AddChild(Node->New(Node->Type->LET_DEC, value));
 							NextToken();
 						};
-						node->AddChild(params);
+						node->AddChild(parameters);
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
@@ -693,13 +693,19 @@ class Parser {
 						};
 						NextToken();
 
-						# TODO: expressions
-						exprs := Expression(depth);
-						if(exprs = Nil) {
+						if(GetTokenType() <> Token->Type->OPRN) {
+							@error := true;
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
-						node->AddChild(exprs);
-						
+						NextToken();
+
+						expressions := Expressions(depth + 1);
+						if(expressions = Nil) {
+							return Nil;
+						};
+						node->AddChild(expressions);
+
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
 							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
