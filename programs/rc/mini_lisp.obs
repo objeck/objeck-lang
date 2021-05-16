@@ -510,32 +510,6 @@ class Parser {
 		@is_debug := true;
 	}
 
-	method : public : Parse() ~ Node {
-		@tokens := Scanner->New()->Scan(@input);
-
-		if(@is_debug) {
-			"--- Input ---\n\"{$@input}\""->PrintLine();
-			
-			"\n--- Tokens ---"->PrintLine();
-			each(i : @tokens) {
-				value := @tokens->Get(i);
-				"{$i}: {$value}"->PrintLine();
-			};
-			"\n--- Expressions ---"->PrintLine();
-		};
-
-		expressions := Expressions(0);
-
-		if(@is_debug) {
-			if(expressions <> Nil) {
-				"\n--- Tree ---"->PrintLine();
-				expressions->ToString()->PrintLine();
-			};
-		};
-
-		return expressions;
-	}
-
 	method : public : GetFunctions() ~ Map<String, Node> {
 		return @functions;
 	}
@@ -554,6 +528,50 @@ class Parser {
 
 	method : Match(type : Token->Type) ~ Bool {
 		return GetTokenType() = type;
+	}
+
+	method : public : Parse() ~ Node {
+		@tokens := Scanner->New()->Scan(@input);
+
+		if(@is_debug) {
+			"--- Input ---\n\"{$@input}\""->PrintLine();
+			
+			"\n--- Tokens ---"->PrintLine();
+			each(i : @tokens) {
+				value := @tokens->Get(i);
+				"{$i}: {$value}"->PrintLine();
+			};
+			"\n--- Expressions ---"->PrintLine();
+		};
+
+		return Expressions(0);
+	}
+	
+	method : public : Expressions(depth : Int) ~ Node {
+		node := Node->New(Node->Type->EXPRS);
+		
+		while(GetTokenType() = Token->Type->OPRN) {
+			expr := Expression(depth + 1);
+			if(expr = Nil) {
+				return Nil;
+			};
+
+			if(expr = Node->Type->DEFUN) {
+				@functions->Insert(expr->GetStringValue(), expr);
+			}
+			else {
+				node->AddChild(expr);
+			};
+		};
+
+		if(@is_debug) {
+			if(node <> Nil) {
+				"\n--- Tree ---"->PrintLine();
+				node->ToString()->PrintLine();
+			};
+		};
+
+		return node;
 	}
 
 	method : public : Expression(depth : Int) ~ Node {
@@ -618,7 +636,15 @@ class Parser {
 						};
 						NextToken();
 
-						Expressions(depth + 1);
+						cond := Expression(depth + 1);
+						if(cond = Nil) {
+							return Nil;
+						};
+
+						expressions := Expressions(depth + 1);
+						if(expressions = Nil) {
+							return Nil;
+						};
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
@@ -626,25 +652,6 @@ class Parser {
 							return Nil;
 						};
 						NextToken();
-
-#~
-						while(GetTokenType() = Token->Type->OPRN) {							
-							if(<>Operands(node, depth)) {
-								return Nil;
-							};
-
-							children := node->GetChildren();
-							if(children->IsEmpty() | children->Size() % 2 <> 0) {
-								@error := true;
-								"*** Syntax Error: The 'cond' operation takes even pairs of operands ***"->ErrorLine();
-								return Nil;
-							};
-
-							if(GetTokenType() = Token->Type->CPRN) {
-								NextToken();
-							};
-						};
-~#						
 					}
 
 					label Token->Type->DEFUN_KEYWORD: {
@@ -878,26 +885,6 @@ class Parser {
 		while(cur_level <= @level);
 
 		return true;
-	}
-
-	method : public : Expressions(depth : Int) ~ Node {
-		node := Node->New(Node->Type->EXPRS);
-		
-		while(GetTokenType() = Token->Type->OPRN) {
-			expr := Expression(depth + 1);
-			if(expr = Nil) {
-				return Nil;
-			};
-
-			if(expr = Node->Type->DEFUN) {
-				@functions->Insert(expr->GetStringValue(), expr);
-			}
-			else {
-				node->AddChild(expr);
-			};
-		};
-
-		return node;
 	}
 }
 
