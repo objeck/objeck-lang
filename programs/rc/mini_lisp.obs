@@ -648,10 +648,10 @@ class Parser {
 
 						NextToken();
 
-						params := Node->New(Node->Type->DEFUN_PARMS);
+						params := Node->New(Node->Type->LET);
 						while(GetTokenType() = Token->Type->VAR) {
 							value := @tokens->Get(@token_pos)->GetStringValue();
-							params->AddChild(Node->New(Node->Type->DEFUN_PARM, value));
+							params->AddChild(Node->New(Node->Type->LET_DEC, value));
 							NextToken();
 						};
 						node->AddChild(params);
@@ -878,8 +878,6 @@ class Node {
 		LET,
 		LET_DEC,
 		DEFUN,
-		DEFUN_PARMS,
-		DEFUN_PARM,
 		CONS,
 		COND,
 		WRITE,
