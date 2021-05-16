@@ -5,7 +5,9 @@ class MiniLisp {
 		if(args->Size() = 1) {
 			parser := Parser->New(args[0]);
 			main := parser->Parse();
-			Evaluator->New(main, parser->GetFunctions())->Evaluate();
+			if(main <> Nil) {
+				Evaluator->New(main, parser->GetFunctions())->Evaluate();
+			};
 		};
 	}
 }
@@ -522,8 +524,7 @@ class Parser {
 			"\n--- Expressions ---"->PrintLine();
 		};
 
-		expressions := Node->New(Node->Type->EXPRS);
-		Expressions(expressions, 0);
+		expressions := Expressions(0);
 
 		if(@is_debug) {
 			if(expressions <> Nil) {
@@ -617,7 +618,7 @@ class Parser {
 						};
 						NextToken();
 
-						Expressions(node, depth + 1);
+						Expressions(depth + 1);
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
@@ -879,11 +880,13 @@ class Parser {
 		return true;
 	}
 
-	method : public : Expressions(node : Node, depth : Int) ~ Bool {
+	method : public : Expressions(depth : Int) ~ Node {
+		node := Node->New(Node->Type->EXPRS);
+		
 		while(GetTokenType() = Token->Type->OPRN) {
 			expr := Expression(depth + 1);
 			if(expr = Nil) {
-				return false;
+				return Nil;
 			};
 
 			if(expr = Node->Type->DEFUN) {
@@ -894,7 +897,7 @@ class Parser {
 			};
 		};
 
-		return true;
+		return node;
 	}
 }
 
