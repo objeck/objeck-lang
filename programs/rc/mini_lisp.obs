@@ -38,6 +38,13 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
+			label Node->Type->EXPRS {
+				children := node->GetChildren();
+				each(i : children) {
+					Evaluate(children->Get(i));
+				};
+			}
+
 			label Node->Type->COND {
 				done := false;
 				children := node->GetChildren();
@@ -506,22 +513,16 @@ class Parser {
 			"\n--- Expressions ---"->PrintLine();
 		};
 
-		root := Expression(0);
-		if(@token_pos <> @tokens->Size()) {
-			tokens_size := @tokens->Size();
-			@error := true;
-			"*** Unexpected tokens: pos={$@token_pos},{$tokens_size} ***"->ErrorLine();
-			return Nil;
-		};
+		expressions := Expressions(0);
 
 		if(@is_debug) {
-			if(root <> Nil) {
+			if(expressions <> Nil) {
 				"\n--- Tree ---"->PrintLine();
-				root->ToString()->PrintLine();
+				expressions->ToString()->PrintLine();
 			};
 		};
 
-		return root;
+		return expressions;
 	}
 
 	method : public : NextToken() ~ Nil {
@@ -538,6 +539,16 @@ class Parser {
 
 	method : Match(type : Token->Type) ~ Bool {
 		return GetTokenType() = type;
+	}
+
+	method : public : Expressions(depth : Int) ~ Node {
+		node := Node->New(Node->Type->EXPRS);
+		
+		while(@token_pos <> @tokens->Size()) {
+			node->AddChild(Expression(depth + 1));
+		};
+
+		return node;
 	}
 
 	method : public : Expression(depth : Int) ~ Node {
@@ -862,6 +873,7 @@ class Node {
 		DIV,
 		EQL,
 		NEQL,
+		EXPRS,
 		LIST,
 		LET,
 		LET_DEC,
@@ -988,6 +1000,10 @@ class Node {
 
 			label Node->Type->LENGTH {
 				buffer += "length";
+			}
+
+			label Node->Type->EXPRS {
+				buffer += "expressions";
 			}
 
 			label Node->Type->LET {
