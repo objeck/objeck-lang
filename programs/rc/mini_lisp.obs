@@ -546,7 +546,7 @@ class Parser {
 
 		return Expressions(0);
 	}
-	
+
 	method : public : Expressions(depth : Int) ~ Node {
 		node := Node->New(Node->Type->EXPRS);
 		
@@ -640,11 +640,13 @@ class Parser {
 						if(cond = Nil) {
 							return Nil;
 						};
+						node->AddChild(cond);
 
 						expressions := Expressions(depth + 1);
 						if(expressions = Nil) {
 							return Nil;
 						};
+						node->AddChild(expressions);
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
