@@ -3,9 +3,10 @@ use Collection.Generic;
 class MiniLisp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			root := Parser->New(args[0])->Parse();
-			if(root <> Nil) {
-				Evaluator->New(root)->Evaluate();
+			parser := Parser->New(args[0]);
+			main := parser->Parse();
+			if(main <> Nil) {
+				Evaluator->New(main, parser->GetFunctions())->Evaluate();
 			};
 		};
 	}
@@ -14,13 +15,15 @@ class MiniLisp {
 #--- Evaluator ---
 
 class Evaluator {
-	@root : Node;
+	@main : Node;
+	@functions : Map<String, Node>;
 	@stack : Stack<Value>;
 	@symbol_tables : List<Hash<String, Value>>;
 	@is_debug : Bool;
 
-	New(root : Node) {
-		@root := root;
+	New(root : Node, functions : Map<String, Node>) {
+		@main := root;
+		@functions := functions;
 		@stack := Stack->New()<Value>;
 		@symbol_tables := List->New()<Hash<String, Value>>;
 		@is_debug := true;
@@ -33,7 +36,7 @@ class Evaluator {
 			"\n--- Evaluate ---"->PrintLine();
 		};
 
-		Evaluate(@root);
+		Evaluate(@main);
 	}
 
 	method : Evaluate(node : Node) ~ Nil {
@@ -525,6 +528,10 @@ class Parser {
 		};
 
 		return expressions;
+	}
+
+	method : public : GetFunctions() ~ Map<String, Node> {
+		return @functions;
 	}
 
 	method : public : NextToken() ~ Nil {
