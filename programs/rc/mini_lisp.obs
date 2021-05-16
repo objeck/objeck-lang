@@ -631,8 +631,7 @@ class Parser {
 						node := Node->New(Node->Type->COND);
 						NextToken();
 
-						while(GetTokenType() = Token->Type->OPRN) {
-							
+						while(GetTokenType() = Token->Type->OPRN) {							
 							if(<>Operands(node, depth)) {
 								return Nil;
 							};
@@ -810,7 +809,7 @@ class Parser {
 					other: {
 						token_id := GetTokenType()->As(Int);
 						@error := true;
-						"*** Syntax Error: Unknown operation ({$token_id}) ***"->ErrorLine();
+						"*** Syntax Error: Unknown operation ({$token_id},{$@token_pos}) ***"->ErrorLine();
 						return Nil;
 					}
 				};
@@ -852,7 +851,7 @@ class Parser {
 		else {
 			token_id := GetTokenType()->As(Int);
 			@error := true;
-			"*** Syntax Error: Unknown token ({$token_id}) ***"->ErrorLine();
+			"*** Syntax Error: Unknown token ({$token_id},{$@token_pos}) ***"->ErrorLine();
 			NextToken();
 			return Nil;
 		};
