@@ -259,7 +259,7 @@ class Evaluator {
 			}
 
 			label Node->Type->DEFUN {
-				"Holla!"->PrintLine();
+				"Hola!"->PrintLine();
 			}
 
 			other {
@@ -489,6 +489,7 @@ class Value {
 class Parser {
 	@input : String;
 	@tokens : Vector<Token>;
+	@functions : Map<String, Node>;
 	@token_pos : Int;
 	@level : Int;
 	@error : Bool;
@@ -496,6 +497,7 @@ class Parser {
 	
 	New(input : String) {
 		@input := input;
+		@functions := Map->New()<String, Node>;
 		@is_debug := true;
 	}
 
@@ -545,7 +547,13 @@ class Parser {
 		node := Node->New(Node->Type->EXPRS);
 		
 		while(@token_pos <> @tokens->Size()) {
-			node->AddChild(Expression(depth + 1));
+			expr := Expression(depth + 1);
+			if(expr = Node->Type->DEFUN) {
+				@functions->Insert(expr->GetStringValue(), expr);
+			}
+			else {
+				node->AddChild(expr);
+			};
 		};
 
 		return node;
@@ -645,7 +653,6 @@ class Parser {
 							"*** expected '(' ***"->ErrorLine();
 							return Nil;
 						};
-
 						NextToken();
 
 						params := Node->New(Node->Type->LET);
