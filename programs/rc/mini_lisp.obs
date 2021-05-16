@@ -251,6 +251,10 @@ class Evaluator {
 				@stack->Push(left);
 			}
 
+			label Node->Type->DEFUN {
+				"Holla!"->PrintLine();
+			}
+
 			other {
 				"Unknown expression"->ErrorLine();
 				Runtime->Exit(1);
@@ -504,8 +508,9 @@ class Parser {
 
 		root := Expression(0);
 		if(@token_pos <> @tokens->Size()) {
+			tokens_size := @tokens->Size();
 			@error := true;
-			"*** unexpected tokens ***"->ErrorLine();
+			"*** Unexpected tokens: pos={$@token_pos},{$tokens_size} ***"->ErrorLine();
 			return Nil;
 		};
 
@@ -613,8 +618,6 @@ class Parser {
 						if(@is_debug) {
 							"\tDefun"->PrintLine();
 						};
-						node := Node->New(Node->Type->DEFUN);
-"fdkfkd"->PrintLine();
 
 						NextToken();
 						if(GetTokenType() <> Token->Type->VAR) {
@@ -622,24 +625,44 @@ class Parser {
 							"*** expected string # ***"->ErrorLine();
 							return Nil;
 						};
-						value := @tokens->Get(@token_pos)->GetStringValue();
-value->PrintLine();
+						value := @tokens->Get(@token_pos)->GetStringValue();						
+						node := Node->New(Node->Type->DEFUN, value);
 						NextToken();
+
 						if(GetTokenType() <> Token->Type->OPRN) {
 							@error := true;
 							"*** expected '(' ***"->ErrorLine();
 							return Nil;
 						};
-value->PrintLine();
 
 						NextToken();
+
+						params := Node->New(Node->Type->DEFUN_PARMS);
 						while(GetTokenType() = Token->Type->VAR) {
 							value := @tokens->Get(@token_pos)->GetStringValue();
-value->PrintLine();
-
-"-- 1 --"->PrintLine();
+							params->AddChild(Node->New(Node->Type->DEFUN_PARM, value));
 							NextToken();
 						};
+						node->AddChild(params);
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							@error := true;
+							"*** expected ')' ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+
+						exprs := Expression(depth);
+						if(exprs <> Nil) {
+							node->AddChild(exprs);
+						};
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							@error := true;
+							"*** expected ')' ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
 					}
 
 					label Token->Type->WRITE_KEYWORD: {
@@ -760,6 +783,7 @@ value->PrintLine();
 				};
 
 				node := Node->New(Node->Type->EMPTY_LIST);
+				NextToken();
 			}
 			else {
 				@error := true;
@@ -841,6 +865,8 @@ class Node {
 		LET,
 		LET_DEC,
 		DEFUN,
+		DEFUN_PARMS,
+		DEFUN_PARM,
 		CONS,
 		COND,
 		WRITE,
