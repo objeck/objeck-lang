@@ -267,10 +267,6 @@ class Evaluator {
 				@exe_stack->Push(left);
 			}
 
-			label Node->Type->DEFUN {
-				"Hola!"->PrintLine();
-			}
-
 			other {
 				"Unknown expression"->ErrorLine();
 				Runtime->Exit(1);
@@ -558,6 +554,7 @@ class Parser {
 
 			if(expr = Node->Type->DEFUN) {
 				@functions->Insert(expr->GetStringValue(), expr);
+				return expr;
 			}
 			else {
 				node->AddChild(expr);
@@ -788,7 +785,7 @@ class Parser {
 							"\tVAR; name={$value}"->PrintLine();
 						};
 
-						node := Node->New(Node->Type->LET_DEC, value);
+						node := Node->New(Node->Type->FUN_CALL, value);
 						if(<>Operands(node, depth)) {
 							return Nil;
 						};
@@ -915,6 +912,7 @@ class Node {
 		LIST,
 		LET,
 		LET_DEC,
+		FUN_CALL,
 		DEFUN,
 		CONS,
 		COND,
@@ -1052,6 +1050,10 @@ class Node {
 
 			label Node->Type->LET_DEC {
 				buffer += "let_dec '{$@str_value}'";
+			}
+
+			label Node->Type->FUN_CALL {
+				buffer += "fun_call '{$@str_value}'";
 			}
 
 			label Node->Type->DEFUN {
