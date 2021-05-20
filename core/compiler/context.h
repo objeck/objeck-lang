@@ -317,6 +317,9 @@ class ContextAnalyzer {
   inline bool ResolveClassEnumType(Type* type) {
     return ResolveClassEnumType(type, current_class);
   }
+
+  // formats a class type string
+  wstring FormatTypeString(const wstring name);
   
   // resolves type reference for class or enum
   bool ResolveClassEnumType(Type* type, Class* context_klass);
