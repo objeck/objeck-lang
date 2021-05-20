@@ -415,16 +415,10 @@ class ContextAnalyzer {
     return str.str();
   }
 
-  // string replace
+  // string replacement
   wstring ReplaceSubstring(wstring s, const wstring& f, const wstring& r);
 
-  inline void ReplaceAllSubstrings(wstring &str, const wstring &from, const wstring &to) {
-    size_t start_pos = 0;
-    while((start_pos = str.find(from, start_pos)) != wstring::npos) {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length();
-    }
-  }
+  void ReplaceAllSubstrings(wstring &str, const wstring &from, const wstring &to);
 
   // returns true of signature matches holder type
   inline bool IsHolderType(const wstring &n) {
