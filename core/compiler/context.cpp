@@ -7075,6 +7075,15 @@ wstring ContextAnalyzer::ReplaceSubstring(wstring s, const wstring& f, const wst
   return s;
 }
 
+void ContextAnalyzer::ReplaceAllSubstrings(wstring& str, const wstring& from, const wstring& to)
+{
+  size_t start_pos = 0;
+  while((start_pos = str.find(from, start_pos)) != wstring::npos) {
+    str.replace(start_pos, from.length(), to);
+    start_pos += to.length();
+  }
+}
+
 Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn)
 {
   const bool has_generics = (klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics());
