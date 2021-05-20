@@ -1,9 +1,11 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		nodes := [
-			["a", "b"], ["c", "d"]
-		];
+		if(String->New() = Foo->Bar) {
+			"Okay"->PrintLine();
+		};
+	}
 
-		a := 13;
+	enum Foo {
+		Bar
 	}
 }

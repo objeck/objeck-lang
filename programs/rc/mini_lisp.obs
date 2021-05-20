@@ -4,9 +4,9 @@ class MiniLisp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := Parser->New(args[0]);
-			main := parser->Parse();
-			if(main <> Nil) {
-				Evaluator->New(main, parser->GetFunctions())->Evaluate();
+			functions := parser->Parse()<String, Node>;
+			if(functions <> Nil) {
+				Evaluator->New(functions)->Evaluate();
 			};
 		};
 	}
@@ -23,8 +23,8 @@ class Evaluator {
 	# TODO: call stack
 	@symbol_tables : List<Hash<String, Value>>;
 
-	New(root : Node, functions : Map<String, Node>) {
-		@main := root;
+	New(functions : Map<String, Node>) {
+		@main := functions->Find("$Main");
 		@functions := functions;
 		@exe_stack := Stack->New()<Value>;
 		@symbol_tables := List->New()<Hash<String, Value>>;
@@ -268,7 +268,8 @@ class Evaluator {
 			}
 
 			other {
-				"Unknown expression"->ErrorLine();
+				type := node->GetType()->As(Int);
+				"Unknown expression ({$type})"->ErrorLine();
 				Runtime->Exit(1);
 			}
 		};
@@ -506,10 +507,6 @@ class Parser {
 		@is_debug := true;
 	}
 
-	method : public : GetFunctions() ~ Map<String, Node> {
-		return @functions;
-	}
-
 	method : public : NextToken() ~ Nil {
 		@token_pos += 1;
 	}
@@ -526,8 +523,8 @@ class Parser {
 		return GetTokenType() = type;
 	}
 
-	method : public : Parse() ~ Node {
-		@tokens := Scanner->New()->Scan(@input);
+	method : public : Parse() ~ Map<String, Node> {
+		@tokens := Scanner->Scan(@input);
 
 		if(@is_debug) {
 			"--- Input ---\n\"{$@input}\""->PrintLine();
@@ -540,7 +537,9 @@ class Parser {
 			"\n--- Expressions ---"->PrintLine();
 		};
 
-		return Expressions(0);
+		@functions->Insert("$Main", Expressions(0));
+
+		return @functions;
 	}
 
 	method : public : Expressions(depth : Int) ~ Node {
@@ -643,7 +642,10 @@ class Parser {
 						if(expressions = Nil) {
 							return Nil;
 						};
-						node->AddChild(expressions);
+
+						if(expressions <> Node->Type->DEFUN) {
+							node->AddChild(expressions);
+						};
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
@@ -701,7 +703,10 @@ class Parser {
 						if(expressions = Nil) {
 							return Nil;
 						};
-						node->AddChild(expressions);
+
+						if(expressions <> Node->Type->DEFUN) {
+							node->AddChild(expressions);
+						};
 
 						if(GetTokenType() <> Token->Type->CPRN) {
 							@error := true;
@@ -1113,20 +1118,17 @@ class Node {
 #--- Scanner ---
 
 class Scanner {
-	@keywords : Hash<String, Token->Type>;
+	function : Scan(input : String) ~ Vector<Token> {
+		keywords : Hash<String, Token->Type>;
+		keywords := Hash->New()<String, Token->Type>;
+		keywords->Insert("let", Token->Type->LET_KEYWORD);
+		keywords->Insert("write", Token->Type->WRITE_KEYWORD);
+		keywords->Insert("list", Token->Type->LIST_KEYWORD);
+		keywords->Insert("cond", Token->Type->COND_KEYWORD);
+		keywords->Insert("cons", Token->Type->CONS_KEYWORD);
+		keywords->Insert("length", Token->Type->LENGTH_KEYWORD);
+		keywords->Insert("defun", Token->Type->DEFUN_KEYWORD);
 
-	New() {
-		@keywords := Hash->New()<String, Token->Type>;
-		@keywords->Insert("let", Token->Type->LET_KEYWORD);
-		@keywords->Insert("write", Token->Type->WRITE_KEYWORD);
-		@keywords->Insert("list", Token->Type->LIST_KEYWORD);
-		@keywords->Insert("cond", Token->Type->COND_KEYWORD);
-		@keywords->Insert("cons", Token->Type->CONS_KEYWORD);
-		@keywords->Insert("length", Token->Type->LENGTH_KEYWORD);
-		@keywords->Insert("defun", Token->Type->DEFUN_KEYWORD);
-	}
-
-	method : public : Scan(input : String) ~ Vector<Token> {
 		tokens := Vector->New()<Token>;
 
 		each(i : input) {
@@ -1141,7 +1143,7 @@ class Scanner {
 				};
 				ident := input->SubString(start, i - start);
 
-				found := @keywords->Find(ident);
+				found := keywords->Find(ident);
 				if(found <> 0) {
 					tokens->AddBack(Token->New(found));					
 				}
