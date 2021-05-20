@@ -415,14 +415,8 @@ class ContextAnalyzer {
     return str.str();
   }
 
-  inline wstring ReplaceSubstring(wstring s, const wstring& f, const wstring& r) {
-    const size_t index = s.find(f);
-    if(index != string::npos) {
-      s.replace(index, f.size(), r);
-    }
-
-    return s;
-  }
+  // string replace
+  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring& r);
 
   inline void ReplaceAllSubstrings(wstring &str, const wstring &from, const wstring &to) {
     size_t start_pos = 0;

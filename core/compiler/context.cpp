@@ -7065,6 +7065,16 @@ bool ContextAnalyzer::ClassEquals(const wstring &left_name, Class* right_klass, 
   return false;
 }
 
+wstring ContextAnalyzer::ReplaceSubstring(wstring s, const wstring& f, const wstring& r)
+{
+  const size_t index = s.find(f);
+  if(index != string::npos) {
+    s.replace(index, f.size(), r);
+  }
+
+  return s;
+}
+
 Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn)
 {
   const bool has_generics = (klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics());
