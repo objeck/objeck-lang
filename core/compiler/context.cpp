@@ -4791,7 +4791,11 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramLibraryEnum(right->GetName());
         
-        if((is_left_enum && is_right_enum) || (can_unbox_left && can_unbox_right)) {
+        if((is_left_enum && !is_right_enum) || (!is_left_enum && is_right_enum)) {
+          ProcessError(left_expr, L"Invalid operation between class and enum: '" + ReplaceSubstring(left->GetName(), L"#", L"->") + 
+                       L"' and '" + ReplaceSubstring(right->GetName(), L"#", L"->") + L"'");
+        }
+        else if((is_left_enum && is_right_enum) || (can_unbox_left && can_unbox_right)) {
           AnalyzeClassCast(left, right, left_expr, false, depth + 1);
         }
         else if(can_unbox_left && !is_right_enum) {
