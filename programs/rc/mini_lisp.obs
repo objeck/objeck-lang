@@ -55,11 +55,13 @@ class Evaluator {
 						Evaluate(parms->Get(i));
 					};
 				};
-				
+
 				instrs := fun->GetChildren();
 				each(i : instrs) {
 					Evaluate(instrs->Get(i));
 				};
+
+				@symbol_tables->RemoveFront();
 			}
 
 			label Node->Type->RTRN {
@@ -120,7 +122,6 @@ class Evaluator {
 			}
 
 			label Node->Type->LET {
-"--- 2 ---"->PrintLine();				
 				table := Hash->New()<String, Value>;
 				@symbol_tables->AddFront(table);
 
@@ -141,6 +142,19 @@ class Evaluator {
 				};
 
 				@symbol_tables->RemoveFront();
+			}
+
+			label Node->Type->BIND_VARS {
+				table := Hash->New()<String, Value>;
+				@symbol_tables->AddFront(table);
+
+				children := node->GetChildren()<Node>;
+				if(children <> Nil) {
+					each(i : children) {
+						name := children->Get(i)->GetStringValue();	
+						table->Insert(name, @exe_stack->Pop());
+					};
+				};
 			}
 
 			label Node->Type->LIST {
@@ -708,10 +722,10 @@ class Parser {
 						};
 						NextToken();
 
-						parameters := Node->New(Node->Type->LET);
+						parameters := Node->New(Node->Type->BIND_VARS);
 						while(GetTokenType() = Token->Type->VAR) {
 							value := @tokens->Get(@token_pos)->GetStringValue();
-							parameters->AddChild(Node->New(Node->Type->LET_DEC, value));
+							parameters->AddChild(Node->New(Node->Type->BIND_DEC, value));
 							NextToken();
 						};
 						node->AddChild(parameters);
@@ -945,6 +959,8 @@ class Node {
 		LIST,
 		LET,
 		LET_DEC,
+		BIND_VARS,
+		BIND_DEC,
 		FUN_CALL,
 		DEFUN,
 		RTRN,
