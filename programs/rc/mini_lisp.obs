@@ -15,18 +15,16 @@ class MiniLisp {
 #--- Evaluator ---
 
 class Evaluator {
-	@main : Node;
+	@exe_stack : Stack<Value>;	
+	@symbol_tables : List<Hash<String, Value>>;
+	@call_stack : Stack<Node>;
 	@functions : Map<String, Node>;
-	@exe_stack : Stack<Value>;
 	@is_debug : Bool;
 
-	# TODO: call stack
-	@symbol_tables : List<Hash<String, Value>>;
-
 	New(functions : Map<String, Node>) {
-		@main := functions->Find("$Main");
 		@functions := functions;
 		@exe_stack := Stack->New()<Value>;
+		@call_stack := Stack->New()<Node>;
 		@symbol_tables := List->New()<Hash<String, Value>>;
 		@is_debug := true;
 
@@ -38,11 +36,20 @@ class Evaluator {
 			"\n--- Evaluate ---"->PrintLine();
 		};
 
-		Evaluate(@main);
+		Evaluate(@functions->Find("$Main"));
 	}
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
+			label Node->Type->RTRN {
+				if(@call_stack->IsEmpty()) {
+					Runtime->Exit(0);
+				}
+				else {
+					Evaluate(@call_stack->Pop());
+				};
+			}
+
 			label Node->Type->EXPRS {
 				children := node->GetChildren();
 				each(i : children) {
@@ -561,6 +568,7 @@ class Parser {
 			};
 
 			if(expr->GetType() = Node->Type->DEFUN) {
+				node->AddChild(Node->New(Node->Type->RTRN));
 				@functions->Insert(expr->GetStringValue(), expr);
 			};
 			
@@ -915,6 +923,7 @@ class Node {
 		LET_DEC,
 		FUN_CALL,
 		DEFUN,
+		RTRN,
 		CONS,
 		COND,
 		WRITE,
@@ -1043,6 +1052,10 @@ class Node {
 
 			label Node->Type->LET {
 				buffer += "let";
+			}
+
+			label Node->Type->RTRN {
+				buffer += "return";
 			}
 
 			label Node->Type->COND {
