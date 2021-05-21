@@ -41,6 +41,27 @@ class Evaluator {
 
 	method : Evaluate(node : Node) ~ Nil {
 		select(node->GetType()) {
+			label Node->Type->FUN_CALL {
+				fun_name := node->GetStringValue();
+				fun := @functions->Find(fun_name);
+				if(fun = Nil) {
+					"*** Unidentied function '{$fun_name}'"->ErrorLine();
+					Runtime->Exit(1);
+				};
+
+				parms := node->GetChildren();
+				if(parms <> Nil) {
+					each(i : parms) {
+						Evaluate(parms->Get(i));
+					};
+				};
+				
+				instrs := fun->GetChildren();
+				each(i : instrs) {
+					Evaluate(instrs->Get(i));
+				};
+			}
+
 			label Node->Type->RTRN {
 				if(@call_stack->IsEmpty()) {
 					Runtime->Exit(0);
@@ -99,20 +120,23 @@ class Evaluator {
 			}
 
 			label Node->Type->LET {
+"--- 2 ---"->PrintLine();				
 				table := Hash->New()<String, Value>;
 				@symbol_tables->AddFront(table);
 
 				children := node->GetChildren()<Node>;
-				each(i : children) {
-					child := children->Get(i);
-					if(child->GetType() = Node->Type->LET_DEC) {
-						name := child->GetStringValue();
-						sub_child := child->GetChildren();
-						Evaluate(sub_child->Get(0));
-						table->Insert(name, @exe_stack->Pop());
-					}
-					else {
-						Evaluate(child);
+				if(children <> Nil) {
+					each(i : children) {
+						child := children->Get(i);
+						if(child->GetType() = Node->Type->LET_DEC) {
+							name := child->GetStringValue();
+							sub_child := child->GetChildren();
+							Evaluate(sub_child->Get(0));
+							table->Insert(name, @exe_stack->Pop());
+						}
+						else {
+							Evaluate(child);
+						};
 					};
 				};
 
