@@ -491,7 +491,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             const int32_t value = (int32_t)reference->GetIntValue();
-            wcout << L"print: type=Int/Byte/Bool, value=" << value << L"/" << (void*)value << endl;
+            ios_base::fmtflags flags(wcout.flags());
+            wcout << L"print: type=Int/Byte/Bool, value=" << value << L"/" << hex << value << endl;
+            cout.flags(flags);
           }
           break;
 
@@ -534,7 +536,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
             int32_t value = (int32_t)reference->GetIntValue();
-            wcout << L"print: type=Int, value=" << value << L"/" << (void*)value << endl;
+            ios_base::fmtflags flags(wcout.flags());
+            wcout << L"print: type=Int, value=" << value << L"/" << hex << value << endl;
+            cout.flags(flags);
           }
           else {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
