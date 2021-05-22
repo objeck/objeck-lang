@@ -4804,10 +4804,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         else if(can_unbox_right && !is_left_enum) {
           ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
-        else if(((!can_unbox_left && !is_left_enum) || (!can_unbox_right && !is_right_enum)) &&
-                expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
-          ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
-        }
+        
         if(left->GetName() == L"System.FloatHolder" || right->GetName() == L"System.FloatHolder") {
           expression->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
         }
