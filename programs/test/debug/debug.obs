@@ -1,8 +1,10 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		if(String->New() = Foo->Bar) {
+		if(Foo->Bar = 13) {
 			"Okay"->PrintLine();
 		};
+
+
 	}
 
 	enum Foo {
