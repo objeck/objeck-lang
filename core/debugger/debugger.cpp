@@ -493,7 +493,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             const int32_t value = (int32_t)reference->GetIntValue();
             ios_base::fmtflags flags(wcout.flags());
             wcout << L"print: type=Int/Byte/Bool, value=" << value << L"/" << hex << value << endl;
-            cout.flags(flags);
+            wcout.flags(flags);
           }
           break;
 
@@ -538,7 +538,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             int32_t value = (int32_t)reference->GetIntValue();
             ios_base::fmtflags flags(wcout.flags());
             wcout << L"print: type=Int, value=" << value << L"/" << hex << value << endl;
-            cout.flags(flags);
+            wcout.flags(flags);
           }
           else {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
