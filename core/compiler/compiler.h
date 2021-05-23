@@ -46,10 +46,12 @@
 #include <map>
 #include <string>
 
+vector<string> ListDir(const char* p);
+int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argument_options, const wstring usage);
 extern "C"
 {
-  int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argument_options, const wstring usage);
-  int Compile(const wstring& src, const wstring& opt, const wstring& dest, const wstring &run_string, const wstring &sys_lib_path, const wstring &target, bool alt_syntax, bool is_debug);
+  int Compile(const wstring& src, const wstring& opt, const wstring& dest, const wstring& run_string, const wstring& sys_lib_path, const wstring& target, bool alt_syntax, bool is_debug);
 }
+
 
 #endif

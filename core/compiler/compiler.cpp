@@ -139,8 +139,29 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   else {
     argument_options.remove(L"src");
     src_file = result->second;
+    // pare file name w/o extension
     if(!frontend::EndsWith(src_file, L".obs")) {
       src_file += L".obs";
+    }
+    // parse file wildcard
+    else if(frontend::EndsWith(src_file, L"*.obs")) {
+      wstring dir_path;
+      wstring files_paths;
+      frontend::RemoveSubString(src_file, L"*.obs");
+      if(src_file.empty()) {
+        src_file = L"./";
+      }
+      vector<string> file_names = ListDir(UnicodeToBytes(src_file).c_str());
+      for(size_t i = 0; i < file_names.size(); ++i) {
+        const wstring file_name = BytesToUnicode(file_names[i]);
+        if(frontend::EndsWith(file_name, L".obs")) {
+          files_paths += src_file + file_name + L',';
+        }
+      }
+      if(!files_paths.empty()) {
+        files_paths.pop_back();
+      }
+      src_file = files_paths;
     }
   }
 
@@ -253,3 +274,54 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
 
   return Compile(src_file, optimize, dest_file, run_string, sys_lib_path, target, alt_syntax, is_debug, show_asm);
 }
+
+#ifdef _WIN32
+vector<string> ListDir(const char* p)
+{
+  vector<string> files;
+
+  string path = p;
+  if(path.size() > 0 && path[path.size() - 1] == '\\') {
+    path += "*";
+  }
+  else {
+    path += "\\*";
+  }
+
+  WIN32_FIND_DATA file_data;
+  HANDLE find = FindFirstFile(path.c_str(), &file_data);
+  if(find == INVALID_HANDLE_VALUE) {
+    return files;
+  }
+  else {
+    files.push_back(file_data.cFileName);
+
+    BOOL b = FindNextFile(find, &file_data);
+    while(b) {
+      files.push_back(file_data.cFileName);
+      b = FindNextFile(find, &file_data);
+    }
+    FindClose(find);
+  }
+
+  return files;
+}
+#else
+vector<string> ListDir(const char* path) {
+  vector<string> files;
+
+  struct dirent** names;
+  int n = scandir(path, &names, 0, alphasort);
+  if(n > 0) {
+    while(n--) {
+      if((strcmp(names[n]->d_name, "..") != 0) && (strcmp(names[n]->d_name, ".") != 0)) {
+        files.push_back(names[n]->d_name);
+      }
+      free(names[n]);
+    }
+    free(names);
+  }
+
+  return files;
+}
+#endif
