@@ -32,6 +32,8 @@
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#else
+#include <dirent.h>
 #endif
 #include "compiler.h"
 #include "types.h"
