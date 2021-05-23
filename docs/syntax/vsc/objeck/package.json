@@ -1,0 +1,25 @@
+{
+    "name": "objeck-programming-language",
+    "displayName": "Objeck Programming Language",
+    "description": "soure",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.46.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "objeck",
+            "aliases": ["Objeck", "objeck"],
+            "extensions": [".obs"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "objeck",
+            "scopeName": "source.objeck",
+            "path": "./syntaxes/objeck.tmLanguage.json"
+        }]
+    }
+}
