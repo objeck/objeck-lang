@@ -5,7 +5,7 @@
     "tasks": [
         {
             "label": "Run tests",
-            "type": "shell",
+            "type": "process",
             "command": "./scripts/test.sh",
             "windows": {
                 "command": ".\\scripts\\test.cmd"
