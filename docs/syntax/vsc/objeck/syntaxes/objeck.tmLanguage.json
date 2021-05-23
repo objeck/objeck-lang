@@ -6,6 +6,9 @@
 			"include": "#comments"
 		},
 		{
+			"include": "#strings"
+		},
+		{
 			"include": "#storage-modifiers"
 		},
 		{
@@ -19,9 +22,6 @@
 		},
 		{
 			"include": "#keywords"
-		},
-		{
-			"include": "#strings"
 		}
 	],
 	"repository": {
@@ -42,25 +42,25 @@
 			"patterns": [
 				{
 					"match": "\\b(class|interface|consts|enum|function|method)\\b",
-					"name": "storage.modifier.objeck"
+					"name": "storage.type.objeck"
 				}]
 		},
 		"primitive-types": {
 			"patterns": [
 				{
 					"match": "\\b(Nil|Bool|Byte|Char|Int|Float|String)\\b",
-					"name": "storage.type.primitive.objeck"
+					"name": "storage.type.objeck"
 				}]
 		},
 		"numbers": {
 			"patterns": [
 				{
 					"match": "(?x)\n\\b(?<!\\$)\n0(x|X)\n(\n  (?<!\\.)[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?[Ll]?(?!\\.)\n  |\n  (\n    [0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?\\.?\n    |\n    ([0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?)?\\.[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?\n  )\n  [Pp][+-]?[0-9]([0-9_]*[0-9])?[FfDd]?\n)\n\\b(?!\\$)",
-					"name": "constant.numeric.hex.java"
+					"name": "constant.numeric.objeck"
 				},
 				{
 					"match": "\\b(?<!\\$)0(b|B)[01]([01_]*[01])?[Ll]?\\b(?!\\$)",
-					"name": "constant.numeric.binary.java"
+					"name": "constant.numeric.objeck"
 				},
 				{
 					"match": "\\b(?<!\\$)0[0-7]([0-7_]*[0-7])?[Ll]?\\b(?!\\$)",
@@ -68,21 +68,45 @@
 				},
 				{
 					"match": "(?x)\n(?<!\\$)\n(\n  \\b[0-9]([0-9_]*[0-9])?\\.\\B(?!\\.)\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([Ee][+-]?[0-9]([0-9_]*[0-9])?)[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([0-9]([0-9_]*[0-9])?)([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]?\\b\n  |\n  (?<!\\.)\\B\\.[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]\\b\n  |\n  \\b(0|[1-9]([0-9_]*[0-9])?)(?!\\.)[Ll]?\\b\n)\n(?!\\$)",
-					"name": "constant.numeric.decimal.java"
+					"name": "constant.numeric.objeck"
 				}
 			]
 		},
 		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.objeck",
-				"match": "\\b(use|if|else|do|while|select|break|continue|other|for|each|reverse|label|return|critical)\\b"
-			}]
+			"patterns": [
+				{
+					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|other|for|each|reverse|label|return|critical)\\b",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"match": "\\b(As)\\b",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "\\b(and|or|xor|not)\\b",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "(->|<=|>=|<>|<|>)",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "(:=)",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "(\\+|\\*|/|%|-|=)",
+					"name": "keyword.operator.objeck"
+				}
+			]
 		},
 		"storage-modifiers": {
-			"patterns": [{
-				"name": "storage.modifier.objeck",
-				"match": "\\b(public|abstract|private|static|native)\\b"
-			}]
+			"patterns": [
+				{
+					"name": "storage.modifier.objeck",
+					"match": "\\b(public|abstract|private|static|native)\\b"
+				}
+			]
 		},
 		"strings": {
 			"name": "string.quoted.double.objeck",
