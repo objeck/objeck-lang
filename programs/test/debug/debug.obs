@@ -3,8 +3,6 @@ class Foo {
 		if(Foo->Bar = 13) {
 			"Okay"->PrintLine();
 		};
-
-
 	}
 
 	enum Foo {
