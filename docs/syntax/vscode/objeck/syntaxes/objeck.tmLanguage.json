@@ -12,7 +12,7 @@
 			"include": "#storage-modifiers"
 		},
 		{
-			"include": "#class"
+			"include": "#entities"
 		},
 		{
 			"include": "#numbers"
@@ -38,11 +38,11 @@
 					"name": "comment.line.objeck"
 				}]
 		},
-		"class": {
+		"entities": {
 			"patterns": [
 				{
-					"match": "\\b(class|interface|consts|enum|function|method)\\b",
-					"name": "storage.type.objeck"
+					"match": "\\b(class|method|function)\\b",
+					"name": "entity.name.type.class"
 				}]
 		},
 		"primitive-types": {
