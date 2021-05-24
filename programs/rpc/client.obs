@@ -1,5 +1,6 @@
 use System.IO.Net;
 use Collection.Generic;
+use Data.JSON;
 
 class Client {
 	function : Main(args : String[]) ~ Nil {
@@ -7,9 +8,37 @@ class Client {
 		leaving {
 			client->Close();	
 		};
-		
+
 		if(client->IsOpen()) {
-			client->WriteString("{\"jsonrpc\": \"2.0\", \"method\": \"subtract\", \"params\": [42, 23], \"id\": 1}");
+			tag := MakeSubtract(1, 48, 35);
+			client->WriteString(tag->ToString());
+			GetResult(1, client->ReadLine())->PrintLine();
 		};
+	}
+
+	function : GetResult(id : Int, input : String) ~ Int {
+		json := JSONParser->New(input);
+		if(json->Parse()) {
+			root := json->GetRoot();
+			result := root->Get("result");
+			return result->GetValue()->ToInt();
+		};
+
+		return 0;
+	}
+
+	function : MakeSubtract(id : Int, left : Int, right : Int) ~ JSONElement {		
+		values := Map->New()<String, JSONElement>;
+
+		array := Vector->New()<JSONElement>;
+		array->AddBack(JSONElement->New(left));
+		array->AddBack(JSONElement->New(right));
+		values->Insert("params", JSONElement->New(array));
+
+		values->Insert("jsonrpc", JSONElement->New("2.0"));
+		values->Insert("method", JSONElement->New("subtract"));
+		values->Insert("id", JSONElement->New(id));	
+		
+		return JSONElement->New(values);
 	}
 }
