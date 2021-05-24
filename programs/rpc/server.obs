@@ -37,17 +37,34 @@ class Service from System.Concurrency.Thread {
 			if(json->Parse()) {
 				root := json->GetRoot();
 
-				id := root->Get("id");
-				id->ToString()->PrintLine();
+				id_elem := root->Get("id");
+				call_elem := root->Get("method");
+				param_elems := root->Get("params");
 
-				oper := root->Get("method");
-				oper->ToString()->PrintLine();
-
-				params := root->Get("params");
-				params->ToString()->PrintLine();
+				if(id_elem <> Nil & call_elem <> Nil & param_elems <> Nil) {
+					id := id_elem->ToString()->ToInt();
+					client->WriteString(DoSubtract(id, param_elems)->ToString());
+				};
 			};
 
 			line := client->ReadLine();
 		};
+	}
+
+	method : public : DoSubtract(id : Int, param_elems : JSONElement) ~ JSONElement {
+		left := param_elems->Get(0)->GetValue()->ToInt();
+		right := param_elems->Get(1)->GetValue()->ToInt();
+
+		return MakeResult(id, left - right);
+	}
+
+	method : MakeResult(id : Int, result : Int) ~ JSONElement {
+		values := Map->New()<String, JSONElement>;
+		
+		values->Insert("jsonrpc", JSONElement->New("2.0"));
+		values->Insert("result", JSONElement->New(result));
+		values->Insert("id", JSONElement->New(id));
+
+		return JSONElement->New(values);
 	}
 }
