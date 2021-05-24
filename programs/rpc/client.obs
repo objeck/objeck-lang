@@ -1,0 +1,15 @@
+use System.IO.Net;
+use Collection.Generic;
+
+class Client {
+	function : Main(args : String[]) ~ Nil {
+		client := TCPSocket->New("localhost", 6013);
+		leaving {
+			client->Close();	
+		};
+		
+		if(client->IsOpen()) {
+			client->WriteString("{\"jsonrpc\": \"2.0\", \"method\": \"subtract\", \"params\": [42, 23], \"id\": 1}");
+		};
+	}
+}

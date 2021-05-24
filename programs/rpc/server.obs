@@ -1,11 +1,16 @@
 use System.IO.Net;
-use System.Concurrency;
+use Data.JSON;
+use Collection.Generic;
 
-class SocketServer {
+class Client {
 	id : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
-		server := TCPSocketServer->New(4660);
+		server := TCPSocketServer->New(6013);
+		leaving {
+			server->Close();
+		};
+
 		if(server->Listen(5)) {
 			while(true) {
 				client := server->Accept();
@@ -14,7 +19,6 @@ class SocketServer {
 				id += 1;
 			};
 		};
-		server->Close();
 	}
 }
 
@@ -28,6 +32,21 @@ class Service from System.Concurrency.Thread {
 		line := client->ReadLine();
 		while(line->Size() > 0 & line->Equals("quit") = false) {
 			line->PrintLine();
+
+			json :=JSONParser->New(line);
+			if(json->Parse()) {
+				root := json->GetRoot();
+
+				id := root->Get("id");
+				id->ToString()->PrintLine();
+
+				oper := root->Get("method");
+				oper->ToString()->PrintLine();
+
+				params := root->Get("params");
+				params->ToString()->PrintLine();
+			};
+
 			line := client->ReadLine();
 		};
 	}
