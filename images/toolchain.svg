@@ -24,8 +24,8 @@
 		.st10 {fill:#4672c4}
 		.st11 {stroke:#c8c8c8;stroke-width:0.25}
 		.st12 {fill:none;stroke:none;stroke-width:0.25}
-		.st13 {fill:#4672c4;font-family:Calibri;font-size:1.5em;font-weight:bold}
-		.st14 {marker-end:url(#mrkr1-23);marker-start:url(#mrkr1-190);stroke:#4672c4;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
+		.st13 {fill:#4672c4;font-family:Calibri;font-size:1.99999em;font-weight:bold}
+		.st14 {marker-end:url(#mrkr1-23);marker-start:url(#mrkr1-191);stroke:#4672c4;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
 		.st15 {stroke:#c7c8c8;stroke-width:0.25}
 		.st16 {fill:#4672c4;font-family:Symbol;font-size:0.75em}
 		.st17 {font-family:Calibri;font-size:1em}
@@ -48,7 +48,7 @@
 				overflow="visible">
 			<use xlink:href="#lend1" transform="scale(-4.36,-4.36) "/>
 		</marker>
-		<marker id="mrkr1-190" class="st8" v:arrowType="1" v:arrowSize="2" orient="auto" markerUnits="strokeWidth"
+		<marker id="mrkr1-191" class="st8" v:arrowType="1" v:arrowSize="2" orient="auto" markerUnits="strokeWidth"
 				overflow="visible">
 			<use xlink:href="#lend1" transform="scale(4.36) "/>
 		</marker>
@@ -346,7 +346,7 @@
 		</g>
 		<g id="shape92-79" v:mID="92" v:groupContext="shape" v:layerMember="0" transform="translate(434.8,-331.2)">
 			<title>Subprocess.35</title>
-			<desc>Binary Emitter</desc>
+			<desc>CompressedBinary Emitter</desc>
 			<v:custProps>
 				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
 						v:langID="1033" v:cal="0"/>
@@ -377,13 +377,13 @@
 			<path d="M0 604.8 L72 604.8 L72 550.8 L0 550.8 L0 604.8" class="st5"/>
 			<path d="M9 604.8 L9 550.8" class="st5"/>
 			<path d="M63 604.8 L63 550.8" class="st5"/>
-			<text x="24.39" y="575.1" class="st6" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Binary <v:newlineChar/><tspan
-						x="22.35" dy="1.2em" class="st3">Emitter</tspan></text>		</g>
-		<g id="shape93-87" v:mID="93" v:groupContext="shape" v:layerMember="1" transform="translate(470.8,-385.2)">
+			<text x="13.34" y="569.7" class="st6" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Compressed<tspan
+						x="24.39" dy="1.2em" class="st3">Binary <v:newlineChar/></tspan><tspan x="22.35" dy="1.2em" class="st3">Emitter</tspan></text>		</g>
+		<g id="shape93-88" v:mID="93" v:groupContext="shape" v:layerMember="1" transform="translate(470.8,-385.2)">
 			<title>Dynamic connector.37</title>
 			<path d="M0 604.8 L0 478.8 A9 9 -180 0 0 -9 469.8 L-261 469.8" class="st7"/>
 		</g>
-		<g id="shape94-92" v:mID="94" v:groupContext="shape" v:layerMember="0" transform="translate(434.8,-171)">
+		<g id="shape94-93" v:mID="94" v:groupContext="shape" v:layerMember="0" transform="translate(434.8,-171)">
 			<title>Document.38</title>
 			<desc>Runnable Binary</desc>
 			<v:custProps>
@@ -414,7 +414,7 @@
 			<path d="M0 598.8 L0 550.8 L72 550.8 L72 598.8 A30 30 -180 0 0 36 598.8 A30 30 0 0 1 -0 598.8 Z" class="st9"/>
 			<text x="18.67" y="569.1" class="st6" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Runnable<v:newlineChar/><tspan
 						x="24.39" dy="1.2em" class="st3">Binary</tspan></text>		</g>
-		<g id="shape95-97" v:mID="95" v:groupContext="shape" v:layerMember="0" transform="translate(434.8,-28.8)">
+		<g id="shape95-98" v:mID="95" v:groupContext="shape" v:layerMember="0" transform="translate(434.8,-28.8)">
 			<title>Subprocess.39</title>
 			<desc>Loader</desc>
 			<v:custProps>
@@ -448,7 +448,7 @@
 			<path d="M9 604.8 L9 550.8" class="st5"/>
 			<path d="M63 604.8 L63 550.8" class="st5"/>
 			<text x="23.41" y="580.5" class="st6" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Loader</text>		</g>
-		<g id="shape96-104" v:mID="96" v:groupContext="shape" v:layerMember="0" transform="translate(236.8,-28.8)">
+		<g id="shape96-105" v:mID="96" v:groupContext="shape" v:layerMember="0" transform="translate(236.8,-28.8)">
 			<title>Process.40</title>
 			<desc>Interpreter</desc>
 			<v:custProps>
@@ -478,7 +478,7 @@
 			<v:textRect cx="36" cy="577.8" width="72" height="54"/>
 			<rect x="0" y="550.8" width="72" height="54" class="st1"/>
 			<text x="15.7" y="580.5" class="st2" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Interpreter</text>		</g>
-		<g id="shape97-107" v:mID="97" v:groupContext="shape" v:layerMember="0" transform="translate(137.8,-109.8)">
+		<g id="shape97-108" v:mID="97" v:groupContext="shape" v:layerMember="0" transform="translate(137.8,-109.8)">
 			<title>Process.41</title>
 			<desc>Memory Manager</desc>
 			<v:custProps>
@@ -509,7 +509,7 @@
 			<rect x="0" y="550.8" width="72" height="54" class="st1"/>
 			<text x="20.34" y="575.1" class="st2" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Memory <v:newlineChar/><tspan
 						x="19.55" dy="1.2em" class="st3">Manager</tspan></text>		</g>
-		<g id="shape98-111" v:mID="98" v:groupContext="shape" v:layerMember="0" transform="translate(236.8,-109.8)">
+		<g id="shape98-112" v:mID="98" v:groupContext="shape" v:layerMember="0" transform="translate(236.8,-109.8)">
 			<title>Subprocess.42</title>
 			<desc>JIT Compiler</desc>
 			<v:custProps>
@@ -543,7 +543,7 @@
 			<path d="M9 604.8 L9 550.8" class="st5"/>
 			<path d="M63 604.8 L63 550.8" class="st5"/>
 			<text x="13.62" y="580.5" class="st6" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>JIT Compiler</text>		</g>
-		<g id="shape99-118" v:mID="99" v:groupContext="shape" v:layerMember="0" transform="translate(236.8,-190.8)">
+		<g id="shape99-119" v:mID="99" v:groupContext="shape" v:layerMember="0" transform="translate(236.8,-190.8)">
 			<title>Process.43</title>
 			<desc>Machine Code</desc>
 			<v:custProps>
@@ -574,7 +574,7 @@
 			<rect x="0" y="550.8" width="72" height="54" class="st1"/>
 			<text x="20.09" y="575.1" class="st2" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Machine <v:newlineChar/><tspan
 						x="26.62" dy="1.2em" class="st3">Code</tspan></text>		</g>
-		<g id="shape100-122" v:mID="100" v:groupContext="shape" v:layerMember="0" transform="translate(38.8,-109.8)">
+		<g id="shape100-123" v:mID="100" v:groupContext="shape" v:layerMember="0" transform="translate(38.8,-109.8)">
 			<title>Subprocess.44</title>
 			<desc>Host API</desc>
 			<v:custProps>
@@ -608,66 +608,66 @@
 			<path d="M9 604.8 L9 550.8" class="st11"/>
 			<path d="M63 604.8 L63 550.8" class="st11"/>
 			<text x="20.48" y="580.5" class="st2" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Host API</text>		</g>
-		<g id="shape101-128" v:mID="101" v:groupContext="shape" v:layerMember="1" transform="translate(463.6,-331.2)">
+		<g id="shape101-129" v:mID="101" v:groupContext="shape" v:layerMember="1" transform="translate(463.6,-331.2)">
 			<title>Dynamic connector.45</title>
 			<path d="M7.2 604.8 L7.2 711" class="st7"/>
 		</g>
-		<g id="shape102-133" v:mID="102" v:groupContext="shape" v:layerMember="1" transform="translate(463.6,-177)">
+		<g id="shape102-134" v:mID="102" v:groupContext="shape" v:layerMember="1" transform="translate(463.6,-177)">
 			<title>Dynamic connector.46</title>
 			<path d="M7.2 604.8 L7.2 699" class="st7"/>
 		</g>
-		<g id="shape103-138" v:mID="103" v:groupContext="shape" v:layerMember="1" transform="translate(434.8,-48.6)">
+		<g id="shape103-139" v:mID="103" v:groupContext="shape" v:layerMember="1" transform="translate(434.8,-48.6)">
 			<title>Dynamic connector.47</title>
 			<path d="M0 597.6 L-126 597.6" class="st7"/>
 		</g>
-		<g id="shape104-143" v:mID="104" v:groupContext="shape" v:layerMember="1" transform="translate(265.6,-82.8)">
+		<g id="shape104-144" v:mID="104" v:groupContext="shape" v:layerMember="1" transform="translate(265.6,-82.8)">
 			<title>Dynamic connector.48</title>
 			<path d="M7.2 604.8 L7.2 577.8" class="st7"/>
 		</g>
-		<g id="shape105-148" v:mID="105" v:groupContext="shape" v:layerMember="1" transform="translate(265.6,-163.8)">
+		<g id="shape105-149" v:mID="105" v:groupContext="shape" v:layerMember="1" transform="translate(265.6,-163.8)">
 			<title>Dynamic connector.49</title>
 			<path d="M7.2 604.8 L7.2 577.8" class="st7"/>
 		</g>
-		<g id="shape106-153" v:mID="106" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-217.8)">
+		<g id="shape106-154" v:mID="106" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-217.8)">
 			<title>Dynamic connector.50</title>
 			<path d="M0 604.8 L-54 604.8 A9 9 -180 0 0 -63 613.8 L-63 658.8" class="st7"/>
 		</g>
-		<g id="shape107-158" v:mID="107" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-55.8)">
+		<g id="shape107-159" v:mID="107" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-55.8)">
 			<title>Dynamic connector.51</title>
 			<path d="M0 604.8 L-54 604.8 A9 9 0 0 1 -63 595.8 L-63 550.8" class="st7"/>
 		</g>
-		<g id="shape108-163" v:mID="108" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-217.8)">
+		<g id="shape108-164" v:mID="108" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-217.8)">
 			<title>Dynamic connector.52</title>
 			<path d="M0 604.8 L-153 604.8 A9 9 -180 0 0 -162 613.8 L-162 658.8" class="st7"/>
 		</g>
-		<g id="shape109-168" v:mID="109" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-55.8)">
+		<g id="shape109-169" v:mID="109" v:groupContext="shape" v:layerMember="1" transform="translate(236.8,-55.8)">
 			<title>Dynamic connector.53</title>
 			<path d="M0 604.8 L-153 604.8 A9 9 0 0 1 -162 595.8 L-162 550.8" class="st7"/>
 		</g>
-		<g id="shape110-173" v:mID="110" v:groupContext="shape" transform="translate(132.4,-547.2)">
+		<g id="shape110-174" v:mID="110" v:groupContext="shape" transform="translate(132.4,-554.4)">
 			<title>Sheet.110</title>
 			<desc>Compiler</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="140.4" cy="583.2" width="280.8" height="43.2"/>
 			<rect x="0" y="561.6" width="280.8" height="43.2" class="st12"/>
-			<text x="106.5" y="588.6" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Compiler</text>		</g>
-		<g id="shape111-176" v:mID="111" v:groupContext="shape" transform="translate(132.4,-244.8)">
+			<text x="95.2" y="590.4" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Compiler</text>		</g>
+		<g id="shape111-177" v:mID="111" v:groupContext="shape" transform="translate(132.4,-255.6)">
 			<title>Sheet.111</title>
 			<desc>Virtual Machine</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="140.4" cy="583.2" width="280.8" height="43.2"/>
 			<rect x="0" y="561.6" width="280.8" height="43.2" class="st12"/>
-			<text x="80.56" y="588.6" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Virtual Machine</text>		</g>
-		<g id="shape112-179" v:mID="112" v:groupContext="shape" v:layerMember="1" transform="translate(407.8,-351)">
+			<text x="60.61" y="590.4" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Virtual Machine</text>		</g>
+		<g id="shape112-180" v:mID="112" v:groupContext="shape" v:layerMember="1" transform="translate(407.8,-351)">
 			<title>Dynamic connector.62</title>
 			<path d="M0 597.6 L27 597.6" class="st7"/>
 		</g>
-		<g id="shape115-184" v:mID="115" v:groupContext="shape" v:layerMember="1" transform="translate(301.6,-217.8)">
+		<g id="shape115-185" v:mID="115" v:groupContext="shape" v:layerMember="1" transform="translate(301.6,-217.8)">
 			<title>Dynamic connector.115</title>
 			<path d="M7.2 604.8 L13.95 604.8 A6.75 6.75 0 0 1 20.7 611.55 L20.7 760.05 A6.75 6.75 0 0 1 13.95 766.8 L7.2 766.8"
 					class="st14"/>
 		</g>
-		<g id="shape113-192" v:mID="113" v:groupContext="shape" v:layerMember="2" transform="translate(335.8,-190.8)">
+		<g id="shape113-193" v:mID="113" v:groupContext="shape" v:layerMember="2" transform="translate(335.8,-109.8)">
 			<title>Orthogonal</title>
 			<desc>X86_64 ARM64 x86 ARMv7</desc>
 			<v:userDefs>
@@ -707,7 +707,7 @@
 						dy="1.215em" class="st3" v:isBullet="true">·</tspan> <tspan class="st17">ARM64<v:newlineChar/></tspan><tspan
 						x="4" dy="1.215em" class="st3" v:isBullet="true">·</tspan> <tspan class="st17">x86<v:newlineChar/></tspan><tspan
 						x="4" dy="1.215em" class="st3" v:isBullet="true">·</tspan> <tspan class="st17">ARMv7</tspan></text>		</g>
-		<g id="shape114-205" v:mID="114" v:groupContext="shape" v:layerMember="2" transform="translate(311.387,-412.2)">
+		<g id="shape114-206" v:mID="114" v:groupContext="shape" v:layerMember="2" transform="translate(311.387,-412.2)">
 			<title>Orthogonal.65</title>
 			<desc>Jump optimizations Constant folding Method inlining Strength ...</desc>
 			<v:userDefs>
