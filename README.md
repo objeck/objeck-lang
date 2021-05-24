@@ -57,7 +57,7 @@ Components
 *  [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 *  [JIT compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
-![alt text](images/design2.png "Compiler & VM")
+![alt text](images/toolchain.svg "Compiler & VM")
 
 Building on Linux and macOS:
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev</code>
