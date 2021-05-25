@@ -561,7 +561,16 @@ bundle Data.JSON {
 			
 			return Nil;
 		}
-		
+
+		#~
+		Check to see if the indexed value exists
+		@param index index
+		@return true if exists, false otherwise
+		~#
+		method : public : Has(index : Int) ~ JSONElement {
+			return Get(index) = Nil ? false : true;
+		}
+
 		#~
 		Gets a named value from an object type
 		@param name element name
@@ -575,6 +584,15 @@ bundle Data.JSON {
 			return Nil;
 		}
 
+		#~
+		Check to see if the indexed value exists
+		@param name element name
+		@return true if exists, false otherwise
+		~#
+		method : public : Has(name : String) ~ JSONElement {
+			return Get(name) = Nil ? false : true;
+		}
+		
 		#~
 		Adds an element
 		@param elem element
@@ -680,7 +698,7 @@ bundle Data.JSON {
         method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
             if(@type = JSONType->OBJECT) {
             	if(elem = Nil) {
-            		@array_elems->AddBack(JSONElement->New(JSONType->NULL));
+            		@map_elems->AddBack(JSONElement->New(JSONType->NULL));
             	}
             	else {
                 	@map_elems->Insert(name, elem);
