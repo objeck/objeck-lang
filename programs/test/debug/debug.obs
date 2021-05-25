@@ -2,12 +2,11 @@ use Data.JSON;
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		root := JSONElement->New(JSONType->OBJECT);
-        capabilities := root->AddChild("capabilities");
-        capabilities->Insert("resolveProvider", true);
-        completionProvider := root->AddChild("completionProvider");
-        completionProvider->Insert("textDocumentSync", "TextDocumentSyncKind.Incremental");
-
-        root->ToString()->PrintLine();
+		p := JSONParser->New("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}");
+		if(p->Parse()) {
+			pp := p->GetRoot();
+			ppp := pp->Get("params");
+			ppp->ToString()->PrintLine();
+		};
     }
 }
