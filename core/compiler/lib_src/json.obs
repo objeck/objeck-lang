@@ -437,36 +437,36 @@ bundle Data.JSON {
 		@param type JSON element type
 		~#
 		New(type : JSONType) {
-            select(type) {
-			    label JSONType->TRUE {
-				    @type := type;	
-				    @value := "true";
-			    }
+			select(type) {
+				label JSONType->TRUE {
+					@type := type;	
+					@value := "true";
+				}
 
-			    label JSONType->FALSE {
-				    @type := type;	
-				    @value := "false";
-			    }
-                
-			    label JSONType->NULL {
-				    @type := type;	
-				    @value := "";
-			    }
+				label JSONType->FALSE {
+					@type := type;	
+					@value := "false";
+					}
 
-                label JSONType->OBJECT {
-                    @type := type;
-                    @map_elems := Map->New()<String, JSONElement>;
-                }
+				label JSONType->NULL {
+					@type := type;	
+					@value := "";
+				}
 
-                label JSONType->ARRAY {
-                    @type := type;
-                    @array_elems := Vector->New()<JSONElement>;
-                }   
-                
-                other {
-				    @type := JSONType->OTHER;
-			    }
-            };
+				label JSONType->OBJECT {
+					@type := type;
+					@map_elems := Map->New()<String, JSONElement>;
+				}
+
+				label JSONType->ARRAY {
+					@type := type;
+					@array_elems := Vector->New()<JSONElement>;
+				}   
+
+				other {
+					@type := JSONType->OTHER;
+				}
+			};
 		}
 		
 		#~
@@ -613,167 +613,170 @@ bundle Data.JSON {
 			return false;
 		}
 
-        #~
+		#~
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Add(value : String) ~ Bool {
-            if(@type = JSONType->ARRAY) {
-                @array_elems->AddBack(JSONElement->New(value));
-                return true;
-            };
+		method : public : Add(value : String) ~ Bool {
+			if(@type = JSONType->ARRAY) {
+				@array_elems->AddBack(JSONElement->New(value));
+				return true;
+			};
 
-            return false;
-        }
+			return false;
+		}
 
-        #~
+		#~
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Add(value : Int) ~ Bool {
-            if(@type = JSONType->ARRAY) {
-                @array_elems->AddBack(JSONElement->New(value));
-                return true;
-            };
+		method : public : Add(value : Int) ~ Bool {
+			if(@type = JSONType->ARRAY) {
+				@array_elems->AddBack(JSONElement->New(value));
+				return true;
+			};
 
-            return false;
-        }
+			return false;
+		}
 
-        #~
+		#~
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Add(value : Float) ~ Bool {
-            if(@type = JSONType->ARRAY) {
-                @array_elems->AddBack(JSONElement->New(value));
-                return true;
-            };
+		method : public : Add(value : Float) ~ Bool {
+			if(@type = JSONType->ARRAY) {
+				@array_elems->AddBack(JSONElement->New(value));
+				return true;
+			};
 
-            return false;
-        }
+			return false;
+		}
 
-        #~
+		#~
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Add(value : Bool) ~ Bool {
-            if(@type = JSONType->ARRAY) {
-                if(value) {
-                    @array_elems->AddBack(JSONElement->New(JSONType->TRUE));
-                }
-                else {
-                    @array_elems->AddBack(JSONElement->New(JSONType->FALSE));
-                };
-                return true;
-            };
+		method : public : Add(value : Bool) ~ Bool {
+			if(@type = JSONType->ARRAY) {
+				if(value) {
+					@array_elems->AddBack(JSONElement->New(JSONType->TRUE));
+				}
+				else {
+					@array_elems->AddBack(JSONElement->New(JSONType->FALSE));
+				};
 
-            return false;
-        }
+				return true;
+			};
 
-        #~
+			return false;
+		}
+
+		#~
 		Adds a class child node
 		@param name class name
 		@return child class
 		~#
-        method : public : AddChild(name : String) ~ JSONElement {        
-            if(@type = JSONType->OBJECT) {
-                elem := JSONElement->New(JSONType->OBJECT);
-                @map_elems->Insert(name, elem);
-                
-                return elem;
-            };
+		method : public : AddChild(name : String) ~ JSONElement {        
+			if(@type = JSONType->OBJECT) {
+				elem := JSONElement->New(JSONType->OBJECT);
+				@map_elems->Insert(name, elem);
 
-            return Nil;
-        }
+				return elem;
+			};
 
-        #~
+			return Nil;
+		}
+
+		#~
 		Insert an element
 		@param name element name
 		@param elem element
 		@return true if successful, false otherwise
 		~#
-        method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
-            if(@type = JSONType->OBJECT) {
-            	if(elem = Nil) {
-            		@map_elems->Insert(name, JSONElement->New(JSONType->NULL));
-            	}
-            	else {
-                	@map_elems->Insert(name, elem);
-                };
-                return true;
-            };
+		method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
+			if(@type = JSONType->OBJECT) {
+				if(elem = Nil) {
+					@map_elems->Insert(name, JSONElement->New(JSONType->NULL));
+				}
+				else {
+					@map_elems->Insert(name, elem);
+				};
 
-            return false;
-        }
+				return true;
+			};
 
-        #~
+			return false;
+		}
+
+		#~
 		Inserts a value
 		@param name value name
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Insert(name : String, value : String) ~ Bool {        
-            if(@type = JSONType->OBJECT) {
-                @map_elems->Insert(name, JSONElement->New(value));
-                return true;
-            };
+		method : public : Insert(name : String, value : String) ~ Bool {        
+			if(@type = JSONType->OBJECT) {
+				@map_elems->Insert(name, JSONElement->New(value));
+				return true;
+			};
 
-            return false;
-        }
+			return false;
+		}
 
-        #~
+		#~
 		Inserts a value
 		@param name value name
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Insert(name : String, value : Int) ~ Bool {        
-            if(@type = JSONType->OBJECT) {
-                @map_elems->Insert(name, JSONElement->New(value));
-                return true;
-            };
+		method : public : Insert(name : String, value : Int) ~ Bool {        
+			if(@type = JSONType->OBJECT) {
+				@map_elems->Insert(name, JSONElement->New(value));
+				return true;
+			};
 
-            return false;
-        }
+			return false;
+		}
 
-        #~
+		#~
 		Inserts a value
 		@param name value name
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Insert(name : String, value : Float) ~ Bool {        
-            if(@type = JSONType->OBJECT) {
-                @map_elems->Insert(name, JSONElement->New(value));
-                return true;
-            };
+		method : public : Insert(name : String, value : Float) ~ Bool {        
+			if(@type = JSONType->OBJECT) {
+				@map_elems->Insert(name, JSONElement->New(value));
+				return true;
+			};
 
-            return false;
-        }
+			return false;
+		}
 
-        #~
+		#~
 		Inserts a value
 		@param name value name
 		@param value value
 		@return true if successful, false otherwise
 		~#
-        method : public : Insert(name : String, value : Bool) ~ Bool {        
-            if(@type = JSONType->OBJECT) {
-                if(value) {
-                    @map_elems->Insert(name, JSONElement->New(JSONType->TRUE));
-                }
-                else {
-                    @map_elems->Insert(name, JSONElement->New(JSONType->FALSE));
-                };
-                return true;
-            };
+		method : public : Insert(name : String, value : Bool) ~ Bool {        
+			if(@type = JSONType->OBJECT) {
+				if(value) {
+					@map_elems->Insert(name, JSONElement->New(JSONType->TRUE));
+				}
+				else {
+					@map_elems->Insert(name, JSONElement->New(JSONType->FALSE));
+				};
 
-            return false;
-        }
+				return true;
+			};
+
+			return false;
+		}
         
 		#~
 		General decoding for JSON strings		
