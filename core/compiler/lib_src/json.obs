@@ -446,7 +446,7 @@ bundle Data.JSON {
 				label JSONType->FALSE {
 					@type := type;	
 					@value := "false";
-					}
+				}
 
 				label JSONType->NULL {
 					@type := type;	
@@ -988,15 +988,15 @@ bundle Data.JSON {
 				}
 				
 				label JSONType->TRUE: {
-					output->Append("\"true\"");
+					output->Append("true");
 				}
 
 				label JSONType->FALSE: {
-					output->Append("\"false\"");
+					output->Append("false");
 				}
 				
 				label JSONType->NULL: {
-					output->Append("\"null\"");
+					output->Append("null");
 				}
 
 				label JSONType->ARRAY: {
