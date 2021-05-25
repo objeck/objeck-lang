@@ -567,7 +567,7 @@ bundle Data.JSON {
 		@param index index
 		@return true if exists, false otherwise
 		~#
-		method : public : Has(index : Int) ~ JSONElement {
+		method : public : Has(index : Int) ~ Bool {
 			return Get(index) = Nil ? false : true;
 		}
 
@@ -589,7 +589,7 @@ bundle Data.JSON {
 		@param name element name
 		@return true if exists, false otherwise
 		~#
-		method : public : Has(name : String) ~ JSONElement {
+		method : public : Has(name : String) ~ Bool {
 			return Get(name) = Nil ? false : true;
 		}
 		
@@ -598,19 +598,20 @@ bundle Data.JSON {
 		@param elem element
 		@return true if successful, false otherwise
 		~#
-        method : public : Add(elem : JSONElement) ~ Bool {
-            if(@type = JSONType->ARRAY) {
-            	if(elem = Nil) {
-            		@array_elems->AddBack(JSONElement->New(JSONType->NULL));
-            	}
-            	else {
-                	@array_elems->AddBack(elem);
-                };
-                return true;
-            };
+		method : public : Add(elem : JSONElement) ~ Bool {
+			if(@type = JSONType->ARRAY) {
+				if(elem = Nil) {
+					@array_elems->AddBack(JSONElement->New(JSONType->NULL));
+				}
+				else {
+					@array_elems->AddBack(elem);
+				};
 
-            return false;
-        }
+				return true;
+			};
+
+			return false;
+		}
 
         #~
 		Adds a value
@@ -698,7 +699,7 @@ bundle Data.JSON {
         method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
             if(@type = JSONType->OBJECT) {
             	if(elem = Nil) {
-            		@map_elems->AddBack(JSONElement->New(JSONType->NULL));
+            		@map_elems->Insert(name, JSONElement->New(JSONType->NULL));
             	}
             	else {
                 	@map_elems->Insert(name, elem);
