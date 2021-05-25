@@ -1,11 +1,13 @@
+use Data.JSON;
+
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		if(Foo->Bar = 13) {
-			"Okay"->PrintLine();
-		};
-	}
+		root := JSONElement->New(JSONType->OBJECT);
+        capabilities := root->AddChild("capabilities");
+        capabilities->Insert("resolveProvider", true);
+        completionProvider := root->AddChild("completionProvider");
+        completionProvider->Insert("textDocumentSync", "TextDocumentSyncKind.Incremental");
 
-	enum Foo {
-		Bar
-	}
+        root->ToString()->PrintLine();
+    }
 }
