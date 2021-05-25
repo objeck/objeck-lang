@@ -4,7 +4,7 @@ use Data.JSON;
 
 class Client {
 	function : Main(args : String[]) ~ Nil {
-		client := TCPSocket->New("localhost", 6013);
+		client := TCPSocket->New("192.168.4.95", 6013);
 		leaving {
 			client->Close();	
 		};
@@ -38,7 +38,7 @@ class Client {
 		values->Insert("jsonrpc", JSONElement->New("2.0"));
 		values->Insert("method", JSONElement->New("subtract"));
 		values->Insert("id", JSONElement->New(id));	
-		
+
 		return JSONElement->New(values);
 	}
 }
