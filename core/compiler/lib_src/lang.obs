@@ -216,6 +216,32 @@ bundle System {
 		}
 
 		#~
+		Checks is a number is negative
+		@ignore-params
+		@return true if negative, false otherwise
+		~#
+		function : native : IsNeg(v : Byte) ~ Bool {
+			if(v < 0) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Checks is a number is not negative
+		@ignore-params
+		@return true if not negative, false otherwise
+		~#
+		function : native : NotNeg(v : Byte) ~ Bool {
+			if(v > -1) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
 		Prints value 
 		@ignore-params
 		~#
@@ -778,6 +804,32 @@ bundle System {
 			return v;
 		}
 
+		#~
+		Checks is a number is negative
+		@ignore-params
+		@return true if negative, false otherwise
+		~#
+		function : native : IsNeg(v : Int) ~ Bool {
+			if(v < 0) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Checks is a number is not negative
+		@ignore-params
+		@return true if not negative, false otherwise
+		~#
+		function : native : NotNeg(v : Int) ~ Bool {
+			if(v > -1) {
+				return true;
+			};
+
+			return false;
+		}
+
 		function : Size(v : Int) ~ Int {
 			return v;
 		}
@@ -1110,11 +1162,37 @@ bundle System {
 		@return absolute value
 		~#
 		function : native : Abs(v : Float) ~ Float {
-			if(v < 0) {
-				return v * -1;
+			if(v < 0.0) {
+				return v * -1.0;
 			};
 
 			return v;
+		}
+
+		#~
+		Checks is a number is negative
+		@ignore-params
+		@return true if negative, false otherwise
+		~#
+		function : native : IsNeg(v : Float) ~ Bool {
+			if(v < 0.0) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Checks is a number is not negative
+		@ignore-params
+		@return true if not negative, false otherwise
+		~#
+		function : native : NotNeg(v : Float) ~ Bool {
+			if(v > -1.0) {
+				return true;
+			};
+
+			return false;
 		}
 		
 		#~
