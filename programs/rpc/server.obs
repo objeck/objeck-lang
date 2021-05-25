@@ -2,9 +2,7 @@ use System.IO.Net;
 use Data.JSON;
 use Collection.Generic;
 
-class Client {
-	id : static : Int;
-
+class Server {
 	function : Main(args : String[]) ~ Nil {
 		server := TCPSocketServer->New(6013);
 		leaving {
@@ -14,42 +12,37 @@ class Client {
 		if(server->Listen(5)) {
 			while(true) {
 				client := server->Accept();
-				service := Service->New(id->ToString());
-				service->Execute(client);
-				id += 1;
-			};
-		};
-	}
-}
+				
+				line := client->ReadLine();
+				while(line->Size() > 0) {
+					lens := line->Split(":");
+					len := lens[1]->Trim()->ToInt()+2;
 
-class Service from System.Concurrency.Thread {
-	New(name : String) {
-	  Parent(name);
-	}
-	
-	method : public : Run(param : Base) ~ Nil {
-		client := param->As(TCPSocket);
-		line := client->ReadLine();
-		while(line->Size() > 0 & line->Equals("quit") = false) {
-			line->PrintLine();
+					buffer := Byte->New[len];	
+					client->ReadBuffer(0, len, buffer);
+					buffer->ToUnicode()->PrintLine();
 
-			json :=JSONParser->New(line);
-			if(json->Parse()) {
-				root := json->GetRoot();
-
-				id_elem := root->Get("id");
-				call_elem := root->Get("method");
-				param_elems := root->Get("params");
-
-				if(id_elem <> Nil & call_elem <> Nil & param_elems <> Nil) {
-					id := id_elem->ToString()->ToInt();
-					client->WriteString(DoSubtract(id, param_elems)->ToString());
+					line := client->ReadLine();
 				};
 			};
-
-			line := client->ReadLine();
 		};
 	}
+
+#~
+	json :=JSONParser->New(line);
+	if(json->Parse()) {
+		root := json->GetRoot();
+
+		id_elem := root->Get("id");
+		call_elem := root->Get("method");
+		param_elems := root->Get("params");
+
+		if(id_elem <> Nil & call_elem <> Nil & param_elems <> Nil) {
+			id := id_elem->ToString()->ToInt();
+			client->WriteString(DoSubtract(id, param_elems)->ToString());
+		};
+	};
+~#
 
 	method : public : DoSubtract(id : Int, param_elems : JSONElement) ~ JSONElement {
 		left := param_elems->Get(0)->GetValue()->ToInt();
@@ -60,7 +53,7 @@ class Service from System.Concurrency.Thread {
 
 	method : MakeResult(id : Int, result : Int) ~ JSONElement {
 		values := Map->New()<String, JSONElement>;
-		
+
 		values->Insert("jsonrpc", JSONElement->New("2.0"));
 		values->Insert("result", JSONElement->New(result));
 		values->Insert("id", JSONElement->New(id));

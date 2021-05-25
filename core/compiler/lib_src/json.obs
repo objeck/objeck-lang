@@ -575,6 +575,11 @@ bundle Data.JSON {
 			return Nil;
 		}
 
+		#~
+		Adds an element
+		@param elem element
+		@return true if successful, false otherwise
+		~#
         method : public : Add(elem : JSONElement) ~ Bool {
             if(@type = JSONType->ARRAY) {
                 @array_elems->AddBack(elem);
@@ -584,6 +589,11 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Add(value : String) ~ Bool {
             if(@type = JSONType->ARRAY) {
                 @array_elems->AddBack(JSONElement->New(value));
@@ -593,6 +603,11 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Add(value : Int) ~ Bool {
             if(@type = JSONType->ARRAY) {
                 @array_elems->AddBack(JSONElement->New(value));
@@ -602,6 +617,11 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Add(value : Float) ~ Bool {
             if(@type = JSONType->ARRAY) {
                 @array_elems->AddBack(JSONElement->New(value));
@@ -611,6 +631,11 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Add(value : Bool) ~ Bool {
             if(@type = JSONType->ARRAY) {
                 if(value) {
@@ -625,6 +650,11 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Adds a class child node
+		@param name class name
+		@return child class
+		~#
         method : public : AddChild(name : String) ~ JSONElement {        
             if(@type = JSONType->OBJECT) {
                 elem := JSONElement->New(JSONType->OBJECT);
@@ -636,6 +666,12 @@ bundle Data.JSON {
             return Nil;
         }
 
+        #~
+		Insert an element
+		@param name element name
+		@param elem element
+		@return true if successful, false otherwise
+		~#
         method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
             if(@type = JSONType->OBJECT) {
                 @map_elems->Insert(name, elem);
@@ -645,6 +681,12 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Inserts a value
+		@param name value name
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Insert(name : String, value : String) ~ Bool {        
             if(@type = JSONType->OBJECT) {
                 @map_elems->Insert(name, JSONElement->New(value));
@@ -654,6 +696,12 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Inserts a value
+		@param name value name
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Insert(name : String, value : Int) ~ Bool {        
             if(@type = JSONType->OBJECT) {
                 @map_elems->Insert(name, JSONElement->New(value));
@@ -663,6 +711,12 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Inserts a value
+		@param name value name
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Insert(name : String, value : Float) ~ Bool {        
             if(@type = JSONType->OBJECT) {
                 @map_elems->Insert(name, JSONElement->New(value));
@@ -672,6 +726,12 @@ bundle Data.JSON {
             return false;
         }
 
+        #~
+		Inserts a value
+		@param name value name
+		@param value value
+		@return true if successful, false otherwise
+		~#
         method : public : Insert(name : String, value : Bool) ~ Bool {        
             if(@type = JSONType->OBJECT) {
                 if(value) {
