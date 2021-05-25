@@ -582,7 +582,12 @@ bundle Data.JSON {
 		~#
         method : public : Add(elem : JSONElement) ~ Bool {
             if(@type = JSONType->ARRAY) {
-                @array_elems->AddBack(elem);
+            	if(elem = Nil) {
+            		@array_elems->AddBack(JSONElement->New(JSONType->NULL));
+            	}
+            	else {
+                	@array_elems->AddBack(elem);
+                };
                 return true;
             };
 
@@ -674,7 +679,12 @@ bundle Data.JSON {
 		~#
         method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
             if(@type = JSONType->OBJECT) {
-                @map_elems->Insert(name, elem);
+            	if(elem = Nil) {
+            		@array_elems->AddBack(JSONElement->New(JSONType->NULL));
+            	}
+            	else {
+                	@map_elems->Insert(name, elem);
+                };
                 return true;
             };
 
