@@ -1003,7 +1003,7 @@ bundle Data.JSON {
 					if(@array_elems <> Nil) {
 						output->Append('[');
 						each(i : @array_elems) {
-							@array_elems->Get(i)->As(JSONElement)->Format(output);
+							output->Append(@array_elems->Get(i)->ToString());
 							if(i + 1 < @array_elems->Size()) {
 								output->Append(',');
 							};
