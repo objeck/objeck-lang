@@ -1,12 +1,33 @@
-use Data.JSON;
+use System.IO.File;
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		p := JSONParser->New("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}");
-		if(p->Parse()) {
-			pp := p->GetRoot();
-			ppp := pp->Get("params");
-			ppp->ToString()->PrintLine();
-		};
+		Decode("file:///c%3A/Users/objec/Desktop/adcd%20%20da.txt")->PrintLine();
     }
+
+    function : native : Decode(str : String) ~ String {
+		buffer := String->New();
+
+		each(i : str) {
+			c := str->Get(i);
+			if(c = '%' & i + 1 < str->Size()) {		
+				i += 1;
+				if(i + 2 < str->Size()) {
+					str_code := str->SubString(i, 2);
+					if(<>str_code->IsEmpty()) {
+						buffer->Append("0x{$str_code}"->ToInt()->ToChar());
+					};
+					i += 1;
+				}
+				else {
+					buffer->Append(c);
+				};
+			}
+			else {
+				buffer->Append(c);
+			};
+		};
+
+		return buffer;
+	}
 }
