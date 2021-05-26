@@ -1,33 +1,10 @@
-use System.IO.File;
-
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		Decode("file:///c%3A/Users/objec/Desktop/adcd%20%20da.txt")->PrintLine();
-    }
-
-    function : native : Decode(str : String) ~ String {
-		buffer := String->New();
-
-		each(i : str) {
-			c := str->Get(i);
-			if(c = '%' & i + 1 < str->Size()) {		
-				i += 1;
-				if(i + 2 < str->Size()) {
-					str_code := str->SubString(i, 2);
-					if(<>str_code->IsEmpty()) {
-						buffer->Append("0x{$str_code}"->ToInt()->ToChar());
-					};
-					i += 1;
-				}
-				else {
-					buffer->Append(c);
-				};
-			}
-			else {
-				buffer->Append(c);
-			};
+		in := "file:///c%3A/Users/objec/Desktop/adcd%20da.txt";
+		if(in->StartsWith("file:///")) {
+			offset := "file:///"->Size();
+			in := Web.HTTP.Url->Decode(in->SubString(offset, in->Size() - offset));
+			System.IO.File.FileReader->ReadFile(in)->PrintLine();
 		};
-
-		return buffer;
-	}
+    }
 }
