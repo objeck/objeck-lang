@@ -1,10 +1,22 @@
+use Data.JSON;
+use Collection.Generic;
+
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		in := "file:///c%3A/Users/objec/Desktop/adcd%20da.txt";
-		if(in->StartsWith("file:///")) {
-			offset := "file:///"->Size();
-			in := Web.HTTP.Url->Decode(in->SubString(offset, in->Size() - offset));
-			System.IO.File.FileReader->ReadFile(in)->PrintLine();
+		@keywords := Vector->New()<String>;
+		@keywords->AddBack("method");
+		@keywords->AddBack("function");
+		@keywords->AddBack("Int");
+		@keywords->AddBack("Float");
+
+		response := JSONElement->New(JSONType->ARRAY);
+		each(i : @keywords) {
+#			item := response := JSONElement->New(JSONType->OBJECT);
+#			item->Insert("label", "TypeScript");
+#			item->Insert("kind", "CompletionItemKind.Text");
+#			item->Insert("data", "1");
+			response->Add(1);
 		};
+		response->ToString()->PrintLine();
     }
 }
