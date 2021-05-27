@@ -3,9 +3,9 @@ use Collection.Generic;
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		length := 13;
-		text := "abc";
-		chars := "Content-Length: {$length}\r\n\r\n{$text}"->ToCharArray();
-chars->Size()->PrintLine();
+		foo := "dfkadskfkdsfksdkfsadkf daf afdskf asdfasdf";
+		foo->PrintLine();
+		foo->Delete(20)->PrintLine();
+		foo->PrintLine();
     }
 }
