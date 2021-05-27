@@ -3089,7 +3089,6 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
       IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
-      IPSocket::WriteByte(0, sock);
     }
   }
 
@@ -3215,7 +3214,6 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
     if(instance[3]) {
       const string out = UnicodeToBytes(data);
       IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), ctx, bio);
-      IPSecureSocket::WriteByte(0, ctx, bio);
     }
   }
 
