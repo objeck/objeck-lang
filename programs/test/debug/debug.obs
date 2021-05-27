@@ -3,20 +3,9 @@ use Collection.Generic;
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		@keywords := Vector->New()<String>;
-		@keywords->AddBack("method");
-		@keywords->AddBack("function");
-		@keywords->AddBack("Int");
-		@keywords->AddBack("Float");
-
-		response := JSONElement->New(JSONType->ARRAY);
-		each(i : @keywords) {
-			item := JSONElement->New(JSONType->OBJECT);
-			item->Insert("label", "TypeScript");
-			item->Insert("kind", @keywords->Get(i));
-			item->Insert("data", "1");
-			response->Add(item);
-		};
-		response->ToString()->PrintLine();
+		length := 13;
+		text := "abc";
+		chars := "Content-Length: {$length}\r\n\r\n{$text}"->ToCharArray();
+chars->Size()->PrintLine();
     }
 }
