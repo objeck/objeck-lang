@@ -45,7 +45,7 @@
 */
 
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-#define MEM_MAX 4096 * 2
+#define MEM_MAX 4096 * 256 * 2
 #else
 #define MEM_MAX 4096 * 256 * 1
 #endif
