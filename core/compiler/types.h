@@ -448,11 +448,9 @@ namespace backend {
   class IntermediateDeclaration {
     instructions::ParamType type;
     wstring name;
-    bool copied;
 
   public:
     IntermediateDeclaration(const wstring &n, instructions::ParamType t) {
-      copied = false;
       type = t;
       name = n;
     }
@@ -465,12 +463,8 @@ namespace backend {
       return name;
     }
 
-    void SetCopied(bool c) {
-      copied = c;
-    }
-
-    bool GetCopied() {
-      return copied;
+    IntermediateDeclaration* Copy() {
+      return new IntermediateDeclaration(name, type);
     }
   };
 
@@ -498,10 +492,8 @@ namespace backend {
         IntermediateDeclaration* tmp = declarations.back();
         declarations.pop_back();
         // delete
-        if(!tmp->GetCopied()) {
-          delete tmp;
-          tmp = nullptr;
-        }
+        delete tmp;
+        tmp = nullptr;
       }
     }
 
