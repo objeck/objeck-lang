@@ -1,11 +1,10 @@
-use Data.JSON;
-use Collection.Generic;
+class Bar from String {
+	@b : Float;
 
-class Foo {
 	function : Main(args : String[]) ~ Nil {
-		foo := "dfkadskfkdsfksdkfsadkf daf afdskf asdfasdf";
-		foo->PrintLine();
-		foo->Delete(20)->PrintLine();
-		foo->PrintLine();
     }
+
+	New() {
+		Parent();
+	}
 }

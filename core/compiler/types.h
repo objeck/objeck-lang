@@ -368,8 +368,8 @@ namespace frontend {
 
     void Clear() {
       while(!types.empty()) {
-        Type* tmp = types.front();
-        types.erase(types.begin());
+        Type* tmp = types.back();
+        types.pop_back();
         // delete
         delete tmp;
         tmp = nullptr;
@@ -448,9 +448,11 @@ namespace backend {
   class IntermediateDeclaration {
     instructions::ParamType type;
     wstring name;
+    bool copied;
 
   public:
     IntermediateDeclaration(const wstring &n, instructions::ParamType t) {
+      copied = false;
       type = t;
       name = n;
     }
@@ -461,6 +463,14 @@ namespace backend {
 
     const wstring GetName() {
       return name;
+    }
+
+    void SetCopied(bool c) {
+      copied = c;
+    }
+
+    bool GetCopied() {
+      return copied;
     }
   };
 
@@ -485,11 +495,13 @@ namespace backend {
   
     ~IntermediateDeclarations() {
       while(!declarations.empty()) {
-        IntermediateDeclaration* tmp = declarations.front();
-        declarations.erase(declarations.begin());
+        IntermediateDeclaration* tmp = declarations.back();
+        declarations.pop_back();
         // delete
-        delete tmp;
-        tmp = nullptr;
+        if(!tmp->GetCopied()) {
+          delete tmp;
+          tmp = nullptr;
+        }
       }
     }
 
