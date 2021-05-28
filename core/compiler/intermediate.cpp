@@ -4746,13 +4746,30 @@ void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)
  * Calculates the memory space
  * needed for a method or class
  ****************************/
-int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
-                                             IntermediateDeclarations* declarations,
-                                             bool is_static)
+int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, IntermediateDeclarations* declarations, bool is_static)
 {
+  
+
   if(table) {
     int var_space = 0;
     vector<SymbolEntry*> entries = table->GetEntries();
+
+    if(!current_method) {
+      if(is_static && current_class->GetLibraryParent() && current_class->GetLibraryParent()->GetClassEntries()) {
+        vector<IntermediateDeclaration*> parent_cls_dclrs = current_class->GetLibraryParent()->GetClassEntries()->GetParameters();
+        for(size_t i = 0; i < parent_cls_dclrs.size(); ++i) {
+          declarations->AddParameter(parent_cls_dclrs[i]);
+        }
+      }
+      else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->GetInstanceEntries()) {
+        vector<IntermediateDeclaration*> parent_inst_dclrs = current_class->GetLibraryParent()->GetInstanceEntries()->GetParameters();
+        for(size_t i = 0; i < parent_inst_dclrs.size(); ++i) {
+          parent_inst_dclrs[i]->SetCopied(true);
+          declarations->AddParameter(parent_inst_dclrs[i]);
+        }
+      }
+    }
+    
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       if(!entry->IsSelf() && entry->IsStatic() == is_static) {
