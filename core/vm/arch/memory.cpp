@@ -61,6 +61,7 @@ CRITICAL_SECTION MemoryManager::pda_monitor_lock;
 CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
+CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
 #else
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -68,6 +69,7 @@ pthread_mutex_t MemoryManager::jit_frame_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void MemoryManager::Initialize(StackProgram* p)
@@ -90,6 +92,7 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&allocated_lock);
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
+  InitializeCriticalSection(&free_memory_cache_lock);
 #endif
 
   initialized = true;
@@ -460,6 +463,9 @@ void MemoryManager::AddFreeMemory(size_t* raw_mem) {
 }
 
 void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&free_memory_cache_lock);
+#endif
   const size_t mem_size = raw_mem[0];
   free_memory_cache_size += mem_size;
 
@@ -472,6 +478,9 @@ void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
   else {
     result->second->push_front(raw_mem);
   }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&free_memory_cache_lock);
+#endif
 }
 
 size_t* MemoryManager::GetFreeMemory(size_t size) {
@@ -541,6 +550,9 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
     return nullptr;
   }
 
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&free_memory_cache_lock);
+#endif
   unordered_map<size_t, list<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
   if(result != free_memory_cache.end() && !result->second->empty()) {
     bool found = false;
@@ -563,14 +575,23 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
       const size_t mem_size = raw_mem[0];
       free_memory_cache_size -= mem_size;
       memset(raw_mem + 1, 0, mem_size);
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&free_memory_cache_lock);
+#endif
       return raw_mem + 1;
     }
   }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&free_memory_cache_lock);
+#endif
 
   return nullptr;
 }
 
 void MemoryManager::ClearFreeMemory(bool all) {
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&free_memory_cache_lock);
+#endif
   unordered_map<size_t, list<size_t*>*>::iterator iter = free_memory_cache.begin();
   for(; iter != free_memory_cache.end(); ++iter) {
     list<size_t*>* free_cache = iter->second;
@@ -593,6 +614,9 @@ void MemoryManager::ClearFreeMemory(bool all) {
       free_memory_cache.clear();
     }
   }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&free_memory_cache_lock);
+#endif
 }
 
 size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces)
