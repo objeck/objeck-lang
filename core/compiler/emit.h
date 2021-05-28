@@ -707,8 +707,8 @@ namespace backend {
 
     ~IntermediateEnum() {
       while(!items.empty()) {
-        IntermediateEnumItem* tmp = items.front();
-        items.erase(items.begin());
+        IntermediateEnumItem* tmp = items.back();
+        items.pop_back();
         // delete
         delete tmp;
         tmp = nullptr;
@@ -769,36 +769,35 @@ namespace backend {
     ~IntermediateProgram() {
       // clean up
       while(!enums.empty()) {
-        IntermediateEnum* tmp = enums.front();
-        enums.erase(enums.begin());
+        IntermediateEnum* tmp = enums.back();
+        enums.pop_back();
         // delete
         delete tmp;
         tmp = nullptr;
       }
 
       while(!classes.empty()) {
-        IntermediateClass* tmp = classes.front();
-        classes.erase(classes.begin());
+        IntermediateClass* tmp = classes.back();
+        classes.pop_back();
         // delete
         delete tmp;
         tmp = nullptr;
       }
 
       while(!int_strings.empty()) {
-        frontend::IntStringHolder* tmp = int_strings.front();
+        frontend::IntStringHolder* tmp = int_strings.back();
         delete[] tmp->value;
         tmp->value = nullptr;
-        int_strings.erase(int_strings.begin());
-        // delete
+        int_strings.pop_back();
         delete tmp;
         tmp = nullptr;
       }
 
       while(!float_strings.empty()) {
-        frontend::FloatStringHolder* tmp = float_strings.front();
+        frontend::FloatStringHolder* tmp = float_strings.back();
         delete[] tmp->value;
         tmp->value = nullptr;
-        float_strings.erase(float_strings.begin());
+        float_strings.pop_back();
         // delete
         delete tmp;
         tmp = nullptr;
@@ -815,7 +814,7 @@ namespace backend {
     IntermediateClass* GetClass(int id) {
       map<int, IntermediateClass*>::iterator result = class_map.find(id);
 #ifdef _DEBUG
-      assert(result != class_map.end());
+      // assert(result != class_map.end());
 #endif
       return result->second;
     }

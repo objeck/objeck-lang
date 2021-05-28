@@ -594,8 +594,8 @@ void IntermediateInstruction::Debug() {
     break;
 
   case instructions::ASYNC_MTHD_CALL: {
-    IntermediateMethod* async_method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
-    GetLogger() << L"ASYNC_MTHD_CALL: method='" << async_method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
+//    IntermediateMethod* async_method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
+//    GetLogger() << L"ASYNC_MTHD_CALL: method='" << async_method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
   }
     break;
 
