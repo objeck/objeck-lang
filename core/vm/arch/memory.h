@@ -101,6 +101,7 @@ class MemoryManager {
   static CRITICAL_SECTION allocated_lock;
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
+  static CRITICAL_SECTION free_memory_cache_lock;
 #else
   static pthread_mutex_t pda_monitor_lock;
   static pthread_mutex_t pda_frame_lock;
@@ -108,6 +109,7 @@ class MemoryManager {
   static pthread_mutex_t allocated_lock;
   static pthread_mutex_t marked_lock;
   static pthread_mutex_t marked_sweep_lock;
+  static pthread_mutex_t free_memory_cache_lock;
 #endif
     
   // note: protected by 'allocated_lock'
@@ -198,6 +200,7 @@ class MemoryManager {
     DeleteCriticalSection(&allocated_lock);
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
+    DeleteCriticalSection(&free_memory_cache_lock);
 #endif
       
     initialized = false;
