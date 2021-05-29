@@ -316,6 +316,51 @@ class Stringy {
 	}
 
 	#~
+	Searches for the first occurrence of a string
+	@param find string to search for
+	@return index of first occurrence, -1 otherwise
+	~#
+	method : public : Find(find : Stringy) ~ Int {
+		return Find(0, find);
+	}
+	
+	#~
+	Searches for the first occurrence of a string
+	@param offset search index offset
+	@param find string to search for
+	@return index of first occurrence, -1 otherwise
+	~#
+	method : public : native : Find(offset : Int, find : Stringy) ~ Int {
+		size := find->Size();
+		if(size > 0 & offset < @pos) {
+			found_index := Find(offset, find->Get(0));
+			while(found_index > -1) {
+				j := found_index;
+				match := true;
+				i : Int;
+				for(i := 0; match & i < size & j < @pos; i += 1;) {
+					if(find->Get(i) <> @string[j]) {
+						match := false;
+					};
+					j += 1;
+				};
+
+				if(match & i = size) {
+					return found_index;
+				};
+				
+				found_index := Find(found_index + 1, find->Get(0));
+			};
+
+			return -1;
+		};
+
+		return -1;
+	}
+
+
+
+	#~
 	Searches for the first occurrence of a character
 	@param char character to search for
 	@return index of first occurrence, -1 otherwise
