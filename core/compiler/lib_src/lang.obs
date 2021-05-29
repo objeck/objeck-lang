@@ -3405,13 +3405,12 @@ bundle System {
 				return Nil;
 			};
 
-#~
 			array : Char[] := Char->New[length];
 			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
 				return Nil;
 			};
-~#
-			return String->New(@string, offset, length);
+
+			return String->New(array);
 		}
 	
 		#~
