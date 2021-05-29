@@ -2454,13 +2454,6 @@ bundle System {
 
 			Append(array);
 		}
-
-		New : private (array : Char[], flag : Bool) {
-			Parent();
-
-			@string := array;
-			@pos := @max := array->Size();
-		}
 		
 		#~
 		Copy constructor
@@ -3001,6 +2994,7 @@ bundle System {
 			
 			@string := tmp;
 			@max := @pos := size;
+			@max := @pos;
 			
 			return true;
 		}
@@ -3416,7 +3410,7 @@ bundle System {
 				return Nil;
 			};
 
-			return String->New(array, false);
+			return String->New(array);
 		}
 	
 		#~
