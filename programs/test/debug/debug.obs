@@ -1,9 +1,15 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		array := ['c','a','r'];
+		array := ['s', 'p','a','c','e'];
+
 		b := Stringy->New(array);
 		b->PrintLine();
-		b->Delete(0,2)->PrintLine();
+		b->SubString(1,4)->PrintLine();
+#		b->PrintLine();
+
+		"---"->PrintLine();
+
+		"space"->SubString(1,4)->PrintLine();
 #~		
 		b := Stringy->New();
 		b->Append('H'); b->Append('e'); # b->Append('l'); b->Append('l'); b->Append('o'); b->Append('.');  b->Append('.'); 
@@ -27,13 +33,26 @@ class Stringy {
 	}
 
 	New(temp : Char[]) {
-		@max := temp->Size();
-		@pos := @max;
+		@max := @pos := temp->Size();
 		@string := Char->New[@max];
 
 		Runtime->Copy(@string, 0, temp, 0, @max);
 	}
 
+	New(temp : Char[], offset : Int, length : Int) {
+		space := offset + length; size := temp->Size();
+		if(offset < 0 | offset > size | space < 0 | space > size) {
+			@max := 4;
+			@pos := 0;
+			@string := Char->New[@max];
+		}
+		else {
+			@string := Char->New[length];
+			Runtime->Copy(@string, 0, temp, offset, length)->PrintLine();
+			@max := @pos := length;
+		};
+	}
+	
 	method : Resize(amount : Int) ~ Nil {
 		if(amount + @pos > @max) {
 			max := @max * 2;
@@ -57,24 +76,28 @@ class Stringy {
 	}
 
 	method : public : SubString(offset : Int, length : Int) ~ Stringy {
-		return Nil;
+		return Stringy->New(@string, offset, length);
 	}
 
 	method : public : Delete(offset : Int, length : Int) ~ Bool {
 		space := offset + length;
-		if(offset < 0 | offset >= @pos | space < 0 | space >= @pos) {
+		if(offset < 0 | offset > @pos | space < 0 | space > @pos) {
 			return false;
 		};
 
-		temp := Char->New[@max - space];
+		max := @max - length;
+		temp := Char->New[max];
 		Runtime->Copy(temp, 0, @string, 0, offset);
-		Runtime->Copy(temp, 0, @string, 0, offset + );
+		Runtime->Copy(temp, offset, @string, space, @max - space);
+
+		@string := temp;	
+		@max := @pos := max;
 
 		return true;
 	}
 
 	method : public : Get(index : Int) ~ Char {
-		if(index < 0 | index > @pos) {
+		if(index < 0 | index >= @pos) {
 			return '\0';
 		};
 
