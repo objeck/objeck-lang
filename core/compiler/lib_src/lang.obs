@@ -2463,26 +2463,18 @@ bundle System {
 		~#
 		New(array : Char[], offset : Int, max : Int) {
 			Parent();
-			
-			space := offset + max; size := array->Size();
-			if(offset < 0 | offset > size | space < 0 | space > size) {
+
+			if(array->Size() < 8) {
 				@max := 8;
-				@string := Char->New[@max];
-				@pos := 0;
 			}
 			else {
-				if(size < 8) {
-					@max := 8;
-				}
-				else {
-					@max := size - offset;
-				};
-
-				@string := Char->New[@max];
-				@pos := 0;
-
-				Append(array, offset, max);
+				@max := array->Size() - offset;
 			};
+
+			@string := Char->New[@max];
+			@pos := 0;
+
+			Append(array, offset, max);
 		}
 		
 		#~
@@ -2959,7 +2951,7 @@ bundle System {
 		@param replace string to replace with
 		@return new string instance
 		~#
-		method : public : Replace(find : String, replace : String) ~ String {
+		method : public : native : Replace(find : String, replace : String) ~ String {
 			index := Find(find);
 			if(index < 0) {
 				return @self;
@@ -2990,7 +2982,7 @@ bundle System {
 		@param index delete index
 		@return true if deleted, false otherwise 
 		~#
-		method : public : Delete(index : Int) ~ Bool {
+		method : public : native : Delete(index : Int) ~ Bool {
 			if(index < 0 | index >= @pos) {
 				return false;
 			};
@@ -3403,6 +3395,22 @@ bundle System {
 		@return sub-string
 		~#
 		method : public : SubString(offset : Int, length : Int) ~ String {
+			if(offset < 0 | offset > @pos) {
+				return Nil;
+			};
+
+			end : Int := length + offset;
+			if(end < 0 | end > @pos) {
+				return Nil;
+			};
+
+#~
+			array : Char[] := Char->New[length];
+			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
+				return Nil;
+			};
+~#			
+
 			return String->New(@string, offset, length);
 		}
 	
