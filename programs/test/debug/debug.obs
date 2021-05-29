@@ -1,23 +1,18 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		array := ['s', 'p','a','c','e'];
+		arrayA := ['s', 'p','a','c','e'];
+		arrayB := [' ', 'd','o','g',' '];
+		arrayC := ['c', 'a','t'];
 
-		b := Stringy->New(array);
-		b->PrintLine();
-		b->SubString(1,4)->PrintLine();
-#		b->PrintLine();
-
-		"---"->PrintLine();
-
-		"space"->SubString(1,4)->PrintLine();
-#~		
-		b := Stringy->New();
-		b->Append('H'); b->Append('e'); # b->Append('l'); b->Append('l'); b->Append('o'); b->Append('.');  b->Append('.'); 
-		b->Get(0)->PrintLine();
-		b->Get(1)->PrintLine();
-		b->PrintLine();
-#		b->Get(11)->PrintLine();
-~#
+		a := Stringy->New(arrayA);
+		b := Stringy->New(arrayB);
+		c := Stringy->New(arrayC);
+		
+		a->PrintLine();
+		a->Append(b);
+		a->Append(arrayA, 1, 3);
+		a->PrintLine();
+		a->Size()->PrintLine();
 	}
 }
 
@@ -26,29 +21,100 @@ class Stringy {
 	@max : Int;
 	@pos : Int;
 
+	#~
+	Default constructor
+	~#
 	New() {
-		@max := 4;
+		Parent();
+
+		@max := 5;
 		@pos := 0;
 		@string := Char->New[@max];
 	}
 
-	New(temp : Char[]) {
-		@max := @pos := temp->Size();
+	#~
+	Copy constructor
+	@param string string copy
+	~#
+	New(string : Stringy) {
+		Parent();
+
+		chars := string->InteralArray();
+		@max := @pos := string->Size();
 		@string := Char->New[@max];
 
-		Runtime->Copy(@string, 0, temp, 0, @max);
+		Runtime->Copy(@string, 0, chars, 0, @max);
 	}
 
-	New(temp : Char[], offset : Int, length : Int) {
-		space := offset + length; size := temp->Size();
+	#~
+	Copy constructor
+	@param bytes array to copy
+	~#
+	New(chars : Char[]) {
+		Parent();
+
+		@max := @pos := chars->Size();
+		@string := Char->New[@max];
+
+		Runtime->Copy(@string, 0, chars, 0, @max);
+	}
+
+	#~
+	Copy constructor
+	@param array array to copy
+	@param offset offset into array index
+	@param length number of characters to copy
+	~#
+	New(chars : Char[], offset : Int, length : Int) {
+		Parent();
+
+		space := offset + length; size := chars->Size();
 		if(offset < 0 | offset > size | space < 0 | space > size) {
-			@max := 4;
+			@max := 5;
 			@pos := 0;
 			@string := Char->New[@max];
 		}
 		else {
 			@string := Char->New[length];
-			Runtime->Copy(@string, 0, temp, offset, length)->PrintLine();
+			Runtime->Copy(@string, 0, chars, offset, length)->PrintLine();
+			@max := @pos := length;
+		};
+	}
+
+	#~
+	Copy constructor
+	@param bytes array to copy
+	~#
+	New(bytes : Byte[]) {
+		Parent();
+
+		chars := bytes->ToUnicode();
+		@max := @pos := chars->Size();
+		@string := Char->New[@max];
+
+		Runtime->Copy(@string, 0, chars, 0, @max);
+	}
+
+	#~
+	Copy constructor
+	@param array array to copy
+	@param offset offset into array index
+	@param length number of bytes to copy
+	~#
+	New(bytes : Byte[], offset : Int, length : Int) {
+		Parent();
+
+		chars := bytes->ToUnicode();
+		space := offset + length; 
+		size := chars->Size();
+		if(offset < 0 | offset > size | space < 0 | space > size) {
+			@max := 5;
+			@pos := 0;
+			@string := Char->New[@max];
+		}
+		else {
+			@string := Char->New[length];
+			Runtime->Copy(@string, 0, chars, offset, length)->PrintLine();
 			@max := @pos := length;
 		};
 	}
@@ -63,6 +129,113 @@ class Stringy {
 			@max := max;
 		};
 	}
+
+	#~
+	Appends a boolean value
+	@param b boolean value
+	~#
+	method : public : Append(b : Bool) ~ Nil {
+		if(b) {
+			Append("true"->ToCharArray());
+		}
+		else {
+			Append("false"->ToCharArray());
+		};
+	}
+
+	#~
+	Appends a integer value
+	@param i integer value
+	~#
+	method : public : Append(i : Int) ~ Nil {
+		Append(i->ToString()->ToCharArray());
+	}
+
+	#~
+	Appends a float value
+	@param f float value
+	~#
+	method : public : Append(f : Float) ~ Nil {
+		Append(f->ToString()->ToCharArray());
+	}
+
+	#~
+	Appends a string
+	@param str string object
+	~#
+	method : public : Append(str : Stringy) ~ Nil {
+		Append(str->ToCharArray());
+	}
+
+	#~
+	Appends a character array
+	@param chars character array
+	~#
+	method : public : Append(chars : Char[]) ~ Nil {
+		length := chars->Size();
+		Resize(length);
+		Runtime->Copy(@string, @pos, chars, 0, length);
+		@pos += length;
+	}
+
+	#~
+	Appends a portion of character chars
+	@param chars chars to be copied
+	@param offset offset chars index offset
+	@param length number of characters to copy
+	~#
+	method : public : Append(chars : Char[], offset : Int, length : Int) ~ Bool {
+		space := offset + length; 
+		size := chars->Size();
+
+		if(offset < 0 | offset > size | space < 0 | space > size) {
+			return false;
+		};
+
+		Resize(space);
+		Runtime->Copy(@string, @pos, chars, offset, length);
+		@pos += length;
+
+		return true;
+	}
+
+	#~
+	Appends a character bytes
+	@param bytes bytes to be copied
+	~#
+	method : public : Append(bytes : Byte[]) ~ Nil {
+		chars := bytes->ToUnicode();
+		length := chars->Size();
+		Resize(length);
+		Runtime->Copy(@string, @pos, chars, 0, length);
+		@pos += length;
+	}
+
+	#~
+	Appends a portion of byte bytes
+	@param bytes bytes to be copied
+	@param offset offset bytes index offset
+	@param length number of characters to copy
+	~#
+	method : public : Append(bytes : Byte[], offset : Int, length : Int) ~ Bool {
+		space := offset + length; 
+		chars := bytes->ToUnicode();
+		size := chars->Size();
+
+		if(offset < 0 | offset > size | space < 0 | space > size) {
+			return false;
+		};
+
+		Resize(space);
+		Runtime->Copy(@string, @pos, chars, offset, length);
+		@pos += length;
+
+		return true;
+	}
+
+
+
+
 
 	method : public : Append(char : Char) ~ Nil {
 		Resize(1);
@@ -96,12 +269,84 @@ class Stringy {
 		return true;
 	}
 
+	#~
+	Returns a character array representation of the Stringy
+	@return character array
+	~#
+	method : public : ToCharArray() ~ Char[] {
+		temp := Char->New[@pos];
+		Runtime->Copy(temp, 0, @string, 0, @pos);
+		return temp;
+	}
+
+	#~
+	Returns a byte array representation of the Stringy
+	@return byte array
+	~#
+	method : public : ToByteArray() ~ Byte[] {
+		temp := Byte->New[@pos];
+		bytes :=  @string->ToBytes();
+		Runtime->Copy(temp, 0, bytes, 0, @pos);
+		return temp;
+	}
+
+	method : InteralArray() ~ Char[] {
+		return @string;
+	}
+
+	#~
+	Returns rather the string is empty
+	@return true if empty, false otherwise 
+	~#
+	method : public : IsEmpty() ~ Bool {
+		return @pos = 0 ? true : false; 			
+	}
+
+	#~
+	Returns character at the given index
+	@param index index offset
+	@return character at index
+	~#
 	method : public : Get(index : Int) ~ Char {
-		if(index < 0 | index >= @pos) {
-			return '\0';
+		if(index > -1 & index < @pos) {
+			return @string[index];
 		};
 
-		return @string[index];
+		return '\0';
+	}
+
+	#~
+	Searches for the first occurrence of a character
+	@param char character to search for
+	@return index of first occurrence, -1 otherwise
+	~#
+	method : public : Find(char : Char) ~ Int {
+		return Find(0, char);
+	}
+	
+	#~
+	Searches for the first occurrence of a character
+	@param offset search offset
+	@param char character to search for
+	@return index of first occurrence, -1 otherwise
+	~#
+	method : public : Find(offset : Int, char : Char) ~ Int {
+		if(offset < @pos & offset > -1) {
+			each(i : @pos) {
+				if(@string[i] = char) {
+					return i;
+				};
+			};
+		};
+
+		return -1;
+	}
+
+
+
+
+	method : public : Size() ~ Int {
+		return @pos;
 	}
 
 	method : public : PrintLine() ~ Nil {
