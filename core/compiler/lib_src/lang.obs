@@ -2454,6 +2454,11 @@ bundle System {
 
 			Append(array);
 		}
+
+		New : private (array : Char[], flag : Bool) {
+			@string := array;
+			@pos := @max := array->Size();
+		}
 		
 		#~
 		Copy constructor
@@ -3409,7 +3414,7 @@ bundle System {
 				return Nil;
 			};
 
-			return String->New(@string, offset, length);
+			return String->New(array, false);
 		}
 	
 		#~
