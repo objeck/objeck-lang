@@ -2464,7 +2464,7 @@ bundle System {
 		New(array : Char[], offset : Int, max : Int) {
 			Parent();
 			
-			space := offset + max; size := temp->Size();
+			space := offset + max; size := array->Size();
 			if(offset < 0 | offset > size | space < 0 | space > size) {
 				@max := 8;
 				@string := Char->New[@max];
@@ -3403,7 +3403,7 @@ bundle System {
 		@return sub-string
 		~#
 		method : public : SubString(offset : Int, length : Int) ~ String {
-			return String->New(array, offset, length);
+			return String->New(@string, offset, length);
 		}
 	
 		#~
