@@ -3396,21 +3396,22 @@ bundle System {
 		@return sub-string
 		~#
 		method : public : SubString(offset : Int, length : Int) ~ String {
-			if(offset < 0 | offset > @pos) {
+			if(offset < 0 | offset >= @pos) {
 				return Nil;
 			};
 
 			end : Int := length + offset;
-			if(end < 0 | end > @pos) {
+			if(end < 0 | end >= @pos) {
 				return Nil;
 			};
 
+#~
 			array : Char[] := Char->New[length];
 			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
 				return Nil;
 			};
-
-			return String->New(array);
+~#
+			return String->New(@string, offset, length);
 		}
 	
 		#~
