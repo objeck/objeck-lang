@@ -1,10 +1,81 @@
-class Bar from String {
-	@b : Float;
-
+class Foo {
 	function : Main(args : String[]) ~ Nil {
-    }
+		array := ['c','a','r'];
+		b := Stringy->New(array);
+		b->PrintLine();
+#~		
+		b := Stringy->New();
+		b->Append('H'); b->Append('e'); # b->Append('l'); b->Append('l'); b->Append('o'); b->Append('.');  b->Append('.'); 
+		b->Get(0)->PrintLine();
+		b->Get(1)->PrintLine();
+		b->PrintLine();
+#		b->Get(11)->PrintLine();
+~#
+	}
+}
+
+class Stringy {
+	@string : Char[];
+	@max : Int;
+	@pos : Int;
 
 	New() {
-		Parent();
+		@max := 4;
+		@pos := 0;
+		@string := Char->New[@max];
+	}
+
+	New(temp : Char[]) {
+		@max := temp->Size();
+		@pos := 0;
+		@string := Char->New[@max];
+		
+		Runtime->Copy(@string, 0, temp, 0, @max);
+	}
+
+	method : Resize(amount : Int) ~ Nil {
+		if(amount + @pos > @max) {
+			max := @max * 2;
+			temp := Char->New[max];
+			Runtime->Copy(temp, 0, @string, 0, @max);
+
+			@string := temp;
+			@max := max;
+		};
+	}
+
+	method : public : Append(char : Char) ~ Nil {
+		Resize(1);
+
+		@string[@pos] := char;
+		@pos += 1;
+	}
+
+	method : public : SubString(length : Int) ~ Stringy {
+		return SubString(0, length);
+	}
+
+	method : public : SubString(offset : Int, length : Int) ~ Stringy {
+		return Nil;
+	}
+
+	method : public : Delete(offset : Int, length : Int) ~ Bool {
+		return false;
+	}
+
+	method : public : Get(index : Int) ~ Char {
+		if(index < 0 | index > @pos) {
+			return '\0';
+		};
+
+		return @string[index];
+	}
+
+	method : public : PrintLine() ~ Nil {
+		@string->PrintLine();
+	}
+
+	method : public : Print() ~ Nil {
+		@string->Print();
 	}
 }
