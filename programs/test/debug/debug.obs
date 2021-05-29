@@ -3,6 +3,7 @@ class Foo {
 		array := ['c','a','r'];
 		b := Stringy->New(array);
 		b->PrintLine();
+		b->Delete(0,2)->PrintLine();
 #~		
 		b := Stringy->New();
 		b->Append('H'); b->Append('e'); # b->Append('l'); b->Append('l'); b->Append('o'); b->Append('.');  b->Append('.'); 
@@ -27,9 +28,9 @@ class Stringy {
 
 	New(temp : Char[]) {
 		@max := temp->Size();
-		@pos := 0;
+		@pos := @max;
 		@string := Char->New[@max];
-		
+
 		Runtime->Copy(@string, 0, temp, 0, @max);
 	}
 
@@ -60,7 +61,16 @@ class Stringy {
 	}
 
 	method : public : Delete(offset : Int, length : Int) ~ Bool {
-		return false;
+		space := offset + length;
+		if(offset < 0 | offset >= @pos | space < 0 | space >= @pos) {
+			return false;
+		};
+
+		temp := Char->New[@max - space];
+		Runtime->Copy(temp, 0, @string, 0, offset);
+		Runtime->Copy(temp, 0, @string, 0, offset + );
+
+		return true;
 	}
 
 	method : public : Get(index : Int) ~ Char {
