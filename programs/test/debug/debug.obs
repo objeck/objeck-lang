@@ -145,10 +145,10 @@ class Stringy {
 
 	#~
 	Appends a integer value
-	@param i integer value
+	@param j integer value
 	~#
-	method : public : Append(i : Int) ~ Nil {
-		Append(i->ToString()->ToCharArray());
+	method : public : Append(j : Int) ~ Nil {
+		Append(j->ToString()->ToCharArray());
 	}
 
 	#~
@@ -323,7 +323,7 @@ class Stringy {
 	method : public : Find(find : Stringy) ~ Int {
 		return Find(0, find);
 	}
-	
+
 	#~
 	Searches for the first occurrence of a string
 	@param offset search index offset
@@ -333,23 +333,22 @@ class Stringy {
 	method : public : native : Find(offset : Int, find : Stringy) ~ Int {
 		size := find->Size();
 		if(size > 0 & offset < @pos) {
-			found_index := Find(offset, find->Get(0));
-			while(found_index > -1) {
-				j := found_index;
+			found := Find(offset, find->Get(0));
+			while(found > -1) {
 				match := true;
-				i : Int;
-				for(i := 0; match & i < size & j < @pos; i += 1;) {
-					if(find->Get(i) <> @string[j]) {
+				i := found;	j : Int;
+				for(j := 0; match & j < size & i < @pos; j += 1;) {
+					if(find->Get(j) <> @string[i]) {
 						match := false;
 					};
-					j += 1;
+					i += 1;
 				};
 
-				if(match & i = size) {
-					return found_index;
+				if(match & j = size) {
+					return found;
 				};
 				
-				found_index := Find(found_index + 1, find->Get(0));
+				found := Find(found + 1, find->Get(0));
 			};
 
 			return -1;
@@ -377,9 +376,9 @@ class Stringy {
 	~#
 	method : public : Find(offset : Int, char : Char) ~ Int {
 		if(offset < @pos & offset > -1) {
-			each(i : @pos) {
-				if(@string[i] = char) {
-					return i;
+			each(j : @pos) {
+				if(@string[j] = char) {
+					return j;
 				};
 			};
 		};
