@@ -2456,6 +2456,8 @@ bundle System {
 		}
 
 		New : private (array : Char[], flag : Bool) {
+			Parent();
+
 			@string := array;
 			@pos := @max := array->Size();
 		}
