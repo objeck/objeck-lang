@@ -2463,18 +2463,26 @@ bundle System {
 		~#
 		New(array : Char[], offset : Int, max : Int) {
 			Parent();
-
-			if(array->Size() < 8) {
+			
+			space := offset + max; size := temp->Size();
+			if(offset < 0 | offset > size | space < 0 | space > size) {
 				@max := 8;
+				@string := Char->New[@max];
+				@pos := 0;
 			}
 			else {
-				@max := array->Size() - offset;
+				if(size < 8) {
+					@max := 8;
+				}
+				else {
+					@max := size - offset;
+				};
+
+				@string := Char->New[@max];
+				@pos := 0;
+
+				Append(array, offset, max);
 			};
-
-			@string := Char->New[@max];
-			@pos := 0;
-
-			Append(array, offset, max);
 		}
 		
 		#~
@@ -2951,7 +2959,7 @@ bundle System {
 		@param replace string to replace with
 		@return new string instance
 		~#
-		method : public : native : Replace(find : String, replace : String) ~ String {
+		method : public : Replace(find : String, replace : String) ~ String {
 			index := Find(find);
 			if(index < 0) {
 				return @self;
@@ -2982,7 +2990,7 @@ bundle System {
 		@param index delete index
 		@return true if deleted, false otherwise 
 		~#
-		method : public : native : Delete(index : Int) ~ Bool {
+		method : public : Delete(index : Int) ~ Bool {
 			if(index < 0 | index >= @pos) {
 				return false;
 			};
@@ -2993,33 +3001,31 @@ bundle System {
 			Runtime->Copy(tmp, index, @string, index + 1, @pos - index - 1);
 			
 			@string := tmp;
-			@pos := size;
-			@max := @pos;
+			@max := @pos := size;
 			
 			return true;
 		}
 
 		#~
 		Deletes the characters at the given range
-		@param start start index
-		@param end end index
+		@param offset offset index
+		@param length length
 		@return true if deleted, false otherwise 
 		~#
-		method : public : native : Delete(start : Int, end : Int) ~ Bool {
-			if(start < 0 | start >= @pos | end < 0 | end >= @pos | start >= end) {
+		method : public : native : Delete(offset : Int, length : Int) ~ Bool {
+			space := offset + length;
+			if(offset < 0 | offset > @pos | space < 0 | space > @pos) {
 				return false;
 			};
 
-			length := end - start + 1;
-			size := @pos - length;
-			tmp : Char[] := Char->New[size];
-			Runtime->Copy(tmp, 0, @string, 0, start);
-			Runtime->Copy(tmp, start, @string, end + 1, size - start);
+			max := @max - length;
+			temp := Char->New[max];
+			Runtime->Copy(temp, 0, @string, 0, offset);
+			Runtime->Copy(temp, offset, @string, space, @max - space);
 
-			@string := tmp;
-			@pos := size;
-			@max := @pos;
-			
+			@string := temp;	
+			@max := @pos := max;
+
 			return true;
 		}
 
@@ -3397,21 +3403,7 @@ bundle System {
 		@return sub-string
 		~#
 		method : public : SubString(offset : Int, length : Int) ~ String {
-			if(offset < 0 | offset > @pos) {
-				return Nil;
-			};
-
-			end : Int := length + offset;
-			if(end < 0 | end > @pos) {
-				return Nil;
-			};
-
-			array : Char[] := Char->New[length];
-			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
-				return Nil;
-			};
-
-			return String->New(array);
+			return String->New(array, offset, length);
 		}
 	
 		#~
