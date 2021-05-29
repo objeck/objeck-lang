@@ -386,7 +386,265 @@ class Stringy {
 		return -1;
 	}
 
+	#~
+	Parses the string into an integer
+	@return integer value
+	~#
+	method : public : ToInt() ~ Int {
+		return ToInt(10);
+	}
 
+	#~
+	Parses the string into an integer
+	@param base base radix 
+	@return integer value
+	~#
+	method : public : ToInt(base : Int) ~ Int {
+#		S2I;
+return 0;
+	}
+
+	#~
+	Parses the string into a float
+	@return float value
+	~#
+	method : public : ToFloat() ~ Float {
+#		S2F;
+return 0;
+	}
+
+	#~
+	Checks if the string starts with the given character
+	@param c character to compare
+	@return true if starts with character, false otherwise
+	~#
+	method : public : native : StartsWith(c : Char) ~ Bool {
+		sc : Char := Get(0);
+		return sc <> '\0' & c = sc;
+	}
+	
+	#~
+	Checks if the string ends with the given character
+	@param c character to compare
+	@return true if ends with character, false otherwise
+	~#
+	method : public : native : EndsWith(c : Char) ~ Bool {
+		if(@pos > 0) {
+			sc := @string[@pos - 1];
+			return sc <> '\0' & c = sc;
+		};
+		
+		return false;
+	}
+
+	#~
+	Checks if the string starts with the given string
+	@param s string to check for
+	@return true if starts with string, false otherwise
+	~#
+	method : public : native : StartsWith(s : Stringy) ~ Bool {
+		size := s->Size();
+		if(size <= @pos) {
+			for(i := 0; i < size; i += 1;) {
+				if(s->Get(i) <> @string[i]) {
+					return false;
+				};
+			};
+
+			return true;
+		};
+
+		return false;
+	}
+
+	#~
+	Checks if the string ends with the given character
+	@param s string to check for
+	@return true if ends with character, false otherwise
+	~#
+	method : public : native : EndsWith(s : Stringy) ~ Bool {
+		if(s->Size() <= @pos) {
+			i := s->Size() - 1;
+			j := @pos - 1;
+			while(i > -1) {
+				if(s->Get(i) <> @string[j]) {
+					return false;
+				};
+				i := i - 1;
+				j := j - 1;
+			};
+
+			return true;
+		};
+
+		return false;
+	}
+	
+	#~
+	Reverses a string
+	@return reversed string 
+	~#
+	method : public : native : Reverse() ~ Stringy {
+		tmp : Char[] := Char->New[@max];
+		i := 0; j := @pos - 1;
+		while(j > -1) {
+			tmp[i] := @string[j];
+			j -= 1;	i += 1;
+		};
+		
+		return Stringy->New(tmp);
+	}
+	
+	#~
+	Removes all leading and ending white space
+	@return trimmed string
+	~#
+	method : public : native : Trim() ~ Stringy {
+		if(@pos = 0) {
+			return Stringy->New();
+		};
+
+		start := 0;
+		c := @string[start];
+		while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xa0 | c = 0x1680 | 
+				c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | c = 0x202f | 
+				c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029)) {
+			start += 1;
+			c := @string[start];
+		};
+
+		end := @pos;
+		do {
+			end -= 1;
+		}
+		while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n' |
+			@string[end] = 0xa0 | @string[end] = 0x1680 | @string[end] >= 0x2000 & @string[end] <= 0x200a | 
+			@string[end] >= 0x000a & @string[end] <= 0x000d | @string[end] = 0x202f | @string[end] = 0x205f | 
+			@string[end] = 0x3000 | @string[end] = 0x0085 | @string[end] = 0x2029));
+
+		if(end < start) {
+			return Stringy->New();
+		};
+
+		return Stringy->New(@string, start, end - start + 1);
+	}
+	
+	#~
+	Splits a string based upon delimiter
+	@param delim splitting delimiter
+	@return array of split sub strings 
+	~#
+	method : public : native : Split(delim : Stringy) ~ Stringy[] {
+		delim_size := delim->Size();
+		if(delim->Size() = 0 | @pos = 0) {
+			return Nil;
+		};
+		
+		# first-pass count tokens
+		count := 0;
+		start_index := 0;
+		found_index := -1;
+		delim_index := 0;
+		
+		for(i : Int := 0; i < @pos; i += 1;) {
+			if(found_index = -1 & delim->Get(0) = @string[i]) {
+				found_index := i;
+			};
+			
+			if(found_index > -1) {
+				if(delim_index < delim_size & delim->Get(delim_index) = @string[i]) {
+					delim_index += 1;
+				}
+				else if(delim_index = delim_size) {
+					count += 1;
+					start_index := found_index + delim_size;
+					found_index := -1;
+					delim_index := 0;
+				}
+				else {
+					found_index := -1;
+					delim_index := 0;
+				};
+			};
+		};
+		
+		if(start_index <> 0) {
+			count += 1;
+			SubString(start_index, @pos - start_index);
+		};
+		
+		# second-pass parse tokens
+		parsed_strings : Stringy[] := Stringy->New[count];
+		count := 0;
+		start_index := 0;
+		found_index := -1;
+		delim_index := 0;
+		
+		for(i : Int := 0; i < @pos; i += 1;) {
+			if(found_index = -1 & delim->Get(0) = @string[i]) {
+				found_index := i;
+			};
+			
+			if(found_index > -1) {
+				if(delim_index < delim_size & delim->Get(delim_index) = @string[i]) {
+					delim_index += 1;
+				}
+				else if(delim_index = delim_size) {
+					parsed_strings[count] := SubString(start_index, found_index - start_index);
+					count += 1;
+					
+					start_index := found_index + delim_size;
+					found_index := -1;
+					delim_index := 0;
+				}
+				else {
+					found_index := -1;
+					delim_index := 0;
+				};
+			};
+		};
+		
+		if(start_index <> 0) {
+			parsed_strings[count] := SubString(start_index, @pos - start_index);
+			count += 1;
+		};
+		
+		return parsed_strings;
+	}
+	
+	#~
+	Transforms a to upper case
+	@return upper case string
+	~#
+	method : public : native : ToUpper() ~ Stringy {
+		array : Char[] := Char->New[@pos];
+		for(i : Int := 0; i < @pos; i += 1;) {
+			c := @string[i];
+			if(c > 96 & c < 123) {
+				c := c - 32;
+			};
+			array[i] := c;
+		};
+		
+		return Stringy->New(array);
+	}
+	
+	#~
+	Transforms a to lower case
+	@return lower case string
+	~#
+	method : public : native : ToLower() ~ Stringy {
+		array : Char[] := Char->New[@pos];
+		for(i : Int := 0; i < @pos; i += 1;) {
+			c := @string[i];
+			if(c > 64 & c < 91) {
+				c := c + 32;
+			};
+			array[i] := c;
+		};
+		
+		return Stringy->New(array);
+	}
 
 
 	method : public : Size() ~ Int {
