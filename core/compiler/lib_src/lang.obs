@@ -2427,11 +2427,11 @@ bundle System {
 		New(string : String) {
 			Parent();
 
-			@max := 8;
-			@string := Char->New[@max];
-			@pos := 0;
-			
 			if(string <> Nil) {
+				@max := 8;
+				@string := Char->New[@max];
+				@pos := 0;
+							
 				Append(string->ToCharArray());
 			};
 		}
@@ -2458,9 +2458,17 @@ bundle System {
 		New(array : Char[], copy : Bool) {
 			Parent();
 
-			@max := array->Size();
-			@string := array;
-			@pos := 0;
+
+			if(copy) {
+				@max := 8;
+				@string := Char->New[@max];
+				@pos := 0;
+			}
+			else {
+				@max := array->Size();
+				@string := array;
+				@pos := 0;
+			};
 
 			Append(array);
 		}
@@ -3344,7 +3352,7 @@ bundle System {
 		~#
 		method : public : native : ToUpper() ~ String {
 			array := Char->New[@pos];
-			
+
 			each(i : @pos) {
 				c := @string[i];
 				if(c > 96 & c < 123) {
