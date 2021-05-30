@@ -3396,7 +3396,6 @@ bundle System {
 		@return sub-string
 		~#
 		method : public : SubString(offset : Int, length : Int) ~ String {
-#~			
 			if(offset < 0 | offset > @pos) {
 				return Nil;
 			};
@@ -3410,8 +3409,8 @@ bundle System {
 			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
 				return Nil;
 			};
-~#
-			return String->New(@string, offset, length);
+
+			return String->New(array);
 		}
 	
 		#~
