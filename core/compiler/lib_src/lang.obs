@@ -2415,7 +2415,7 @@ bundle System {
 		New() {
 			Parent();
 
-			@max := 8;
+			@max := 5;
 			@string := Char->New[@max];
 			@pos := 0;
 		}
@@ -2428,7 +2428,7 @@ bundle System {
 			Parent();
 
 			if(string <> Nil) {
-				@max := 8;
+				@max := 5;
 				@string := Char->New[@max];
 				@pos := 0;
 							
@@ -2443,7 +2443,7 @@ bundle System {
 		New(array : Char[]) {
 			Parent();
 
-			@max := 8;
+			@max := 5;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2460,7 +2460,7 @@ bundle System {
 
 
 			if(copy) {
-				@max := 8;
+				@max := 5;
 				@string := Char->New[@max];
 				@pos := 0;
 			}
@@ -2482,7 +2482,7 @@ bundle System {
 		New(array : Char[], offset : Int, length : Int) {
 			Parent();
 
-			@max := 8;
+			@max := 5;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2496,7 +2496,7 @@ bundle System {
 		New(bytes : Byte[]) {
 			Parent();
 			
-			@max := 8;
+			@max := 5;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2512,7 +2512,7 @@ bundle System {
 		New(bytes : Byte[], offset : Int, length : Int) {
 			Parent();
 
-			@max := 8;
+			@max := 5;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -3062,7 +3062,7 @@ bundle System {
 		~#
 		method : public : Clear() ~ Nil {
 			if(@max > 8 | @max < 1) {
-				@max := 8;
+				@max := 5;
 				@string := Char->New[@max];
 			}
 			else {
