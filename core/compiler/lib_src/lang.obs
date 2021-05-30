@@ -3134,7 +3134,7 @@ bundle System {
 		method : public : ToInt(base : Int) ~ Int {
 			S2I;
 		}
-
+		
 		#~
 		Parses the string into a float
 		@return float value
