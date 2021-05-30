@@ -2457,7 +2457,7 @@ bundle System {
 		~#		
 		New(array : Char[], copy : Bool) {
 			Parent();
-			
+
 			if(copy) {
 				@max := 5;
 				@string := Char->New[@max];
@@ -3174,7 +3174,7 @@ bundle System {
 
 		#~
 		Checks if the string starts with the given string
-		@param s string to check for
+		@param string string to check for
 		@return true if starts with string, false otherwise
 		~#
 		method : public : native : StartsWith(string : String) ~ Bool {
@@ -3195,7 +3195,7 @@ bundle System {
 
 		#~
 		Checks if the string ends with the given character
-		@param s string to check for
+		@param string string to check for
 		@return true if ends with character, false otherwise
 		~#
 		method : public : native : EndsWith(string : String) ~ Bool {
