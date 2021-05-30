@@ -177,7 +177,7 @@ bundle System {
         @return value
         ~#
         function : ToFloat(v : Byte) ~ Float {
-                return v->As(Float);
+			return v->As(Float);
         }
 
         #~
@@ -2534,7 +2534,7 @@ bundle System {
 		@return byte array
 		~#
 		method : public : native : ToByteArray() ~ Byte[] {
-			array : Byte[] := Byte->New[@pos];
+			array := Byte->New[@pos];
 			each(i : @pos) {
 				array[i] := @string[i];
 			};
@@ -2621,7 +2621,7 @@ bundle System {
 			};
 
 			end := offset + length;
-			for(i : Int := offset; i < end & array[i] <> '\0'; i += 1;) {
+			for(i := offset; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
@@ -2669,7 +2669,7 @@ bundle System {
 			};
 
 			end := offset + length;
-			for(i : Int := offset; i < end & array[i] <> '\0'; i += 1;) {
+			for(i := offset; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
