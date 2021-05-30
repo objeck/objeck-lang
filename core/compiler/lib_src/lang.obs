@@ -2457,8 +2457,7 @@ bundle System {
 		~#		
 		New(array : Char[], copy : Bool) {
 			Parent();
-
-
+			
 			if(copy) {
 				@max := 5;
 				@string := Char->New[@max];
@@ -2535,6 +2534,7 @@ bundle System {
 		~#
 		method : public : native : ToByteArray() ~ Byte[] {
 			array := Byte->New[@pos];
+
 			each(i : @pos) {
 				array[i] := @string[i];
 			};
@@ -2544,10 +2544,10 @@ bundle System {
 		
 		#~
 		Appends a boolean value
-		@param b boolean value
+		@param flag boolean value
 		~#
-		method : public : native : Append(b : Bool) ~ Nil {
-			if(b) {
+		method : public : native : Append(flag : Bool) ~ Nil {
+			if(flag) {
 				Append("true"->ToCharArray());
 			}
 			else {
@@ -2913,6 +2913,7 @@ bundle System {
 		~#
 		method : public : native : ReplaceAll(find : String, replace : String) ~ String {
 			last := @self;
+
 			result := last->Replace(find, replace);
 			while(result <> last) {
 				last := result;
@@ -3024,22 +3025,22 @@ bundle System {
 		#~
 		Insert inserts a string
 		@param index insert offset
-		@param s string to insert
+		@param string string to insert
 		@return true if inserted, false otherwise 
 		~#
-		method : public : native : Insert(index : Int, s : String) ~ Bool {
+		method : public : native : Insert(index : Int, string : String) ~ Bool {
 			if(index < 0 | index > @pos) {
 				return false;
 			};
 			
-			size := @pos + s->Size();
+			size := @pos + string->Size();
 			temp := Char->New[size];
 			Runtime->Copy(temp, 0, @string, 0, index);
 
-			buf := s->ToCharArray();
-			Runtime->Copy(temp, index, buf, 0, buf->Size());
+			buffer := string->ToCharArray();
+			Runtime->Copy(temp, index, buffer, 0, buffer->Size());
 
-			Runtime->Copy(temp, index + buf->Size(), @string, index, @pos - index);
+			Runtime->Copy(temp, index + buffer->Size(), @string, index, @pos - index);
 
 			@string := temp;
 			@pos := size;
@@ -3154,8 +3155,7 @@ bundle System {
 		@return true if starts with character, false otherwise
 		~#
 		method : public : native : StartsWith(c : Char) ~ Bool {
-			sc : Char := Get(0);
-			return sc <> '\0' & c = sc;
+			return sc <> '\0' & Get(0) = sc;
 		}
 		
 		#~
@@ -3177,10 +3177,12 @@ bundle System {
 		@param s string to check for
 		@return true if starts with string, false otherwise
 		~#
-		method : public : native : StartsWith(s : String) ~ Bool {
-			if(s->Size() <= @pos) {
-				for(i := 0; i < s->Size(); i += 1;) {
-					if(s->Get(i) <> @string[i]) {
+		method : public : native : StartsWith(string : String) ~ Bool {
+			size := string->Size();
+
+			if(size <= @pos) {
+				for(i := 0; i < size; i += 1;) {
+					if(string->Get(i) <> @string[i]) {
 						return false;
 					};
 				};
@@ -3196,12 +3198,14 @@ bundle System {
 		@param s string to check for
 		@return true if ends with character, false otherwise
 		~#
-		method : public : native : EndsWith(s : String) ~ Bool {
-			if(s->Size() <= @pos) {
-				i := s->Size() - 1;
+		method : public : native : EndsWith(string : String) ~ Bool {
+			size := string->Size();
+
+			if(size <= @pos) {
+				i := size - 1;
 				j := @pos - 1;
 				while(i > -1) {
-					if(s->Get(i) <> @string[j]) {
+					if(string->Get(i) <> @string[j]) {
 						return false;
 					};
 					i := i - 1;
@@ -3220,6 +3224,7 @@ bundle System {
 		~#
 		method : public : native : Reverse() ~ String {
 			temp := Char->New[@max];
+
 			i := 0; j := @pos - 1;
 			while(j > -1) {
 				temp[i] := @string[j];
