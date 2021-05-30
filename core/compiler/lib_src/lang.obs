@@ -2527,7 +2527,7 @@ bundle System {
 		~#
 		method : public : native : ToByteArray() ~ Byte[] {
 			array : Byte[] := Byte->New[@pos];
-			for(i : Int := 0; i < @pos; i += 1;) {
+			each(i : @pos) {
 				array[i] := @string[i];
 			};
 
@@ -2585,8 +2585,8 @@ bundle System {
 				@string := temp;
 			};
 			
-			max := array->Size();
-			for(i : Int := 0; i < max & array[i] <> '\0'; i += 1;) {
+			end := array->Size();
+			for(i : Int := 0; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
@@ -2633,8 +2633,8 @@ bundle System {
 				@string := temp;
 			};
 			
-			max := array->Size();
-			for(i : Int := 0; i < max & array[i] <> '\0'; i += 1;) {
+			end := array->Size();
+			for(i : Int := 0; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
@@ -2870,20 +2870,21 @@ bundle System {
 		~#
 		method : public : native : Find(offset : Int, find : String) ~ Int {
 			size := find->Size();
+
 			if(size > 0 & offset < @pos) {
 				found_index := Find(offset, find->Get(0));
 				while(found_index > -1) {
 					j := found_index;
 					match := true;
 					i : Int;
-					for(i := 0; match & i < find->Size() & j < @pos; i += 1;) {
+					for(i := 0; match & i < size & j < @pos; i += 1;) {
 						if(find->Get(i) <> @string[j]) {
 							match := false;
 						};
 						j += 1;
 					};
 
-					if(match & i = find->Size()) {
+					if(match & i = size) {
 						return found_index;
 					};
 					
@@ -3260,7 +3261,8 @@ bundle System {
 		@return array of split sub strings 
 		~#
 		method : public : native : Split(delim : String) ~ String[] {
-			if(delim->Size() = 0 | @pos = 0) {
+			delim_size := delim->Size();
+			if(delim_size = 0 | @pos = 0) {
 				return Nil;
 			};
 			
@@ -3270,18 +3272,18 @@ bundle System {
 			found_index := -1;
 			delim_index := 0;
 			
-			for(i : Int := 0; i < @pos; i += 1;) {
+			each(i : @pos) {
 				if(found_index = -1 & delim->Get(0) = @string[i]) {
 					found_index := i;
 				};
 				
 				if(found_index > -1) {
-					if(delim_index < delim->Size() & delim->Get(delim_index) = @string[i]) {
+					if(delim_index < delim_size & delim->Get(delim_index) = @string[i]) {
 						delim_index += 1;
 					}
-					else if(delim_index = delim->Size()) {
+					else if(delim_index = delim_size) {
 						count += 1;
-						start_index := found_index + delim->Size();
+						start_index := found_index + delim_size;
 						found_index := -1;
 						delim_index := 0;
 					}
@@ -3304,20 +3306,20 @@ bundle System {
 			found_index := -1;
 			delim_index := 0;
 			
-			for(i : Int := 0; i < @pos; i += 1;) {
+			each(i : @pos) {
 				if(found_index = -1 & delim->Get(0) = @string[i]) {
 					found_index := i;
 				};
 				
 				if(found_index > -1) {
-					if(delim_index < delim->Size() & delim->Get(delim_index) = @string[i]) {
+					if(delim_index < delim_size & delim->Get(delim_index) = @string[i]) {
 						delim_index += 1;
 					}
-					else if(delim_index = delim->Size()) {
+					else if(delim_index = delim_size) {
 						parsed_strings[count] := SubString(start_index, found_index - start_index);
 						count += 1;
 						
-						start_index := found_index + delim->Size();
+						start_index := found_index + delim_size;
 						found_index := -1;
 						delim_index := 0;
 					}
@@ -3342,7 +3344,8 @@ bundle System {
 		~#
 		method : public : native : ToUpper() ~ String {
 			array := Char->New[@pos];
-			for(i : Int := 0; i < @pos; i += 1;) {
+			
+			each(i : @pos) {
 				c := @string[i];
 				if(c > 96 & c < 123) {
 					c := c - 32;
@@ -3359,7 +3362,7 @@ bundle System {
 		~#
 		method : public : native : ToLower() ~ String {
 			array := Char->New[@pos];
-			for(i : Int := 0; i < @pos; i += 1;) {
+			each(i : @pos) {
 				c := @string[i];
 				if(c > 64 & c < 91) {
 					c := c + 32;
