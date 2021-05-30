@@ -1,4 +1,4 @@
-!/bin/sh
+#!/bin/sh
 make -f make/Makefile.SYS.64 clean
 make -f make/Makefile.SYS.64
 ./obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl -strict
