@@ -357,7 +357,7 @@ bundle System {
 		function : native : ToHexString(b : Byte) ~ String {
 			buffer := Char->New[16];
 			Number->IntToString(b->As(Int), 16, buffer);
-			return String->New(buffer);
+			return String->New(buffer, false);
 		}
 		
 		function : native : ToHexString(b : Byte[]) ~ String {
@@ -379,11 +379,12 @@ bundle System {
 		function : native : ToString(b : Byte) ~ String {
 			buffer := Char->New[16];
 			Number->IntToString(b->As(Int), 10, buffer);
-			return String->New(buffer);
+			return String->New(buffer, false);
 		}
 		
 		function : native : ToString(b : Byte[]) ~ String {
 			out := String->New();
+
 			each(i : b) {
 				ToString(b[i]);
 				out->Append(ToString(b[i]));
@@ -667,9 +668,8 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(c : Char) ~ String {
-			string : String := String->New();
+			string := String->New();
 			string->Append(c);
-			
 			return string;
 		}
 	}
@@ -932,11 +932,12 @@ bundle System {
 		function : native : ToHexString(v : Int) ~ String {
 			buffer := Char->New[16];
 			Number->IntToString(v->As(Int), 16, buffer);
-			return String->New(buffer);
+			return String->New(buffer, false);
 		}
 		
 		function : native : ToHexString(v : Int[]) ~ String {
 			out := String->New();
+
 			each(i : v) {
 				buffer := Char->New[16];
 				Number->IntToString(v[i]->As(Int), 16, buffer);
@@ -996,7 +997,7 @@ bundle System {
 		function : ToString(v : Int) ~ String {
 			buffer := Char->New[16];
 			Number->IntToString(v->As(Int), 10, buffer);
-			return String->New(buffer);
+			return String->New(buffer, false);
 		}
 
 		#~
@@ -1007,7 +1008,7 @@ bundle System {
 		function : native : ToCommaString(v : Int) ~ String {
 			buffer := Char->New[16];
 			Number->IntToString(v->As(Int), 10, buffer);
-			str := String->New(buffer);
+			str := String->New(buffer, false);
 
 			count := 1;
 			comma_str : String := "";
@@ -1370,7 +1371,7 @@ bundle System {
 		function : native : ToString(f : Float) ~ String {
 			buffer := Char->New[16];
 			Number->FloatToString(f, buffer);
-			return String->New(buffer);
+			return String->New(buffer, false);
 		}
 
 		function : native : ToString(v : Float[]) ~ String {
@@ -2442,14 +2443,23 @@ bundle System {
 		New(array : Char[]) {
 			Parent();
 
-			if(array->Size() < 8) {
-				@max := 8;
-			}
-			else {
-				@max := array->Size();
-			};
-			
+			@max := 8;
 			@string := Char->New[@max];
+			@pos := 0;
+
+			Append(array);
+		}
+
+		#~
+		Copy constructor
+		@param array array to be copied
+		@param copy if false, use array for value for string otherwise copy values
+		~#		
+		New(array : Char[], copy : Bool) {
+			Parent();
+
+			@max := array->Size();
+			@string := array;
 			@pos := 0;
 
 			Append(array);
@@ -2459,22 +2469,16 @@ bundle System {
 		Copy constructor
 		@param array array to be copied
 		@param offset offset array index offset
-		@param max offset max max number of characters to copy
+		@param length number of characters to copy
 		~#
-		New(array : Char[], offset : Int, max : Int) {
+		New(array : Char[], offset : Int, length : Int) {
 			Parent();
 
-			if(array->Size() < 8) {
-				@max := 8;
-			}
-			else {
-				@max := array->Size() - offset;
-			};
-
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
-			Append(array, offset, max);
+			Append(array, offset, length);
 		}
 		
 		#~
@@ -2484,41 +2488,27 @@ bundle System {
 		New(bytes : Byte[]) {
 			Parent();
 			
-			array := bytes->ToUnicode();
-			if(array->Size() < 8) {
-				@max := 8;
-			}
-			else {
-				@max := array->Size();
-			};
-			
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
-			Append(array);
+			Append(bytes->ToUnicode());
 		}
 
 		#~
 		Copy constructor
 		@param bytes array to be copied
 		@param offset offset array index offset
-		@param max max number of characters to copy
+		@param length number of characters to copy
 		~#
-		New(bytes : Byte[], offset : Int, max : Int) {
+		New(bytes : Byte[], offset : Int, length : Int) {
 			Parent();
 
-			array := bytes->ToUnicode();
-			if(array->Size() < 8) {
-				@max := 8;
-			}
-			else {
-				@max := array->Size() - offset;
-			};
-
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
-			Append(array, offset, max);
+			Append(bytes->ToUnicode(), offset, length);
 		}
 
 		#~
@@ -2526,7 +2516,7 @@ bundle System {
 		@return character array
 		~#
 		method : public : ToCharArray() ~ Char[] {
-			array : Char[] := Char->New[@pos];
+			array := Char->New[@pos];
 			Runtime->Copy(array, 0, @string, 0, @pos);
 			return array;
 		}
@@ -2588,11 +2578,11 @@ bundle System {
 		method : public : native : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
-				@max := (@max + array->Size()) * 2;
-				tmp : Char[] := Char->New[@max];
+				@max := @max * 2 + array->Size();
+				temp := Char->New[@max];
 				# copy elements				
-				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-				@string := tmp;
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
 			};
 			
 			max := array->Size();
@@ -2606,23 +2596,23 @@ bundle System {
 		Appends a portion of character array
 		@param array array to be copied
 		@param offset offset array index offset
-		@param max max number of characters to copy
+		@param length number of characters to copy
 		~#
-		method : public : native : Append(array : Char[], offset : Int, max : Int) ~ Nil {
+		method : public : native : Append(array : Char[], offset : Int, length : Int) ~ Nil {
 			if(offset < 0) {
 				return;
 			};
 			
-			if(@pos + max >= @max) {
+			if(@pos + length >= @max) {
 				# expand string
-				@max := (@max + max) * 2;
-				tmp : Char[] := Char->New[@max];
+				@max := @max * 2 + length;
+				temp := Char->New[@max];
 				# copy elements
-				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-				@string := tmp;
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
 			};
 
-			end := offset + max;
+			end := offset + length;
 			for(i : Int := offset; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
@@ -2636,11 +2626,11 @@ bundle System {
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
-				@max := (@max + array->Size()) * 2;
-				tmp : Char[] := Char->New[@max];
+				@max := @max * 2 + array->Size();
+				temp := Char->New[@max];
 				# copy elements
-				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-				@string := tmp;
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
 			};
 			
 			max := array->Size();
@@ -2654,23 +2644,23 @@ bundle System {
 		Appends a portion of byte array
 		@param array array to be copied
 		@param offset offset array index offset
-		@param max max number of bytes to copy
+		@param length number of bytes to copy
 		~#
-		method : public : native : Append(array : Byte[], offset : Int, max : Int) ~ Nil {
+		method : public : native : Append(array : Byte[], offset : Int, length : Int) ~ Nil {
 			if(offset < 0) {
 				return;
 			};
 			
-			if(@pos + max >= @max) {
+			if(@pos + length >= @max) {
 				# expand string
-				@max := (@max + max) * 2;
-				tmp : Char[] := Char->New[@max];
+				@max := @max * 2 + length;
+				temp := Char->New[@max];
 				# copy elements
-				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-				@string := tmp;
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
 			};
 
-			end := offset + max;
+			end := offset + length;
 			for(i : Int := offset; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
@@ -2685,10 +2675,10 @@ bundle System {
 			if(@pos >= @max) {
 				# expand string
 				@max := @max * 2;
-				tmp : Char[] := Char->New[@max];
+				temp := Char->New[@max];
 				# copy elements
-				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-				@string := tmp;
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
 			};
 
 			@string[@pos] := c;
@@ -2703,10 +2693,10 @@ bundle System {
 			if(@pos >= @max) {
 				# expand string
 				@max := @max * 2;
-				tmp : Char[] := Char->New[@max];
+				temp := Char->New[@max];
 				# copy elements
-				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-				@string := tmp;
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
 			};
 
 			@string[@pos] := c;
@@ -2988,11 +2978,11 @@ bundle System {
 			};
 			
 			size := @pos - 1;
-			tmp : Char[] := Char->New[size];
-			Runtime->Copy(tmp, 0, @string, 0, index);
-			Runtime->Copy(tmp, index, @string, index + 1, @pos - index - 1);
+			temp := Char->New[size];
+			Runtime->Copy(temp, 0, @string, 0, index);
+			Runtime->Copy(temp, index, @string, index + 1, @pos - index - 1);
 			
-			@string := tmp;
+			@string := temp;
 			@max := @pos := size;
 			@max := @pos;
 			
@@ -3034,15 +3024,15 @@ bundle System {
 			};
 			
 			size := @pos + s->Size();
-			tmp : Char[] := Char->New[size];
-			Runtime->Copy(tmp, 0, @string, 0, index);
+			temp := Char->New[size];
+			Runtime->Copy(temp, 0, @string, 0, index);
 
 			buf := s->ToCharArray();
-			Runtime->Copy(tmp, index, buf, 0, buf->Size());
+			Runtime->Copy(temp, index, buf, 0, buf->Size());
 
-			Runtime->Copy(tmp, index + buf->Size(), @string, index, @pos - index);
+			Runtime->Copy(temp, index + buf->Size(), @string, index, @pos - index);
 
-			@string := tmp;
+			@string := temp;
 			@pos := size;
 			@max := @pos;
 			
@@ -3220,14 +3210,14 @@ bundle System {
 		@return reversed string 
 		~#
 		method : public : native : Reverse() ~ String {
-			tmp : Char[] := Char->New[@max];
+			temp := Char->New[@max];
 			i := 0; j := @pos - 1;
 			while(j > -1) {
-				tmp[i] := @string[j];
+				temp[i] := @string[j];
 				j -= 1;	i += 1;
 			};
 			
-			return String->New(tmp);
+			return String->New(temp);
 		}
 		
 		#~
@@ -3351,7 +3341,7 @@ bundle System {
 		@return upper case string
 		~#
 		method : public : native : ToUpper() ~ String {
-			array : Char[] := Char->New[@pos];
+			array := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i += 1;) {
 				c := @string[i];
 				if(c > 96 & c < 123) {
@@ -3368,7 +3358,7 @@ bundle System {
 		@return lower case string
 		~#
 		method : public : native : ToLower() ~ String {
-			array : Char[] := Char->New[@pos];
+			array := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i += 1;) {
 				c := @string[i];
 				if(c > 64 & c < 91) {
@@ -3405,12 +3395,12 @@ bundle System {
 				return Nil;
 			};
 
-			array : Char[] := Char->New[length];
+			array := Char->New[length];
 			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
 				return Nil;
 			};
 
-			return String->New(array);
+			return String->New(array, false);
 		}
 	
 		#~
@@ -3570,7 +3560,7 @@ bundle System {
 		@return system's temporary directory
 		~#
 		function : GetTempDir() ~ String {
-			return GetProperty("tmp_dir");
+			return GetProperty("temp_dir");
 		}
 
 		#~
@@ -3590,7 +3580,7 @@ bundle System {
 		}
 		
 		#~
-		Fetches a runtime property. System properties include: 'user_dir', tmp_dir and 'install_dir'.
+		Fetches a runtime property. System properties include: 'user_dir', temp_dir and 'install_dir'.
 		@param key property key
 		@return runtime property 
 		~#
