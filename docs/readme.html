@@ -15,7 +15,8 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
-  <w:Zoom>120</w:Zoom>
+  <w:Zoom>130</w:Zoom>
+  <w:DontDisplayPageBoundaries/>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -1217,7 +1218,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v5.8.5 (May 28, 2021)</span><span
+minor-latin;mso-bidi-theme-font:minor-latin'>v5.7.0 (May 31, 2021)</span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></p>
 
@@ -1232,7 +1233,7 @@ notes<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>JSON enhancements and bug fixes<o:p></o:p></span></p>
+minor-latin'>Improved memory usage<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1248,7 +1249,8 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added builder methods to the JSON library (new)<o:p></o:p></span></p>
+minor-latin'>Refactored the ‘String’ and ‘Vector&lt;H&gt;’ classes to be more
+memory efficient (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l3 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1256,25 +1258,8 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added ‘IsNeg’ and ‘NotNeg’ to numeric types (new)<o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
-mso-list:l3 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
-mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
-style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Fixed TCPSocket and TCPSecureSocket 'WriteString(..)' methods,
-they added an extra byte to output (bug #27, medium)<o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
-mso-list:l3 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
-mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
-style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Resolved garbage collection crashes with highly multi-threaded
-workloads (bug #28, high)<o:p></o:p></span></p>
+minor-latin'>Fixed issue that flagged array address comparisons as errors (bug
+#28, low)<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
