@@ -3152,25 +3152,20 @@ bundle System {
 
 		#~
 		Checks if the string starts with the given character
-		@param c character to compare
+		@param char character to compare
 		@return true if starts with character, false otherwise
 		~#
-		method : public : native : StartsWith(c : Char) ~ Bool {
-			return sc <> '\0' & Get(0) = sc;
+		method : public : native : StartsWith(char : Char) ~ Bool {
+			return char <> '\0' & Get(0) = char;
 		}
 		
 		#~
 		Checks if the string ends with the given character
-		@param c character to compare
+		@param char character to compare
 		@return true if ends with character, false otherwise
 		~#
-		method : public : native : EndsWith(c : Char) ~ Bool {
-			if(@pos > 0) {
-				sc := @string[@pos - 1];
-				return sc <> '\0' & c = sc;
-			};
-			
-			return false;
+		method : public : native : EndsWith(char : Char) ~ Bool {
+			return char <> '\0' & Get(@pos - 1) = char;
 		}
 
 		#~
