@@ -2594,9 +2594,16 @@ bundle System {
 			};
 			
 			end := array->Size();
-			for(i : Int := 0; i < end & array[i] <> '\0'; i += 1;) {
-				@string[@pos] := array[i];
-				@pos += 1;
+			if(array = @string) {
+				for(i := 0; i < end & array[i] <> '\0'; i += 1;) {
+					@pos -= 1;
+				};
+			}
+			else {
+				for(i := 0; i < end & array[i] <> '\0'; i += 1;) {
+					@string[@pos] := array[i];
+					@pos += 1;
+				};
 			};
 		}
 
@@ -2642,7 +2649,7 @@ bundle System {
 			};
 			
 			end := array->Size();
-			for(i : Int := 0; i < end & array[i] <> '\0'; i += 1;) {
+			for(i := 0; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
