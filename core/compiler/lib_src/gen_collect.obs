@@ -1416,7 +1416,7 @@ bundle Collection.Generic {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size * 2];
+				temp : H[] := H->New[@size + @size * 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -1641,7 +1641,7 @@ bundle Collection.Generic {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size * 2];
+				temp : H[] := H->New[@size + @size * 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
