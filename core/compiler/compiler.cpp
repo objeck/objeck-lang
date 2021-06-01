@@ -126,6 +126,8 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check source input
   wstring run_string;
   wstring src_file;
+  wstring dest_file;
+
   result = arguments.find(L"src");
   if(result == arguments.end()) {
     result = arguments.find(L"in");
@@ -137,6 +139,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     run_string += arguments[L"in"];
     run_string += L"} }";
     argument_options.remove(L"in");
+    dest_file = L"program";
   }
   else {
     argument_options.remove(L"src");
@@ -180,10 +183,11 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
 
   // check program output
-  wstring dest_file;
   result = arguments.find(L"dest");
   if(result == arguments.end()) {
-    dest_file = src_file;
+    if(!src_file.empty()) {
+      dest_file = src_file;
+    }
     if(dest_file.find(L',') == string::npos) {
       frontend::RemoveSubString(dest_file, L".obs");
     }

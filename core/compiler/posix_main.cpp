@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
   usage += L"  -dest:   [output] file name\n";
   usage += L"  -asm:    [output][end-flag] emits byte assembly code\n";
   usage += L"  -opt:    [option] compiler optimizations s0-s3 (s3 being the most aggressive) default is s3\n";
-  usage += L"  -alt:    [option][end-flag] allow use of C++ like syntax verses the UML like default\n";
+  usage += L"  -alt:    [option][end-flag] use C++ like syntax verses the Pascal like default\n";
   usage += L"  -debug:  [option][end-flag] compile with debug symbols\n";
   usage += L"  -strict: [input][end-flag] exclude default system libraries and provide them manually\n";
   usage += L"\nExample: \"obc -src hello.obs\"\n\nVersion: ";

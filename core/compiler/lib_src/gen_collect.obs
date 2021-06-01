@@ -36,9 +36,10 @@ bundle Collection.Generic {
 			@buckets := CompareList->New[@capacity]<K>;
 			@size := 0;
 		}
-
+		
 		#~
 		Default constructor 
+		@param capacity capacity of hash table
 		~#
 		New(capacity : Hash->Capacity) {
 			@capacity := capacity;
