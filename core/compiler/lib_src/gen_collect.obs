@@ -86,12 +86,19 @@ bundle Collection.Generic {
 			return Nil;
 		}
 
+        #~
+		Gets the hash table capacity
+		@return hash table capacity
+		~#
+        method : public : Capacity() ~ Hash->Capacity {
+            return @capacity;
+        }
 
 		#~
 		Resizes the hash table
 		@return true if resized, false otherwise
 		~#
-		method : public : Resize() ~ Bool {
+		method : public : native : Resize() ~ Bool {
 			resize := false;
 
 			if(@size <= 64 & @capacity <> Capacity->SMALL) {
