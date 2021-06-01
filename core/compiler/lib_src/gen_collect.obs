@@ -138,6 +138,60 @@ bundle Collection.Generic {
 
 			return Nil;
 		}
+
+
+		#~
+		Resizes the hash table
+		@return true if resized, false otherwise
+		~#
+		method : public : Resize() ~ Bool {
+			resize := false;
+
+			if(@size <= 64 & @capacity <> Capacity->SMALL) {
+				@capacity := Capacity->SMALL;
+				resize := true;
+
+			}
+			else if(@size > 64 & @size <= 256 & @capacity <> Capacity->MEDIUM) {
+				@capacity := Capacity->MEDIUM;
+				resize := true;
+			}
+			else if(@size > 256 & @capacity <> Capacity->LARGE) {
+				@capacity := Capacity->LARGE;
+				resize := true;
+			};
+
+			if(resize) {
+				temp_buckets := CompareList->New[@capacity]<K>;
+				for(i := 0; i < @buckets->Size(); i += 1;) {
+					if(@buckets[i] <> Nil) {
+						list := @buckets[i];
+						list->Rewind();
+						while(list->More()) {
+							# get key/value
+							pair : HashPair<V> := list->Get()<V>;
+							
+							# insert key/value
+							hash := (pair->GetKey()->HashID() % temp_buckets->Size())->Abs();
+							list := temp_buckets[hash];
+							if(list = Nil) {
+								list := CompareList->New()<K>;
+								temp_buckets[hash] := list;
+							};
+							list->AddBack(pair);
+							temp_size += 1;
+
+
+							list->Next();
+						};
+					};
+				};
+
+				@buckets := temp_buckets;
+			};
+
+			return resize;
+		}
 		
 		#~
 		Checks for a value in a hash
