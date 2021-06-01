@@ -86,13 +86,13 @@ bundle Collection.Generic {
 			return Nil;
 		}
 
-        #~
+		#~
 		Gets the hash table capacity
 		@return hash table capacity
 		~#
-        method : public : Capacity() ~ Hash->Capacity {
-            return @capacity;
-        }
+		method : public : Capacity() ~ Hash->Capacity {
+			return @capacity;
+		}
 
 		#~
 		Resizes the hash table

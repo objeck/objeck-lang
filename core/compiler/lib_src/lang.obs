@@ -1735,7 +1735,7 @@ bundle System {
 			@value->PrintLine();
 		}
 
-        method : public : ToString() ~ String {
+		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
 	}
@@ -1993,7 +1993,7 @@ bundle System {
 			@value->PrintLine();
 		}
 
-        method : public : ToString() ~ String {
+		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
 	}
