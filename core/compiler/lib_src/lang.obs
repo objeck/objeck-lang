@@ -3422,7 +3422,7 @@ bundle System {
 		@return hash ID
 		~#
 		method : public : native : HashID() ~ Int {
-			hash := 0;
+			hash := 5381;
 		
 			each(i : @pos) {
 				hash := ((hash << 5) + hash) + @string[i];				
