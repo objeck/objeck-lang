@@ -47,59 +47,6 @@ bundle Collection.Generic {
 		}
 		
 		#~
-		Resizes the hash table
-		@return true if resized, false otherwise
-		~#
-		method : public : Resize() ~ Bool {
-			resize := false;
-
-			if(@size <= 64 & @capacity <> Capacity->SMALL) {
-				@capacity := Capacity->SMALL;
-				resize := true;
-
-			}
-			else if(@size > 64 & @size <= 256 & @capacity <> Capacity->MEDIUM) {
-				@capacity := Capacity->MEDIUM;
-				resize := true;
-			}
-			else if(@size > 256 & @capacity <> Capacity->LARGE) {
-				@capacity := Capacity->LARGE;
-				resize := true;
-			};
-
-			if(resize) {
-				temp_buckets := CompareList->New[@capacity]<K>;
-				for(i := 0; i < @buckets->Size(); i += 1;) {
-					if(@buckets[i] <> Nil) {
-						list := @buckets[i];
-						list->Rewind();
-						while(list->More()) {
-							# get key/value
-							pair := list->Get()<V>;
-							
-							# insert key/value
-							hash := (key->HashID() % temp_buckets->Size())->Abs();
-							list := temp_buckets[hash];
-							if(list = Nil) {
-								list := CompareList->New()<K>;
-								temp_buckets[hash] := list;
-							};
-							list->AddBack(pair);
-							temp_size += 1;
-
-
-							list->Next();
-						};
-					};
-				};
-
-				@buckets := temp_buckets;
-			};
-
-			return resize;
-		}
-
-		#~
 		Inserts a value into the hash
 		@param key key
 		@param value value
@@ -111,7 +58,7 @@ bundle Collection.Generic {
 				list := CompareList->New()<K>;
 				@buckets[hash] := list;
 			};
-			list->AddBack(HashPair->New(key@capacity, value)<V>);
+			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
 			@size += 1;
 		}
 
@@ -2216,7 +2163,7 @@ bundle Collection.Generic {
 				
 				key := node->GetKey()->As(Clone)->Clone();
 				value := node->Get();
-				f(key@capacity, value);
+				f(key->As(Compare), value);
 				
 				# process right
 				Each(node->GetRight(), f);
@@ -2685,9 +2632,9 @@ bundle Collection.Generic {
 			keys := GetKeys();
 			each(i : keys) {
 				key := keys->Get(i)->As(Clone)->Clone();
-				values := Find(key@capacity);
+				values := Find(key->As(Compare));
 				each(j : values) {
-					f(key@capacity, values->Get(j));
+					f(key->As(Compare), values->Get(j));
 				};
 			};
 			return @self;
