@@ -12,46 +12,33 @@ class Server {
 		if(server->Listen(5)) {
 			while(true) {
 				client := server->Accept();
-				
-				line := client->ReadLine();
-				while(line->Size() > 0) {
-					lens := line->Split(":");
-					len := lens[1]->Trim()->ToInt()+2;
+				json :=JSONParser->New(client->ReadLine());
+				if(json->Parse()) {
+					root := json->GetRoot();
 
-					buffer := Byte->New[len];	
-					client->ReadBuffer(0, len, buffer);
-					buffer->ToUnicode()->PrintLine();
+					id_elem := root->Get("id");
+					call_elem := root->Get("method");
+					param_elems := root->Get("params");
 
-					line := client->ReadLine();
+					if(id_elem <> Nil & call_elem <> Nil & param_elems <> Nil) {
+						id := id_elem->ToString()->ToInt();
+						output := DoSubtract(id, param_elems)->ToString();
+						output += "\r\n";
+						client->WriteString(output);
+					};
 				};
 			};
 		};
 	}
 
-#~
-	json :=JSONParser->New(line);
-	if(json->Parse()) {
-		root := json->GetRoot();
-
-		id_elem := root->Get("id");
-		call_elem := root->Get("method");
-		param_elems := root->Get("params");
-
-		if(id_elem <> Nil & call_elem <> Nil & param_elems <> Nil) {
-			id := id_elem->ToString()->ToInt();
-			client->WriteString(DoSubtract(id, param_elems)->ToString());
-		};
-	};
-~#
-
-	method : public : DoSubtract(id : Int, param_elems : JSONElement) ~ JSONElement {
+	function : public : DoSubtract(id : Int, param_elems : JSONElement) ~ JSONElement {
 		left := param_elems->Get(0)->GetValue()->ToInt();
 		right := param_elems->Get(1)->GetValue()->ToInt();
 
 		return MakeResult(id, left - right);
 	}
 
-	method : MakeResult(id : Int, result : Int) ~ JSONElement {
+	function : MakeResult(id : Int, result : Int) ~ JSONElement {
 		values := Map->New()<String, JSONElement>;
 
 		values->Insert("jsonrpc", JSONElement->New("2.0"));

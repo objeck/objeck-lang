@@ -4,14 +4,16 @@ use Data.JSON;
 
 class Client {
 	function : Main(args : String[]) ~ Nil {
-		client := TCPSocket->New("192.168.4.95", 6013);
+		client := TCPSocket->New("localhost", 6013);
 		leaving {
 			client->Close();	
 		};
 
 		if(client->IsOpen()) {
-			tag := MakeSubtract(1, 48, 35);
-			client->WriteString(tag->ToString());
+			tag := MakeSubtract(1, 51, 35);
+			line := tag->ToString();
+			line += "\r\n";
+			client->WriteString(line);
 			GetResult(1, client->ReadLine())->PrintLine();
 		};
 	}
