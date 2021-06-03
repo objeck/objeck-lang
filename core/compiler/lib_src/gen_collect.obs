@@ -18,6 +18,7 @@ bundle Collection.Generic {
 		@buckets : CompareList[]<K>;
 		@size : Int;
 		@capacity : Int;
+		@auto_resize : Bool;
 
 		#~
 		Hash table capacity: SMALL <= 64 ITEM, MEDIUM <= 256, LARGE <= 2048, EX-LARGE >= 8192
@@ -35,6 +36,7 @@ bundle Collection.Generic {
 		New() {
 			@capacity := Capacity->SMALL;
 			@buckets := CompareList->New[@capacity]<K>;
+			@auto_resize := true;
 			@size := 0;
 		}
 		
@@ -45,6 +47,7 @@ bundle Collection.Generic {
 		New(capacity : Hash->Capacity) {
 			@capacity := capacity;
 			@buckets := CompareList->New[@capacity]<K>;
+			@auto_resize := true;
 			@size := 0;
 		}
 		
@@ -54,18 +57,20 @@ bundle Collection.Generic {
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
-			select(@size + 1) {
-				label 65: {
-					Resize(Hash->Capacity->MEDIUM);
-				}
+			if(@auto_resize) {
+				select(@size + 1) {
+					label 65: {
+						Resize(Hash->Capacity->MEDIUM);
+					}
 
-				label 257: {
-					Resize(Hash->Capacity->LARGE);
-				}
+					label 257: {
+						Resize(Hash->Capacity->LARGE);
+					}
 
-				label 2049: {
-					Resize(Hash->Capacity->EX_LARGE);
-				}
+					label 2049: {
+						Resize(Hash->Capacity->EX_LARGE);
+					}
+				};
 			};
 
 			hash := (key->HashID() % @buckets->Size())->Abs();
@@ -114,8 +119,9 @@ bundle Collection.Generic {
 		Resizes the hash table
 		@param capacity table capacity
 		~#
-		method : public : native : Resize(capacity : Hash->Capacity) ~ Nil {
+		method : public : native : Resize(capacity : Hash->Capacity, auto_resize : Bool := true) ~ Nil {
 			@capacity := capacity;
+			@auto_resize := auto_resize;
 
 			temp_buckets := CompareList->New[@capacity]<K>;
 			for(i := 0; i < @buckets->Size(); i += 1;) {
@@ -170,22 +176,25 @@ bundle Collection.Generic {
 						list->Remove();
 						@size -= 1;
 
-						select(@size) {
-							label 64: {
-								Resize(Hash->Capacity->SMALL);
-							}
+						if(@auto_resize) {
+							select(@size) {
+								label 64: {
+									Resize(Hash->Capacity->SMALL);
+								}
 
-							label 256: {
-								Resize(Hash->Capacity->MEDIUM);
-							}
+								label 256: {
+									Resize(Hash->Capacity->MEDIUM);
+								}
 
-							label 2048: {
-								Resize(Hash->Capacity->LARGE);
-							}
+								label 2048: {
+									Resize(Hash->Capacity->LARGE);
+								}
+							};
 						};
 
 						return true;
 					};
+					
 					list->Next();
 				};
 
