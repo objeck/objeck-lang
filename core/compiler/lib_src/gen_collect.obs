@@ -1482,7 +1482,7 @@ bundle Collection.Generic {
 		@param values values to copy 
 		~#
 		New(values : H[]) {
-			@values := H->New[values->Size() + values->Size() / 2];
+			@values := H->New[values->Size() + (values->Size() >> 1)];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
  		}
@@ -1498,9 +1498,10 @@ bundle Collection.Generic {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + @size * 2];
+				temp : H[] := H->New[@size + (@size >> 1)];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
+				@size := temp->Size();
 			};
 		}
 
@@ -1723,9 +1724,10 @@ bundle Collection.Generic {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + @size * 2];
+				temp : H[] := H->New[@size + (@size >> 1)];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
+				@size := temp->Size();
 			};
 		}
 		
