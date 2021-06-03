@@ -25,7 +25,7 @@ bundle Collection.Generic {
 		consts Capacity {
 			SMALL := 83,
 			MEDIUM := 331,
-			LARGE := 2609
+			LARGE := 2609,
 			EX_LARGE := 10211
 		}
 		
@@ -116,7 +116,7 @@ bundle Collection.Generic {
 		~#
 		method : public : native : Resize(capacity : Hash->Capacity) ~ Nil {
 			@capacity := capacity;
-			
+
 			temp_buckets := CompareList->New[@capacity]<K>;
 			for(i := 0; i < @buckets->Size(); i += 1;) {
 				if(@buckets[i] <> Nil) {
