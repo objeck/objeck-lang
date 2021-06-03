@@ -118,6 +118,7 @@ bundle Collection.Generic {
 		#~
 		Resizes the hash table
 		@param capacity table capacity
+		@param auto_resize true for hash table auto resizing, false otherwise
 		~#
 		method : public : native : Resize(capacity : Hash->Capacity, auto_resize : Bool := true) ~ Nil {
 			@capacity := capacity;
@@ -194,7 +195,7 @@ bundle Collection.Generic {
 
 						return true;
 					};
-					
+
 					list->Next();
 				};
 
