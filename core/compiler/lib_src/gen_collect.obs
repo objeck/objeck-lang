@@ -1513,7 +1513,6 @@ bundle Collection.Generic {
 				temp : H[] := H->New[@size + (@size >> 1)];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
-				@size := temp->Size();
 			};
 		}
 
@@ -1739,7 +1738,6 @@ bundle Collection.Generic {
 				temp : H[] := H->New[@size + (@size >> 1)];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
-				@size := temp->Size();
 			};
 		}
 		
