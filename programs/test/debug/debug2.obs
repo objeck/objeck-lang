@@ -1,0 +1,23 @@
+use Collection.Generic;
+
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		(89 - (89 >> 2))->PrintLine();
+		(347 - (347 >> 2))->PrintLine();
+		(2767 - (2767 >> 2))->PrintLine();
+		
+
+		each(i : 2000) {
+			load := (i - (i >> 2));
+			if(i = 40) {
+				"To Med: {$load}"->PrintLine();
+			}
+			else if(i = 280) {
+				"To Large: {$load}"->PrintLine();
+			}
+			else if(i = 1716) {
+				"To Ex-Large: {$load}"->PrintLine();
+			};
+		};
+	}
+}
