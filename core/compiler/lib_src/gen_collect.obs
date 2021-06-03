@@ -20,19 +20,20 @@ bundle Collection.Generic {
 		@capacity : Int;
 
 		#~
-		Hash table capacity: SMALL <= 32 ITEM, MEDIUM <= 512, LARGE <= 2048
+		Hash table capacity: SMALL <= 64 ITEM, MEDIUM <= 256, LARGE <= 2048, EX-LARGE >= 8192
 		~#
 		consts Capacity {
-			SMALL := 53,
-			MEDIUM := 373,
-			LARGE := 2287
+			SMALL := 83,
+			MEDIUM := 331,
+			LARGE := 2609,
+			EX_LARGE := 10211
 		}
 		
 		#~
 		Default constructor 
 		~#
 		New() {
-			@capacity := Capacity->MEDIUM;
+			@capacity := Capacity->SMALL;
 			@buckets := CompareList->New[@capacity]<K>;
 			@size := 0;
 		}
@@ -53,6 +54,20 @@ bundle Collection.Generic {
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
+			select(@size + 1) {
+				label 65: {
+					Resize(Hash->Capacity->MEDIUM);
+				}
+
+				label 257: {
+					Resize(Hash->Capacity->LARGE);
+				}
+
+				label 2049: {
+					Resize(Hash->Capacity->EX_LARGE);
+				}
+			};
+
 			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
 			if(list = Nil) {
@@ -99,53 +114,35 @@ bundle Collection.Generic {
 		Resizes the hash table
 		@return true if resized, false otherwise
 		~#
-		method : public : native : Resize() ~ Bool {
-			resize := false;
+		method : public : native : Resize(capacity : Hash->Capacity) ~ Nil {
+			@capacity := capacity;
 
-			if(@size <= 64 & @capacity <> Capacity->SMALL) {
-				@capacity := Capacity->SMALL;
-				resize := true;
-
-			}
-			else if(@size > 64 & @size <= 256 & @capacity <> Capacity->MEDIUM) {
-				@capacity := Capacity->MEDIUM;
-				resize := true;
-			}
-			else if(@size > 256 & @capacity <> Capacity->LARGE) {
-				@capacity := Capacity->LARGE;
-				resize := true;
-			};
-
-			if(resize) {
-				temp_buckets := CompareList->New[@capacity]<K>;
-				for(i := 0; i < @buckets->Size(); i += 1;) {
-					if(@buckets[i] <> Nil) {
-						list := @buckets[i];
-						list->Rewind();
-						while(list->More()) {
-							# get key/value
-							pair : HashPair<V> := list->Get()<V>;
-							
-							# insert key/value
-							hash := (pair->GetKey()->HashID() % temp_buckets->Size())->Abs();
-							list := temp_buckets[hash];
-							if(list = Nil) {
-								list := CompareList->New()<K>;
-								temp_buckets[hash] := list;
-							};
-							list->AddBack(pair);
-							temp_size += 1;
-
-
-							list->Next();
+			temp_buckets := CompareList->New[@capacity]<K>;
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->More()) {
+						# get key/value
+						pair : HashPair<V> := list->Get()<V>;
+						
+						# insert key/value
+						hash := (pair->GetKey()->HashID() % temp_buckets->Size())->Abs();
+						list := temp_buckets[hash];
+						if(list = Nil) {
+							list := CompareList->New()<K>;
+							temp_buckets[hash] := list;
 						};
+						list->AddBack(pair);
+						temp_size += 1;
+
+
+						list->Next();
 					};
 				};
-
-				@buckets := temp_buckets;
 			};
 
-			return resize;
+			@buckets := temp_buckets;
 		}
 		
 		#~
@@ -171,7 +168,22 @@ bundle Collection.Generic {
 					pair : HashPair<V> := list->Get()<V>;
 					if(pair->Compare(key) = 0) {
 						list->Remove();
-						@size := @size - 1;
+						@size -= 1;
+
+						select(@size) {
+							label 64: {
+								Resize(Hash->Capacity->SMALL);
+							}
+
+							label 256: {
+								Resize(Hash->Capacity->MEDIUM);
+							}
+
+							label 2048: {
+								Resize(Hash->Capacity->LARGE);
+							}
+						};
+
 						return true;
 					};
 					list->Next();
