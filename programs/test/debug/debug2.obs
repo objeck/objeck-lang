@@ -19,7 +19,7 @@ class Foo {
 				"Large: {$load}"->PrintLine();
 			}
 			else if(i = 8192) {
-				"Ex-Larg: {$load}"->PrintLine();
+				"Ex-Large: {$load}"->PrintLine();
 			};
 		};
 	}
