@@ -3034,7 +3034,7 @@ bundle System {
 			offset := index + 1;
 			length := @pos - index;
 
-			size := @pos + string->Size();
+			size := @pos + 1;
 			if(size > @max) {
 				max := size + @max >> 1;
 				temp := Char->New[max];
