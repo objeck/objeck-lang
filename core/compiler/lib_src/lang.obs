@@ -3032,14 +3032,13 @@ bundle System {
 			};
 			
 			size := @pos + string->Size();
+			buffer := string->ToCharArray();
 			if(size > @max) {
 				max := size + size >> 1;
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, index);
-
-				buffer := string->ToCharArray();
+				
 				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
-
 				Runtime->Copy(temp, index + buffer->Size(), @string, index, @pos - index);
 				
 				@string := temp;
@@ -3047,7 +3046,6 @@ bundle System {
 				@max := max;
 			}
 			else {
-				buffer := string->ToCharArray();
 				Runtime->Copy(@string, index, @string, index + buffer->Size(), @pos - index);				
 				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
 			};
