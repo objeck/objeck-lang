@@ -3033,17 +3033,23 @@ bundle System {
 			};
 			
 			size := @pos + string->Size();
-			temp := Char->New[size];
-			Runtime->Copy(temp, 0, @string, 0, index);
+			if(size > @max) {
+				temp := Char->New[size + size >> 1];
+				Runtime->Copy(temp, 0, @string, 0, index);
 
-			buffer := string->ToCharArray();
-			Runtime->Copy(temp, index, buffer, 0, buffer->Size());
+				buffer := string->ToCharArray();
+				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
 
-			Runtime->Copy(temp, index + buffer->Size(), @string, index, @pos - index);
+				Runtime->Copy(temp, , @string, index, @pos - index);
 
-			@string := temp;
-			@pos := size;
-			@max := @pos;
+				@string := temp;
+				@pos := @max := size;
+			}
+			else {
+				buffer := string->ToCharArray();
+				Runtime->Copy(@string, index, @string, index + buffer->Size(), @pos - index);				
+				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
+			};
 			
 			return true;
 
