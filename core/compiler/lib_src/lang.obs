@@ -3031,8 +3031,32 @@ bundle System {
 				return false;
 			};
 
+			offset := index + 1;
+			length := @pos - index;
+
+			size := @pos + string->Size();
+			if(size > @max) {
+				max := size + @max >> 1;
+				temp := Char->New[max];
+				Runtime->Copy(temp, 0, @string, 0, index);
+				
+#				Runtime->Copy(temp, index, buffer, 0, 1);
+				temp[index] := char;
+
+				Runtime->Copy(temp, offset, @string, index, length);
+				
+				@string := temp;
+				@max := max;
+			}
+			else {
+				Runtime->Copy(@string, offset, @string, index, length);
+#				Runtime->Copy(@string, index, buffer, 0, 1);
+				temp[index] := char;
+
+			};
+			@pos := size;
+			
 			return true;
-		}
 
 		#~
 		Insert inserts a string
