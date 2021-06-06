@@ -3047,7 +3047,7 @@ bundle System {
 			}
 			else {
 				Runtime->Copy(@string, index, @string, index + buffer->Size(), @pos - index);				
-				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
+				Runtime->Copy(@string, index, buffer, 0, buffer->Size());
 			};
 			
 			return true;
