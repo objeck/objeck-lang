@@ -3019,6 +3019,16 @@ bundle System {
 
 			return true;
 		}
+		
+		#~
+		Insert inserts a character
+		@param index insert offset
+		@param char character to insert
+		@return true if inserted, false otherwise 
+		~#
+		method : public : Insert(index : Int, char : Char) ~ Bool {
+			return false;
+		}
 
 		#~
 		Insert inserts a string
@@ -3026,29 +3036,33 @@ bundle System {
 		@param string string to insert
 		@return true if inserted, false otherwise 
 		~#
-		method : public : native : Insert(index : Int, string : String) ~ Bool {
+		method : public : Insert(index : Int, string : String) ~ Bool {
 			if(index < 0 | index > @pos) {
 				return false;
 			};
 			
 			size := @pos + string->Size();
 			buffer := string->ToCharArray();
+			buffer_size := buffer->Size();
 			if(size > @max) {
-				max := size + size >> 1;
+				max := size + @max >> 1;
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
-				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
-				Runtime->Copy(temp, index + buffer->Size(), @string, index, @pos - index);
+				Runtime->Copy(temp, index, buffer, 0, buffer_size);
+				Runtime->Copy(temp, index + buffer_size, @string, index, @pos - index);
 				
 				@string := temp;
-				@pos := size;
 				@max := max;
 			}
 			else {
-				Runtime->Copy(@string, index, @string, index + buffer->Size(), @pos - index);				
-				Runtime->Copy(@string, index, buffer, 0, buffer->Size());
+				offset := index + buffer_size;
+				length := @pos - index;
+				Runtime->Copy(@string, offset, @string, index, length);
+				Runtime->Copy(@string, index, buffer, 0, buffer_size);
+
 			};
+			@pos := size;
 			
 			return true;
 
