@@ -3044,7 +3044,6 @@ bundle System {
 
 				@string := temp;
 				@pos := size;
-				@max := max;
 			}
 			else {
 				buffer := string->ToCharArray();
