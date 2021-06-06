@@ -4,7 +4,9 @@ class Foo {
 		ins := "123450";
 
 		str->PrintLine();
-		str->Insert(0, ins);
+		each(i : 10) {
+			str->Insert(i+3, 'j');
+		};
 		str->PrintLine();
 	}
 }
