@@ -3037,13 +3037,13 @@ bundle System {
 				max := size + size >> 1;
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, index);
-				
+
 				Runtime->Copy(temp, index, buffer, 0, buffer->Size());
 				Runtime->Copy(temp, index + buffer->Size(), @string, index, @pos - index);
-				
+
 				@string := temp;
 				@pos := size;
-				@max := max;
+				@max := max;g
 			}
 			else {
 				Runtime->Copy(@string, index, @string, index + buffer->Size(), @pos - index);				
