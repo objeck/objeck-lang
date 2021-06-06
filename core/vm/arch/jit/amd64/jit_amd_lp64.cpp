@@ -4984,7 +4984,12 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       char* src_array_ptr = (char*)(src_array + 3);
       char* dest_array_ptr = (char*)(dest_array + 3);
-      memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
+      if(src_array_ptr == dest_array_ptr) {
+        memmove(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
+      }
+      else {
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
+      }
       PushInt(op_stack, stack_pos, 1);
     }
     else {
@@ -5012,7 +5017,12 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       const wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
       wchar_t* dest_array_ptr = (wchar_t*)(dest_array + 3);
-      memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(wchar_t));
+      if(src_array_ptr == dest_array_ptr) {
+        memmove(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(wchar_t));
+      }
+      else {
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(wchar_t));
+      }
       PushInt(op_stack, stack_pos, 1);
     }
     else {
@@ -5039,7 +5049,12 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       size_t* src_array_ptr = src_array + 3;
       size_t* dest_array_ptr = dest_array + 3;
-      memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
+      if(src_array_ptr == dest_array_ptr) {
+        memmove(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
+      }
+      else {
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
+      }
       PushInt(op_stack, stack_pos, 1);
     }
     else {
@@ -5066,7 +5081,12 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       size_t* src_array_ptr = src_array + 3;
       size_t* dest_array_ptr = dest_array + 3;
-      memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
+      if(src_array_ptr == dest_array_ptr) {
+        memmove(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
+      }
+      else {
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
+      }
       PushInt(op_stack, stack_pos, 1);
     }
     else {
