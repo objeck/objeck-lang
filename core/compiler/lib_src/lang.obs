@@ -2978,23 +2978,11 @@ bundle System {
 		
 		#~
 		Deletes the character at the given index
-		@param index delete index
+		@param offset offset index
 		@return true if deleted, false otherwise 
 		~#
-		method : public : native : Delete(index : Int) ~ Bool {
-			if(index < 0 | index >= @pos) {
-				return false;
-			};
-			
-			size := @pos - 1;
-			temp := Char->New[size];
-			Runtime->Copy(temp, 0, @string, 0, index);
-			Runtime->Copy(temp, index, @string, index + 1, @pos - index - 1);
-			
-			@string := temp;
-			@max := @pos := size;
-			
-			return true;
+		method : public : Delete(offset : Int) ~ Bool {
+			return Delete(offset, 1);
 		}
 
 		#~
@@ -3003,7 +2991,7 @@ bundle System {
 		@param length length
 		@return true if deleted, false otherwise 
 		~#
-		method : public : native : Delete(offset : Int, length : Int) ~ Bool {
+		method : public : Delete(offset : Int, length : Int) ~ Bool {
 			space := offset + length;
 			if(offset < 0 | offset > @pos | space < 0 | space > @pos) {
 				return false;
@@ -3018,6 +3006,16 @@ bundle System {
 			@max := @pos := max;
 
 			return true;
+		}
+
+		#~
+		Compresses a string removing unused space.
+		~#
+		method : public : Compress() ~ Bool {
+			temp := Char->New[@pos];
+			Runtime->Copy(temp, 0, @string, 0, @pos);
+			@string := temp;	
+			@max := @pos;
 		}
 		
 		#~
@@ -3039,7 +3037,7 @@ bundle System {
 				max := size + @max >> 1;
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, index);
-				
+
 				temp[index] := char;
 				Runtime->Copy(temp, offset, @string, index, length);
 				
