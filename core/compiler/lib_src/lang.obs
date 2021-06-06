@@ -3027,7 +3027,11 @@ bundle System {
 		@return true if inserted, false otherwise 
 		~#
 		method : public : Insert(index : Int, char : Char) ~ Bool {
-			return false;
+			if(index < 0 | index > @pos) {
+				return false;
+			};
+
+			return true;
 		}
 
 		#~
@@ -3046,7 +3050,7 @@ bundle System {
 
 			offset := index + buffer_size;
 			length := @pos - index;
-			
+
 			size := @pos + string->Size();
 			if(size > @max) {
 				max := size + @max >> 1;
