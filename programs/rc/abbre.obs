@@ -5,7 +5,7 @@ class Abbreviations  {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			Go(args[0]);
-		};
+		};	
 	}
 
 	function : Go(file : String) ~ Nil {
