@@ -3007,7 +3007,8 @@ bundle System {
 				@string := temp;
 			}
 			else {
-"### B ###"->PrintLine();				
+"### B ###"->PrintLine();
+			
 				end := offset + length;
 				Runtime->Copy(@string, offset, @string, end, @pos - end);
 			};
