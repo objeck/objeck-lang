@@ -2464,7 +2464,12 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
   MethodCall* method_call = expression->GetMethodCall();
   if(method_call) {
     if(method_call->GetCallType() == ENUM_CALL) {
-      AnalyzeMethodCall(method_call, depth + 1);
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth + 1);
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
+      }
     }
     else {
       wstring encoding;
