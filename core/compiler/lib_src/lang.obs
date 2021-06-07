@@ -2546,7 +2546,7 @@ bundle System {
 		Appends a boolean value
 		@param flag boolean value
 		~#
-		method : public : native : Append(flag : Bool) ~ Nil {
+		method : public : Append(flag : Bool) ~ Nil {
 			if(flag) {
 				Append("true"->ToCharArray());
 			}
@@ -2559,7 +2559,7 @@ bundle System {
 		Appends a integer value
 		@param i integer value
 		~#
-		method : public : native : Append(i : Int) ~ Nil {
+		method : public : Append(i : Int) ~ Nil {
 			Append(i->ToString()->ToCharArray());
 		}
 
@@ -2567,7 +2567,7 @@ bundle System {
 		Appends a float value
 		@param f float value
 		~#
-		method : public : native : Append(f : Float) ~ Nil {
+		method : public : Append(f : Float) ~ Nil {
 			Append(f->ToString()->ToCharArray());
 		}
 
@@ -2583,7 +2583,7 @@ bundle System {
 		Appends a character array
 		@param array character array
 		~#
-		method : public : native : Append(array : Char[]) ~ Nil {
+		method : public : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				@max += @max << 1 + array->Size();
 				temp := Char->New[@max];
@@ -2696,7 +2696,7 @@ bundle System {
 		Appends a byte
 		@param c byte to append
 		~#
-		method : public : native : Append(c : Byte) ~ Nil {
+		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
 				@max := @max << 1;
@@ -2910,7 +2910,7 @@ bundle System {
 		@param replace string to replace with
 		@return new string instance
 		~#
-		method : public : native : ReplaceAll(find : String, replace : String) ~ String {
+		method : public : ReplaceAll(find : String, replace : String) ~ String {
 			last := @self;
 
 			result := last->Replace(find, replace);
@@ -2950,7 +2950,7 @@ bundle System {
 		@param replace string to replace with
 		@return new string instance
 		~#
-		method : public : native : Replace(find : String, replace : String) ~ String {
+		method : public : Replace(find : String, replace : String) ~ String {
 			index := Find(find);
 			if(index < 0) {
 				return @self;
@@ -3113,7 +3113,7 @@ bundle System {
 		Returns rather the string is empty
 		@return true if empty, false otherwise 
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @pos = 0 ? true : false; 			
 		}
 
@@ -3130,7 +3130,7 @@ bundle System {
 		Return the size of the string
 		@return size of the string
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @pos;			
 		}
   
@@ -3207,7 +3207,7 @@ bundle System {
 		@param char character to compare
 		@return true if starts with character, false otherwise
 		~#
-		method : public : native : StartsWith(char : Char) ~ Bool {
+		method : public : StartsWith(char : Char) ~ Bool {
 			return char <> '\0' & Get(0) = char;
 		}
 		
@@ -3216,7 +3216,7 @@ bundle System {
 		@param char character to compare
 		@return true if ends with character, false otherwise
 		~#
-		method : public : native : EndsWith(char : Char) ~ Bool {
+		method : public : EndsWith(char : Char) ~ Bool {
 			return char <> '\0' & Get(@pos - 1) = char;
 		}
 
@@ -3225,7 +3225,7 @@ bundle System {
 		@param string string to check for
 		@return true if starts with string, false otherwise
 		~#
-		method : public : native : StartsWith(string : String) ~ Bool {
+		method : public : StartsWith(string : String) ~ Bool {
 			size := string->Size();
 
 			if(size <= @pos) {
