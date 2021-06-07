@@ -2999,6 +2999,7 @@ bundle System {
 
 			max := @max - length;
 			if(max > @max - @max >> 2) {
+"### A ###"->PrintLine();				
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, offset);
 				Runtime->Copy(temp, offset, @string, space, @max - space);
@@ -3006,6 +3007,7 @@ bundle System {
 				@string := temp;
 			}
 			else {
+"### B ###"->PrintLine();				
 				end := offset + length;
 				Runtime->Copy(@string, offset, @string, end, @pos - end);
 			};
