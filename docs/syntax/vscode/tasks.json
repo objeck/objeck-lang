@@ -6,10 +6,10 @@
         {
             "label": "objeck-build",
             "type": "shell",
-            "command": "/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin/obc -lib json,xml,net,regex -src ${file}",        
+            "command": "<path>/bin/obc -lib json,xml,net,regex -src ${file}",        
             "options": {
                 "env": {
-                "OBJECK_LIB_PATH": "/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/lib"
+                "OBJECK_LIB_PATH": "<path>/lib"
                 }
             },
             "group": {
