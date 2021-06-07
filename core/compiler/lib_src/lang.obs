@@ -2998,11 +2998,17 @@ bundle System {
 			};
 
 			max := @max - length;
-			temp := Char->New[max];
-			Runtime->Copy(temp, 0, @string, 0, offset);
-			Runtime->Copy(temp, offset, @string, space, @max - space);
+			if(max > @max - @max >> 2) {
+				temp := Char->New[max];
+				Runtime->Copy(temp, 0, @string, 0, offset);
+				Runtime->Copy(temp, offset, @string, space, @max - space);
 
-			@string := temp;	
+				@string := temp;
+			}
+			else {
+				end := offset + length;
+				Runtime->Copy(@string, offset, @string, end, @pos - end);
+			};
 			@max := @pos := max;
 
 			return true;
