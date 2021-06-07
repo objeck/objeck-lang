@@ -3,7 +3,7 @@ class Foo {
 		str := "abcdefghijklmnopqrstuvwxyz";
 		ins := "123450";
 		str->PrintLine();
-		
+
 #~
 		str->PrintLine();
 		each(i : 10) {
@@ -11,7 +11,10 @@ class Foo {
 		};
 		
 ~#
-		str->Delete(5, 3);
+		str->Delete(5, 2);
 		str->PrintLine();		
+
+		str->Delete(2, 8);
+		str->PrintLine();	
 	}
 }
