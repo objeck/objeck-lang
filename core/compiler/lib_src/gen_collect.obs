@@ -1527,6 +1527,15 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Compresses the Vector freeing unused memory
+		~#
+		method : public : Compress() ~ Nil {
+			temp : H[] := H->New[@size];
+			Runtime->Copy(temp, 0, @values, 0, @size);
+			@values := temp;
+		}
+
+		#~
 		Maps the given function to each value in the vector 
 		@param f function to apply
 		@return newly calculated vector
@@ -1751,10 +1760,10 @@ bundle Collection.Generic {
 			};
 		}
 		
-		#~ 
-		Frees unused space
+		#~
+		Compresses the Vector freeing unused memory
 		~#
-		method  : public : Trim() ~ Nil {
+		method : public : Compress() ~ Nil {
 			temp : H[] := H->New[@size];
 			Runtime->Copy(temp, 0, @values, 0, @size);
 			@values := temp;
