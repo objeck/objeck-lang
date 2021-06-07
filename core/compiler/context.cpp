@@ -2462,34 +2462,39 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth
 void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const int depth)
 {
   MethodCall* method_call = expression->GetMethodCall();
-  if(method_call && method_call->GetCallType() != ENUM_CALL) {
-    wstring encoding;
-    Class* klass = nullptr;
-    LibraryClass* lib_klass = nullptr;
-
-    // check expression class
-    bool is_enum_call = false;
-    if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
-      ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
-    }
-    method_call->SetEnumCall(is_enum_call);
-
-    // check methods
-    if(klass) {
-      AnalyzeMethodCall(klass, method_call, true, encoding, depth);
-    }
-    else if(lib_klass) {
-      AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
+  if(method_call) {
+    if(method_call->GetCallType() == ENUM_CALL) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
     }
     else {
-      if(expression->GetEvalType()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-         expression->GetEvalType()->GetName() +
-         L"'\n\tIf external reference to generic ensure it has been typed");
+      wstring encoding;
+      Class* klass = nullptr;
+      LibraryClass* lib_klass = nullptr;
+
+      // check expression class
+      bool is_enum_call = false;
+      if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+      }
+      method_call->SetEnumCall(is_enum_call);
+
+      // check methods
+      if(klass) {
+        AnalyzeMethodCall(klass, method_call, true, encoding, depth);
+      }
+      else if(lib_klass) {
+        AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
       }
       else {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
+        if(expression->GetEvalType()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
+                       expression->GetEvalType()->GetName() +
+                       L"'\n\tIf external reference to generic ensure it has been typed");
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call),
+                       L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
+        }
       }
     }
   }
