@@ -1504,7 +1504,7 @@ bundle Collection.Generic {
 		@param values values to copy 
 		~#
 		New(values : H[]) {
-			@values := H->New[values->Size() + (values->Size() >> 1)];
+			@values := H->New[values->Size()];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
  		}
@@ -1520,7 +1520,7 @@ bundle Collection.Generic {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + (@size >> 1)];
+				temp : H[] := H->New[@size << 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -1595,7 +1595,7 @@ bundle Collection.Generic {
 		method : public : AddBack(values : Vector<H>) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
-				temp : H[] := H->New[max + max / 2];
+				temp : H[] := H->New[max << 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -1729,7 +1729,7 @@ bundle Collection.Generic {
 		@param values values to copy 
 		~#
 		New(values : H[]) {
-			@values := H->New[values->Size() + values->Size() / 2];
+			@values := H->New[values->Size()];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
  		}
@@ -1745,7 +1745,7 @@ bundle Collection.Generic {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + (@size >> 1)];
+				temp : H[] := H->New[@size << 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -1812,7 +1812,7 @@ bundle Collection.Generic {
 		method : public : AddBack(values : Vector<H>) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
-				temp : H[] := H->New[max + max / 2];
+				temp : H[] := H->New[max << 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -1926,7 +1926,7 @@ bundle Collection.Generic {
 		
 		method : MergeSort(low : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			if(low < hi) {
-				mid := (low + hi) / 2;
+				mid := (low + hi) >> 1;
 				MergeSort(low, mid, a, b);
 				MergeSort(mid + 1, hi, a, b);
 				Merge(low, mid, hi, a, b);
@@ -1990,7 +1990,7 @@ bundle Collection.Generic {
 			high := @size - 1;
 
 			while(low <= high) {
-				mid := (low + high) / 2;
+				mid := (low + high) >> 1;
       	
 				if(@values[mid]->Compare(value) > 0) {
 					high := mid - 1;
