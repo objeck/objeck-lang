@@ -1,9 +1,0 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		Foo(201,13)->PrintLine();
-	}
-
-	function : native : Foo(a : Int, b : Int) ~ Bool {
-		return a <> b;
-	}
-}

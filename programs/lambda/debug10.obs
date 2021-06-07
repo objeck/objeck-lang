@@ -1,9 +1,0 @@
-class Foo {
-	function : Fie(f : (Float) ~ Int) ~ (String) ~ Int {
-		return Fum(String) ~ Int;
-	}
-
-	function : Fum(s : String) ~ Int {
-		return 13;
-	}
-}
