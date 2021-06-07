@@ -237,7 +237,7 @@ class Evaluator {
 				};
 
 				left := @exe_stack->Pop();
-				reverse(i : children) {
+				for(i := 1;	 i < children->Size(); i += 1;) {
 					right := @exe_stack->Pop();
 					left->SetIntValue(left->GetIntValue() * right->GetIntValue());
 				};
