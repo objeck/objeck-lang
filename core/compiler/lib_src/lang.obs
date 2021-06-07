@@ -2997,22 +2997,23 @@ bundle System {
 				return false;
 			};
 
-			max := @max - length;
-			if(max > @max - @max >> 2) {
-"### A ###"->PrintLine();				
+			max := @pos - length;
+			
+			threshold := @max - @max >> 1;
+			if(max < threshold) {
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, offset);
-				Runtime->Copy(temp, offset, @string, space, @max - space);
+				Runtime->Copy(temp, offset, @string, space, @pos - space);
 
 				@string := temp;
+				@max := @pos := max;
 			}
 			else {
-"### B ###"->PrintLine();
-			
 				end := offset + length;
 				Runtime->Copy(@string, offset, @string, end, @pos - end);
+				@string[max] := '\0';
+				@pos := max;
 			};
-			@max := @pos := max;
 
 			return true;
 		}
