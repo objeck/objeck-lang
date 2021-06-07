@@ -2996,7 +2996,7 @@ bundle System {
 			if(offset < 0 | offset > @pos | space < 0 | space > @pos) {
 				return false;
 			};
-			
+
 			max := @pos - length;
 			threshold := @max - @max >> 1;
 			if(max < threshold) {
@@ -3094,7 +3094,6 @@ bundle System {
 			else {
 				Runtime->Copy(@string, offset, @string, index, length);
 				Runtime->Copy(@string, index, buffer, 0, buffer_size);
-
 			};
 			@pos := size;
 			
