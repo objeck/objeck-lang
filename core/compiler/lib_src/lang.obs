@@ -2585,7 +2585,7 @@ bundle System {
 		~#
 		method : public : native : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
-				@max += (@max >> 1) + array->Size();
+				@max += @max << 1 + array->Size();
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -2617,7 +2617,7 @@ bundle System {
 			};
 			
 			if(@pos + length >= @max) {
-				@max += (@max >> 1) + length;
+				@max += @max << 1 + length;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -2636,7 +2636,7 @@ bundle System {
 		~#
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
-				@max += (@max >> 1) + array->Size();
+				@max += @max << 1 + array->Size();
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -2661,7 +2661,7 @@ bundle System {
 			};
 			
 			if(@pos + length >= @max) {
-				@max += (@max >> 1) + length;
+				@max += @max << 1 + length;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -2678,10 +2678,10 @@ bundle System {
 		Appends a character
 		@param c character to append
 		~#
-		method : public : native : Append(c : Char) ~ Nil {
+		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max += @max >> 1;
+				@max := @max << 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -2699,7 +2699,7 @@ bundle System {
 		method : public : native : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max += @max >> 1;
+				@max := @max << 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3018,9 +3018,17 @@ bundle System {
 		}
 
 		#~
+		Gets the current string capacity.
+		@return string capacity
+		~#
+		method : public : Capacity() ~ Int {
+			return @max;
+		}
+
+		#~
 		Compresses a string removing unused space.
 		~#
-		method : public : Compress() ~ Bool {
+		method : public : Compress() ~ Nil {
 			temp := Char->New[@pos];
 			Runtime->Copy(temp, 0, @string, 0, @pos);
 			@string := temp;	
@@ -3043,7 +3051,7 @@ bundle System {
 
 			size := @pos + 1;
 			if(size > @max) {
-				max := size + @max >> 1;
+				max := size + @max << 1;
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 
@@ -3081,7 +3089,7 @@ bundle System {
 
 			size := @pos + string->Size();
 			if(size > @max) {
-				max := size + @max >> 1;
+				max := size + @max << 1;
 				temp := Char->New[max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
