@@ -6,20 +6,17 @@
         {
             "label": "objeck-build",
             "type": "shell",
-            "command": "obc -src *.obs -dest ${input:target}",
+            "command": "<path>/bin/obc -lib json,xml,net,regex -src ${file}",        
+            "options": {
+                "env": {
+                "OBJECK_LIB_PATH": "<path>/lib"
+                }
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "problemMatcher": []
         }
-    ],
-    "inputs": [
-        {
-            "id": "target",
-            "description": "Target file",
-            "default": "program.obe",
-            "type": "promptString"
-        },
     ]
 }
