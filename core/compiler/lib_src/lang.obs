@@ -2996,9 +2996,8 @@ bundle System {
 			if(offset < 0 | offset > @pos | space < 0 | space > @pos) {
 				return false;
 			};
-
-			max := @pos - length;
 			
+			max := @pos - length;
 			threshold := @max - @max >> 1;
 			if(max < threshold) {
 				temp := Char->New[max];
