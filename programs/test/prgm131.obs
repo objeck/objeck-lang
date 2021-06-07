@@ -1,75 +1,24 @@
-use Collection;
-use System.IO;
-use System.IO.File;
-use System.IO.Net;
-
-class SocketServer {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			dummy := IntHolder->New(0);
+		s := "abc";
+		s->Compress();
+		s->Capacity()->PrintLine();
+		s += 'd';
+		s += "hello World!";
+		s += 'f';
+		s += 'd';
+		s += "hello World!";
+		s += 'f';
+		s += 'd';
+		s += 'e';
+		s += "hello World!";
+		s += 'd';
+		s += "hello World!";
+		s += "hello World!";
+		s->Capacity()->PrintLine();
+		s->PrintLine();
+		s->Size()->PrintLine();
+		s->Capacity()->PrintLine();
 
-			if(args[0]->Equals("socket")) {
-				ReadSocket();
-			}
-			else {
-				ReadFile();
-			};
-		};
-	}
-
-	function : ReadFile() ~ Nil {
-		file_name := Runtime->GetTempDir();
-		file_name += "/data.dat";
-		bytes := FileReader->ReadBinaryFile(file_name);
-		size := bytes->Size();
-		"server: file='{$file_name}', size={$size} bytes"->PrintLine();
-		
-		deserializer := Deserializer->New(bytes);
-		values := deserializer->ReadObject()->As(StringMap);
-
-
-		values->Size()->PrintLine();
-
-		name := values->Find("name")->As(String);
-		name->PrintLine();
-
-		pi := values->Find("pi")->As(FloatHolder);
-		pi->Get()->PrintLine();
-
-		fin := deserializer->ReadObject()->As(String);
-		fin->PrintLine();
-	}
-
-	function : ReadSocket() ~ Nil {
-		server := TCPSocketServer->New(4660);
-		leaving {
-			server->Close();
-		};
-
-		if(server->Listen(5)) {
-			while(true) {
-				client := server->Accept();
-				size := client->ReadString()->ToInt();
-				if(size > 0) {
-					bytes := Byte->New[size];
-					client->ReadBuffer(0, size, bytes);
-
-					deserializer := Deserializer->New(bytes);
-					values := deserializer->ReadObject()->As(StringMap);
-					
-					values->Size()->PrintLine();
-
-					name := values->Find("name")->As(String);				
-					name->PrintLine();
-
-					age := values->Find("age")->As(IntHolder);
-					age->Get()->PrintLine();
-
-					pi := values->Find("pi")->As(FloatHolder);
-					pi->Get()->PrintLine();
-				};
-			};
-		};
-		
 	}
 }
