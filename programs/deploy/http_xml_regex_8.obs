@@ -45,13 +45,13 @@ class Program {
 			line := lines[i];
 			
 			# get header
-			header := header_regex->FindFirst(line);
+			header := header_regex->FindFirst(line)->ToString();
 			if(<>header->IsEmpty()) {
 				last_header := HeaderName(header);
 			};
 
 			# get language			
-			lang := lang_regex->FindFirst(line);
+			lang := lang_regex->FindFirst(line)->ToString();
 			if(lang->Size() > 0) {
 				if(last_header <> Nil) {
 					langs->Insert("{$last_header}");
