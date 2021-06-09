@@ -114,17 +114,19 @@ bundle Query.RegEx {
 		@param input string to match against
 		@return matched string if found, empty string otherwise
 		~#
-		method : public : native : FindFirst(input : String) ~ String {
+		method : public : native : FindFirst(input : String) ~ Result {
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1) {
-					return input->SubString(left, right - left);
+# return input->SubString(left, right - left);
+					length := right - left;
+					return Result->New(left, length, input->SubString(left, length));
 				};
 				left += 1;
 			};
 
-			return "";
+			return Nil;
 		}
 
 		#~
@@ -132,15 +134,18 @@ bundle Query.RegEx {
 		@param input string to match against
 		@return vector of string matches
 		~#
-		method : public : native : Find(input : String) ~ Vector<String> {
-			matches := Vector->New()<String>;
+		method : public : native : Find(input : String) ~ Vector<Result> {
+			matches := Vector->New()<Result>;
+
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1 & left <> right) {
 # IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					if(left < right) {
-						matches->AddBack(input->SubString(left, right - left));
+# matches->AddBack(input->SubString(left, right - left));
+						length := right - left;
+						matches->AddBack(Result->New(left, length, input->SubString(left, length)));
 						left := right - 1;
 					};
 				};
@@ -907,8 +912,47 @@ bundle Query.RegEx {
 		}
 	}
 	
-	# ---------- subexpression value object ----------
-	class Expression {
+	#~
+	RegEx result
+	~#
+	class Result {
+		@start : Int;
+		@length : Int;
+		@string : String;
+
+		New(start : Int, length : Int, string : String) {
+			@start := start;
+			@length := length;
+			@string := string;
+		}
+
+		#~
+		Gets the starting index of match
+		@return starting index of match
+		~#
+		method : public : GetStart() ~ Int {
+			return @start;
+		}
+
+		#~
+		Gets the string length of the match
+		@return string length of the match
+		~#
+		method : public : GetLength() ~ Int {
+			return @length;
+		}
+
+		#~
+		Gets the string match
+		@return string match
+		~#
+		method : public : GetString() ~ String {
+			return @string;
+		}
+	}
+	
+	# ---------- sub-expression value object ----------
+	class : private : Expression {
 		# expression type
 		enum Type := -100 {
 			CHAR,
