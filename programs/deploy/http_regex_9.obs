@@ -22,7 +22,7 @@ class RegExUrls {
 			found := RegEx->New(expr)->Find(output)<String>;
 			"---"->PrintLine();
 			each(i : found) {
-				found->Get(i)->PrintLine();
+				found->Get(i)->ToString()->PrintLine();
 			};
 		};
 	}

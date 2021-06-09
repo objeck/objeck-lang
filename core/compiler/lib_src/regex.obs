@@ -911,7 +911,7 @@ bundle Query.RegEx {
 # IO.Console->PrintLine("parentheses");		
 		}
 	}
-	
+
 	#~
 	RegEx result
 	~#
@@ -947,6 +947,10 @@ bundle Query.RegEx {
 		@return string match
 		~#
 		method : public : GetString() ~ String {
+			return @string;
+		}
+		
+		method : public : ToString() ~ String {
 			return @string;
 		}
 	}
