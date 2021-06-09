@@ -19,7 +19,7 @@ class RegExUrls {
 			"running regex..."->PrintLine();		
 			expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
 			
-			found := RegEx->New(expr)->Find(output)<String>;
+			found := RegEx->New(expr)->Find(output)<Result>;
 			"---"->PrintLine();
 			each(i : found) {
 				found->Get(i)->ToString()->PrintLine();
