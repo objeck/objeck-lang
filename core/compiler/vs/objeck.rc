@@ -46,8 +46,8 @@ IDI_ICON1               ICON                    "..\\..\\..\\images\\Gear.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,9,2
- PRODUCTVERSION 5,9,2
+ FILEVERSION 5,9,3
+ PRODUCTVERSION 5,9,3
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -65,12 +65,12 @@ BEGIN
             VALUE "Comments", "Objeck Compiler"
             VALUE "CompanyName", "Randy Hollines"
             VALUE "FileDescription", "Objeck Compiler"
-            VALUE "FileVersion", "5.9.2"
+            VALUE "FileVersion", "5.9.3"
             VALUE "InternalName", "obc"
             VALUE "LegalCopyright", "Copyright (C) 2008-2019"
             VALUE "OriginalFilename", "obc.exe"
             VALUE "ProductName", "Objeck Compiler"
-            VALUE "ProductVersion", "5.9.2"
+            VALUE "ProductVersion", "5.9.3"
         END
     END
     BLOCK "VarFileInfo"
