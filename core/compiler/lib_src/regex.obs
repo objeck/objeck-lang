@@ -918,7 +918,7 @@ bundle Query.RegEx {
 	class Result {
 		@start : Int;
 		@length : Int;
-		@string : String;
+		@value : String;
 
 		New(start : Int, length : Int, value : String) {
 			@start := start;
@@ -947,11 +947,11 @@ bundle Query.RegEx {
 		@return string value
 		~#
 		method : public : GetValue() ~ String {
-			return @string;
+			return @value;
 		}
 		
 		method : public : ToString() ~ String {
-			return @string;
+			return @value;
 		}
 	}
 	
