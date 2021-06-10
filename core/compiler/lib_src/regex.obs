@@ -920,10 +920,10 @@ bundle Query.RegEx {
 		@length : Int;
 		@string : String;
 
-		New(start : Int, length : Int, string : String) {
+		New(start : Int, length : Int, value : String) {
 			@start := start;
 			@length := length;
-			@string := string;
+			@value := value;
 		}
 
 		#~
@@ -943,10 +943,10 @@ bundle Query.RegEx {
 		}
 
 		#~
-		Gets the string match
-		@return string match
+		Gets the string value
+		@return string value
 		~#
-		method : public : GetString() ~ String {
+		method : public : GetValue() ~ String {
 			return @string;
 		}
 		
