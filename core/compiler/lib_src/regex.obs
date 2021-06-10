@@ -950,6 +950,10 @@ bundle Query.RegEx {
 			return @value;
 		}
 		
+		#~
+		Gets the string representation
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return @value;
 		}
