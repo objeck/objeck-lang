@@ -28,12 +28,8 @@
     <ClCompile Include="..\..\vm\vm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h">
-      <Filter>Header Files</Filter>
-    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\ia32\jit_intel_lp32.h" />
+    <ClCompile Include="..\..\vm\arch\jit\ia32\jit_intel_lp32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\vm\common.h">
