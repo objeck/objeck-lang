@@ -1395,7 +1395,7 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  wstring& method_name = impl_class->GetName() + L":Run:o.System.Base,";
+  wstring method_name = impl_class->GetName() + L":Run:o.System.Base,";
   StackMethod* called = impl_class->GetMethod(method_name);
   while(!called) {
     impl_class = program->GetClass(impl_class->GetParentId());
