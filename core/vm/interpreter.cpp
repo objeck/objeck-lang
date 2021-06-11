@@ -1395,8 +1395,14 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const wstring& mthd_name = impl_class->GetName() + L":Run:o.System.Base,";
-  StackMethod* called = impl_class->GetMethod(mthd_name);
+  wstring& method_name = impl_class->GetName() + L":Run:o.System.Base,";
+  StackMethod* called = impl_class->GetMethod(method_name);
+  while(!called) {
+    impl_class = program->GetClass(impl_class->GetParentId());
+    method_name = impl_class->GetName() + L":Run:o.System.Base,";
+    called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+  }
+
 #ifdef _DEBUG
   assert(called);
   wcout << L"=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << L","
@@ -2050,9 +2056,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     // binding method
     const wstring qualified_method_name = called->GetName();
     const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
-    wstring method_name = impl_class->GetName() + method_ending;
-
+    
     // check method cache
+    wstring method_name = impl_class->GetName() + method_ending;
     called = StackMethod::GetVirtualEntry(method_name);
     if(!called) {
       called = impl_class->GetMethod(method_name);
