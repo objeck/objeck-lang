@@ -3,6 +3,75 @@
  *
  * Copyright (c) 2008-2021, Randy Hollines
  * All rights reserved.
+Search or jump to…
+
+Pull requests
+Issues
+Marketplace
+Explore
+ 
+@objeck 
+objeck
+/
+objeck-lang
+5
+373
+Code
+Issues
+1
+Pull requests
+Actions
+Projects
+Wiki
+Security
+Insights
+Settings
+fixed issues #31 C/C++ CI #274
+Summary
+Jobs
+build
+build
+failed 2 minutes ago in 1m 40s
+Search logs
+2s
+7s
+7s
+13s
+1m 9s
+2s
+Run ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs; \
+Compiled 1 source class.
+Linked 17 library classes.
+Wrote target file: '../../../../programs/deploy/calc_life_10.obe'
+Compiled 1 source class.
+Linked 17 library classes.
+Wrote target file: '../../../../programs/deploy/closure_19.obe'
+Compiled 1 source class.
+Linked 20 library classes.
+Wrote target file: '../../../../programs/deploy/encrypt_7.obe'
+Compiled 1 source class.
+Linked 17 library classes.
+Wrote target file: '../../../../programs/deploy/first_class_18.obe'
+Compiled 1 source class.
+Linked 26 library classes.
+Wrote target file: '../../../../programs/deploy/fs_query_12.obe'
+Compiled 1 source class.
+Linked 14 library classes.
+Wrote target file: '../../../../programs/deploy/functions_5.obe'
+Compiled 1 source class.
+Linked 14 library classes.
+Wrote target file: '../../../../programs/deploy/hello_0.obe'
+Compiled 1 source class.
+Linked 31 library classes.
+Wrote target file: '../../../../programs/deploy/http_regex_9.obe'
+Compiled 1 source class.
+Linked 23 library classes.
+Wrote target file: '../../../../programs/deploy/https_1.obe'
+Compiled 1 source class.
+Linked 33 library classes.
+Wrote target file: '../../../../programs/deploy/http_xml_regex_8.obe'
+Compiled 1 source class.
+Linked 33 library classes.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
