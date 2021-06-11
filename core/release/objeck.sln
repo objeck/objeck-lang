@@ -1,13 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2036
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31402.337
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "compiler", "..\compiler\vs\compiler.vcxproj", "{05A8A446-F7A8-4BB8-A958-80E526411C1C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA} = {B56D17BC-072B-42F3-844A-870A07AFBAAA}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "debugger", "..\debugger\vs\debugger.vcxproj", "{0C5D8718-8E41-4AA2-A3C7-10FC2944E27F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA} = {B56D17BC-072B-42F3-844A-870A07AFBAAA}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vm", "..\vm\vs\vm.vcxproj", "{321339EE-4392-4BFE-9B15-A852CD25714D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA} = {B56D17BC-072B-42F3-844A-870A07AFBAAA}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libz-static", "..\lib\zlib\win\vs\libz-static\libz-static.vcxproj", "{B56D17BC-072B-42F3-844A-870A07AFBAAA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +56,14 @@ Global
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x64.Deploy.0 = Release|x64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x86.ActiveCfg = Release|Win32
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x86.Build.0 = Release|Win32
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Debug|x64.ActiveCfg = Debug|x64
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Debug|x64.Build.0 = Debug|x64
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Debug|x86.ActiveCfg = Debug|Win32
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Debug|x86.Build.0 = Debug|Win32
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Release|x64.ActiveCfg = Release|x64
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Release|x64.Build.0 = Release|x64
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Release|x86.ActiveCfg = Release|Win32
+		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

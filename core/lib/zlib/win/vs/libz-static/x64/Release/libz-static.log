@@ -1,0 +1,23 @@
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(499,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
+  adler32.c
+  compress.c
+  crc32.c
+  deflate.c
+  gzclose.c
+  gzlib.c
+  gzread.c
+D:\Code\objeck-lang\core\lib\zlib\win\gzread.c(319,20): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+D:\Code\objeck-lang\core\lib\zlib\win\gzread.c(400,35): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+D:\Code\objeck-lang\core\lib\zlib\win\gzread.c(472,33): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+  gzwrite.c
+D:\Code\objeck-lang\core\lib\zlib\win\gzwrite.c(212,27): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+D:\Code\objeck-lang\core\lib\zlib\win\gzwrite.c(232,24): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+D:\Code\objeck-lang\core\lib\zlib\win\gzwrite.c(371,36): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+  infback.c
+  inffast.c
+  inflate.c
+  inftrees.c
+  trees.c
+  uncompr.c
+  zutil.c
+  libz-static.vcxproj -> D:\Code\objeck-lang\core\lib\zlib\win\x64\libz-static.lib
