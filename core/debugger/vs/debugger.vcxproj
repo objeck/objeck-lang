@@ -72,27 +72,27 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win\include;;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;;$(IncludePath)</IncludePath>
     <TargetName>obd</TargetName>
     <LibraryPath>..\..\lib\openssl\win\x86;..\..\lib\zlib\win\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win\include;D:\Code\objeck-lang\core\lib\openssl\win32\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;D:\Code\objeck-lang\core\lib\openssl\win32\include;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>obd</TargetName>
-    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win\include;;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\lib\openssl\win\x86;..\..\lib\zlib\win\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>..\$(Configuration)\win64\</OutDir>
     <TargetName>obd</TargetName>
-    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
