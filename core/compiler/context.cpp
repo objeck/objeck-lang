@@ -531,6 +531,37 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
 }
 
 /****************************
+ * Checks for virtual method
+ * implementations
+ ****************************/
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
+{
+  // get virtual methods
+  vector<Method*> virtual_class_methods = virtual_class->GetMethods();
+  for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
+    Method* virtual_method = virtual_class_methods[i];
+    if(virtual_method->IsVirtual()) {
+      const wstring virtual_method_name = virtual_method->GetEncodedName();
+      // search for implementation method via signature
+      const size_t offset = virtual_method_name.find(':');
+      if(offset != wstring::npos) {
+        const wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+        Method* impl_method = impl_class->GetMethod(encoded_name);
+        if(impl_method) {
+          AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
+                               impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
+          return true;
+        }
+      }
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
  * Checks for interface
  * implementations
  ****************************/
@@ -603,37 +634,6 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
   // save interfaces
   klass->SetInterfaces(interfaces);
   klass->SetLibraryInterfaces(lib_interfaces);
-}
-
-/****************************
- * Checks for virtual method
- * implementations
- ****************************/
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
-{
-  // get virtual methods
-  vector<Method*> virtual_class_methods = virtual_class->GetMethods();
-  for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
-    Method* virtual_method = virtual_class_methods[i];
-    if(virtual_method->IsVirtual()) {
-      const wstring virtual_method_name = virtual_method->GetEncodedName();
-      // search for implementation method via signature
-      const size_t offset = virtual_method_name.find(':');
-      if(offset != wstring::npos) {
-        const wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-        Method* impl_method = impl_class->GetMethod(encoded_name);
-        if(impl_method) {
-          AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
-                               impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-          return true;
-        }
-      }
-
-      return false;
-    }
-  }
-
-  return true;
 }
 
 /****************************
