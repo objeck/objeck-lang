@@ -52,7 +52,7 @@ pthread_mutex_t StackMethod::virtual_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
+map<wstring, wstring> StackProgram::properties_map;
 
 void StackProgram::InitializeProprieties()
 {
@@ -189,6 +189,16 @@ void StackProgram::InitializeProprieties()
   }
   config.close();
 }
+
+StackClass* StackClass::GetParent() {
+  if(!parent) {
+    parent = Loader::GetProgram()->GetClass(pid);
+  }
+
+  return parent;
+}
+
+unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
 
 const wstring StackMethod::ParseName(const wstring& name) const
 {
@@ -378,8 +388,6 @@ const wstring StackMethod::ParseName(const wstring& name) const
 
   return name;
 }
-
-map<wstring, wstring> StackProgram::properties_map;
 
 /********************************
  * ObjectSerializer struct
