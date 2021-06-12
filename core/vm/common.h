@@ -555,6 +555,7 @@ class StackClass {
   long id;
   wstring name;
   wstring file_name;
+  StackClass* parent;
   long pid;
   bool is_virtual;
   long cls_space;
@@ -589,6 +590,7 @@ class StackClass {
     id = i;
     name = cn;
     file_name = fn;
+    parent = nullptr;
     pid = p;
     is_virtual = v;
     cls_dclrs = cdclrs;
@@ -688,9 +690,7 @@ class StackClass {
     return inst_num_dclrs;
   }
 
-  inline long GetParentId() const {
-    return pid;
-  }
+  StackClass* GetParent();
 
   inline bool IsVirtual() {
     return is_virtual;

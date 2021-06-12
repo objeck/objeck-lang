@@ -1398,9 +1398,9 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
   wstring method_name = impl_class->GetName() + L":Run:o.System.Base,";
   StackMethod* called = impl_class->GetMethod(method_name);
   while(!called) {
-    impl_class = program->GetClass(impl_class->GetParentId());
+    impl_class = impl_class->GetParent();
     method_name = impl_class->GetName() + L":Run:o.System.Base,";
-    called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+    called = impl_class->GetMethod(method_name);
   }
 
 #ifdef _DEBUG
@@ -2063,9 +2063,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     if(!called) {
       called = impl_class->GetMethod(method_name);
       while(!called) {
-        impl_class = program->GetClass(impl_class->GetParentId());
+        impl_class = impl_class->GetParent();
         method_name = impl_class->GetName() + method_ending;
-        called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+        called = impl_class->GetMethod(method_name);
       }
       // add cache entry
       StackMethod::AddVirtualEntry(method_name, called);
