@@ -79,7 +79,7 @@
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\lib\x64;..\..\..\openssl\win\x64\lib;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_sdl</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
@@ -93,7 +93,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>libobjk_sdl</TargetName>
-    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\lib\x64;..\..\..\openssl\win\x64\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
