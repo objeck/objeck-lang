@@ -15,9 +15,8 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
-  <w:Zoom>120</w:Zoom>
+  <w:DontDisplayPageBoundaries/>
   <w:SpellingState>Clean</w:SpellingState>
-  <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -829,9 +828,6 @@ span.InternetLink
 span.SpellE
 	{mso-style-name:"";
 	mso-spl-e:yes;}
-span.GramE
-	{mso-style-name:"";
-	mso-gram-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
@@ -1240,7 +1236,7 @@ notes<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Minor improvements to libraries and bug fixes<o:p></o:p></span></p>
+minor-latin'>Minor library improvements and bug fixes<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1258,8 +1254,8 @@ style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>RegEx</span></span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> results return
-indexes into documents (new)<o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> results
+return document indexes (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1267,8 +1263,8 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Fixed an issue that prevented hierarchical classes derived from ‘Thread’
-from executing (bug, #31)<o:p></o:p></span></p>
+minor-latin'>Fixed an issue that prevented hierarchical classes derived from
+‘Thread’ from executing (bug, #31)<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1328,12 +1324,12 @@ minor-latin'>doc/<span class=SpellE>api</span>/ – class library documentation<o:
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>doc/syntax – files to enable syntax highlighting for supported <span
-class=GramE>editors</span><o:p></o:p></span></p>
+minor-latin'>doc/syntax – files to enable syntax highlighting for supported
+editors<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>examples/ – source code examples including a 2D <span class=GramE>game</span><o:p></o:p></span></p>
+minor-latin'>examples/ – source code examples including a 2D game<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1345,7 +1341,7 @@ minor-latin'>examples/tiny – “tiny” language compiler and VM<o:p></o:p></span></
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>lib/ – supporting language <span class=GramE>libraries</span> <o:p></o:p></span></p>
+minor-latin'>lib/ – supporting language libraries <o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1394,9 +1390,8 @@ minor-latin'>&nbsp;<o:p></o:p></span></p>
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>If the Windows installer is used these variables will be
-automatically set after the system is restarted. For Debian and <span
-class=GramE>Ubuntu</span> the location of the files is fixed by the installer
-so no variables are needed.<o:p></o:p></span></p>
+automatically set after the system is restarted. For Debian and Ubuntu the
+location of the files is fixed by the installer so no variables are needed.<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1521,7 +1516,7 @@ margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>1.&nbsp;&nbsp;&nbsp; <span
 class=SpellE>obc</span> -<span class=SpellE>src</span> ..\examples\<span
-class=SpellE>xml_path.obs</span> -lib <span class=SpellE><span class=GramE>collect.obl,xml.obl</span></span>
+class=SpellE>xml_path.obs</span> -lib <span class=SpellE>collect.obl,xml.obl</span>
 -<span class=SpellE>dest</span> <span class=SpellE>xml_path.obe</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
@@ -1667,41 +1662,19 @@ font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-fo
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
 font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-font-family:
 "Times New Roman";mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Known
-bugs and <span class=GramE>limitations</span><o:p></o:p></span></h2>
+bugs and limitations<o:p></o:p></span></h2>
 
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l2 level1 lfo5'><![if !supportLists]><span
-style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-size:8.5pt;line-height:105%;font-family:Symbol;mso-fareast-font-family:
+Symbol;mso-bidi-font-family:Symbol;color:#212529'><span style='mso-list:Ignore'>·<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Apple Silicon SDL2 support currently linked against homebrew <span
-class=GramE>libraries</span> <o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
-0in;margin-left:.75in;text-indent:-.25in;mso-list:l2 level1 lfo5'><![if !supportLists]><span
-style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>The XML parser class does not support DTDs or DOCTYPE tags<o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
-0in;margin-left:.75in;text-indent:-.25in;mso-list:l2 level1 lfo5'><![if !supportLists]><span
-style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>By design, the regular expression class performs greedy pattern
-matching.<o:p></o:p></span></p>
-
-<p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
+minor-latin'>Apple Silicon SDL2 support currently linked against homebrew
+libraries </span><span style='font-size:8.5pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin;color:#212529;background:white'><o:p>&nbsp;</o:p></span></p>
-
-<p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin;color:#212529;background:white'><o:p>&nbsp;</o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin;color:#212529;background:white'><o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
