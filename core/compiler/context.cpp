@@ -612,7 +612,6 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
 {
   // get virtual methods
-  bool virtual_methods_defined = true;
   vector<Method*> virtual_class_methods = virtual_class->GetMethods();
   for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
     if(virtual_class_methods[i]->IsVirtual()) {
@@ -620,32 +619,24 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       Method* virtual_method = virtual_class_methods[i];
       wstring virtual_method_name = virtual_method->GetEncodedName();
 
-      // search for implementation method via signature
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
+
+      // search for implementation method via signature
       const size_t offset = virtual_method_name.find(':');
       if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
-        if(!impl_method && impl_class->GetParent()) {
-          Class* parent_class = impl_class->GetParent();
-          while(!impl_method && !lib_impl_method && parent_class) {
-            encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
-            impl_method = parent_class->GetMethod(encoded_name);
-            // update      
-            if(!impl_method && parent_class->GetLibraryParent()) {
-              LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
-              encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-              lib_impl_method = lib_parent_class->GetMethod(encoded_name);
-              break;
-            }
-            parent_class = parent_class->GetParent();
-          }
+        if(!impl_method) {
+          return false;
         }
         else if(impl_class->GetLibraryParent()) {
           LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
           encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
           lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+          if(!lib_impl_method) {
+            return false;
+          }
         }
       }
 
@@ -659,13 +650,12 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
                              lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
       }
       else {
-        // unable to find method via signature
-        virtual_methods_defined = false;
+        return false;
       }
     }
   }
 
-  return virtual_methods_defined;
+  return true;
 }
 
 /****************************
