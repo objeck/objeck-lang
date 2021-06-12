@@ -78,12 +78,12 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_openssl</TargetName>
-    <IncludePath>..\win\include;..\..\zlib\win\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>..\win\include;..\..\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>..\win\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\win\include;..\..\zlib\win\include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>..\win\x64;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_openssl</TargetName>
     <IntDir>$(Configuration)\</IntDir>
@@ -95,12 +95,12 @@
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_openssl</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>..\win\include;..\..\zlib\win\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>..\win\include;..\..\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>..\win\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\win\include;..\..\zlib\win\include;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>libobjk_openssl</TargetName>
     <OutDir>..\$(Configuration)\win64\</OutDir>
     <IntDir>$(Configuration)\</IntDir>

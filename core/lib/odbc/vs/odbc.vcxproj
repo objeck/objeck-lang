@@ -78,23 +78,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\..\openssl\win\include;..\..\zlib\win\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\..\openssl\win\include;..\..\zlib\win\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\openssl\win\include;..\..\zlib\win\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\openssl\win\include;..\..\zlib\win\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
     <OutDir>..\$(Configuration)\win64\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
     <IntDir>$(Configuration)\</IntDir>
