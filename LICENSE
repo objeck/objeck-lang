@@ -11,7 +11,7 @@ OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, E
 Supporting Libraries:
 
 OpenSSL
-•  Software written by Eric Young (eay@cryptsoft.com) and Hudson (tjh@cryptsoft.com).
+•  Software written by Eric Young (eay@cryptsoft.com) and Tim Hudson (tjh@cryptsoft.com).
 •  This product includes software developed under the OpenSSL license agreement (https://www.openssl.org/source/license.html)
 
 SDL
