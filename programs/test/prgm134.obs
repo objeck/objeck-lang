@@ -1,0 +1,6 @@
+class Fum {
+	New() {
+	}
+
+	method : virtual : DoIt() ~ Nil;
+}
