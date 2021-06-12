@@ -614,44 +614,22 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
   // get virtual methods
   vector<Method*> virtual_class_methods = virtual_class->GetMethods();
   for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
-    if(virtual_class_methods[i]->IsVirtual()) {
-      // validate that methods have been implemented
-      Method* virtual_method = virtual_class_methods[i];
-      wstring virtual_method_name = virtual_method->GetEncodedName();
-
-      Method* impl_method = nullptr;
-      LibraryMethod* lib_impl_method = nullptr;
-
+    Method* virtual_method = virtual_class_methods[i];
+    if(virtual_method->IsVirtual()) {
+      const wstring virtual_method_name = virtual_method->GetEncodedName();
       // search for implementation method via signature
       const size_t offset = virtual_method_name.find(':');
       if(offset != wstring::npos) {
-        wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-        impl_method = impl_class->GetMethod(encoded_name);
-        if(!impl_method) {
-          return false;
-        }
-        else if(impl_class->GetLibraryParent()) {
-          LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
-          encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-          lib_impl_method = lib_parent_class->GetMethod(encoded_name);
-          if(!lib_impl_method) {
-            return false;
-          }
+        const wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+        Method* impl_method = impl_class->GetMethod(encoded_name);
+        if(impl_method) {
+          AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
+                               impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
+          return true;
         }
       }
 
-      // validate method
-      if(impl_method) {
-        AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
-                             impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-      }
-      else if(lib_impl_method) {
-        AnalyzeVirtualMethod(impl_class, lib_impl_method->GetMethodType(), lib_impl_method->GetReturn(),
-                             lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
-      }
-      else {
-        return false;
-      }
+      return false;
     }
   }
 
@@ -714,54 +692,24 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
   for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
     LibraryMethod* virtual_method = iter->second;
     if(virtual_method->IsVirtual()) {
-      wstring virtual_method_name = virtual_method->GetName();
-
-      // validate that methods have been implemented
-      Method* impl_method = nullptr;
-      LibraryMethod* lib_impl_method = nullptr;
+      const wstring virtual_method_name = virtual_method->GetName();
+      // search for implementation method via signature
       const size_t offset = virtual_method_name.find(':');
       if(offset != wstring::npos) {
-        wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-        impl_method = impl_class->GetMethod(encoded_name);
-        if(!impl_method && impl_class->GetParent()) {
-          Class* parent_class = impl_class->GetParent();
-          while(!impl_method && !lib_impl_method && parent_class) {
-            encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
-            impl_method = parent_class->GetMethod(encoded_name);
-            // update      
-            if(!impl_method && parent_class->GetLibraryParent()) {
-              LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
-              encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-              lib_impl_method = lib_parent_class->GetMethod(encoded_name);
-              break;
-            }
-            parent_class = parent_class->GetParent();
-          }
-        }
-        else if(impl_class->GetLibraryParent()) {
-          LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
-          encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-          lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+        const wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+        Method* impl_method = impl_class->GetMethod(encoded_name);
+        if(impl_method) {
+          AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
+                               impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
+          return true;
         }
       }
 
-      // validate method
-      if(impl_method) {
-        AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
-                             impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-      }
-      else if(lib_impl_method) {
-        AnalyzeVirtualMethod(impl_class, lib_impl_method->GetMethodType(), lib_impl_method->GetReturn(),
-                             lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
-      }
-      else {
-        // unable to find method via signature
-        virtual_methods_defined = false;
-      }
+      return false;
     }
   }
 
-  return virtual_methods_defined;
+  return true;
 }
 
 /****************************
