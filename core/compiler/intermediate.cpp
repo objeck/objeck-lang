@@ -4966,43 +4966,61 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   // class
   if(!current_method) {
     SymbolTableManager* symbol_table = parsed_bundle->GetSymbolTableManager();
-    // inspect parent classes
+    
+    // setup dependency order
+    stack<Class*> parents;
     Class* parent = current_class->GetParent();
-    if(parent) {
-      // start at last parent
-      list<Class*> parents;
-      while(parent) {
-        parents.push_front(parent);
+    LibraryClass* lib_parent = current_class->GetLibraryParent();
+    while(parent || lib_parent) {
+      if(parent) {
+        parents.push(parent);
+        // next        
+        lib_parent = parent->GetLibraryParent();
         parent = parent->GetParent();
       }
+      else if(lib_parent) {
+        break;
+      }
+    }
 
-      for(list<Class*>::iterator iter = parents.begin(); iter != parents.end(); ++iter) {
-        parent = *iter;
-        SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
-        // parent may be defined in another file
-        if(!table) {
-          Class* prgm_cls = SearchProgramClasses(parent->GetName());
-          if(prgm_cls) {
-            table = prgm_cls->GetSymbolTable();
-          }
+    // emit derived library first
+    if(lib_parent) {
+      if(is_static) {
+        size += lib_parent->GetClassSpace();
+        // update entries
+        vector<IntermediateDeclaration*> lib_cls_dclrs = lib_parent->GetClassEntries()->GetParameters();
+        for(size_t i = 0; i < lib_cls_dclrs.size(); ++i) {
+          declarations->AddParameter(lib_cls_dclrs[i]->Copy());
         }
-        size += CalculateEntrySpace(table, index, declarations, is_static);
       }
-    } 
-    else {
-      // inspect parent library
-      LibraryClass* lib_parent = current_class->GetLibraryParent();
-      if(lib_parent) {
-        if(is_static) {
-          size += lib_parent->GetClassSpace();
-        } 
-        else {
-          size += lib_parent->GetInstanceSpace();
+      else {
+        size += lib_parent->GetInstanceSpace();
+        // update entries
+        vector<IntermediateDeclaration*> lib_inst_dclrs = lib_parent->GetInstanceEntries()->GetParameters();
+        for(size_t i = 0; i < lib_inst_dclrs.size(); ++i) {
+          declarations->AddParameter(lib_inst_dclrs[i]->Copy());
         }
-        index = size / sizeof(INT_VALUE);
       }
-    }    
-    // calculate current space
+      index = size / sizeof(INT_VALUE);
+    }
+
+    // emit source dependencies
+    while(!parents.empty()) {
+      parent = parents.top();
+      parents.pop();
+
+      SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
+      // parent may be defined in another file
+      if(!table) {
+        Class* prgm_cls = SearchProgramClasses(parent->GetName());
+        if(prgm_cls) {
+          table = prgm_cls->GetSymbolTable();
+        }
+      }
+      size += CalculateEntrySpace(table, index, declarations, is_static);
+    }
+    
+    // emit current class
     size += CalculateEntrySpace(current_table, index, declarations, is_static);
   }
   // method
