@@ -684,8 +684,6 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
 {
-  bool virtual_methods_defined = true;
-
   // virtual methods
   map<const wstring, LibraryMethod*>::iterator iter;
   map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
