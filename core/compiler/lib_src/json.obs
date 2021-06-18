@@ -1,6 +1,6 @@
 #~~
 # JSON parsing library
-# Copyright (c) 2012,2020 Randy Hollines
+# Copyright (c) 2012,2021 Randy Hollines
 ~~#
 
 use Collection.Generic;
@@ -9,6 +9,231 @@ use Collection.Generic;
 Support for paring JSON strings and documents (-lib json.obl)
 ~#
 bundle Data.JSON {
+	#~
+	Table driven JSON builder
+	~#
+	class JSONBuilder {
+		@stack : Stack<JSONElement>;
+
+		#~
+		Constructor
+		~#
+		New() {
+			@stack := Stack->New()<JSONElement>;
+		}
+
+		#~
+		Size of element stack
+		~#
+		method : public : Size() ~ Int {
+			return @stack->Size();
+		}
+
+		#~
+		Pushes an object element on the stack
+		~#
+		method : public : PushObject() ~ Nil {
+			if(@stack->IsEmpty()) {
+				@stack->Push(JSONElement->New(JSONType->OBJECT));
+			}
+			else if(@stack->Top()->GetType() = JSONType->ARRAY) {
+				elem := JSONElement->New(JSONType->OBJECT);
+				@stack->Top()->Add(elem);
+				@stack->Push(elem);
+			};
+		}
+
+		#~
+		Pushes an object element on the stack
+		@param name object name
+		~#
+		method : public : PushObject(name : String) ~ Nil {
+			if(@stack->IsEmpty()) {
+				@stack->Push(JSONElement->New(JSONType->OBJECT, name));
+			}
+			else if(@stack->Top()->GetType() = JSONType->ARRAY) {
+				elem := JSONElement->New(JSONType->OBJECT);
+				@stack->Top()->Add(elem);
+				@stack->Push(elem);
+			}
+			else if(@stack->Top()->GetType() = JSONType->OBJECT) {
+				elem := @stack->Top()->AddChild(name);
+				@stack->Top()->Add(elem);
+				@stack->Push(elem);
+			};
+		}
+
+		#~
+		Pushes an array element on the stack
+		~#
+		method : public : PushArray() ~ Nil {
+			if(@stack->IsEmpty()) {
+				@stack->Push(JSONElement->New(JSONType->ARRAY));
+			}
+			else {
+				elem := JSONElement->New(JSONType->ARRAY);
+				@stack->Top()->Add(elem);
+				@stack->Push(elem);
+			};
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Pop() ~ JSONElement {
+			elem := @stack->Top();
+			@stack->Pop();
+			return elem;
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Add(value : String) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+				return false;
+			};
+
+			@stack->Top()->Add(value);
+			return true;
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Add(value : Int) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+				return false;
+			};
+
+			@stack->Top()->Add(value);
+			return true;
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Add(value : Float) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+				return false;
+			};
+
+			@stack->Top()->Add(value);
+			return true;
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Add(value : Bool) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+				return false;
+			};
+
+			@stack->Top()->Add(value);
+			return true;
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Add(value : JSONElement) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+				return false;
+			};
+
+			@stack->Top()->Add(value);
+			return true;
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param elem element
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : Int) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+				return false;
+			};
+
+			@stack->Top()->Insert(name, value);
+			return true;
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param elem element
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : Float) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+				return false;
+			};
+			
+			@stack->Top()->Insert(name, value);
+			return true;
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param elem element
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : String) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+				return false;
+			};
+			
+			@stack->Top()->Insert(name, value);
+			return true;
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param elem element
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : Bool) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+				return false;
+			};
+			
+			@stack->Top()->Insert(name, value);
+			return true;
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param elem element
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : JSONElement) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+				return false;
+			};
+			
+			@stack->Top()->Insert(name, value);
+			return true;
+		}
+	}
+
 	#~
 	Support for JSON parsing
 	~#
