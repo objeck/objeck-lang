@@ -3,6 +3,14 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		builder := JSONBuilder->New();
+		builder->InsertArray();
+		each(i : 3) {
+#			builder->InsertObject();
+			builder->Add(i);
+#			builder->Remove();
+		};
+		builder->Remove()->ToString()->PrintLine();
 	}
 }
 
@@ -13,18 +21,97 @@ class JSONBuilder {
 		@stack := Stack->New()<JSONElement>;
 	}
 
-	method : public : PushObject() ~ Nil {
-		@stack->Push(JSONElement->New(JSONType->OBJECT));
+	method : public : GetLevel() ~ Int {
+		return @stack->Size();
 	}
 
-	method : public : PushArray() ~ Nil {
-		@stack->Push(JSONElement->New(JSONType->ARRAY));
+	method : public : InsertObject() ~ Nil {
+		if(@stack->IsEmpty()) {
+			@stack->Push(JSONElement->New(JSONType->OBJECT));
+		}
+		else if(@stack->Top()->GetType() = JSONType->ARRAY) {
+			elem := JSONElement->New(JSONType->OBJECT);
+			@stack->Top()->Add(elem);
+			@stack->Push(elem);
+		};
 	}
 
-	method : public : Pop() ~ JSONElement {
+	method : public : InsertObject(name : String) ~ Nil {
+		if(@stack->IsEmpty()) {
+			@stack->Push(JSONElement->New(JSONType->OBJECT, name));
+		}
+		else if(@stack->Top()->GetType() = JSONType->ARRAY) {
+			elem := JSONElement->New(JSONType->OBJECT);
+			@stack->Top()->Add(elem);
+			@stack->Push(elem);
+		}
+		else if(@stack->Top()->GetType() = JSONType->OBJECT) {
+			elem := @stack->Top()->AddChild(name);
+			@stack->Top()->Add(elem);
+			@stack->Push(elem);
+		};
+	}
+
+	method : public : InsertArray() ~ Nil {
+		if(@stack->IsEmpty()) {
+			@stack->Push(JSONElement->New(JSONType->ARRAY));
+		}
+		else {
+			elem := JSONElement->New(JSONType->ARRAY);
+			@stack->Top()->Add(elem);
+			@stack->Push(elem);
+		};
+	}
+
+	method : public : Remove() ~ JSONElement {
 		elem := @stack->Top();
 		@stack->Pop();
 		return elem;
+	}
+
+	method : public : Add(value : String) ~ Bool {
+		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			return false;
+		};
+
+		@stack->Top()->Add(value);
+		return true;
+	}
+
+	method : public : Add(value : Int) ~ Bool {
+		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			return false;
+		};
+
+		@stack->Top()->Add(value);
+		return true;
+	}
+
+	method : public : Add(value : Float) ~ Bool {
+		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			return false;
+		};
+
+		@stack->Top()->Add(value);
+		return true;
+	}
+
+	method : public : Add(value : Bool) ~ Bool {
+		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			return false;
+		};
+
+		@stack->Top()->Add(value);
+		return true;
+	}
+
+	method : public : Add(value : JSONElement) ~ Bool {
+		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			return false;
+		};
+
+		@stack->Top()->Add(value);
+		return true;
 	}
 
 	method : public : Add(name : String, value : Int) ~ Bool {
