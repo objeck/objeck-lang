@@ -161,7 +161,7 @@ bundle Data.JSON {
 		#~
 		Insert an element
 		@param name element name
-		@param elem element
+		@param value value
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Int) ~ Bool {
@@ -176,7 +176,7 @@ bundle Data.JSON {
 		#~
 		Insert an element
 		@param name element name
-		@param elem element
+		@param value value
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Float) ~ Bool {
@@ -191,7 +191,7 @@ bundle Data.JSON {
 		#~
 		Insert an element
 		@param name element name
-		@param elem element
+		@param value value
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : String) ~ Bool {
@@ -206,7 +206,7 @@ bundle Data.JSON {
 		#~
 		Insert an element
 		@param name element name
-		@param elem element
+		@param value value
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Bool) ~ Bool {
@@ -221,7 +221,7 @@ bundle Data.JSON {
 		#~
 		Insert an element
 		@param name element name
-		@param elem element
+		@param value value
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : JSONElement) ~ Bool {
