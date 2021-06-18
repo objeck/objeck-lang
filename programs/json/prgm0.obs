@@ -4,13 +4,13 @@ use Collection.Generic;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		builder := JSONBuilder->New();
-		builder->InsertArray();
+		builder->PushArray();
 		each(i : 3) {
-			builder->InsertObject();
-			builder->Add("foo", Nil->As(JSONElement));
-			builder->Remove();
+			builder->PushObject();
+			builder->Insert("name", i + 1)->PrintLine();
+			builder->Pop();
 		};
-		builder->Remove()->ToString()->PrintLine();
+		builder->Pop()->ToString()->PrintLine();
 	}
 }
 
@@ -21,11 +21,11 @@ class JSONBuilder {
 		@stack := Stack->New()<JSONElement>;
 	}
 
-	method : public : GetLevel() ~ Int {
+	method : public : Size() ~ Int {
 		return @stack->Size();
 	}
 
-	method : public : InsertObject() ~ Nil {
+	method : public : PushObject() ~ Nil {
 		if(@stack->IsEmpty()) {
 			@stack->Push(JSONElement->New(JSONType->OBJECT));
 		}
@@ -36,7 +36,7 @@ class JSONBuilder {
 		};
 	}
 
-	method : public : InsertObject(name : String) ~ Nil {
+	method : public : PushObject(name : String) ~ Nil {
 		if(@stack->IsEmpty()) {
 			@stack->Push(JSONElement->New(JSONType->OBJECT, name));
 		}
@@ -52,7 +52,7 @@ class JSONBuilder {
 		};
 	}
 
-	method : public : InsertArray() ~ Nil {
+	method : public : PushArray() ~ Nil {
 		if(@stack->IsEmpty()) {
 			@stack->Push(JSONElement->New(JSONType->ARRAY));
 		}
@@ -63,7 +63,7 @@ class JSONBuilder {
 		};
 	}
 
-	method : public : Remove() ~ JSONElement {
+	method : public : Pop() ~ JSONElement {
 		elem := @stack->Top();
 		@stack->Pop();
 		return elem;
@@ -114,7 +114,7 @@ class JSONBuilder {
 		return true;
 	}
 
-	method : public : Add(name : String, value : Int) ~ Bool {
+	method : public : Insert(name : String, value : Int) ~ Bool {
 		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
 			return false;
 		};
@@ -123,16 +123,7 @@ class JSONBuilder {
 		return true;
 	}
 
-	method : public : Add(name : String, value : Float) ~ Bool {
-		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
-			return false;
-		};
-		
-		@stack->Top()->Insert(name, value);
-		return true;
-	}
-
-	method : public : Add(name : String, value : String) ~ Bool {
+	method : public : Insert(name : String, value : Float) ~ Bool {
 		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
 			return false;
 		};
@@ -141,7 +132,7 @@ class JSONBuilder {
 		return true;
 	}
 
-	method : public : Add(name : String, value : Bool) ~ Bool {
+	method : public : Insert(name : String, value : String) ~ Bool {
 		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
 			return false;
 		};
@@ -150,7 +141,16 @@ class JSONBuilder {
 		return true;
 	}
 
-	method : public : Add(name : String, value : JSONElement) ~ Bool {
+	method : public : Insert(name : String, value : Bool) ~ Bool {
+		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+			return false;
+		};
+		
+		@stack->Top()->Insert(name, value);
+		return true;
+	}
+
+	method : public : Insert(name : String, value : JSONElement) ~ Bool {
 		if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
 			return false;
 		};
