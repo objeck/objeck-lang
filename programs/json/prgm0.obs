@@ -6,9 +6,9 @@ class Test {
 		builder := JSONBuilder->New();
 		builder->InsertArray();
 		each(i : 3) {
-#			builder->InsertObject();
-			builder->Add(i);
-#			builder->Remove();
+			builder->InsertObject();
+			builder->Add("foo", Nil->As(JSONElement));
+			builder->Remove();
 		};
 		builder->Remove()->ToString()->PrintLine();
 	}
