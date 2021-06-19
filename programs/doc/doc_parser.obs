@@ -1034,7 +1034,7 @@ class FuncSnippet from Snippet {
 					if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 						@signature->Append(func_type->GetName());
 						@signature->Append(':');
-						@signature->Append(GetShortName(func_type->GetTypeName()));
+						@signature->Append(func_type->GetTypeName());
 						
 						if(i + 1 < @func_types->Size()) {
 							@signature->Append(", ");
