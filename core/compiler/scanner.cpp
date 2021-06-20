@@ -760,28 +760,20 @@ void Scanner::Whitespace()
 }
 
 /****************************
- * Parses a token
+ * Processes comments
  ****************************/
-void Scanner::ParseToken(int index)
+void Scanner::Comments()
 {
-  // unable to load buffer
-  if(!buffer) {
-    tokens[index]->SetType(TOKEN_NO_INPUT);
-    return;
-  }
-  // ignore white space
-  Whitespace();
-  // ignore comments
-  while((cur_char == COMMENT || 
-         (alt_syntax && (cur_char == ALT_COMMENT && (nxt_char == ALT_COMMENT || cur_char == ALT_EXTENDED_COMMENT)))) && 
+  while((cur_char == COMMENT ||
+         (alt_syntax && (cur_char == ALT_COMMENT && (nxt_char == ALT_COMMENT || cur_char == ALT_EXTENDED_COMMENT)))) &&
         cur_char != EOB) {
     NextChar();
-    
+
     // extended comment
     if(cur_char == EXTENDED_COMMENT || (alt_syntax && cur_char == ALT_EXTENDED_COMMENT)) {
       NextChar();
-      while(!((cur_char == EXTENDED_COMMENT && nxt_char == COMMENT) || 
-              (alt_syntax && cur_char == ALT_EXTENDED_COMMENT && nxt_char == ALT_COMMENT)) && 
+      while(!((cur_char == EXTENDED_COMMENT && nxt_char == COMMENT) ||
+              (alt_syntax && cur_char == ALT_EXTENDED_COMMENT && nxt_char == ALT_COMMENT)) &&
             cur_char != EOB) {
         NextChar();
       }
@@ -796,6 +788,25 @@ void Scanner::ParseToken(int index)
     }
     Whitespace();
   }
+}
+
+/****************************
+ * Parses a token
+ ****************************/
+void Scanner::ParseToken(int index)
+{
+  // unable to load buffer
+  if(!buffer) {
+    tokens[index]->SetType(TOKEN_NO_INPUT);
+    return;
+  }
+  
+  // ignore white space
+  Whitespace();
+
+  // ignore comments
+  Comments();
+
   // character string
   if(cur_char == L'\"') {
     NextChar();

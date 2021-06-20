@@ -481,6 +481,8 @@ class Scanner {
   void ReadFile();
   // ignore white space
   void Whitespace();
+  // ignore comments
+  void Comments();
   // next character
   void NextChar();
   // load reserved keywords
