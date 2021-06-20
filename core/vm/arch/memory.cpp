@@ -108,8 +108,7 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
 #endif
-  set<size_t*>::iterator found = allocated_memory.find(mem);
-  if(found != allocated_memory.end()) {
+  if(mem) {
     // check if memory has been marked
     if(mem[MARKED_FLAG]) {
 #ifndef _GC_SERIAL
@@ -146,8 +145,7 @@ inline bool MemoryManager::MarkValidMemory(size_t* mem)
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    set<size_t*>::iterator found = allocated_memory.find(mem);
-    if(found != allocated_memory.end()) {
+    if(mem) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -1571,7 +1569,16 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  if(mem) {
+  // record
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+  set<size_t*>::iterator found = allocated_memory.find(mem);
+
+  if(found != allocated_memory.end()) {
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
@@ -1622,5 +1629,10 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         }
       }
     }
+  }
+  else {
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
   }
 }
