@@ -1018,11 +1018,12 @@ void* MemoryManager::CheckStack(void* arg)
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    set<size_t*>::iterator found = allocated_memory.find(check_mem);
+    set<size_t*>::iterator check = allocated_memory.find(check_mem);
+    const bool found = check != allocated_memory.end();
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
 #endif
-    if(found != allocated_memory.end()) {
+    if(found) {
       CheckObject(check_mem, false, 1);
     }
   }
@@ -1248,11 +1249,12 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifndef _GC_SERIAL
         MUTEX_LOCK(&allocated_lock);
 #endif 
-        set<size_t*>::iterator found = allocated_memory.find(check_mem);
+        set<size_t*>::iterator check = allocated_memory.find(check_mem);
+        const bool found = check != allocated_memory.end();
 #ifndef _GC_SERIAL
         MUTEX_UNLOCK(&allocated_lock);
 #endif
-        if(found != allocated_memory.end()) {
+        if(found) {
           CheckObject(check_mem, false, 1);
         }
       }
