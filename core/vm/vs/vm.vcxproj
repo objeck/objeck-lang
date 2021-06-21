@@ -124,7 +124,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);_GC_SERIAL;_DEBUG_GC</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
       <EnablePREfast>false</EnablePREfast>
