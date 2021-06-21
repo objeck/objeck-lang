@@ -1011,9 +1011,21 @@ void* MemoryManager::CheckStack(void* arg)
         << L"; thread=" << pthread_self() << L" -----" << endl;
 #endif    
 #endif
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
   while(info->stack_pos > -1) {
-    CheckObject((size_t*)info->op_stack[info->stack_pos--], false, 1);
+    size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
+    set<size_t*>::iterator found = allocated_memory.find(check_mem);
+    if(found != allocated_memory.end()) {
+      CheckObject(check_mem, false, 1);
+    }
   }
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
+  
   delete info;
   info = nullptr;
 
@@ -1220,7 +1232,13 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       // NOTE: this marks temporary variables that are stored in JIT memory
       // during some method calls. There are 6 integer temp addresses
-      // TODO: for non-ARM64 targets, skip 'has_and_or' variable addressd
+      // TODO: for non-ARM64 targets, skip 'has_and_or' variable addressed
+
+
+#ifndef _GC_SERIAL
+      MUTEX_LOCK(&allocated_lock);
+#endif
+      
 #ifdef _ARM32
       // for ARM32, skip the link register
       for(int i = 1; i <= 6; ++i) {
@@ -1230,8 +1248,16 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #else
       for(int i = 0; i < 6; ++i) {
 #endif
-        CheckObject((size_t*)mem[i], false, 1);
+        size_t* check_mem = (size_t*)mem[i];
+        set<size_t*>::iterator found = allocated_memory.find(check_mem);
+        if(found != allocated_memory.end()) {
+          CheckObject(check_mem, false, 1);
+        }
       }
+
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
     }
 #ifdef _DEBUG_GC
     else {
@@ -1569,16 +1595,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  // record
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
-  set<size_t*>::iterator found = allocated_memory.find(mem);
-
-  if(found != allocated_memory.end()) {
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
-#endif
+  if(mem) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
@@ -1629,10 +1646,5 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         }
       }
     }
-  }
-  else {
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
-#endif
   }
 }
