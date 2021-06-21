@@ -7201,6 +7201,10 @@ Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Cl
   int concrete_index = -1;
   const wstring left_type_name = type->GetName();
 
+  if(program->GetEnum(left_type_name) || linker->SearchEnumLibraries(left_type_name, program->GetUses())) {
+    ProcessError(expression, L"Generic must be a class type");
+  }
+
   if(left_klass) {
     concrete_index = left_klass->GenericIndex(left_type_name);
   }

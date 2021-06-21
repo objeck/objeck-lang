@@ -2733,7 +2733,7 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
       Type* type = ParseType(depth + 1);
       if(type) {
         if(type->GetType() != CLASS_TYPE) {
-          ProcessError(L"Generic cannot be of type basic");
+          ProcessError(L"Generic cannot be a basic type");
           return generic_types;
         }
         else {
