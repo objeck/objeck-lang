@@ -1012,19 +1012,21 @@ void* MemoryManager::CheckStack(void* arg)
 #endif    
 #endif
 
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
+
   while(info->stack_pos > -1) {
     size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&allocated_lock);
+#endif
     set<size_t*>::iterator found = allocated_memory.find(check_mem);
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
     if(found != allocated_memory.end()) {
       CheckObject(check_mem, false, 1);
     }
   }
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
-#endif
+
   
   delete info;
   info = nullptr;
@@ -1233,12 +1235,6 @@ void* MemoryManager::CheckJitRoots(void* arg)
       // NOTE: this marks temporary variables that are stored in JIT memory
       // during some method calls. There are 6 integer temp addresses
       // TODO: for non-ARM64 targets, skip 'has_and_or' variable addressed
-
-
-#ifndef _GC_SERIAL
-      MUTEX_LOCK(&allocated_lock);
-#endif
-      
 #ifdef _ARM32
       // for ARM32, skip the link register
       for(int i = 1; i <= 6; ++i) {
@@ -1249,15 +1245,17 @@ void* MemoryManager::CheckJitRoots(void* arg)
       for(int i = 0; i < 6; ++i) {
 #endif
         size_t* check_mem = (size_t*)mem[i];
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif 
         set<size_t*>::iterator found = allocated_memory.find(check_mem);
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
         if(found != allocated_memory.end()) {
           CheckObject(check_mem, false, 1);
         }
       }
-
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&allocated_lock);
-#endif
     }
 #ifdef _DEBUG_GC
     else {
@@ -1266,14 +1264,14 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif
   }
   jit_frames.clear();
-  
+
 #ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&jit_frame_lock);  
+  MUTEX_UNLOCK(&jit_frame_lock);
 #ifndef _WIN32
   pthread_exit(nullptr);
 #endif
 #endif
-
+  
   return 0;
 }
 
