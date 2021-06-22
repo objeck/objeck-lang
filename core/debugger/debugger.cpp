@@ -65,7 +65,7 @@ int main(int argc, char** argv)
   usage += L" (x86 Linux)";
 #endif 
 
-  usage += L"\nWeb: www.objeck.org";
+  usage += L"\nWeb: https://www.objeck.org";
 
   if(argc >= 3) {
 #ifdef _WIN32
