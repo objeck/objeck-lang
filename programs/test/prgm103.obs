@@ -5,10 +5,10 @@ class Hello {
 		in := "\\\"Finding Twitter webhooks a challenge to set up? With Autohook, it\\u2019s so easy you can actually build a complete autor\\u2026 https:\\/\\/t.co\\/srRymga55Y\\\"";
 		in->PrintLine();
 
-		foo := JSONElement->Decode(in);
+		foo := JsonElement->Decode(in);
 		foo->PrintLine();
 
-		bar := JSONElement->Encode(foo);
+		bar := JsonElement->Encode(foo);
 		bar->PrintLine();
 
 		in->Equals(bar)->PrintLine();

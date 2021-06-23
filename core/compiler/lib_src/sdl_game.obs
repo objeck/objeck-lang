@@ -1620,22 +1620,22 @@ bundle Game.Framework {
 		}
 
 		#~
-		Build assets from a JSON file
+		Build assets from a Json file
 		@param file path to build file
 		@return true if successful, false otherwise
 		~# 
 		method : public : BuildFromFile(file : String) ~ Bool {
 			if(@is_ok) {
-				parser := JSONParser->New(System.IO.File.FileReader->ReadFile(file));
+				parser := JsonParser->New(System.IO.File.FileReader->ReadFile(file));
 				if(parser->Parse()) {
 					root := parser->GetRoot();
 
 					# sound
 					sound := root->Get("sounds");
-					if(sound <> Nil & sound->GetType() = JSONType->OBJECT) {
+					if(sound <> Nil & sound->GetType() = JsonType->OBJECT) {
 						# music
 						music := sound->Get("music");
-						if(music <> Nil & music->GetType() = JSONType->OBJECT) {
+						if(music <> Nil & music->GetType() = JsonType->OBJECT) {
 							path_attrib := music->Get("path");
 							if(path_attrib <> Nil)	{
 								path := path_attrib->GetValue();
@@ -1650,10 +1650,10 @@ bundle Game.Framework {
 						
 						# chucks
 						chunks := sound->Get("chunks");
-						if(chunks <> Nil & chunks->GetType() = JSONType->ARRAY) {
+						if(chunks <> Nil & chunks->GetType() = JsonType->ARRAY) {
 							each(i : chunks) {
 								chunk := chunks->Get(i);
-								if(chunk->GetType() = JSONType->OBJECT) {
+								if(chunk->GetType() = JsonType->OBJECT) {
 									name_attrib := chunk->Get("name");
 									path_attrib := chunk->Get("path");
 									if(name_attrib <> Nil & path_attrib <> Nil) {
@@ -1678,10 +1678,10 @@ bundle Game.Framework {
 
 					# colors
 					colors := root->Get("colors");
-					if(colors <> Nil & colors->GetType() = JSONType->ARRAY) {
+					if(colors <> Nil & colors->GetType() = JsonType->ARRAY) {
 						each(i : colors) {
 							color := colors->Get(i);
-							if(color->GetType() = JSONType->OBJECT) {
+							if(color->GetType() = JsonType->OBJECT) {
 								name_attrib := color->Get("name");
 								code_attrib := color->Get("code");
 								if(name_attrib <> Nil & code_attrib <> Nil) {
@@ -1710,10 +1710,10 @@ bundle Game.Framework {
 
 					# fonts
 					fonts := root->Get("fonts");
-					if(fonts <> Nil & fonts->GetType() = JSONType->ARRAY) {
+					if(fonts <> Nil & fonts->GetType() = JsonType->ARRAY) {
 						each(i : fonts) {
 							font_obj := fonts->Get(i);
-							if(font_obj->GetType() = JSONType->OBJECT) {
+							if(font_obj->GetType() = JsonType->OBJECT) {
 								name_attrib := font_obj->Get("name");
 								path_attrib := font_obj->Get("path");
 								size_attrib := font_obj->Get("size");
@@ -1740,13 +1740,13 @@ bundle Game.Framework {
 
 					# assets
 					assets := root->Get("assets");
-					if(assets <> Nil & assets->GetType() = JSONType->OBJECT) {
+					if(assets <> Nil & assets->GetType() = JsonType->OBJECT) {
 						# image_sprites
 						image_sprites := assets->Get("image_sprites");
-						if(image_sprites <> Nil & image_sprites->GetType() = JSONType->ARRAY) {
+						if(image_sprites <> Nil & image_sprites->GetType() = JsonType->ARRAY) {
 							each(i : image_sprites) {
 								image_sprite := image_sprites->Get(i);
-								if(image_sprite->GetType() = JSONType->OBJECT) {
+								if(image_sprite->GetType() = JsonType->OBJECT) {
 									name_attrib := image_sprite->Get("name");
 									path_attrib := image_sprite->Get("path");
 									color_key_attrib := image_sprite->Get("color-key");
@@ -1796,10 +1796,10 @@ bundle Game.Framework {
 
 						# rectangles
 						rectangles := assets->Get("rectangles");
-						if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
+						if(rectangles <> Nil & rectangles->GetType() = JsonType->ARRAY) {
 							each(i : rectangles) {
 								rectangle := rectangles->Get(i);
-								if(rectangle->GetType() = JSONType->OBJECT) {
+								if(rectangle->GetType() = JsonType->OBJECT) {
 									name_attrib := rectangle->Get("name");
 									size_attrib := rectangle->Get("size");
 									color_attrib := rectangle->Get("color");
@@ -1842,10 +1842,10 @@ bundle Game.Framework {
 
 						# text_sprites
 						text_sprites := assets->Get("text_sprites");
-						if(text_sprites <> Nil & text_sprites->GetType() = JSONType->ARRAY) {
+						if(text_sprites <> Nil & text_sprites->GetType() = JsonType->ARRAY) {
 							each(i : text_sprites) {
 								text_sprite := text_sprites->Get(i);
-								if(text_sprite->GetType() = JSONType->OBJECT) {
+								if(text_sprite->GetType() = JsonType->OBJECT) {
 									name_attrib := text_sprite->Get("name");
 									font_attrib := text_sprite->Get("font");
 									text_attrib := text_sprite->Get("text");
@@ -1887,10 +1887,10 @@ bundle Game.Framework {
 #~
 						# titled_sprites
 						titled_sprites := assets->Get("titled_sprites");
-						if(titled_sprites <> Nil & titled_sprites->GetType() = JSONType->ARRAY) {
+						if(titled_sprites <> Nil & titled_sprites->GetType() = JsonType->ARRAY) {
 							each(i : titled_sprites) {
 								titled_sprite := titled_sprites->Get(i);
-								if(titled_sprite->GetType() = JSONType->OBJECT) {
+								if(titled_sprite->GetType() = JsonType->OBJECT) {
 									name_attrib := titled_sprite->Get("name");
 									path_attrib := titled_sprite->Get("path");
 									size_attrib := titled_sprite->Get("size");
@@ -1915,10 +1915,10 @@ bundle Game.Framework {
 
 						# animated_sprites
 						animated_sprites := assets->Get("animated_sprites");
-						if(animated_sprites <> Nil & animated_sprites->GetType() = JSONType->ARRAY) {
+						if(animated_sprites <> Nil & animated_sprites->GetType() = JsonType->ARRAY) {
 							each(i : animated_sprites) {
 								animated_sprite := animated_sprites->Get(i);
-								if(animated_sprite->GetType() = JSONType->OBJECT) {
+								if(animated_sprite->GetType() = JsonType->OBJECT) {
 									name_attrib := animated_sprite->Get("name");
 									path_attrib := animated_sprite->Get("path");
 									size_attrib := animated_sprite->Get("size");
@@ -1935,10 +1935,10 @@ bundle Game.Framework {
 									};
 
 									# animated_sprites/rects
-									if(rects_attrib->GetType() = JSONType->ARRAY) {
+									if(rects_attrib->GetType() = JsonType->ARRAY) {
 										each(j : rects_attrib) {
 											rect_obj := rects_attrib->Get(j);
-											if(rect_obj->GetType() = JSONType->OBJECT) {
+											if(rect_obj->GetType() = JsonType->OBJECT) {
 												rect_attrib := rect_obj->Get("rect");
 												if(rect_attrib <> Nil) {
 													rect := rect_attrib->GetValue();

@@ -1,25 +1,25 @@
 #~~
-# JSON parsing library
+# Json parsing library
 # Copyright (c) 2012,2021 Randy Hollines
 ~~#
 
 use Collection.Generic;
 
 #~
-Support for paring JSON strings and documents (-lib json.obl)
+Support for parsing JSON strings and documents (-lib json.obl)
 ~#
 bundle Data.JSON {
 	#~
 	Table driven JSON builder
 	~#
-	class JSONBuilder {
-		@stack : Stack<JSONElement>;
+	class JsonBuilder {
+		@stack : Stack<JsonElement>;
 
 		#~
 		Constructor
 		~#
 		New() {
-			@stack := Stack->New()<JSONElement>;
+			@stack := Stack->New()<JsonElement>;
 		}
 
 		#~
@@ -34,10 +34,10 @@ bundle Data.JSON {
 		~#
 		method : public : PushObject() ~ Nil {
 			if(@stack->IsEmpty()) {
-				@stack->Push(JSONElement->New(JSONType->OBJECT));
+				@stack->Push(JsonElement->New(JsonType->OBJECT));
 			}
-			else if(@stack->Top()->GetType() = JSONType->ARRAY) {
-				elem := JSONElement->New(JSONType->OBJECT);
+			else if(@stack->Top()->GetType() = JsonType->ARRAY) {
+				elem := JsonElement->New(JsonType->OBJECT);
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
 			};
@@ -49,14 +49,14 @@ bundle Data.JSON {
 		~#
 		method : public : PushObject(name : String) ~ Nil {
 			if(@stack->IsEmpty()) {
-				@stack->Push(JSONElement->New(JSONType->OBJECT, name));
+				@stack->Push(JsonElement->New(JsonType->OBJECT, name));
 			}
-			else if(@stack->Top()->GetType() = JSONType->ARRAY) {
-				elem := JSONElement->New(JSONType->OBJECT);
+			else if(@stack->Top()->GetType() = JsonType->ARRAY) {
+				elem := JsonElement->New(JsonType->OBJECT);
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
 			}
-			else if(@stack->Top()->GetType() = JSONType->OBJECT) {
+			else if(@stack->Top()->GetType() = JsonType->OBJECT) {
 				elem := @stack->Top()->AddChild(name);
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
@@ -68,10 +68,10 @@ bundle Data.JSON {
 		~#
 		method : public : PushArray() ~ Nil {
 			if(@stack->IsEmpty()) {
-				@stack->Push(JSONElement->New(JSONType->ARRAY));
+				@stack->Push(JsonElement->New(JsonType->ARRAY));
 			}
 			else {
-				elem := JSONElement->New(JSONType->ARRAY);
+				elem := JsonElement->New(JsonType->ARRAY);
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
 			};
@@ -82,7 +82,7 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Pop() ~ JSONElement {
+		method : public : Pop() ~ JsonElement {
 			elem := @stack->Top();
 			@stack->Pop();
 			return elem;
@@ -94,7 +94,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : String) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return false;
 			};
 
@@ -108,7 +108,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : Int) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return false;
 			};
 
@@ -122,7 +122,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : Float) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return false;
 			};
 
@@ -136,7 +136,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : Bool) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return false;
 			};
 
@@ -149,8 +149,8 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : JSONElement) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->ARRAY) {
+		method : public : Add(value : JsonElement) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return false;
 			};
 
@@ -165,7 +165,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Int) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return false;
 			};
 
@@ -180,7 +180,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Float) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return false;
 			};
 			
@@ -195,7 +195,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : String) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return false;
 			};
 			
@@ -210,7 +210,7 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Bool) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return false;
 			};
 			
@@ -224,8 +224,8 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : JSONElement) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JSONType->OBJECT) {
+		method : public : Insert(name : String, value : JsonElement) ~ Bool {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return false;
 			};
 			
@@ -235,18 +235,18 @@ bundle Data.JSON {
 	}
 
 	#~
-	Support for JSON parsing
+	Support for Json parsing
 	~#
-	class JSONParser {
+	class JsonParser {
 		@input : String;
 		@tokens : Vector<Token>;
 		@token_pos : Int;
 		@cur_token : Token;
-		@root : JSONElement;
+		@root : JsonElement;
 		
 		#~
 		Creates a new parser
-		@param input JSON input string
+		@param input Json input string
 		~#
 		New(input : String) {
 			@input := input;
@@ -267,7 +267,7 @@ bundle Data.JSON {
 		}
 
 		#~
-		Parses a JSON string
+		Parses a Json string
 		@return true is successful, false otherwise
 		~#
 		method : public : Parse() ~ Bool {
@@ -276,7 +276,7 @@ bundle Data.JSON {
 # DumpTokens(@tokens);
 				NextToken();
 				@root := ParseValue();
-				return @root <> Nil & @root->GetType() = JSONType->OBJECT;
+				return @root <> Nil & @root->GetType() = JsonType->OBJECT;
 			};
 			
 			return false;
@@ -284,9 +284,9 @@ bundle Data.JSON {
 
     	#~
 		Get document root
-		@return root JSON element
+		@return root Json element
 		~#
-		method : public : GetRoot() ~ JSONElement {
+		method : public : GetRoot() ~ JsonElement {
 			return @root;
 		}
 		
@@ -300,8 +300,8 @@ bundle Data.JSON {
 			};
 		}
 		
-		method : ParseValue() ~ JSONElement {
-			element : JSONElement;
+		method : ParseValue() ~ JsonElement {
+			element : JsonElement;
 			
 			select(@cur_token->GetType()) {
 				label Token->Type->OBR: {
@@ -315,7 +315,7 @@ bundle Data.JSON {
 				}
 
 				label Token->Type->IDENT: {
-					element := JSONElement->New(@cur_token->GetValue());
+					element := JsonElement->New(@cur_token->GetValue());
 # Console->Print("string=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 					
@@ -323,25 +323,25 @@ bundle Data.JSON {
 				
 				label Token->Type->INT_NUM:
 				label Token->Type->FLOAT_NUM: {
-					element := JSONElement->New(JSONType->NUMBER, @cur_token->GetValue());
+					element := JsonElement->New(JsonType->NUMBER, @cur_token->GetValue());
 # Console->Print("number=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 				}
 				
 				label Token->Type->TRUE: {
-					element := JSONElement->New(JSONType->TRUE);
+					element := JsonElement->New(JsonType->TRUE);
 # "true"->PrintLine();
 					NextToken();
 				}
 				
 				label Token->Type->FALSE: {
-					element := JSONElement->New(JSONType->FALSE);
+					element := JsonElement->New(JsonType->FALSE);
 # "false"->PrintLine();
 					NextToken();
 				}
 				
 				label Token->Type->NULL: {
-					element := JSONElement->New(JSONType->NULL);
+					element := JsonElement->New(JsonType->NULL);
 # "null"->PrintLine();
 					NextToken();
 				}
@@ -356,8 +356,8 @@ bundle Data.JSON {
 			return element;
 		}
 
-		method : ParseObject() ~ JSONElement {
-			elements := Map->New()<String, JSONElement>;
+		method : ParseObject() ~ JsonElement {
+			elements := Map->New()<String, JsonElement>;
 			
 			NextToken();
 			while(@cur_token->GetType() <> Token->Type->EOS & 
@@ -402,11 +402,11 @@ bundle Data.JSON {
 			};
 			NextToken();
 			
-			return JSONElement->New(elements);
+			return JsonElement->New(elements);
 		}
 
-		method : ParseArray() ~ JSONElement {
-			elements := Vector->New()<JSONElement>;
+		method : ParseArray() ~ JsonElement {
+			elements := Vector->New()<JsonElement>;
 			
 			NextToken();
 			while(@cur_token->GetType() <> Token->Type->EOS & 
@@ -431,10 +431,10 @@ bundle Data.JSON {
 			};
 			NextToken();
 			
-			return JSONElement->New(elements);
+			return JsonElement->New(elements);
 		}
 
-		# scan JSON tokens
+		# scan Json tokens
 		method : native : Scan() ~ Vector<Token> {
 			tokens := Vector->New()<Token>;
 				
@@ -649,108 +649,108 @@ bundle Data.JSON {
 	}
 
 	#~
-	JSON value element
+	Json value element
 	~#
-	class JSONElement {
-		@type : JSONType;
+	class JsonElement {
+		@type : JsonType;
 		@value : String;
-		@array_elems : Vector<JSONElement>;
-		@map_elems : Map<String, JSONElement>;
+		@array_elems : Vector<JsonElement>;
+		@map_elems : Map<String, JsonElement>;
 		
 		#~
 		Constructor
-		@param type JSON element type
+		@param type Json element type
 		~#
-		New(type : JSONType) {
+		New(type : JsonType) {
 			select(type) {
-				label JSONType->TRUE {
+				label JsonType->TRUE {
 					@type := type;	
 					@value := "true";
 				}
 
-				label JSONType->FALSE {
+				label JsonType->FALSE {
 					@type := type;	
 					@value := "false";
 				}
 
-				label JSONType->NULL {
+				label JsonType->NULL {
 					@type := type;	
 					@value := "";
 				}
 
-				label JSONType->OBJECT {
+				label JsonType->OBJECT {
 					@type := type;
-					@map_elems := Map->New()<String, JSONElement>;
+					@map_elems := Map->New()<String, JsonElement>;
 				}
 
-				label JSONType->ARRAY {
+				label JsonType->ARRAY {
 					@type := type;
-					@array_elems := Vector->New()<JSONElement>;
+					@array_elems := Vector->New()<JsonElement>;
 				}   
 
 				other {
-					@type := JSONType->OTHER;
+					@type := JsonType->OTHER;
 				}
 			};
 		}
 		
 		#~
 		Constructor
-		@param type JSON element type
-		@param value JSON string value
+		@param type Json element type
+		@param value Json string value
 		~#
-		New(type : JSONType, value : String) {
-			if(type = JSONType->STRING | type = JSONType->NUMBER) {
+		New(type : JsonType, value : String) {
+			if(type = JsonType->STRING | type = JsonType->NUMBER) {
 				@type := type;	
 				@value := value;				
 			}
 			else {
-				@type := JSONType->OTHER;
+				@type := JsonType->OTHER;
 			};
 		}
 
 		#~
 		Constructor
-		@param value JSON string value
+		@param value Json string value
 		~#
 		New(value : String) {
-			@type := JSONType->STRING;	
+			@type := JsonType->STRING;	
 			@value := value;
 		}
 		
 		#~
 		Constructor
-		@param value JSON integer value
+		@param value Json integer value
 		~#
 		New(value : Int) {
-			@type := JSONType->NUMBER;	
+			@type := JsonType->NUMBER;	
 			@value := value->ToString();
 		}
 
 		#~
 		Constructor
-		@param value JSON float value
+		@param value Json float value
 		~#
 		New(value : Float) {
-			@type := JSONType->NUMBER;	
+			@type := JsonType->NUMBER;	
 			@value := value->ToString();
 		}
 
 		#~
 		Constructor
-		@param array_elems JSON array value
+		@param array_elems Json array value
 		~#
-		New(array_elems : Vector<JSONElement>) {
-			@type := JSONType->ARRAY;
+		New(array_elems : Vector<JsonElement>) {
+			@type := JsonType->ARRAY;
 			@array_elems := array_elems;
 		}
 		
 		#~
 		Constructor
-		@param map_elems JSON object (names/values)
+		@param map_elems Json object (names/values)
 		~#
-		New(map_elems : Map<String, JSONElement>) {
-			@type := JSONType->OBJECT;
+		New(map_elems : Map<String, JsonElement>) {
+			@type := JsonType->OBJECT;
 			@map_elems := map_elems;
 		}
 		
@@ -758,7 +758,7 @@ bundle Data.JSON {
 		Gets the type
 		@return type
 		~#
-		method : public : GetType() ~ JSONType {
+		method : public : GetType() ~ JsonType {
 			return @type;
 		}
 		
@@ -779,7 +779,7 @@ bundle Data.JSON {
 		@param index index
 		@return indexed value
 		~#
-		method : public : Get(index : Int) ~ JSONElement {
+		method : public : Get(index : Int) ~ JsonElement {
 			if(@array_elems <> Nil & index < @array_elems->Size()) {
 				return @array_elems->Get(index);
 			};
@@ -801,7 +801,7 @@ bundle Data.JSON {
 		@param name element name
 		@return element value
 		~#
-		method : public : Get(name : String) ~ JSONElement {
+		method : public : Get(name : String) ~ JsonElement {
 			if(@map_elems <> Nil) {
 				return @map_elems->Find(name);
 			};
@@ -823,10 +823,10 @@ bundle Data.JSON {
 		@param elem element
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(elem : JSONElement) ~ Bool {
-			if(@type = JSONType->ARRAY) {
+		method : public : Add(elem : JsonElement) ~ Bool {
+			if(@type = JsonType->ARRAY) {
 				if(elem = Nil) {
-					@array_elems->AddBack(JSONElement->New(JSONType->NULL));
+					@array_elems->AddBack(JsonElement->New(JsonType->NULL));
 				}
 				else {
 					@array_elems->AddBack(elem);
@@ -844,8 +844,8 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : String) ~ Bool {
-			if(@type = JSONType->ARRAY) {
-				@array_elems->AddBack(JSONElement->New(value));
+			if(@type = JsonType->ARRAY) {
+				@array_elems->AddBack(JsonElement->New(value));
 				return true;
 			};
 
@@ -858,8 +858,8 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : Int) ~ Bool {
-			if(@type = JSONType->ARRAY) {
-				@array_elems->AddBack(JSONElement->New(value));
+			if(@type = JsonType->ARRAY) {
+				@array_elems->AddBack(JsonElement->New(value));
 				return true;
 			};
 
@@ -872,8 +872,8 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : Float) ~ Bool {
-			if(@type = JSONType->ARRAY) {
-				@array_elems->AddBack(JSONElement->New(value));
+			if(@type = JsonType->ARRAY) {
+				@array_elems->AddBack(JsonElement->New(value));
 				return true;
 			};
 
@@ -886,12 +886,12 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Add(value : Bool) ~ Bool {
-			if(@type = JSONType->ARRAY) {
+			if(@type = JsonType->ARRAY) {
 				if(value) {
-					@array_elems->AddBack(JSONElement->New(JSONType->TRUE));
+					@array_elems->AddBack(JsonElement->New(JsonType->TRUE));
 				}
 				else {
-					@array_elems->AddBack(JSONElement->New(JSONType->FALSE));
+					@array_elems->AddBack(JsonElement->New(JsonType->FALSE));
 				};
 
 				return true;
@@ -905,9 +905,9 @@ bundle Data.JSON {
 		@param name class name
 		@return child class
 		~#
-		method : public : AddChild(name : String) ~ JSONElement {        
-			if(@type = JSONType->OBJECT) {
-				elem := JSONElement->New(JSONType->OBJECT);
+		method : public : AddChild(name : String) ~ JsonElement {        
+			if(@type = JsonType->OBJECT) {
+				elem := JsonElement->New(JsonType->OBJECT);
 				@map_elems->Insert(name, elem);
 
 				return elem;
@@ -922,10 +922,10 @@ bundle Data.JSON {
 		@param elem element
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, elem : JSONElement) ~ Bool {        
-			if(@type = JSONType->OBJECT) {
+		method : public : Insert(name : String, elem : JsonElement) ~ Bool {        
+			if(@type = JsonType->OBJECT) {
 				if(elem = Nil) {
-					@map_elems->Insert(name, JSONElement->New(JSONType->NULL));
+					@map_elems->Insert(name, JsonElement->New(JsonType->NULL));
 				}
 				else {
 					@map_elems->Insert(name, elem);
@@ -944,8 +944,8 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : String) ~ Bool {        
-			if(@type = JSONType->OBJECT) {
-				@map_elems->Insert(name, JSONElement->New(value));
+			if(@type = JsonType->OBJECT) {
+				@map_elems->Insert(name, JsonElement->New(value));
 				return true;
 			};
 
@@ -959,8 +959,8 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Int) ~ Bool {        
-			if(@type = JSONType->OBJECT) {
-				@map_elems->Insert(name, JSONElement->New(value));
+			if(@type = JsonType->OBJECT) {
+				@map_elems->Insert(name, JsonElement->New(value));
 				return true;
 			};
 
@@ -974,8 +974,8 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Float) ~ Bool {        
-			if(@type = JSONType->OBJECT) {
-				@map_elems->Insert(name, JSONElement->New(value));
+			if(@type = JsonType->OBJECT) {
+				@map_elems->Insert(name, JsonElement->New(value));
 				return true;
 			};
 
@@ -989,12 +989,12 @@ bundle Data.JSON {
 		@return true if successful, false otherwise
 		~#
 		method : public : Insert(name : String, value : Bool) ~ Bool {        
-			if(@type = JSONType->OBJECT) {
+			if(@type = JsonType->OBJECT) {
 				if(value) {
-					@map_elems->Insert(name, JSONElement->New(JSONType->TRUE));
+					@map_elems->Insert(name, JsonElement->New(JsonType->TRUE));
 				}
 				else {
-					@map_elems->Insert(name, JSONElement->New(JSONType->FALSE));
+					@map_elems->Insert(name, JsonElement->New(JsonType->FALSE));
 				};
 
 				return true;
@@ -1004,7 +1004,7 @@ bundle Data.JSON {
 		}
         
 		#~
-		General decoding for JSON strings		
+		General decoding for Json strings		
 		@param str encoded string
 		@return decoded string
 		~#
@@ -1164,7 +1164,7 @@ bundle Data.JSON {
 		@param type type to check
 		@return true of matching, false otherwise
 		~#
-		function : public : MatchType(elem : JSONElement, type : JSONType) ~ Bool {
+		function : public : MatchType(elem : JsonElement, type : JsonType) ~ Bool {
 			if(elem <> Nil & elem->GetType() = type) {
 				return true;
 			};
@@ -1178,8 +1178,8 @@ bundle Data.JSON {
 		@param value value to check
 		@return true of matching, false otherwise
 		~#
-		function : public : MatchValue(elem : JSONElement, value : String) ~ Bool {
-			if(elem <> Nil & elem->GetType() = JSONType->STRING & elem->GetValue()->Equals(value)) {
+		function : public : MatchValue(elem : JsonElement, value : String) ~ Bool {
+			if(elem <> Nil & elem->GetType() = JsonType->STRING & elem->GetValue()->Equals(value)) {
 				return true;
 			};
 			
@@ -1198,7 +1198,7 @@ bundle Data.JSON {
 		
 		method : Format(output : String) ~ Nil {
 			select(@type) {
-				label JSONType->STRING: {
+				label JsonType->STRING: {
 					if(@value <> Nil) {
 						output->Append('"');
 						output->Append(@value);
@@ -1206,25 +1206,25 @@ bundle Data.JSON {
 					};
 				}
 
-				label JSONType->NUMBER: {
+				label JsonType->NUMBER: {
 					if(@value <> Nil) {
 						output->Append(@value);
 					};
 				}
 				
-				label JSONType->TRUE: {
+				label JsonType->TRUE: {
 					output->Append("true");
 				}
 
-				label JSONType->FALSE: {
+				label JsonType->FALSE: {
 					output->Append("false");
 				}
 				
-				label JSONType->NULL: {
+				label JsonType->NULL: {
 					output->Append("null");
 				}
 
-				label JSONType->ARRAY: {
+				label JsonType->ARRAY: {
 					if(@array_elems <> Nil) {
 						output->Append('[');
 						each(i : @array_elems) {
@@ -1237,7 +1237,7 @@ bundle Data.JSON {
 					};
 				}
 
-				label JSONType->OBJECT: {
+				label JsonType->OBJECT: {
 					if(@map_elems <> Nil) {
 						output->Append('{');
 						keys := @map_elems->GetKeys()<String>;
@@ -1247,7 +1247,7 @@ bundle Data.JSON {
 							output->Append('"');
 							output->Append(key);
 							output->Append("\":");
-							value->As(JSONElement)->Format(output);
+							value->As(JsonElement)->Format(output);
 							if(i + 1 < @map_elems->Size()) {
 								output->Append(',');
 							};
@@ -1263,7 +1263,7 @@ bundle Data.JSON {
 		@param path query path
 		@return matching element
 		~#
-		method : public : FindElements(path : String) ~ JSONElement {					
+		method : public : FindElements(path : String) ~ JsonElement {					
 			filters := path->Split("/");
 			if(filters->Size() > 0) {
 				element := @self;
@@ -1280,9 +1280,9 @@ bundle Data.JSON {
 			return Nil;
 		}
 		
-		method : FindElement(filter : String, node : JSONElement) ~ JSONElement {
+		method : FindElement(filter : String, node : JsonElement) ~ JsonElement {
 			# array
-			if(filter->StartsWith('[') & filter->EndsWith(']') & node->GetType() = JSONType->ARRAY) {
+			if(filter->StartsWith('[') & filter->EndsWith(']') & node->GetType() = JsonType->ARRAY) {
 				end := filter->Find(']');
 				index := filter->SubString(1, end - 1);
 				
@@ -1302,7 +1302,7 @@ bundle Data.JSON {
 				};
 			}
 			# object
-			else if(node->GetType() = JSONType->OBJECT) {
+			else if(node->GetType() = JsonType->OBJECT) {
 				return node->Get(filter);
 			};
 			
@@ -1310,24 +1310,24 @@ bundle Data.JSON {
 		}
 	}
 	
-	#~
-	JSON element type
-	~#
-	enum JSONType {
-		STRING,
-		NUMBER,
-		TRUE,
-		FALSE,
-		NULL,
-		ARRAY,
-		OBJECT,
-		OTHER
-	}
-	
 	# token class
 	class Token {
 		@type : Token->Type;
 		@value : String;
+
+		#~
+		JSON element type
+		~#
+		enum JsonType {
+			STRING,
+			NUMBER,
+			TRUE,
+			FALSE,
+			NULL,
+			ARRAY,
+			OBJECT,
+			OTHER
+		}
 		
 		enum Type {
 			IDENT,

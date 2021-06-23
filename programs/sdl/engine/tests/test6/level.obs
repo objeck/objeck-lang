@@ -153,13 +153,13 @@ class Level {
 
 
 class Attribs {
-	@root : JSONElement;
-	@tiles : JSONElement;
+	@root : JsonElement;
+	@tiles : JsonElement;
 
 	New(name : String) {		
 		doc := System.IO.File.FileReader->ReadFile(name);
 		if(doc <> Nil) {
-			@root := JSONParser->New(doc)->Parse();
+			@root := JsonParser->New(doc)->Parse();
 			@tiles := GetTiles();			
 		}
 		else {
@@ -167,10 +167,10 @@ class Attribs {
 		};
 	}
 
-	method : GetTiles() ~ JSONElement {		
+	method : GetTiles() ~ JsonElement {		
 		if(@root <> Nil) {
 			tiles := @root->Get("tiles");
-			if(tiles <> Nil & tiles->GetType() = JSONType->OBJECT) {
+			if(tiles <> Nil & tiles->GetType() = JsonType->OBJECT) {
 				return tiles;
 			}
 			else {

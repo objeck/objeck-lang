@@ -3,7 +3,7 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		builder := JSONBuilder->New();
+		builder := JsonBuilder->New();
 		builder->PushArray();
 		each(i : 3) {
 			builder->PushObject();
