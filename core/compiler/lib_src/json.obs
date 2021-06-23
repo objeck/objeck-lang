@@ -32,7 +32,7 @@ bundle Data.JSON {
 		#~
 		Pushes an object element on the stack
 		~#
-		method : public : PushObject() ~ JsonElement {
+		method : public : PushObject() ~ JsonBuilder {
 			if(@stack->IsEmpty()) {
 				@stack->Push(JsonElement->New(JsonType->OBJECT));
 			}
@@ -42,14 +42,14 @@ bundle Data.JSON {
 				@stack->Push(elem);
 			};
 
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
 		Pushes an object element on the stack
 		@param name object name
 		~#
-		method : public : PushObject(name : String) ~ JsonElement {
+		method : public : PushObject(name : String) ~ JsonBuilder {
 			if(@stack->IsEmpty()) {
 				@stack->Push(JsonElement->New(JsonType->OBJECT, name));
 			}
@@ -64,13 +64,13 @@ bundle Data.JSON {
 				@stack->Push(elem);
 			};
 
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
 		Pushes an array element on the stack
 		~#
-		method : public : PushArray() ~ JsonElement {
+		method : public : PushArray() ~ JsonBuilder {
 			if(@stack->IsEmpty()) {
 				@stack->Push(JsonElement->New(JsonType->ARRAY));
 			}
@@ -80,15 +80,36 @@ bundle Data.JSON {
 				@stack->Push(elem);
 			};
 
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
-		Adds a value
-		@param value value
-		@return true if successful, false otherwise
+		Pops a value
+		@return popped element
 		~#
 		method : public : Pop() ~ JsonElement {
+			if(@stack->IsEmpty()) {
+				return Nil;
+			};
+
+			elem := @stack->Top();
+			@stack->Pop();
+			return elem;
+		}
+
+		#~
+		Pop all values
+		@return last popped element
+		~#
+		method : public : PopAll() ~ JsonElement {
+			if(@stack->IsEmpty()) {
+				return Nil;
+			};
+
+			while(@stack->Size() <> 1) {
+				@stack->Pop();
+			};
+
 			elem := @stack->Top();
 			@stack->Pop();
 			return elem;
@@ -99,13 +120,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : String) ~ JsonElement {
+		method : public : Add(value : String) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -113,13 +134,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : Int) ~ JsonElement {
+		method : public : Add(value : Int) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -127,13 +148,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : Float) ~ JsonElement {
+		method : public : Add(value : Float) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -141,13 +162,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : Bool) ~ JsonElement {
+		method : public : Add(value : Bool) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -155,13 +176,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : JsonElement) ~ JsonElement {
+		method : public : Add(value : JsonElement) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
 				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -170,13 +191,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Int) ~ JsonElement {
+		method : public : Insert(name : String, value : Int) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
 
 			@stack->Top()->Insert(name, value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -185,28 +206,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Float) ~ JsonElement {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
-				return Nil;
-			};
-			
-			@stack->Top()->Insert(name, value);
-			return @stack->Top();
-		}
-
-		#~
-		Insert an element
-		@param name element name
-		@param value value
-		@return true if successful, false otherwise
-		~#
-		method : public : Insert(name : String, value : String) ~ JsonElement {
+		method : public : Insert(name : String, value : Float) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
 			
 			@stack->Top()->Insert(name, value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -215,13 +221,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Bool) ~ JsonElement {
+		method : public : Insert(name : String, value : String) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
 			
 			@stack->Top()->Insert(name, value);
-			return @stack->Top();
+			return @self;
 		}
 
 		#~
@@ -230,13 +236,28 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : JsonElement) ~ JsonElement {
+		method : public : Insert(name : String, value : Bool) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
 				return Nil;
 			};
 			
 			@stack->Top()->Insert(name, value);
-			return @stack->Top();
+			return @self;
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : JsonElement) ~ JsonBuilder {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
+				return Nil;
+			};
+			
+			@stack->Top()->Insert(name, value);
+			return @self;
 		}
 	}
 
