@@ -16,7 +16,7 @@ class JsonWeb {
 		if(parser->Parse()) {
 			root := parser->GetRoot();
 			countries := root->FindElements("countries");
-			if(countries <> Nil & countries->GetType() = JsonType->ARRAY) {
+			if(countries <> Nil & countries->GetType() = JsonElement->JsonType->ARRAY) {
 				total := 0;
 				each(i : countries) {
 					country := countries->Get(i);
