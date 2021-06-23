@@ -32,7 +32,7 @@ bundle Data.JSON {
 		#~
 		Pushes an object element on the stack
 		~#
-		method : public : PushObject() ~ Nil {
+		method : public : PushObject() ~ JsonElement {
 			if(@stack->IsEmpty()) {
 				@stack->Push(JsonElement->New(JsonType->OBJECT));
 			}
@@ -41,13 +41,15 @@ bundle Data.JSON {
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
 			};
+
+			return @stack->Top();
 		}
 
 		#~
 		Pushes an object element on the stack
 		@param name object name
 		~#
-		method : public : PushObject(name : String) ~ Nil {
+		method : public : PushObject(name : String) ~ JsonElement {
 			if(@stack->IsEmpty()) {
 				@stack->Push(JsonElement->New(JsonType->OBJECT, name));
 			}
@@ -61,12 +63,14 @@ bundle Data.JSON {
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
 			};
+
+			return @stack->Top();
 		}
 
 		#~
 		Pushes an array element on the stack
 		~#
-		method : public : PushArray() ~ Nil {
+		method : public : PushArray() ~ JsonElement {
 			if(@stack->IsEmpty()) {
 				@stack->Push(JsonElement->New(JsonType->ARRAY));
 			}
@@ -75,6 +79,8 @@ bundle Data.JSON {
 				@stack->Top()->Add(elem);
 				@stack->Push(elem);
 			};
+
+			return @stack->Top();
 		}
 
 		#~
@@ -93,13 +99,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : String) ~ Bool {
+		method : public : Add(value : String) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
-				return false;
+				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -107,13 +113,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : Int) ~ Bool {
+		method : public : Add(value : Int) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
-				return false;
+				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -121,13 +127,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : Float) ~ Bool {
+		method : public : Add(value : Float) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
-				return false;
+				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -135,13 +141,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : Bool) ~ Bool {
+		method : public : Add(value : Bool) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
-				return false;
+				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -149,13 +155,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Add(value : JsonElement) ~ Bool {
+		method : public : Add(value : JsonElement) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
-				return false;
+				return Nil;
 			};
 
 			@stack->Top()->Add(value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -164,13 +170,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Int) ~ Bool {
+		method : public : Insert(name : String, value : Int) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
-				return false;
+				return Nil;
 			};
 
 			@stack->Top()->Insert(name, value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -179,28 +185,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Float) ~ Bool {
+		method : public : Insert(name : String, value : Float) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
-				return false;
-			};
-			
-			@stack->Top()->Insert(name, value);
-			return true;
-		}
-
-		#~
-		Insert an element
-		@param name element name
-		@param value value
-		@return true if successful, false otherwise
-		~#
-		method : public : Insert(name : String, value : String) ~ Bool {
-			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
-				return false;
+				return Nil;
 			};
 			
 			@stack->Top()->Insert(name, value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -209,13 +200,13 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : Bool) ~ Bool {
+		method : public : Insert(name : String, value : String) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
-				return false;
+				return Nil;
 			};
 			
 			@stack->Top()->Insert(name, value);
-			return true;
+			return @stack->Top();
 		}
 
 		#~
@@ -224,13 +215,28 @@ bundle Data.JSON {
 		@param value value
 		@return true if successful, false otherwise
 		~#
-		method : public : Insert(name : String, value : JsonElement) ~ Bool {
+		method : public : Insert(name : String, value : Bool) ~ JsonElement {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
-				return false;
+				return Nil;
 			};
 			
 			@stack->Top()->Insert(name, value);
-			return true;
+			return @stack->Top();
+		}
+
+		#~
+		Insert an element
+		@param name element name
+		@param value value
+		@return true if successful, false otherwise
+		~#
+		method : public : Insert(name : String, value : JsonElement) ~ JsonElement {
+			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
+				return Nil;
+			};
+			
+			@stack->Top()->Insert(name, value);
+			return @stack->Top();
 		}
 	}
 
@@ -656,6 +662,20 @@ bundle Data.JSON {
 		@value : String;
 		@array_elems : Vector<JsonElement>;
 		@map_elems : Map<String, JsonElement>;
+
+		#~
+		JSON element type
+		~#
+		enum JsonType {
+			STRING,
+			NUMBER,
+			TRUE,
+			FALSE,
+			NULL,
+			ARRAY,
+			OBJECT,
+			OTHER
+		}
 		
 		#~
 		Constructor
@@ -1314,20 +1334,6 @@ bundle Data.JSON {
 	class Token {
 		@type : Token->Type;
 		@value : String;
-
-		#~
-		JSON element type
-		~#
-		enum JsonType {
-			STRING,
-			NUMBER,
-			TRUE,
-			FALSE,
-			NULL,
-			ARRAY,
-			OBJECT,
-			OTHER
-		}
 		
 		enum Type {
 			IDENT,
