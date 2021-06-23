@@ -12,7 +12,7 @@ class Server {
 		if(server->Listen(5)) {
 			while(true) {
 				client := server->Accept();
-				json :=JSONParser->New(client->ReadLine());
+				json :=JsonParser->New(client->ReadLine());
 				if(json->Parse()) {
 					root := json->GetRoot();
 
@@ -31,20 +31,20 @@ class Server {
 		};
 	}
 
-	function : public : DoSubtract(id : Int, param_elems : JSONElement) ~ JSONElement {
+	function : public : DoSubtract(id : Int, param_elems : JsonElement) ~ JsonElement {
 		left := param_elems->Get(0)->GetValue()->ToInt();
 		right := param_elems->Get(1)->GetValue()->ToInt();
 
 		return MakeResult(id, left - right);
 	}
 
-	function : MakeResult(id : Int, result : Int) ~ JSONElement {
-		values := Map->New()<String, JSONElement>;
+	function : MakeResult(id : Int, result : Int) ~ JsonElement {
+		values := Map->New()<String, JsonElement>;
 
-		values->Insert("jsonrpc", JSONElement->New("2.0"));
-		values->Insert("result", JSONElement->New(result));
-		values->Insert("id", JSONElement->New(id));
+		values->Insert("jsonrpc", JsonElement->New("2.0"));
+		values->Insert("result", JsonElement->New(result));
+		values->Insert("id", JsonElement->New(id));
 
-		return JSONElement->New(values);
+		return JsonElement->New(values);
 	}
 }

@@ -8,7 +8,7 @@ class Hello {
 		client->AddHeader("authorization", "Bearer <id>");
 		json := client->GetAll("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2");
 
-		doc := JSONParser->New(json)->Parse();
+		doc := JsonParser->New(json)->Parse();
 		if(doc <> Nil) {
 			statuses := doc->Get("statuses");
 			if(statuses <> Nil) {
@@ -16,7 +16,7 @@ class Hello {
 					status := statuses->Get(i);
 					text := status->Get("text");
 					text->GetValue()->PrintLine();
-					JSONElement->Decode(text->GetValue())->PrintLine();
+					JsonElement->Decode(text->GetValue())->PrintLine();
 					"---"->PrintLine();
 				};
 			};

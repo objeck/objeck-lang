@@ -12,11 +12,11 @@ class JsonWeb {
 		url := "https://sourceforge.net/projects/openofficeorg.mirror/files/stats/json?start_date=2014-10-29&end_date=2014-11-04";
 		document := HttpsClient->GetAll(url);
 
-		parser := JSONParser->New(document);
+		parser := JsonParser->New(document);
 		if(parser->Parse()) {
 			root := parser->GetRoot();
 			countries := root->FindElements("countries");
-			if(countries <> Nil & countries->GetType() = JSONType->ARRAY) {
+			if(countries <> Nil & countries->GetType() = JsonType->ARRAY) {
 				total := 0;
 				each(i : countries) {
 					country := countries->Get(i);
@@ -25,11 +25,11 @@ class JsonWeb {
 				"total downloads is {$total}"->PrintLine();
 			}
 			else {
-				"-- Invalid JSON! --"->ErrorLine();
+				"-- Invalid Json! --"->ErrorLine();
 			};
 		}
 		else {
-			"-- Unable to parse JSON! --"->ErrorLine();
+			"-- Unable to parse Json! --"->ErrorLine();
 		};
 	}
 }

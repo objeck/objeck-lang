@@ -1,4 +1,4 @@
-﻿use JSON;
+﻿use Data.JSON;
 use HTTP;
 use System.IO.Net;
 
@@ -8,7 +8,7 @@ bundle Default {
 			Run();
 		}
 		function : native : Run() ~ Nil {
-			url := "http://api.geonames.org/citiesJSON?north=44.1&south=-9.9&east=-22.4&west=55.2&lang=de&username=demo";
+			url := "http://api.geonames.org/citiesJson?north=44.1&south=-9.9&east=-22.4&west=55.2&lang=de&username=demo";
 			lines := HttpClient->New()->Get(url);
 			document := "";
 			each(i : lines) {
@@ -17,14 +17,14 @@ bundle Default {
 
 document->PrintLine();
 			
-			parser := JSONParser->New(document);
+			parser := JsonParser->New(document);
 			root := parser->Parse();
-			if(root <> Nil & root->GetType() = JSONType->OBJECT) {
+			if(root <> Nil & root->GetType() = JsonType->OBJECT) {
 				geonames := root->Get("geonames");
-				if(geonames <> Nil & geonames->GetType() = JSONType->ARRAY) {
+				if(geonames <> Nil & geonames->GetType() = JsonType->ARRAY) {
 					each(i : geonames) {
 						geoname := geonames->Get(i);
-						if(geoname <> Nil & geoname->GetType() = JSONType->OBJECT) {
+						if(geoname <> Nil & geoname->GetType() = JsonType->OBJECT) {
 							toponymName := geoname->Get("toponymName");
 							lng := geoname->Get("lng");
 							lat := geoname->Get("lat");								

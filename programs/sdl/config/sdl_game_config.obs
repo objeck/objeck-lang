@@ -3,16 +3,16 @@ use Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			parser := JSONParser->New(System.IO.File.FileReader->ReadFile(args[0]));
+			parser := JsonParser->New(System.IO.File.FileReader->ReadFile(args[0]));
 			if(parser->Parse()) {
 				root := parser->GetRoot();
 
 				# sound
 				sound := root->Get("sound");
-				if(sound <> Nil & sound->GetType() = JSONType->OBJECT) {
+				if(sound <> Nil & sound->GetType() = JsonType->OBJECT) {
 					# music
 					music := sound->Get("music");
-					if(music <> Nil & music->GetType() = JSONType->OBJECT) {
+					if(music <> Nil & music->GetType() = JsonType->OBJECT) {
 						path_attrib := music->Get("path");
 						if(path_attrib <> Nil)	{
 							path := path_attrib->GetValue();
@@ -25,10 +25,10 @@ class Test {
 					
 					# chucks
 					chunks := sound->Get("chunks");
-					if(chunks <> Nil & chunks->GetType() = JSONType->ARRAY) {
+					if(chunks <> Nil & chunks->GetType() = JsonType->ARRAY) {
 						each(i : chunks) {
 							chunk := chunks->Get(i);
-							if(chunk->GetType() = JSONType->OBJECT) {
+							if(chunk->GetType() = JsonType->OBJECT) {
 								name_attrib := chunk->Get("name");
 								path_attrib := chunk->Get("path");
 								if(name_attrib <> Nil & path_attrib <> Nil) {
@@ -49,10 +49,10 @@ class Test {
 
 				# colors
 				colors := root->Get("colors");
-				if(colors <> Nil & colors->GetType() = JSONType->ARRAY) {
+				if(colors <> Nil & colors->GetType() = JsonType->ARRAY) {
 					each(i : colors) {
 						color := colors->Get(i);
-						if(color->GetType() = JSONType->OBJECT) {
+						if(color->GetType() = JsonType->OBJECT) {
 							name_attrib := color->Get("name");
 							code_attrib := color->Get("code");
 							if(name_attrib <> Nil & code_attrib <> Nil) {
@@ -72,13 +72,13 @@ class Test {
 
 				# assets
 				assets := root->Get("assets");
-				if(assets <> Nil & assets->GetType() = JSONType->OBJECT) {
+				if(assets <> Nil & assets->GetType() = JsonType->OBJECT) {
 					# image_sprites
 					image_sprites := assets->Get("image_sprites");
-					if(image_sprites <> Nil & image_sprites->GetType() = JSONType->ARRAY) {
+					if(image_sprites <> Nil & image_sprites->GetType() = JsonType->ARRAY) {
 						each(i : image_sprites) {
 							image_sprite := image_sprites->Get(i);
-							if(image_sprite->GetType() = JSONType->OBJECT) {
+							if(image_sprite->GetType() = JsonType->OBJECT) {
 								name_attrib := image_sprite->Get("name");
 								path_attrib := image_sprite->Get("path");
 								if(name_attrib <> Nil & path_attrib <> Nil) {
@@ -98,10 +98,10 @@ class Test {
 
 					# titled_sprites
 					titled_sprites := assets->Get("titled_sprites");
-					if(titled_sprites <> Nil & titled_sprites->GetType() = JSONType->ARRAY) {
+					if(titled_sprites <> Nil & titled_sprites->GetType() = JsonType->ARRAY) {
 						each(i : titled_sprites) {
 							titled_sprite := titled_sprites->Get(i);
-							if(titled_sprite->GetType() = JSONType->OBJECT) {
+							if(titled_sprite->GetType() = JsonType->OBJECT) {
 								name_attrib := titled_sprite->Get("name");
 								path_attrib := titled_sprite->Get("path");
 								size_attrib := titled_sprite->Get("size");
@@ -123,10 +123,10 @@ class Test {
 
 					# animated_sprites
 					animated_sprites := assets->Get("animated_sprites");
-					if(animated_sprites <> Nil & animated_sprites->GetType() = JSONType->ARRAY) {
+					if(animated_sprites <> Nil & animated_sprites->GetType() = JsonType->ARRAY) {
 						each(i : animated_sprites) {
 							animated_sprite := animated_sprites->Get(i);
-							if(animated_sprite->GetType() = JSONType->OBJECT) {
+							if(animated_sprite->GetType() = JsonType->OBJECT) {
 								name_attrib := animated_sprite->Get("name");
 								path_attrib := animated_sprite->Get("path");
 								size_attrib := animated_sprite->Get("size");
@@ -142,10 +142,10 @@ class Test {
 								};
 
 								# animated_sprites/rects
-								if(rects_attrib->GetType() = JSONType->ARRAY) {
+								if(rects_attrib->GetType() = JsonType->ARRAY) {
 									each(j : rects_attrib) {
 										rect_obj := rects_attrib->Get(j);
-										if(rect_obj->GetType() = JSONType->OBJECT) {
+										if(rect_obj->GetType() = JsonType->OBJECT) {
 											rect_attrib := rect_obj->Get("rect");
 											if(rect_attrib <> Nil) {
 												rect := rect_attrib->GetValue();
@@ -166,10 +166,10 @@ class Test {
 					
 					# rectangles
 					rectangles := assets->Get("rectangles");
-					if(rectangles <> Nil & rectangles->GetType() = JSONType->ARRAY) {
+					if(rectangles <> Nil & rectangles->GetType() = JsonType->ARRAY) {
 						each(i : rectangles) {
 							rectangle := rectangles->Get(i);
-							if(rectangle->GetType() = JSONType->OBJECT) {
+							if(rectangle->GetType() = JsonType->OBJECT) {
 								name_attrib := rectangle->Get("name");
 								color_attrib := rectangle->Get("color");
 								size_attrib := rectangle->Get("size");
