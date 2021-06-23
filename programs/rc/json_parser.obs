@@ -1,15 +1,15 @@
-﻿use JSON;
+﻿use Data.JSON;
 
 bundle Default {
 	class Json {
 		function : Main(args : String[]) ~ Nil {
 			input := "[ [\"a\", \"b\", \"c\", \"d\"], [\"a\", \"b\", \"c\", \"d\"] ]";
-			parser := JSONParser->New(input);
+			parser := JsonParser->New(input);
 			root := parser->Parse();
-			if(root <> Nil & root->GetType() = JSONType->ARRAY) {
+			if(root <> Nil & root->GetType() = JsonType->ARRAY) {
 				each(i : root) {
 					array := root->Get(i);
-					if(array->GetType() = JSONType->ARRAY) {
+					if(array->GetType() = JsonType->ARRAY) {
 						each(j : array) {
 							array->Get(j)->GetValue()->Print();
 						};

@@ -19,7 +19,7 @@ class Client {
 	}
 
 	function : GetResult(id : Int, input : String) ~ Int {
-		json := JSONParser->New(input);
+		json := JsonParser->New(input);
 		if(json->Parse()) {
 			root := json->GetRoot();
 			result := root->Get("result");
@@ -29,18 +29,18 @@ class Client {
 		return 0;
 	}
 
-	function : MakeSubtract(id : Int, left : Int, right : Int) ~ JSONElement {		
-		values := Map->New()<String, JSONElement>;
+	function : MakeSubtract(id : Int, left : Int, right : Int) ~ JsonElement {		
+		values := Map->New()<String, JsonElement>;
 
-		array := Vector->New()<JSONElement>;
-		array->AddBack(JSONElement->New(left));
-		array->AddBack(JSONElement->New(right));
-		values->Insert("params", JSONElement->New(array));
+		array := Vector->New()<JsonElement>;
+		array->AddBack(JsonElement->New(left));
+		array->AddBack(JsonElement->New(right));
+		values->Insert("params", JsonElement->New(array));
 
-		values->Insert("jsonrpc", JSONElement->New("2.0"));
-		values->Insert("method", JSONElement->New("subtract"));
-		values->Insert("id", JSONElement->New(id));	
+		values->Insert("jsonrpc", JsonElement->New("2.0"));
+		values->Insert("method", JsonElement->New("subtract"));
+		values->Insert("id", JsonElement->New(id));	
 
-		return JSONElement->New(values);
+		return JsonElement->New(values);
 	}
 }
