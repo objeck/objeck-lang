@@ -6,8 +6,7 @@ class Test {
 		builder := JsonBuilder->New();
 		builder->PushArray();
 		each(i : 3) {
-			builder->PushObject();
-			builder->Insert("name", i + 1)->PrintLine();
+			builder->PushObject()->Insert("name", i + 1);
 			builder->Pop();
 		};
 		builder->Pop()->ToString()->PrintLine();
