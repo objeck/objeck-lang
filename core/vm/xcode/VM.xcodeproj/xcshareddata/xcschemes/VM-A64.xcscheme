@@ -36,7 +36,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin"
+      customWorkingDirectory = "/Users/randyhollines/Documents/Code/objeck-lang/programs/test"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -53,18 +53,22 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "../a.obe"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/randyhollines/Documents/Code/objeck-lang/programs/test/arm64/a.obe"
+            argument = "/Users/randyhollines/Documents/Code/objeck-lang/programs/test/prgm136.obe"
             isEnabled = "YES">
          </CommandLineArgument>
-         <CommandLineArgument
-            argument = "../compiler/a.obe"
-            isEnabled = "NO">
-         </CommandLineArgument>
       </CommandLineArguments>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "PATH"
+            value = "$PATH:/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "OBJECK_LIB_PATH"
+            value = "/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/lib"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
