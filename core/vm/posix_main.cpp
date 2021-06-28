@@ -40,7 +40,7 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // enable UTF-8 environment
-#ifdef _X64
+#if defined(_X64) || defined(_ARM64)
     char* locale = setlocale(LC_ALL, ""); 
     std::locale lollocale(locale);
     setlocale(LC_ALL, locale); 
