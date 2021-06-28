@@ -31,10 +31,13 @@
 #define __SYS_H__
 
 // define windows type
-#ifdef _WIN32
+#if defined(_WIN32)
 #include <windows.h>
 #include <stdint.h>
+#elif defined(_ARM64)
+#include <codecvt>
 #endif
+
 #include <zlib.h>
 #include <string.h>
 #include <fstream>
@@ -240,10 +243,10 @@ static wstring BytesToUnicode(const string &in) {
   return L"";
 }
 
-/****************************
+/**
  * Converts UTF-8 bytes to
  * native a unicode character
- ****************************/
+ */
 static bool BytesToCharacter(const string &in, wchar_t &out) {
   wstring buffer;
   if(!BytesToUnicode(in, buffer)) {
@@ -251,17 +254,20 @@ static bool BytesToCharacter(const string &in, wchar_t &out) {
   }
   
   if(buffer.size() != 1) {
-    return false;
+    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cvt;
+    buffer = cvt.from_bytes(in);
+    out = buffer[0];
+    return true;
   }
   
   out = buffer[0];  
   return true;
 }
 
-/****************************
+/**
  * Converts a native string
  * to UTF-8 bytes
- ****************************/
+ */
 static bool UnicodeToBytes(const wstring &in, string &out) {
 #ifdef _WIN32
   // allocate space
@@ -321,10 +327,10 @@ static string UnicodeToBytes(const wstring &in) {
   return "";
 }
 
-/****************************
+/**
  * Converts a native character
  * to UTF-8 bytes
- ****************************/
+ */
 static bool CharacterToBytes(wchar_t in, string &out) {
   if(in == L'\0') {
     return true;
@@ -341,9 +347,9 @@ static bool CharacterToBytes(wchar_t in, string &out) {
   return true;
 }
 
-/****************************
+/**
  * Byte output stream
- ****************************/
+ */
 class OutputStream {
   wstring file_name;
   vector<char> out_buffer;
