@@ -46,7 +46,7 @@ int main(const int argc, const char* argv[])
     setlocale(LC_ALL, locale); 
     wcout.imbue(lollocale);
 #else    
-    setlocale(LC_ALL, "en_US.utf8"); 
+    setlocale(LC_ALL, "en_US.UTF-8");
 #endif
     
     return Execute(argc, argv);
