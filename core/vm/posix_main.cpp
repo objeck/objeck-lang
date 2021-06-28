@@ -40,11 +40,17 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // enable UTF-8 environment
-#ifdef _X64
+#if defined(_X64)
     char* locale = setlocale(LC_ALL, ""); 
     std::locale lollocale(locale);
     setlocale(LC_ALL, locale); 
     wcout.imbue(lollocale);
+#elif defined(_ARM64)
+    char* locale = setlocale(LC_ALL, "");
+    std::locale lollocale(locale);
+    setlocale(LC_ALL, locale);
+    wcout.imbue(lollocale);
+    setlocale(LC_ALL, "en_US.utf8");
 #else    
     setlocale(LC_ALL, "en_US.utf8"); 
 #endif

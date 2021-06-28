@@ -7,148 +7,21 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "683DAECB-EBCC-4504-87D8-046CD5569917"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../arch/jit/arm64/jit_arm_a64.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "4775"
-            endingLineNumber = "4775"
-            landmarkName = "JitExecutor::Execute(method, inst, op_stack, stack_pos, call_stack, call_stack_pos, frame)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "5A9E94F3-B603-4F9A-8B0B-7318E1F818E0"
+            uuid = "DA1AAA1B-8C3A-4863-BE99-F35DDA044730"
             shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../loader.h"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "98"
-            endingLineNumber = "98"
-            landmarkName = "ReadChar()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "9887B469-6D41-4E31-AD73-12AC7F11ABB9"
-            shouldBeEnabled = "Yes"
+            condition = "in.at(0) == &apos;\xe2&apos;"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../../shared/sys.h"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "210"
-            endingLineNumber = "210"
-            landmarkName = "BytesToUnicode(in, out)"
-            landmarkType = "9">
-            <Locations>
-               <Location
-                  uuid = "9887B469-6D41-4E31-AD73-12AC7F11ABB9 - 9b3075dde70bf82c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BytesToUnicode(std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt; &gt; const&amp;, std::__1::basic_string&lt;wchar_t, std::__1::char_traits&lt;wchar_t&gt;, std::__1::allocator&lt;wchar_t&gt; &gt;&amp;)"
-                  moduleName = "obr"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "210"
-                  endingLineNumber = "210"
-                  offsetFromSymbolStart = "92">
-               </Location>
-               <Location
-                  uuid = "9887B469-6D41-4E31-AD73-12AC7F11ABB9 - 9b3075dde70bf82c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BytesToUnicode(std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt; &gt; const&amp;, std::__1::basic_string&lt;wchar_t, std::__1::char_traits&lt;wchar_t&gt;, std::__1::allocator&lt;wchar_t&gt; &gt;&amp;)"
-                  moduleName = "obr"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "210"
-                  endingLineNumber = "210"
-                  offsetFromSymbolStart = "92">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "DF9BEC70-67CD-42AD-A43E-C2C0D58C9CF3"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../shared/sys.h"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "219"
-            endingLineNumber = "219"
-            landmarkName = "BytesToUnicode(in, out)"
-            landmarkType = "9">
-            <Locations>
-               <Location
-                  uuid = "DF9BEC70-67CD-42AD-A43E-C2C0D58C9CF3 - 9b3075dde70bf9fb"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BytesToUnicode(std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt; &gt; const&amp;, std::__1::basic_string&lt;wchar_t, std::__1::char_traits&lt;wchar_t&gt;, std::__1::allocator&lt;wchar_t&gt; &gt;&amp;)"
-                  moduleName = "obr"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "219"
-                  endingLineNumber = "219"
-                  offsetFromSymbolStart = "256">
-               </Location>
-               <Location
-                  uuid = "DF9BEC70-67CD-42AD-A43E-C2C0D58C9CF3 - 9b3075dde70bf9fb"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BytesToUnicode(std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt; &gt; const&amp;, std::__1::basic_string&lt;wchar_t, std::__1::char_traits&lt;wchar_t&gt;, std::__1::allocator&lt;wchar_t&gt; &gt;&amp;)"
-                  moduleName = "obr"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "219"
-                  endingLineNumber = "219"
-                  offsetFromSymbolStart = "256">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "AFAC71E8-624E-4DD2-A40C-DFE92CF54615"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../../shared/sys.h"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "250"
-            endingLineNumber = "250"
+            startingLineNumber = "252"
+            endingLineNumber = "252"
             landmarkName = "BytesToCharacter(in, out)"
             landmarkType = "9">
             <Locations>
                <Location
-                  uuid = "AFAC71E8-624E-4DD2-A40C-DFE92CF54615 - 25773c98d3c801eb"
+                  uuid = "DA1AAA1B-8C3A-4863-BE99-F35DDA044730 - 25773c98d3c80134"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
@@ -158,12 +31,12 @@
                   urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "250"
-                  endingLineNumber = "250"
-                  offsetFromSymbolStart = "72">
+                  startingLineNumber = "251"
+                  endingLineNumber = "251"
+                  offsetFromSymbolStart = "56">
                </Location>
                <Location
-                  uuid = "AFAC71E8-624E-4DD2-A40C-DFE92CF54615 - 25773c98d3c801eb"
+                  uuid = "DA1AAA1B-8C3A-4863-BE99-F35DDA044730 - 25773c98d3c80134"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
@@ -173,9 +46,9 @@
                   urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "250"
-                  endingLineNumber = "250"
-                  offsetFromSymbolStart = "72">
+                  startingLineNumber = "251"
+                  endingLineNumber = "251"
+                  offsetFromSymbolStart = "56">
                </Location>
             </Locations>
          </BreakpointContent>
@@ -183,49 +56,17 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "59FBCCB5-ED00-401B-9BEC-6C9BB66349C0"
+            uuid = "9A0028EE-955D-40CE-8E5B-3375BC0E8686"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "../../shared/sys.h"
+            filePath = "../common.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "254"
-            endingLineNumber = "254"
-            landmarkName = "BytesToCharacter(in, out)"
-            landmarkType = "9">
-            <Locations>
-               <Location
-                  uuid = "59FBCCB5-ED00-401B-9BEC-6C9BB66349C0 - 25773c98d3c83e97"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BytesToCharacter(std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt; &gt; const&amp;, wchar_t&amp;)"
-                  moduleName = "obr"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "254"
-                  endingLineNumber = "254"
-                  offsetFromSymbolStart = "132">
-               </Location>
-               <Location
-                  uuid = "59FBCCB5-ED00-401B-9BEC-6C9BB66349C0 - 25773c98d3c83e97"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BytesToCharacter(std::__1::basic_string&lt;char, std::__1::char_traits&lt;char&gt;, std::__1::allocator&lt;char&gt; &gt; const&amp;, wchar_t&amp;)"
-                  moduleName = "obr"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/randyhollines/Documents/Code/objeck-lang/core/shared/sys.h"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "254"
-                  endingLineNumber = "254"
-                  offsetFromSymbolStart = "132">
-               </Location>
-            </Locations>
+            startingLineNumber = "2460"
+            endingLineNumber = "2460"
+            landmarkName = "TrapProcessor::StdOutChar(program, inst, op_stack, stack_pos, frame)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

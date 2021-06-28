@@ -322,6 +322,7 @@
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = obr;
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRINGS_FILE_OUTPUT_ENCODING = "UTF-8";
 			};
 			name = Debug;
 		};
@@ -363,6 +364,7 @@
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = obr;
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRINGS_FILE_OUTPUT_ENCODING = "UTF-8";
 			};
 			name = Release;
 		};
