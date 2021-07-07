@@ -34,8 +34,8 @@
 #include "../shared/instrs.h"
 
 /****************************
-  * Emits an error
-  ****************************/
+ * Emits an error
+ ****************************/
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
@@ -47,8 +47,8 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 }
 
 /****************************
-  * Emits an error
-  ****************************/
+ * Emits an error
+ ****************************/
 void ContextAnalyzer::ProcessError(const wstring& fn, int ln, const wstring& msg)
 {
 #ifdef _DEBUG
