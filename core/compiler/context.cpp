@@ -374,21 +374,19 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 
     bundle->GetSymbolTableManager()->NewParseScope();
 
-    if(inital_param_offset) {
-      for(size_t i = 0; i < declarations.size(); ++i) {
-        Declaration* declaration = declarations[i]->Copy();
-        if(i < inital_param_offset) {
-          alt_declarations->AddDeclaration(declaration);
-          bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
-        }
-        else {
-          Assignment* assignment = declaration->GetAssignment();
-          assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
-          alt_statements->AddStatement(assignment);
-        }
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      Declaration* declaration = declarations[i]->Copy();
+      if(i < inital_param_offset) {
+        alt_declarations->AddDeclaration(declaration);
+        bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
       }
-      inital_param_offset++;
+      else {
+        Assignment* assignment = declaration->GetAssignment();
+        assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
+        alt_statements->AddStatement(assignment);
+      }
     }
+    inital_param_offset++;
 
     // set statements
     alt_method->SetStatements(alt_statements);
