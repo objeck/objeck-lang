@@ -292,7 +292,7 @@ void ContextAnalyzer::AnalyzeDuplicateClasses(vector<ParsedBundle*>& bundles)
       for(size_t k = 0; k < bundles.size(); ++k) {
         if(k != i) {
           if(bundles[k]->GetClass(klass->GetName())) {
-            ProcessError(klass, L"Class name '" + klass->GetName() + L"' defined in another bundle");
+            ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in another bundle");
           }
         }
       }
