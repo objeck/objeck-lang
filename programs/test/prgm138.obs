@@ -1,0 +1,10 @@
+bundle Foo {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+		}
+	}
+
+	class Bar {
+		New() {}
+	}
+}
