@@ -34,8 +34,8 @@
 #include "../shared/instrs.h"
 
 /****************************
-  * Emits an error
-  ****************************/
+ * Emits an error
+ ****************************/
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
@@ -47,8 +47,8 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 }
 
 /****************************
-  * Emits an error
-  ****************************/
+ * Emits an error
+ ****************************/
 void ContextAnalyzer::ProcessError(const wstring& fn, int ln, const wstring& msg)
 {
 #ifdef _DEBUG
@@ -374,21 +374,19 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 
     bundle->GetSymbolTableManager()->NewParseScope();
 
-    if(inital_param_offset) {
-      for(size_t i = 0; i < declarations.size(); ++i) {
-        Declaration* declaration = declarations[i]->Copy();
-        if(i < inital_param_offset) {
-          alt_declarations->AddDeclaration(declaration);
-          bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
-        }
-        else {
-          Assignment* assignment = declaration->GetAssignment();
-          assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
-          alt_statements->AddStatement(assignment);
-        }
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      Declaration* declaration = declarations[i]->Copy();
+      if(i < inital_param_offset) {
+        alt_declarations->AddDeclaration(declaration);
+        bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
       }
-      inital_param_offset++;
+      else {
+        Assignment* assignment = declaration->GetAssignment();
+        assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
+        alt_statements->AddStatement(assignment);
+      }
     }
+    inital_param_offset++;
 
     // set statements
     alt_method->SetStatements(alt_statements);
@@ -536,7 +534,8 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
 {
-  // get virtual methods
+  bool success = true;
+
   vector<Method*> virtual_class_methods = virtual_class->GetMethods();
   for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
     Method* virtual_method = virtual_class_methods[i];
@@ -550,15 +549,16 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
         if(impl_method) {
           AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-          return true;
+        }
+        else {
+          ProcessError(impl_class, L"Virtual method/function '" + virtual_method->GetUserName() + L"' has been not implemented");
+          success = false;
         }
       }
-
-      return false;
     }
   }
 
-  return true;
+  return success;
 }
 
 /****************************
@@ -684,7 +684,8 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
 {
-  // virtual methods
+  bool success = true;
+
   map<const wstring, LibraryMethod*>::iterator iter;
   map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
   for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
@@ -699,15 +700,16 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
         if(impl_method) {
           AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-          return true;
+        }
+        else {
+          ProcessError(impl_class, L"Virtual method/function '" + virtual_method->GetUserName() + L"' has been not implemented");
+          success = false;
         }
       }
-
-      return false;
     }
   }
 
-  return true;
+  return success;
 }
 
 /****************************
