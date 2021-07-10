@@ -223,9 +223,18 @@ bool Parser::CheckErrors()
 {
   // check and process errors
   if(errors.size()) {
-    map<int, wstring>::iterator error;
-    for(error = errors.begin(); error != errors.end(); ++error) {
-      wcerr << error->second << endl;
+    const size_t error_max = 8;
+
+    map<int, wstring>::iterator error = errors.begin();
+    if(errors.size() > error_max) {
+      for(size_t i = 0; i < error_max; ++error, ++i) {
+        wcerr << error->second << endl;
+      }
+    }
+    else {
+      for(; error != errors.end(); ++error) {
+        wcerr << error->second << endl;
+      }
     }
 
     // clean up
