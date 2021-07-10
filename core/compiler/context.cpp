@@ -223,6 +223,8 @@ bool ContextAnalyzer::Analyze()
 
   // process bundles
   bundles = program->GetBundles();
+  AnalyzeDuplicateClasses(bundles);
+
   for(size_t i = 0; i < bundles.size(); ++i) {
     bundle = bundles[i];
     symbol_table = bundle->GetSymbolTableManager();
@@ -275,6 +277,26 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
      linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
     ProcessError(eenum, L"Enum '" + FormatTypeString(eenum->GetName()) +
                  L"' defined in program and shared libraries");
+  }
+}
+
+/****************************
+ * Find duplicate classes
+ ****************************/
+void ContextAnalyzer::AnalyzeDuplicateClasses(vector<ParsedBundle*>& bundles)
+{
+  for(size_t i = 0; i < bundles.size(); ++i) {
+    vector<Class*> classes = bundles[i]->GetClasses();
+    for(size_t j = 0; j < classes.size(); ++j) {
+      Class* klass = classes[j];
+      for(size_t k = 0; k < bundles.size(); ++k) {
+        if(k != i) {
+          if(bundles[k]->GetClass(klass->GetName())) {
+            ProcessError(klass, L"Class name '" + klass->GetName() + L"' defined in another bundle");
+          }
+        }
+      }
+    }
   }
 }
 

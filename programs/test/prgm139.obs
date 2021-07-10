@@ -1,5 +1,5 @@
 bundle Foo {
-	class Bar {
+	class Bar2 {
 		New() {}
 	}
 

@@ -442,7 +442,8 @@ class ContextAnalyzer {
   void CheckParent(Class* klass, const int depth);
   void AnalyzeInterfaces(Class* klass, const int depth);
   void AnalyzeGenerics(Class* klass, const int depth);
-  void AnalyzeDuplicateEntries(vector<Class*> & classes, const int depth);
+  void AnalyzeDuplicateClasses(vector<ParsedBundle*>& bundles);
+  void AnalyzeDuplicateEntries(vector<Class*> &classes, const int depth);
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void AnalyzeMethods(Class* klass, const int depth);
