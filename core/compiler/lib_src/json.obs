@@ -676,7 +676,7 @@ bundle Data.JSON {
 	}
 
 	#~
-	Json value element
+	JSON value element
 	~#
 	class JsonElement {
 		@type : JsonType;
@@ -686,6 +686,7 @@ bundle Data.JSON {
 
 		#~
 		JSON element type
+		@class JsonElement
 		~#
 		enum JsonType {
 			STRING,
