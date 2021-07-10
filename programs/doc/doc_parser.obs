@@ -697,10 +697,9 @@ class EnumConstSnippet from Snippet {
 		};
 
 		if(@klass <> Nil) {
-			name := @klass;
-			name += "-&lt;";
-			name += @name;
-			@name := name;
+			@klass += "-&gt;";
+			@klass += @name;
+			@name := @klass;
 		};
 		
 		if(<>@is_consts & MatchChar(':')) {
