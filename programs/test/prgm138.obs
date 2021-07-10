@@ -8,3 +8,9 @@ bundle Foo {
 		New() {}
 	}
 }
+
+bundle Foo {
+	class Bar1 {
+		New() {}
+	}
+}

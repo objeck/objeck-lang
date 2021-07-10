@@ -1,0 +1,10 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Foo();
+		Foo(false);
+	}
+
+	function : Foo(a : Bool := false) ~ Nil {		
+		a->PrintLine();
+	}
+}
