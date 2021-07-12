@@ -1,27 +1,25 @@
-bundle Foo {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			string := "function : Main(args : String[]) ~ Nil {";
-			
-			if(args->Size() = 1) {
-				index := args[0]->ToInt();
-				if(index > -1 & index < string->Size()) {
-					start := index;
-					while(start > -1 & (string->Get(start)->IsChar() | string->Get(start) = '@' | string->Get(start) = '_')) {
-						start -= 1;
-					};
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		string := "function D : Main(args : String[]) ~ Nil {";
 
-					end := index;
-					while(end < string->Size() & (string->Get(end)->IsChar() | string->Get(end) = '@' | string->Get(end) = '_')) {
-						end += 1;
-					};
+		if(args->Size() = 1) {
+			index := args[0]->ToInt();
+			if(index > -1 & index < string->Size()) {
+				start := index;
+				while(start > -1 & (string->Get(start)->IsChar() | string->Get(start) = '@' | string->Get(start) = '_')) {
+					start -= 1;
+				};
 
-					if(start <> end) {
-						substring := string->SubString(start + 1, end - start - 1);
-						"pos: {$start},{$end} '{$substring}'"->PrintLine();
-					};
+				end := index;
+				while(end < string->Size() & (string->Get(end)->IsChar() | string->Get(end) = '@' | string->Get(end) = '_')) {
+					end += 1;
+				};
+
+				if(start <> end) {
+					substring := string->SubString(start + 1, end - start - 1);
+					"pos: {$start},{$end} '{$substring}'"->PrintLine();
 				};
 			};
-		}
+		};
 	}
 }
