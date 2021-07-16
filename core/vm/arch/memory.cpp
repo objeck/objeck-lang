@@ -101,19 +101,9 @@ void MemoryManager::Initialize(StackProgram* p)
 // if return true, trace memory otherwise do not
 inline bool MemoryManager::MarkMemory(size_t* mem)
 {
-  if(!mem) {
-    return false;
-  }
-
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
   if(mem) {
     // check if memory has been marked
     if(mem[MARKED_FLAG]) {
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&allocated_lock);
-#endif
       return false;
     }
 
@@ -123,18 +113,12 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 #endif
     mem[MARKED_FLAG] = 1L;
 #ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&marked_lock);     
+    MUTEX_UNLOCK(&marked_lock);
 #endif
 
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
-#endif
     return true;
   }
-
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&allocated_lock);
-#endif
+  
   return false;
 }
 
@@ -142,35 +126,20 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 inline bool MemoryManager::MarkValidMemory(size_t* mem)
 {
   if(mem) {
-#ifndef _GC_SERIAL
-    MUTEX_LOCK(&allocated_lock);
-#endif
-    if(mem) {
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&allocated_lock);
-#endif
-      
-      // check if memory has been marked
-      if(mem[MARKED_FLAG]) {
-        return false;
-      }
-
-      // mark & add to list
-#ifndef _GC_SERIAL
-      MUTEX_LOCK(&marked_lock);
-#endif
-      mem[MARKED_FLAG] = 1L;
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&marked_lock);      
-#endif
-      return true;
-    } 
-    else {
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&allocated_lock);
-#endif
+    // check if memory has been marked
+    if(mem[MARKED_FLAG]) {
       return false;
     }
+
+    // mark & add to list
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&marked_lock);
+#endif
+    mem[MARKED_FLAG] = 1L;
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&marked_lock);
+#endif
+    return true;
   }
 
   return false;
