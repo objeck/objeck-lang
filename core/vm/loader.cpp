@@ -180,7 +180,7 @@ void Loader::Load()
 
   LoadClasses();
   
-  wstring name = L"$Initialization$:";
+  const wstring name = L"$Initialization$:";
   StackDclr** dclrs = new StackDclr*[1];
   dclrs[0] = new StackDclr;
   dclrs[0]->name = L"args";
