@@ -1,8 +1,8 @@
 class Test {
-	foo : Collection.Generic.Vector<Abc>;
+	foo : Collection.Generic.Vector<String>;
 
 	New() {
-		foo := Collection.Generic.Vector->New()<Abc>;
+		foo := Collection.Generic.Vector->New()<String>;
 	}
 
 	function : Main(args : String[]) ~ Nil {
