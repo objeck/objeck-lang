@@ -7,14 +7,10 @@ use Query.Structured;
 
 class Example {
 	function : Main(args : String[]) ~ Nil {
-		table := Finder->New("/.");
-		if(table <> Nil) {
-			results := table->FindFiles("from files")<String>;
-			if(results <> Nil) {
-				each(i : results) {
-					results->Get(i)->PrintLine();
-				};
-			};
+		table := Finder->New(".*\\.wav");
+		results := table->FindFiles("media")<String>;
+		each(i : results) {
+			results->Get(i)->PrintLine();
 		};
 	}
 }
