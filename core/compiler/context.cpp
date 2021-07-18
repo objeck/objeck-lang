@@ -2105,7 +2105,8 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
       }
       else {
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
-        if(!GetProgramLibraryClass(concrete_type, generic_klass, generic_lib_klass)) {
+        if(!GetProgramLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
+	   !lib_klass->GetGenericClass(concrete_type->GetName())) {
           ProcessError(node, L"Undefined class or interface: '" + concrete_type->GetName() + L"'");
         }
       }
@@ -2151,7 +2152,9 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
       }
       else {
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
-        if(!GetProgramLibraryClass(concrete_type, generic_klass, generic_lib_klass)) {
+        if(!GetProgramLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
+	   !klass->GetGenericClass(concrete_type->GetName()) &&
+	   !current_class->GetGenericClass(concrete_type->GetName())) {
           ProcessError(node, L"Undefined class or interface: '" + concrete_type->GetName() + L"'");
         }
       }
