@@ -6934,44 +6934,49 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
 #ifdef _DEBUG
   Debug(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
-  if(!entry->GetType() || entry->GetType()->GetDimension() > 0) {
-    ProcessError(char_str, L"Invalid function variable type or dimension size");
+  if(InvalidStatic(entry)) {
+    ProcessError(char_str, L"Cannot reference an instance variable from this context");
   }
-  else if(entry->GetType()->GetType() == CLASS_TYPE &&
-          entry->GetType()->GetName() != L"System.String" &&
-          entry->GetType()->GetName() != L"String") {
-    const wstring cls_name = entry->GetType()->GetName();
-    Class* klass = SearchProgramClasses(cls_name);
-    if(klass) {
-      Method* method = klass->GetMethod(cls_name + L":ToString:");
-      if(method && method->GetMethodType() != PRIVATE_METHOD) {
-        char_str->AddSegment(entry, method);
-      }
-      else {
-        ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-      }
+  else {
+    if(!entry->GetType() || entry->GetType()->GetDimension() > 0) {
+      ProcessError(char_str, L"Invalid function variable type or dimension size");
     }
-    else {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
-      if(lib_klass) {
-        LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
-        if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-          char_str->AddSegment(entry, lib_method);
+    else if(entry->GetType()->GetType() == CLASS_TYPE &&
+            entry->GetType()->GetName() != L"System.String" &&
+            entry->GetType()->GetName() != L"String") {
+      const wstring cls_name = entry->GetType()->GetName();
+      Class* klass = SearchProgramClasses(cls_name);
+      if(klass) {
+        Method* method = klass->GetMethod(cls_name + L":ToString:");
+        if(method && method->GetMethodType() != PRIVATE_METHOD) {
+          char_str->AddSegment(entry, method);
         }
         else {
           ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
         }
       }
       else {
-        ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
+        LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+        if(lib_klass) {
+          LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
+          if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
+            char_str->AddSegment(entry, lib_method);
+          }
+          else {
+            ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
+          }
+        }
+        else {
+          ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
+        }
       }
     }
-  }
-  else if(entry->GetType()->GetType() == FUNC_TYPE) {
-    ProcessError(char_str, L"Invalid function variable type");
-  }
-  else {
-    char_str->AddSegment(entry);
+    else if(entry->GetType()->GetType() == FUNC_TYPE) {
+      ProcessError(char_str, L"Invalid function variable type");
+    }
+    else {
+      char_str->AddSegment(entry);
+    }
   }
 }
 
