@@ -103,17 +103,17 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   map<const wstring, wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
 #if defined(_WIN64) && defined(_WIN32)
-    wcout << VERSION_STRING << L" Objeck (Windows x86-64)" << endl;
+    wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << endl;
 #elif _WIN32
     wcout << VERSION_STRING << L" Objeck (Windows x86)" << endl;
 #elif _OSX
 #ifdef _ARM64
     wcout << VERSION_STRING << L" Objeck (macOS ARM64)" << endl;
 #else
-    wcout << VERSION_STRING << L" Objeck (macOS x86-64)" << endl;
+    wcout << VERSION_STRING << L" Objeck (macOS x86_64)" << endl;
 #endif
 #elif _X64
-    wcout << VERSION_STRING << L" Objeck (Linux x86-64)" << endl;
+    wcout << VERSION_STRING << L" Objeck (Linux x86_64)" << endl;
 #elif _ARM32
     wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << endl;
 #else
