@@ -103,17 +103,21 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   map<const wstring, wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
 #if defined(_WIN64) && defined(_WIN32)
-    wcout << VERSION_STRING << L" Objeck (x86-64 Windows)" << endl;
+    wcout << VERSION_STRING << L" Objeck (Windows x86-64)" << endl;
 #elif _WIN32
-    wcout << VERSION_STRING << L" Objeck (x86 Windows)" << endl;
+    wcout << VERSION_STRING << L" Objeck (Windows x86)" << endl;
 #elif _OSX
-    wcout << VERSION_STRING << L" Objeck (x86-64 macOS)" << endl;
-#elif _X64
-    wcout << VERSION_STRING << L" Objeck (x86-64 Linux)" << endl;
-#elif _ARM32
-    wcout << VERSION_STRING << L" Objeck (ARMv7 Linux)" << endl;
+#ifdef _ARM64
+    wcout << VERSION_STRING << L" Objeck (macOS ARM64)" << endl;
 #else
-    wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
+    wcout << VERSION_STRING << L" Objeck (macOS x86-64)" << endl;
+#endif
+#elif _X64
+    wcout << VERSION_STRING << L" Objeck (Linux x86-64)" << endl;
+#elif _ARM32
+    wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << endl;
+#else
+    wcout << VERSION_STRING << L" Objeck (Linux x86)" << endl;
 #endif 
     wcout << L"---" << endl;
     wcout << L"Copyright (c) 2008-2021, Randy Hollines" << endl;
