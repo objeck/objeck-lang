@@ -70,7 +70,7 @@ Scanner::Scanner(wstring f, bool j, bool p)
     ReadFile();
   }
   // set line number to 1
-  line_nbr = 1;
+  line_nbr = line_pos = 1;
 }
 
 /****************************
@@ -534,11 +534,13 @@ void Scanner::CheckIdentifier(int index)
       break;
     }
     tokens[index]->SetLineNbr(line_nbr);
+	  tokens[index]->SetLinePos(line_pos);
     tokens[index]->SetFileName(filename);
   }
   catch(const out_of_range&) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
+    tokens[index]->SetLinePos(line_pos);
     tokens[index]->SetFileName(filename);
   }
 }
@@ -617,6 +619,7 @@ void Scanner::CheckString(int index, bool is_valid)
   }
   tokens[index]->SetIdentifier(char_string);
   tokens[index]->SetLineNbr(line_nbr);
+	tokens[index]->SetLinePos(line_pos);
   tokens[index]->SetFileName(filename);
 }
 
@@ -631,6 +634,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   tokens[index]->SetType(TOKEN_INT_LIT);
   tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
   tokens[index]->SetLineNbr(line_nbr);
+	tokens[index]->SetLinePos(line_pos);
   tokens[index]->SetFileName(filename);
 }
 
@@ -643,6 +647,7 @@ void Scanner::ParseDouble(int index)
   tokens[index]->SetType(TOKEN_FLOAT_LIT);
   tokens[index]->SetFloatLit(wcstod(ident.c_str(), nullptr));
   tokens[index]->SetLineNbr(line_nbr);
+	tokens[index]->SetLinePos(line_pos);
   tokens[index]->SetFileName(filename);
 }
 
@@ -656,11 +661,13 @@ void Scanner::ParseUnicodeChar(int index)
     tokens[index]->SetType(TOKEN_CHAR_LIT);
     tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), nullptr, 16));
     tokens[index]->SetLineNbr(line_nbr);
+    tokens[index]->SetLinePos(line_pos);
     tokens[index]->SetFileName(filename);
   }
   else {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
+    tokens[index]->SetLinePos(line_pos);
     tokens[index]->SetFileName(filename);
   }
 }
@@ -723,8 +730,10 @@ void Scanner::NextChar()
     // line number
     if(cur_char == L'\n') {
       line_nbr++;
+      line_pos = 1;
     }
     // current character    
+    line_pos++;
     cur_char = buffer[buffer_pos++];
     // next character
     if(buffer_pos < buffer_size) {
@@ -853,8 +862,7 @@ void Scanner::ParseToken(int index)
       if(cur_char == L'u') {
         NextChar();
         start_pos = buffer_pos - 1;
-        while(iswdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') ||
-              (cur_char >= L'A' && cur_char <= L'F')) {
+        while(iswdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
           NextChar();
         }
         end_pos = buffer_pos - 1;
@@ -972,7 +980,7 @@ void Scanner::ParseToken(int index)
 #ifdef _SYSTEM
     while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@' || cur_char == L'$') && cur_char != EOB) {
 #else
-      while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@') && cur_char != EOB) {
+     while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@') && cur_char != EOB) {
 #endif
         NextChar();
       }
@@ -1063,6 +1071,7 @@ void Scanner::ParseToken(int index)
     else {
       tokens[index]->SetFileName(filename);
       tokens[index]->SetLineNbr(line_nbr);
+      tokens[index]->SetLinePos(line_pos);
       
       switch(cur_char) {
       case L':':
