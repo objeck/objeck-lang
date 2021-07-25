@@ -1,9 +1,9 @@
 {
 	"env": { 
-		"OBJECK_LIB_PATH": "<install_path>/lib", 
-		"PATH": "<install_path>/bin"
+		"OBJECK_LIB_PATH": "<user_home>/objeck-lang/core/release/deploy64/lib", 
+		"PATH": "<user_home>/objeck-lang/core/release/deploy64/bin"
 	},
-	"cmd": ["<install_path>/bin/obc", "-src", "$file", "-lib", "net,rss,misc,regex,csv,xml,json,encrypt,odbc,query,sdl2,sdl_game", "-dest", "$file_base_name.obe"],
+	"cmd": ["<user_home>/objeck-lang/core/release/deploy64/bin/obc", "-src", "$file", "-lib", "gen_collect,net,rss,misc,regex,csv,xml,json,encrypt,odbc,query,sdl2,sdl_game", "-dest", "$file_base_name.obe"],
 	"selector": "source.objeck-obs",
-	"file_regex": "^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$"
+	"file_regex": "^(..[^:]*):\\(([0-9]+),([0-9]+)\\)?:? (.*)$"
 }
