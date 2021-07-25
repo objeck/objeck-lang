@@ -43,7 +43,8 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
+  const wstring& str_line_pos = ToString(node->GetLinePosition());
+  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
@@ -56,7 +57,20 @@ void ContextAnalyzer::ProcessError(const wstring& fn, int ln, int lp, const wstr
 #endif
 
   const wstring& str_line_num = ToString(ln);
-  errors.insert(pair<int, wstring>(ln, fn + L':' + str_line_num + L": " + msg));
+  const wstring& str_line_pos = ToString(lp);
+  errors.insert(pair<int, wstring>(ln, fn+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+}
+
+/****************************
+ * Emits an error
+ ****************************/
+void ContextAnalyzer::ProcessError(const wstring& fn, const wstring& msg)
+{
+#ifdef _DEBUG
+  GetLogger() << L"\tError: " << msg << endl;
+#endif
+
+  errors.insert(pair<int, wstring>(1, fn + L":(1,1): " + msg));
 }
 
 /****************************
@@ -72,18 +86,6 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
     }
     alt_error_method_names.clear();
   }
-}
-
-/****************************
- * Emits an error
- ****************************/
-void ContextAnalyzer::ProcessError(const wstring &fn, const wstring &msg)
-{
-#ifdef _DEBUG
-  GetLogger() << L"\tError: " << msg << endl;
-#endif
-
-  errors.insert(pair<int, wstring>(1, fn + L":1: " + msg));
 }
 
 /****************************
