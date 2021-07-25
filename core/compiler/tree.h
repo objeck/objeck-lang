@@ -121,8 +121,8 @@ namespace frontend {
     bool is_local;
     bool is_self;
 
-  SymbolEntry(const wstring &file_name, const int line_num, const wstring &n, Type* t, 
-        bool s, bool c, bool e = false) : ParseNode(file_name, line_num) {
+  SymbolEntry(const wstring &file_name, const int line_num, const int line_pos, const wstring &n, Type* t, 
+        bool s, bool c, bool e = false) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       id = -1;
       type = t;
@@ -354,7 +354,7 @@ namespace frontend {
    ****************************/
   class Statement : public ParseNode {
   public:
-  Statement(const wstring &file_name, const int line_num) : ParseNode(file_name, line_num) {
+  Statement(const wstring &file_name, const int line_num, const int line_pos) : ParseNode(file_name, line_num, line_pos) {
     }
 
     virtual ~Statement() {
@@ -437,7 +437,7 @@ namespace frontend {
     Class* to_class;
     LibraryClass* to_lib_class;
 
-    Expression(const wstring& file_name, const int line_num) : ParseNode(file_name, line_num) {
+    Expression(const wstring& file_name, const int line_num, const int line_pos) : ParseNode(file_name, line_num, line_pos) {
       base_type = eval_type = cast_type = type_of = nullptr;
       method_call = nullptr;
       prev_expr = nullptr;
@@ -445,7 +445,7 @@ namespace frontend {
       to_lib_class = nullptr;
     }
 
-    Expression(const wstring& file_name, int line_num, Type* t) : ParseNode(file_name, line_num) {
+    Expression(const wstring& file_name, int line_num, int line_pos, Type* t) : ParseNode(file_name, line_num, line_pos) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
       cast_type = nullptr;
       method_call = nullptr;
@@ -587,7 +587,7 @@ namespace frontend {
     void GetSizes(StaticArray* array, int &count);
 
   public:
-    StaticArray(const wstring& file_name, const int line_num, ExpressionList* e) : Expression(file_name, line_num) {
+    StaticArray(const wstring& file_name, const int line_num, const int line_pos, ExpressionList* e) : Expression(file_name, line_num, line_pos) {
       elements = e;
       all_elements = nullptr;
       matching_types = matching_lengths = true;
@@ -750,7 +750,7 @@ namespace frontend {
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
 
-    CharacterString(const wstring &file_name, const int line_num, const wstring &c) : Expression(file_name, line_num, Type::CharStringType()) {
+    CharacterString(const wstring &file_name, const int line_num, const int line_pos, const wstring &c) : Expression(file_name, line_num, line_pos, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
       concat = nullptr;
@@ -815,13 +815,12 @@ namespace frontend {
     Expression* left;
     Expression* right;
 
-    CalculatedExpression(const wstring& file_name, const int line_num, ExpressionType t) : Expression(file_name, line_num) {
+    CalculatedExpression(const wstring& file_name, const int line_num, const int line_pos, ExpressionType t) : Expression(file_name, line_num, line_pos) {
       left = right = nullptr;
       type = t;
     }
 
-    CalculatedExpression(const wstring& file_name, const int line_num, ExpressionType t,
-           Expression* lhs, Expression* rhs) : Expression(file_name, line_num) {
+    CalculatedExpression(const wstring& file_name, const int line_num, const int line_pos, ExpressionType t, Expression* lhs, Expression* rhs) : Expression(file_name, line_num, line_pos) {
       left = lhs;
       right = rhs;
       type = t;
@@ -867,7 +866,7 @@ namespace frontend {
     bool checked_post_operation;
     vector<Type*> concrete_types;
 
-    Variable(const wstring& file_name, const int line_num, const wstring& n) : Expression(file_name, line_num) {
+    Variable(const wstring& file_name, const int line_num, const int line_pos, const wstring& n) : Expression(file_name, line_num, line_pos) {
       name = n;
       indices = nullptr;
       entry = nullptr;
@@ -968,8 +967,7 @@ namespace frontend {
     friend class TreeFactory;
     bool value;
 
-  BooleanLiteral(const wstring &file_name, int line_num, bool v) :
-    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
+  BooleanLiteral(const wstring &file_name, int line_num, int line_pos, bool v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
       value = v;
     }
 
@@ -992,7 +990,7 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const wstring& file_name, const int line_num) : Expression(file_name, line_num, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
+    NilLiteral(const wstring& file_name, const int line_num, const int line_pos) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
     }
 
     ~NilLiteral() {
@@ -1011,7 +1009,7 @@ namespace frontend {
     friend class TreeFactory;
     wchar_t value;
 
-    CharacterLiteral(const wstring& file_name, int line_num, wchar_t v) : Expression(file_name, line_num, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
+    CharacterLiteral(const wstring& file_name, int line_num, wchar_t v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
       value = v;
     }
 
@@ -1035,8 +1033,7 @@ namespace frontend {
     friend class TreeFactory;
     INT_VALUE value;
 
-  IntegerLiteral(const wstring &file_name, int line_num, INT_VALUE v) :
-    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+  IntegerLiteral(const wstring &file_name, int line_num, INT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
       value = v;
     }
 
@@ -1060,8 +1057,7 @@ namespace frontend {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-  FloatLiteral(const wstring &file_name, int line_num, FLOAT_VALUE v) :
-    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
+  FloatLiteral(const wstring &file_name, int line_num, FLOAT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
       value = v;
     }
 
@@ -1087,8 +1083,7 @@ namespace frontend {
     Expression* if_expression;
     Expression* else_expression;
 
-  Cond(const wstring &file_name, int line_num, Expression* c, Expression* s, 
-       Expression* e) : Expression(file_name, line_num) {
+    Cond(const wstring &file_name, int line_num, int line_pos, Expression* c, Expression* s, Expression* e) : Expression(file_name, line_num, line_pos) {
       expression = c;
       if_expression = s;
       else_expression = e;
@@ -1126,7 +1121,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-  Return(const wstring &file_name, int line_num, Expression* e) : Statement(file_name, line_num) {
+  Return(const wstring &file_name, int line_num, Expression* e) : Statement(file_name, line_num, line_pos) {
       expression = e;
     }
 
@@ -1154,7 +1149,7 @@ namespace frontend {
     friend class TreeFactory;
     StatementList* statements;
     
-    Leaving(const wstring& file_name, int line_num, StatementList* s) : Statement(file_name, line_num) {
+    Leaving(const wstring& file_name, int line_num, int line_pos, StatementList* s) : Statement(file_name, line_num, line_pos) {
       statements = s;
     }
 
@@ -1178,7 +1173,7 @@ namespace frontend {
     friend class TreeFactory;
     StatementType type;
 
-    Break(const wstring& file_name, const int line_num, StatementType t) : Statement(file_name, line_num) {
+    Break(const wstring& file_name, const int line_num, StatementType t) : Statement(file_name, line_num, line_pos) {
       type = t;
     }
 
@@ -1201,7 +1196,7 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const wstring& file_name, int line_num, Expression* e, StatementList* s, If* n = nullptr) : Statement(file_name, line_num) {
+    If(const wstring& file_name, int line_num, Expression* e, StatementList* s, If* n = nullptr) : Statement(file_name, line_num, line_pos) {
       expression = e;
       if_statements = s;
       next = n;
@@ -1246,7 +1241,7 @@ namespace frontend {
     int id;
     Enum* eenum;
 
-    EnumItem(const wstring& file_name, int line_num, const wstring& n, Enum* e) : ParseNode(file_name, line_num) {
+    EnumItem(const wstring& file_name, int line_num, const wstring& n, Enum* e) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       id = -1;
       eenum = e;
@@ -1286,7 +1281,7 @@ namespace frontend {
 
     wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, ParsedProgram* program, Linker* linker);
 
-    Alias(const wstring& file_name, int line_num, const wstring& n) : ParseNode(file_name, line_num) {
+    Alias(const wstring& file_name, int line_num, int line_pos, const wstring& n) : ParseNode(file_name, line_num, line_pos) {
       name = n;
     }
 
@@ -1345,14 +1340,13 @@ namespace frontend {
     int index;
     map<const wstring, EnumItem*> items;
 
-    Enum(const wstring& file_name, int line_num, const wstring& n,
-       int o) : ParseNode(file_name, line_num) {
+    Enum(const wstring& file_name, int line_num, const wstring& n, int o) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       index = offset = o;
     }
 
     Enum(const wstring& file_name, int line_num,
-       const wstring &n) : ParseNode(file_name, line_num) {
+       const wstring &n) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       index = offset = -1;
     }
@@ -1419,7 +1413,7 @@ namespace frontend {
     StatementList* other;
 
     Select(const wstring& file_name, int line_num, Assignment* e, map<ExpressionList*, 
-           StatementList*> s, vector<StatementList*> sl, StatementList* o) : Statement(file_name, line_num) {
+           StatementList*> s, vector<StatementList*> sl, StatementList* o) : Statement(file_name, line_num, line_pos) {
       eval_assignment = e;
       statement_map = s;
       statement_lists = sl;
@@ -1468,7 +1462,7 @@ namespace frontend {
 
   public:
   CriticalSection(const wstring &file_name, int line_num, Variable* v, 
-      StatementList* s) : Statement(file_name, line_num) {
+      StatementList* s) : Statement(file_name, line_num, line_pos) {
       variable = v;
       statements = s;
     }
@@ -1500,7 +1494,7 @@ namespace frontend {
     StatementList* statements;
 
     For(const wstring &file_name, int line_num, Statement* pre, Expression* cond,
-      Statement* update, StatementList* stmts) : Statement(file_name, line_num) {
+      Statement* update, StatementList* stmts) : Statement(file_name, line_num, line_pos) {
       pre_stmt = pre;
       cond_expr = cond;
       update_stmt = update;
@@ -1540,12 +1534,11 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-  DoWhile(const wstring &file_name, int line_num, Expression* e, 
-    StatementList* s) : Statement(file_name, line_num) {
+  DoWhile(const wstring &file_name, int line_num, int line_pos, Expression* e, StatementList* s) : Statement(file_name, line_num, line_pos) {
       expression = e;
       statements = s;
     }
-
+    
     ~DoWhile() {
     }
 
@@ -1571,7 +1564,7 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-    While(const wstring& file_name, int line_num, Expression* e, StatementList* s) : Statement(file_name, line_num) {
+    While(const wstring& file_name, int line_num, int line_pos, Expression* e, StatementList* s) : Statement(file_name, line_num, line_pos) {
       expression = e;
       statements = s;
     }
@@ -1600,7 +1593,7 @@ namespace frontend {
     friend class TreeFactory;
     int id;
 
-    SystemStatement(const wstring& file_name, int line_num, int i) : Statement(file_name, line_num) {
+    SystemStatement(const wstring& file_name, int line_num, int i) : Statement(file_name, line_num, line_pos) {
       id = i;
     }
 
@@ -1624,7 +1617,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    SimpleStatement(const wstring& file_name, int line_num, Expression* e) : Statement(file_name, line_num) {
+    SimpleStatement(const wstring& file_name, int line_num, Expression* e) : Statement(file_name, line_num, line_pos) {
       expression = e;
     }
 
@@ -1648,7 +1641,7 @@ namespace frontend {
     friend class TreeFactory;
 
   public:
-    EmptyStatement(const wstring& file_name, const int line_num) : Statement(file_name, line_num) {
+    EmptyStatement(const wstring& file_name, const int line_num, const int line_pos) : Statement(file_name, line_num, line_pos) {
     }
     
     ~EmptyStatement() {
@@ -1669,13 +1662,13 @@ namespace frontend {
     Variable* variable;
     Expression* expression;
     
-    Assignment(const wstring& file_name, const int line_num, Assignment* c, Variable* v, Expression* e) : Statement(file_name, line_num) {
+    Assignment(const wstring& file_name, const int line_num, const int line_pos, Assignment* c, Variable* v, Expression* e) : Statement(file_name, line_num, line_pos) {
       child = c;
       variable = v;
       expression = e;
     }
 
-    Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e) : Statement(file_name, line_num) {
+    Assignment(const wstring& file_name, const int line_num, const int line_pos, Variable* v, Expression* e) : Statement(file_name, line_num, line_pos) {
       child = nullptr;
       variable = v;
       expression = e;
@@ -1714,7 +1707,7 @@ namespace frontend {
     StatementType stmt_type;
     bool is_string_concat;
 
-    OperationAssignment(const wstring& file_name, int line_num, Variable* v, Expression* e, StatementType t) : Assignment(file_name, line_num, v, e) {
+    OperationAssignment(const wstring& file_name, int line_num, int line_pos, Variable* v, Expression* e, StatementType t) : Assignment(file_name, line_num, line_pos, v, e) {
       stmt_type = t;
       is_string_concat = false;
     }
@@ -1749,13 +1742,13 @@ namespace frontend {
     Assignment* assignment;
     Declaration* child;
 
-    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num) {
+    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num, line_pos) {
       entry = e;
       child = c;
       assignment = a;
     }
 
-    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c) : Statement(file_name, line_num) {
+    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c) : Statement(file_name, line_num, line_pos) {
       entry = e;
       child = c;
       assignment = nullptr;
@@ -1837,8 +1830,8 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
 
-    Method(const wstring& file_name, int line_num, const wstring& n,
-           MethodType m, bool s, bool c) : ParseNode(file_name, line_num) {
+    Method(const wstring& file_name, int line_num, const int line_pos, const wstring& n,
+           MethodType m, bool s, bool c) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       method_type = m;
       is_static = s;
@@ -1853,7 +1846,7 @@ namespace frontend {
       original = nullptr;
     }
 
-    Method(const wstring& file_name, int line_num, const wstring& n) : ParseNode(file_name, line_num) {
+    Method(const wstring& file_name, int line_num, const int line_pos, const wstring& n) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       method_type = PRIVATE_METHOD;
       is_static = true;
@@ -2087,7 +2080,7 @@ namespace frontend {
     Type* generic_interface;
 
     Class(const wstring& file_name, int line_num, const wstring& n, const wstring& p,
-          vector<wstring> &e, vector<Class*> g, bool s, bool i) : ParseNode(file_name, line_num) {
+          vector<wstring> &e, vector<Class*> g, bool s, bool i) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       parent_name = p;
       is_interface = i;
@@ -2106,7 +2099,7 @@ namespace frontend {
     }
 
     Class(const wstring& file_name, const int line_num, const wstring& n,
-          const wstring &p, vector<wstring> &e) : ParseNode(file_name, line_num) {
+          const wstring &p, vector<wstring> &e) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       parent_name = p;
       is_interface = false;
@@ -2123,7 +2116,7 @@ namespace frontend {
       generic_interface = nullptr;
     }
     
-    Class(const wstring& file_name, const int line_num, const wstring& n, bool g) : ParseNode(file_name, line_num) {
+    Class(const wstring& file_name, const int line_num, const wstring& n, bool g) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       is_interface = !g;
       is_public = true;
@@ -2431,10 +2424,10 @@ namespace frontend {
     SymbolEntry* dyn_func_entry;
     vector<Type*> concrete_types;
 
-    MethodCall(const wstring &file_name, const int line_num, MethodCallType t, const wstring &v, ExpressionList* e);
+    MethodCall(const wstring &file_name, const int line_num, const int line_pos, MethodCallType t, const wstring &v, ExpressionList* e);
 
-    MethodCall(const wstring& file_name, int line_num, const wstring& v, const wstring& m,
-               ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
+    MethodCall(const wstring& file_name, int line_num, int line_pos, const wstring& v, const wstring& m,
+               ExpressionList* e) : Statement(file_name, line_num, line_pos), Expression(file_name, line_num, line_pos) {
       variable_name = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2454,8 +2447,8 @@ namespace frontend {
       anonymous_klass = nullptr;
     }
 
-    MethodCall(const wstring& file_name, int line_num, const wstring& v,
-               const wstring &m) : Statement(file_name, line_num), Expression(file_name, line_num) {
+    MethodCall(const wstring& file_name, int line_num, int line_pos, const wstring& v,
+               const wstring &m) : Statement(file_name, line_num, line_pos), Expression(file_name, line_num, line_pos) {
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
@@ -2475,8 +2468,8 @@ namespace frontend {
       anonymous_klass = nullptr;
     }
     
-    MethodCall(const wstring& file_name, int line_num, Variable* v, const wstring& m,
-               ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
+    MethodCall(const wstring& file_name, int line_num, int line_pos, Variable* v, const wstring& m,
+               ExpressionList* e) : Statement(file_name, line_num, line_pos), Expression(file_name, line_num, line_pos) {
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2681,7 +2674,7 @@ namespace frontend {
     vector<pair<SymbolEntry*, SymbolEntry*> > copies;
     
   public:
-    Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num) {
+    Lambda(const wstring& file_name, const int line_num, const int line_pos, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num, line_pos) {
       type = t;
       name = n;
       method = m;
@@ -2837,31 +2830,31 @@ namespace frontend {
       instance = nullptr;
     }
 
-    Alias* MakeAlias(const wstring& file_name, const int line_num, const wstring& name) {
-      Alias* tmp = new Alias(file_name, line_num, name);
+    Alias* MakeAlias(const wstring& file_name, const int line_num, const int line_pos, const wstring& name) {
+      Alias* tmp = new Alias(file_name, line_num, line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, int offset) {
       Enum* tmp = new Enum(file_name, line_num, name, offset);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name) {
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const wstring &name) {
       Enum* tmp = new Enum(file_name, line_num, name);
       nodes.push_back(tmp);
       return tmp;
     }
     
-    EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const wstring &name, Enum* e) {
+    EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, Enum* e) {
       EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
+    Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, 
                      const wstring &parent_name, vector<wstring> interfaces, 
          vector<Class*> generics, bool is_public, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_public, is_interface);
@@ -2869,34 +2862,34 @@ namespace frontend {
       return tmp;
     }
 
-    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
+    Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, 
                      const wstring &parent_name, vector<wstring> interfaces) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, bool is_generic) {
+    Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, bool is_generic) {
       Class* tmp = new Class(file_name, line_num, name, is_generic);
       nodes.push_back(tmp);
       return tmp;
     }
     
-    Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, 
+    Method* MakeMethod(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, 
                        MethodType type, bool is_function, bool is_native) {
-      Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
+      Method* tmp = new Method(file_name, line_num, line_pos, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Method* MakeMethod(const wstring& file_name, const int line_num, const wstring& name) {
-      Method* tmp = new Method(file_name, line_num, name);
+    Method* MakeMethod(const wstring& file_name, const int line_num, const int line_pos, const wstring& name) {
+      Method* tmp = new Method(file_name, line_num, line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) {
-      Lambda* tmp = new Lambda(file_name, line_num, t, n, m, p);
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, const int line_pos, Type* t, const wstring &n, Method* m, ExpressionList* p) {
+      Lambda* tmp = new Lambda(file_name, line_num, line_pos, t, n, m, p);
       nodes.push_back(tmp);
       return tmp;
     }
@@ -2919,182 +2912,182 @@ namespace frontend {
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, instructions::InstructionType instr) {
+    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, instructions::InstructionType instr) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, instr);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, instructions::Traps trap) {
+    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, instructions::Traps trap) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, trap);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SimpleStatement* MakeSimpleStatement(const wstring &file_name, const int line_num, Expression* expression) {
+    SimpleStatement* MakeSimpleStatement(const wstring &file_name, const int line_num, const int line_pos, Expression* expression) {
       SimpleStatement* tmp = new SimpleStatement(file_name, line_num, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    EmptyStatement* MakeEmptyStatement(const wstring &file_name, const int line_num) {
-      EmptyStatement*  tmp = new EmptyStatement(file_name, line_num);
+    EmptyStatement* MakeEmptyStatement(const wstring &file_name, const int line_num, const int line_pos) {
+      EmptyStatement*  tmp = new EmptyStatement(file_name, line_num, line_pos);
       statements.push_back(tmp);
       return tmp;
     }
     
-    Variable* MakeVariable(const wstring &file_name, int line_num, const wstring &name) {
-      Variable* tmp = new Variable(file_name, line_num, name);
+    Variable* MakeVariable(const wstring &file_name, int line_num, int line_pos, const wstring &name) {
+      Variable* tmp = new Variable(file_name, line_num, line_pos, name);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Cond* MakeCond(const wstring &file_name, int line_num, Expression* c, Expression* s, Expression* e) {
-      Cond* tmp = new Cond(file_name, line_num, c, s, e);
+    Cond* MakeCond(const wstring &file_name, int line_num, int line_pos, Expression* c, Expression* s, Expression* e) {
+      Cond* tmp = new Cond(file_name, line_num, line_pos, c, s, e);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    StaticArray* MakeStaticArray(const wstring &file_name, int line_num, ExpressionList* exprs) {
-      StaticArray* tmp = new StaticArray(file_name, line_num, exprs);
+    StaticArray* MakeStaticArray(const wstring &file_name, int line_num, int line_pos, ExpressionList* exprs) {
+      StaticArray* tmp = new StaticArray(file_name, line_num, line_pos, exprs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, 
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, SymbolEntry* entry, 
                                  Declaration* child, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, child, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, SymbolEntry* entry, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, nullptr, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Declaration* child) {
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, SymbolEntry* entry, Declaration* child) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, child);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, 
+    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, int line_pos,
                                                    ExpressionType type, Expression* lhs, Expression* rhs) {
-      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type, lhs, rhs);
+      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, line_pos, type, lhs, rhs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, ExpressionType type) {
-      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type);
+    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, int line_pos, ExpressionType type) {
+      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, line_pos, type);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(const wstring &file_name, const int line_num, INT_VALUE value) {
+    IntegerLiteral* MakeIntegerLiteral(const wstring &file_name, const int line_num, const int line_pos, INT_VALUE value) {
       IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    FloatLiteral* MakeFloatLiteral(const wstring &file_name, const int line_num, FLOAT_VALUE value) {
+    FloatLiteral* MakeFloatLiteral(const wstring &file_name, const int line_num, const int line_pos, FLOAT_VALUE value) {
       FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterLiteral* MakeCharacterLiteral(const wstring &file_name, const int line_num, wchar_t value) {
+    CharacterLiteral* MakeCharacterLiteral(const wstring &file_name, const int line_num, const int line_pos, wchar_t value) {
       CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const wstring &file_name, const int line_num, const wstring &char_string) {
-      CharacterString* tmp = new CharacterString(file_name, line_num, char_string);
+    CharacterString* MakeCharacterString(const wstring &file_name, const int line_num, const int line_pos, const wstring &char_string) {
+      CharacterString* tmp = new CharacterString(file_name, line_num, line_pos, char_string);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    NilLiteral* MakeNilLiteral(const wstring &file_name, const int line_num) {
-      NilLiteral* tmp = new NilLiteral(file_name, line_num);
+    NilLiteral* MakeNilLiteral(const wstring &file_name, const int line_num, const int line_pos) {
+      NilLiteral* tmp = new NilLiteral(file_name, line_num, line_pos);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    BooleanLiteral* MakeBooleanLiteral(const wstring &file_name, const int line_num, bool boolean) {
-      BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, boolean);
+    BooleanLiteral* MakeBooleanLiteral(const wstring &file_name, const int line_num, const int line_pos, bool boolean) {
+      BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, line_pos, boolean);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, MethodCallType type,
+    MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, const int line_pos, MethodCallType type,
                                const wstring &value, ExpressionList* exprs) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, type, value, exprs);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, const wstring &v, const wstring &m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, v, m, e);
+    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, int line_pos, const wstring &v, const wstring &m, ExpressionList* e) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, const wstring &v, const wstring &m) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, v, m);
+    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, int line_pos, const wstring &v, const wstring &m) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, v, m);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, Variable* v, const wstring &m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, v, m, e);
+    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, int line_pos, Variable* v, const wstring &m, ExpressionList* e) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    If* MakeIf(const wstring &file_name, const int line_num, Expression* expression,
+    If* MakeIf(const wstring &file_name, const int line_num, const int line_pos, Expression* expression,
                StatementList* if_statements, If* next = nullptr) {
       If* tmp = new If(file_name, line_num, expression, if_statements, next);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Break* MakeBreakContinue(const wstring &file_name, const int line_num, StatementType type) {
+    Break* MakeBreakContinue(const wstring &file_name, const int line_num, const int line_pos, StatementType type) {
       Break* tmp = new Break(file_name, line_num, type);
       statements.push_back(tmp);
       return tmp;
     }
 
-    DoWhile* MakeDoWhile(const wstring &file_name, const int line_num,
+    DoWhile* MakeDoWhile(const wstring &file_name, const int line_num, const int line_pos,
                          Expression* expression, StatementList* stmts) {
-      DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
+      DoWhile* tmp = new DoWhile(file_name, line_num, line_pos, expression, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    While* MakeWhile(const wstring &file_name, const int line_num,
+    While* MakeWhile(const wstring &file_name, const int line_num, const int line_pos,
                      Expression* expression, StatementList* stmts) {
-      While* tmp = new While(file_name, line_num, expression, stmts);
+      While* tmp = new While(file_name, line_num, line_pos, expression, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    For* MakeFor(const wstring &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
+    For* MakeFor(const wstring &file_name, const int line_num, const int line_pos, Statement* pre_stmt, Expression* cond_expr,
                  Statement* update_stmt, StatementList* stmts) {
       For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, Variable* var, StatementList* stmts) {
+    CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, const int line_pos, Variable* var, StatementList* stmts) {
       CriticalSection* tmp = new CriticalSection(file_name, line_num, var, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Select* MakeSelect(const wstring &file_name, const int line_num, Assignment* eval_assignment,
+    Select* MakeSelect(const wstring &file_name, const int line_num, const int line_pos, Assignment* eval_assignment,
                        map<ExpressionList*, StatementList*> statement_map, 
                        vector<StatementList*> statement_lists, StatementList* other) {
       Select* tmp = new Select(file_name, line_num, eval_assignment,
@@ -3103,44 +3096,42 @@ namespace frontend {
       return tmp;
     }
 
-    Return* MakeReturn(const wstring &file_name, const int line_num, Expression* expression) {
+    Return* MakeReturn(const wstring &file_name, const int line_num, const int line_pos, Expression* expression) {
       Return* tmp = new Return(file_name, line_num, expression);
       statements.push_back(tmp);
       return tmp;
     }
     
-    Leaving* MakeLeaving(const wstring &file_name, const int line_num, StatementList* stmts) {
-      Leaving* tmp = new Leaving(file_name, line_num, stmts);
+    Leaving* MakeLeaving(const wstring &file_name, const int line_num, const int line_pos, StatementList* stmts) {
+      Leaving* tmp = new Leaving(file_name, line_num, line_pos, stmts);
       statements.push_back(tmp);
       return tmp;
     }
     
-    Assignment* MakeAssignment(const wstring &file_name, const int line_num,
+    Assignment* MakeAssignment(const wstring &file_name, const int line_num, const int line_pos,
                                Assignment* child, Variable* variable, Expression* expression) {
-      Assignment* tmp = new Assignment(file_name, line_num, child, variable, expression);
+      Assignment* tmp = new Assignment(file_name, line_num, line_pos, child, variable, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Assignment* MakeAssignment(const wstring &file_name, const int line_num,
+    Assignment* MakeAssignment(const wstring &file_name, const int line_num, const int line_pos,
                                Variable* variable, Expression* expression) {
-      Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
+      Assignment* tmp = new Assignment(file_name, line_num, line_pos, variable, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    OperationAssignment* MakeOperationAssignment(const wstring &file_name, const int line_num,
-                                                 Variable* variable, Expression* expression, 
-                                                 StatementType stmt_type) {
-      OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable, 
-                                                         expression, stmt_type);
+    OperationAssignment* MakeOperationAssignment(const wstring &file_name, const int line_num, const int line_pos,
+                                                 Variable* variable, Expression* expression, StatementType stmt_type) {
+      OperationAssignment* tmp = new OperationAssignment(file_name, line_num, line_pos, variable, expression, stmt_type);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SymbolEntry* MakeSymbolEntry(const wstring &file_name, const int line_num, 
+    SymbolEntry* MakeSymbolEntry(const wstring &file_name, const int line_num, const int line_pos, 
          const wstring &n, Type* t, bool s, bool c, bool e = false) {
-      SymbolEntry* tmp = new SymbolEntry(file_name, line_num, n, t, s, c, e);
+      SymbolEntry* tmp = new SymbolEntry(file_name, line_num, line_pos, n, t, s, c, e);
       entries.push_back(tmp);
       return tmp;
     }

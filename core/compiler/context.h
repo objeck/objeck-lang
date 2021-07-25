@@ -430,7 +430,7 @@ class ContextAnalyzer {
   ExpressionList* MapLambdaDeclarations(DeclarationList* declarations);
 
   // error processing
-  void ProcessError(const wstring& fn, int ln, const wstring& msg);
+  void ProcessError(const wstring& fn, int ln, int lp, const wstring& msg);
   void ProcessError(ParseNode* n, const wstring &msg);
   void ProcessErrorAlternativeMethods(wstring &message);
   void ProcessError(const wstring &fn, const wstring &msg);
@@ -463,9 +463,9 @@ class ContextAnalyzer {
   void AnalyzeExpressions(ExpressionList* parameters, const int depth);
   void AnalyzeExpression(Expression* expression, const int depth);
   void AnalyzeLambda(Lambda* param1, const int depth);
-  Type* ResolveAlias(const wstring& name, const wstring& fn, int ln);
+  Type* ResolveAlias(const wstring& name, const wstring& fn, int ln, int lp);
   Type* ResolveAlias(const wstring& name, ParseNode* node) {
-    return ResolveAlias(name, node->GetFileName(), node->GetLineNumber());
+    return ResolveAlias(name, node->GetFileName(), node->GetLineNumber(), node->GetLinePosition());
   }
   LibraryMethod* DerivedLambdaFunction(vector<LibraryMethod*>& alt_mthds);
   Method* DerivedLambdaFunction(vector<Method*>& alt_mthds);
