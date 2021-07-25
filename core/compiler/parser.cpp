@@ -166,8 +166,9 @@ void Parser::ProcessError(ScannerTokenType type)
   GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << endl;
 #endif
 
-  const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
+  const wstring& str_line_num = ToString(GetLineNumber());
+  const wstring& str_line_pos = ToString(GetLinePosition());
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
@@ -180,7 +181,8 @@ void Parser::ProcessError(const wstring &msg)
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
+  const wstring& str_line_pos = ToString(GetLinePosition());
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
@@ -194,7 +196,9 @@ void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber() + offset);
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
+  const wstring& str_line_pos = ToString(GetLinePosition());
+
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
