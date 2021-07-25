@@ -78,6 +78,10 @@ class Parser {
   inline int GetLineNumber() {
     return scanner->GetToken()->GetLineNumber();
   }
+  // get line position of current token
+  inline int GetLinePosition() {
+    return scanner->GetToken()->GetLinePosition();
+  }
   // get filename of current token
   inline const wstring GetFileName() {
     return scanner->GetToken()->GetFileName();
