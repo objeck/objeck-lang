@@ -104,6 +104,7 @@ wstring Parser::ParseBundleName()
 frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
   // add entry
@@ -451,6 +452,7 @@ void Parser::ParseBundle(int depth)
 Enum* Parser::ParseEnum(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   NextToken();
@@ -534,6 +536,7 @@ Enum* Parser::ParseEnum(int depth)
 Alias* Parser::ParseLambdas(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   NextToken();
@@ -607,6 +610,7 @@ Alias* Parser::ParseLambdas(int depth)
 Enum* Parser::ParseConsts(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   NextToken();
@@ -769,10 +773,12 @@ void Parser::CalculateConst(Expression* expression, stack<int>& values, int dept
 Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
-  bool is_public = true;
 
+  bool is_public = true;
   NextToken();
+
   if(Match(TOKEN_COLON)) {
     NextToken();
     if(Match(TOKEN_PUBLIC_ID)) {
@@ -936,6 +942,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   NextToken();
@@ -1008,6 +1015,7 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
  ****************************/
 Lambda* Parser::ParseLambda(int depth) {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
   // build method
@@ -1110,6 +1118,7 @@ Lambda* Parser::ParseLambda(int depth) {
 Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   MethodType method_type = PRIVATE_METHOD;
@@ -1367,6 +1376,7 @@ StatementList* Parser::ParseStatementList(int depth)
 Statement* Parser::ParseStatement(int depth, bool semi_colon)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -2596,6 +2606,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
  ****************************/
 StaticArray* Parser::ParseStaticArray(int depth) {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -2711,6 +2722,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 Variable* Parser::ParseVariable(const wstring &ident, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -2785,6 +2797,7 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
 vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   vector<Class*> generic_classes;
@@ -2855,6 +2868,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
 Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3030,6 +3044,7 @@ ExpressionList* Parser::ParseExpressionList(int depth, ScannerTokenType open, Sc
 ExpressionList* Parser::ParseIndices(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   ExpressionList* expressions = nullptr;
@@ -3085,6 +3100,7 @@ ExpressionList* Parser::ParseIndices(int depth)
 Expression* Parser::ParseExpression(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3126,6 +3142,7 @@ Expression* Parser::ParseExpression(int depth)
 Expression* Parser::ParseLogic(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3186,6 +3203,7 @@ Expression* Parser::ParseLogic(int depth)
 Expression* Parser::ParseMathLogic(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3241,6 +3259,7 @@ Expression* Parser::ParseMathLogic(int depth)
 Expression* Parser::ParseTerm(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3304,6 +3323,7 @@ Expression* Parser::ParseTerm(int depth)
 Expression* Parser::ParseFactor(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3423,6 +3443,7 @@ Expression* Parser::ParseFactor(int depth)
 Expression* Parser::ParseSimpleExpression(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3710,6 +3731,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
 MethodCall* Parser::ParseMethodCall(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3727,6 +3749,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
 MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3903,6 +3926,7 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
 MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   NextToken();
@@ -3926,6 +3950,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
 void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
   if(prev_method && current_method) {
@@ -4048,6 +4073,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 If* Parser::ParseIf(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4095,6 +4121,7 @@ If* Parser::ParseIf(int depth)
 DoWhile* Parser::ParseDoWhile(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4131,6 +4158,7 @@ DoWhile* Parser::ParseDoWhile(int depth)
 While* Parser::ParseWhile(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4168,6 +4196,7 @@ While* Parser::ParseWhile(int depth)
 CriticalSection* Parser::ParseCritical(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4206,6 +4235,7 @@ CriticalSection* Parser::ParseCritical(int depth)
 For* Parser::ParseEach(bool reverse, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4371,6 +4401,7 @@ For* Parser::ParseEach(bool reverse, int depth)
 For * Parser::ParseFor(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4412,6 +4443,7 @@ For * Parser::ParseFor(int depth)
 Select* Parser::ParseSelect(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4511,6 +4543,7 @@ Select* Parser::ParseSelect(int depth)
 Return* Parser::ParseReturn(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4532,6 +4565,7 @@ Return* Parser::ParseReturn(int depth)
 Leaving* Parser::ParseLeaving(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4552,6 +4586,7 @@ Leaving* Parser::ParseLeaving(int depth)
 Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4604,6 +4639,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 Type* Parser::ParseType(int depth)
 {
   const int line_num = GetLineNumber();
+	const int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG

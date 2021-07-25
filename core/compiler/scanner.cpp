@@ -534,14 +534,15 @@ void Scanner::CheckIdentifier(int index)
       tokens[index]->SetIdentifier(ident);
       break;
     }
+    
     tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetLinePos(line_pos - length - 1);
+	  tokens[index]->SetLinePos((int)(line_pos - length - 1));
     tokens[index]->SetFileName(filename);
   }
   catch(const out_of_range&) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetLinePos(line_pos - 1);
+    tokens[index]->SetLinePos((int)(line_pos - 1));
     tokens[index]->SetFileName(filename);
   }
 }
@@ -620,7 +621,7 @@ void Scanner::CheckString(int index, bool is_valid)
   }
   tokens[index]->SetIdentifier(char_string);
   tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetLinePos(line_pos - length - 2);
+	tokens[index]->SetLinePos((int)(line_pos - length - 2));
   tokens[index]->SetFileName(filename);
 }
 
@@ -635,7 +636,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   tokens[index]->SetType(TOKEN_INT_LIT);
   tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
   tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetLinePos(line_pos - length - 1);
+	tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
 }
 
@@ -648,7 +649,7 @@ void Scanner::ParseDouble(int index)
   tokens[index]->SetType(TOKEN_FLOAT_LIT);
   tokens[index]->SetFloatLit(wcstod(ident.c_str(), nullptr));
   tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetLinePos(line_pos - length - 1);
+	tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
 }
 
@@ -662,13 +663,13 @@ void Scanner::ParseUnicodeChar(int index)
     tokens[index]->SetType(TOKEN_CHAR_LIT);
     tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), nullptr, 16));
     tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetLinePos(line_pos - length - 1);
+    tokens[index]->SetLinePos((int)(line_pos - length - 1));
     tokens[index]->SetFileName(filename);
   }
   else {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetLinePos(line_pos - length - 1);
+    tokens[index]->SetLinePos((int)(line_pos - length - 1));
     tokens[index]->SetFileName(filename);
   }
 }
@@ -1072,7 +1073,7 @@ void Scanner::ParseToken(int index)
     else {
       tokens[index]->SetFileName(filename);
       tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetLinePos(line_pos - 1);
+      tokens[index]->SetLinePos((int)(line_pos - 1));
       
       switch(cur_char) {
       case L':':
