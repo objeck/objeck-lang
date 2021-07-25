@@ -39,7 +39,7 @@
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
@@ -49,10 +49,10 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(const wstring& fn, int ln, const wstring& msg)
+void ContextAnalyzer::ProcessError(const wstring& fn, int ln, int lp, const wstring& msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << fn << L':' << ln << L": " << msg << endl;
+  GetLogger() << L"\tError: " << fn << L": (" << ln << L',' << lp << L"): " << msg << endl;
 #endif
 
   const wstring& str_line_num = ToString(ln);
@@ -140,7 +140,7 @@ bool ContextAnalyzer::Analyze()
   for(size_t i = 0; i < types.size(); ++i) {
     Type* type = types[i];
     if(type->GetType() == ALIAS_TYPE) {
-      Type* resloved_type = ResolveAlias(type->GetName(), type->GetFileName(), type->GetLineNumber());
+      Type* resloved_type = ResolveAlias(type->GetName(), type->GetFileName(), type->GetLineNumber(), type->GetLinePosition());
       if(resloved_type) {
         type->Set(resloved_type);
       }
@@ -386,9 +386,8 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 
   // build alternative methods
   while(inital_param_offset < declarations.size()) {
-    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(),
-                                                             method->GetName(), method->GetMethodType(),
-                                                             method->IsStatic(), method->IsNative());
+    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+                                                             method->GetName(), method->GetMethodType(), method->IsStatic(), method->IsNative());
     alt_method->SetReturn(method->GetReturn());
 
     DeclarationList* alt_declarations = TreeFactory::Instance()->MakeDeclarationList();
@@ -909,7 +908,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   }
 }
 
-Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int ln) {
+Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int ln, int lp) {
   Type* alias_type = nullptr;
 
   wstring alias_name;
@@ -931,10 +930,10 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
     }
     else {
       if(name.empty()) {
-        ProcessError(fn, ln, L"Invalid alias");
+        ProcessError(fn, ln, lp, L"Invalid alias");
       }
       else {
-        ProcessError(fn, ln, L"Undefined alias: '" + FormatTypeString(name) + L"'");
+        ProcessError(fn, ln, lp, L"Undefined alias: '" + FormatTypeString(name) + L"'");
       }
     }
   }
@@ -947,25 +946,25 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
       }
       else {
         if(name.empty()) {
-          ProcessError(fn, ln, L"Invalid alias");
+          ProcessError(fn, ln, lp, L"Invalid alias");
         }
         else {
-          ProcessError(fn, ln, L"Undefined alias: '" + FormatTypeString(name) + L"'");
+          ProcessError(fn, ln, lp, L"Undefined alias: '" + FormatTypeString(name) + L"'");
         }
       }
     }
     else {
       if(name.empty()) {
-        ProcessError(fn, ln, L"Invalid alias");
+        ProcessError(fn, ln, lp, L"Invalid alias");
       }
       else {
-        ProcessError(fn, ln, L"Undefined alias: '" + FormatTypeString(name) + L"'");
+        ProcessError(fn, ln, lp, L"Undefined alias: '" + FormatTypeString(name) + L"'");
       }
     }
   }  
 
   if(alias_type && alias_type->GetType() == ALIAS_TYPE) {
-    ProcessError(fn, ln, L"Invalid nested alias reference");
+    ProcessError(fn, ln, lp, L"Invalid nested alias reference");
     return nullptr;
   }
   
@@ -1076,9 +1075,8 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
       const wstring method_name = full_method_name.substr(offset + 1);
 
       // create method call
-      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(),
-                                                                        current_class->GetName(), method_name,
-                                                                        MapLambdaDeclarations(declaration_list));
+      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+                                                                        current_class->GetName(), method_name, MapLambdaDeclarations(declaration_list));
       method_call->SetFunctionalReturn(method->GetReturn());
       AnalyzeMethodCall(method_call, depth + 1);
       lambda->SetMethodCall(method_call);
@@ -1141,7 +1139,7 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
     }
 
     if(!ident.empty()) {
-      expressions->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), ident));
+      expressions->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), dclrs[i]->GetLinePosition(), ident));
     }
   }
 
@@ -1619,9 +1617,8 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     const wstring scope_name = current_method->GetName() + L":#concat#";
     SymbolEntry* entry = current_table->GetEntry(scope_name);
     if(!entry) {
-      entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
-                                                       char_str->GetLineNumber(),
-                                                       scope_name, type, false, true);
+      entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(), char_str->GetLineNumber(),
+                                                       char_str->GetLinePosition(), scope_name, type, false, true);
       current_table->AddEntry(entry, true);
     }
     char_str->SetConcat(entry);
@@ -1801,7 +1798,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       }
       else {
         const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
-        SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
+        SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(), variable->GetLinePosition(),
                                                                            var_scope_name, capture_entry->GetType(), false, false);
         symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
 
@@ -1815,8 +1812,8 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   // type inferred variable
   else if(current_method) {
     const wstring scope_name = current_method->GetName() + L':' + variable->GetName();
-    SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(), scope_name, 
-                                                                      TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
+    SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(), variable->GetLinePosition(), 
+                                                                      scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
 
     // link entry and variable
@@ -1995,12 +1992,13 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     else if(capture_lambda) {
       const wstring full_class_name = GetProgramLibraryClassName(variable_name);
       if(!HasProgramLibraryEnum(full_class_name) && !HasProgramLibraryClass(full_class_name)) {
-	Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
-								   static_cast<Expression*>(method_call)->GetLineNumber(),
-								   full_class_name);
-	AnalyzeVariable(variable, depth + 1);
-	method_call->SetVariable(variable);
-	entry = GetEntry(method_call, full_class_name, depth);
+  Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
+                                                             static_cast<Expression*>(method_call)->GetLineNumber(),
+                                                             static_cast<Expression*>(method_call)->GetLinePosition(),
+                                                             full_class_name);
+  AnalyzeVariable(variable, depth + 1);
+  method_call->SetVariable(variable);
+  entry = GetEntry(method_call, full_class_name, depth);
       }
     }
     
@@ -4170,24 +4168,28 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         case ADD_ASSIGN_STMT:
           calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
                                                                               variable->GetLineNumber(),
+                                                                              variable->GetLinePosition(),
                                                                               ADD_EXPR, variable, expression);
           break;
 
         case SUB_ASSIGN_STMT:
           calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
                                                                               variable->GetLineNumber(),
+                                                                              variable->GetLinePosition(),
                                                                               SUB_EXPR, variable, expression);
           break;
 
         case MUL_ASSIGN_STMT:
           calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
                                                                               variable->GetLineNumber(),
+                                                                              variable->GetLinePosition(),
                                                                               MUL_EXPR, variable, expression);
           break;
 
         case DIV_ASSIGN_STMT:
           calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(), 
                                                                               variable->GetLineNumber(),
+                                                                              variable->GetLinePosition(),
                                                                               DIV_EXPR, variable, expression);
           break;
 
@@ -4940,7 +4942,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   ResolveClassEnumType(type);
   if(expression->GetExpressionType() == VAR_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           static_cast<Variable*>(expression), L"Get", box_expressions);
     AnalyzeMethodCall(box_method_call, depth + 1);
 
@@ -4956,7 +4958,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   }
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           expression->GetEvalType()->GetName(), L"Get", box_expressions);
     expression->SetMethodCall(box_method_call);
     AnalyzeExpression(calc_expression, depth + 1);
@@ -4990,7 +4992,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
     case FLOAT_TYPE: {
       if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(from_type->GetName())) {
         ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
+        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
                                                                               from_expr->GetEvalType()->GetName(), L"Get", box_expressions);
         
         from_expr->SetMethodCall(box_method_call);
@@ -5010,7 +5012,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
         if(IsHolderType(to_type->GetName())) {
           ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
           box_expressions->AddExpression(from_expr);
-          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
                                                                                 NEW_INST_CALL, to_type->GetName(), box_expressions);
           AnalyzeMethodCall(box_method_call, depth);
           return box_method_call;
@@ -5580,16 +5582,14 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
   
   if(to_type->GetType() == CLASS_TYPE && (from_type->GetType() != CLASS_TYPE || is_cast)) {
     if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetName())) {
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            static_cast<Variable*>(from_expr), L"Get",
-                                                                            TreeFactory::Instance()->MakeExpressionList());
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+                                                                            static_cast<Variable*>(from_expr), L"Get", TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
     else if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(to_type->GetName())) {
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            from_expr->GetEvalType()->GetName(), L"Get",
-                                                                            TreeFactory::Instance()->MakeExpressionList());
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+                                                                            from_expr->GetEvalType()->GetName(), L"Get", TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       from_expr->SetMethodCall(box_method_call);
       return from_expr;
@@ -5625,7 +5625,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
     if(IsHolderType(to_type->GetName())) {
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
                                                                             NEW_INST_CALL, to_type->GetName(), box_expressions);
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
@@ -7034,6 +7034,7 @@ void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* e
     const wstring& param_name = entry_name.substr(start + 1);
     Variable * variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
                                                                 static_cast<Expression*>(method_call)->GetLineNumber(),
+                                                                static_cast<Expression*>(method_call)->GetLinePosition(),
                                                                 param_name);
     method_call->SetVariable(variable);
     AnalyzeVariable(variable, entry, depth + 1);

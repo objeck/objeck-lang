@@ -148,9 +148,7 @@ TreeFactory* TreeFactory::Instance()
  ****************************/
 SymbolEntry* SymbolEntry::Copy() 
 {
-  return TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-              name, type, is_static,
-              is_local, is_self);
+  return TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, name, type, is_static, is_local, is_self);
 }
 
 void SymbolEntry::SetId(int i)
@@ -633,7 +631,7 @@ vector<int> StaticArray::GetSizes() {
  * Variable class
  ****************************/
 Variable* Variable::Copy() {
-  Variable* v = TreeFactory::Instance()->MakeVariable(file_name, line_num, name);
+  Variable* v = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name);
   v->indices = indices;
   return v;
 }
@@ -643,18 +641,16 @@ Variable* Variable::Copy() {
  ****************************/
 Declaration* Declaration::Copy() {
   if(assignment) {
-    return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy(), child, assignment);
+    return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry->Copy(), child, assignment);
   }
 
-  return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy(), child);
+  return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry->Copy(), child);
 }
 
 /****************************
  * MethodCall class
  ****************************/
-MethodCall::MethodCall(const wstring &f, const int l, MethodCallType t,
-           const wstring &v, ExpressionList* e) :
-  Statement(f, l), Expression(f, l) {
+MethodCall::MethodCall(const wstring &f, const int l, const int p, MethodCallType t, const wstring &v, ExpressionList* e) : Statement(f, l, p), Expression(f, l, p) {
   variable_name = v;
   call_type = t;
   method_name = L"New";

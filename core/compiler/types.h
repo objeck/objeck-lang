@@ -61,22 +61,28 @@ namespace frontend {
   protected:
     wstring file_name;
     int line_num;
+    int line_pos;
 
   public:
-    ParseNode(const wstring &f, const int l) {
+    ParseNode(const wstring &f, const int l, const int p) {
       file_name = f;
       line_num = l;
+      line_pos = p;
     }
     
     virtual ~ParseNode() {
     }
     
-    const wstring GetFileName() {
+    inline const wstring GetFileName() {
       return file_name;
     }
 
-    const int GetLineNumber() {
+    inline const int GetLineNumber() {
       return line_num;
+    }
+
+    inline const int GetLinePosition() {
+      return line_pos;
     }
   };
 
@@ -131,6 +137,7 @@ namespace frontend {
     vector<Type*> generic_types;
     wstring file_name;
     int line_num;
+    int line_pos;
 
     bool is_resolved;
     void* klass_cache_ptr;
@@ -160,14 +167,14 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
-      line_num = -1;
+      line_num = line_pos = -1;
 
       is_resolved = false;
       klass_cache_ptr = nullptr;
       lib_klass_cache_ptr = nullptr;
     }
 
-    Type(EntryType t, const wstring &n, const wstring& f, int l) {
+    Type(EntryType t, const wstring &n, const wstring& f, int l, int p) {
       type = t;
       class_name = n;
       dimension = 0;
@@ -175,6 +182,7 @@ namespace frontend {
       func_param_count = -1;
       file_name = f;
       line_num = l;
+      line_pos = p;
 
       is_resolved = false;
       klass_cache_ptr = nullptr;
@@ -348,6 +356,10 @@ namespace frontend {
     const int GetLineNumber() {
       return line_num;
     }
+
+    const int GetLinePosition() {
+      return line_pos;
+    }
   };
 
   /******************************
@@ -391,8 +403,8 @@ namespace frontend {
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const wstring& name, const wstring& file_name, int line_num) {
-      Type* tmp = new Type(type, name, file_name, line_num);
+    Type* MakeType(EntryType type, const wstring& name, const wstring& file_name, int line_num, int line_pos) {
+      Type* tmp = new Type(type, name, file_name, line_num, line_pos);
       types.push_back(tmp);
       return tmp;
     }
