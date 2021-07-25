@@ -346,7 +346,7 @@ class Token {
  private:
   ScannerTokenType token_type;
   int line_nbr;
-  int line_pos;
+  size_t line_pos;
   wstring filename;
   wstring ident;
 
@@ -380,7 +380,7 @@ class Token {
     return line_nbr;
   }
 
-  inline const int GetLinePosition() {
+  inline const size_t GetLinePosition() {
     return line_pos;
   }
 
@@ -388,7 +388,7 @@ class Token {
     line_nbr = l;
   }
 
-  inline void SetLinePos(int p) {
+  inline void SetLinePos(size_t p) {
     line_pos = p;
   }
 
@@ -470,7 +470,7 @@ class Scanner {
   Token* tokens[LOOK_AHEAD];
   // line number
   int line_nbr;
-  int line_pos;
+  size_t line_pos;
 
   // warning message
   void ProcessWarning() {
