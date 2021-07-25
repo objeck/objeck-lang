@@ -534,13 +534,13 @@ void Scanner::CheckIdentifier(int index)
       break;
     }
     tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetLinePos(line_pos);
+	  tokens[index]->SetLinePos(line_pos - length - 1);
     tokens[index]->SetFileName(filename);
   }
   catch(const out_of_range&) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetLinePos(line_pos);
+    tokens[index]->SetLinePos(line_pos - 1);
     tokens[index]->SetFileName(filename);
   }
 }
@@ -1071,7 +1071,7 @@ void Scanner::ParseToken(int index)
     else {
       tokens[index]->SetFileName(filename);
       tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetLinePos(line_pos);
+      tokens[index]->SetLinePos(line_pos - 1);
       
       switch(cur_char) {
       case L':':
