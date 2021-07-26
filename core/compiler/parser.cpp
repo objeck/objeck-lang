@@ -1623,944 +1623,944 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
 #ifdef _SYSTEM
     case ASYNC_MTHD_CALL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::ASYNC_MTHD_CALL);
       NextToken();
       break;
 
     case DLL_LOAD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DLL_LOAD);
       NextToken();
       break;
 
     case DLL_UNLOAD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DLL_UNLOAD);
       NextToken();
       break;
 
     case DLL_FUNC_CALL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DLL_FUNC_CALL);
       NextToken();
       break;
 
     case THREAD_MUTEX:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::THREAD_MUTEX);
       NextToken();
       break;
 
     case THREAD_SLEEP:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::THREAD_SLEEP);
       NextToken();
       break;
 
     case THREAD_JOIN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::THREAD_JOIN);
       NextToken();
       break;
 
     case SYS_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SYS_TIME);
       NextToken();
       break;
 
     case BYTES_TO_UNICODE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::BYTES_TO_UNICODE);
       NextToken();
       break;
 
     case UNICODE_TO_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::UNICODE_TO_BYTES);
       NextToken();
       break;
 
     case GMT_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::GMT_TIME);
       NextToken();
       break;
 
     case FILE_CREATE_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_CREATE_TIME);
       NextToken();
       break;
 
 
     case FILE_ACCOUNT_OWNER:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_ACCOUNT_OWNER);
       NextToken();
       break;
 
     case FILE_GROUP_OWNER:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_GROUP_OWNER);
       NextToken();
       break;
 
     case FILE_MODIFIED_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_MODIFIED_TIME);
       NextToken();
       break;
 
     case FILE_ACCESSED_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_ACCESSED_TIME);
       NextToken();
       break;
 
     case DATE_TIME_SET_1:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_SET_1);
       NextToken();
       break;
 
     case DATE_TIME_SET_2:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_SET_2);
       NextToken();
       break;
 
     case DATE_TIME_SET_3:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_SET_3);
       NextToken();
       break;
 
     case DATE_TIME_ADD_DAYS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_ADD_DAYS);
       NextToken();
       break;
 
     case DATE_TIME_ADD_HOURS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_ADD_HOURS);
       NextToken();
       break;
 
     case DATE_TIME_ADD_MINS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_ADD_MINS);
       NextToken();
       break;
 
     case DATE_TIME_ADD_SECS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DATE_TIME_ADD_SECS);
       NextToken();
       break;
 
     case GET_PLTFRM:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::GET_PLTFRM);
       NextToken();
       break;
 
     case GET_VERSION:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::GET_VERSION);
       NextToken();
       break;
 
     case GET_SYS_PROP:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::GET_SYS_PROP);
       NextToken();
       break;
 
     case SET_SYS_PROP:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SET_SYS_PROP);
       NextToken();
       break;
 
     case ASSERT_TRUE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::ASSERT_TRUE);
       NextToken();
       break;
 
     case SYS_CMD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SYS_CMD);
       NextToken();
       break;
 
     case SYS_CMD_OUT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SYS_CMD_OUT);
       NextToken();
       break;
 
     case EXIT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::EXIT);
       NextToken();
       break;
 
     case TIMER_START:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::TIMER_START);
       NextToken();
       break;
 
     case TIMER_END:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::TIMER_END);
       NextToken();
       break;
 
     case TIMER_ELAPSED:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::TIMER_ELAPSED);
       NextToken();
       break;
 
     case FLOR_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FLOR_FLOAT);
       NextToken();
       break;
 
     case CPY_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::CPY_BYTE_ARY);
       NextToken();
       break;
 
     case S2I:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::S2I);
       NextToken();
       break;
 
     case S2F:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::S2F);
       NextToken();
       break;
 
     case I2S:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::I2S);
       NextToken();
       break;
 
     case F2S:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::F2S);
       NextToken();
       break;
 
     case LOAD_ARY_SIZE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOAD_ARY_SIZE);
       NextToken();
       break;
 
     case CPY_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::CPY_CHAR_ARY);
       NextToken();
       break;
 
     case CPY_INT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::CPY_INT_ARY);
       NextToken();
       break;
 
     case CPY_FLOAT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::CPY_FLOAT_ARY);
       NextToken();
       break;
 
     case CEIL_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::CEIL_FLOAT);
       NextToken();
       break;
 
     case SIN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SIN_FLOAT);
       NextToken();
       break;
 
     case COS_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::COS_FLOAT);
       NextToken();
       break;
 
     case TAN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::TAN_FLOAT);
       NextToken();
       break;
 
     case ASIN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::ASIN_FLOAT);
       NextToken();
       break;
 
     case ACOS_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::ACOS_FLOAT);
       NextToken();
       break;
 
     case ATAN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::ATAN_FLOAT);
       NextToken();
       break;
 
     case ATAN2_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::ATAN2_FLOAT);
       NextToken();
       break;
 
     case LOG_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOG_FLOAT);
       NextToken();
       break;
 
     case POW_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::POW_FLOAT);
       NextToken();
       break;
 
     case SQRT_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SQRT_FLOAT);
       NextToken();
       break;
 
     case RAND_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::RAND_FLOAT);
       NextToken();
       break;
 
     case STD_OUT_BOOL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_BOOL);
       NextToken();
       break;
 
     case STD_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_BYTE);
       NextToken();
       break;
 
     case STD_OUT_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_CHAR);
       NextToken();
       break;
 
     case STD_OUT_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_INT);
       NextToken();
       break;
 
     case STD_OUT_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_FLOAT);
       NextToken();
       break;
 
     case STD_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case STD_OUT_BYTE_ARY_LEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_BYTE_ARY_LEN);
       NextToken();
       break;
 
     case STD_OUT_CHAR_ARY_LEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_OUT_CHAR_ARY_LEN);
       NextToken();
       break;
 
     case STD_ERR_BOOL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_BOOL);
       NextToken();
       break;
 
     case STD_ERR_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_BYTE);
       NextToken();
       break;
 
     case STD_ERR_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_CHAR);
       NextToken();
       break;
 
     case STD_ERR_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_INT);
       NextToken();
       break;
 
     case STD_ERR_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_FLOAT);
       NextToken();
       break;
 
     case STD_ERR_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_CHAR_ARY);
       NextToken();
       break;
 
     case STD_ERR_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_BYTE_ARY);
       NextToken();
       break;
 
     case STD_FLUSH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_FLUSH);
       NextToken();
       break;
 
     case STD_ERR_FLUSH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_FLUSH);
       NextToken();
       break;
 
     case LOAD_MULTI_ARY_SIZE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOAD_MULTI_ARY_SIZE);
       NextToken();
       break;
 
     case LOAD_CLS_INST_ID:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOAD_CLS_INST_ID);
       NextToken();
       break;
 
     case LOAD_CLS_BY_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOAD_CLS_BY_INST);
       NextToken();
       break;
 
     case LOAD_NEW_OBJ_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOAD_NEW_OBJ_INST);
       NextToken();
       break;
 
     case LOAD_INST_UID:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::LOAD_INST_UID);
       NextToken();
       break;
 
     case STD_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_IN_STRING);
       NextToken();
       break;
 
     case COMPRESS_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::COMPRESS_BYTES);
       NextToken();
       break;
 
     case UNCOMPRESS_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::UNCOMPRESS_BYTES);
       NextToken();
       break;
 
     case CRC32_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::CRC32_BYTES);
       NextToken();
       break;
 
     case FILE_OPEN_READ:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OPEN_READ);
       NextToken();
       break;
 
     case FILE_OPEN_APPEND:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OPEN_APPEND);
       NextToken();
       break;
 
     case FILE_CLOSE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_CLOSE);
       NextToken();
       break;
 
     case FILE_FLUSH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_FLUSH);
       NextToken();
       break;
 
     case FILE_IN_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_IN_BYTE);
       NextToken();
       break;
 
     case FILE_IN_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_IN_BYTE_ARY);
       NextToken();
       break;
 
     case FILE_IN_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_IN_CHAR_ARY);
       NextToken();
       break;
 
     case FILE_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_IN_STRING);
       NextToken();
       break;
 
     case FILE_OPEN_WRITE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OPEN_WRITE);
       NextToken();
       break;
 
     case FILE_OPEN_READ_WRITE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OPEN_READ_WRITE);
       NextToken();
       break;
 
     case FILE_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OUT_BYTE);
       NextToken();
       break;
 
     case FILE_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case FILE_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case FILE_OUT_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_OUT_STRING);
       NextToken();
       break;
 
     case FILE_EXISTS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_EXISTS);
       NextToken();
       break;
 
     case FILE_CAN_READ_ONLY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_CAN_READ_ONLY);
       NextToken();
       break;
 
     case FILE_CAN_WRITE_ONLY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_CAN_WRITE_ONLY);
       NextToken();
       break;
 
     case FILE_CAN_READ_WRITE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_CAN_READ_WRITE);
       NextToken();
       break;
 
     case FILE_SIZE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_SIZE);
       NextToken();
       break;
 
     case FILE_FULL_PATH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_FULL_PATH);
       NextToken();
       break;
 
     case FILE_TEMP_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_TEMP_NAME);
       NextToken();
       break;
 
     case FILE_SEEK:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_SEEK);
       NextToken();
       break;
 
     case FILE_EOF:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_EOF);
       NextToken();
       break;
 
     case FILE_DELETE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_DELETE);
       NextToken();
       break;
 
     case FILE_RENAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_RENAME);
       NextToken();
       break;
 
     case DIR_CREATE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DIR_CREATE);
       NextToken();
       break;
 
     case DIR_EXISTS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DIR_EXISTS);
       NextToken();
       break;
 
     case DIR_LIST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DIR_LIST);
       NextToken();
       break;
 
     case FILE_REWIND:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_REWIND);
       NextToken();
       break;
 
     case FILE_IS_OPEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::FILE_IS_OPEN);
       NextToken();
       break;
 
     case SOCK_TCP_CONNECT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_CONNECT);
       NextToken();
       break;
 
     case SOCK_TCP_BIND:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_BIND);
       NextToken();
       break;
 
     case SOCK_TCP_LISTEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_LISTEN);
       NextToken();
       break;
 
     case SOCK_TCP_ACCEPT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_ACCEPT);
       NextToken();
       break;
 
     case SOCK_TCP_IS_CONNECTED:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_IS_CONNECTED);
       NextToken();
       break;
 
     case SOCK_TCP_CLOSE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_CLOSE);
       NextToken();
       break;
 
     case SOCK_TCP_IN_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_IN_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_IN_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_IN_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_IN_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_IN_CHAR_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_OUT_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_IN_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_OUT_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_HOST_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_HOST_NAME);
       NextToken();
       break;
 
     case SOCK_TCP_RESOLVE_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_RESOLVE_NAME);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_CONNECT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_CONNECT);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_CERT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_CERT);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_CLOSE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_CLOSE);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_IN_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_IN_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_IN_CHAR_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_OUT_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_IN_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_OUT_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SOCK_TCP_SSL_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case SERL_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_CHAR);
       NextToken();
       break;
 
     case SERL_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_INT);
       NextToken();
       break;
 
     case SERL_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_FLOAT);
       NextToken();
       break;
 
     case SERL_OBJ_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_OBJ_INST);
       NextToken();
       break;
 
     case SERL_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_BYTE_ARY);
       NextToken();
       break;
 
     case SERL_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_CHAR_ARY);
       NextToken();
       break;
 
     case SERL_INT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_INT_ARY);
       NextToken();
       break;
 
     case SERL_OBJ_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_OBJ_ARY);
       NextToken();
       break;
 
     case SERL_FLOAT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::SERL_FLOAT_ARY);
       NextToken();
       break;
 
     case DESERL_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_CHAR);
       NextToken();
       break;
 
     case DESERL_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_INT);
       NextToken();
       break;
 
     case DESERL_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_FLOAT);
       NextToken();
       break;
 
     case DESERL_OBJ_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_OBJ_INST);
       NextToken();
       break;
 
     case DESERL_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_BYTE_ARY);
       NextToken();
       break;
 
     case DESERL_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_CHAR_ARY);
       NextToken();
       break;
 
     case DESERL_INT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_INT_ARY);
       NextToken();
       break;
 
     case DESERL_OBJ_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_OBJ_ARY);
       NextToken();
       break;
 
     case DESERL_FLOAT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::DESERL_FLOAT_ARY);
       NextToken();
       break;
