@@ -566,6 +566,8 @@ class ContextAnalyzer {
   }
 
   ~ContextAnalyzer() {
+    delete linker;
+    linker = nullptr;
   }
 
   bool Analyze();
