@@ -1593,7 +1593,7 @@ namespace frontend {
     friend class TreeFactory;
     int id;
 
-    SystemStatement(const wstring& file_name, int line_num, int i) : Statement(file_name, line_num, line_pos) {
+    SystemStatement(const wstring& file_name, int line_num, int line_pos, int i) : Statement(file_name, line_num, line_pos) {
       id = i;
     }
 
@@ -2913,13 +2913,13 @@ namespace frontend {
     }
 
     SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, instructions::InstructionType instr) {
-      SystemStatement* tmp = new SystemStatement(file_name, line_num, instr);
+      SystemStatement* tmp = new SystemStatement(file_name, line_num, line_pos, instr);
       statements.push_back(tmp);
       return tmp;
     }
 
     SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, instructions::Traps trap) {
-      SystemStatement* tmp = new SystemStatement(file_name, line_num, trap);
+      SystemStatement* tmp = new SystemStatement(file_name, line_num, line_pos, trap);
       statements.push_back(tmp);
       return tmp;
     }
