@@ -3277,11 +3277,6 @@ namespace frontend {
         tmp = nullptr;
       }
 
-      if(linker) {
-        delete linker;
-        linker = nullptr;
-      }
-
       // clear factories
       TreeFactory::Instance()->Clear();
       TypeFactory::Instance()->Clear();

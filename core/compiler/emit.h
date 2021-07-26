@@ -383,11 +383,6 @@ namespace backend {
         delete tmp;
         tmp = nullptr;
       }
-
-      if(entries) {
-        delete entries;
-        entries = nullptr;
-      }
     }
 
     int GetId() {
@@ -549,17 +544,6 @@ namespace backend {
         // delete
         delete tmp;
         tmp = nullptr;
-      }
-
-      // clean up
-      if(cls_entries) {
-        delete cls_entries;
-        cls_entries = nullptr;
-      }
-
-      if(inst_entries) {
-        delete inst_entries;
-        inst_entries = nullptr;
       }
 
       map<IntermediateDeclarations*, pair<wstring, int> >::iterator entries_iter;
