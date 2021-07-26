@@ -180,6 +180,10 @@ class Parser {
   }
 
   ~Parser() {
+    if(program) {
+      delete program;
+      program = nullptr;
+    }
   }
 
   bool Parse();

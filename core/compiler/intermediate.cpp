@@ -255,10 +255,6 @@ void IntermediateEmitter::Translate()
 #ifdef _DEBUG
   assert(break_labels.empty());
 #endif
-
-  // free parse tree
-  delete parsed_program;
-  parsed_program = nullptr;
 }
 
 /****************************
