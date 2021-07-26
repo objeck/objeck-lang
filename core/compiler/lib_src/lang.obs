@@ -4946,9 +4946,9 @@ bundle System.IO {
 	}
 	
  	#~
-	Provides I/O console access
+	Provides standard I/O operations
 	~#
-	class Console {
+	class Standard implements InputStream, OutputStream {
 		#~
 		Reads a string from STDIN
 		@return string read
