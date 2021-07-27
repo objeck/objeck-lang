@@ -553,7 +553,7 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
 {
-  bool success = true;
+  wstring error_msg;
 
   vector<Method*> virtual_class_methods = virtual_class->GetMethods();
   for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
@@ -570,11 +570,17 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
         }
         else {
-          ProcessError(impl_class, L"Virtual method/function '" + virtual_method->GetUserName() + L"' has been not implemented");
-          success = false;
+          error_msg += L"\n\tMissing: '";
+	  error_msg += virtual_method->GetUserName();
+	  error_msg += L'\'';
         }
       }
     }
+  }
+  
+  const bool success = error_msg.empty();
+  if(!success) {
+    ProcessError(impl_class, L"The following virtual methods/functions have not been implemented:" + error_msg);
   }
 
   return success;
@@ -703,7 +709,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
 {
-  bool success = true;
+  wstring error_msg;
 
   map<const wstring, LibraryMethod*>::iterator iter;
   map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
@@ -721,13 +727,19 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
         }
         else {
-          ProcessError(impl_class, L"Virtual method/function '" + virtual_method->GetUserName() + L"' has been not implemented");
-          success = false;
+	  error_msg += L"\n\t'Missing:";
+	  error_msg += virtual_method->GetUserName();
+	  error_msg += L'\'';
         }
       }
     }
   }
 
+  const bool success = error_msg.empty();
+  if(!success) {
+    ProcessError(impl_class, L"The following virtual methods/functions have not been implemented:" + error_msg);
+  }
+  
   return success;
 }
 
