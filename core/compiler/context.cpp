@@ -101,11 +101,7 @@ bool ContextAnalyzer::CheckErrors()
     for(error = errors.begin(); error != errors.end(); ++error) {
       wcerr << error->second << endl;
     }
-
-    // clean up
-    delete program;
-    program = nullptr;
-
+    
     return false;
   }
 

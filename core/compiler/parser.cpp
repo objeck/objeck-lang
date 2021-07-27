@@ -241,11 +241,7 @@ bool Parser::CheckErrors()
         wcerr << error->second << endl;
       }
     }
-
-    // clean up
-    delete program;
-    program = nullptr;
-
+    
     return false;
   }
 
