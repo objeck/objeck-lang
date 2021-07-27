@@ -77,6 +77,8 @@ namespace instructions {
     STD_OUT_CHAR_ARY,
     STD_OUT_BYTE_ARY_LEN,
     STD_OUT_CHAR_ARY_LEN,
+    STD_IN_BYTE_ARY_LEN,
+    STD_IN_CHAR_ARY_LEN,
     STD_FLUSH,
     // standard error i/o
     STD_ERR_BOOL,
