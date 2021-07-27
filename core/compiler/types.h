@@ -403,7 +403,7 @@ namespace frontend {
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const wstring& name, const wstring& file_name, int line_num, int line_pos) {
+    Type* MakeType(EntryType type, const wstring& name, const wstring& file_name, const int line_num, const int line_pos) {
       Type* tmp = new Type(type, name, file_name, line_num, line_pos);
       types.push_back(tmp);
       return tmp;
