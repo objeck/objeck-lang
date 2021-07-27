@@ -1,6 +1,6 @@
 #~
 Objeck system classes.
-Copyright (c) 2008-2020 Randy Hollines
+Copyright (c) 2008-2021 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
 ~#	
 
@@ -4948,16 +4948,29 @@ bundle System.IO {
  	#~
 	Provides standard I/O operations
 	~#
-	class Standard implements InputStream, OutputStream {
-		#~
-		Reads a string from STDIN
-		@return string read
+	class Standard implements {
+        #~
+		Reads bytes from STDOUT
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
 		~#
-		function : ReadString() ~ System.String {
-			console := IO.ConsoleIO->Instance();
-			return console->ReadString();
-		}
-
+		function : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+            return 0;
+        }
+		
+		#~
+		Read characters from STDOUT
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+            return 0;
+        }
+        
 		#~
 		Write a byte buffer to STDOUT
 		@param offset destination buffer offset
@@ -4980,7 +4993,7 @@ bundle System.IO {
 			STD_OUT_CHAR_ARY_LEN;
 		}
 
-		#~
+        #~
 		Write a byte buffer to STDERR
 		@param offset destination buffer offset
 		@param num number of values to write
@@ -5002,7 +5015,7 @@ bundle System.IO {
 			STD_ERR_BYTE_ARY;
 		}
 
-		function : ErrorFlush() ~ Nil {
+        function : ErrorFlush() ~ Nil {
 			STD_ERR_FLUSH;
 		}
 		
@@ -5010,8 +5023,16 @@ bundle System.IO {
 			STD_FLUSH;
 		}
 
+        #~
+		Reads a string from STDIN
+		@return string read
+		~#
+		function : ReadLine() ~ System.String {
+			console := IO.ConsoleIO->Instance();
+			return console->ReadString();
+		}		
+        
 		#~
-
 		Writes a value
 		@param b value
 		@return I/O console instance
