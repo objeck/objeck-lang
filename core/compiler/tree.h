@@ -3276,7 +3276,7 @@ namespace frontend {
         delete tmp;
         tmp = nullptr;
       }
-
+      
       // clear factories
       TreeFactory::Instance()->Clear();
       TypeFactory::Instance()->Clear();
