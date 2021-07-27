@@ -1009,7 +1009,7 @@ namespace frontend {
     friend class TreeFactory;
     wchar_t value;
 
-    CharacterLiteral(const wstring& file_name, int line_num, wchar_t v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
+    CharacterLiteral(const wstring& file_name, int line_num, int line_pos, wchar_t v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
       value = v;
     }
 
@@ -1033,7 +1033,7 @@ namespace frontend {
     friend class TreeFactory;
     INT_VALUE value;
 
-  IntegerLiteral(const wstring &file_name, int line_num, INT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+  IntegerLiteral(const wstring &file_name, int line_num, int line_pos, INT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
       value = v;
     }
 
@@ -1057,7 +1057,7 @@ namespace frontend {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-  FloatLiteral(const wstring &file_name, int line_num, FLOAT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
+  FloatLiteral(const wstring &file_name, int line_num, int line_pos, FLOAT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
       value = v;
     }
 
@@ -1121,7 +1121,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-  Return(const wstring &file_name, int line_num, Expression* e) : Statement(file_name, line_num, line_pos) {
+    Return(const wstring &file_name, int line_num, int line_pos, Expression* e) : Statement(file_name, line_num, line_pos) {
       expression = e;
     }
 
@@ -1173,7 +1173,7 @@ namespace frontend {
     friend class TreeFactory;
     StatementType type;
 
-    Break(const wstring& file_name, const int line_num, StatementType t) : Statement(file_name, line_num, line_pos) {
+    Break(const wstring& file_name, const int line_num, int line_pos, StatementType t) : Statement(file_name, line_num, line_pos) {
       type = t;
     }
 
@@ -1196,7 +1196,7 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const wstring& file_name, int line_num, Expression* e, StatementList* s, If* n = nullptr) : Statement(file_name, line_num, line_pos) {
+    If(const wstring& file_name, int line_num, int line_pos, Expression* e, StatementList* s, If* n = nullptr) : Statement(file_name, line_num, line_pos) {
       expression = e;
       if_statements = s;
       next = n;
@@ -1241,7 +1241,7 @@ namespace frontend {
     int id;
     Enum* eenum;
 
-    EnumItem(const wstring& file_name, int line_num, const wstring& n, Enum* e) : ParseNode(file_name, line_num, line_pos) {
+    EnumItem(const wstring& file_name, int line_num, int line_pos, const wstring& n, Enum* e) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       id = -1;
       eenum = e;
@@ -1340,12 +1340,12 @@ namespace frontend {
     int index;
     map<const wstring, EnumItem*> items;
 
-    Enum(const wstring& file_name, int line_num, const wstring& n, int o) : ParseNode(file_name, line_num, line_pos) {
+    Enum(const wstring& file_name, int line_num, int line_pos, const wstring& n, int o) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       index = offset = o;
     }
 
-    Enum(const wstring& file_name, int line_num,
+    Enum(const wstring& file_name, int line_num, int line_pos,
        const wstring &n) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       index = offset = -1;
@@ -1412,7 +1412,7 @@ namespace frontend {
     map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-    Select(const wstring& file_name, int line_num, Assignment* e, map<ExpressionList*, 
+    Select(const wstring& file_name, int line_num, int line_pos, Assignment* e, map<ExpressionList*, 
            StatementList*> s, vector<StatementList*> sl, StatementList* o) : Statement(file_name, line_num, line_pos) {
       eval_assignment = e;
       statement_map = s;
@@ -1461,8 +1461,7 @@ namespace frontend {
     StatementList* statements;
 
   public:
-  CriticalSection(const wstring &file_name, int line_num, Variable* v, 
-      StatementList* s) : Statement(file_name, line_num, line_pos) {
+  CriticalSection(const wstring &file_name, int line_num, int line_pos, Variable* v, StatementList* s) : Statement(file_name, line_num, line_pos) {
       variable = v;
       statements = s;
     }
@@ -1493,7 +1492,7 @@ namespace frontend {
     Statement* update_stmt;
     StatementList* statements;
 
-    For(const wstring &file_name, int line_num, Statement* pre, Expression* cond,
+    For(const wstring &file_name, int line_num, int line_pos, Statement* pre, Expression* cond,
       Statement* update, StatementList* stmts) : Statement(file_name, line_num, line_pos) {
       pre_stmt = pre;
       cond_expr = cond;
@@ -1617,7 +1616,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    SimpleStatement(const wstring& file_name, int line_num, Expression* e) : Statement(file_name, line_num, line_pos) {
+    SimpleStatement(const wstring& file_name, int line_num, int line_pos, Expression* e) : Statement(file_name, line_num, line_pos) {
       expression = e;
     }
 
@@ -1742,13 +1741,13 @@ namespace frontend {
     Assignment* assignment;
     Declaration* child;
 
-    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num, line_pos) {
+    Declaration(const wstring& file_name, int line_num, int line_pos, SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num, line_pos) {
       entry = e;
       child = c;
       assignment = a;
     }
 
-    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c) : Statement(file_name, line_num, line_pos) {
+    Declaration(const wstring& file_name, int line_num, int line_pos, SymbolEntry* e, Declaration* c) : Statement(file_name, line_num, line_pos) {
       entry = e;
       child = c;
       assignment = nullptr;
@@ -2079,7 +2078,7 @@ namespace frontend {
     vector<Class*> generic_classes;
     Type* generic_interface;
 
-    Class(const wstring& file_name, int line_num, const wstring& n, const wstring& p,
+    Class(const wstring& file_name, int line_num, int line_pos, const wstring& n, const wstring& p,
           vector<wstring> &e, vector<Class*> g, bool s, bool i) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       parent_name = p;
@@ -2837,19 +2836,19 @@ namespace frontend {
     }
 
     Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, int offset) {
-      Enum* tmp = new Enum(file_name, line_num, name, offset);
+      Enum* tmp = new Enum(file_name, line_num, line_pos, name, offset);
       nodes.push_back(tmp);
       return tmp;
     }
 
     Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const wstring &name) {
-      Enum* tmp = new Enum(file_name, line_num, name);
+      Enum* tmp = new Enum(file_name, line_num, line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
     
     EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, Enum* e) {
-      EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
+      EnumItem* tmp = new EnumItem(file_name, line_pos, line_num, name, e);
       nodes.push_back(tmp);
       return tmp;
     }
@@ -2857,7 +2856,7 @@ namespace frontend {
     Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, 
                      const wstring &parent_name, vector<wstring> interfaces, 
          vector<Class*> generics, bool is_public, bool is_interface) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_public, is_interface);
+      Class* tmp = new Class(file_name, line_num, line_pos, name, parent_name, interfaces, generics, is_public, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
@@ -2925,7 +2924,7 @@ namespace frontend {
     }
 
     SimpleStatement* MakeSimpleStatement(const wstring &file_name, const int line_num, const int line_pos, Expression* expression) {
-      SimpleStatement* tmp = new SimpleStatement(file_name, line_num, expression);
+      SimpleStatement* tmp = new SimpleStatement(file_name, line_num, line_pos, expression);
       statements.push_back(tmp);
       return tmp;
     }
@@ -2956,19 +2955,19 @@ namespace frontend {
 
     Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, SymbolEntry* entry, 
                                  Declaration* child, Assignment* assign) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry, child, assign);
+      Declaration* tmp = new Declaration(file_name, line_num, line_pos, entry, child, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
     Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, SymbolEntry* entry, Assignment* assign) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry, nullptr, assign);
+      Declaration* tmp = new Declaration(file_name, line_num, line_pos, entry, nullptr, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
     Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, SymbolEntry* entry, Declaration* child) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry, child);
+      Declaration* tmp = new Declaration(file_name, line_num, line_pos, entry, child);
       statements.push_back(tmp);
       return tmp;
     }
@@ -2987,19 +2986,19 @@ namespace frontend {
     }
 
     IntegerLiteral* MakeIntegerLiteral(const wstring &file_name, const int line_num, const int line_pos, INT_VALUE value) {
-      IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
+      IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
     FloatLiteral* MakeFloatLiteral(const wstring &file_name, const int line_num, const int line_pos, FLOAT_VALUE value) {
-      FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
+      FloatLiteral* tmp = new FloatLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
     CharacterLiteral* MakeCharacterLiteral(const wstring &file_name, const int line_num, const int line_pos, wchar_t value) {
-      CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
+      CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }
@@ -3049,13 +3048,13 @@ namespace frontend {
 
     If* MakeIf(const wstring &file_name, const int line_num, const int line_pos, Expression* expression,
                StatementList* if_statements, If* next = nullptr) {
-      If* tmp = new If(file_name, line_num, expression, if_statements, next);
+      If* tmp = new If(file_name, line_num, line_pos, expression, if_statements, next);
       statements.push_back(tmp);
       return tmp;
     }
 
     Break* MakeBreakContinue(const wstring &file_name, const int line_num, const int line_pos, StatementType type) {
-      Break* tmp = new Break(file_name, line_num, type);
+      Break* tmp = new Break(file_name, line_num, line_pos, type);
       statements.push_back(tmp);
       return tmp;
     }
@@ -3076,13 +3075,13 @@ namespace frontend {
 
     For* MakeFor(const wstring &file_name, const int line_num, const int line_pos, Statement* pre_stmt, Expression* cond_expr,
                  Statement* update_stmt, StatementList* stmts) {
-      For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
+      For* tmp = new For(file_name, line_num, line_pos, pre_stmt, cond_expr, update_stmt, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
     CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, const int line_pos, Variable* var, StatementList* stmts) {
-      CriticalSection* tmp = new CriticalSection(file_name, line_num, var, stmts);
+      CriticalSection* tmp = new CriticalSection(file_name, line_num, line_pos, var, stmts);
       statements.push_back(tmp);
       return tmp;
     }
@@ -3090,14 +3089,14 @@ namespace frontend {
     Select* MakeSelect(const wstring &file_name, const int line_num, const int line_pos, Assignment* eval_assignment,
                        map<ExpressionList*, StatementList*> statement_map, 
                        vector<StatementList*> statement_lists, StatementList* other) {
-      Select* tmp = new Select(file_name, line_num, eval_assignment,
+      Select* tmp = new Select(file_name, line_num, line_pos, eval_assignment,
                                statement_map, statement_lists, other);
       statements.push_back(tmp);
       return tmp;
     }
 
     Return* MakeReturn(const wstring &file_name, const int line_num, const int line_pos, Expression* expression) {
-      Return* tmp = new Return(file_name, line_num, expression);
+      Return* tmp = new Return(file_name, line_num, line_pos, expression);
       statements.push_back(tmp);
       return tmp;
     }
