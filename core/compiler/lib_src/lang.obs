@@ -4949,27 +4949,27 @@ bundle System.IO {
 	Provides standard I/O operations
 	~#
 	class Standard implements {
-        #~
-		Reads bytes from STDOUT
+        	#~
+		Reads bytes from STDIN
 		@param offset destination buffer offset
 		@param num number of values to read
 		@param buffer input buffer
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
-            return 0;
-        }
+            		return 0;
+        	}
 		
 		#~
-		Read characters from STDOUT
+		Read characters from STDIN
 		@param offset destination buffer offset
 		@param num number of values to read
 		@param buffer input buffer
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-            return 0;
-        }
+	            return 0;
+	        }
         
 		#~
 		Write a byte buffer to STDOUT
@@ -4993,7 +4993,7 @@ bundle System.IO {
 			STD_OUT_CHAR_ARY_LEN;
 		}
 
-        #~
+		#~
 		Write a byte buffer to STDERR
 		@param offset destination buffer offset
 		@param num number of values to write
@@ -5015,7 +5015,7 @@ bundle System.IO {
 			STD_ERR_BYTE_ARY;
 		}
 
-        function : ErrorFlush() ~ Nil {
+        	function : ErrorFlush() ~ Nil {
 			STD_ERR_FLUSH;
 		}
 		
@@ -5023,7 +5023,7 @@ bundle System.IO {
 			STD_FLUSH;
 		}
 
-        #~
+        	#~
 		Reads a string from STDIN
 		@return string read
 		~#

@@ -2003,6 +2003,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case STD_IN_BYTE_ARY_LEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+                                                               instructions::STD_IN_BYTE_ARY_LEN);
+      NextToken();
+      break;
+
+    case STD_IN_CHAR_ARY_LEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+                                                               instructions::STD_IN_CHAR_ARY_LEN);
+      NextToken();
+      break;
+
     case STD_ERR_BOOL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::STD_ERR_BOOL);
