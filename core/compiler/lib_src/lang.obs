@@ -4957,7 +4957,7 @@ bundle System.IO {
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
-            		return 0;
+            		return STD_IN_BYTE_ARY_LEN;
         	}
 		
 		#~
@@ -4968,9 +4968,9 @@ bundle System.IO {
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-	            return 0;
+	            return STD_IN_CHAR_ARY_LEN;
 	        }
-        
+        	
 		#~
 		Write a byte buffer to STDOUT
 		@param offset destination buffer offset
