@@ -513,7 +513,7 @@ bundle Data.CSV {
 			};
 
 			if(rows->Size() <> parsed_rows->Size()) {		
-# IO.Console->Print("rows: parsed = ")->Print(rows->Size())->Print(", size = ")->PrintLine(parsed_rows->Size());				
+# IO.Standard->Print("rows: parsed = ")->Print(rows->Size())->Print(", size = ")->PrintLine(parsed_rows->Size());				
 				return Nil;
 			};
 			
@@ -521,7 +521,7 @@ bundle Data.CSV {
 			each(i : parsed_rows) {
 				parsed_row := parsed_rows->Get(i)->As(CsvRow);
 				if(parsed_row->Size() < column_size) {
-# IO.Console->Print("columns: parsed = ")->Print(parsed_row->Size())->Print(", size = ")->PrintLine(column_size);
+# IO.Standard->Print("columns: parsed = ")->Print(parsed_row->Size())->Print(", size = ")->PrintLine(column_size);
 					return Nil;
 				};
 			};
@@ -553,7 +553,7 @@ bundle Data.CSV {
 					if(token <> Nil) {
 						columns->AddBack(token->ReplaceAll(@replace_str, "\""));
 					};
-# IO.Console->Print("quoted = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");
+# IO.Standard->Print("quoted = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");
 				}
 				else {
 					start := index;
@@ -568,7 +568,7 @@ bundle Data.CSV {
 					}
 					else {
 						columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\"")->Trim())->PrintLine("|");											
+# IO.Standard->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\"")->Trim())->PrintLine("|");											
 					};
 				};
 			
