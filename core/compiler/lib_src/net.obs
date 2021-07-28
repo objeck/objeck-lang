@@ -598,7 +598,7 @@ bundle Web.HTTP {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
 								@headers->Insert(name->ToLower(), value);
-# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->Size() > 0);
@@ -736,7 +736,7 @@ bundle Web.HTTP {
 					};					
 					get->Append("\r\n");		
 					
-# IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
+# IO.Standard->Print("Get: |")->Print(get)->PrintLine("|");
 					
 					socket->WriteString(get);
 					
@@ -759,14 +759,14 @@ bundle Web.HTTP {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
-# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-# IO.Console->Print("cookie=")->PrintLine(value);									
+# IO.Standard->Print("cookie=")->PrintLine(value);									
 								}
 								else {
 									@headers->Insert(name->ToLower(), value);
@@ -775,7 +775,7 @@ bundle Web.HTTP {
 						}
 						while(line->Size() > 0);
 						
-# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -1056,11 +1056,11 @@ bundle Web.HTTP {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
 								@headers->Insert(name->ToLower(), value);
-# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->Size() > 0);
-# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -1207,7 +1207,7 @@ bundle Web.HTTP {
 					};					
 					get->Append("\r\n");		
 					
-# IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
+# IO.Standard->Print("Get: |")->Print(get)->PrintLine("|");
 					
 					socket->WriteString(get);
 					
@@ -1230,14 +1230,14 @@ bundle Web.HTTP {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-# IO.Console->Print("cookie=")->PrintLine(value);									
+# IO.Standard->Print("cookie=")->PrintLine(value);									
 								}
 								else {
 									@headers->Insert(name->ToLower(), value);
@@ -1245,7 +1245,7 @@ bundle Web.HTTP {
 							};
 						}
 						while(line->Size() > 0);						
-# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
