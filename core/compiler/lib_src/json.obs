@@ -343,7 +343,7 @@ bundle Data.JSON {
 
 				label Token->Type->IDENT: {
 					element := JsonElement->New(@cur_token->GetValue());
-# Console->Print("string=")->PrintLine(@cur_token->GetValue());
+# Standard->Print("string=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 					
 				}
@@ -351,7 +351,7 @@ bundle Data.JSON {
 				label Token->Type->INT_NUM:
 				label Token->Type->FLOAT_NUM: {
 					element := JsonElement->New(JsonType->NUMBER, @cur_token->GetValue());
-# Console->Print("number=")->PrintLine(@cur_token->GetValue());
+# Standard->Print("number=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 				}
 				
@@ -412,7 +412,7 @@ bundle Data.JSON {
 				if(value = Nil) {				
 					return Nil;
 				};
-# IO.Console->Print("insert=")->PrintLine(elem_name->GetValue());		
+# IO.Standard->Print("insert=")->PrintLine(elem_name->GetValue());		
 				elements->Insert(elem_name->GetValue(), value);				
 				
 				# update
@@ -608,7 +608,7 @@ bundle Data.JSON {
 
 								other: {
 									tokens->AddBack(Token->New(Token->Type->OTHER));
-# IO.Console->Print("other 1=")->PrintLine(input[index]->As(Int));
+# IO.Standard->Print("other 1=")->PrintLine(input[index]->As(Int));
 								}
 							};
 							# update
@@ -626,15 +626,15 @@ bundle Data.JSON {
 				each(i : tokens) {
 					select(tokens->Get(i)->As(Token)->GetType()) {
 						label Token->Type->IDENT: {
-							IO.Console->Print("token=IDENT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
+							IO.Standard->Print("token=IDENT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
 						}
 
 						label Token->Type->INT_NUM: {
-							IO.Console->Print("token=INTEGER, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
+							IO.Standard->Print("token=INTEGER, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
 						}
 
 						label Token->Type->FLOAT_NUM: {
-							IO.Console->Print("token=FLOAT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
+							IO.Standard->Print("token=FLOAT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
 						}
 
 						label Token->Type->OBR: {
