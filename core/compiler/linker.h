@@ -471,6 +471,7 @@ class LibraryClass {
 
     lib_children.clear();
 
+/*
     while(!generic_classes.empty()) {
       LibraryClass* tmp = generic_classes.back();
       generic_classes.pop_back();
@@ -478,6 +479,7 @@ class LibraryClass {
       delete tmp;
       tmp = nullptr;
     }
+*/
 
     // clean up
     if(cls_entries) {
