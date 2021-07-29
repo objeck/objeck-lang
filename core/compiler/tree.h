@@ -3139,8 +3139,10 @@ namespace frontend {
   /****************************
    * ParsedBundle class
    ****************************/
-  class ParsedBundle {
+  class ParsedBundle : public ParseNode {
     wstring name;
+    int line_num; 
+    int line_pos;
     SymbolTableManager* symbol_table;
 
     unordered_map<wstring, Alias*> aliases;
@@ -3153,9 +3155,11 @@ namespace frontend {
     vector<Class*> class_list;
 
   public:
-    ParsedBundle(wstring &n, SymbolTableManager *t) {
+    ParsedBundle(wstring &n, const int l, const int p, SymbolTableManager *t) : ParseNode(n, l, p) {
       name = n;
       symbol_table = t;
+      line_num = l;
+      line_pos = p;
     }
 
     ~ParsedBundle() {
