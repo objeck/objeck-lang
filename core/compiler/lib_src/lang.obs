@@ -3767,7 +3767,7 @@ bundle System.Diagnostics {
 	#~
 	Parsers and analyzers source
 	~#
-	class Analyzer {
+	class  {
 		@handle : Int;
 		@sys_path : String;
 
@@ -3779,7 +3779,7 @@ bundle System.Diagnostics {
 			DIAGS_PARSE_FILE;
 		}
 
-		method : public : ParseString(src_str : String) ~ AnalysisTree{
+		method : public : ParseString(src_str : String) ~ AnalysisTree {
 			DIAGS_PARSE_STRING;
 		}
 	}
@@ -3788,8 +3788,30 @@ bundle System.Diagnostics {
 	Parse tree for analysis
 	~#
 	class AnalysisTree {
-        New : private () {
-        }
+		New : private () {
+		}
+		
+		# TODO: find references
+
+		# TODO: find declarations
+
+		method : public : GetSymbols() ~ Symbol[] {
+			return Nil;
+		}
+
+		method : public : Analyze() ~ Finding[] {
+			return Nil;
+		}
+	}
+
+	class Symbol {
+		New : private () {
+		}
+	}
+
+	class Finding {
+		New : private () {
+		}
 	}
 }
 
