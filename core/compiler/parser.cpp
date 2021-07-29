@@ -309,7 +309,9 @@ void Parser::ParseProgram()
  ****************************/
 void Parser::ParseBundle(int depth)
 {
-  const wstring &file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const wstring& file_name = GetFileName();
 
   // uses
   vector<wstring> uses;
@@ -343,7 +345,7 @@ void Parser::ParseBundle(int depth)
           uses.push_back(bundle_name);
         }
         symbol_table = new SymbolTableManager;
-        ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
+        ParsedBundle* bundle = new ParsedBundle(bundle_name, line_num, line_pos, symbol_table);
         if(!Match(TOKEN_OPEN_BRACE)) {
           ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
         }
@@ -398,7 +400,7 @@ void Parser::ParseBundle(int depth)
     else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
       wstring bundle_name = L"";
       symbol_table = new SymbolTableManager;
-      ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
+      ParsedBundle* bundle = new ParsedBundle(bundle_name, line_num, line_pos, symbol_table);
 
       current_bundle = bundle;
 #ifdef _DEBUG
