@@ -3767,7 +3767,7 @@ bundle System.Diagnostics {
 	#~
 	Parsers and analyzers source
 	~#
-	class  {
+	class Analyzer {
 		@handle : Int;
 		@sys_path : String;
 
