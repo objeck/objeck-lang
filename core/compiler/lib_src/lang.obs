@@ -3772,6 +3772,7 @@ bundle System.Diagnostics {
 		@sys_path : String;
 
 		New(sys_path : String) {
+			Parent();
 			@sys_path := @sys_path;
 		}
 
@@ -3789,6 +3790,7 @@ bundle System.Diagnostics {
 	~#
 	class AnalysisTree {
 		New : private () {
+			Parent();
 		}
 		
 		# TODO: find references
@@ -3806,11 +3808,13 @@ bundle System.Diagnostics {
 
 	class Symbol {
 		New : private () {
+			Parent();
 		}
 	}
 
 	class Finding {
 		New : private () {
+			Parent();
 		}
 	}
 }
