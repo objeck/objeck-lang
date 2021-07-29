@@ -3761,6 +3761,38 @@ bundle System {
 }
 
 #~
+Support for linting, code metrics and diagnostics
+~#
+bundle System.Diagnostics {
+	#~
+	Parsers and analyzers source
+	~#
+	class Analyzer {
+		@handle : Int;
+		@sys_path : String;
+
+		New(sys_path : String) {
+			@sys_path := @sys_path;
+		}
+
+		method : public : ParseFile(src_file : String) ~ AnalysisTree {
+			return Nil;
+		}
+
+		method : public : ParseString(src_str : String) ~ AnalysisTree{
+			return Nil;
+		}
+	}
+
+	#~
+	Parse tree for analysis
+	~#
+	class AnalysisTree {
+
+	}
+}
+
+#~
 System API Bundle
 ~#
 bundle System.API {
