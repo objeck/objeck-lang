@@ -3768,19 +3768,11 @@ bundle System.Diagnostics {
 	Parsers and analyzers source
 	~#
 	class Analyzer {
-		@handle : Int;
-		@sys_path : String;
-
-		New(sys_path : String) {
-			Parent();
-			@sys_path := @sys_path;
-		}
-
-		method : public : ParseFile(src_file : String) ~ AnalysisTree {
+		method : public : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
 			DIAGS_PARSE_FILE;
 		}
 
-		method : public : ParseString(src_str : String) ~ AnalysisTree {
+		method : public : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
 			DIAGS_PARSE_STRING;
 		}
 	}
@@ -3789,6 +3781,8 @@ bundle System.Diagnostics {
 	Parse tree for analysis
 	~#
 	class AnalysisTree {
+		@handle : Int;
+
 		New : private () {
 			Parent();
 		}
