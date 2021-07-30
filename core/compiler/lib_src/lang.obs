@@ -3768,11 +3768,11 @@ bundle System.Diagnostics {
 	Parsers and analyzers source
 	~#
 	class Analyzer {
-		method : public : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
+		function : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
 			DIAGS_PARSE_FILE;
 		}
 
-		method : public : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
+		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
 			DIAGS_PARSE_STRING;
 		}
 	}
