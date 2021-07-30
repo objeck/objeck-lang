@@ -33,6 +33,7 @@
 #include "loader.h"
 #include "interpreter.h"
 #include "../shared/version.h"
+#include "diag/diagnostics.h"
 
 #ifdef _WIN32
 #include "arch/win32/win32.h"
@@ -840,7 +841,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
-            size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
+            size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
@@ -879,7 +880,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
-            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, INT_TYPE,
+            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
 
             array[0] = array_size;
@@ -918,7 +919,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
-            size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), INT_TYPE,
+            size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
@@ -1168,7 +1169,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   const long type_obj_array_dim = 1;
   size_t* type_obj_array = MemoryManager::AllocateArray(type_obj_array_size +
                                                         type_obj_array_dim + 2,
-                                                        INT_TYPE, op_stack,
+                                                        instructions::INT_TYPE, op_stack,
                                                         *stack_pos, false);
   type_obj_array[0] = type_obj_array_size;
   type_obj_array[1] = type_obj_array_dim;
@@ -1194,7 +1195,7 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
   const long mthd_obj_array_dim = 1;
   size_t* mthd_obj_array = MemoryManager::AllocateArray(mthd_obj_array_size +
                                                         mthd_obj_array_dim + 2,
-                                                        INT_TYPE, op_stack,
+                                                        instructions::INT_TYPE, op_stack,
                                                         *stack_pos, false);
 
   mthd_obj_array[0] = mthd_obj_array_size;
@@ -1505,19 +1506,19 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     size_t* dest_array;
     if(type == BYTE_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
-                                                BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+                                                instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
-                                                CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+                                                instructions::CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
-                                                INT_TYPE, op_stack, *stack_pos, false);
+                                                instructions::INT_TYPE, op_stack, *stack_pos, false);
     }
     else {
       dest_array = MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
-                                                FLOAT_TYPE, op_stack, *stack_pos, false);
+                                                instructions::FLOAT_TYPE, op_stack, *stack_pos, false);
     }
 
     // read array meta data
@@ -1933,6 +1934,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case GET_PLTFRM:
       return GetPltfrm(program, inst, op_stack, stack_pos, frame);
 
+    case DIAGS_PARSE_FILE:
+      return DiagsParseFile(program, inst, op_stack, stack_pos, frame);
+
+    case DIAGS_PARSE_STRING:
+      return DiagsParseString(program, inst, op_stack, stack_pos, frame);
+
     case GET_VERSION:
       return GetVersion(program, inst, op_stack, stack_pos, frame);
 
@@ -2320,7 +2327,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
   // allocate 'size' array and copy metadata
   long size = (long)array[1];
   long dim = 1;
-  size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+  size_t* mem = MemoryManager::AllocateArray(size + dim + 2, instructions::INT_TYPE,
                                              op_stack, *stack_pos);
   int i, j;
   for(i = 0, j = size + 2; i < size; i++) {
@@ -2804,7 +2811,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
     const long str_obj_array_size = (long)output_lines.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
-                                                         INT_TYPE, op_stack, *stack_pos, false);
+                                                         instructions::INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
@@ -2916,6 +2923,31 @@ bool TrapProcessor::GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_s
   return true;
 }
 
+bool TrapProcessor::DiagsParseFile(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* libs_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* file_array = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(file_array && libs_array) {
+    libs_array = (size_t*)libs_array[0];
+    file_array = (size_t*)file_array[0];
+
+    const wchar_t* file = (wchar_t*)(file_array + 3);
+    const wchar_t* libs = (wchar_t*)(libs_array + 3);
+
+    Analyzer analyzer(libs);
+    analyzer.ParseFile(file);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::DiagsParseString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+
+  return true;
+}
+
 bool TrapProcessor::GetVersion(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessVersion(program, op_stack, stack_pos);
@@ -2970,7 +3002,7 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
     const long str_obj_array_size = (long)addrs.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
-                                                         INT_TYPE, op_stack, *stack_pos, false);
+                                                         instructions::INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
@@ -4609,7 +4641,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
     const long str_obj_array_size = (long)files.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
-                                                         INT_TYPE, op_stack, *stack_pos, false);
+                                                         instructions::INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
