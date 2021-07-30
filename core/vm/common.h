@@ -1536,8 +1536,6 @@ class TrapProcessor {
   static bool TimerEnd(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool TimerElapsed(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DiagsParseFile(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
-  static bool DiagsParseString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
   static bool GetVersion(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool GetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool SetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);

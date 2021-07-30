@@ -1765,18 +1765,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case DIAGS_PARSE_FILE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
-                                                               instructions::DIAGS_PARSE_FILE);
-      NextToken();
-      break;
-
-    case DIAGS_PARSE_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
-                                                               instructions::DIAGS_PARSE_STRING);
-      NextToken();
-      break;
-
     case GET_VERSION:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
                                                                instructions::GET_VERSION);

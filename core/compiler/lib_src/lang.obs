@@ -3761,59 +3761,6 @@ bundle System {
 }
 
 #~
-Support for linting, code metrics and diagnostics
-~#
-bundle System.Diagnostics {
-	#~
-	Parsers and analyzers source
-	~#
-	class Analyzer {
-		function : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
-			DIAGS_PARSE_FILE;
-		}
-
-		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
-			DIAGS_PARSE_STRING;
-		}
-	}
-
-	#~
-	Parse tree for analysis
-	~#
-	class AnalysisTree {
-		@handle : Int;
-
-		New : private () {
-			Parent();
-		}
-		
-		# TODO: find references
-
-		# TODO: find declarations
-
-		method : public : GetSymbols() ~ Symbol[] {
-			return Nil;
-		}
-
-		method : public : Analyze() ~ Finding[] {
-			return Nil;
-		}
-	}
-
-	class Symbol {
-		New : private () {
-			Parent();
-		}
-	}
-
-	class Finding {
-		New : private () {
-			Parent();
-		}
-	}
-}
-
-#~
 System API Bundle
 ~#
 bundle System.API {

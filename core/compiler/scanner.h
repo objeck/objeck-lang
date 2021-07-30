@@ -338,9 +338,6 @@ enum ScannerTokenType {
   ASSERT_TRUE,
   SYS_CMD,
   SYS_CMD_OUT,
-  // diagnostics
-  DIAGS_PARSE_FILE,
-  DIAGS_PARSE_STRING,
   EXIT
 #endif
 };

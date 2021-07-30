@@ -182,9 +182,6 @@ namespace instructions {
     SYS_CMD,
     SYS_CMD_OUT,
     ASSERT_TRUE,
-    // diagnostics
-    DIAGS_PARSE_FILE,
-    DIAGS_PARSE_STRING,
     // end
     EXIT
   };
