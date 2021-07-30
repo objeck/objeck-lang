@@ -1,7 +1,7 @@
 /***************************************************************************
- * Runtime code diagnostics support
+ * ODBC support for Objeck
  *
- * Copyright (c) 2021, Randy Hollines
+ * Copyright (c) 2011-2012, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,53 +28,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
- 
-#include "diagnostics.h"
 
-Analyzer::Analyzer(const wstring& sys_lib_path)
-{
-  program = nullptr;
-}
+#ifndef __ODBC_H__
+#define __ODBC_H__
 
-Analyzer::~Analyzer()
-{
-  if(program) {
-    delete program;
-    program = nullptr;
+#ifdef _WIN32
+#include <windows.h>
+#endif
+#include <sql.h>
+#include <sqlext.h>
+#include "../../vm/lib_api.h"
+#include "../../shared/sys.h"
+
+#define SQL_OK status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO
+#define SQL_FAIL status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO
+#define COL_NAME_MAX 64
+#define VARCHAR_MAX 1024
+
+extern "C" {
+  static SQLHENV env;
+
+  typedef struct _ColumnDescription {
+    SQLCHAR column_name[COL_NAME_MAX];
+    SQLSMALLINT column_name_size;
+    SQLSMALLINT type;
+    SQLULEN column_size;
+    SQLSMALLINT decimal_length;
+    SQLSMALLINT nullable;
+  } ColumnDescription;
+
+  void ShowError(SQLSMALLINT type, SQLHSTMT hstmt) {
+    SQLCHAR SqlState[6];
+    SQLCHAR Msg[SQL_MAX_MESSAGE_LENGTH];
+    SQLINTEGER NativeError;
+    SQLSMALLINT MsgLen;
+    SQLRETURN result;
+
+    SQLSMALLINT i = 1;
+    while((result = SQLGetDiagRec(SQL_HANDLE_DBC, hstmt, i, SqlState, &NativeError, Msg, sizeof(Msg), &MsgLen)) != SQL_NO_DATA) {
+      cout << NativeError << " - " << Msg << endl;
+      i++;
+    }
   }
 }
 
-bool Analyzer::ParseFile(const wstring& src_file)
-{
-  // parse source code  
-  Parser parser(src_file, false, L"");
-
-  program = parser.GetProgram();
-  if(parser.Parse()) {
-
-    return true;
-  }
-  else if(program){
-
-  }
-
-  return false;
-}
-
-bool Analyzer::ParseString(const wstring& src_string)
-{
-  
-  // parse source code  
-  Parser parser(L"", false, src_string);
-
-  program = parser.GetProgram();
-  if(parser.Parse()) {
-
-    return true;
-  }
-  else if(program) {
-    
-  }
-
-  return false;
-}
+#endif

@@ -187,36 +187,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\compiler\context.cpp" />
-    <ClCompile Include="..\..\compiler\linker.cpp" />
-    <ClCompile Include="..\..\compiler\parser.cpp" />
-    <ClCompile Include="..\..\compiler\scanner.cpp" />
-    <ClCompile Include="..\..\compiler\tree.cpp" />
-    <ClCompile Include="..\..\compiler\types.cpp" />
     <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp" Condition="'$(Platform)'=='Win32'" />
     <ClCompile Include="..\arch\memory.cpp" />
     <ClCompile Include="..\common.cpp" />
-    <ClCompile Include="..\diag\diagnostics.cpp" />
     <ClCompile Include="..\interpreter.cpp" />
     <ClCompile Include="..\loader.cpp" />
     <ClCompile Include="..\vm.cpp" />
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\compiler\context.h" />
-    <ClInclude Include="..\..\compiler\linker.h" />
-    <ClInclude Include="..\..\compiler\parser.h" />
-    <ClInclude Include="..\..\compiler\scanner.h" />
-    <ClInclude Include="..\..\compiler\tree.h" />
-    <ClInclude Include="..\..\compiler\types.h" />
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
     <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h" Condition="'$(Platform)'=='Win32'" />
     <ClInclude Include="..\arch\memory.h" />
     <ClInclude Include="..\arch\win32\win32.h" />
     <ClInclude Include="..\common.h" />
-    <ClInclude Include="..\diag\diagnostics.h" />
     <ClInclude Include="..\interpreter.h" />
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
