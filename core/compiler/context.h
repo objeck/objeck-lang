@@ -547,11 +547,11 @@ class ContextAnalyzer {
     in_loop = 0;
     
     // setup type map
-    type_map[L"$Byte"] = BYTE_TYPE;
-    type_map[L"$Char"] = CHAR_TYPE;
-    type_map[L"$Int"] = INT_TYPE;
-    type_map[L"$Float"] = FLOAT_TYPE;
-    type_map[L"$Bool"] = BOOLEAN_TYPE;
+    type_map[L"$Byte"] = frontend::BYTE_TYPE;
+    type_map[L"$Char"] = frontend::CHAR_TYPE;
+    type_map[L"$Int"] = frontend::INT_TYPE;
+    type_map[L"$Float"] = frontend::FLOAT_TYPE;
+    type_map[L"$Bool"] = frontend::BOOLEAN_TYPE;
 
     // type holders
     holder_types.insert(L"System.BoolHolder");
