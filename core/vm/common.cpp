@@ -2925,18 +2925,18 @@ bool TrapProcessor::GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_s
 
 bool TrapProcessor::DiagsParseFile(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  size_t* libs_array = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* file_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* sys_libs_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* filename_array = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(file_array && libs_array) {
-    libs_array = (size_t*)libs_array[0];
-    file_array = (size_t*)file_array[0];
+  if(filename_array && sys_libs_array) {
+    sys_libs_array = (size_t*)sys_libs_array[0];
+    filename_array = (size_t*)filename_array[0];
 
-    const wchar_t* file = (wchar_t*)(file_array + 3);
-    const wchar_t* libs = (wchar_t*)(libs_array + 3);
+    const wchar_t* filename = (wchar_t*)(filename_array + 3);
+    const wchar_t* sys_libs = (wchar_t*)(sys_libs_array + 3);
 
-    Analyzer analyzer(libs);
-    analyzer.ParseFile(file);
+    Analyzer analyzer(sys_libs);
+    analyzer.ParseFile(filename);
   }
 
   return true;
