@@ -1,6 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		analyzer := System.Diagnostics.Analyzer->New("collect.obl");
-		analyzer->ParseFile("");
+		System.Diagnostics.Analyzer->ParseFile("prgm143.obs","collect.obl");
 	}
 }
