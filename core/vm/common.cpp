@@ -33,7 +33,6 @@
 #include "loader.h"
 #include "interpreter.h"
 #include "../shared/version.h"
-#include "diag/diagnostics.h"
 
 #ifdef _WIN32
 #include "arch/win32/win32.h"
@@ -1934,12 +1933,6 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case GET_PLTFRM:
       return GetPltfrm(program, inst, op_stack, stack_pos, frame);
 
-    case DIAGS_PARSE_FILE:
-      return DiagsParseFile(program, inst, op_stack, stack_pos, frame);
-
-    case DIAGS_PARSE_STRING:
-      return DiagsParseString(program, inst, op_stack, stack_pos, frame);
-
     case GET_VERSION:
       return GetVersion(program, inst, op_stack, stack_pos, frame);
 
@@ -2919,31 +2912,6 @@ bool TrapProcessor::TimerElapsed(StackProgram* program, size_t* inst, size_t* &o
 bool TrapProcessor::GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessPlatform(program, op_stack, stack_pos);
-
-  return true;
-}
-
-bool TrapProcessor::DiagsParseFile(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
-{
-  size_t* sys_libs_array = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* filename_array = (size_t*)PopInt(op_stack, stack_pos);
-
-  if(filename_array && sys_libs_array) {
-    sys_libs_array = (size_t*)sys_libs_array[0];
-    filename_array = (size_t*)filename_array[0];
-
-    const wchar_t* filename = (wchar_t*)(filename_array + 3);
-    const wchar_t* sys_libs = (wchar_t*)(sys_libs_array + 3);
-
-    Analyzer analyzer(sys_libs);
-    analyzer.ParseFile(filename);
-  }
-
-  return true;
-}
-
-bool TrapProcessor::DiagsParseString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
-{
 
   return true;
 }
