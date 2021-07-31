@@ -16,7 +16,7 @@ bundle System.Diagnostics {
 	}
 
 	#~
-	Parse tree for analysis
+	Analysis results
 	~#
 	class AnalysisTree {
 		@handle : Int;
@@ -26,28 +26,32 @@ bundle System.Diagnostics {
 			@handle := handle;
 		}
 		
-		# TODO: find references
-
-		# TODO: find declarations
-
-		method : public : GetSymbols() ~ Symbol[] {
-			return Nil;
-		}
-
-		method : public : Analyze() ~ Finding[] {
+		method : public : GetSymbols() ~ AnalysisSymbol[] {
 			return Nil;
 		}
 	}
-
-	class Symbol {
-		New : private () {
-			Parent();
+	
+	#~
+	Analysis symbols
+	~#
+	class AnalysisSymbol {
+		Type {
+			UNKN
 		}
-	}
 
-	class Finding {
-		New : private () {
+		@handle : Int;
+
+		New(handle : Int) {
 			Parent();
+			@handle := handle;
+		}
+
+		method : public : GetType() ~ AnalysisSymbol->Type {
+			return AnalysisSymbol->Type->UNKN;
+		}
+
+		method : public : GetSymbols() ~ AnalysisSymbol[] {
+			return Nil;
 		}
 	}
 }
