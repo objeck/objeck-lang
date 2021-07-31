@@ -1,5 +1,7 @@
+use System.Diagnostics;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		System.Diagnostics.Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
+		Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
 	}
 }
