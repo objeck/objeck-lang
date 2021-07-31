@@ -7,11 +7,29 @@ bundle System.Diagnostics {
 	~#
 	class Analyzer {
 		function : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
-			DIAGS_PARSE_FILE;
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src_file;
+			array_args[2] := sys_path;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("diag_parse_file", array_args);
+			
+			value := array_args[0]->As(IntHolder);			
+#			return value->Get();
+			return Nil;
 		}
 
 		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
-			DIAGS_PARSE_STRING;
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src_str;
+			array_args[2] := sys_path;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("diag_parse_string", array_args);
+			
+			value := array_args[0]->As(IntHolder);			
+#			return value->Get();
+			return Nil;
 		}
 	}
 
@@ -30,7 +48,7 @@ bundle System.Diagnostics {
 			return Nil;
 		}
 	}
-	
+
 	#~
 	Analysis symbols
 	~#
