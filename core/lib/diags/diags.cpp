@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "diag.h"
+#include "diags.h"
 
 #include "..\..\..\compiler\parser.h"
 #include "..\..\..\compiler\tree.h"
