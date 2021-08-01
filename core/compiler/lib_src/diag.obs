@@ -1,8 +1,13 @@
+use Collection.Generic;
+use System.API;
+
 #~
 Support for linting, code metrics and diagnostics
 ~#
 bundle System.Diagnostics {
 	class Proxy {
+		@lib_proxy : static : DllProxy;
+
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
 				@lib_proxy := DllProxy->New("libobjk_diags");
@@ -61,7 +66,7 @@ bundle System.Diagnostics {
 	Analysis symbols
 	~#
 	class AnalysisSymbol {
-		Type {
+		enum Type {
 			UNKN
 		}
 
