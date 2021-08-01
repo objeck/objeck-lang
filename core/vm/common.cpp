@@ -1218,12 +1218,8 @@ size_t* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram
   // create character array
   const long char_array_size = (long)value_str.size();
   const long char_array_dim = 1;
-  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
-    ((char_array_dim + 2) *
-                                                    sizeof(size_t)),
-                                                    CHAR_ARY_TYPE,
-                                                    op_stack, *stack_pos,
-                                                    false);
+  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)), 
+                                                    CHAR_ARY_TYPE, op_stack, *stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
