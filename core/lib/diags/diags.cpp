@@ -36,6 +36,33 @@
 
 using namespace std;
 
+Diagnostic::Diagnostic(int l, int p, wstring m)
+{
+  line = l;
+  pos = p;
+  msg = m;
+}
+
+Diagnostic::~Diagnostic()
+{
+
+}
+
+int Diagnostic::GetLine() 
+{
+  return line;
+}
+
+int Diagnostic::GetPos()
+{
+  return pos;
+}
+
+wstring& Diagnostic::GetMsg()
+{
+  return msg;
+}
+
 extern "C" {
 
   //
@@ -46,7 +73,9 @@ extern "C" {
 #endif
   void load_lib()
   {
-
+#ifdef _DEBUG
+    OpenLogger("debug.log");
+#endif
   }
 
   //
@@ -57,7 +86,9 @@ extern "C" {
 #endif
   void unload_lib()
   {
-
+#ifdef _DEBUG
+    CloseLogger();
+#endif
   }
 
   //
@@ -77,10 +108,28 @@ extern "C" {
 #endif
 
     Parser parser(src_file, false, sys_path);
-    ParsedProgram* program = parser.GetProgram();
-
     if(parser.Parse()) {
+      ParsedProgram* program = parser.GetProgram();
 
+      vector<ParsedBundle*> bundles = program->GetBundles();
+      for(auto bundle : bundles) {
+        // classes
+        vector<Class*> classes = bundle->GetClasses();
+        for(auto k : classes) {
+
+        }
+
+        // enums
+        vector<Enum*> enums = bundle->GetEnums();
+        for(auto e : enums) {
+
+        }
+      }
+
+      wcout << L"###" << endl;
+    }
+    else {
+      wcout << L"###" << endl;
     }
 
     APITools_SetIntValue(context, 0, 1);
