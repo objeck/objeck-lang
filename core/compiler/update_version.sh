@@ -5,6 +5,7 @@ make -f make/Makefile.SYS.64
 make -f make/Makefile.64 clean
 make -f make/Makefile.64
 ./obc -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
+./obc -src lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/diags.obl
 ./obc -src lib_src/misc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/misc.obl
 ./obc -src lib_src/xml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/xml.obl
 ./obc -src lib_src/net.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/net.obl
