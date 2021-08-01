@@ -41,7 +41,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void load_lib()
+  void load_lib()
   {
 
   }
@@ -52,7 +52,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void unload_lib()
+  void unload_lib()
   {
 
   }
@@ -63,7 +63,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_parse_file(VMContext& context)
+  void diag_parse_file(VMContext& context)
   {
 
     const wstring src_file(APITools_GetStringValue(context, 1));
