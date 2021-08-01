@@ -39,7 +39,19 @@
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 
+class Diagnostic {
+  int line;
+  int pos;
+  wstring msg;
 
+public:
+  Diagnostic(int l, int p, wstring m);
+  ~Diagnostic();
+
+  int GetLine();
+  int GetPos();
+  wstring& GetMsg();
+};
 
 extern "C" {
   
