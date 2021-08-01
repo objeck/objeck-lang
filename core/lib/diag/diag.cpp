@@ -31,6 +31,9 @@
 
 #include "diag.h"
 
+#include "..\..\..\compiler\parser.h"
+#include "..\..\..\compiler\tree.h"
+
 using namespace std;
 
 extern "C" {
@@ -72,6 +75,13 @@ extern "C" {
 #ifdef _DEBUG
     wcout << L"### connect: " << L"src_file=" << src_file << L", sys_path=" << sys_path << L" ###" << endl;
 #endif
+
+    Parser parser(src_file, false, sys_path);
+    ParsedProgram* program = parser.GetProgram();
+
+    if(parser.Parse()) {
+
+    }
 
     APITools_SetIntValue(context, 0, 1);
   }
