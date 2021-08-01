@@ -2,6 +2,16 @@
 Support for linting, code metrics and diagnostics
 ~#
 bundle System.Diagnostics {
+	class Proxy {
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_diags");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
 	#~
 	Parsers and analyzers source
 	~#
@@ -11,8 +21,7 @@ bundle System.Diagnostics {
 			array_args[0] := IntHolder->New();
 			array_args[1] := src_file;
 			array_args[2] := sys_path;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("diag_parse_file", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
 			
 			value := array_args[0]->As(IntHolder);			
 #			return value->Get();
@@ -24,8 +33,7 @@ bundle System.Diagnostics {
 			array_args[0] := IntHolder->New();
 			array_args[1] := src_str;
 			array_args[2] := sys_path;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("diag_parse_string", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_parse_string", array_args);
 			
 			value := array_args[0]->As(IntHolder);			
 #			return value->Get();
