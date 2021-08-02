@@ -1936,6 +1936,14 @@ namespace frontend {
       return end_line_pos;
     }
 
+    void SetEndLineNumber(int el) {
+      end_line_num = el;
+    }
+
+    void SetEndLinePosition(int ep) {
+      end_line_pos = ep;
+    }
+
     void EncodeSignature() {
       // return type
       parsed_return = EncodeType(return_type);
@@ -2185,6 +2193,14 @@ namespace frontend {
 
     inline int GetEndLinePosition() {
       return end_line_pos;
+    }
+
+    void SetEndLineNumber(int el) {
+      end_line_num = el;
+    }
+
+    void SetEndLinePosition(int ep) {
+      end_line_pos = ep;
     }
 
     void SetId(int i) {
