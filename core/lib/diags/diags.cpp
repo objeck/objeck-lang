@@ -129,7 +129,7 @@ extern "C" {
       for(size_t i = 0; i < bundles.size(); ++i) {
         ParsedBundle* bundle = bundles[i];
 
-        size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+        size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
         bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle->GetName());
         bundle_symb_obj[1] = 2; // namespace type
         bundle_symb_obj[2] = bundle->GetLineNumber();
@@ -142,7 +142,7 @@ extern "C" {
         for(size_t j = 0; j < klasss.size(); ++j) {
           Class* klass = klasss[j];
 
-          size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+          size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
           klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
           klass_symb_obj[1] = 5; // class type
           klass_symb_obj[2] = klass->GetLineNumber();
@@ -155,7 +155,7 @@ extern "C" {
           for(size_t k = 0; k < mthds.size(); ++k) {
             Method* mthd = mthds[k];
 
-            size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+            size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
             mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
             mthd_symb_obj[1] = 6; // method type
             mthd_symb_obj[2] = mthd->GetLineNumber();
