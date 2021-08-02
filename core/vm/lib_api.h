@@ -343,6 +343,11 @@ void APITools_SetObjectValue(VMContext & context, int index, size_t * obj) {
   }
 }
 
+// creates object
+size_t* APITools_CreateObject(VMContext& context, const wstring& cls_name) {
+  return context.alloc_obj(cls_name.c_str(), context.op_stack, *context.stack_pos, false);
+}
+
 // creates a string object
 size_t* APITools_CreateStringValue(VMContext & context, const wstring & value) {
   // create character array

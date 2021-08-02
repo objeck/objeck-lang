@@ -4,7 +4,11 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		analyzer := Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
 		if(analyzer->WasParsed()) {
-			analyzer->GetSymbols();
+			symbols := analyzer->GetSymbols();
+			each(i : symbols) {
+				s := symbols[i]->GetType();
+				s->PrintLine();
+			};
 		};
 		analyzer->Release();
 	}
