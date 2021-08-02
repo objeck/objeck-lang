@@ -120,24 +120,54 @@ extern "C" {
   #endif
       void diag_tree_get_symbols(VMContext& context)
     {
+      size_t* tree_obj = APITools_GetObjectValue(context, 0);
       ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
       
       vector<ParsedBundle*> bundles = program->GetBundles();
       size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
       size_t* bundle_array_ptr = bundle_array + 3;
       for(size_t i = 0; i < bundles.size(); ++i) {
-        size_t* symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
         ParsedBundle* bundle = bundles[i];
 
-        symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle->GetName());
-        symb_obj[1] = 13;
-        symb_obj[2] = bundle->GetLineNumber();
-        symb_obj[3] = bundle->GetLinePosition();
-      
-        bundle_array_ptr[i] = (size_t)symb_obj;
+        size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+        bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle->GetName());
+        bundle_symb_obj[1] = 13;
+        bundle_symb_obj[2] = bundle->GetLineNumber();
+        bundle_symb_obj[3] = bundle->GetLinePosition();
+        bundle_array_ptr[i] = (size_t)bundle_symb_obj;
+
+        vector<Class*> klasss = bundle->GetClasses();
+        size_t* klass_array = APITools_MakeIntArray(context, (int)klasss.size());
+        size_t* klass_array_ptr = klass_array + 3;
+        for(size_t j = 0; j < klasss.size(); ++j) {
+          Class* klass = klasss[j];
+
+          size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+          klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
+          klass_symb_obj[1] = 13;
+          klass_symb_obj[2] = klass->GetLineNumber();
+          klass_symb_obj[3] = klass->GetLinePosition();
+          klass_array_ptr[j] = (size_t)klass_symb_obj;
+
+          vector<Method*> mthds = klass->GetMethods();
+          size_t* mthds_array = APITools_MakeIntArray(context, (int)mthds.size());
+          size_t* mthds_array_ptr = mthds_array + 3;
+          for(size_t k = 0; k < mthds.size(); ++k) {
+            Method* mthd = mthds[k];
+
+            size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+            mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
+            mthd_symb_obj[1] = 13;
+            mthd_symb_obj[2] = mthd->GetLineNumber();
+            mthd_symb_obj[3] = mthd->GetLinePosition();
+            mthds_array_ptr[k] = (size_t)mthd_symb_obj;
+          }
+          klass_symb_obj[5] = (size_t)mthds_array;
+        }
+        bundle_symb_obj[5] = (size_t)klass_array;
       }
 
-      
+      tree_obj[2] = (size_t)bundle_array;
   }
 
  #ifdef _WIN32
@@ -145,7 +175,7 @@ extern "C" {
 #endif
     void diag_tree_release(VMContext& context)
     {
-      ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
+      ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
       if(program) {
         delete program;
         program = nullptr;

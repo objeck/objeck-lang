@@ -2,12 +2,21 @@ use System.Diagnostics;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		analyzer := Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
+		analyzer := Analyzer->ParseFile("../../../../programs/deploy/calc_life_10.obs","collect.obl");
 		if(analyzer->WasParsed()) {
-			symbols := analyzer->GetSymbols();
-			each(i : symbols) {
-				s := symbols[i]->GetType();
-				s->PrintLine();
+			bs := analyzer->GetSymbols();
+			each(i : bs) {
+				b  := bs[i];
+				cs := b->GetSymbols();
+				each(j : cs) {
+					c := cs[j];	
+					"class='{$c}'"->PrintLine();
+					ms := c->GetSymbols();
+					each(k : ms) {
+						m := ms[k];
+						"method='{$m}'"->PrintLine();
+					};
+				};
 			};
 		};
 		analyzer->Release();
