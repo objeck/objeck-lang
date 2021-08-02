@@ -384,7 +384,7 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 
   // build alternative methods
   while(inital_param_offset < declarations.size()) {
-    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(), method->GetEndLineNumber(), method->GetEndLinePosition(),
                                                              method->GetName(), method->GetMethodType(), method->IsStatic(), method->IsNative());
     alt_method->SetReturn(method->GetReturn());
 
@@ -1085,8 +1085,9 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
       const wstring method_name = full_method_name.substr(offset + 1);
 
       // create method call
-      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
-                                                                        current_class->GetName(), method_name, MapLambdaDeclarations(declaration_list));
+      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(), 
+                                                                        method->GetEndLineNumber(), method->GetEndLinePosition(), current_class->GetName(), 
+                                                                        method_name, MapLambdaDeclarations(declaration_list));
       method_call->SetFunctionalReturn(method->GetReturn());
       AnalyzeMethodCall(method_call, depth + 1);
       lambda->SetMethodCall(method_call);
@@ -4952,7 +4953,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   ResolveClassEnumType(type);
   if(expression->GetExpressionType() == VAR_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(),
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(), expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           static_cast<Variable*>(expression), L"Get", box_expressions);
     AnalyzeMethodCall(box_method_call, depth + 1);
 
@@ -4968,7 +4969,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   }
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(),
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(), expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           expression->GetEvalType()->GetName(), L"Get", box_expressions);
     expression->SetMethodCall(box_method_call);
     AnalyzeExpression(calc_expression, depth + 1);
@@ -5002,7 +5003,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
     case FLOAT_TYPE: {
       if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(from_type->GetName())) {
         ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
                                                                               from_expr->GetEvalType()->GetName(), L"Get", box_expressions);
         
         from_expr->SetMethodCall(box_method_call);
@@ -5022,7 +5023,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
         if(IsHolderType(to_type->GetName())) {
           ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
           box_expressions->AddExpression(from_expr);
-          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
                                                                                 NEW_INST_CALL, to_type->GetName(), box_expressions);
           AnalyzeMethodCall(box_method_call, depth);
           return box_method_call;
@@ -5592,13 +5593,13 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
   
   if(to_type->GetType() == CLASS_TYPE && (from_type->GetType() != CLASS_TYPE || is_cast)) {
     if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetName())) {
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
                                                                             static_cast<Variable*>(from_expr), L"Get", TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
     else if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(to_type->GetName())) {
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
                                                                             from_expr->GetEvalType()->GetName(), L"Get", TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       from_expr->SetMethodCall(box_method_call);
@@ -5635,7 +5636,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
     if(IsHolderType(to_type->GetName())) {
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
                                                                             NEW_INST_CALL, to_type->GetName(), box_expressions);
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
