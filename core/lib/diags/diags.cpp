@@ -33,6 +33,7 @@
 
 #include "..\..\..\compiler\parser.h"
 #include "..\..\..\compiler\tree.h"
+#include "..\..\..\vm\lib_api.h"
 
 using namespace std;
 
@@ -120,8 +121,23 @@ extern "C" {
       void diag_tree_get_symbols(VMContext& context)
     {
       ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
+      
       vector<ParsedBundle*> bundles = program->GetBundles();
-      wcout << bundles.size() << endl;
+      size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
+      size_t* bundle_array_ptr = bundle_array + 3;
+      for(size_t i = 0; i < bundles.size(); ++i) {
+        size_t* symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
+        ParsedBundle* bundle = bundles[i];
+
+        symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle->GetName());
+        symb_obj[1] = 13;
+        symb_obj[2] = bundle->GetLineNumber();
+        symb_obj[3] = bundle->GetLinePosition();
+      
+        bundle_array_ptr[i] = (size_t)symb_obj;
+      }
+
+      
   }
 
  #ifdef _WIN32

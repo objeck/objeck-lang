@@ -81,15 +81,18 @@ bundle System.Diagnostics {
 			UNKN
 		}
 
-		@handle : Int;
+		@name : String;
+		@type : AnalysisSymbol->Type;
+		@line : Int;
+		@pos : Int;
+		@desc : String;
+
 
 		New(handle : Int) {
-			Parent();
-			@handle := handle;
 		}
 
 		method : public : GetType() ~ AnalysisSymbol->Type {
-			return AnalysisSymbol->Type->UNKN;
+			return @type;
 		}
 
 		method : public : GetSymbols() ~ AnalysisSymbol[] {
