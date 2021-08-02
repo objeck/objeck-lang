@@ -45,6 +45,7 @@ bundle System.Diagnostics {
 	class AnalysisTree {
 		@handle : Int;
 		@was_parsed : Bool;
+		@symbols : AnalysisSymbol[];
 
 		New(handle : Int, was_parsed : Bool) {
 			Parent();
@@ -58,16 +59,15 @@ bundle System.Diagnostics {
 		
 		method : public : GetSymbols() ~ AnalysisSymbol[] {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := @self;
 			array_args[1] := IntHolder->New(@handle);
 			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbols", array_args);
 			
-			value := array_args[0]->As(IntHolder);
-			return Nil;
+			return @symbols;
 		}
 
 		method : public : Release() ~ Nil {
-			array_args := Base->New[2];
+			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@handle);
 			Proxy->GetDllProxy()->CallFunction("diag_tree_release", array_args);
 		}
@@ -86,7 +86,7 @@ bundle System.Diagnostics {
 		@line : Int;
 		@pos : Int;
 		@desc : String;
-
+		@symbols : AnalysisSymbol[];
 
 		New(handle : Int) {
 		}
@@ -95,8 +95,18 @@ bundle System.Diagnostics {
 			return @type;
 		}
 
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
 		method : public : GetSymbols() ~ AnalysisSymbol[] {
-			return Nil;
+			return @symbols;
+		}
+
+		method : public : ToString() ~ String {
+			return "name='@name', line={$@line}, pos={$@pos}";
 		}
 	}
+
+
 }
