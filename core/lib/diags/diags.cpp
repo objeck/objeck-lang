@@ -100,29 +100,39 @@ extern "C" {
   void diag_parse_file(VMContext& context)
   {
 
-    const wstring src_file(APITools_GetStringValue(context, 1));
-    const wstring sys_path(APITools_GetStringValue(context, 2));
+    const wstring src_file(APITools_GetStringValue(context, 2));
+    const wstring sys_path(APITools_GetStringValue(context, 3));
 
 #ifdef _DEBUG
     wcout << L"### connect: " << L"src_file=" << src_file << L", sys_path=" << sys_path << L" ###" << endl;
 #endif
 
     Parser parser(src_file, false, sys_path);
-    parser.Parse();
+    const bool was_parsed = parser.Parse();
 
     APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
+    APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
   }
 
-  //
-  // parse source file
-  //
-  #ifdef _WIN32
+ #ifdef _WIN32
     __declspec(dllexport)
   #endif
-      void diag_get_symbols(VMContext& context)
+      void diag_tree_get_symbols(VMContext& context)
     {
       ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
       vector<ParsedBundle*> bundles = program->GetBundles();
       wcout << bundles.size() << endl;
   }
+
+ #ifdef _WIN32
+    __declspec(dllexport)
+#endif
+    void diag_tree_release(VMContext& context)
+    {
+      ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
+      if(program) {
+        delete program;
+        program = nullptr;
+      }
+    }
 }
