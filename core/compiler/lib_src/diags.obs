@@ -28,9 +28,8 @@ bundle System.Diagnostics {
 			array_args[2] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
 			
-			value := array_args[0]->As(IntHolder);			
-#			return value->Get();
-			return Nil;
+			value := array_args[0]->As(IntHolder);
+			return AnalysisTree->New(value->Get());
 		}
 
 		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
@@ -40,9 +39,8 @@ bundle System.Diagnostics {
 			array_args[2] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_parse_string", array_args);
 			
-			value := array_args[0]->As(IntHolder);			
-#			return value->Get();
-			return Nil;
+			value := array_args[0]->As(IntHolder);
+			return AnalysisTree->New(value->Get());
 		}
 	}
 
@@ -58,6 +56,12 @@ bundle System.Diagnostics {
 		}
 		
 		method : public : GetSymbols() ~ AnalysisSymbol[] {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@handle);
+			Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
+			
+			value := array_args[0]->As(IntHolder);
 			return Nil;
 		}
 	}
