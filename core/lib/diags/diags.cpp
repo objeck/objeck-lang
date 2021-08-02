@@ -118,7 +118,7 @@ extern "C" {
  #ifdef _WIN32
     __declspec(dllexport)
   #endif
-      void diag_tree_get_symbols(VMContext& context)
+    void diag_tree_get_symbols(VMContext& context)
     {
       size_t* tree_obj = APITools_GetObjectValue(context, 0);
       ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
@@ -131,7 +131,7 @@ extern "C" {
 
         size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
         bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle->GetName());
-        bundle_symb_obj[1] = 13;
+        bundle_symb_obj[1] = 2; // namespace type
         bundle_symb_obj[2] = bundle->GetLineNumber();
         bundle_symb_obj[3] = bundle->GetLinePosition();
         bundle_array_ptr[i] = (size_t)bundle_symb_obj;
@@ -144,7 +144,7 @@ extern "C" {
 
           size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
           klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
-          klass_symb_obj[1] = 13;
+          klass_symb_obj[1] = 5; // class type
           klass_symb_obj[2] = klass->GetLineNumber();
           klass_symb_obj[3] = klass->GetLinePosition();
           klass_array_ptr[j] = (size_t)klass_symb_obj;
@@ -157,7 +157,7 @@ extern "C" {
 
             size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.AnalysisSymbol");
             mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
-            mthd_symb_obj[1] = 13;
+            mthd_symb_obj[1] = 6; // method type
             mthd_symb_obj[2] = mthd->GetLineNumber();
             mthd_symb_obj[3] = mthd->GetLinePosition();
             mthds_array_ptr[k] = (size_t)mthd_symb_obj;

@@ -77,8 +77,11 @@ bundle System.Diagnostics {
 	Analysis symbols
 	~#
 	class AnalysisSymbol {
-		enum Type {
-			UNKN
+		consts Type {
+			NAMESPACE := 2,
+			CLASS := 5,
+			METHOD := 6,
+			UNKN := 0
 		}
 
 		@name : String;
@@ -104,7 +107,8 @@ bundle System.Diagnostics {
 		}
 
 		method : public : ToString() ~ String {
-			return "name='@name', line={$@line}, pos={$@pos}";
+			type := @type->As(Int);
+			return "name='@name', type={$type}, line={$@line}, pos={$@pos}";
 		}
 	}
 
