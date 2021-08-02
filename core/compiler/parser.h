@@ -180,10 +180,12 @@ class Parser {
   }
 
   ~Parser() {
+#ifndef _DIAG_LIB
     if(program) {
       delete program;
       program = nullptr;
     }
+#endif
   }
 
   bool Parse();

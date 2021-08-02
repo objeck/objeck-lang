@@ -22,25 +22,20 @@ bundle System.Diagnostics {
 	~#
 	class Analyzer {
 		function : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
-			array_args := Base->New[3];
+			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-			array_args[1] := src_file;
-			array_args[2] := sys_path;
+			array_args[1] := IntHolder->New();
+			array_args[2] := src_file;
+			array_args[3] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
 			
-			value := array_args[0]->As(IntHolder);
-			return AnalysisTree->New(value->Get());
+			handle := array_args[0]->As(IntHolder);
+			was_parsed := array_args[1]->As(IntHolder);
+			return AnalysisTree->New(handle->Get(), was_parsed->Get() = 1 ? true : false);
 		}
 
 		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := src_str;
-			array_args[2] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_parse_string", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return AnalysisTree->New(value->Get());
+			return Nil;
 		}
 	}
 
@@ -49,20 +44,32 @@ bundle System.Diagnostics {
 	~#
 	class AnalysisTree {
 		@handle : Int;
+		@was_parsed : Bool;
 
-		New(handle : Int) {
+		New(handle : Int, was_parsed : Bool) {
 			Parent();
 			@handle := handle;
+			@was_parsed := was_parsed;
+		}
+
+		method : public : WasParsed() ~ Bool {
+			return @was_parsed;
 		}
 		
 		method : public : GetSymbols() ~ AnalysisSymbol[] {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@handle);
-			Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbols", array_args);
 			
 			value := array_args[0]->As(IntHolder);
 			return Nil;
+		}
+
+		method : public : Release() ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@handle);
+			Proxy->GetDllProxy()->CallFunction("diag_tree_release", array_args);
 		}
 	}
 

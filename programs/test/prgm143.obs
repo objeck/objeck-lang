@@ -3,6 +3,9 @@ use System.Diagnostics;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		analyzer := Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
-		analyzer->GetSymbols();
+		if(analyzer->WasParsed()) {
+			analyzer->GetSymbols();
+		};
+		analyzer->Release();
 	}
 }
