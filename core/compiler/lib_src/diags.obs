@@ -45,7 +45,7 @@ bundle System.Diagnostics {
 	class AnalysisTree {
 		@handle : Int;
 		@was_parsed : Bool;
-		@symbols : AnalysisSymbol[];
+		@symbols : Symbol[];
 
 		New(handle : Int, was_parsed : Bool) {
 			Parent();
@@ -57,7 +57,11 @@ bundle System.Diagnostics {
 			return @was_parsed;
 		}
 		
-		method : public : GetSymbols() ~ AnalysisSymbol[] {
+		method : public : GetSymbol(line : Int, pos : Int) ~ Symbol {
+			return Nil;
+		}
+
+		method : public : GetSymbols() ~ Symbol[] {
 			array_args := Base->New[2];
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(@handle);
@@ -76,7 +80,7 @@ bundle System.Diagnostics {
 	#~
 	Analysis symbols
 	~#
-	class AnalysisSymbol {
+	class Symbol {
 		consts Type {
 			NAMESPACE := 2,
 			CLASS := 5,
@@ -85,16 +89,16 @@ bundle System.Diagnostics {
 		}
 
 		@name : String;
-		@type : AnalysisSymbol->Type;
+		@type : Symbol->Type;
 		@line : Int;
 		@pos : Int;
 		@desc : String;
-		@symbols : AnalysisSymbol[];
+		@symbols : Symbol[];
 
 		New(handle : Int) {
 		}
 
-		method : public : GetType() ~ AnalysisSymbol->Type {
+		method : public : GetType() ~ Symbol->Type {
 			return @type;
 		}
 
@@ -102,7 +106,7 @@ bundle System.Diagnostics {
 			return @name;
 		}
 
-		method : public : GetSymbols() ~ AnalysisSymbol[] {
+		method : public : GetSymbols() ~ Symbol[] {
 			return @symbols;
 		}
 
