@@ -2,6 +2,7 @@ use System.Diagnostics;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
+		analyzer := Analyzer->ParseFile("../../../../programs/test/prgm143.obs","collect.obl");
+		analyzer->GetSymbols();
 	}
 }

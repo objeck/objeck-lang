@@ -108,30 +108,21 @@ extern "C" {
 #endif
 
     Parser parser(src_file, false, sys_path);
-    if(parser.Parse()) {
-      ParsedProgram* program = parser.GetProgram();
+    parser.Parse();
 
+    APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
+  }
+
+  //
+  // parse source file
+  //
+  #ifdef _WIN32
+    __declspec(dllexport)
+  #endif
+      void diag_get_symbols(VMContext& context)
+    {
+      ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
       vector<ParsedBundle*> bundles = program->GetBundles();
-      for(auto bundle : bundles) {
-        // classes
-        vector<Class*> classes = bundle->GetClasses();
-        for(auto k : classes) {
-
-        }
-
-        // enums
-        vector<Enum*> enums = bundle->GetEnums();
-        for(auto e : enums) {
-
-        }
-      }
-
-      wcout << L"###" << endl;
-    }
-    else {
-      wcout << L"###" << endl;
-    }
-
-    APITools_SetIntValue(context, 0, 1);
+      wcout << bundles.size() << endl;
   }
 }
