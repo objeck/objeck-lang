@@ -124,11 +124,11 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
   Declaration* declaration;
   if(Match(TOKEN_ASSIGN)) {
     Variable* variable = ParseVariable(ident, depth + 1);
-    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry, child,
+    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child,
                                                            ParseAssignment(variable, depth + 1));
   }
   else {
-    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry, child);
+    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child);
   }
 
   return declaration;
@@ -872,7 +872,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, cls_name, parent_cls_name,
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), cls_name, parent_cls_name,
                                                     interface_names, generic_classes, is_public, false);
   current_class = klass;
 
@@ -977,7 +977,7 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, cls_name, false);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), cls_name, false);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1023,7 +1023,7 @@ Lambda* Parser::ParseLambda(int depth) {
   // build method
   const wstring lambda_name = L"#{L" + ToString(current_class->NextLambda()) + L"}#";
   const wstring method_name = current_class->GetName() + L':' + lambda_name;
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, method_name);
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), method_name);
   
   // declarations
   Method* outter_method = current_method;
@@ -1103,7 +1103,7 @@ Lambda* Parser::ParseLambda(int depth) {
   // parse expression
   else {
     Expression* expression = ParseExpression(depth + 1);
-    Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, expression);
+    Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
     statements->AddStatement(rtrn_stmt);
   }
   method->SetStatements(statements);
@@ -1301,7 +1301,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   Debug(L"(Method/Function/New: name='" + method_name + L"')", depth);
 #endif
 
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, method_name,
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), method_name,
                                                        method_type, is_function, is_native);
   current_method = method;
 
@@ -1412,42 +1412,42 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
       case TOKEN_ADD_ASSIGN:
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      ParseExpression(depth + 1),
                                                                      ADD_ASSIGN_STMT);
         break;
 
       case TOKEN_SUB_ASSIGN:
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      ParseExpression(depth + 1),
                                                                      SUB_ASSIGN_STMT);
         break;
 
       case TOKEN_MUL_ASSIGN:
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      ParseLogic(depth + 1),
                                                                      MUL_ASSIGN_STMT);
         break;
 
       case TOKEN_DIV_ASSIGN:
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      ParseExpression(depth + 1),
                                                                      DIV_ASSIGN_STMT);
         break;
 
       case TOKEN_ADD_ADD:
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                      ADD_ASSIGN_STMT);
         break;
 
       case TOKEN_SUB_SUB:
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                      SUB_ASSIGN_STMT);
         break;
@@ -1461,7 +1461,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         // type cast
         else {
           ParseCastTypeOf(variable, depth + 1);
-          statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, variable);
+          statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable);
         }
         break;
 
@@ -1478,7 +1478,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     case TOKEN_ADD_ASSIGN:
       NextToken();
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    ParseVariable(ident, depth + 1),
                                                                    ParseExpression(depth + 1),
                                                                    ADD_ASSIGN_STMT);
@@ -1486,7 +1486,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     case TOKEN_SUB_ASSIGN:
       NextToken();
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    ParseVariable(ident, depth + 1),
                                                                    ParseExpression(depth + 1),
                                                                    SUB_ASSIGN_STMT);
@@ -1494,7 +1494,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     case TOKEN_MUL_ASSIGN:
       NextToken();
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    ParseVariable(ident, depth + 1),
                                                                    ParseExpression(depth + 1),
                                                                    MUL_ASSIGN_STMT);
@@ -1502,7 +1502,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     case TOKEN_DIV_ASSIGN:
       NextToken();
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    ParseVariable(ident, depth + 1),
                                                                    ParseExpression(depth + 1),
                                                                    DIV_ASSIGN_STMT);
@@ -1510,7 +1510,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     case TOKEN_ADD_ADD:
       NextToken();
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    ParseVariable(ident, depth + 1),
                                                                    TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                    ADD_ASSIGN_STMT);
@@ -1518,7 +1518,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     case TOKEN_SUB_SUB:
       NextToken();
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    ParseVariable(ident, depth + 1),
                                                                    TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                    SUB_ASSIGN_STMT);
@@ -1537,7 +1537,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       if(Match(TOKEN_IDENT)) {
         Variable* variable = ParseVariable(ParseBundleName(), depth + 1);
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                      ADD_ASSIGN_STMT);
       }
@@ -1551,7 +1551,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       if(Match(TOKEN_IDENT)) {
         Variable* variable = ParseVariable(ParseBundleName(), depth + 1);
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                      SUB_ASSIGN_STMT);
       }
@@ -1562,7 +1562,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                         break;
 
     case TOKEN_SEMI_COLON:
-      statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num, line_pos);
+      statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition());
       break;
 
     case TOKEN_PARENT_ID:
@@ -1590,12 +1590,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_BREAK_ID:
-      statement = TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, BREAK_STMT);
+      statement = TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), BREAK_STMT);
       NextToken();
       break;
 
     case TOKEN_CONTINUE_ID:
-      statement = TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, CONTINUE_STMT);
+      statement = TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), CONTINUE_STMT);
       NextToken();
       break;
 
@@ -1621,963 +1621,963 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
 #ifdef _SYSTEM
     case ASYNC_MTHD_CALL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ASYNC_MTHD_CALL);
       NextToken();
       break;
 
     case DLL_LOAD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DLL_LOAD);
       NextToken();
       break;
 
     case DLL_UNLOAD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DLL_UNLOAD);
       NextToken();
       break;
 
     case DLL_FUNC_CALL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DLL_FUNC_CALL);
       NextToken();
       break;
 
     case THREAD_MUTEX:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::THREAD_MUTEX);
       NextToken();
       break;
 
     case THREAD_SLEEP:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::THREAD_SLEEP);
       NextToken();
       break;
 
     case THREAD_JOIN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::THREAD_JOIN);
       NextToken();
       break;
 
     case SYS_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SYS_TIME);
       NextToken();
       break;
 
     case BYTES_TO_UNICODE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::BYTES_TO_UNICODE);
       NextToken();
       break;
 
     case UNICODE_TO_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::UNICODE_TO_BYTES);
       NextToken();
       break;
 
     case GMT_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::GMT_TIME);
       NextToken();
       break;
 
     case FILE_CREATE_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_CREATE_TIME);
       NextToken();
       break;
 
 
     case FILE_ACCOUNT_OWNER:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_ACCOUNT_OWNER);
       NextToken();
       break;
 
     case FILE_GROUP_OWNER:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_GROUP_OWNER);
       NextToken();
       break;
 
     case FILE_MODIFIED_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_MODIFIED_TIME);
       NextToken();
       break;
 
     case FILE_ACCESSED_TIME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_ACCESSED_TIME);
       NextToken();
       break;
 
     case DATE_TIME_SET_1:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_SET_1);
       NextToken();
       break;
 
     case DATE_TIME_SET_2:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_SET_2);
       NextToken();
       break;
 
     case DATE_TIME_SET_3:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_SET_3);
       NextToken();
       break;
 
     case DATE_TIME_ADD_DAYS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_ADD_DAYS);
       NextToken();
       break;
 
     case DATE_TIME_ADD_HOURS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_ADD_HOURS);
       NextToken();
       break;
 
     case DATE_TIME_ADD_MINS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_ADD_MINS);
       NextToken();
       break;
 
     case DATE_TIME_ADD_SECS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_ADD_SECS);
       NextToken();
       break;
 
     case GET_PLTFRM:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::GET_PLTFRM);
       NextToken();
       break;
 
     case GET_VERSION:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::GET_VERSION);
       NextToken();
       break;
 
     case GET_SYS_PROP:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::GET_SYS_PROP);
       NextToken();
       break;
 
     case SET_SYS_PROP:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SET_SYS_PROP);
       NextToken();
       break;
 
     case ASSERT_TRUE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ASSERT_TRUE);
       NextToken();
       break;
 
     case SYS_CMD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SYS_CMD);
       NextToken();
       break;
 
     case SYS_CMD_OUT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SYS_CMD_OUT);
       NextToken();
       break;
 
     case EXIT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::EXIT);
       NextToken();
       break;
 
     case TIMER_START:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::TIMER_START);
       NextToken();
       break;
 
     case TIMER_END:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::TIMER_END);
       NextToken();
       break;
 
     case TIMER_ELAPSED:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::TIMER_ELAPSED);
       NextToken();
       break;
 
     case FLOR_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FLOR_FLOAT);
       NextToken();
       break;
 
     case CPY_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CPY_BYTE_ARY);
       NextToken();
       break;
 
     case S2I:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::S2I);
       NextToken();
       break;
 
     case S2F:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::S2F);
       NextToken();
       break;
 
     case I2S:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::I2S);
       NextToken();
       break;
 
     case F2S:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::F2S);
       NextToken();
       break;
 
     case LOAD_ARY_SIZE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_ARY_SIZE);
       NextToken();
       break;
 
     case CPY_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CPY_CHAR_ARY);
       NextToken();
       break;
 
     case CPY_INT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CPY_INT_ARY);
       NextToken();
       break;
 
     case CPY_FLOAT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CPY_FLOAT_ARY);
       NextToken();
       break;
 
     case CEIL_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CEIL_FLOAT);
       NextToken();
       break;
 
     case SIN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SIN_FLOAT);
       NextToken();
       break;
 
     case COS_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::COS_FLOAT);
       NextToken();
       break;
 
     case TAN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::TAN_FLOAT);
       NextToken();
       break;
 
     case ASIN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ASIN_FLOAT);
       NextToken();
       break;
 
     case ACOS_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ACOS_FLOAT);
       NextToken();
       break;
 
     case ATAN_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ATAN_FLOAT);
       NextToken();
       break;
 
     case ATAN2_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ATAN2_FLOAT);
       NextToken();
       break;
 
     case LOG_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOG_FLOAT);
       NextToken();
       break;
 
     case POW_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::POW_FLOAT);
       NextToken();
       break;
 
     case SQRT_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SQRT_FLOAT);
       NextToken();
       break;
 
     case RAND_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::RAND_FLOAT);
       NextToken();
       break;
 
     case STD_OUT_BOOL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_BOOL);
       NextToken();
       break;
 
     case STD_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_BYTE);
       NextToken();
       break;
 
     case STD_OUT_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_CHAR);
       NextToken();
       break;
 
     case STD_OUT_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_INT);
       NextToken();
       break;
 
     case STD_OUT_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_FLOAT);
       NextToken();
       break;
 
     case STD_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case STD_OUT_BYTE_ARY_LEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_BYTE_ARY_LEN);
       NextToken();
       break;
 
     case STD_OUT_CHAR_ARY_LEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_CHAR_ARY_LEN);
       NextToken();
       break;
 
     case STD_IN_BYTE_ARY_LEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_IN_BYTE_ARY_LEN);
       NextToken();
       break;
 
     case STD_IN_CHAR_ARY_LEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_IN_CHAR_ARY_LEN);
       NextToken();
       break;
 
     case STD_ERR_BOOL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_BOOL);
       NextToken();
       break;
 
     case STD_ERR_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_BYTE);
       NextToken();
       break;
 
     case STD_ERR_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_CHAR);
       NextToken();
       break;
 
     case STD_ERR_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_INT);
       NextToken();
       break;
 
     case STD_ERR_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_FLOAT);
       NextToken();
       break;
 
     case STD_ERR_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_CHAR_ARY);
       NextToken();
       break;
 
     case STD_ERR_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_BYTE_ARY);
       NextToken();
       break;
 
     case STD_FLUSH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_FLUSH);
       NextToken();
       break;
 
     case STD_ERR_FLUSH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_ERR_FLUSH);
       NextToken();
       break;
 
     case LOAD_MULTI_ARY_SIZE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_MULTI_ARY_SIZE);
       NextToken();
       break;
 
     case LOAD_CLS_INST_ID:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_CLS_INST_ID);
       NextToken();
       break;
 
     case LOAD_CLS_BY_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_CLS_BY_INST);
       NextToken();
       break;
 
     case LOAD_NEW_OBJ_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_NEW_OBJ_INST);
       NextToken();
       break;
 
     case LOAD_INST_UID:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_INST_UID);
       NextToken();
       break;
 
     case STD_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_IN_STRING);
       NextToken();
       break;
 
     case COMPRESS_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::COMPRESS_BYTES);
       NextToken();
       break;
 
     case UNCOMPRESS_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::UNCOMPRESS_BYTES);
       NextToken();
       break;
 
     case CRC32_BYTES:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CRC32_BYTES);
       NextToken();
       break;
 
     case FILE_OPEN_READ:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OPEN_READ);
       NextToken();
       break;
 
     case FILE_OPEN_APPEND:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OPEN_APPEND);
       NextToken();
       break;
 
     case FILE_CLOSE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_CLOSE);
       NextToken();
       break;
 
     case FILE_FLUSH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_FLUSH);
       NextToken();
       break;
 
     case FILE_IN_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_IN_BYTE);
       NextToken();
       break;
 
     case FILE_IN_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_IN_BYTE_ARY);
       NextToken();
       break;
 
     case FILE_IN_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_IN_CHAR_ARY);
       NextToken();
       break;
 
     case FILE_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_IN_STRING);
       NextToken();
       break;
 
     case FILE_OPEN_WRITE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OPEN_WRITE);
       NextToken();
       break;
 
     case FILE_OPEN_READ_WRITE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OPEN_READ_WRITE);
       NextToken();
       break;
 
     case FILE_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OUT_BYTE);
       NextToken();
       break;
 
     case FILE_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case FILE_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case FILE_OUT_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_OUT_STRING);
       NextToken();
       break;
 
     case FILE_EXISTS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_EXISTS);
       NextToken();
       break;
 
     case FILE_CAN_READ_ONLY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_CAN_READ_ONLY);
       NextToken();
       break;
 
     case FILE_CAN_WRITE_ONLY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_CAN_WRITE_ONLY);
       NextToken();
       break;
 
     case FILE_CAN_READ_WRITE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_CAN_READ_WRITE);
       NextToken();
       break;
 
     case FILE_SIZE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_SIZE);
       NextToken();
       break;
 
     case FILE_FULL_PATH:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_FULL_PATH);
       NextToken();
       break;
 
     case FILE_TEMP_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_TEMP_NAME);
       NextToken();
       break;
 
     case FILE_SEEK:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_SEEK);
       NextToken();
       break;
 
     case FILE_EOF:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_EOF);
       NextToken();
       break;
 
     case FILE_DELETE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_DELETE);
       NextToken();
       break;
 
     case FILE_RENAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_RENAME);
       NextToken();
       break;
 
     case DIR_CREATE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DIR_CREATE);
       NextToken();
       break;
 
     case DIR_EXISTS:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DIR_EXISTS);
       NextToken();
       break;
 
     case DIR_LIST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DIR_LIST);
       NextToken();
       break;
 
     case FILE_REWIND:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_REWIND);
       NextToken();
       break;
 
     case FILE_IS_OPEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_IS_OPEN);
       NextToken();
       break;
 
     case SOCK_TCP_CONNECT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_CONNECT);
       NextToken();
       break;
 
     case SOCK_TCP_BIND:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_BIND);
       NextToken();
       break;
 
     case SOCK_TCP_LISTEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_LISTEN);
       NextToken();
       break;
 
     case SOCK_TCP_ACCEPT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_ACCEPT);
       NextToken();
       break;
 
     case SOCK_TCP_IS_CONNECTED:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_IS_CONNECTED);
       NextToken();
       break;
 
     case SOCK_TCP_CLOSE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_CLOSE);
       NextToken();
       break;
 
     case SOCK_TCP_IN_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_IN_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_IN_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_IN_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_IN_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_IN_CHAR_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_OUT_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_IN_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_OUT_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_HOST_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_HOST_NAME);
       NextToken();
       break;
 
     case SOCK_TCP_RESOLVE_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_RESOLVE_NAME);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_CONNECT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_CONNECT);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_CERT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_CERT);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_CLOSE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_CLOSE);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_IN_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_IN_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_IN_CHAR_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_OUT_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_IN_STRING:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_IN_STRING);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_OUT_BYTE);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case SOCK_TCP_SSL_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_SSL_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case SERL_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_CHAR);
       NextToken();
       break;
 
     case SERL_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_INT);
       NextToken();
       break;
 
     case SERL_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_FLOAT);
       NextToken();
       break;
 
     case SERL_OBJ_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_OBJ_INST);
       NextToken();
       break;
 
     case SERL_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_BYTE_ARY);
       NextToken();
       break;
 
     case SERL_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_CHAR_ARY);
       NextToken();
       break;
 
     case SERL_INT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_INT_ARY);
       NextToken();
       break;
 
     case SERL_OBJ_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_OBJ_ARY);
       NextToken();
       break;
 
     case SERL_FLOAT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_FLOAT_ARY);
       NextToken();
       break;
 
     case DESERL_CHAR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_CHAR);
       NextToken();
       break;
 
     case DESERL_INT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_INT);
       NextToken();
       break;
 
     case DESERL_FLOAT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_FLOAT);
       NextToken();
       break;
 
     case DESERL_OBJ_INST:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_OBJ_INST);
       NextToken();
       break;
 
     case DESERL_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_BYTE_ARY);
       NextToken();
       break;
 
     case DESERL_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_CHAR_ARY);
       NextToken();
       break;
 
     case DESERL_INT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_INT_ARY);
       NextToken();
       break;
 
     case DESERL_OBJ_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_OBJ_ARY);
       NextToken();
       break;
 
     case DESERL_FLOAT_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos,
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DESERL_FLOAT_ARY);
       NextToken();
       break;
 #endif
 
     default:
-      statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, ParseSimpleExpression(depth + 1));
+      statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ParseSimpleExpression(depth + 1));
       break;
     }
   }
@@ -2826,7 +2826,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
       wstring generic_klass = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, generic_klass, true);
+      Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), generic_klass, true);
       for(size_t i = 0; i < generic_classes.size(); ++i) {
         if(bundle_name.size() > 0) {
           generic_klass.insert(0, L".");
@@ -2952,7 +2952,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
       // apply assignment statement to other variables
       if(temp && !declaration->GetAssignment()) {
         Variable* left = ParseVariable(ident, depth + 1);
-        Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, left, temp->GetExpression());
+        Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), left, temp->GetExpression());
         declaration->SetAssignment(assignment);
       }
     }
@@ -3539,22 +3539,22 @@ Expression* Parser::ParseSimpleExpression(int depth)
       Variable* variable = ParseVariable(ident, depth + 1);
       // pre operation
       if(pre_inc) {
-        variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                   TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1), ADD_ASSIGN_STMT));
       }
       else if(pre_dec) {
-        variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                   TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1), SUB_ASSIGN_STMT));
       }
       // post operation
       if(Match(TOKEN_ADD_ADD)) {
         NextToken();
-        variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                    TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1), ADD_ASSIGN_STMT));
       }
       else if(Match(TOKEN_SUB_SUB)) {
         NextToken();
-        variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, variable,
+        variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                    TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1), SUB_ASSIGN_STMT));
       }
       expression = variable;
@@ -3748,7 +3748,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
 #endif
 
   NextToken();
-  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, PARENT_CALL, L"",
+  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), PARENT_CALL, L"",
                                                  ParseExpressionList(depth + 1));
 }
 
@@ -3775,7 +3775,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       NextToken();
 
       if(Match(TOKEN_OPEN_PAREN)) {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, ident, method_ident, ParseExpressionList(depth + 1));
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ident, method_ident, ParseExpressionList(depth + 1));
         // function
         if(Match(TOKEN_TILDE)) {
           NextToken();
@@ -3790,7 +3790,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         }
       }
       else {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, ident, method_ident);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ident, method_ident);
       }
     }
     // new call
@@ -3799,7 +3799,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
         ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET, TOKEN_CLOSED_BRACKET);
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, NEW_ARRAY_CALL, ident, expressions);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), NEW_ARRAY_CALL, ident, expressions);
         // array of generics
         if(Match(TOKEN_LES)) {
           vector<Type*> generic_dclrs = ParseGenericTypes(depth);
@@ -3808,7 +3808,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       }
       // new object
       else {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, NEW_INST_CALL, ident,
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), NEW_INST_CALL, ident,
                                                               ParseExpressionList(depth + 1));
         // anonymous class
         if(Match(TOKEN_LES)) {
@@ -3844,7 +3844,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         method_call->SetCastType(variable->GetCastType(), false);
       }
       else {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, ident, L"");
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ident, L"");
         method_call->SetCastType(variable->GetCastType(), false);
       }
     }
@@ -3858,7 +3858,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   // method call
   else if(Match(TOKEN_OPEN_PAREN)) {
     const wstring klass_name = current_class->GetName();
-    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, klass_name,
+    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), klass_name,
                                                           ident, ParseExpressionList(depth + 1));
     if(Match(TOKEN_TILDE)) {
       NextToken();
@@ -3866,7 +3866,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
     }
   }
   else {
-    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, ident, L"");
+    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ident, L"");
   }
 
   // generics
@@ -3942,7 +3942,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   const wstring &method_ident = scanner->GetToken()->GetIdentifier();
   NextToken();
 
-  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, variable, method_ident,
+  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, method_ident,
                                                              ParseExpressionList(depth + 1));
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
@@ -3999,7 +3999,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
 
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, cls_name, method_call->GetVariableName(), interface_names);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), cls_name, method_call->GetVariableName(), interface_names);
 
   Class* prev_class = current_class;
   prev_method = current_method;
@@ -4053,7 +4053,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 
   if(!klass->HasDefaultNew()) {
     const wstring method_name = klass->GetName() + L":New";
-    Method* default_new = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, method_name, NEW_PUBLIC_METHOD, false, false);
+    Method* default_new = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), method_name, NEW_PUBLIC_METHOD, false, false);
 
     symbol_table->NewParseScope();
     default_new->SetDeclarations(TreeFactory::Instance()->MakeDeclarationList());
@@ -4108,17 +4108,17 @@ If* Parser::ParseIf(int depth)
   if(Match(TOKEN_ELSE_ID) && Match(TOKEN_IF_ID, SECOND_INDEX)) {
     NextToken();
     If* next = ParseIf(depth + 1);
-    if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, expression, if_statements, next);
+    if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression, if_statements, next);
   }
   else if(Match(TOKEN_ELSE_ID)) {
     NextToken();
-    if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, expression, if_statements);
+    if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression, if_statements);
     symbol_table->CurrentParseScope()->NewParseScope();
     if_stmt->SetElseStatements(ParseStatementList(depth + 1));
     symbol_table->CurrentParseScope()->PreviousParseScope();
   }
   else {
-    if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, expression, if_statements);
+    if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression, if_statements);
   }
 
   return if_stmt;
@@ -4158,7 +4158,7 @@ DoWhile* Parser::ParseDoWhile(int depth)
   NextToken();
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeDoWhile(file_name, line_num, line_pos, expression, statements);
+  return TreeFactory::Instance()->MakeDoWhile(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression, statements);
 }
 
 /****************************
@@ -4196,7 +4196,7 @@ While* Parser::ParseWhile(int depth)
   }
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeWhile(file_name, line_num, line_pos, expression, statements);
+  return TreeFactory::Instance()->MakeWhile(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression, statements);
 }
 
 /****************************
@@ -4235,7 +4235,7 @@ CriticalSection* Parser::ParseCritical(int depth)
   StatementList* statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, line_pos, variable, statements);
+  return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, statements);
 }
 
 /****************************
@@ -4305,7 +4305,7 @@ For* Parser::ParseEach(bool reverse, int depth)
 
     case TOKEN_IDENT: {
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 
@@ -4320,8 +4320,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     CalculatedExpression* pre_right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SUB_EXPR);
     pre_right->SetLeft(list_right);
     pre_right->SetRight(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1));
-    Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, count_left, pre_right);
-    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry, count_assign);
+    Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_left, pre_right);
+    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, count_assign);
 
     // conditional expression
     Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
@@ -4334,7 +4334,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     // update statement
     Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
     Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, update_left, update_right, SUB_ASSIGN_STMT);
+    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), update_left, update_right, SUB_ASSIGN_STMT);
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
@@ -4363,7 +4363,7 @@ For* Parser::ParseEach(bool reverse, int depth)
 
     case TOKEN_IDENT: {
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 
@@ -4376,8 +4376,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     // pre-condition
     Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
     Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
-    Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, count_left, count_right);
-    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry, count_assign);
+    Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_left, count_right);
+    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, count_assign);
 
     // conditional expression
     Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
@@ -4389,7 +4389,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     // update statement
     Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
     Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, update_left, update_right, ADD_ASSIGN_STMT);
+    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), update_left, update_right, ADD_ASSIGN_STMT);
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
@@ -4401,7 +4401,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     symbol_table->CurrentParseScope()->PreviousParseScope();
   }
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, pre_stmt, cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, statements);
 }
 
 /****************************
@@ -4443,7 +4443,7 @@ For * Parser::ParseFor(int depth)
   symbol_table->CurrentParseScope()->PreviousParseScope();
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, pre_stmt, cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, statements);
 }
 
 /****************************
@@ -4472,7 +4472,7 @@ Select* Parser::ParseSelect(int depth)
   NextToken();
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, -1, -1, L"#");
-  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, -1, -1, variable, eval_expression);
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, -1, -1, -1, -1, variable, eval_expression);
 
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '('", TOKEN_OPEN_BRACE);
@@ -4542,7 +4542,7 @@ Select* Parser::ParseSelect(int depth)
   }
   NextToken();
 
-  return TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, eval_assignment,
+  return TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), eval_assignment,
                                              statement_map, statement_lists, other);
 }
 
@@ -4565,7 +4565,7 @@ Return* Parser::ParseReturn(int depth)
     expression = ParseExpression(depth + 1);
   }
 
-  return TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, expression);
+  return TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
 }
 
 /****************************
@@ -4586,7 +4586,7 @@ Leaving* Parser::ParseLeaving(int depth)
   StatementList* statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeLeaving(file_name, line_num, line_pos, statements);
+  return TreeFactory::Instance()->MakeLeaving(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), statements);
 }
 
 /****************************
@@ -4632,7 +4632,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
     }
 
     Variable* variable = static_cast<Variable*>(left);
-    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, assignment, variable, right);
+    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), assignment, variable, right);
 
     if(expressions.size() == 1) {
       expressions.pop();

@@ -641,16 +641,18 @@ Variable* Variable::Copy() {
  ****************************/
 Declaration* Declaration::Copy() {
   if(assignment) {
-    return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry->Copy(), child, assignment);
+    return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetEndLineNumber(), GetEndLinePosition(), entry->Copy(), child, assignment);
   }
 
-  return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, entry->Copy(), child);
+  return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetEndLineNumber(), GetEndLinePosition(), entry->Copy(), child);
 }
 
 /****************************
  * MethodCall class
  ****************************/
-MethodCall::MethodCall(const wstring &f, const int l, const int p, MethodCallType t, const wstring &v, ExpressionList* e) : Statement(f, l, p), Expression(f, l, p) {
+MethodCall::MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+                       MethodCallType t, const wstring& v, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) 
+{
   variable_name = v;
   call_type = t;
   method_name = L"New";
