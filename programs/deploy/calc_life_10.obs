@@ -73,7 +73,7 @@ function : native : newMutateRate() ~ Float {
 			iter += 1;
 			
 			if(iter % 100 = 0){
-				Console->Print(iter)->Print(": ")->PrintLine(parent);
+				Standard->Print(iter)->Print(": ")->PrintLine(parent);
 			};
 			
 			bestSpawn : String;
