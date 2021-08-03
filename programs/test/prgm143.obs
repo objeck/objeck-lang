@@ -4,20 +4,26 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		analyzer := Analyzer->ParseFile("../../../../programs/deploy/calc_life_10.obs","collect.obl");
 		if(analyzer->WasParsed()) {
-			bs := analyzer->GetSymbols();
-			each(i : bs) {
-				b  := bs[i];
-				cs := b->GetSymbols();
-				each(j : cs) {
-					c := cs[j];	
-					"class='{$c}'"->PrintLine();
-					ms := c->GetSymbols();
-					each(k : ms) {
-						m := ms[k];
-						"method='{$m}'"->PrintLine();
+			ss := analyzer->GetSymbol(68, 3);
+#~			
+			file := analyzer->GetSymbols();
+			"file: {$file}"->PrintLine();
+			bundles := file->GetSymbols();			
+			each(i : bundles) {
+				bun := bundles[i];
+				"bundle: {$bun}"->PrintLine();
+				klasses := bun->GetSymbols();
+				each(j : klasses) {
+					klass := klasses[j];
+					"\tklass: {$klass}"->PrintLine();
+					mthds := klass->GetSymbols();
+					each(k : mthds) {
+						mthd := mthds[k];
+						"\t\tmethod: {$mthd}"->PrintLine();
 					};
 				};
 			};
+~#
 		};
 		analyzer->Release();
 	}

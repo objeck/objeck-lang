@@ -67,4 +67,7 @@
       <Filter>Source Files\Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\lib\diags\vs\diag.vcxproj" />
+  </ItemGroup>
 </Project>

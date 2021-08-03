@@ -212,6 +212,9 @@
   <ItemGroup>
     <ResourceCompile Include="objeck.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\lib\diags\vs\diag.vcxproj" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
