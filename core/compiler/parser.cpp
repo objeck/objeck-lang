@@ -3799,7 +3799,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 
       if(Match(TOKEN_OPEN_PAREN)) {
         ExpressionList* exprs = ParseExpressionList(depth + 1);
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ident, method_ident, exprs);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - ident.size(), GetLineNumber(), GetLinePosition(), ident, method_ident, exprs);
         // function
         if(Match(TOKEN_TILDE)) {
           NextToken();
