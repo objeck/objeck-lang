@@ -38,23 +38,13 @@
 
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
-
-class Diagnostic {
-  int line;
-  int pos;
-  wstring msg;
-
-public:
-  Diagnostic(int l, int p, wstring m);
-  ~Diagnostic();
-
-  int GetLine();
-  int GetPos();
-  wstring& GetMsg();
-};
+#include "../../../compiler/tree.h"
 
 extern "C" {
-  
+  frontend::Method* FindMethod(const int line_num, frontend::ParsedProgram* program);
+
+  frontend::Expression* SearchMethod(const int line_num, const int line_pos, frontend::Method* method);
+  frontend::Expression* SearchAssignment(const int line_num, const int line_pos, frontend::Assignment* assignment);
 }
 
 #endif

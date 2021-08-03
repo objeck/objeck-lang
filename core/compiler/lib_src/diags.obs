@@ -45,7 +45,6 @@ bundle System.Diagnostics {
 	class AnalysisTree {
 		@handle : Int;
 		@was_parsed : Bool;
-		@symbols : Symbol[];
 
 		New(handle : Int, was_parsed : Bool) {
 			Parent();
@@ -58,16 +57,23 @@ bundle System.Diagnostics {
 		}
 		
 		method : public : GetSymbol(line : Int, pos : Int) ~ Symbol {
+			array_args := Base->New[4];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntHolder->New(line);
+			array_args[3] := IntHolder->New(pos);
+			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbol", array_args);
+			
 			return Nil;
 		}
 
-		method : public : GetSymbols() ~ Symbol[] {
+		method : public : GetSymbols() ~ Symbol {
 			array_args := Base->New[2];
-			array_args[0] := @self;
-			array_args[1] := IntHolder->New(@handle);
+			array_args[0] := Nil;
+			array_args[1] := @self;
 			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbols", array_args);
 			
-			return @symbols;
+			return array_args[0]->As(Symbol);
 		}
 
 		method : public : Release() ~ Nil {
@@ -90,12 +96,30 @@ bundle System.Diagnostics {
 
 		@name : String;
 		@type : Symbol->Type;
-		@line : Int;
-		@pos : Int;
-		@desc : String;
 		@symbols : Symbol[];
+		@desc : String;
+		@start_line : Int;
+		@start_pos : Int;
+		@end_line : Int;
+		@end_pos : Int;
 
 		New(handle : Int) {
+		}
+
+		method : public : GetStartLine() ~ Int {
+			return @start_line;
+		}
+
+		method : public : GetStartPosition() ~ Int {
+			return @start_pos;
+		}
+
+		method : public : GetEndLine() ~ Int {
+			return @end_line;
+		}
+
+		method : public : GetEndPosition() ~ Int {
+			return @end_pos;
 		}
 
 		method : public : GetType() ~ Symbol->Type {
@@ -112,7 +136,7 @@ bundle System.Diagnostics {
 
 		method : public : ToString() ~ String {
 			type := @type->As(Int);
-			return "name='@name', type={$type}, line={$@line}, pos={$@pos}";
+			return "name='{$@name}', type={$type}, start_line={$@start_line}, start_pos={$@start_pos}, end_line={$@end_line}, end_pos={$@end_pos}";
 		}
 	}
 

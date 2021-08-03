@@ -1340,7 +1340,7 @@ namespace frontend {
       if(result != aliases.end()) {
         return result->second;
       }
-
+      
       return nullptr;
     }
   };
@@ -1350,18 +1350,23 @@ namespace frontend {
    ****************************/
   class Enum : public ParseNode {
     friend class TreeFactory;
+    int end_line_num;
+    int end_line_pos;
     wstring name;
     int offset;
     int index;
     map<const wstring, EnumItem*> items;
 
-    Enum(const wstring& file_name, const int line_num, const int line_pos, const wstring& n, int o) : ParseNode(file_name, line_num, line_pos) {
+    Enum(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n, int o) : ParseNode(f, l, p) {
+      end_line_num = el;
+      end_line_pos = ep;
       name = n;
       index = offset = o;
     }
 
-    Enum(const wstring& file_name, const int line_num, const int line_pos,
-       const wstring &n) : ParseNode(file_name, line_num, line_pos) {
+    Enum(const wstring& f, const int l, const int p, const int el, const int ep, const wstring &n) : ParseNode(f, l, p) {
+      end_line_num = el;
+      end_line_pos = ep;
       name = n;
       index = offset = -1;
     }
@@ -1370,6 +1375,22 @@ namespace frontend {
     }
 
   public:
+    inline int GetEndLineNumber() {
+      return end_line_num;
+    }
+
+    inline int GetEndLinePosition() {
+      return end_line_pos;
+    }
+
+    void SetEndLineNumber(int el) {
+      end_line_num = el;
+    }
+
+    void SetEndLinePosition(int ep) {
+      end_line_pos = ep;
+    }
+
     bool AddItem(EnumItem* e) {
       if(GetItem(e->GetName())) {
         return false;
@@ -2904,14 +2925,14 @@ namespace frontend {
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, int offset) {
-      Enum* tmp = new Enum(file_name, line_num, line_pos, name, offset);
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name, int offset) {
+      Enum* tmp = new Enum(file_name, line_num, line_pos, end_line_num, end_line_pos, name, offset);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const wstring &name) {
-      Enum* tmp = new Enum(file_name, line_num, line_pos, name);
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name) {
+      Enum* tmp = new Enum(file_name, line_num, line_pos, end_line_num, end_line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
@@ -3216,6 +3237,9 @@ namespace frontend {
     wstring name;
     int line_num; 
     int line_pos;
+    int end_line_num;
+    int end_line_pos;
+
     SymbolTableManager* symbol_table;
 
     unordered_map<wstring, Alias*> aliases;
@@ -3228,7 +3252,7 @@ namespace frontend {
     vector<Class*> class_list;
 
   public:
-    ParsedBundle(wstring &n, const int l, const int p, SymbolTableManager *t) : ParseNode(n, l, p) {
+    ParsedBundle(const wstring& f, const int l, const int p, wstring &n, SymbolTableManager *t) : ParseNode(f, l, p) {
       name = n;
       symbol_table = t;
       line_num = l;
@@ -3238,6 +3262,22 @@ namespace frontend {
     ~ParsedBundle() {
       delete symbol_table;
       symbol_table = nullptr;
+    }
+    
+    inline int GetEndLineNumber() {
+      return end_line_num;
+    }
+
+    inline int GetEndLinePosition() {
+      return end_line_pos;
+    }
+
+    void SetEndLineNumber(int el) {
+      end_line_num = el;
+    }
+
+    void SetEndLinePosition(int ep) {
+      end_line_pos = ep;
     }
 
     const wstring GetName() const {

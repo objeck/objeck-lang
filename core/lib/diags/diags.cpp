@@ -31,38 +31,10 @@
 
 #include "diags.h"
 
-#include "..\..\..\compiler\parser.h"
-#include "..\..\..\compiler\tree.h"
-#include "..\..\..\vm\lib_api.h"
+#include "../../../compiler/parser.h"
 
 using namespace std;
-
-Diagnostic::Diagnostic(int l, int p, wstring m)
-{
-  line = l;
-  pos = p;
-  msg = m;
-}
-
-Diagnostic::~Diagnostic()
-{
-
-}
-
-int Diagnostic::GetLine() 
-{
-  return line;
-}
-
-int Diagnostic::GetPos()
-{
-  return pos;
-}
-
-wstring& Diagnostic::GetMsg()
-{
-  return msg;
-}
+using namespace frontend;
 
 extern "C" {
 
@@ -105,7 +77,7 @@ extern "C" {
     const wstring sys_path(APITools_GetStringValue(context, 3));
 
 #ifdef _DEBUG
-    wcout << L"### connect: " << L"src_file=" << src_file << L", sys_path=" << sys_path << L" ###" << endl;
+    wcout << L"Parse file: src_file='" << src_file << L"', sys_path='" << sys_path << L"'" << endl;
 #endif
 
     Parser parser(src_file, false, sys_path);
@@ -115,25 +87,164 @@ extern "C" {
     APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_tree_get_symbol(VMContext& context)
+  {
+    size_t* tree_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+  
+    Expression* expression = SearchMethod(line_num, line_pos, FindMethod(line_num, program));
+    if(expression) {
+
+    }
+  }
+
+  Expression* SearchMethod(const int line_num, const int line_pos, Method* method)
+  {
+    if(method) {
+      vector<Statement*> statements = method->GetStatements()->GetStatements();
+      for(auto& statement : statements) {
+        const int start_line = statement->GetLineNumber();
+        const int end_line = statement->GetEndLineNumber();
+
+        if(start_line == line_num) {
+          switch(statement->GetStatementType()) {
+          case EMPTY_STMT:
+          case SYSTEM_STMT:
+            break;
+
+          case DECLARATION_STMT:
+            break;
+
+          case METHOD_CALL_STMT:
+            break;
+
+
+          case ADD_ASSIGN_STMT:
+            break;
+
+          case SUB_ASSIGN_STMT:
+          case MUL_ASSIGN_STMT:
+          case DIV_ASSIGN_STMT:
+            break;
+
+          case ASSIGN_STMT:
+            return SearchAssignment(line_num, line_pos, static_cast<Assignment*>(statement));
+
+          case SIMPLE_STMT:
+            break;
+
+          case RETURN_STMT:
+            break;
+
+          case LEAVING_STMT:
+            break;
+
+          case IF_STMT:
+            break;
+
+          case DO_WHILE_STMT:
+            break;
+
+          case WHILE_STMT:
+            break;
+
+          case FOR_STMT:
+            break;
+
+          case BREAK_STMT:
+          case CONTINUE_STMT:
+            break;
+
+          case SELECT_STMT:
+            break;
+
+          case CRITICAL_STMT:
+            break;
+
+          default:
+#ifdef _DEBUG
+            wcerr << L"Undefined statement" << endl;
+#endif
+
+            break;
+          }
+        }
+      }
+    }
+
+    return nullptr;
+  }
+
+  Expression* SearchAssignment(const int line_num, const int line_pos, Assignment* assignment)
+  {
+    return nullptr;
+  }
+
+
+  Method* FindMethod(const int line_num, ParsedProgram* program)
+  {
+    // bundles
+    vector<ParsedBundle*> bundles = program->GetBundles();
+    for(auto& bundle : bundles) {
+      // classes
+      vector<Class*> klasses = bundle->GetClasses();
+      for(auto& klass : klasses) {
+        // methods
+        vector<Method*> methods = klass->GetMethods();
+        for(auto& method : methods) {
+          const int start_line = method->GetLineNumber();
+          const int end_line = method->GetEndLineNumber();
+
+          if(start_line <= line_num && end_line > line_num) {
+#ifdef _DEBUG
+            wcout << L"Method: '" << method->GetParsedName() << "'" << endl;
+#endif
+            return method;
+          }
+        }
+
+        // enums
+        vector<Enum*> eenums = bundle->GetEnums();
+        for(auto& eenum : eenums) {
+
+        }
+      }
+    }
+
+    return nullptr;
+  }
+
  #ifdef _WIN32
     __declspec(dllexport)
   #endif
     void diag_tree_get_symbols(VMContext& context)
     {
-      size_t* tree_obj = APITools_GetObjectValue(context, 0);
-      ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 1);
+      size_t* tree_obj = APITools_GetObjectValue(context, 1);
+      ParsedProgram* program = (ParsedProgram*)tree_obj[0];
       
+      wstring file_name;
       vector<ParsedBundle*> bundles = program->GetBundles();
       size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
       size_t* bundle_array_ptr = bundle_array + 3;
       for(size_t i = 0; i < bundles.size(); ++i) {
         ParsedBundle* bundle = bundles[i];
 
+        file_name = bundle->GetFileName();
+
         size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
-        bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle->GetName());
+        const wstring bundle_name = bundle->GetName();
+        bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
         bundle_symb_obj[1] = 2; // namespace type
-        bundle_symb_obj[2] = bundle->GetLineNumber();
-        bundle_symb_obj[3] = bundle->GetLinePosition();
+        bundle_symb_obj[4] = bundle->GetLineNumber();
+        bundle_symb_obj[5] = bundle->GetLinePosition();
+        bundle_symb_obj[6] = bundle->GetEndLineNumber();
+        bundle_symb_obj[7] = bundle->GetEndLinePosition();
         bundle_array_ptr[i] = (size_t)bundle_symb_obj;
 
         vector<Class*> klasss = bundle->GetClasses();
@@ -145,8 +256,10 @@ extern "C" {
           size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
           klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
           klass_symb_obj[1] = 5; // class type
-          klass_symb_obj[2] = klass->GetLineNumber();
-          klass_symb_obj[3] = klass->GetLinePosition();
+          klass_symb_obj[4] = klass->GetLineNumber();
+          klass_symb_obj[5] = klass->GetLinePosition();
+          klass_symb_obj[6] = klass->GetEndLineNumber();
+          klass_symb_obj[7] = klass->GetEndLinePosition();
           klass_array_ptr[j] = (size_t)klass_symb_obj;
 
           vector<Method*> mthds = klass->GetMethods();
@@ -158,16 +271,25 @@ extern "C" {
             size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
             mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
             mthd_symb_obj[1] = 6; // method type
-            mthd_symb_obj[2] = mthd->GetLineNumber();
-            mthd_symb_obj[3] = mthd->GetLinePosition();
+            mthd_symb_obj[4] = mthd->GetLineNumber();
+            mthd_symb_obj[5] = mthd->GetLinePosition();
+            mthd_symb_obj[6] = mthd->GetEndLineNumber();
+            mthd_symb_obj[7] = mthd->GetEndLinePosition();
             mthds_array_ptr[k] = (size_t)mthd_symb_obj;
           }
-          klass_symb_obj[5] = (size_t)mthds_array;
+          klass_symb_obj[2] = (size_t)mthds_array;
         }
-        bundle_symb_obj[5] = (size_t)klass_array;
+        bundle_symb_obj[2] = (size_t)klass_array;
       }
 
-      tree_obj[2] = (size_t)bundle_array;
+      // file root
+      size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
+      file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, file_name);
+      file_symb_obj[1] = 1; // file type
+      file_symb_obj[2] = (size_t)bundle_array;
+      file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
+
+      APITools_SetObjectValue(context, 0, file_symb_obj);
   }
 
  #ifdef _WIN32
