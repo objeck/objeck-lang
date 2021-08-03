@@ -158,8 +158,7 @@ void Parser::ProcessError(const wstring &msg)
 void Parser::ProcessError(const wstring &msg, ScannerTokenType sync)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): "
-    << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
