@@ -101,39 +101,6 @@ wstring Parser::ParseBundleName()
   return name;
 }
 
-frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child, int depth)
-{
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
-  const wstring& file_name = GetFileName();
-
-  // add entry
-  wstring scope_name = GetScopeName(ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, scope_name,
-                                                                type, is_static, current_method != nullptr);
-
-#ifdef _DEBUG
-  Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
-#endif
-
-  bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-  if(!was_added) {
-    ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
-  }
-
-  Declaration* declaration;
-  if(Match(TOKEN_ASSIGN)) {
-    Variable* variable = ParseVariable(ident, depth + 1);
-    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child,
-                                                           ParseAssignment(variable, depth + 1));
-  }
-  else {
-    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child);
-  }
-
-  return declaration;
-}
-
 /****************************
   * Loads parsing error codes.
   ****************************/
@@ -345,7 +312,7 @@ void Parser::ParseBundle(int depth)
           uses.push_back(bundle_name);
         }
         symbol_table = new SymbolTableManager;
-        ParsedBundle* bundle = new ParsedBundle(bundle_name, line_num, line_pos, symbol_table);
+        ParsedBundle* bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
         if(!Match(TOKEN_OPEN_BRACE)) {
           ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
         }
@@ -400,7 +367,7 @@ void Parser::ParseBundle(int depth)
     else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
       wstring bundle_name = L"";
       symbol_table = new SymbolTableManager;
-      ParsedBundle* bundle = new ParsedBundle(bundle_name, line_num, line_pos, symbol_table);
+      ParsedBundle* bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
 
       current_bundle = bundle;
 #ifdef _DEBUG
@@ -436,8 +403,11 @@ void Parser::ParseBundle(int depth)
           break;
         }
       }
-      program->AddBundle(bundle);
 
+      bundle->SetEndLineNumber(GetLineNumber());
+      bundle->SetEndLinePosition(GetLinePosition());
+
+      program->AddBundle(bundle);
       program->AddUses(uses, file_name);
     }
     // error
@@ -501,7 +471,7 @@ Enum* Parser::ParseEnum(int depth)
   }
   NextToken();
 
-  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, line_pos, enum_scope_name, offset);
+  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, line_pos, -1, -1, enum_scope_name, offset);
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
@@ -528,6 +498,9 @@ Enum* Parser::ParseEnum(int depth)
     ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
+
+  eenum->SetEndLineNumber(GetLineNumber());
+  eenum->SetEndLinePosition(GetLinePosition());
 
   return eenum;
 }
@@ -632,7 +605,7 @@ Enum* Parser::ParseConsts(int depth)
   }
   NextToken();
 
-  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, line_pos, enum_scope_name);
+  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, line_pos, -1, -1, enum_scope_name);
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
@@ -692,6 +665,10 @@ Enum* Parser::ParseConsts(int depth)
       NextToken();
     }
   }
+
+  eenum->SetEndLineNumber(GetLineNumber());
+  eenum->SetEndLinePosition(GetLinePosition());
+
   if(!Match(TOKEN_CLOSED_BRACE)) {
     ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
   }
@@ -928,16 +905,17 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     }
   }
 
+  klass->SetEndLineNumber(GetLineNumber());
+  klass->SetEndLinePosition(GetLinePosition());
+
   if(!Match(TOKEN_CLOSED_BRACE)) {
     ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
 
-  klass->SetEndLineNumber(GetLineNumber());
-  klass->SetEndLinePosition(GetLinePosition());
-
   symbol_table->PreviousParseScope(current_class->GetName());
   current_class = nullptr;
+
   return klass;
 }
 
@@ -2965,6 +2943,42 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
         declaration->SetAssignment(assignment);
       }
     }
+  }
+
+  return declaration;
+}
+
+/****************************
+ * Adds a declaration.
+ ****************************/
+frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child, int depth)
+{
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const wstring& file_name = GetFileName();
+
+  // add entry
+  wstring scope_name = GetScopeName(ident);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, scope_name,
+                                                                type, is_static, current_method != nullptr);
+
+#ifdef _DEBUG
+  Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
+#endif
+
+  bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
+  if(!was_added) {
+    ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
+  }
+
+  Declaration* declaration;
+  if(Match(TOKEN_ASSIGN)) {
+    Variable* variable = ParseVariable(ident, depth + 1);
+    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child,
+                                                           ParseAssignment(variable, depth + 1));
+  }
+  else {
+    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child);
   }
 
   return declaration;

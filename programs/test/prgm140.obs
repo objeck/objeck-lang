@@ -6,6 +6,4 @@ class Test {
 			GetIdent(args[0]->ToInt(), string)->PrintLine();
 		};
 	}
-
-	
 }
