@@ -279,6 +279,11 @@ void Parser::ParseBundle(int depth)
   const int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
+  if(Match(TOKEN_END_OF_STREAM)) {
+    ProcessError(L"Unable to open source file: '" + file_name + L"'");
+    return;
+  }
+
   // uses
   vector<wstring> uses;
   uses.push_back(L"System");
