@@ -66,6 +66,11 @@ bundle System.Diagnostics {
 		}
 
 		method : public : GetDiagnostics() ~ Symbol {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			Proxy->GetDllProxy()->CallFunction("diag_tree_diagnostics", array_args);
+			
 			return Nil;
 		}
 		
