@@ -80,7 +80,30 @@ extern "C" {
     wcout << L"Parse file: src_file='" << src_file << L"', sys_path='" << sys_path << L"'" << endl;
 #endif
 
-    Parser parser(src_file, false, sys_path);
+    Parser parser(src_file, false, L"");
+    const bool was_parsed = parser.Parse();
+
+    APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
+    APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
+  }
+
+  //
+  // parse source text
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_parse_string(VMContext& context)
+  {
+
+    const wstring src_text(APITools_GetStringValue(context, 2));
+    const wstring sys_path(APITools_GetStringValue(context, 3));
+
+#ifdef _DEBUG
+    wcout << L"Parse file: text_size=" << src_text.size() << L", sys_path='" << sys_path << L"'" << endl;
+#endif
+
+    Parser parser(L"", false, src_text);
     const bool was_parsed = parser.Parse();
 
     APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());

@@ -1,0 +1,30 @@
+use System.Diagnostics;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		analyzer := Analyzer->ParseFile("../../../../programs/deploy/calc_life_10.obs","collect.obl");
+		if(analyzer->IsParsed()) {
+			ss := analyzer->GetSymbol(68, 3);
+#~			
+			file := analyzer->GetSymbols();
+			"file: {$file}"->PrintLine();
+			bundles := file->GetSymbols();			
+			each(i : bundles) {
+				bun := bundles[i];
+				"bundle: {$bun}"->PrintLine();
+				klasses := bun->GetSymbols();
+				each(j : klasses) {
+					klass := klasses[j];
+					"\tklass: {$klass}"->PrintLine();
+					mthds := klass->GetSymbols();
+					each(k : mthds) {
+						mthd := mthds[k];
+						"\t\tmethod: {$mthd}"->PrintLine();
+					};
+				};
+			};
+~#
+		};
+		analyzer->Release();
+	}
+}

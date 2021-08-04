@@ -2421,7 +2421,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _WIN32
   size_t len;
   char* lib_path = nullptr;
-  if(_dupenv_s(&lib_path, &len, "pathext")) {
+  if(!_dupenv_s(&lib_path, &len, "OBJECK_LIB_PATH") && lib_path) {
     path_str += BytesToUnicode(lib_path);
     path_str += L"\\native\\";
   }
