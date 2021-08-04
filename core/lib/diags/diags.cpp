@@ -72,7 +72,6 @@ extern "C" {
 #endif
   void diag_parse_file(VMContext& context)
   {
-
     const wstring src_file(APITools_GetStringValue(context, 2));
     const wstring sys_path(APITools_GetStringValue(context, 3));
 
@@ -95,7 +94,6 @@ extern "C" {
 #endif
   void diag_parse_string(VMContext& context)
   {
-
     const wstring src_text(APITools_GetStringValue(context, 2));
     const wstring sys_path(APITools_GetStringValue(context, 3));
 
