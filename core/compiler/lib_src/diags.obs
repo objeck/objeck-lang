@@ -64,6 +64,10 @@ bundle System.Diagnostics {
 		method : public : IsParsed() ~ Bool {
 			return @is_parsed;
 		}
+
+		method : public : GetDiagnostics() ~ Symbol {
+			return Nil;
+		}
 		
 		method : public : GetSymbol(line : Int, pos : Int) ~ Symbol {
 			array_args := Base->New[4];
