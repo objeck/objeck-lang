@@ -505,6 +505,8 @@ class Scanner {
   void ParseToken(int index);
   // check identifier
   void CheckIdentifier(int index);
+  // create a random string
+  wstring RandomString(size_t len);
 
  public:
   // default constructor

@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "scanner.h"
+#include <random>
 #include <stdexcept>
 
 #define EOB L'\0'
@@ -40,7 +41,7 @@
 Scanner::Scanner(wstring f, bool j, bool p)
 {
   // copy file name
-  filename = f;
+  
   alt_syntax = j;
   cur_char = L'\0';
   // create tokens
@@ -51,6 +52,7 @@ Scanner::Scanner(wstring f, bool j, bool p)
   LoadKeywords();
   // read file into memory
   if(p) {
+    filename = RandomString(18);
     buffer_pos = 0;
     is_first_token = true;
     buffer_size = f.size() + 1;
@@ -67,6 +69,7 @@ Scanner::Scanner(wstring f, bool j, bool p)
 #endif
   }
   else {
+    filename = f;
     ReadFile();
   }
   // set line number to 1
@@ -572,37 +575,32 @@ wchar_t* Scanner::LoadFileBuffer(wstring filename, size_t& buffer_size)
     in.close();
   }
   else {
-    wcerr << L"Unable to open source file: " << filename << endl;
-    exit(1);
+    return nullptr;;
   }
 
-  // convert unicode
+  // convert Unicode
 #ifdef _WIN32
   const int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, nullptr, 0);
   if(wsize == 0) {
-    wcerr << L"Unable to open source file: " << filename << endl;
-    exit(1);
+    return nullptr;;
   }
   wchar_t* wbuffer = new wchar_t[wsize];
   const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
   if(check == 0) {
-    wcerr << L"Unable to open source file: " << filename << endl;
-    exit(1);
+    return nullptr;;
   }
 #else
   size_t wsize = mbstowcs(nullptr, buffer, buffer_size);
   if(wsize == (size_t)-1) {
     free(buffer);
-    wcerr << L"Unable to open source file: " << filename << endl;
-    exit(1);
+    return nullptr;;
   }
   wchar_t* wbuffer = new wchar_t[wsize + 1];
   size_t check = mbstowcs(wbuffer, buffer, buffer_size);
   if(check == (size_t)-1) {
     free(buffer);
     delete[] wbuffer;
-    wcerr << L"Unable to open source file: " << filename << endl;
-    exit(1);
+    return nullptr;;
   }
   wbuffer[wsize] = L'\0';
 #endif
@@ -697,7 +695,15 @@ void Scanner::ReadFile()
  ****************************/
 void Scanner::NextToken()
 {
-  if(is_first_token) {
+  if(!buffer) {
+    for(int i = 0; i < LOOK_AHEAD; ++i) {
+      tokens[i]->SetType(TOKEN_END_OF_STREAM);
+      tokens[i]->SetFileName(filename);
+      tokens[i]->SetLineNbr(0);
+      tokens[i]->SetLinePos(0);
+    };
+  }
+  else if(is_first_token) {
     NextChar();
     for(int i = 0; i < LOOK_AHEAD; ++i) {
       ParseToken(i);
@@ -723,6 +729,26 @@ Token* Scanner::GetToken(int index)
   }
 
   return nullptr;
+}
+
+wstring Scanner::RandomString(size_t len)
+{
+  random_device gen;
+  const wchar_t* values = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const size_t offset = len / 3;
+
+  wstring output = L"blob://";
+  for(size_t i = 0; i < len; ++i) {
+    if(i != 0 && i % offset == 0) {
+      output += L'-';
+    }
+    else {
+      const size_t index = gen() % wcslen(values);
+      output += values[index];
+    }
+  }
+
+  return output;
 }
 
 /****************************
