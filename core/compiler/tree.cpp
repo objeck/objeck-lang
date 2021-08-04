@@ -148,7 +148,7 @@ TreeFactory* TreeFactory::Instance()
  ****************************/
 SymbolEntry* SymbolEntry::Copy() 
 {
-  return TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, name, type, is_static, is_local, is_self);
+  return TreeFactory::Instance()->MakeSymbolEntry(name, type, is_static, is_local, is_self);
 }
 
 void SymbolEntry::SetId(int i)

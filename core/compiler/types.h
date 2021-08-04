@@ -162,41 +162,29 @@ namespace frontend {
       } 
     }
     
-    Type(EntryType t) {
+    Type(EntryType t, const wstring &n, const wstring& f, int l, int p) {
       type = t;
+      class_name = n;
+      file_name = f;
+      line_num = l;
+      line_pos = p;
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
-      line_num = line_pos = -1;
-
+      
       is_resolved = false;
       klass_cache_ptr = nullptr;
       lib_klass_cache_ptr = nullptr;
     }
 
-    Type(EntryType t, const wstring &n, const wstring& f, int l, int p) {
+    Type(EntryType t, const wstring f, const int l, const int p) {
       type = t;
-      class_name = n;
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
       file_name = f;
       line_num = l;
       line_pos = p;
-
-      is_resolved = false;
-      klass_cache_ptr = nullptr;
-      lib_klass_cache_ptr = nullptr;
-    }
-
-    Type(EntryType t, const wstring& n) {
-      type = t;
-      class_name = n;
-      dimension = 0;
-      func_rtrn = nullptr;
-      func_param_count = -1;
-      line_num = -1;
-
       is_resolved = false;
       klass_cache_ptr = nullptr;
       lib_klass_cache_ptr = nullptr;
@@ -391,14 +379,20 @@ namespace frontend {
       instance = nullptr;
     }
 
-    Type* MakeType(EntryType type) {
-      Type* tmp = new Type(type);
+    Type* MakeType(EntryType type, const wstring file_name, const int line_num, const int line_pos) {
+      Type* tmp = new Type(type, file_name, line_num, line_pos);
       types.push_back(tmp);
       return tmp;
     }
 
     Type* MakeType(EntryType type, const wstring &name) {
-      Type* tmp = new Type(type, name);
+      Type* tmp = new Type(type, name, L"", -1, -1);
+      types.push_back(tmp);
+      return tmp;
+    }
+
+    Type* MakeType(EntryType type) {
+      Type* tmp = new Type(type, L"", -1, -1);
       types.push_back(tmp);
       return tmp;
     }

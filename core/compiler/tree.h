@@ -979,7 +979,7 @@ namespace frontend {
     friend class TreeFactory;
     bool value;
 
-  BooleanLiteral(const wstring &file_name, const int line_num, const int line_pos, bool v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
+    BooleanLiteral(const wstring &file_name, const int line_num, const int line_pos, bool v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
       value = v;
     }
 
@@ -2755,6 +2755,8 @@ namespace frontend {
    *************************/
   class Lambda : public Expression {
     friend class TreeFactory;
+    int end_line_num;
+    int end_line_pos;
     Type* type;
     wstring name;
     Method* method;
@@ -2763,7 +2765,9 @@ namespace frontend {
     vector<pair<SymbolEntry*, SymbolEntry*> > copies;
     
   public:
-    Lambda(const wstring& file_name, const int line_num, const int line_pos, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num, line_pos) {
+    Lambda(const wstring& file_name, const int line_num, const int line_pos, const int el, const int ep, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num, line_pos) {
+      end_line_num = el;
+      end_line_pos = ep;
       type = t;
       name = n;
       method = m;
@@ -2780,6 +2784,22 @@ namespace frontend {
 
     const wstring GetName() {
       return name;
+    }
+
+    inline int GetEndLineNumber() {
+      return end_line_num;
+    }
+
+    inline int GetEndLinePosition() {
+      return end_line_pos;
+    }
+
+    void SetEndLineNumber(int el) {
+      end_line_num = el;
+    }
+
+    void SetEndLinePosition(int ep) {
+      end_line_pos = ep;
     }
 
     Type* GetLambdaType() {
@@ -2977,8 +2997,8 @@ namespace frontend {
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, const int line_pos, Type* t, const wstring &n, Method* m, ExpressionList* p) {
-      Lambda* tmp = new Lambda(file_name, line_num, line_pos, t, n, m, p);
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Type* t, const wstring &n, Method* m, ExpressionList* p) {
+      Lambda* tmp = new Lambda(file_name, line_num, line_pos, end_line_num, end_line_pos, t, n, m, p);
       nodes.push_back(tmp);
       return tmp;
     }
@@ -3222,9 +3242,8 @@ namespace frontend {
       return tmp;
     }
 
-    SymbolEntry* MakeSymbolEntry(const wstring &file_name, const int line_num, const int line_pos, 
-         const wstring &n, Type* t, bool s, bool c, bool e = false) {
-      SymbolEntry* tmp = new SymbolEntry(file_name, line_num, line_pos, n, t, s, c, e);
+    SymbolEntry* MakeSymbolEntry(const wstring &n, Type* t, bool s, bool c, bool e = false) {
+      SymbolEntry* tmp = new SymbolEntry(t ? t->GetFileName() : L"", t ? t->GetLineNumber() : -1, t ? t->GetLinePosition() : -1, n, t, s, c, e);
       entries.push_back(tmp);
       return tmp;
     }
