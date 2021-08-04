@@ -1628,8 +1628,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     const wstring scope_name = current_method->GetName() + L":#concat#";
     SymbolEntry* entry = current_table->GetEntry(scope_name);
     if(!entry) {
-      entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(), char_str->GetLineNumber(),
-                                                       char_str->GetLinePosition(), scope_name, type, false, true);
+      entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
       current_table->AddEntry(entry, true);
     }
     char_str->SetConcat(entry);
@@ -1809,8 +1808,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       }
       else {
         const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
-        SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(), variable->GetLinePosition(),
-                                                                           var_scope_name, capture_entry->GetType(), false, false);
+        SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(var_scope_name, capture_entry->GetType(), false, false);
         symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
 
         variable->SetTypes(copy_entry->GetType());
@@ -1823,8 +1821,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   // type inferred variable
   else if(current_method) {
     const wstring scope_name = current_method->GetName() + L':' + variable->GetName();
-    SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(), variable->GetLinePosition(), 
-                                                                      scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
+    SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
 
     // link entry and variable

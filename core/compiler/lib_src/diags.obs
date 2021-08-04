@@ -30,12 +30,21 @@ bundle System.Diagnostics {
 			Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
 			
 			handle := array_args[0]->As(IntHolder);
-			was_parsed := array_args[1]->As(IntHolder);
-			return AnalysisTree->New(handle->Get(), was_parsed->Get() = 1 ? true : false);
+			is_parsed := array_args[1]->As(IntHolder);
+			return AnalysisTree->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 
 		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
-			return Nil;
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New();
+			array_args[2] := src_str;
+			array_args[3] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_parse_string", array_args);
+			
+			handle := array_args[0]->As(IntHolder);
+			is_parsed := array_args[1]->As(IntHolder);
+			return AnalysisTree->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 	}
 
@@ -44,16 +53,16 @@ bundle System.Diagnostics {
 	~#
 	class AnalysisTree {
 		@handle : Int;
-		@was_parsed : Bool;
+		@is_parsed : Bool;
 
-		New(handle : Int, was_parsed : Bool) {
+		New(handle : Int, is_parsed : Bool) {
 			Parent();
 			@handle := handle;
-			@was_parsed := was_parsed;
+			@is_parsed := is_parsed;
 		}
 
-		method : public : WasParsed() ~ Bool {
-			return @was_parsed;
+		method : public : IsParsed() ~ Bool {
+			return @is_parsed;
 		}
 		
 		method : public : GetSymbol(line : Int, pos : Int) ~ Symbol {
@@ -87,7 +96,7 @@ bundle System.Diagnostics {
 	Analysis symbols
 	~#
 	class Symbol {
-		consts Type {
+		consts Kind {
 			NAMESPACE := 2,
 			CLASS := 5,
 			METHOD := 6,
@@ -95,7 +104,7 @@ bundle System.Diagnostics {
 		}
 
 		@name : String;
-		@type : Symbol->Type;
+		@kind : Symbol->Kind;
 		@symbols : Symbol[];
 		@desc : String;
 		@start_line : Int;
@@ -122,8 +131,8 @@ bundle System.Diagnostics {
 			return @end_pos;
 		}
 
-		method : public : GetType() ~ Symbol->Type {
-			return @type;
+		method : public : GetKind() ~ Symbol->Kind {
+			return @kind;
 		}
 
 		method : public : GetName() ~ String {
@@ -135,10 +144,8 @@ bundle System.Diagnostics {
 		}
 
 		method : public : ToString() ~ String {
-			type := @type->As(Int);
-			return "name='{$@name}', type={$type}, start_line={$@start_line}, start_pos={$@start_pos}, end_line={$@end_line}, end_pos={$@end_pos}";
+			kind := @kind->As(Int);
+			return "name='{$@name}', kind={$kind}, start_line={$@start_line}, start_pos={$@start_pos}, end_line={$@end_line}, end_pos={$@end_pos}";
 		}
 	}
-
-
 }

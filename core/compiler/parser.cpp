@@ -475,10 +475,14 @@ Enum* Parser::ParseEnum(int depth)
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
     }
+
+    const int item_line_num = GetLineNumber();
+    const int item_line_pos = GetLinePosition();
+
     // identifier
     wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
-    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, line_pos, label_name, eenum))) {
+    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, item_line_num, item_line_pos, label_name, eenum))) {
       ProcessError(L"Duplicate enum label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
     }
 
@@ -649,8 +653,11 @@ Enum* Parser::ParseConsts(int depth)
       }
     }
 
-    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, line_pos, label_name, eenum), value)) {
-      ProcessError(L"Duplicate consts label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
+    const int item_line_num = GetLineNumber();
+    const int item_line_pos = GetLinePosition();
+
+    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, item_line_num, item_line_pos, label_name, eenum), value)) {
+      ProcessError(L"Duplicate 'consts' label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
     }
 
     if(Match(TOKEN_COMMA)) {
@@ -853,17 +860,16 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   current_class = klass;
 
   // add '@self' entry
-  Type* self_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name);
+  Type* self_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name, file_name, line_num, line_pos);
   if(!generic_classes.empty()) {
     vector<Type*> generic_types;
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       Class* generic_class = generic_classes[i];
-      generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_class->GetName()));
+      generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_class->GetName(), file_name, line_num, line_pos));
     }
     self_type->SetGenerics(generic_types);
   }
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(SELF_ID),
-                                                                self_type, false, false, true);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(GetScopeName(SELF_ID), self_type, false, false, true);
   symbol_table->CurrentParseScope()->AddEntry(entry);
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1003,7 +1009,7 @@ Lambda* Parser::ParseLambda(int depth) {
   // build method
   const wstring lambda_name = L"#{L" + ToString(current_class->NextLambda()) + L"}#";
   const wstring method_name = current_class->GetName() + L':' + lambda_name;
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), method_name);
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, -1, -1, method_name);
   
   // declarations
   Method* outter_method = current_method;
@@ -1088,10 +1094,13 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   method->SetStatements(statements);
 
+  method->SetEndLineNumber(GetLineNumber());
+  method->SetEndLinePosition(GetLinePosition());
+
   symbol_table->PreviousParseScope(method->GetParsedName());
   current_method = outter_method;
   
-  return TreeFactory::Instance()->MakeLambda(file_name, line_num, line_pos, type, alias_name, method, parameter_list);
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), type, alias_name, method, parameter_list);
 }
 
 /****************************
@@ -1281,8 +1290,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   Debug(L"(Method/Function/New: name='" + method_name + L"')", depth);
 #endif
 
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, -1, -1, method_name,
-                                                       method_type, is_function, is_native);
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, -1, -1, method_name, method_type, is_function, is_native);
   current_method = method;
 
   // declarations
@@ -1299,7 +1307,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     return_type = ParseType(depth + 1);
   }
   else {
-    return_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, current_class->GetName());
+    return_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, current_class->GetName(), file_name, line_num, line_pos);
   }
   method->SetReturn(return_type);
 
@@ -1396,29 +1404,25 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       case TOKEN_ADD_ASSIGN:
         NextToken();
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1),
-                                                                     ADD_ASSIGN_STMT);
+                                                                     ParseExpression(depth + 1), ADD_ASSIGN_STMT);
         break;
 
       case TOKEN_SUB_ASSIGN:
         NextToken();
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1),
-                                                                     SUB_ASSIGN_STMT);
+                                                                     ParseExpression(depth + 1), SUB_ASSIGN_STMT);
         break;
 
       case TOKEN_MUL_ASSIGN:
         NextToken();
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseLogic(depth + 1),
-                                                                     MUL_ASSIGN_STMT);
+                                                                     ParseExpression(depth + 1), MUL_ASSIGN_STMT);
         break;
 
       case TOKEN_DIV_ASSIGN:
         NextToken();
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1),
-                                                                     DIV_ASSIGN_STMT);
+                                                                     ParseExpression(depth + 1), DIV_ASSIGN_STMT);
         break;
 
       case TOKEN_ADD_ADD:
@@ -2958,8 +2962,7 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
 
   // add entry
   wstring scope_name = GetScopeName(ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, scope_name,
-                                                                type, is_static, current_method != nullptr);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, is_static, current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -2973,8 +2976,8 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
   Declaration* declaration;
   if(Match(TOKEN_ASSIGN)) {
     Variable* variable = ParseVariable(ident, depth + 1);
-    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child,
-                                                           ParseAssignment(variable, depth + 1));
+    Assignment* asgn = ParseAssignment(variable, depth + 1);
+    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child, asgn);
   }
   else {
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child);
@@ -3161,8 +3164,7 @@ Expression* Parser::ParseExpression(int depth)
         ProcessError(L"Expected ':'", TOKEN_COLON);
       }
       NextToken();
-      return TreeFactory::Instance()->MakeCond(file_name, line_num, line_pos, expression,
-                                               if_expression, ParseLogic(depth + 1));
+      return TreeFactory::Instance()->MakeCond(file_name, line_num, line_pos, expression, if_expression, ParseLogic(depth + 1));
     }
   }
 
@@ -4032,8 +4034,8 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   symbol_table->NewParseScope();
 
   // add '@self' entry
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(SELF_ID),
-                                                                TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name),
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(GetScopeName(SELF_ID), 
+                                                                TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name, file_name, line_num, line_pos),
                                                                 false, false, true);
 
   symbol_table->CurrentParseScope()->AddEntry(entry);
@@ -4082,7 +4084,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
     symbol_table->NewParseScope();
     default_new->SetDeclarations(TreeFactory::Instance()->MakeDeclarationList());
     default_new->SetStatements(TreeFactory::Instance()->MakeStatementList());
-    default_new->SetReturn(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()));
+    default_new->SetReturn(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName(), file_name, line_num, line_pos));
     symbol_table->PreviousParseScope(default_new->GetParsedName());
     
     klass->AddMethod(default_new);
@@ -4292,7 +4294,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   // add entry
   Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
   const wstring count_scope_name = GetScopeName(count_ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, type, false, current_method != nullptr);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(count_scope_name, type, false, current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
@@ -4695,32 +4697,32 @@ Type* Parser::ParseType(int depth)
     break;
 
   case TOKEN_BYTE_ID:
-    type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
+    type = TypeFactory::Instance()->MakeType(BYTE_TYPE, file_name, line_num, line_pos);
     NextToken();
     break;
 
   case TOKEN_INT_ID:
-    type = TypeFactory::Instance()->MakeType(INT_TYPE);
+    type = TypeFactory::Instance()->MakeType(INT_TYPE, file_name, line_num, line_pos);
     NextToken();
     break;
 
   case TOKEN_FLOAT_ID:
-    type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+    type = TypeFactory::Instance()->MakeType(FLOAT_TYPE, file_name, line_num, line_pos);
     NextToken();
     break;
 
   case TOKEN_CHAR_ID:
-    type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+    type = TypeFactory::Instance()->MakeType(CHAR_TYPE, file_name, line_num, line_pos);
     NextToken();
     break;
 
   case TOKEN_NIL_ID:
-    type = TypeFactory::Instance()->MakeType(NIL_TYPE);
+    type = TypeFactory::Instance()->MakeType(NIL_TYPE, file_name, line_num, line_pos);
     NextToken();
     break;
 
   case TOKEN_BOOLEAN_ID:
-    type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+    type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE, file_name, line_num, line_pos);
     NextToken();
     break;
 
@@ -4731,7 +4733,7 @@ Type* Parser::ParseType(int depth)
       ident += L"#";
       ident += ParseBundleName();
     }
-    type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
+    type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident, file_name, line_num, line_pos);
   }
     break;
 
