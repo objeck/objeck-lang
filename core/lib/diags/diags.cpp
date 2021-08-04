@@ -111,6 +111,16 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+    void diag_tree_diagnostics(VMContext& context)
+  {
+    size_t* tree_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void diag_tree_get_symbol(VMContext& context)
   {
     size_t* tree_obj = APITools_GetObjectValue(context, 1);
