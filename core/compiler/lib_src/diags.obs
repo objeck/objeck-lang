@@ -21,7 +21,7 @@ bundle System.Diagnostics {
 	Parsers and analyzers source
 	~#
 	class Analyzer {
-		function : ParseFile(src_file : String, sys_path : String) ~ AnalysisTree {
+		function : CheckFile(src_file : String, sys_path : String) ~ AnalysisResult {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
@@ -31,10 +31,10 @@ bundle System.Diagnostics {
 			
 			handle := array_args[0]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
-			return AnalysisTree->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
+			return AnalysisResult->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 
-		function : ParseString(src_str : String, sys_path : String) ~ AnalysisTree {
+		function : CheckText(src_str : String, sys_path : String) ~ AnalysisResult {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
@@ -44,14 +44,14 @@ bundle System.Diagnostics {
 			
 			handle := array_args[0]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
-			return AnalysisTree->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
+			return AnalysisResult->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 	}
 
 	#~
 	Analysis results
 	~#
-	class AnalysisTree {
+	class AnalysisResult {
 		@handle : Int;
 		@is_parsed : Bool;
 
@@ -65,33 +65,33 @@ bundle System.Diagnostics {
 			return @is_parsed;
 		}
 
-		method : public : GetDiagnostics() ~ Symbol {
+		method : public : GetDiagnostics() ~ Result {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
 			array_args[1] := @self;
-			Proxy->GetDllProxy()->CallFunction("diag_tree_diagnostics", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_get_diagnostics", array_args);
 			
-			return Nil;
+			return array_args[0]->As(Result);
 		}
 		
-		method : public : GetSymbol(line : Int, pos : Int) ~ Symbol {
-			array_args := Base->New[4];
-			array_args[0] := Nil;
-			array_args[1] := @self;
-			array_args[2] := IntHolder->New(line);
-			array_args[3] := IntHolder->New(pos);
-			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbol", array_args);
-			
-			return Nil;
-		}
-
-		method : public : GetSymbols() ~ Symbol {
+		method : public : GetSymbols() ~ Result {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
 			array_args[1] := @self;
 			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbols", array_args);
 			
-			return array_args[0]->As(Symbol);
+			return array_args[0]->As(Result);
+		}
+
+		method : public : FindSymbols(line : Int, pos : Int) ~ Result {
+			array_args := Base->New[4];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntHolder->New(line);
+			array_args[3] := IntHolder->New(pos);
+			Proxy->GetDllProxy()->CallFunction("diag_find_symbols", array_args);
+			
+			return Nil;
 		}
 
 		method : public : Release() ~ Nil {
@@ -102,19 +102,25 @@ bundle System.Diagnostics {
 	}
 
 	#~
-	Analysis symbols
+	Analysis results
 	~#
-	class Symbol {
+	class Result {
 		consts Kind {
-			NAMESPACE := 2,
-			CLASS := 5,
-			METHOD := 6,
+			# Severity
+			ERROR := 101,
+			WARN := 102,
+			INFO := 103,
+			# symbols
+			NAMESPACE := 200,
+			CLASS := 205,
+			METHOD := 206,
+			# other
 			UNKN := 0
 		}
 
 		@name : String;
-		@kind : Symbol->Kind;
-		@symbols : Symbol[];
+		@kind : Result->Kind;
+		@results : Result[];
 		@desc : String;
 		@start_line : Int;
 		@start_pos : Int;
@@ -140,7 +146,7 @@ bundle System.Diagnostics {
 			return @end_pos;
 		}
 
-		method : public : GetKind() ~ Symbol->Kind {
+		method : public : GetKind() ~ Result->Kind {
 			return @kind;
 		}
 
@@ -148,8 +154,8 @@ bundle System.Diagnostics {
 			return @name;
 		}
 
-		method : public : GetSymbols() ~ Symbol[] {
-			return @symbols;
+		method : public : GetResults() ~ Result[] {
+			return @results;
 		}
 
 		method : public : ToString() ~ String {

@@ -58,6 +58,9 @@ class Parser {
   wstring run_prgm;
   unsigned int anonymous_class_id;
   bool expand_generic_def;
+#ifdef _DIAG_LIB
+  vector<wstring> error_strings;
+#endif
 
   // gets the scanner token
   inline void NextToken() {
@@ -197,6 +200,7 @@ class Parser {
   SymbolTableManager* GetSymbolTable() {
     return symbol_table;
   }
+
 };
 
 #endif
