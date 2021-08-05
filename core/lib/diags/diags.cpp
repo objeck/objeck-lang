@@ -392,37 +392,38 @@ extern "C" {
 
     return nullptr;
   }
-}
-size_t* FormatErrors(VMContext& context, vector<wstring> error_strings)
-{
-  size_t* diagnostics_array = APITools_MakeIntArray(context, (int)error_strings.size());
-  size_t* diagnostics_array_ptr = diagnostics_array + 3;
 
-  for(size_t i = 0; i < error_strings.size(); ++i) {
-    const wstring error_string = error_strings[i];
+  size_t* FormatErrors(VMContext& context, vector<wstring> error_strings)
+  {
+    size_t* diagnostics_array = APITools_MakeIntArray(context, (int)error_strings.size());
+    size_t* diagnostics_array_ptr = diagnostics_array + 3;
 
-    // parse error string
-    const size_t file_mid = error_string.find(L":(");
-    const wstring file_str = error_string.substr(0, file_mid);
+    for(size_t i = 0; i < error_strings.size(); ++i) {
+      const wstring error_string = error_strings[i];
 
-    const size_t msg_mid = error_string.find(L"):");
-    const wstring msg_str = error_string.substr(msg_mid + 3, error_string.size() - msg_mid - 3);
+      // parse error string
+      const size_t file_mid = error_string.find(L":(");
+      const wstring file_str = error_string.substr(0, file_mid);
 
-    const wstring line_pos_str = error_string.substr(file_mid + 2, msg_mid - file_mid - 2);
-    const size_t line_pos_mid = line_pos_str.find(L',');
-    const wstring line_str = line_pos_str.substr(0, line_pos_mid);
-    const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
+      const size_t msg_mid = error_string.find(L"):");
+      const wstring msg_str = error_string.substr(msg_mid + 3, error_string.size() - msg_mid - 3);
 
-    // create objects
-    size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    diag_obj[0] = (size_t)APITools_CreateStringValue(context, msg_str);
-    diag_obj[1] = 1; // error type
-    diag_obj[3] = (size_t)APITools_CreateStringValue(context, file_str);
-    diag_obj[4] = _wtoi(line_str.c_str());
-    diag_obj[5] = _wtoi(pos_str.c_str());
-    diag_obj[6] = diag_obj[7] = -1;
-    diagnostics_array_ptr[i] = (size_t)diag_obj;
+      const wstring line_pos_str = error_string.substr(file_mid + 2, msg_mid - file_mid - 2);
+      const size_t line_pos_mid = line_pos_str.find(L',');
+      const wstring line_str = line_pos_str.substr(0, line_pos_mid);
+      const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
+
+      // create objects
+      size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+      diag_obj[0] = (size_t)APITools_CreateStringValue(context, msg_str);
+      diag_obj[1] = 1; // error type
+      diag_obj[3] = (size_t)APITools_CreateStringValue(context, file_str);
+      diag_obj[4] = _wtoi(line_str.c_str());
+      diag_obj[5] = _wtoi(pos_str.c_str());
+      diag_obj[6] = diag_obj[7] = -1;
+      diagnostics_array_ptr[i] = (size_t)diag_obj;
+    }
+
+    return diagnostics_array;
   }
-
-  return diagnostics_array;
 }
