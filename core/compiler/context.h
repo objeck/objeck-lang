@@ -257,6 +257,9 @@ class ContextAnalyzer {
   int float_str_index;
   int in_loop;
   vector<Class*> anonymous_classes;
+#ifdef _DIAG_LIB
+  vector<wstring> error_strings;
+#endif
 
   inline void Debug(const wstring &msg, const int line_num, int depth) {
     GetLogger() << setw(4) << line_num << L": ";
