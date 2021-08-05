@@ -162,7 +162,7 @@ size_t* APITools_MakeIntArray(VMContext & context, const long int_array_size) {
   const long int_array_dim = 1;
   size_t* int_array = (size_t*)context.alloc_array(int_array_size + int_array_dim + 2, INT_TYPE,
                                                    context.op_stack, *context.stack_pos, false);
-  int_array[0] = int_array_size + 1;
+  int_array[0] = int_array_size;
   int_array[1] = int_array_dim;
   int_array[2] = int_array_size;
 
@@ -174,7 +174,7 @@ size_t* APITools_MakeFloatArray(VMContext & context, const long float_array_size
   const long float_array_dim = 1;
   size_t* float_array = (size_t*)context.alloc_array(float_array_size + float_array_dim + 2, FLOAT_TYPE,
                                                      context.op_stack, *context.stack_pos, false);
-  float_array[0] = float_array_size + 1;
+  float_array[0] = float_array_size;
   float_array[1] = float_array_dim;
   float_array[2] = float_array_size;
 
@@ -186,7 +186,7 @@ size_t* APITools_MakeByteArray(VMContext & context, const long char_array_size) 
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)), 
                                                     BYTE_ARY_TYPE, context.op_stack, *context.stack_pos, false);
-  char_array[0] = char_array_size + 1;
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
@@ -198,7 +198,7 @@ size_t * APITools_MakeCharArray(VMContext & context, const long char_array_size)
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)), 
                                                     CHAR_ARY_TYPE, context.op_stack, *context.stack_pos, false);
-  char_array[0] = char_array_size + 1;
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
@@ -355,7 +355,7 @@ size_t* APITools_CreateStringValue(VMContext & context, const wstring & value) {
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
                                                     CHAR_ARY_TYPE, context.op_stack, *context.stack_pos, false);
-  char_array[0] = char_array_size + 1;
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
