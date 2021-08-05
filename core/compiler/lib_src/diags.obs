@@ -40,7 +40,7 @@ bundle System.Diagnostics {
 			array_args[1] := IntHolder->New();
 			array_args[2] := src_str;
 			array_args[3] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_parse_string", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_parse_text", array_args);
 			
 			handle := array_args[0]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
@@ -79,18 +79,18 @@ bundle System.Diagnostics {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
 			array_args[1] := @self;
-			Proxy->GetDllProxy()->CallFunction("diag_tree_get_symbols", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
 			
 			return array_args[0]->As(Result);
 		}
 
-		method : public : FindSymbols(line : Int, pos : Int) ~ Result {
+		method : public : FindReferences(line : Int, pos : Int) ~ Result {
 			array_args := Base->New[4];
 			array_args[0] := Nil;
 			array_args[1] := @self;
 			array_args[2] := IntHolder->New(line);
 			array_args[3] := IntHolder->New(pos);
-			Proxy->GetDllProxy()->CallFunction("diag_find_symbols", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
 			
 			return Nil;
 		}
