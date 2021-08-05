@@ -158,24 +158,7 @@ extern "C" {
       }
     }
   }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void diag_tree_get_symbol(VMContext& context)
-  {
-    size_t* tree_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
-
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
-  
-    Expression* expression = SearchMethod(line_num, line_pos, FindMethod(line_num, program));
-    if(expression) {
-
-    }
-  }
-  
+    
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -225,7 +208,14 @@ extern "C" {
           Method* mthd = mthds[k];
 
           size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
+
+          wstring mthd_name = mthd->GetName();
+          const size_t mthd_name_index = mthd_name.find_last_of(':');
+          if(mthd_name_index != wstring::npos) {
+            mthd_name = mthd_name.substr(mthd_name_index + 1, mthd_name.size() - mthd_name_index - 1);
+          }
+          mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd_name);
+
           mthd_symb_obj[1] = 6; // method type
           mthd_symb_obj[4] = mthd->GetLineNumber();
           mthd_symb_obj[5] = mthd->GetLinePosition();
