@@ -40,6 +40,18 @@
 #include "../../shared/sys.h"
 #include "../../../compiler/tree.h"
 
+// severity
+#define DIAG_ERROR 101
+#define DIAG_WARN 102
+#define DIAG_INFO 103
+// symbols
+#define DIAG_FILE 201
+#define DIAG_NAMESPACE 203
+#define DIAG_CLASS 205
+#define DIAG_METHOD 206
+// other
+#define DIAG_UNKN 0
+
 extern "C" {
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings);
 
