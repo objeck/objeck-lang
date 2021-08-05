@@ -86,10 +86,9 @@ extern "C" {
   void diag_parse_file(VMContext& context)
   {
     const wstring src_file(APITools_GetStringValue(context, 2));
-    const wstring sys_path(APITools_GetStringValue(context, 3));
 
 #ifdef _DEBUG
-    wcout << L"Parse file: src_file='" << src_file << L"', sys_path='" << sys_path << L"'" << endl;
+    wcout << L"Parse file: src_file='" << src_file << L"'" << endl;
 #endif
 
     Parser parser(src_file, false, L"");
@@ -108,10 +107,9 @@ extern "C" {
   void diag_parse_text(VMContext& context)
   {
     const wstring src_text(APITools_GetStringValue(context, 2));
-    const wstring sys_path(APITools_GetStringValue(context, 3));
 
 #ifdef _DEBUG
-    wcout << L"Parse file: text_size=" << src_text.size() << L", sys_path='" << sys_path << L"'" << endl;
+    wcout << L"Parse file: text_size=" << src_text.size() << L"'" << endl;
 #endif
 
     Parser parser(L"", false, src_text);
@@ -129,38 +127,32 @@ extern "C" {
 #endif
   void diag_get_diagnostics(VMContext& context)
   {
-    size_t* tree_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const wstring sys_path = APITools_GetStringValue(context, 2);
+
+    wstring full_path = L"lang.obl";
+    if(!sys_path.empty()) {
+      full_path += L',' + sys_path;
+    }
 
     // if parsed
-    if(!tree_obj[1]) {
+    if(!prgm_obj[1]) {
       vector<wstring> error_strings = program->GetErrorStrings();
       size_t* diagnostics_array = FormatErrors(context, error_strings);
 
       // diagnostics
-      size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-      file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, L"Diagnostics");
-      file_symb_obj[2] = (size_t)diagnostics_array;
-      file_symb_obj[1] = file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
-
-      APITools_SetObjectValue(context, 0, file_symb_obj);
+      prgm_obj[3] = (size_t)diagnostics_array;
     }
     else {
-      ContextAnalyzer analyzer(program, L"lang.obl,gen_collect.obl", false, false);
+      ContextAnalyzer analyzer(program, full_path, false, false);
       if(!analyzer.Analyze()) {
         vector<wstring> error_strings = program->GetErrorStrings();
         size_t* diagnostics_array = FormatErrors(context, error_strings);
 
         // diagnostics
-        size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, L"Diagnostics");
-        file_symb_obj[2] = (size_t)diagnostics_array;
-        file_symb_obj[1] = file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
-
-        APITools_SetObjectValue(context, 0, file_symb_obj);
-      }
-      else {
-        APITools_SetObjectValue(context, 0, 0);
+        prgm_obj[3] = (size_t)diagnostics_array;
       }
     }
   }
@@ -173,22 +165,22 @@ extern "C" {
 #endif
   void diag_get_symbols(VMContext& context)
   {
-    size_t* tree_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    wstring file_name;
     vector<ParsedBundle*> bundles = program->GetBundles();
     size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
     size_t* bundle_array_ptr = bundle_array + 3;
+    
+    wstring file_name;
     for(size_t i = 0; i < bundles.size(); ++i) {
       ParsedBundle* bundle = bundles[i];
-
       file_name = bundle->GetFileName();
 
       size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       const wstring bundle_name = bundle->GetName();
       bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
-      bundle_symb_obj[1] = 2; // namespace type
+      bundle_symb_obj[1] = DIAG_NAMESPACE; // namespace type
       bundle_symb_obj[4] = bundle->GetLineNumber();
       bundle_symb_obj[5] = bundle->GetLinePosition();
       bundle_symb_obj[6] = bundle->GetEndLineNumber();
@@ -203,7 +195,7 @@ extern "C" {
 
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
-        klass_symb_obj[1] = 5; // class type
+        klass_symb_obj[1] = DIAG_CLASS; // class type
         klass_symb_obj[4] = klass->GetLineNumber();
         klass_symb_obj[5] = klass->GetLinePosition();
         klass_symb_obj[6] = klass->GetEndLineNumber();
@@ -225,7 +217,7 @@ extern "C" {
           }
           mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd_name);
 
-          mthd_symb_obj[1] = 6; // method type
+          mthd_symb_obj[1] = DIAG_METHOD; // method type
           mthd_symb_obj[4] = mthd->GetLineNumber();
           mthd_symb_obj[5] = mthd->GetLinePosition();
           mthd_symb_obj[6] = mthd->GetEndLineNumber();
@@ -240,11 +232,11 @@ extern "C" {
     // file root
     size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
     file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, file_name);
-    file_symb_obj[1] = 1; // file type
+    file_symb_obj[1] = DIAG_FILE; // file type
     file_symb_obj[2] = (size_t)bundle_array;
     file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
 
-    APITools_SetObjectValue(context, 0, file_symb_obj);
+    prgm_obj[2] = (size_t)file_symb_obj;
   }
 
   //
@@ -260,6 +252,7 @@ extern "C" {
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring sys_path = APITools_GetStringValue(context, 4);
 
     Method* method = FindMethod(line_num, program);
     if(method) {
@@ -416,7 +409,7 @@ extern "C" {
       // create objects
       size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       diag_obj[0] = (size_t)APITools_CreateStringValue(context, msg_str);
-      diag_obj[1] = 1; // error type
+      diag_obj[1] = DIAG_ERROR; // error type
       diag_obj[3] = (size_t)APITools_CreateStringValue(context, file_str);
       diag_obj[4] = _wtoi(line_str.c_str());
       diag_obj[5] = _wtoi(pos_str.c_str());
