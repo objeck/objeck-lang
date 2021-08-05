@@ -49,6 +49,7 @@ bundle System.Diagnostics {
 	}
 
 	#~
+	TOOD: cache results, getdefects, hasdefects
 	Analysis results
 	~#
 	class AnalysisResult {
