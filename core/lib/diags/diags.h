@@ -45,7 +45,9 @@ extern "C" {
 
   frontend::Method* FindMethod(const int line_num, frontend::ParsedProgram* program);
   frontend::Expression* SearchMethod(const int line_num, const int line_pos, frontend::Method* method);
-  frontend::Expression* SearchAssignment(const int line_num, const int line_pos, frontend::Assignment* assignment);
+
+  frontend::Expression* SearchWhile(const int line_num, const int line_pos, frontend::While* while_stmt);
+  frontend::Expression* SearchAssignment(const int line_num, const int line_pos, frontend::Assignment* asgn_stmt);
 }
 
 #endif

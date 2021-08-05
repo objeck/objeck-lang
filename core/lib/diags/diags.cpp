@@ -78,7 +78,7 @@ extern "C" {
   }
 
   //
-  // Operations
+  // Parse file
   //
 #ifdef _WIN32
   __declspec(dllexport)
@@ -99,10 +99,13 @@ extern "C" {
     APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
   }
   
+  //
+  // Parse text
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_parse_string(VMContext& context)
+  void diag_parse_text(VMContext& context)
   {
     const wstring src_text(APITools_GetStringValue(context, 2));
     const wstring sys_path(APITools_GetStringValue(context, 3));
@@ -118,6 +121,9 @@ extern "C" {
     APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
   }
 
+  //
+  // get diagnostics (error and warnings)
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -159,10 +165,13 @@ extern "C" {
     }
   }
     
+  //
+  // get symbols
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_tree_get_symbols(VMContext& context)
+  void diag_get_symbols(VMContext& context)
   {
     size_t* tree_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)tree_obj[0];
@@ -239,6 +248,29 @@ extern "C" {
   }
 
   //
+  // get references
+  //
+#ifdef _WIN32
+    __declspec(dllexport)
+#endif
+    void diag_find_references(VMContext& context)
+  {
+    size_t* tree_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+
+    Method* method = FindMethod(line_num, program);
+    if(method) {
+      Expression* expression = SearchMethod(line_num, line_pos, method);
+      if(expression) {
+
+      }
+    }
+  }
+
+  //
   // Supporting functions
   //
   Expression* SearchMethod(const int line_num, const int line_pos, Method* method)
@@ -249,7 +281,7 @@ extern "C" {
         const int start_line = statement->GetLineNumber();
         const int end_line = statement->GetEndLineNumber();
 
-        if(start_line == line_num) {
+        if(start_line <= line_num && end_line >= line_num) {
           switch(statement->GetStatementType()) {
           case EMPTY_STMT:
           case SYSTEM_STMT:
@@ -289,7 +321,7 @@ extern "C" {
             break;
 
           case WHILE_STMT:
-            break;
+            return SearchWhile(line_num, line_pos, static_cast<While*>(statement));
 
           case FOR_STMT:
             break;
@@ -318,7 +350,12 @@ extern "C" {
     return nullptr;
   }
 
-  Expression* SearchAssignment(const int line_num, const int line_pos, Assignment* assignment)
+  Expression* SearchAssignment(const int line_num, const int line_pos, Assignment* asgn_stmt)
+  {
+    return nullptr;
+  }
+
+  Expression* SearchWhile(const int line_num, const int line_pos, While* while_stmt)
   {
     return nullptr;
   }
