@@ -111,11 +111,55 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_tree_diagnostics(VMContext& context)
+    void diag_get_diagnostics(VMContext& context)
   {
     size_t* tree_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)tree_obj[0];
 
+    // if parsed
+    if(!tree_obj[1]) {
+      vector<wstring> error_strings = program->GetErrorStrings();
+
+      size_t* diagnostics_array = APITools_MakeIntArray(context, (int)error_strings.size());
+      size_t* diagnostics_array_ptr = diagnostics_array + 3;
+
+      for(size_t i = 0; i < error_strings.size(); ++i) { 
+        const wstring error_string = error_strings[i];
+
+        // parse error string
+        const size_t file_mid = error_string.find(L":(");
+        const wstring file_str = error_string.substr(0, file_mid);
+
+        const size_t msg_mid = error_string.find(L"):");
+        const wstring msg_str = error_string.substr(msg_mid + 3, error_string.size() - msg_mid - 3);
+
+        const wstring line_pos_str = error_string.substr(file_mid + 2, msg_mid - file_mid - 2);
+        const size_t line_pos_mid = line_pos_str.find(L',');
+        const wstring line_str = line_pos_str.substr(0, line_pos_mid);
+        const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
+
+        // create objects
+        size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        diag_obj[0] = (size_t)APITools_CreateStringValue(context, msg_str);
+        diag_obj[1] = 1; // error type
+        diag_obj[3] = (size_t)APITools_CreateStringValue(context, file_str);
+        diag_obj[4] = _wtoi(line_str.c_str());
+        diag_obj[5] = _wtoi(pos_str.c_str());
+        diag_obj[6] = diag_obj[7] = -1;
+        diagnostics_array_ptr[i] = (size_t)diag_obj;
+      }
+
+      // diagnostics
+      size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+      file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, L"Diagnostics");
+      file_symb_obj[2] = (size_t)diagnostics_array;
+      file_symb_obj[1] = file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
+
+      APITools_SetObjectValue(context, 0, file_symb_obj);
+    }
+    else {
+      APITools_SetObjectValue(context, 0, 0);
+    }
   }
 
 #ifdef _WIN32
@@ -134,7 +178,94 @@ extern "C" {
 
     }
   }
+  
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_tree_release(VMContext& context)
+  {
+    ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
+    if(program) {
+      delete program;
+      program = nullptr;
+    }
+  }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_symbols(VMContext& context)
+  {
+    size_t* tree_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+
+    wstring file_name;
+    vector<ParsedBundle*> bundles = program->GetBundles();
+    size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
+    size_t* bundle_array_ptr = bundle_array + 3;
+    for(size_t i = 0; i < bundles.size(); ++i) {
+      ParsedBundle* bundle = bundles[i];
+
+      file_name = bundle->GetFileName();
+
+      size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+      const wstring bundle_name = bundle->GetName();
+      bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
+      bundle_symb_obj[1] = 2; // namespace type
+      bundle_symb_obj[4] = bundle->GetLineNumber();
+      bundle_symb_obj[5] = bundle->GetLinePosition();
+      bundle_symb_obj[6] = bundle->GetEndLineNumber();
+      bundle_symb_obj[7] = bundle->GetEndLinePosition();
+      bundle_array_ptr[i] = (size_t)bundle_symb_obj;
+
+      vector<Class*> klasss = bundle->GetClasses();
+      size_t* klass_array = APITools_MakeIntArray(context, (int)klasss.size());
+      size_t* klass_array_ptr = klass_array + 3;
+      for(size_t j = 0; j < klasss.size(); ++j) {
+        Class* klass = klasss[j];
+
+        size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
+        klass_symb_obj[1] = 5; // class type
+        klass_symb_obj[4] = klass->GetLineNumber();
+        klass_symb_obj[5] = klass->GetLinePosition();
+        klass_symb_obj[6] = klass->GetEndLineNumber();
+        klass_symb_obj[7] = klass->GetEndLinePosition();
+        klass_array_ptr[j] = (size_t)klass_symb_obj;
+
+        vector<Method*> mthds = klass->GetMethods();
+        size_t* mthds_array = APITools_MakeIntArray(context, (int)mthds.size());
+        size_t* mthds_array_ptr = mthds_array + 3;
+        for(size_t k = 0; k < mthds.size(); ++k) {
+          Method* mthd = mthds[k];
+
+          size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
+          mthd_symb_obj[1] = 6; // method type
+          mthd_symb_obj[4] = mthd->GetLineNumber();
+          mthd_symb_obj[5] = mthd->GetLinePosition();
+          mthd_symb_obj[6] = mthd->GetEndLineNumber();
+          mthd_symb_obj[7] = mthd->GetEndLinePosition();
+          mthds_array_ptr[k] = (size_t)mthd_symb_obj;
+        }
+        klass_symb_obj[2] = (size_t)mthds_array;
+      }
+      bundle_symb_obj[2] = (size_t)klass_array;
+    }
+
+    // file root
+    size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+    file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, file_name);
+    file_symb_obj[1] = 1; // file type
+    file_symb_obj[2] = (size_t)bundle_array;
+    file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
+
+    APITools_SetObjectValue(context, 0, file_symb_obj);
+  }
+
+  //
+  // Supporting functions
+  //
   Expression* SearchMethod(const int line_num, const int line_pos, Method* method)
   {
     if(method) {
@@ -217,7 +348,6 @@ extern "C" {
     return nullptr;
   }
 
-
   Method* FindMethod(const int line_num, ParsedProgram* program)
   {
     // bundles
@@ -250,88 +380,4 @@ extern "C" {
 
     return nullptr;
   }
-
- #ifdef _WIN32
-    __declspec(dllexport)
-  #endif
-    void diag_tree_get_symbols(VMContext& context)
-    {
-      size_t* tree_obj = APITools_GetObjectValue(context, 1);
-      ParsedProgram* program = (ParsedProgram*)tree_obj[0];
-      
-      wstring file_name;
-      vector<ParsedBundle*> bundles = program->GetBundles();
-      size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
-      size_t* bundle_array_ptr = bundle_array + 3;
-      for(size_t i = 0; i < bundles.size(); ++i) {
-        ParsedBundle* bundle = bundles[i];
-
-        file_name = bundle->GetFileName();
-
-        size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
-        const wstring bundle_name = bundle->GetName();
-        bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
-        bundle_symb_obj[1] = 2; // namespace type
-        bundle_symb_obj[4] = bundle->GetLineNumber();
-        bundle_symb_obj[5] = bundle->GetLinePosition();
-        bundle_symb_obj[6] = bundle->GetEndLineNumber();
-        bundle_symb_obj[7] = bundle->GetEndLinePosition();
-        bundle_array_ptr[i] = (size_t)bundle_symb_obj;
-
-        vector<Class*> klasss = bundle->GetClasses();
-        size_t* klass_array = APITools_MakeIntArray(context, (int)klasss.size());
-        size_t* klass_array_ptr = klass_array + 3;
-        for(size_t j = 0; j < klasss.size(); ++j) {
-          Class* klass = klasss[j];
-
-          size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
-          klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
-          klass_symb_obj[1] = 5; // class type
-          klass_symb_obj[4] = klass->GetLineNumber();
-          klass_symb_obj[5] = klass->GetLinePosition();
-          klass_symb_obj[6] = klass->GetEndLineNumber();
-          klass_symb_obj[7] = klass->GetEndLinePosition();
-          klass_array_ptr[j] = (size_t)klass_symb_obj;
-
-          vector<Method*> mthds = klass->GetMethods();
-          size_t* mthds_array = APITools_MakeIntArray(context, (int)mthds.size());
-          size_t* mthds_array_ptr = mthds_array + 3;
-          for(size_t k = 0; k < mthds.size(); ++k) {
-            Method* mthd = mthds[k];
-
-            size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
-            mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd->GetName());
-            mthd_symb_obj[1] = 6; // method type
-            mthd_symb_obj[4] = mthd->GetLineNumber();
-            mthd_symb_obj[5] = mthd->GetLinePosition();
-            mthd_symb_obj[6] = mthd->GetEndLineNumber();
-            mthd_symb_obj[7] = mthd->GetEndLinePosition();
-            mthds_array_ptr[k] = (size_t)mthd_symb_obj;
-          }
-          klass_symb_obj[2] = (size_t)mthds_array;
-        }
-        bundle_symb_obj[2] = (size_t)klass_array;
-      }
-
-      // file root
-      size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Symbol");
-      file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, file_name);
-      file_symb_obj[1] = 1; // file type
-      file_symb_obj[2] = (size_t)bundle_array;
-      file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
-
-      APITools_SetObjectValue(context, 0, file_symb_obj);
-  }
-
- #ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void diag_tree_release(VMContext& context)
-    {
-      ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
-      if(program) {
-        delete program;
-        program = nullptr;
-      }
-    }
 }
