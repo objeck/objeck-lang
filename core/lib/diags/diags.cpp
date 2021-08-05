@@ -125,7 +125,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_diagnostics(VMContext& context)
+  void diag_get_diagnosis(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -256,7 +256,7 @@ extern "C" {
 
     Method* method = FindMethod(line_num, program);
     if(method) {
-      Expression* expression = SearchMethod(line_num, line_pos, method);
+      Expression* expression = SearchMethod(line_num + 1, line_pos + 1, method);
       if(expression) {
 
       }
@@ -269,73 +269,90 @@ extern "C" {
   Expression* SearchMethod(const int line_num, const int line_pos, Method* method)
   {
     if(method) {
-      vector<Statement*> statements = method->GetStatements()->GetStatements();
-      for(auto& statement : statements) {
-        const int start_line = statement->GetLineNumber();
-        const int end_line = statement->GetEndLineNumber();
+      return SearchStatements(line_num, line_pos, method->GetStatements()->GetStatements());
+    }
 
-        if(start_line <= line_num && end_line >= line_num) {
-          switch(statement->GetStatementType()) {
-          case EMPTY_STMT:
-          case SYSTEM_STMT:
-            break;
+    return nullptr;
+  }
 
-          case DECLARATION_STMT:
-            break;
+  Expression* SearchStatements(const int line_num, const int line_pos, vector<Statement*> statements)
+  {
+    for(auto& statement : statements) {
+      const int start_line = statement->GetLineNumber();
+      const int end_line = statement->GetEndLineNumber();
 
-          case METHOD_CALL_STMT:
-            break;
+      if(start_line <= line_num && end_line >= line_num) {
+        switch(statement->GetStatementType()) {
+        case EMPTY_STMT:
+        case SYSTEM_STMT:
+          break;
+
+        case DECLARATION_STMT: {
+          Declaration* declaration = static_cast<Declaration*>(statement);
+          const int start_pos = declaration->GetLinePosition();
+          int end_pos = start_pos;
+          if(declaration->GetEntry()) {
+            end_pos -= (int)declaration->GetEntry()->GetName().size();
+          }
+
+          if(start_pos <= line_pos) {
+
+          }
+        }
+          break;
+
+        case METHOD_CALL_STMT:
+          break;
 
 
-          case ADD_ASSIGN_STMT:
-            break;
+        case ADD_ASSIGN_STMT:
+          break;
 
-          case SUB_ASSIGN_STMT:
-          case MUL_ASSIGN_STMT:
-          case DIV_ASSIGN_STMT:
-            break;
+        case SUB_ASSIGN_STMT:
+        case MUL_ASSIGN_STMT:
+        case DIV_ASSIGN_STMT:
+          break;
 
-          case ASSIGN_STMT:
-            return SearchAssignment(line_num, line_pos, static_cast<Assignment*>(statement));
+        case ASSIGN_STMT:
+          return SearchAssignment(line_num, line_pos, static_cast<Assignment*>(statement));
 
-          case SIMPLE_STMT:
-            break;
+        case SIMPLE_STMT:
+          break;
 
-          case RETURN_STMT:
-            break;
+        case RETURN_STMT:
+          break;
 
-          case LEAVING_STMT:
-            break;
+        case LEAVING_STMT:
+          break;
 
-          case IF_STMT:
-            break;
+        case IF_STMT:
+          break;
 
-          case DO_WHILE_STMT:
-            break;
+        case DO_WHILE_STMT:
+          break;
 
-          case WHILE_STMT:
-            return SearchWhile(line_num, line_pos, static_cast<While*>(statement));
+        case WHILE_STMT:
+          return SearchWhile(line_num, line_pos, static_cast<While*>(statement));
 
-          case FOR_STMT:
-            break;
+        case FOR_STMT:
+          break;
 
-          case BREAK_STMT:
-          case CONTINUE_STMT:
-            break;
+        case BREAK_STMT:
+        case CONTINUE_STMT:
+          break;
 
-          case SELECT_STMT:
-            break;
+        case SELECT_STMT:
+          break;
 
-          case CRITICAL_STMT:
-            break;
+        case CRITICAL_STMT:
+          break;
 
-          default:
+        default:
 #ifdef _DEBUG
-            wcerr << L"Undefined statement" << endl;
+          wcerr << L"Undefined statement" << endl;
 #endif
 
-            break;
-          }
+          break;
         }
       }
     }
@@ -350,6 +367,9 @@ extern "C" {
 
   Expression* SearchWhile(const int line_num, const int line_pos, While* while_stmt)
   {
+    Expression* expr = while_stmt->GetExpression();
+    expr = SearchStatements(line_num, line_pos, while_stmt->GetStatements()->GetStatements());
+
     return nullptr;
   }
 
