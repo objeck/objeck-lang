@@ -82,7 +82,7 @@ bundle System.Diagnostics {
 				array_args[0] := Nil;
 				array_args[1] := @self;
 				array_args[2] := sys_path;
-				Proxy->GetDllProxy()->CallFunction("diag_get_diagnostics", array_args);
+				Proxy->GetDllProxy()->CallFunction("diag_get_diagnosis", array_args);
 			};
 
 			return @diagnostics_results;
