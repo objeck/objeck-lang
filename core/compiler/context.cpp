@@ -99,9 +99,17 @@ bool ContextAnalyzer::CheckErrors()
   if(errors.size()) {
     map<int, wstring>::iterator error;
     for(error = errors.begin(); error != errors.end(); ++error) {
+#ifdef _DIAG_LIB
+      error_strings.push_back(error->second);
+#else
       wcerr << error->second << endl;
+#endif
     }
-    
+
+#ifdef _DIAG_LIB
+    program->SetErrorStrings(error_strings);
+#endif
+
     return false;
   }
 
