@@ -3394,6 +3394,9 @@ namespace frontend {
     Class* start_class;
     Method* start_method;
     Linker* linker; // deleted elsewhere
+#ifdef _DIAG_LIB
+    vector<wstring> error_strings;
+#endif
 
   public:
     ParsedProgram() {
@@ -3416,6 +3419,16 @@ namespace frontend {
       TreeFactory::Instance()->Clear();
       TypeFactory::Instance()->Clear();
     }
+
+#ifdef _DIAG_LIB
+    const vector<wstring> GetErrorStrings() {
+      return error_strings;
+    }
+
+    const void SetErrorStrings(vector<wstring> msgs) {
+      error_strings = msgs;
+    }
+#endif
     
     wstring GetFileName() const {
       if(file_uses.size() > 0) {

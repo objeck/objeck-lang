@@ -183,8 +183,7 @@ void Parser::ProcessError(const wstring &msg, ParseNode * node)
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() +
-                L':' + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -199,15 +198,27 @@ bool Parser::CheckErrors()
     map<int, wstring>::iterator error = errors.begin();
     if(errors.size() > error_max) {
       for(size_t i = 0; i < error_max; ++error, ++i) {
+#ifdef _DIAG_LIB
+        error_strings.push_back(error->second);
+#else
         wcerr << error->second << endl;
+#endif
       }
     }
     else {
       for(; error != errors.end(); ++error) {
+#ifdef _DIAG_LIB
+        error_strings.push_back(error->second);
+#else
         wcerr << error->second << endl;
+#endif
       }
     }
-    
+
+#ifdef _DIAG_LIB
+    program->SetErrorStrings(error_strings);
+#endif
+
     return false;
   }
 
