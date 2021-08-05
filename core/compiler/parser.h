@@ -200,7 +200,6 @@ class Parser {
   SymbolTableManager* GetSymbolTable() {
     return symbol_table;
   }
-
 };
 
 #endif
