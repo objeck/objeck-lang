@@ -111,7 +111,8 @@ class Parser {
 
   wstring ParseBundleName();
 
-  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child,  int depth);
+  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child, 
+                              const int line_num, const int line_pos, int depth);
 
   // error processing
   void LoadErrorCodes();
