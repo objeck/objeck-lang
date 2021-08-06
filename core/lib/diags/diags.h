@@ -55,7 +55,7 @@
 extern "C" {
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings);
 
-  frontend::Method* FindMethod(const int line_num, frontend::ParsedProgram* program);
+  frontend::Method* FindMethod(const int line_num, frontend::ParsedProgram* program, frontend::SymbolTable* &table);
   frontend::Expression* SearchMethod(const int line_num, const int line_pos, frontend::Method* method);
   frontend::Expression* SearchStatements(const int line_num, const int line_pos, vector<frontend::Statement*> statements);
 

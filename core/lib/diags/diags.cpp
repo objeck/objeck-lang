@@ -254,11 +254,20 @@ extern "C" {
     const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring sys_path = APITools_GetStringValue(context, 4);
 
-    Method* method = FindMethod(line_num, program);
+    SymbolTable* table = nullptr;
+    Method* method = FindMethod(line_num, program, table);
     if(method) {
-      Expression* expression = SearchMethod(line_num + 1, line_pos + 1, method);
-      if(expression) {
+      wstring full_path = L"lang.obl";
+      if(!sys_path.empty()) {
+        full_path += L',' + sys_path;
+      }
 
+      ContextAnalyzer analyzer(program, full_path, false, false);
+      if(analyzer.Analyze()) {
+        vector<SymbolEntry*> entries = table->GetEntries();
+        for(auto& entry : entries) {
+
+        }
       }
     }
   }
@@ -373,7 +382,7 @@ extern "C" {
     return nullptr;
   }
 
-  Method* FindMethod(const int line_num, ParsedProgram* program)
+  Method* FindMethod(const int line_num, ParsedProgram* program, SymbolTable* &table)
   {
     // bundles
     vector<ParsedBundle*> bundles = program->GetBundles();
@@ -391,6 +400,7 @@ extern "C" {
 #ifdef _DEBUG
             wcout << L"Method: '" << method->GetParsedName() << "'" << endl;
 #endif
+            table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
             return method;
           }
         }
