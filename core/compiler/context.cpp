@@ -806,6 +806,9 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
   Debug(msg, method->GetLineNumber(), depth);
 #endif
 
+#ifdef _DIAG_LIB
+  method_expressions.clear();
+#endif
   method->SetId();
   current_method = method;
   current_table = symbol_table->GetSymbolTable(method->GetParsedName());
@@ -889,6 +892,10 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
       }
     }
   }
+
+#ifdef _DIAG_LIB
+  current_method->SetExpressions(method_expressions);
+#endif
 }
 
 /****************************
@@ -1165,6 +1172,85 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
   return expressions;
 }
 
+#ifdef _DIAG_LIB
+vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int line_num, const int line_pos)
+{
+  // get all expressions
+  vector<Expression*> all_expressions = method->GetExpressions();
+  vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
+  for(size_t i = 0; i < entries.size(); ++i) {
+    const vector<Variable*> variables = entries[i]->GetVariables();
+    for(size_t j = 0; j < variables.size(); ++j) {
+      all_expressions.push_back(variables[j]);
+    }
+  }
+
+  // find expression
+  Expression* found_expression = nullptr;
+  for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
+    Expression* expression = all_expressions[i];
+    if(expression->GetLineNumber() == line_num + 1) {
+      const int start_pos = expression->GetLinePosition() - 1;
+      int end_pos = start_pos;
+
+      switch(expression->GetExpressionType()) {
+      case VAR_EXPR: {
+        Variable* variable = static_cast<Variable*>(expression);
+        end_pos += (int)variable->GetName().size();
+      }
+        break;
+
+      case METHOD_CALL_EXPR: {
+        MethodCall* method_call = static_cast<MethodCall*>(expression);
+        if(method_call->GetEntry()) {
+          end_pos = (int)method_call->GetEntry()->GetLinePosition() - 1;
+        }
+        else {
+          end_pos += (int)method_call->GetMethodName().size();
+        }
+      }
+        break;
+      }
+
+      if(start_pos <= line_pos && end_pos >= line_pos) {
+        found_expression = expression;
+      }
+    }
+  }
+
+  // find matching expressions
+  vector<Expression*> matched_expressions;
+  if(found_expression) {
+    for(size_t i = 0; i < all_expressions.size(); ++i) {
+      Expression* expression = all_expressions[i];
+      if(expression->GetExpressionType() == found_expression->GetExpressionType()) {
+        switch(expression->GetExpressionType()) {
+        case VAR_EXPR: {
+          Variable* variable = static_cast<Variable*>(expression);
+          Variable* found_variable = static_cast<Variable*>(found_expression);
+          if(variable->GetName() == found_variable->GetName()) {
+            matched_expressions.push_back(expression);
+          }
+        }
+          break;
+
+        case METHOD_CALL_EXPR: {
+          MethodCall* method_call = static_cast<MethodCall*>(expression);
+          MethodCall* found_method_call = static_cast<MethodCall*>(found_expression);
+          if(method_call->GetMethodName() == found_method_call->GetMethodName()) {
+            matched_expressions.push_back(expression);
+          }
+        }
+          break;
+        }
+      }
+    }
+  }
+
+  return matched_expressions;
+}
+#endif
+
 /****************************
  * Check to determine if lambda 
  * concrete types are inferred
@@ -1322,6 +1408,14 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
     else {
       AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
     }
+#ifdef _DIAG_LIB
+    if(declaration->GetEntry()) {
+      method_expressions.push_back(TreeFactory::Instance()->MakeVariable(declaration->GetFileName(),
+                                                                         declaration->GetLineNumber(),
+                                                                         declaration->GetLinePosition(),
+                                                                         declaration->GetEntry()->GetName()));
+    }
+#endif
   }
     break;
 
@@ -1329,6 +1423,9 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
     MethodCall* mthd_call = static_cast<MethodCall*>(statement);
     AnalyzeMethodCall(mthd_call, depth);
     AnalyzeCast(mthd_call, depth + 1);
+#ifdef _DIAG_LIB
+    method_expressions.push_back(mthd_call);
+#endif
   }
     break;
 
@@ -1438,6 +1535,9 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 
   case METHOD_CALL_EXPR:
     AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
+#ifdef _DIAG_LIB
+    method_expressions.push_back(expression);
+#endif
     break;
 
   case NIL_LIT_EXPR:
