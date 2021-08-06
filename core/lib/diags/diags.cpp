@@ -286,7 +286,7 @@ extern "C" {
           case METHOD_CALL_EXPR: {
             MethodCall* method_call = static_cast<MethodCall*>(expression);
             if(method_call->GetEntry()) {
-              end_pos = (int)method_call->GetEntry()->GetLinePosition() - 1;
+              end_pos = (int)method_call->GetEntry()->GetLinePosition();
             }
             else {
               end_pos += (int)method_call->GetMethodName().size();
@@ -296,11 +296,10 @@ extern "C" {
             break;
           }
           
-          reference_obj[1] = DIAG_VARIABLE; // varible type
-          reference_obj[4] = expression->GetLineNumber() - 1;
-          reference_obj[5] = start_pos;
-          reference_obj[6] = expression->GetLineNumber() - 1;
-          reference_obj[7] = end_pos;          
+          reference_obj[1] = DIAG_VARIABLE; // variable type
+          reference_obj[4] = reference_obj[6] = expression->GetLineNumber() - 1;
+          reference_obj[5] = start_pos - 1;
+          reference_obj[7] = end_pos - 1;          
           refs_array_ptr[i] = (size_t)reference_obj;
         }
 
