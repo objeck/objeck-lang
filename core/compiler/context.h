@@ -259,6 +259,7 @@ class ContextAnalyzer {
   vector<Class*> anonymous_classes;
 #ifdef _DIAG_LIB
   vector<wstring> error_strings;
+  vector<Expression*> method_expressions;
 #endif
 
   inline void Debug(const wstring &msg, const int line_num, int depth) {
@@ -431,7 +432,7 @@ class ContextAnalyzer {
   
   // maps lambda decelerations to parameter list
   ExpressionList* MapLambdaDeclarations(DeclarationList* declarations);
-
+  
   // error processing
   void ProcessError(const wstring& fn, int ln, int lp, const wstring& msg);
   void ProcessError(ParseNode* n, const wstring &msg);
@@ -572,6 +573,10 @@ class ContextAnalyzer {
     delete linker;
     linker = nullptr;
   }
+
+#ifdef _DIAG_LIB
+  vector<Expression*> GetExpressions(Method* method, const int line_num, const int line_pos);
+#endif
 
   bool Analyze();
 };
