@@ -1066,9 +1066,9 @@ Lambda* Parser::ParseLambda(int depth) {
   for(size_t i = 0; i < parameters.size(); ++i) {
     Expression* expression = parameters[i];
     if(expression && expression->GetExpressionType() == VAR_EXPR) {
-      declaration_list->AddDeclaration(AddDeclaration(static_cast<Variable*>(expression)->GetName(),
-                                                      TypeFactory::Instance()->MakeType(VAR_TYPE),
-                                                      false, nullptr, depth));
+      const wstring var_name = static_cast<Variable*>(expression)->GetName();
+      declaration_list->AddDeclaration(AddDeclaration(var_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, nullptr, 
+                                                      expression->GetLineNumber(), expression->GetLinePosition() - (int)var_name.size(), depth));
     }
     else {
       ProcessError(L"Expected variable parameter type" , TOKEN_SEMI_COLON);
@@ -2989,7 +2989,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
 
     // add declarations
     for(size_t i = 0; i < idents.size(); ++i) {
-      declaration = AddDeclaration(name, type, false, declaration, depth);
+      declaration = AddDeclaration(name, type, false, declaration, line_num, line_pos - (int)name.size(), depth);
     }
   }
   else {
@@ -3012,7 +3012,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
     Assignment* temp = nullptr;
     for(size_t i = 0; i < idents.size(); ++i) {
       const wstring &ident = idents[i];
-      declaration = AddDeclaration(ident, type, is_static, declaration, depth);
+      declaration = AddDeclaration(ident, type, is_static, declaration, line_num, line_pos - (int)ident.size(), depth);
 
       // found assignment
       if(declaration->GetAssignment()) {
@@ -3034,10 +3034,9 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
 /****************************
  * Adds a declaration.
  ****************************/
-frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child, int depth)
+frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child, 
+                                              const int line_num, const int line_pos, int depth)
 {
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
   // add entry
