@@ -54,6 +54,7 @@ bundle System.Diagnostics {
 		@is_parsed : Bool;
 		@symbols_result : Result;
 		@diagnostics_results : Result[];
+		@references_results : Result[];
 
 		New(handle : Int, is_parsed : Bool) {
 			Parent();
@@ -88,7 +89,7 @@ bundle System.Diagnostics {
 			return @diagnostics_results;
 		}
 		
-		method : public : FindReferences(line : Int, pos : Int, sys_path : String) ~ Result {
+		method : public : FindReferences(line : Int, pos : Int, sys_path : String) ~ Result[] {
 			array_args := Base->New[5];
 			array_args[0] := Nil;
 			array_args[1] := @self;
@@ -97,7 +98,7 @@ bundle System.Diagnostics {
 			array_args[4] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
 			
-			return Nil;
+			return @references_results;
 		}
 
 		method : public : Release() ~ Nil {
@@ -117,9 +118,10 @@ bundle System.Diagnostics {
 			WARN := 102,
 			INFO := 103,
 			# symbols
-			NAMESPACE := 200,
+			NAMESPACE := 203,
 			CLASS := 205,
 			METHOD := 206,
+			VARIABLE  := 213,
 			# other
 			UNKN := 0
 		}

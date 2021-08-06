@@ -168,6 +168,10 @@ namespace frontend {
       variables.push_back(v);
     }
 
+    const vector<Variable*> GetVariables() {
+      return variables;
+    }
+
     void SetId(int i);
     SymbolEntry* Copy();
   };
@@ -1873,7 +1877,10 @@ namespace frontend {
     Method* original;
     SymbolTable* symbol_table;
     Class* klass;
-
+#ifdef _DIAG_LIB
+    vector<Expression*> method_expressions;
+#endif
+    
     Method(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n,
            MethodType m, bool s, bool c) : ParseNode(f, l, p) {
       end_line_num = el;
@@ -1964,6 +1971,16 @@ namespace frontend {
     void SetEndLinePosition(int ep) {
       end_line_pos = ep;
     }
+
+#ifdef _DIAG_LIB
+    void SetExpressions(vector<Expression*> e) {
+      method_expressions = e;
+    }
+
+    vector < Expression*> GetExpressions() {
+      return method_expressions;
+    }
+#endif
 
     void EncodeSignature() {
       // return type

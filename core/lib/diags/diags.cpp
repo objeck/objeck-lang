@@ -245,10 +245,10 @@ extern "C" {
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
-    void diag_find_references(VMContext& context)
+  void diag_find_references(VMContext& context)
   {
-    size_t* tree_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)tree_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
@@ -264,10 +264,47 @@ extern "C" {
 
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(analyzer.Analyze()) {
-        vector<SymbolEntry*> entries = table->GetEntries();
-        for(auto& entry : entries) {
+        vector<Expression*> expressions = analyzer.GetExpressions(method, line_num, line_pos);
+        size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+        size_t* refs_array_ptr = refs_array + 3;
 
+        for(size_t i = 0; i < expressions.size(); ++i) {
+          Expression* expression = expressions[i];
+
+          size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          const int start_pos = expression->GetLinePosition() - 1;
+          int end_pos = start_pos;
+          
+          switch(expression->GetExpressionType()) {
+          case VAR_EXPR: {
+            Variable* variable = static_cast<Variable*>(expression);
+            end_pos += (int)variable->GetName().size();
+            reference_obj[0] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+          }
+            break;
+
+          case METHOD_CALL_EXPR: {
+            MethodCall* method_call = static_cast<MethodCall*>(expression);
+            if(method_call->GetEntry()) {
+              end_pos = (int)method_call->GetEntry()->GetLinePosition() - 1;
+            }
+            else {
+              end_pos += (int)method_call->GetMethodName().size();
+            }
+            reference_obj[0] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+          }
+            break;
+          }
+          
+          reference_obj[1] = DIAG_VARIABLE; // varible type
+          reference_obj[4] = expression->GetLineNumber();
+          reference_obj[5] = start_pos;
+          reference_obj[6] = expression->GetLineNumber();
+          reference_obj[7] = end_pos;          
+          refs_array_ptr[i] = (size_t)reference_obj;
         }
+
+        prgm_obj[4] = (size_t)refs_array;
       }
     }
   }
@@ -275,113 +312,7 @@ extern "C" {
   //
   // Supporting functions
   //
-  Expression* SearchMethod(const int line_num, const int line_pos, Method* method)
-  {
-    if(method) {
-      return SearchStatements(line_num, line_pos, method->GetStatements()->GetStatements());
-    }
-
-    return nullptr;
-  }
-
-  Expression* SearchStatements(const int line_num, const int line_pos, vector<Statement*> statements)
-  {
-    for(auto& statement : statements) {
-      const int start_line = statement->GetLineNumber();
-      const int end_line = statement->GetEndLineNumber();
-
-      if(start_line <= line_num && end_line >= line_num) {
-        switch(statement->GetStatementType()) {
-        case EMPTY_STMT:
-        case SYSTEM_STMT:
-          break;
-
-        case DECLARATION_STMT: {
-          Declaration* declaration = static_cast<Declaration*>(statement);
-          const int start_pos = declaration->GetLinePosition();
-          int end_pos = start_pos;
-          if(declaration->GetEntry()) {
-            end_pos -= (int)declaration->GetEntry()->GetName().size();
-          }
-
-          if(start_pos <= line_pos) {
-
-          }
-        }
-          break;
-
-        case METHOD_CALL_STMT:
-          break;
-
-
-        case ADD_ASSIGN_STMT:
-          break;
-
-        case SUB_ASSIGN_STMT:
-        case MUL_ASSIGN_STMT:
-        case DIV_ASSIGN_STMT:
-          break;
-
-        case ASSIGN_STMT:
-          return SearchAssignment(line_num, line_pos, static_cast<Assignment*>(statement));
-
-        case SIMPLE_STMT:
-          break;
-
-        case RETURN_STMT:
-          break;
-
-        case LEAVING_STMT:
-          break;
-
-        case IF_STMT:
-          break;
-
-        case DO_WHILE_STMT:
-          break;
-
-        case WHILE_STMT:
-          return SearchWhile(line_num, line_pos, static_cast<While*>(statement));
-
-        case FOR_STMT:
-          break;
-
-        case BREAK_STMT:
-        case CONTINUE_STMT:
-          break;
-
-        case SELECT_STMT:
-          break;
-
-        case CRITICAL_STMT:
-          break;
-
-        default:
-#ifdef _DEBUG
-          wcerr << L"Undefined statement" << endl;
-#endif
-
-          break;
-        }
-      }
-    }
-
-    return nullptr;
-  }
-
-  Expression* SearchAssignment(const int line_num, const int line_pos, Assignment* asgn_stmt)
-  {
-    return nullptr;
-  }
-
-  Expression* SearchWhile(const int line_num, const int line_pos, While* while_stmt)
-  {
-    Expression* expr = while_stmt->GetExpression();
-    expr = SearchStatements(line_num, line_pos, while_stmt->GetStatements()->GetStatements());
-
-    return nullptr;
-  }
-
+  
   Method* FindMethod(const int line_num, ParsedProgram* program, SymbolTable* &table)
   {
     // bundles
