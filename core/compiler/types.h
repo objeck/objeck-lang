@@ -84,6 +84,10 @@ namespace frontend {
     inline const int GetLinePosition() {
       return line_pos;
     }
+
+    void SetLinePosition(int p) {
+      line_pos = p;
+    }
   };
 
   /****************************

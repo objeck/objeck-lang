@@ -1417,42 +1417,70 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         statement = ParseAssignment(variable, depth + 1);
         break;
 
-      case TOKEN_ADD_ASSIGN:
+      case TOKEN_ADD_ASSIGN: {
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1), ADD_ASSIGN_STMT);
+
+        Expression* asgn_expr = ParseExpression(depth + 1);
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
+                                                                     variable, asgn_expr, ADD_ASSIGN_STMT);
+      }
         break;
 
-      case TOKEN_SUB_ASSIGN:
+      case TOKEN_SUB_ASSIGN: {
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1), SUB_ASSIGN_STMT);
+
+        Expression* asgn_expr = ParseExpression(depth + 1);
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
+                                                                     variable, asgn_expr, SUB_ASSIGN_STMT);
+      }
         break;
 
-      case TOKEN_MUL_ASSIGN:
+      case TOKEN_MUL_ASSIGN: {
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1), MUL_ASSIGN_STMT);
+
+        Expression* asgn_expr = ParseExpression(depth + 1);
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                     variable, asgn_expr, MUL_ASSIGN_STMT);
+      }
         break;
 
-      case TOKEN_DIV_ASSIGN:
+      case TOKEN_DIV_ASSIGN: {
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     ParseExpression(depth + 1), DIV_ASSIGN_STMT);
+
+        Expression* asgn_expr = ParseExpression(depth + 1);
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                     variable, asgn_expr, DIV_ASSIGN_STMT);
+      }
         break;
 
-      case TOKEN_ADD_ADD:
+      case TOKEN_ADD_ADD: {
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
-                                                                     ADD_ASSIGN_STMT);
+
+        Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
+        asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
+
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                     variable, asgn_lit, ADD_ASSIGN_STMT);
+      }
         break;
 
-      case TOKEN_SUB_SUB:
+      case TOKEN_SUB_SUB: {
         NextToken();
-        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
-                                                                     TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
-                                                                     SUB_ASSIGN_STMT);
+
+        Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
+        asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
+
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                     variable, asgn_lit, SUB_ASSIGN_STMT);
+      }
         break;
 
       case TOKEN_ASSESSOR:
@@ -1479,52 +1507,88 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       statement = ParseAssignment(ParseVariable(ident, depth + 1), depth + 1);
       break;
 
-    case TOKEN_ADD_ASSIGN:
+    case TOKEN_ADD_ASSIGN: {
       NextToken();
+
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
+      asgn_var->SetLinePosition(line_pos + 1);
+
+      Expression* asgn_expr = ParseExpression(depth + 1);
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   ParseVariable(ident, depth + 1),
-                                                                   ParseExpression(depth + 1),
-                                                                   ADD_ASSIGN_STMT);
+                                                                   asgn_var, asgn_expr, ADD_ASSIGN_STMT);
+    }
       break;
 
-    case TOKEN_SUB_ASSIGN:
+    case TOKEN_SUB_ASSIGN: {
       NextToken();
+
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
+      asgn_var->SetLinePosition(line_pos + 1);
+
+      Expression* asgn_expr = ParseExpression(depth + 1);
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   ParseVariable(ident, depth + 1),
-                                                                   ParseExpression(depth + 1),
-                                                                   SUB_ASSIGN_STMT);
+                                                                   asgn_var, asgn_expr, SUB_ASSIGN_STMT);
+    }
       break;
 
-    case TOKEN_MUL_ASSIGN:
+    case TOKEN_MUL_ASSIGN: {
       NextToken();
+
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
+      asgn_var->SetLinePosition(line_pos + 1);
+      
+      Expression* asgn_expr = ParseExpression(depth + 1);
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   ParseVariable(ident, depth + 1),
-                                                                   ParseExpression(depth + 1),
-                                                                   MUL_ASSIGN_STMT);
+                                                                   asgn_var, asgn_expr, MUL_ASSIGN_STMT);
+    }
       break;
 
-    case TOKEN_DIV_ASSIGN:
+    case TOKEN_DIV_ASSIGN: {
       NextToken();
+
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
+      asgn_var->SetLinePosition(line_pos + 1);
+
+      Expression* asgn_expr = ParseExpression(depth + 1);
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   ParseVariable(ident, depth + 1),
-                                                                   ParseExpression(depth + 1),
-                                                                   DIV_ASSIGN_STMT);
+                                                                   asgn_var, asgn_expr, DIV_ASSIGN_STMT);
+    }
       break;
 
-    case TOKEN_ADD_ADD:
+    case TOKEN_ADD_ADD: {
       NextToken();
+
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
+      asgn_var->SetLinePosition(line_pos + 1);
+
+      Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
+      asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
+
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   ParseVariable(ident, depth + 1),
-                                                                   TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
-                                                                   ADD_ASSIGN_STMT);
+                                                                   asgn_var, asgn_lit, ADD_ASSIGN_STMT);
+    }
       break;
 
-    case TOKEN_SUB_SUB:
+    case TOKEN_SUB_SUB: {
       NextToken();
+
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
+      asgn_var->SetLinePosition(line_pos + 1);
+
+      Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
+      asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
+
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   ParseVariable(ident, depth + 1),
-                                                                   TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
-                                                                   SUB_ASSIGN_STMT);
+                                                                   asgn_var, asgn_lit, SUB_ASSIGN_STMT);
+    }
       break;
 
     default:
