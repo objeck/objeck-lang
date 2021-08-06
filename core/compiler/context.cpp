@@ -1177,7 +1177,18 @@ vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int li
 {
   // get all expressions
   vector<Expression*> all_expressions = method->GetExpressions();
+  
+  // local entries
   vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
+  for(size_t i = 0; i < entries.size(); ++i) {
+    const vector<Variable*> variables = entries[i]->GetVariables();
+    for(size_t j = 0; j < variables.size(); ++j) {
+      all_expressions.push_back(variables[j]);
+    }
+  }
+
+  // class entries
+  entries = symbol_table->GetEntries(method->GetClass()->GetName());
   for(size_t i = 0; i < entries.size(); ++i) {
     const vector<Variable*> variables = entries[i]->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
