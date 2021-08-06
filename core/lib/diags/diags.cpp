@@ -272,7 +272,7 @@ extern "C" {
           Expression* expression = expressions[i];
 
           size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          const int start_pos = expression->GetLinePosition() - 1;
+          int start_pos = expression->GetLinePosition() - 1;
           int end_pos = start_pos;
           
           switch(expression->GetExpressionType()) {
@@ -285,12 +285,8 @@ extern "C" {
 
           case METHOD_CALL_EXPR: {
             MethodCall* method_call = static_cast<MethodCall*>(expression);
-            if(method_call->GetEntry()) {
-              end_pos = (int)method_call->GetEntry()->GetLinePosition();
-            }
-            else {
-              end_pos += (int)method_call->GetMethodName().size();
-            }
+            start_pos++; end_pos++;
+            end_pos += (int)method_call->GetVariableName().size();
             reference_obj[0] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
           }
             break;
@@ -323,7 +319,7 @@ extern "C" {
         // methods
         vector<Method*> methods = klass->GetMethods();
         for(auto& method : methods) {
-          const int start_line = method->GetLineNumber();
+          const int start_line = method->GetLineNumber() - 1;
           const int end_line = method->GetEndLineNumber();
 
           if(start_line <= line_num && end_line > line_num) {
