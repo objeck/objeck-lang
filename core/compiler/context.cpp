@@ -1198,6 +1198,7 @@ vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int li
 
   // find expression
   Expression* found_expression = nullptr;
+  wstring found_name;
   for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
     Expression* expression = all_expressions[i];
     if(expression->GetLineNumber() == line_num + 1) {
@@ -1207,17 +1208,16 @@ vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int li
       switch(expression->GetExpressionType()) {
       case VAR_EXPR: {
         Variable* variable = static_cast<Variable*>(expression);
-        end_pos += (int)variable->GetName().size();
+        found_name = variable->GetName();
+        end_pos += (int)found_name.size();
       }
         break;
 
       case METHOD_CALL_EXPR: {
         MethodCall* method_call = static_cast<MethodCall*>(expression);
         if(method_call->GetEntry()) {
-          end_pos = (int)method_call->GetEntry()->GetLinePosition() - 1;
-        }
-        else {
-          end_pos += (int)method_call->GetMethodName().size();
+          found_name = method_call->GetVariableName();
+          end_pos += (int)method_call->GetVariableName().size();
         }
       }
         break;
@@ -1234,26 +1234,22 @@ vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int li
   if(found_expression) {
     for(size_t i = 0; i < all_expressions.size(); ++i) {
       Expression* expression = all_expressions[i];
-      if(expression->GetExpressionType() == found_expression->GetExpressionType()) {
-        switch(expression->GetExpressionType()) {
-        case VAR_EXPR: {
-          Variable* variable = static_cast<Variable*>(expression);
-          Variable* found_variable = static_cast<Variable*>(found_expression);
-          if(variable->GetName() == found_variable->GetName()) {
-            matched_expressions.push_back(expression);
-          }
+      switch(expression->GetExpressionType()) {
+      case VAR_EXPR: {
+        Variable* variable = static_cast<Variable*>(expression);
+        if(variable->GetName() == found_name) {
+          matched_expressions.push_back(expression);
         }
-          break;
+      }
+        break;
 
-        case METHOD_CALL_EXPR: {
-          MethodCall* method_call = static_cast<MethodCall*>(expression);
-          MethodCall* found_method_call = static_cast<MethodCall*>(found_expression);
-          if(method_call->GetMethodName() == found_method_call->GetMethodName()) {
-            matched_expressions.push_back(expression);
-          }
+      case METHOD_CALL_EXPR: {
+        MethodCall* method_call = static_cast<MethodCall*>(expression);
+        if(method_call->GetVariableName() == found_name) {
+          matched_expressions.push_back(expression);
         }
-          break;
-        }
+      }
+        break;
       }
     }
   }
@@ -1419,14 +1415,6 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
     else {
       AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
     }
-#ifdef _DIAG_LIB
-    if(declaration->GetEntry()) {
-      method_expressions.push_back(TreeFactory::Instance()->MakeVariable(declaration->GetFileName(),
-                                                                         declaration->GetLineNumber(),
-                                                                         declaration->GetLinePosition(),
-                                                                         declaration->GetEntry()->GetName()));
-    }
-#endif
   }
     break;
 
@@ -6103,6 +6091,16 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
 {
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
+#ifdef _DIAG_LIB
+    wstring var_name;
+    const wstring dclr_name = declaration->GetEntry()->GetName();
+    size_t var_name_pos = dclr_name.find_last_of(':');
+    if(var_name_pos != wstring::npos) {
+      var_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
+    }
+    method_expressions.push_back(TreeFactory::Instance()->MakeVariable(declaration->GetFileName(), declaration->GetLineNumber(),
+                                                                       declaration->GetLinePosition(), var_name));
+#endif
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
       // resolve declaration type
       Type* type = entry->GetType();
