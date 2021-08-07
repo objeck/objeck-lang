@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@profiling-tools
+    - uses: actions/checkout@master
 
     - name: update-env
       run : sudo apt-get update
