@@ -6121,14 +6121,14 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
 #ifdef _DIAG_LIB
-    wstring var_name;
-    const wstring dclr_name = declaration->GetEntry()->GetName();
-    size_t var_name_pos = dclr_name.find_last_of(':');
+    wstring dclr_name = declaration->GetEntry()->GetName();
+    size_t var_name_pos = dclr_name.find_last_of(L':');
     if(var_name_pos != wstring::npos) {
-      var_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
+      dclr_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
     }
+
     method_expressions.push_back(TreeFactory::Instance()->MakeVariable(declaration->GetFileName(), declaration->GetLineNumber(),
-                                                                       declaration->GetLinePosition(), var_name));
+                                                                       declaration->GetLinePosition(), dclr_name));
 #endif
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
       // resolve declaration type
