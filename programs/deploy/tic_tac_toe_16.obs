@@ -116,7 +116,7 @@ class TicTacToe {
 	}					
 
 	method : PlayerMove() ~ Status {
-		move := System.IO.Console->ReadString();
+		move := System.IO.Standard->ReadString();
 		if(move->Size() = 0) {
 			return Status->INVALID_MOVE;
 		};
