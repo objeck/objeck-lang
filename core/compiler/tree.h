@@ -3445,6 +3445,9 @@ namespace frontend {
     const void SetErrorStrings(vector<wstring> msgs) {
       error_strings = msgs;
     }
+
+    Method* FindMethod(const int line_num, SymbolTable*& table);
+
 #endif
     
     wstring GetFileName() const {
