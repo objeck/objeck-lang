@@ -3041,7 +3041,8 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
 
   // add entry
   wstring scope_name = GetScopeName(ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, is_static, current_method != nullptr);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, scope_name, 
+                                                                type, is_static, current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -4373,7 +4374,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   // add entry
   Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
   const wstring count_scope_name = GetScopeName(count_ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(count_scope_name, type, false, current_method != nullptr);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, type, false, current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);

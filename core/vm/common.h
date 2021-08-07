@@ -414,7 +414,7 @@ class StackMethod {
       int index = 0;
       for(int i = 0; i < num_dclrs; i++, index++) {
         StackDclr* dclr = dclrs[i];
-        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
@@ -757,7 +757,7 @@ class StackClass {
       int index = 0;
       for(int i = 0; i < inst_num_dclrs; i++, index++) {
         StackDclr* dclr = inst_dclrs[i];
-        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
@@ -780,7 +780,7 @@ class StackClass {
       int index = 0;
       for(int i = 0; i < cls_num_dclrs; i++, index++) {
         StackDclr* dclr = cls_dclrs[i];
-        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
