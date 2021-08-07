@@ -127,10 +127,10 @@ extern "C" {
 #endif
   void diag_get_diagnosis(VMContext& context)
   {
-    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
 
-    const wstring sys_path = APITools_GetStringValue(context, 2);
+    const wstring sys_path = APITools_GetStringValue(context, 1);
 
     wstring full_path = L"lang.obl";
     if(!sys_path.empty()) {
@@ -138,12 +138,12 @@ extern "C" {
     }
 
     // if parsed
-    if(!prgm_obj[1]) {
+    if(!prgm_obj[ResultPosition::POS_TYPE]) {
       vector<wstring> error_strings = program->GetErrorStrings();
       size_t* diagnostics_array = FormatErrors(context, error_strings);
 
       // diagnostics
-      prgm_obj[3] = (size_t)diagnostics_array;
+      prgm_obj[ResultPosition::POS_DESC] = (size_t)diagnostics_array;
     }
     else {
       ContextAnalyzer analyzer(program, full_path, false, false);
@@ -152,7 +152,7 @@ extern "C" {
         size_t* diagnostics_array = FormatErrors(context, error_strings);
 
         // diagnostics
-        prgm_obj[3] = (size_t)diagnostics_array;
+        prgm_obj[ResultPosition::POS_DESC] = (size_t)diagnostics_array;
       }
     }
   }
@@ -165,8 +165,8 @@ extern "C" {
 #endif
   void diag_get_symbols(VMContext& context)
   {
-    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
 
     const vector<ParsedBundle*> bundles = program->GetBundles();
     size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
@@ -181,12 +181,12 @@ extern "C" {
       // bundle
       size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       const wstring bundle_name = bundle->GetName();
-      bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
-      bundle_symb_obj[1] = DIAG_NAMESPACE; // namespace type
-      bundle_symb_obj[4] = bundle->GetLineNumber();
-      bundle_symb_obj[5] = bundle->GetLinePosition();
-      bundle_symb_obj[6] = bundle->GetEndLineNumber();
-      bundle_symb_obj[7] = bundle->GetEndLinePosition();
+      bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
+      bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
+      bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
+      bundle_symb_obj[ResultPosition::POS_START_POS] = bundle->GetLinePosition();
+      bundle_symb_obj[ResultPosition::POS_END_LINE] = bundle->GetEndLineNumber();
+      bundle_symb_obj[ResultPosition::POS_END_POS] = bundle->GetEndLinePosition();
       bundle_array_ptr[i] = (size_t)bundle_symb_obj;
 
       // get classes and enums
@@ -202,12 +202,12 @@ extern "C" {
         Class* klass = klasses[j];
 
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
-        klass_symb_obj[1] = DIAG_CLASS; // class type
-        klass_symb_obj[4] = klass->GetLineNumber();
-        klass_symb_obj[5] = klass->GetLinePosition();
-        klass_symb_obj[6] = klass->GetEndLineNumber();
-        klass_symb_obj[7] = klass->GetEndLinePosition();
+        klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, klass->GetName());
+        klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
+        klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber();
+        klass_symb_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition();
+        klass_symb_obj[ResultPosition::POS_END_LINE] = klass->GetEndLineNumber();
+        klass_symb_obj[ResultPosition::POS_END_POS] = klass->GetEndLinePosition();
         klass_array_ptr[index++] = (size_t)klass_symb_obj;
 
         // methods
@@ -224,16 +224,16 @@ extern "C" {
           if(mthd_name_index != wstring::npos) {
             mthd_name = mthd_name.substr(mthd_name_index + 1, mthd_name.size() - mthd_name_index - 1);
           }
-          mthd_symb_obj[0] = (size_t)APITools_CreateStringValue(context, mthd_name);
+          mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_name);
 
-          mthd_symb_obj[1] = DIAG_METHOD; // method type
-          mthd_symb_obj[4] = mthd->GetLineNumber();
-          mthd_symb_obj[5] = mthd->GetLinePosition();
-          mthd_symb_obj[6] = mthd->GetEndLineNumber();
-          mthd_symb_obj[7] = mthd->GetEndLinePosition();
+          mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_METHOD; // method type
+          mthd_symb_obj[ResultPosition::POS_START_LINE] = mthd->GetLineNumber();
+          mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
+          mthd_symb_obj[ResultPosition::POS_END_LINE] = mthd->GetEndLineNumber();
+          mthd_symb_obj[ResultPosition::POS_END_POS] = mthd->GetEndLinePosition();
           mthds_array_ptr[k] = (size_t)mthd_symb_obj;
         }
-        klass_symb_obj[2] = (size_t)mthds_array;
+        klass_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)mthds_array;
       }
 
       // enums
@@ -242,7 +242,7 @@ extern "C" {
 
         wstring eenum_short_name;
         const wstring eenum_long_name = eenum->GetName();
-        size_t eenum_long_name_index = eenum_long_name.find_last_of(L'#');
+        const size_t eenum_long_name_index = eenum_long_name.find_last_of(L'#');
         if(eenum_long_name_index != wstring::npos) {
           eenum_short_name = eenum_long_name.substr(eenum_long_name_index + 1, eenum_long_name.size() - eenum_long_name_index - 1);
         }
@@ -251,42 +251,93 @@ extern "C" {
         }
 
         size_t* eenum_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        eenum_symb_obj[0] = (size_t)APITools_CreateStringValue(context, eenum_short_name);
-        eenum_symb_obj[1] = DIAG_ENUM; // enum type
-        eenum_symb_obj[4] = eenum->GetLineNumber();
-        eenum_symb_obj[5] = eenum->GetLinePosition();
-        eenum_symb_obj[6] = eenum->GetEndLineNumber();
-        eenum_symb_obj[7] = eenum->GetEndLinePosition();
+        eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, eenum_short_name);
+        eenum_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ENUM; // enum type
+        eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber();
+        eenum_symb_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition();
+        eenum_symb_obj[ResultPosition::POS_END_LINE] = eenum->GetEndLineNumber();
+        eenum_symb_obj[ResultPosition::POS_END_POS] = eenum->GetEndLinePosition();
         klass_array_ptr[index++] = (size_t)eenum_symb_obj;
       }
 
-      bundle_symb_obj[2] = (size_t)klass_array;
+      bundle_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)klass_array;
     }
 
     // file root
     size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    file_symb_obj[0] = (size_t)APITools_CreateStringValue(context, file_name);
-    file_symb_obj[1] = DIAG_FILE; // file type
-    file_symb_obj[2] = (size_t)bundle_array;
-    file_symb_obj[4] = file_symb_obj[5] = file_symb_obj[6] = file_symb_obj[7] = -1;
+    file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, file_name);
+    file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
+    file_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)bundle_array;
+    file_symb_obj[ResultPosition::POS_START_LINE] = file_symb_obj[ResultPosition::POS_START_POS] = file_symb_obj[ResultPosition::POS_END_LINE] = file_symb_obj[ResultPosition::POS_END_POS] = -1;
 
-    prgm_obj[2] = (size_t)file_symb_obj;
+    prgm_obj[ResultPosition::POS_CHILDREN] = (size_t)file_symb_obj;
   }
 
   //
-  // get references
+  // find declaration
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void diag_find_declaration(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring sys_path = APITools_GetStringValue(context, 4);
+
+    SymbolTable* table = nullptr;
+    Method* method = program->FindMethod(line_num, table);
+    if(method) {
+      wstring full_path = L"lang.obl";
+      if(!sys_path.empty()) {
+        full_path += L',' + sys_path;
+      }
+
+      ContextAnalyzer analyzer(program, full_path, false, false);
+      if(analyzer.Analyze()) {
+        SymbolEntry* entry = analyzer.GetDeclaration(method, line_num, line_pos);
+
+        // deceleration result
+        wstring var_name;
+        const wstring dclr_name = entry->GetName();
+        size_t var_name_pos = dclr_name.find_last_of(':');
+        if(var_name_pos != wstring::npos) {
+          var_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
+        }
+
+        size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, dclr_name);
+        dcrl_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
+        dcrl_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
+        dcrl_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
+        dcrl_obj[ResultPosition::POS_END_LINE] = entry->GetLineNumber();
+        dcrl_obj[ResultPosition::POS_END_POS] = entry->GetLinePosition() + (int)dclr_name.size();
+
+        APITools_SetObjectValue(context, 0, dcrl_obj);
+      }
+      else {
+        APITools_SetObjectValue(context, 0, 0);
+      }
+    }
+  }
+  
+  //
+  // find references
   //
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
   void diag_find_references(VMContext& context)
   {
-    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
 
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring sys_path = APITools_GetStringValue(context, 4);
+    const int line_num = (int)APITools_GetIntValue(context, 1);
+    const int line_pos = (int)APITools_GetIntValue(context, 2);
+    const wstring sys_path = APITools_GetStringValue(context, 3);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
@@ -313,7 +364,7 @@ extern "C" {
           case VAR_EXPR: {
             Variable* variable = static_cast<Variable*>(expression);
             end_pos += (int)variable->GetName().size();
-            reference_obj[0] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+            reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
           }
             break;
 
@@ -321,19 +372,19 @@ extern "C" {
             MethodCall* method_call = static_cast<MethodCall*>(expression);
             start_pos++; end_pos++;
             end_pos += (int)method_call->GetVariableName().size();
-            reference_obj[0] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+            reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
           }
             break;
           }
           
-          reference_obj[1] = DIAG_VARIABLE; // variable type
-          reference_obj[4] = reference_obj[6] = expression->GetLineNumber() - 1;
-          reference_obj[5] = start_pos - 1;
-          reference_obj[7] = end_pos - 1;          
+          reference_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_VARIABLE; // variable type
+          reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
+          reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
+          reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;          
           refs_array_ptr[i] = (size_t)reference_obj;
         }
 
-        prgm_obj[4] = (size_t)refs_array;
+        prgm_obj[ResultPosition::POS_START_LINE] = (size_t)refs_array;
       }
     }
   }
@@ -364,12 +415,12 @@ extern "C" {
 
       // create objects
       size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-      diag_obj[0] = (size_t)APITools_CreateStringValue(context, msg_str);
-      diag_obj[1] = DIAG_ERROR; // error type
-      diag_obj[3] = (size_t)APITools_CreateStringValue(context, file_str);
-      diag_obj[4] = _wtoi(line_str.c_str());
-      diag_obj[5] = _wtoi(pos_str.c_str());
-      diag_obj[6] = diag_obj[7] = -1;
+      diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
+      diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
+      diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
+      diag_obj[ResultPosition::POS_START_LINE] = _wtoi(line_str.c_str());
+      diag_obj[ResultPosition::POS_START_POS] = _wtoi(pos_str.c_str());
+      diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
       diagnostics_array_ptr[i] = (size_t)diag_obj;
     }
 

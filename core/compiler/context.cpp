@@ -1173,11 +1173,65 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
 }
 
 #ifdef _DIAG_LIB
+SymbolEntry* ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos)
+{
+  vector<Expression*> matched_expressions;
+
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr;
+  wstring found_name;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
+    const wstring entry_name = method->GetName() + L':' + found_name;
+    return method->GetSymbolTable()->GetEntry(entry_name);
+  }
+
+  return nullptr;
+}
+
 vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int line_num, const int line_pos)
 {
+  vector<Expression*> matched_expressions;
+
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr; 
+  wstring found_name;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
+    for(size_t i = 0; i < all_expressions.size(); ++i) {
+      Expression* expression = all_expressions[i];
+      switch(expression->GetExpressionType()) {
+      case VAR_EXPR: {
+        Variable* variable = static_cast<Variable*>(expression);
+        if(variable->GetName() == found_name) {
+          matched_expressions.push_back(expression);
+        }
+      }
+        break;
+
+      case METHOD_CALL_EXPR: {
+        MethodCall* method_call = static_cast<MethodCall*>(expression);
+        if(method_call->GetVariableName() == found_name) {
+          matched_expressions.push_back(expression);
+        }
+      }
+        break;
+      }
+    }
+  }
+
+  return matched_expressions;
+}
+
+bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, 
+                                       Expression* &found_expression, wstring &found_name, 
+                                       vector<Expression*> &all_expressions)
+{
   // get all expressions
-  vector<Expression*> all_expressions = method->GetExpressions();
-  
+  all_expressions = method->GetExpressions();
+
   // local entries
   vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
   for(size_t i = 0; i < entries.size(); ++i) {
@@ -1197,8 +1251,6 @@ vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int li
   }
 
   // find expression
-  Expression* found_expression = nullptr;
-  wstring found_name;
   for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
     Expression* expression = all_expressions[i];
     if(expression->GetLineNumber() == line_num + 1) {
@@ -1225,37 +1277,14 @@ vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int li
 
       if(start_pos <= line_pos && end_pos >= line_pos) {
         found_expression = expression;
+        return true;
       }
     }
   }
 
-  // find matching expressions
-  vector<Expression*> matched_expressions;
-  if(found_expression) {
-    for(size_t i = 0; i < all_expressions.size(); ++i) {
-      Expression* expression = all_expressions[i];
-      switch(expression->GetExpressionType()) {
-      case VAR_EXPR: {
-        Variable* variable = static_cast<Variable*>(expression);
-        if(variable->GetName() == found_name) {
-          matched_expressions.push_back(expression);
-        }
-      }
-        break;
-
-      case METHOD_CALL_EXPR: {
-        MethodCall* method_call = static_cast<MethodCall*>(expression);
-        if(method_call->GetVariableName() == found_name) {
-          matched_expressions.push_back(expression);
-        }
-      }
-        break;
-      }
-    }
-  }
-
-  return matched_expressions;
+  return false;
 }
+
 #endif
 
 /****************************
