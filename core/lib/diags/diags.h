@@ -48,6 +48,7 @@
 #define DIAG_FILE 201
 #define DIAG_NAMESPACE 203
 #define DIAG_CLASS 205
+#define DIAG_ENUM 210
 #define DIAG_METHOD 206
 #define DIAG_VARIABLE 213
 // other
@@ -55,7 +56,6 @@
 
 extern "C" {
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings);
-  frontend::Method* FindMethod(const int line_num, frontend::ParsedProgram* program, frontend::SymbolTable* &table);
 }
 
 #endif

@@ -955,3 +955,43 @@ wstring Alias::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, Pa
 
   return encoded_name;
 }
+
+#ifdef _DIAG_LIB
+Method* ParsedProgram::FindMethod(const int line_num, SymbolTable*& table)
+{
+  // bundles
+  for(size_t i = 0; i < bundles.size(); ++i) {
+    ParsedBundle* bundle = bundles[i];
+    
+    // classes
+    vector<Class*> klasses = bundle->GetClasses();
+    for(size_t j = 0; j < klasses.size(); ++j) {
+      Class* klass = klasses[j];
+      
+      // methods
+      vector<Method*> methods = klass->GetMethods();
+      for(size_t k = 0; k < methods.size(); ++k) {
+        Method* method = methods[k];
+        const int start_line = method->GetLineNumber() - 1;
+        const int end_line = method->GetEndLineNumber();
+
+        if(start_line <= line_num && end_line > line_num) {
+#ifdef _DEBUG
+          wcout << L"Method: '" << method->GetParsedName() << "'" << endl;
+#endif
+          table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
+          return method;
+        }
+      }
+    }
+
+    // enums
+    vector<Enum*> eenums = bundle->GetEnums();
+    for(size_t j = 0; j < eenums.size(); ++j) {
+      Enum* eenum = eenums[j];
+    }
+  }
+
+  return nullptr;
+}
+#endif

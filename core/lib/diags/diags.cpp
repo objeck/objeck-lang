@@ -168,15 +168,17 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    vector<ParsedBundle*> bundles = program->GetBundles();
+    const vector<ParsedBundle*> bundles = program->GetBundles();
     size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
     size_t* bundle_array_ptr = bundle_array + 3;
     
+    // bundles
     wstring file_name;
     for(size_t i = 0; i < bundles.size(); ++i) {
       ParsedBundle* bundle = bundles[i];
       file_name = bundle->GetFileName();
 
+      // bundle
       size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       const wstring bundle_name = bundle->GetName();
       bundle_symb_obj[0] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
@@ -187,11 +189,17 @@ extern "C" {
       bundle_symb_obj[7] = bundle->GetEndLinePosition();
       bundle_array_ptr[i] = (size_t)bundle_symb_obj;
 
-      vector<Class*> klasss = bundle->GetClasses();
-      size_t* klass_array = APITools_MakeIntArray(context, (int)klasss.size());
+      // get classes and enums
+      const vector<Class*> klasses = bundle->GetClasses();
+      const vector<Enum*> eenums = bundle->GetEnums();
+
+      // classes
+      size_t* klass_array = APITools_MakeIntArray(context, (int)(klasses.size() + eenums.size()));
       size_t* klass_array_ptr = klass_array + 3;
-      for(size_t j = 0; j < klasss.size(); ++j) {
-        Class* klass = klasss[j];
+
+      size_t index = 0;
+      for(size_t j = 0; j < klasses.size(); ++j) {
+        Class* klass = klasses[j];
 
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         klass_symb_obj[0] = (size_t)APITools_CreateStringValue(context, klass->GetName());
@@ -200,8 +208,9 @@ extern "C" {
         klass_symb_obj[5] = klass->GetLinePosition();
         klass_symb_obj[6] = klass->GetEndLineNumber();
         klass_symb_obj[7] = klass->GetEndLinePosition();
-        klass_array_ptr[j] = (size_t)klass_symb_obj;
+        klass_array_ptr[index++] = (size_t)klass_symb_obj;
 
+        // methods
         vector<Method*> mthds = klass->GetMethods();
         size_t* mthds_array = APITools_MakeIntArray(context, (int)mthds.size());
         size_t* mthds_array_ptr = mthds_array + 3;
@@ -226,6 +235,31 @@ extern "C" {
         }
         klass_symb_obj[2] = (size_t)mthds_array;
       }
+
+      // enums
+      for(size_t j = 0; j < eenums.size(); ++j) {
+        Enum* eenum = eenums[j];
+
+        wstring eenum_short_name;
+        const wstring eenum_long_name = eenum->GetName();
+        size_t eenum_long_name_index = eenum_long_name.find_last_of(L'#');
+        if(eenum_long_name_index != wstring::npos) {
+          eenum_short_name = eenum_long_name.substr(eenum_long_name_index + 1, eenum_long_name.size() - eenum_long_name_index - 1);
+        }
+        else {
+          eenum_short_name = eenum->GetName();
+        }
+
+        size_t* eenum_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        eenum_symb_obj[0] = (size_t)APITools_CreateStringValue(context, eenum_short_name);
+        eenum_symb_obj[1] = DIAG_ENUM; // enum type
+        eenum_symb_obj[4] = eenum->GetLineNumber();
+        eenum_symb_obj[5] = eenum->GetLinePosition();
+        eenum_symb_obj[6] = eenum->GetEndLineNumber();
+        eenum_symb_obj[7] = eenum->GetEndLinePosition();
+        klass_array_ptr[index++] = (size_t)eenum_symb_obj;
+      }
+
       bundle_symb_obj[2] = (size_t)klass_array;
     }
 
@@ -255,7 +289,7 @@ extern "C" {
     const wstring sys_path = APITools_GetStringValue(context, 4);
 
     SymbolTable* table = nullptr;
-    Method* method = FindMethod(line_num, program, table);
+    Method* method = program->FindMethod(line_num, table);
     if(method) {
       wstring full_path = L"lang.obl";
       if(!sys_path.empty()) {
@@ -308,40 +342,6 @@ extern "C" {
   // Supporting functions
   //
   
-  Method* FindMethod(const int line_num, ParsedProgram* program, SymbolTable* &table)
-  {
-    // bundles
-    vector<ParsedBundle*> bundles = program->GetBundles();
-    for(auto& bundle : bundles) {
-      // classes
-      vector<Class*> klasses = bundle->GetClasses();
-      for(auto& klass : klasses) {
-        // methods
-        vector<Method*> methods = klass->GetMethods();
-        for(auto& method : methods) {
-          const int start_line = method->GetLineNumber() - 1;
-          const int end_line = method->GetEndLineNumber();
-
-          if(start_line <= line_num && end_line > line_num) {
-#ifdef _DEBUG
-            wcout << L"Method: '" << method->GetParsedName() << "'" << endl;
-#endif
-            table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
-            return method;
-          }
-        }
-
-        // enums
-        vector<Enum*> eenums = bundle->GetEnums();
-        for(auto& eenum : eenums) {
-
-        }
-      }
-    }
-
-    return nullptr;
-  }
-
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings)
   {
     size_t* diagnostics_array = APITools_MakeIntArray(context, (int)error_strings.size());

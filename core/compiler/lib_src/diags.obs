@@ -120,6 +120,7 @@ bundle System.Diagnostics {
 			# symbols
 			NAMESPACE := 203,
 			CLASS := 205,
+			ENUM := 210,
 			METHOD := 206,
 			VARIABLE  := 213,
 			# other
