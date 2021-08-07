@@ -28,7 +28,7 @@ class MandelBrot {
 
 		CaculateThread->Init(n, output_data, bytes_per_line);
 
-		IO.Console->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
+		IO.Standard->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
 
 		threads := Thread->New[3];
 		each(i : threads) {
