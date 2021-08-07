@@ -3165,27 +3165,27 @@ namespace frontend {
     MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, const int line_pos, 
                                const int end_line_num, const int end_line_pos, MethodCallType type,
                                const wstring &value, ExpressionList* exprs) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, type, value, exprs);
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos < 1 ? 1 : line_pos, end_line_num, end_line_pos, type, value, exprs);
       calls.push_back(tmp);
       return tmp;
     }
 
     MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos, 
                                const int end_line_num, const int end_line_pos , const wstring& v, const wstring& m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m, e);
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos < 1 ? 1 : line_pos, end_line_num, end_line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
     MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos, 
                                const int end_line_num, const int end_line_pos, const wstring& v, const wstring& m) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m);
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos < 1 ? 1 : line_pos, end_line_num, end_line_pos, v, m);
       calls.push_back(tmp);
       return tmp;
     }
 
     MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* v, const wstring &m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m, e);
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos < 1 ? 1 : line_pos, end_line_num, end_line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
