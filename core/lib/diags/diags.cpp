@@ -128,7 +128,7 @@ extern "C" {
   void diag_get_diagnosis(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const wstring sys_path = APITools_GetStringValue(context, 1);
 
@@ -138,22 +138,18 @@ extern "C" {
     }
 
     // if parsed
-    if(!prgm_obj[ResultPosition::POS_TYPE]) {
-      vector<wstring> error_strings = program->GetErrorStrings();
-      size_t* diagnostics_array = FormatErrors(context, error_strings);
-
-      // diagnostics
-      prgm_obj[ResultPosition::POS_DESC] = (size_t)diagnostics_array;
-    }
-    else {
+    if(prgm_obj[1]) {
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(!analyzer.Analyze()) {
         vector<wstring> error_strings = program->GetErrorStrings();
         size_t* diagnostics_array = FormatErrors(context, error_strings);
-
-        // diagnostics
-        prgm_obj[ResultPosition::POS_DESC] = (size_t)diagnostics_array;
+        prgm_obj[3] = (size_t)diagnostics_array;
       }
+    }
+    else {
+      vector<wstring> error_strings = program->GetErrorStrings();
+      size_t* diagnostics_array = FormatErrors(context, error_strings);
+      prgm_obj[3] = (size_t)diagnostics_array;
     }
   }
     
@@ -387,10 +383,16 @@ extern "C" {
   
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings)
   {
-    size_t* diagnostics_array = APITools_MakeIntArray(context, (int)error_strings.size());
+    const size_t throttle = 5;
+    size_t max_results = error_strings.size();
+    if(max_results > throttle) {
+      max_results = throttle;
+    }
+
+    size_t* diagnostics_array = APITools_MakeIntArray(context, (int)max_results);
     size_t* diagnostics_array_ptr = diagnostics_array + 3;
 
-    for(size_t i = 0; i < error_strings.size(); ++i) {
+    for(size_t i = 0; i < max_results; ++i) {
       const wstring error_string = error_strings[i];
 
       // parse error string
@@ -405,13 +407,16 @@ extern "C" {
       const wstring line_str = line_pos_str.substr(0, line_pos_mid);
       const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
 
+      const int line_index = _wtoi(line_str.c_str());
+      const int pos_index = _wtoi(pos_str.c_str());
+
       // create objects
       size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
       diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
       diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
-      diag_obj[ResultPosition::POS_START_LINE] = _wtoi(line_str.c_str());
-      diag_obj[ResultPosition::POS_START_POS] = _wtoi(pos_str.c_str());
+      diag_obj[ResultPosition::POS_START_LINE] = line_index;
+      diag_obj[ResultPosition::POS_START_POS] = pos_index;
       diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
       diagnostics_array_ptr[i] = (size_t)diag_obj;
     }
