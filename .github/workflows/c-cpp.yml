@@ -2,10 +2,10 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ profiling-tools ]
 
   pull_request:
-    branches: [ master ]
+    branches: [ profiling-tools ]
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@profiling-tools
 
     - name: update-env
       run : sudo apt-get update
