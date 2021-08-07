@@ -275,7 +275,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_find_declaration(VMContext& context)
+  void diag_find_declaration(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
@@ -295,25 +295,23 @@ extern "C" {
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(analyzer.Analyze()) {
         SymbolEntry* entry = analyzer.GetDeclaration(method, line_num, line_pos);
+        if(entry) {
+          // deceleration result
+          wstring dclr_name = entry->GetName();
+          size_t var_name_pos = dclr_name.find_last_of(L':');
+          if(var_name_pos != wstring::npos) {
+            dclr_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
+          }
 
-        // deceleration result
-        wstring dclr_name = entry->GetName();
-        size_t var_name_pos = dclr_name.find_last_of(L':');
-        if(var_name_pos != wstring::npos) {
-          dclr_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
+          size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, dclr_name);
+          dcrl_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
+          dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = entry->GetLineNumber() - 1;
+          dcrl_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition() - 2; // 17
+          dcrl_obj[ResultPosition::POS_END_POS] = entry->GetLinePosition() + (int)dclr_name.size() - 2; // = 32
+
+          APITools_SetObjectValue(context, 0, dcrl_obj);
         }
-
-        size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, dclr_name);
-        dcrl_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
-        dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = entry->GetLineNumber() - 1;
-        dcrl_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition() - 2; // 17
-        dcrl_obj[ResultPosition::POS_END_POS] = entry->GetLinePosition() + (int)dclr_name.size() - 2; // = 32
-
-        APITools_SetObjectValue(context, 0, dcrl_obj);
-      }
-      else {
-        APITools_SetObjectValue(context, 0, 0);
       }
     }
   }

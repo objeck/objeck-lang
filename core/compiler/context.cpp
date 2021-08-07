@@ -467,6 +467,11 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
     current_method = nullptr;
     AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
   }
+
+#ifdef _DIAG_LIB
+  current_class->SetExpressions(diagnostic_expressions);
+  diagnostic_expressions.clear();
+#endif
 }
 
 void ContextAnalyzer::CheckParent(Class* klass, const int depth)
@@ -807,7 +812,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 #endif
 
 #ifdef _DIAG_LIB
-  method_expressions.clear();
+  diagnostic_expressions.clear();
 #endif
   method->SetId();
   current_method = method;
@@ -894,7 +899,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
   }
 
 #ifdef _DIAG_LIB
-  current_method->SetExpressions(method_expressions);
+  current_method->SetExpressions(diagnostic_expressions);
 #endif
 }
 
@@ -1172,121 +1177,6 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
   return expressions;
 }
 
-#ifdef _DIAG_LIB
-SymbolEntry* ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos)
-{
-  vector<Expression*> matched_expressions;
-
-  // find matching expressions
-  vector<Expression*> all_expressions;
-  Expression* found_expression = nullptr;
-  wstring found_name;
-
-  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
-    const wstring entry_name = method->GetName() + L':' + found_name;
-    return method->GetSymbolTable()->GetEntry(entry_name);
-  }
-
-  return nullptr;
-}
-
-vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int line_num, const int line_pos)
-{
-  vector<Expression*> matched_expressions;
-
-  // find matching expressions
-  vector<Expression*> all_expressions;
-  Expression* found_expression = nullptr; 
-  wstring found_name;
-
-  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
-    for(size_t i = 0; i < all_expressions.size(); ++i) {
-      Expression* expression = all_expressions[i];
-      switch(expression->GetExpressionType()) {
-      case VAR_EXPR: {
-        Variable* variable = static_cast<Variable*>(expression);
-        if(variable->GetName() == found_name) {
-          matched_expressions.push_back(expression);
-        }
-      }
-        break;
-
-      case METHOD_CALL_EXPR: {
-        MethodCall* method_call = static_cast<MethodCall*>(expression);
-        if(method_call->GetVariableName() == found_name) {
-          matched_expressions.push_back(expression);
-        }
-      }
-        break;
-      }
-    }
-  }
-
-  return matched_expressions;
-}
-
-bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, 
-                                       Expression* &found_expression, wstring &found_name, 
-                                       vector<Expression*> &all_expressions)
-{
-  // get all expressions
-  all_expressions = method->GetExpressions();
-
-  // local entries
-  vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
-  for(size_t i = 0; i < entries.size(); ++i) {
-    const vector<Variable*> variables = entries[i]->GetVariables();
-    for(size_t j = 0; j < variables.size(); ++j) {
-      all_expressions.push_back(variables[j]);
-    }
-  }
-
-  // class entries
-  entries = symbol_table->GetEntries(method->GetClass()->GetName());
-  for(size_t i = 0; i < entries.size(); ++i) {
-    const vector<Variable*> variables = entries[i]->GetVariables();
-    for(size_t j = 0; j < variables.size(); ++j) {
-      all_expressions.push_back(variables[j]);
-    }
-  }
-
-  // find expression
-  for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
-    Expression* expression = all_expressions[i];
-    if(expression->GetLineNumber() == line_num + 1) {
-      const int start_pos = expression->GetLinePosition() - 1;
-      int end_pos = start_pos;
-
-      switch(expression->GetExpressionType()) {
-      case VAR_EXPR: {
-        Variable* variable = static_cast<Variable*>(expression);
-        found_name = variable->GetName();
-        end_pos += (int)found_name.size();
-      }
-        break;
-
-      case METHOD_CALL_EXPR: {
-        MethodCall* method_call = static_cast<MethodCall*>(expression);
-        if(method_call->GetEntry()) {
-          found_name = method_call->GetVariableName();
-          end_pos += (int)method_call->GetVariableName().size();
-        }
-      }
-        break;
-      }
-
-      if(start_pos <= line_pos && end_pos >= line_pos) {
-        found_expression = expression;
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-#endif
-
 /****************************
  * Check to determine if lambda 
  * concrete types are inferred
@@ -1452,7 +1342,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
     AnalyzeMethodCall(mthd_call, depth);
     AnalyzeCast(mthd_call, depth + 1);
 #ifdef _DIAG_LIB
-    method_expressions.push_back(mthd_call);
+    diagnostic_expressions.push_back(mthd_call);
 #endif
   }
     break;
@@ -1564,7 +1454,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
   case METHOD_CALL_EXPR:
     AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
 #ifdef _DIAG_LIB
-    method_expressions.push_back(expression);
+    diagnostic_expressions.push_back(expression);
 #endif
     break;
 
@@ -6127,7 +6017,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
       dclr_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
     }
 
-    method_expressions.push_back(TreeFactory::Instance()->MakeVariable(declaration->GetFileName(), declaration->GetLineNumber(),
+    diagnostic_expressions.push_back(TreeFactory::Instance()->MakeVariable(declaration->GetFileName(), declaration->GetLineNumber(),
                                                                        declaration->GetLinePosition(), dclr_name));
 #endif
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
@@ -7555,3 +7445,134 @@ Method* MethodCallSelector::GetSelection()
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
+
+//
+// diagnostics operations
+//
+#ifdef _DIAG_LIB
+SymbolEntry* ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos)
+{
+  vector<Expression*> matched_expressions;
+
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr;
+  wstring found_name;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
+    const wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+    SymbolEntry* entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
+    if(entry) {
+      return entry;
+    }
+    else {
+      const wstring method_entry_name = method->GetName() + L':' + found_name;
+      return method->GetSymbolTable()->GetEntry(method_entry_name);
+    }
+  }
+
+  return nullptr;
+}
+
+vector<Expression*> ContextAnalyzer::GetExpressions(Method* method, const int line_num, const int line_pos)
+{
+  vector<Expression*> matched_expressions;
+
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr;
+  wstring found_name;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
+    for(size_t i = 0; i < all_expressions.size(); ++i) {
+      Expression* expression = all_expressions[i];
+      switch(expression->GetExpressionType()) {
+      case VAR_EXPR: {
+        Variable* variable = static_cast<Variable*>(expression);
+        if(variable->GetName() == found_name) {
+          matched_expressions.push_back(expression);
+        }
+      }
+                   break;
+
+      case METHOD_CALL_EXPR: {
+        MethodCall* method_call = static_cast<MethodCall*>(expression);
+        if(method_call->GetVariableName() == found_name) {
+          matched_expressions.push_back(expression);
+        }
+      }
+                           break;
+      }
+    }
+  }
+
+  return matched_expressions;
+}
+
+bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos,
+                                       Expression*& found_expression, wstring& found_name,
+                                       vector<Expression*>& all_expressions)
+{
+  // get all expressions
+  all_expressions = method->GetExpressions();
+
+  // local entries
+  vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
+  for(size_t i = 0; i < local_entries.size(); ++i) {
+    const vector<Variable*> variables = local_entries[i]->GetVariables();
+    for(size_t j = 0; j < variables.size(); ++j) {
+      all_expressions.push_back(variables[j]);
+    }
+  }
+
+  // class entries
+  vector<SymbolEntry*> class_entries = symbol_table->GetEntries(method->GetClass()->GetName());
+  for(size_t i = 0; i < class_entries.size(); ++i) {
+    const vector<Variable*> variables = class_entries[i]->GetVariables();
+    for(size_t j = 0; j < variables.size(); ++j) {
+      all_expressions.push_back(variables[j]);
+    }
+  }
+  
+  // class declarations
+  vector<Expression*> class_dclrs = method->GetClass()->GetExpressions();
+  for(size_t i = 0; i < class_dclrs.size(); ++i) {
+    all_expressions.push_back(class_dclrs[i]);
+  }
+
+  // find expression
+  for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
+    Expression* expression = all_expressions[i];
+    if(expression->GetLineNumber() == line_num + 1) {
+      const int start_pos = expression->GetLinePosition() - 1;
+      int end_pos = start_pos;
+
+      switch(expression->GetExpressionType()) {
+      case VAR_EXPR: {
+        Variable* variable = static_cast<Variable*>(expression);
+        found_name = variable->GetName();
+        end_pos += (int)found_name.size();
+      }
+        break;
+
+      case METHOD_CALL_EXPR: {
+        MethodCall* method_call = static_cast<MethodCall*>(expression);
+        if(method_call->GetEntry()) {
+          found_name = method_call->GetVariableName();
+          end_pos += (int)method_call->GetVariableName().size();
+        }
+      }
+        break;
+      }
+
+      if(start_pos <= line_pos && end_pos >= line_pos) {
+        found_expression = expression;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+#endif

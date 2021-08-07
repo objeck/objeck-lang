@@ -1878,7 +1878,7 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
 #ifdef _DIAG_LIB
-    vector<Expression*> method_expressions;
+    vector<Expression*> diagnostic_expressions;
 #endif
     
     Method(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n,
@@ -1971,17 +1971,7 @@ namespace frontend {
     void SetEndLinePosition(int ep) {
       end_line_pos = ep;
     }
-
-#ifdef _DIAG_LIB
-    void SetExpressions(vector<Expression*> e) {
-      method_expressions = e;
-    }
-
-    vector < Expression*> GetExpressions() {
-      return method_expressions;
-    }
-#endif
-
+    
     void EncodeSignature() {
       // return type
       parsed_return = EncodeType(return_type);
@@ -2128,6 +2118,16 @@ namespace frontend {
     Class* GetClass() {
       return klass;
     }
+
+#ifdef _DIAG_LIB
+    void SetExpressions(vector<Expression*> e) {
+      diagnostic_expressions = e;
+    }
+
+    vector < Expression*> GetExpressions() {
+      return diagnostic_expressions;
+    }
+#endif
   };
 
   /****************************
@@ -2161,6 +2161,9 @@ namespace frontend {
     vector<wstring> interface_names;
     vector<Class*> generic_classes;
     Type* generic_interface;
+#ifdef _DIAG_LIB
+    vector<Expression*> diagnostic_expressions;
+#endif
 
     Class(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n, const wstring& pn,
           vector<wstring> &e, vector<Class*> g, bool s, bool i) : ParseNode(f, l, p) {
@@ -2497,10 +2500,21 @@ namespace frontend {
 
     void AssociateMethod(Method* method);
 
+    bool HasDefaultNew();
+
     int NextMethodId() {
       return ++next_method_id;
     }
-    bool HasDefaultNew();
+
+#ifdef _DIAG_LIB
+    void SetExpressions(vector<Expression*> e) {
+      diagnostic_expressions = e;
+    }
+
+    vector < Expression*> GetExpressions() {
+      return diagnostic_expressions;
+    }
+#endif
   };
 
   /****************************
