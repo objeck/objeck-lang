@@ -68,9 +68,8 @@ bundle System.Diagnostics {
 
 		method : public : GetSymbols() ~ Result {
 			if(@symbols_result = Nil) {
-				array_args := Base->New[2];
-				array_args[0] := Nil;
-				array_args[1] := @self;
+				array_args := Base->New[1];
+				array_args[0] := @self;
 				Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
 			};
 			
@@ -79,10 +78,9 @@ bundle System.Diagnostics {
 
 		method : public : GetDiagnostics(sys_path : String) ~ Result[] {
 			if(@diagnostics_results = Nil) {
-				array_args := Base->New[3];
-				array_args[0] := Nil;
-				array_args[1] := @self;
-				array_args[2] := sys_path;
+				array_args := Base->New[2];
+				array_args[0] := @self;
+				array_args[1] := sys_path;
 				Proxy->GetDllProxy()->CallFunction("diag_get_diagnosis", array_args);
 			};
 
@@ -90,17 +88,28 @@ bundle System.Diagnostics {
 		}
 		
 		method : public : FindReferences(line : Int, pos : Int, sys_path : String) ~ Result[] {
+			array_args := Base->New[4];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(line);
+			array_args[2] := IntHolder->New(pos);
+			array_args[3] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
+			
+			return @references_results;
+		}
+
+		method : public : FindDeclaration(line : Int, pos : Int, sys_path : String) ~ Result {
 			array_args := Base->New[5];
 			array_args[0] := Nil;
 			array_args[1] := @self;
 			array_args[2] := IntHolder->New(line);
 			array_args[3] := IntHolder->New(pos);
 			array_args[4] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
+			Proxy->GetDllProxy()->CallFunction("diag_find_declaration", array_args);
 			
-			return @references_results;
+			return array_args[0]->As(Result);
 		}
-
+		
 		method : public : Release() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@handle);

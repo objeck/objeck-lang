@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __DIAG_H__
-#define __DIAG_H__
+#ifndef __TYPE_H__
+#define __TYPE_H__
 
 #ifdef _WIN32
 #include <windows.h>
@@ -40,19 +40,34 @@
 #include "../../shared/sys.h"
 #include "../../../compiler/tree.h"
 
-// severity
-#define DIAG_ERROR 101
-#define DIAG_WARN 102
-#define DIAG_INFO 103
-// symbols
-#define DIAG_FILE 201
-#define DIAG_NAMESPACE 203
-#define DIAG_CLASS 205
-#define DIAG_ENUM 210
-#define DIAG_METHOD 206
-#define DIAG_VARIABLE 213
-// other
-#define DIAG_UNKN 0
+// result codes
+enum ResultType {
+  // other
+  TYPE_UNKN = 0,
+  // severity
+  TYPE_ERROR = 101,
+  TYPE_WARN = 102,
+  TYPE_INFO = 103,
+  // symbols
+  TYPE_FILE = 201,
+  TYPE_NAMESPACE = 203,
+  TYPE_CLASS = 205,
+  TYPE_ENUM = 210,
+  TYPE_METHOD = 206,
+  TYPE_VARIABLE = 213,
+};
+
+// result positions
+enum ResultPosition {
+  POS_NAME = 0,
+  POS_TYPE = 1,
+  POS_CHILDREN = 2,
+  POS_DESC = 3,
+  POS_START_LINE = 4,
+  POS_START_POS = 5,
+  POS_END_LINE = 6,
+  POS_END_POS = 7
+};
 
 extern "C" {
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings);
