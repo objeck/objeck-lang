@@ -41,7 +41,7 @@ class Test {
 			# get first item
 			results := parser->FindElements("/inventory/section[1]/item[1]")<XmlElement>;
 			if(results <> Nil) {
-				Console->Print("items: ")->PrintLine(results->Size());
+				Standard->Print("items: ")->PrintLine(results->Size());
 			};
 			# get all prices
 			results := parser->FindElements("/inventory/section/item/price")<XmlElement>;
@@ -54,7 +54,7 @@ class Test {
 			# get names
 			results := parser->FindElements("/inventory/section/item/name")<XmlElement>;
 			if(results <> Nil) {
-				Console->Print("names: ")->PrintLine(results->Size());
+				Standard->Print("names: ")->PrintLine(results->Size());
 			};
 		};
 	}
