@@ -3259,6 +3259,13 @@ namespace frontend {
       return tmp;
     }
 
+    SymbolEntry* MakeSymbolEntry(const wstring& file_name, const int line_num, const int line_pos, 
+                                 const wstring& n, Type* t, bool s, bool c, bool e = false) {
+      SymbolEntry* tmp = new SymbolEntry(file_name, line_num, line_pos, n, t, s, c, e);
+      entries.push_back(tmp);
+      return tmp;
+    }
+    
     SymbolEntry* MakeSymbolEntry(const wstring &n, Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(t ? t->GetFileName() : L"", t ? t->GetLineNumber() : -1, t ? t->GetLinePosition() : -1, n, t, s, c, e);
       entries.push_back(tmp);

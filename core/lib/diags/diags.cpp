@@ -220,7 +220,7 @@ extern "C" {
           size_t* mthd_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
 
           wstring mthd_name = mthd->GetName();
-          const size_t mthd_name_index = mthd_name.find_last_of(':');
+          const size_t mthd_name_index = mthd_name.find_last_of(L':');
           if(mthd_name_index != wstring::npos) {
             mthd_name = mthd_name.substr(mthd_name_index + 1, mthd_name.size() - mthd_name_index - 1);
           }
@@ -240,18 +240,14 @@ extern "C" {
       for(size_t j = 0; j < eenums.size(); ++j) {
         Enum* eenum = eenums[j];
 
-        wstring eenum_short_name;
-        const wstring eenum_long_name = eenum->GetName();
-        const size_t eenum_long_name_index = eenum_long_name.find_last_of(L'#');
-        if(eenum_long_name_index != wstring::npos) {
-          eenum_short_name = eenum_long_name.substr(eenum_long_name_index + 1, eenum_long_name.size() - eenum_long_name_index - 1);
-        }
-        else {
-          eenum_short_name = eenum->GetName();
+        wstring eenum_name = eenum->GetName();
+        const size_t eenum_name_index = eenum_name.find_last_of(L'#');
+        if(eenum_name_index != wstring::npos) {
+          eenum_name = eenum_name.substr(eenum_name_index + 1, eenum_name.size() - eenum_name_index - 1);
         }
 
         size_t* eenum_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, eenum_short_name);
+        eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, eenum_name);
         eenum_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ENUM; // enum type
         eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber();
         eenum_symb_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition();
@@ -301,20 +297,18 @@ extern "C" {
         SymbolEntry* entry = analyzer.GetDeclaration(method, line_num, line_pos);
 
         // deceleration result
-        wstring var_name;
-        const wstring dclr_name = entry->GetName();
-        size_t var_name_pos = dclr_name.find_last_of(':');
+        wstring dclr_name = entry->GetName();
+        size_t var_name_pos = dclr_name.find_last_of(L':');
         if(var_name_pos != wstring::npos) {
-          var_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
+          dclr_name = dclr_name.substr(var_name_pos + 1, dclr_name.size() - var_name_pos - 1);
         }
 
         size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, dclr_name);
         dcrl_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
-        dcrl_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
-        dcrl_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
-        dcrl_obj[ResultPosition::POS_END_LINE] = entry->GetLineNumber();
-        dcrl_obj[ResultPosition::POS_END_POS] = entry->GetLinePosition() + (int)dclr_name.size();
+        dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = entry->GetLineNumber() - 1;
+        dcrl_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition() - 2; // 17
+        dcrl_obj[ResultPosition::POS_END_POS] = entry->GetLinePosition() + (int)dclr_name.size() - 2; // = 32
 
         APITools_SetObjectValue(context, 0, dcrl_obj);
       }

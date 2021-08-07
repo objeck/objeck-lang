@@ -203,7 +203,7 @@ unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
 const wstring StackMethod::ParseName(const wstring& name) const
 {
   int state;
-  size_t index = name.find_last_of(':');
+  size_t index = name.find_last_of(L':');
   if(index > 0) {
     wstring params_name = name.substr(index + 1);
 
