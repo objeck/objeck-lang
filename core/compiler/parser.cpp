@@ -3056,6 +3056,7 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
   Declaration* declaration;
   if(Match(TOKEN_ASSIGN)) {
     Variable* variable = ParseVariable(ident, depth + 1);
+    variable->SetLinePosition(line_pos);
     Assignment* asgn = ParseAssignment(variable, depth + 1);
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child, asgn);
   }
@@ -3880,7 +3881,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 
       if(Match(TOKEN_OPEN_PAREN)) {
         ExpressionList* exprs = ParseExpressionList(depth + 1);
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), ident, method_ident, exprs);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                              GetLineNumber(), GetLinePosition(), ident, method_ident, exprs);
         // function
         if(Match(TOKEN_TILDE)) {
           NextToken();
@@ -3895,7 +3897,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         }
       }
       else {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), ident, method_ident);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                              GetLineNumber(), GetLinePosition(), ident, method_ident);
       }
     }
     // new call
@@ -3904,7 +3907,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
         ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET, TOKEN_CLOSED_BRACKET);
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), NEW_ARRAY_CALL, ident, expressions);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                              GetLineNumber(), GetLinePosition(), NEW_ARRAY_CALL, ident, expressions);
         // array of generics
         if(Match(TOKEN_LES)) {
           vector<Type*> generic_dclrs = ParseGenericTypes(depth);
@@ -3914,7 +3918,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       // new object
       else {
         ExpressionList* exprs = ParseExpressionList(depth + 1);
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), NEW_INST_CALL, ident, exprs);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                              GetLineNumber(), GetLinePosition(), NEW_INST_CALL, ident, exprs);
         // anonymous class
         if(Match(TOKEN_LES)) {
           vector<Type*> generic_dclrs = ParseGenericTypes(depth);
@@ -3949,7 +3954,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         method_call->SetCastType(variable->GetCastType(), false);
       }
       else {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), ident, L"");
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                              GetLineNumber(), GetLinePosition(), ident, L"");
         method_call->SetCastType(variable->GetCastType(), false);
       }
     }
@@ -3964,14 +3970,16 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   else if(Match(TOKEN_OPEN_PAREN)) {
     const wstring klass_name = current_class->GetName();
     ExpressionList* exprs = ParseExpressionList(depth + 1);
-    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), klass_name, ident, exprs);
+    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                          GetLineNumber(), GetLinePosition(), klass_name, ident, exprs);
     if(Match(TOKEN_TILDE)) {
       NextToken();
       method_call->SetFunctionalReturn(ParseType(depth + 1));
     }
   }
   else {
-    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), ident, L"");
+    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+                                                          GetLineNumber(), GetLinePosition(), ident, L"");
   }
 
   // generics
@@ -4047,9 +4055,10 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   const wstring &method_ident = scanner->GetToken()->GetIdentifier();
   NextToken();
 
-  const wstring &variable_name = variable->GetName();
+  const wstring variable_name = variable->GetName();
   ExpressionList* exprs = ParseExpressionList(depth + 1);
-  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition() - (int)variable_name.size(), variable, method_ident, exprs);
+  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), 
+                                                             GetLinePosition() - (int)variable_name.size(), variable, method_ident, exprs);
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -4412,7 +4421,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     case TOKEN_IDENT: {
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
+                                                           list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 
@@ -4471,7 +4481,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     case TOKEN_IDENT: {
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), GetLineNumber(), GetLinePosition(), list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
+                                                           list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 

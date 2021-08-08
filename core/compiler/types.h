@@ -159,6 +159,7 @@ namespace frontend {
         func_params = t->func_params;
         func_param_count = -1;
         line_num = t->line_num;
+        line_pos = t->line_pos;
         generic_types = t->generic_types;
         is_resolved = t->is_resolved;
         klass_cache_ptr = t->klass_cache_ptr;
@@ -200,7 +201,7 @@ namespace frontend {
       func_params = p;
       func_rtrn = r;
       func_param_count = -1;
-      line_num = -1;
+      line_num = line_pos = -1;
 
       is_resolved = false;
       klass_cache_ptr = nullptr;

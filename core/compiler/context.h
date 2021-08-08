@@ -578,7 +578,7 @@ class ContextAnalyzer {
   // diagnostics operations
   //
 #ifdef _DIAG_LIB
-  vector<Expression*> GetExpressions(Method* method, const int line_num, const int line_pos);
+  vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos);
   SymbolEntry* GetDeclaration(Method* method, const int line_num, const int line_pos);
   bool LocateExpression(Method* method, const int line_num, const int line_pos, 
                         Expression* &found_expression, wstring &found_name,
