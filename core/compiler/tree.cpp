@@ -976,9 +976,6 @@ Method* ParsedProgram::FindMethod(const int line_num, SymbolTable*& table)
         const int end_line = method->GetEndLineNumber();
 
         if(start_line <= line_num && end_line > line_num) {
-#ifdef _DEBUG
-          wcout << L"Method: '" << method->GetParsedName() << "'" << endl;
-#endif
           table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
           return method;
         }
