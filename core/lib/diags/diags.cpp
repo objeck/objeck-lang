@@ -31,8 +31,8 @@
 
 #include "diags.h"
 
-#include "../../../compiler/parser.h"
-#include "../../../compiler/context.h"
+#include "../../compiler/parser.h"
+#include "../../compiler/context.h"
 
 using namespace std;
 using namespace frontend;
@@ -355,6 +355,9 @@ extern "C" {
             reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
           }
             break;
+
+	  default:
+	    break;
           }
           
           reference_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_VARIABLE; // variable type
@@ -398,10 +401,11 @@ extern "C" {
       const size_t line_pos_mid = line_pos_str.find(L',');
       const wstring line_str = line_pos_str.substr(0, line_pos_mid);
       const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
-
-      const int line_index = _wtoi(line_str.c_str());
-      const int pos_index = _wtoi(pos_str.c_str());
-
+      
+      wchar_t* end;      
+      const int line_index = wcstol(line_str.c_str(), &end, 10);
+      const int pos_index = wcstol(pos_str.c_str(), &end, 10);
+      
       // create objects
       size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
