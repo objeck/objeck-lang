@@ -38,7 +38,7 @@
 
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
-#include "../../../compiler/tree.h"
+#include "../../compiler/tree.h"
 
 // result codes
 enum ResultType {

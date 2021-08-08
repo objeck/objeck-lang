@@ -7495,6 +7495,9 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
         }
       }
         break;
+
+      default:
+	break;
       }
     }
   }
@@ -7556,6 +7559,9 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
         }
       }
         break;
+
+      default:
+	break;
       }
 
       if(start_pos <= line_pos && end_pos >= line_pos) {
