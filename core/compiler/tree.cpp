@@ -982,11 +982,14 @@ Method* ParsedProgram::FindMethod(const int line_num, SymbolTable*& table)
       }
     }
 
+    // TODO
+    /*
     // enums
     vector<Enum*> eenums = bundle->GetEnums();
     for(size_t j = 0; j < eenums.size(); ++j) {
       Enum* eenum = eenums[j];
     }
+    */
   }
 
   return nullptr;
