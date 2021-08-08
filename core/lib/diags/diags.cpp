@@ -87,10 +87,6 @@ extern "C" {
   {
     const wstring src_file(APITools_GetStringValue(context, 2));
 
-#ifdef _DEBUG
-    wcout << L"Parse file: src_file='" << src_file << L"'" << endl;
-#endif
-
     Parser parser(src_file, false, L"");
     const bool was_parsed = parser.Parse();
 
@@ -107,10 +103,6 @@ extern "C" {
   void diag_parse_text(VMContext& context)
   {
     const wstring src_text(APITools_GetStringValue(context, 2));
-
-#ifdef _DEBUG
-    wcout << L"Parse file: text_size=" << src_text.size() << L"'" << endl;
-#endif
 
     Parser parser(L"", false, src_text);
     const bool was_parsed = parser.Parse();
