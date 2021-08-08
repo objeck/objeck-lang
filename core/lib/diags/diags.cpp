@@ -337,7 +337,7 @@ extern "C" {
 
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(analyzer.Analyze()) {
-        vector<Expression*> expressions = analyzer.GetExpressions(method, line_num, line_pos);
+        vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos);
         size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
         size_t* refs_array_ptr = refs_array + 3;
 
@@ -383,7 +383,7 @@ extern "C" {
   
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings)
   {
-    const size_t throttle = 5;
+    const size_t throttle = 10;
     size_t max_results = error_strings.size();
     if(max_results > throttle) {
       max_results = throttle;
