@@ -45,6 +45,12 @@ copy lib\fonts\*.ttf ..\..\Release\deploy\lib\sdl\fonts
 copy lib\x86\*.dll ..\..\Release\deploy\lib\sdl
 cd ..\..\Release
 
+REM diags
+cd ..\lib\diags
+devenv diag.sln /rebuild "Release|x86"
+copy vs\Release\Win32\*.dll ..\..\Release\deploy\lib\native
+cd ..\..\release
+
 REM app
 mkdir deploy\app
 cd WindowsLauncher

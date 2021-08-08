@@ -17,7 +17,6 @@ mkdir deploy64\lib
 mkdir deploy64\lib\sdl
 mkdir deploy64\lib\sdl\fonts
 copy ..\lib\*.obl deploy64\lib
-del deploy64\lib\gtk2.obl
 del /q deploy64\bin\a.*
 copy ..\vm\misc\*.pem deploy64\lib
 
@@ -40,7 +39,13 @@ devenv sdl\sdl.sln /rebuild "Release|x64"
 copy sdl\Release\x64\*.dll ..\..\Release\deploy64\lib\native
 copy lib\fonts\*.ttf ..\..\Release\deploy64\lib\sdl\fonts
 copy lib\x64\*.dll ..\..\Release\deploy64\lib\sdl
-cd ..\..\Release
+cd ..\..\release
+
+REM diags
+cd ..\lib\diags
+devenv diag.sln /rebuild "Release|x64"
+copy vs\Release\x64\*.dll ..\..\Release\deploy64\lib\native
+cd ..\..\release
 
 REM app
 mkdir deploy64\app
