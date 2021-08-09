@@ -3,7 +3,6 @@
 
 cmake_minimum_required(VERSION 2.7)
 project(arm_odbc)
-set(LIBRARIES_FROM_REFERENCES "-lodbc")
 set(GCC_COVERAGE_COMPILE_FLAGS "-Wno-int-to-pointer-cast -Wno-unused-function -Wall -std=c++11 -fPIC")
-add_library(objk_odbc SHARED arm_odbc.cpp ../odbc.cpp)
+add_library(objk_odbc SHARED ../odbc.cpp)
 target_link_libraries(objk_odbc "${LIBRARIES_FROM_REFERENCES}")

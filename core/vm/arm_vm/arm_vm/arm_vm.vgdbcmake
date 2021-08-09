@@ -9,7 +9,7 @@
     </CustomSourceDirectories>
     <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
     <DeploymentHost>
-      <HostName>192.168.4.95</HostName>
+      <HostName>192.168.4.230</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
@@ -46,7 +46,7 @@
       <Version>
         <GCC>8.3.0</GCC>
         <GDB>8.2.1</GDB>
-        <Revision>1</Revision>
+        <Revision>4</Revision>
       </Version>
     </ToolchainID>
     <RelativeSourceDirectory />
