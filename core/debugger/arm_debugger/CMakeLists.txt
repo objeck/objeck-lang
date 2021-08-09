@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 2.7)
 project(arm_debugger)
 set(CMAKE_CXX_FLAGS "-O3")
-set(LIBRARIES_FROM_REFERENCES "-lssl -lcrypto -ldl -lz -pthread")
+set(LIBRARIES_FROM_REFERENCES "-lssl -lcrypto -ldl -lz -pthread -lreadline")
 add_executable(obd ../debugger.cpp ../parser.cpp ../scanner.cpp ../tree.cpp ../debugger.h ../parser.h ../scanner.h ../tree.h ../../vm/common.cpp ../../vm/common.h ../../vm/lib_api.h ../../vm/vm.cpp ../../vm/vm.h ../../vm/arch/win32/win32.h ../../vm/arch/jit/arm32/jit_arm_a32.h ../../vm/arch/jit/arm32/jit_arm_a32.cpp ../../vm/interpreter.cpp ../../vm/interpreter.h ../../vm/loader.cpp ../../vm/loader.h ../../vm/arch/memory.cpp ../../vm/arch/memory.h)
 target_compile_definitions(obd PRIVATE _ARM32 _DEBUGGER)
 target_link_libraries(obd ${LIBRARIES_FROM_REFERENCES})
