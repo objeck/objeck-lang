@@ -87,6 +87,15 @@ else
 fi
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
+cd ../diags
+
+if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+	./build_osx_x64.sh diags
+	cp diags.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
+else
+	./build_linux.sh diags
+	cp diags.so ../../release/deploy/lib/native/libobjk_openssl.so
+fi
 
 # copy docs
 cd ../../..
