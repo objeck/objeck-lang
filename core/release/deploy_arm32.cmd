@@ -44,6 +44,13 @@ cd ..\..\sdl\arm_sdl
 %VISUAL_GDB% /rebuild /config:Release arm_sdl.vgdbcmake
 copy VisualGDB\Release\*.so ..\..\..\Release\deploy_arm\lib\native
 copy ..\lib\fonts\*.ttf ..\..\..\Release\deploy_arm\lib\sdl\fonts
+
+REM diags support
+cd ..\..\diags\arm_diags
+%VISUAL_GDB% /rebuild /config:Release arm_diags.vgdbcmake
+copy VisualGDB\Release\*.so ..\..\..\Release\deploy_arm\lib\native
+
+
 cd ..\..\..\release
 
 REM copy examples

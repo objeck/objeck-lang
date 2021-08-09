@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <VisualGDBProjectSettings2 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <ConfigurationName>Debug</ConfigurationName>
   <Project xsi:type="com.visualgdb.project.linux">
     <CustomSourceDirectories>
       <Directories />
@@ -75,9 +74,9 @@
         <FoldSingleItemPathLevels>true</FoldSingleItemPathLevels>
       </ProjectItemSettings>
       <TargetSpecificSettings />
-      <DeploymentDirectory>/home/pi/Documents/Code/objeck-lang/core/lib/odbc</DeploymentDirectory>
+      <DeploymentDirectory>/home/pi/Documents/Code/objeck-lang/core/lib/diags</DeploymentDirectory>
       <SetLDLibraryPathFromDependentArtifacts>true</SetLDLibraryPathFromDependentArtifacts>
-      <ProjectGUID>ca4ca976-034c-499d-8ea8-c6aa0a41fa85</ProjectGUID>
+      <ProjectGUID>21b15e5d-dee1-4c63-af7d-de8c58411159</ProjectGUID>
       <VirtualFolders />
       <ConfigurationNameCase>Upper</ConfigurationNameCase>
       <DefaultHeaderDiscoveryMode>None</DefaultHeaderDiscoveryMode>
@@ -159,7 +158,7 @@
     </LaunchGDBSettings>
     <GenerateCtrlBreakInsteadOfCtrlC>false</GenerateCtrlBreakInsteadOfCtrlC>
     <SuppressArgumentVariablesCheck>false</SuppressArgumentVariablesCheck>
-    <DeploymentTargetPath>/home/pi/Documents/Code/objeck-lang/core/lib/odbc/$(TargetFileName)</DeploymentTargetPath>
+    <DeploymentTargetPath>/home/pi/Documents/Code/objeck-lang/core/lib/openssl/$(TargetFileName)</DeploymentTargetPath>
     <X11WindowMode>Local</X11WindowMode>
     <KeepConsoleAfterExit>false</KeepConsoleAfterExit>
     <RunGDBUnderSudo>false</RunGDBUnderSudo>
