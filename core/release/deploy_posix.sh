@@ -91,10 +91,10 @@ cd ../diags
 
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh diags
-	cp diags.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
+	cp diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
 else
 	./build_linux.sh diags
-	cp diags.so ../../release/deploy/lib/native/libobjk_openssl.so
+	cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 fi
 
 # copy docs
