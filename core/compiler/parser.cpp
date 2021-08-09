@@ -1421,8 +1421,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         NextToken();
 
         Expression* asgn_expr = ParseExpression(depth + 1);
-        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+        if(!asgn_expr) {
+          return nullptr;
+        }
 
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
                                                                      variable, asgn_expr, ADD_ASSIGN_STMT);
       }
@@ -1432,8 +1435,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         NextToken();
 
         Expression* asgn_expr = ParseExpression(depth + 1);
-        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+        if(!asgn_expr) {
+          return nullptr;
+        }
 
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
                                                                      variable, asgn_expr, SUB_ASSIGN_STMT);
       }
@@ -1443,8 +1449,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         NextToken();
 
         Expression* asgn_expr = ParseExpression(depth + 1);
-        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+        if(!asgn_expr) {
+          return nullptr;
+        }
 
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                      variable, asgn_expr, MUL_ASSIGN_STMT);
       }
@@ -1454,8 +1463,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         NextToken();
 
         Expression* asgn_expr = ParseExpression(depth + 1);
-        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+        if(!asgn_expr) {
+          return nullptr;
+        }
 
+        asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                      variable, asgn_expr, DIV_ASSIGN_STMT);
       }
@@ -1514,8 +1526,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_expr = ParseExpression(depth + 1);
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+      if(!asgn_expr) {
+        return nullptr;
+      }
 
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    asgn_var, asgn_expr, ADD_ASSIGN_STMT);
     }
@@ -1528,8 +1543,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_expr = ParseExpression(depth + 1);
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+      if(!asgn_expr) {
+        return nullptr;
+      }
 
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    asgn_var, asgn_expr, SUB_ASSIGN_STMT);
     }
@@ -1542,8 +1560,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       asgn_var->SetLinePosition(line_pos + 1);
       
       Expression* asgn_expr = ParseExpression(depth + 1);
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+      if(!asgn_expr) {
+        return nullptr;
+      }
 
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    asgn_var, asgn_expr, MUL_ASSIGN_STMT);
     }
@@ -1556,8 +1577,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_expr = ParseExpression(depth + 1);
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+      if(!asgn_expr) {
+        return nullptr;
+      }
 
+      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                    asgn_var, asgn_expr, DIV_ASSIGN_STMT);
     }
@@ -3876,13 +3900,16 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 
     // method call
     if(Match(TOKEN_IDENT)) {
-      const wstring &method_ident = scanner->GetToken()->GetIdentifier();
+      const int mid_line_num = GetLineNumber();
+      const int mid_line_pos = GetLinePosition();
+      const wstring method_ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
       if(Match(TOKEN_OPEN_PAREN)) {
         ExpressionList* exprs = ParseExpressionList(depth + 1);
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
-                                                              GetLineNumber(), GetLinePosition(), ident, method_ident, exprs);
+                                                              mid_line_num, mid_line_pos, GetLineNumber(), GetLinePosition(), 
+                                                              ident, method_ident, exprs);
         // function
         if(Match(TOKEN_TILDE)) {
           NextToken();
@@ -3954,7 +3981,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         method_call->SetCastType(variable->GetCastType(), false);
       }
       else {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(),
                                                               GetLineNumber(), GetLinePosition(), ident, L"");
         method_call->SetCastType(variable->GetCastType(), false);
       }
@@ -3970,7 +3997,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   else if(Match(TOKEN_OPEN_PAREN)) {
     const wstring klass_name = current_class->GetName();
     ExpressionList* exprs = ParseExpressionList(depth + 1);
-    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), 
+    method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)ident.size(), -1, -1,
                                                           GetLineNumber(), GetLinePosition(), klass_name, ident, exprs);
     if(Match(TOKEN_TILDE)) {
       NextToken();
@@ -4053,12 +4080,16 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
 
   NextToken();
   const wstring &method_ident = scanner->GetToken()->GetIdentifier();
+  
   NextToken();
+  const int mid_line_num = GetLineNumber();
+  const int mid_line_pos = GetLinePosition();
 
   const wstring variable_name = variable->GetName();
   ExpressionList* exprs = ParseExpressionList(depth + 1);
-  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), 
-                                                             GetLinePosition() - (int)variable_name.size(), variable, method_ident, exprs);
+  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)variable_name.size(),
+                                                             mid_line_num, mid_line_pos - (int)method_ident.size(),
+                                                             GetLineNumber(), GetLinePosition(), variable, method_ident, exprs);
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -4422,7 +4453,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
-                                                           list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+                                                           -1, -1, list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 
@@ -4481,7 +4512,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     case TOKEN_IDENT: {
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
+      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), -1, -1,
                                                            list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
     }
       break;

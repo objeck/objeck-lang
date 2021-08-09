@@ -579,10 +579,10 @@ class ContextAnalyzer {
   //
 #ifdef _DIAG_LIB
   vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos);
-  SymbolEntry* GetDeclaration(Method* method, const int line_num, const int line_pos);
-  bool LocateExpression(Method* method, const int line_num, const int line_pos, 
-                        Expression* &found_expression, wstring &found_name,
-                        vector<Expression*> &all_expressions);
+  bool GetDeclaration(Method* method, const int line_num, const int line_pos, 
+                      wstring &found_name, int &found_line, int &found_start_pos, int& found_end_pos);
+  bool LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression,
+                        wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
 #endif
 
   bool Analyze();

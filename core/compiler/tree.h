@@ -2542,12 +2542,16 @@ namespace frontend {
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
     vector<Type*> concrete_types;
+    int mid_line_num;
+    int mid_line_pos;
 
     MethodCall(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                MethodCallType t, const wstring &v, ExpressionList* e);
 
-    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
-               const wstring& v, const wstring& m, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
+               const int end_line_num, const int end_line_pos, const wstring& v, const wstring& m, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+      mid_line_num = ml;
+      mid_line_pos = mp;
       variable_name = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2569,6 +2573,7 @@ namespace frontend {
 
     MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring& v,
                const wstring &m) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+      mid_line_num = mid_line_pos = -1;
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
@@ -2588,8 +2593,11 @@ namespace frontend {
       anonymous_klass = nullptr;
     }
     
-    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* v, const wstring& m,
+    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
+               const int end_line_num, const int end_line_pos, Variable* v, const wstring& m,
                ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+      mid_line_num = ml;
+      mid_line_pos = mp;
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2632,6 +2640,14 @@ namespace frontend {
 
     bool IsFunctionalCall() {
       return is_dyn_func_call;
+    }
+
+    inline int GetMidLineNumber() {
+      return mid_line_num;
+    }
+
+    inline int GetMidLinePosition() {
+      return mid_line_pos;
     }
 
     SymbolEntry* GetFunctionalEntry() {
@@ -3171,21 +3187,27 @@ namespace frontend {
     }
 
     MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos, 
-                               const int end_line_num, const int end_line_pos , const wstring& v, const wstring& m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m, e);
+                               const int mid_line_num, const int mid_line_pos,
+                               const int end_line_num, const int end_line_pos, 
+                               const wstring& v, const wstring& m, ExpressionList* e) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos, end_line_num, end_line_pos, v, m, e);
+      calls.push_back(tmp);
+      return tmp;
+    }
+
+    MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos,
+                               const int mid_line_num, const int mid_line_pos,
+                               const int end_line_num, const int end_line_pos,
+                               Variable* v, const wstring& m, ExpressionList* e) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos, end_line_num, end_line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
     MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos, 
-                               const int end_line_num, const int end_line_pos, const wstring& v, const wstring& m) {
+                               const int end_line_num, const int end_line_pos, 
+                               const wstring& v, const wstring& m) {
       MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m);
-      calls.push_back(tmp);
-      return tmp;
-    }
-
-    MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* v, const wstring &m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }

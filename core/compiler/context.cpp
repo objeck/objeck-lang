@@ -1106,8 +1106,8 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
 
       // create method call
       MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(), 
-                                                                        method->GetEndLineNumber(), method->GetEndLinePosition(), current_class->GetName(), 
-                                                                        method_name, MapLambdaDeclarations(declaration_list));
+                                                                        -1, -1, method->GetEndLineNumber(), method->GetEndLinePosition(),
+                                                                        current_class->GetName(), method_name, MapLambdaDeclarations(declaration_list));
       method_call->SetFunctionalReturn(method->GetReturn());
       AnalyzeMethodCall(method_call, depth + 1);
       lambda->SetMethodCall(method_call);
@@ -4976,7 +4976,8 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   ResolveClassEnumType(type);
   if(expression->GetExpressionType() == VAR_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(), expression->GetLineNumber(), expression->GetLinePosition(),
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(),
+                                                                          -1, -1, expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           static_cast<Variable*>(expression), L"Get", box_expressions);
     AnalyzeMethodCall(box_method_call, depth + 1);
 
@@ -4992,7 +4993,8 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   }
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(), expression->GetLineNumber(), expression->GetLinePosition(),
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(), 
+                                                                          -1, -1, expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           expression->GetEvalType()->GetName(), L"Get", box_expressions);
     expression->SetMethodCall(box_method_call);
     AnalyzeExpression(calc_expression, depth + 1);
@@ -5026,8 +5028,8 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
     case FLOAT_TYPE: {
       if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(from_type->GetName())) {
         ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
-                                                                              from_expr->GetEvalType()->GetName(), L"Get", box_expressions);
+        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+                                                                              -1, -1, -1, -1, from_expr->GetEvalType()->GetName(), L"Get", box_expressions);
         
         from_expr->SetMethodCall(box_method_call);
         AnalyzeMethodCall(static_cast<MethodCall*>(from_expr), depth);
@@ -5046,8 +5048,8 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
         if(IsHolderType(to_type->GetName())) {
           ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
           box_expressions->AddExpression(from_expr);
-          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
-                                                                                NEW_INST_CALL, to_type->GetName(), box_expressions);
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), 
+                                                                                -1, -1, NEW_INST_CALL, to_type->GetName(), box_expressions);
           AnalyzeMethodCall(box_method_call, depth);
           return box_method_call;
       }
@@ -5616,14 +5618,14 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
   
   if(to_type->GetType() == CLASS_TYPE && (from_type->GetType() != CLASS_TYPE || is_cast)) {
     if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetName())) {
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
-                                                                            static_cast<Variable*>(from_expr), L"Get", TreeFactory::Instance()->MakeExpressionList());
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+                                                                            -1, -1, -1, -1, static_cast<Variable*>(from_expr), L"Get", TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
     else if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(to_type->GetName())) {
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
-                                                                            from_expr->GetEvalType()->GetName(), L"Get", TreeFactory::Instance()->MakeExpressionList());
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
+                                                                            -1, -1, -1, -1, from_expr->GetEvalType()->GetName(), L"Get", TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       from_expr->SetMethodCall(box_method_call);
       return from_expr;
@@ -5659,8 +5661,8 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
     if(IsHolderType(to_type->GetName())) {
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), -1, -1,
-                                                                            NEW_INST_CALL, to_type->GetName(), box_expressions);
+      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), 
+                                                                            -1, -1, NEW_INST_CALL, to_type->GetName(), box_expressions);
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
@@ -7440,28 +7442,65 @@ Method* MethodCallSelector::GetSelection()
 // diagnostics operations
 //
 #ifdef _DIAG_LIB
-SymbolEntry* ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos)
+bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos,
+                                     wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
   vector<Expression*> matched_expressions;
 
   // find matching expressions
   vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
-  wstring found_name;
+  bool is_alt = false;
 
-  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
-    const wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
-    SymbolEntry* entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
-    if(entry) {
-      return entry;
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
+    // function/method lookup
+    if(is_alt) {
+      Method* called_method = static_cast<MethodCall*>(found_expression)->GetMethod();
+      if(called_method) {
+        found_name = called_method->GetName();
+        found_line = called_method->GetLineNumber();
+        found_start_pos = called_method->GetLinePosition();
+        found_end_pos = called_method->GetReturn()->GetLinePosition();
+
+        return true;
+      }
     }
+    // variable lookup
     else {
-      const wstring method_entry_name = method->GetName() + L':' + found_name;
-      return method->GetSymbolTable()->GetEntry(method_entry_name);
+      const wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+      SymbolEntry* found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
+      if(found_entry) {
+        found_name = found_entry->GetName();
+        size_t var_name_pos = found_name.find_last_of(L':');
+        if(var_name_pos != wstring::npos) {
+          found_name = found_name.substr(var_name_pos + 1, found_name.size() - var_name_pos - 1);
+        }
+        found_line = found_entry->GetLineNumber();
+        found_start_pos = found_end_pos = found_entry->GetLinePosition() - 1;
+        found_end_pos += (int)found_name.size();
+
+        return true;
+      }
+      else {
+        const wstring method_entry_name = method->GetName() + L':' + found_name;
+        found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
+        if(found_entry) {
+          found_name = found_entry->GetName();
+          size_t var_name_pos = found_name.find_last_of(L':');
+          if(var_name_pos != wstring::npos) {
+            found_name = found_name.substr(var_name_pos + 1, found_name.size() - var_name_pos - 1);
+          }
+          found_line = found_entry->GetLineNumber();
+          found_start_pos = found_end_pos = found_entry->GetLinePosition() - 1;
+          found_end_pos += (int)found_name.size();
+
+          return true;
+        }
+      }
     }
   }
 
-  return nullptr;
+  return false;
 }
 
 vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos)
@@ -7472,8 +7511,9 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
   vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
   wstring found_name;
+  bool is_alt = false;
 
-  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, all_expressions)) {
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
     for(size_t i = 0; i < all_expressions.size(); ++i) {
       Expression* expression = all_expressions[i];
       switch(expression->GetExpressionType()) {
@@ -7497,7 +7537,7 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
         break;
 
       default:
-	break;
+        break;
       }
     }
   }
@@ -7505,9 +7545,8 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
   return matched_expressions;
 }
 
-bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos,
-                                       Expression*& found_expression, wstring& found_name,
-                                       vector<Expression*>& all_expressions)
+bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, 
+                                       wstring& found_name, bool &is_alt, vector<Expression*>& all_expressions)
 {
   // get all expressions
   all_expressions = method->GetExpressions();
@@ -7537,11 +7576,15 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   }
 
   // find expression
+  wstring alt_found_name;
   for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
     Expression* expression = all_expressions[i];
     if(expression->GetLineNumber() == line_num + 1) {
       const int start_pos = expression->GetLinePosition() - 1;
       int end_pos = start_pos;
+      
+      int alt_start_pos = -1;
+      int alt_end_pos = -1;
 
       switch(expression->GetExpressionType()) {
       case VAR_EXPR: {
@@ -7555,16 +7598,28 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
         MethodCall* method_call = static_cast<MethodCall*>(expression);
         if(method_call->GetEntry()) {
           found_name = method_call->GetVariableName();
-          end_pos += (int)method_call->GetVariableName().size();
+          end_pos += (int)found_name.size();
+
+          alt_found_name = method_call->GetMethodName();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_end_pos += (int)alt_found_name.size();
         }
       }
         break;
 
       default:
-	break;
+        break;
       }
 
-      if(start_pos <= line_pos && end_pos >= line_pos) {
+      if((start_pos <= line_pos && end_pos >= line_pos) || (alt_start_pos <= line_pos && alt_end_pos >= line_pos)) {
+        if(alt_start_pos <= line_pos && alt_end_pos >= line_pos) {
+          found_name = alt_found_name;
+          is_alt = true;
+        }
+        else {
+          is_alt = false;
+        }
+        
         found_expression = expression;
         return true;
       }
