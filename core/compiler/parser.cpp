@@ -326,14 +326,23 @@ void Parser::ParseBundle(int depth)
         else {
           uses.push_back(bundle_name);
         }
-        symbol_table = new SymbolTableManager;
-        ParsedBundle* bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
+        
+        ParsedBundle* bundle = program->GetBundle(bundle_name);
+        if(bundle) {
+          symbol_table = bundle->GetSymbolTableManager();
+        }
+        else {
+          symbol_table = new SymbolTableManager;
+          bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
+          program->AddBundle(bundle);
+        }
+        current_bundle = bundle;
+
         if(!Match(TOKEN_OPEN_BRACE)) {
           ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
         }
         NextToken();
 
-        current_bundle = bundle;
 #ifdef _DEBUG
         Debug(L"bundle: '" + current_bundle->GetName() + L"'", depth);
 #endif
@@ -373,7 +382,6 @@ void Parser::ParseBundle(int depth)
         }
         NextToken();
 
-        program->AddBundle(bundle);
       }
 
       program->AddUses(uses, file_name);
@@ -381,10 +389,18 @@ void Parser::ParseBundle(int depth)
     // parse class
     else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
       wstring bundle_name = L"";
-      symbol_table = new SymbolTableManager;
-      ParsedBundle* bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
-
+      
+      ParsedBundle* bundle = program->GetBundle(bundle_name);
+      if(bundle) {
+        symbol_table = bundle->GetSymbolTableManager();
+      }
+      else {
+        symbol_table = new SymbolTableManager;
+        bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
+        program->AddBundle(bundle);
+      }
       current_bundle = bundle;
+
 #ifdef _DEBUG
       Debug(L"bundle: '" + current_bundle->GetName() + L"'", depth);
 #endif
@@ -422,7 +438,6 @@ void Parser::ParseBundle(int depth)
       bundle->SetEndLineNumber(GetLineNumber());
       bundle->SetEndLinePosition(GetLinePosition());
 
-      program->AddBundle(bundle);
       program->AddUses(uses, file_name);
     }
     // error

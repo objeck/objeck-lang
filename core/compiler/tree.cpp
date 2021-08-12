@@ -201,7 +201,8 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
 
     case CLASS_TYPE: {
       name = L"o.";
-      
+      const vector<wstring> uses = program->GetUses();
+
       // program class check
       const wstring type_klass_name = type->GetName();
       Class* prgm_klass = program->GetClass(type_klass_name);
@@ -210,7 +211,6 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
       }
       else {
         // full path resolution
-        vector<wstring> uses = program->GetUses();
         for(size_t i = 0; !prgm_klass && i < uses.size(); ++i) {
           prgm_klass = program->GetClass(uses[i] + L"." + type_klass_name);
         }
@@ -222,7 +222,6 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         else {
           // full path resolution
           Enum* prgm_enum = program->GetEnum(type_klass_name);
-          vector<wstring> uses = program->GetUses();
           for(size_t i = 0; !prgm_enum && i < uses.size(); ++i) {
             prgm_enum = program->GetEnum(uses[i] + L"." + type_klass_name);
           }
@@ -250,18 +249,18 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
 
       // search libraries      
       if(name == L"o.") {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
+        LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, uses);
         if(lib_klass) {
           name += lib_klass->GetName();
         } 
         else {
-          LibraryEnum* lib_enum = linker->SearchEnumLibraries(type_klass_name, program->GetUses());
+          LibraryEnum* lib_enum = linker->SearchEnumLibraries(type_klass_name, uses);
           if(lib_enum) {
             name += lib_enum->GetName();
           }
           else {
             const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
-            lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, program->GetUses());
+            lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, uses);
             if(lib_enum) {
               name += type_klass_name_ext;
             }
@@ -853,6 +852,7 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
     case CLASS_TYPE: {
       name = L"o.";
+      const vector<wstring> uses = program->GetUses();
 
       // program class check
       const wstring type_klass_name = type->GetName();
@@ -862,7 +862,6 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
       }
       else {
         // full path resolution
-        vector<wstring> uses = program->GetUses();
         for(size_t i = 0; !prgm_klass && i < uses.size(); ++i) {
           prgm_klass = program->GetClass(uses[i] + L"." + type_klass_name);
         }
@@ -874,7 +873,7 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
         else {
           // full path resolution
           Enum* prgm_enum = program->GetEnum(type_klass_name);
-          vector<wstring> uses = program->GetUses();
+          vector<wstring> uses = uses;
           for(size_t i = 0; !prgm_enum && i < uses.size(); ++i) {
             prgm_enum = program->GetEnum(uses[i] + L"." + type_klass_name);
           }
@@ -887,12 +886,12 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
       // search libraries      
       if(name == L"o.") {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
+        LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, uses);
         if(lib_klass) {
           name += lib_klass->GetName();
         }
         else {
-          LibraryEnum* lib_enum = linker->SearchEnumLibraries(type_klass_name, program->GetUses());
+          LibraryEnum* lib_enum = linker->SearchEnumLibraries(type_klass_name, uses);
           if(lib_enum) {
             name += lib_enum->GetName();
           }
@@ -956,6 +955,50 @@ wstring Alias::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, Pa
 
   return encoded_name;
 }
+
+/****************************
+ * class Lambda
+ ****************************/
+const vector<wstring> ParsedProgram::GetUses() {
+  // Sort into tiers:
+  // 1. System bundles
+  // 2. User bundles
+  // 3. Library bundles
+  if(tiered_use_names.empty()) {
+    vector<wstring> top_level;
+    vector<wstring> mid_level;
+    vector<wstring> bottom_level;
+
+    for(size_t i = 0; i < use_names.size(); ++i) {
+      const wstring use_name = use_names[i];
+      if(use_name.rfind(L"System", 0) == 0) {
+        top_level.push_back(use_name);
+      }
+      else {
+        for(size_t j = 0; j < bundle_names.size(); ++j) {
+          const wstring bundle_name = bundle_names[j];
+          if(use_name.rfind(bundle_name, 0) == 0) {
+            mid_level.push_back(use_name);
+          }
+          else {
+            bottom_level.push_back(use_name);
+          }
+        }
+      }
+    }
+
+    tiered_use_names.insert(tiered_use_names.end(), top_level.begin(), top_level.end());
+    tiered_use_names.insert(tiered_use_names.end(), mid_level.begin(), mid_level.end());
+    tiered_use_names.insert(tiered_use_names.end(), bottom_level.begin(), bottom_level.end());
+
+#ifdef _DEBUG
+    assert(use_names.size() == tiered_use_names.size());
+#endif
+  }
+
+  return tiered_use_names;
+}
+
 
 #ifdef _DIAG_LIB
 Method* ParsedProgram::FindMethod(const int line_num, SymbolTable*& table)
