@@ -3448,7 +3448,9 @@ namespace frontend {
     vector<wstring> char_strings;
     
     map<wstring, vector<wstring> > file_uses;
-    vector<wstring> uses;
+    vector<wstring> use_names;
+    vector<wstring> tiered_use_names;
+
     vector<ParsedBundle*> bundles;
     vector<wstring> bundle_names;
     Class* start_class;
@@ -3509,9 +3511,9 @@ namespace frontend {
 
     void AddUses(vector<wstring> &u, const wstring &f) {
       for(size_t i = 0; i < u.size(); ++i) {
-        vector<wstring>::iterator found = find(uses.begin(), uses.end(), u[i]);
-        if(found == uses.end()) {
-          uses.push_back(u[i]);
+        vector<wstring>::iterator found = find(use_names.begin(), use_names.end(), u[i]);
+        if(found == use_names.end()) {
+          use_names.push_back(u[i]);
         }
       }
       file_uses[f] = u;
@@ -3526,9 +3528,7 @@ namespace frontend {
       return true;
     }
 
-    const vector<wstring> GetUses() {
-      return uses;
-    }
+    const vector<wstring> GetUses();
 
     const vector<wstring> GetUses(const wstring &f) {
       return file_uses[f];
@@ -3537,6 +3537,17 @@ namespace frontend {
     void AddBundle(ParsedBundle* b) {
       bundle_names.push_back(b->GetName());
       bundles.push_back(b);
+    }
+
+    ParsedBundle* GetBundle(const wstring n) {
+      for(size_t i = 0; i < bundles.size(); ++i) {
+        ParsedBundle* bundle = bundles[i];
+        if(bundle->GetName() == n) {
+          return bundle;
+        }
+      }
+
+      return nullptr;
     }
 
     const vector<ParsedBundle*> GetBundles() {
