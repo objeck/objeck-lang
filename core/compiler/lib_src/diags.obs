@@ -2,7 +2,7 @@ use Collection.Generic;
 use System.API;
 
 #~
-Support for linting, code metrics and diagnostics
+Support for basic code diagnostics
 ~#
 bundle System.Diagnostics {
 	class Proxy {
@@ -18,9 +18,14 @@ bundle System.Diagnostics {
 	}
 
 	#~
-	Parsers and analyzers source
+	Parsers source for analysis
 	~#
 	class Analyzer {
+		#~
+		Parsers source file for analysis
+		@param src_file file to parse
+		@return object instance used for analysis
+		~#
 		function : ParseFile(src_file : String) ~ AnalysisResult {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -33,6 +38,11 @@ bundle System.Diagnostics {
 			return AnalysisResult->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 
+		#~
+		Parsers text for analysis
+		@param src_str text to parse
+		@return object instance used for analysis
+		~#
 		function : ParseText(src_str : String) ~ AnalysisResult {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -62,10 +72,18 @@ bundle System.Diagnostics {
 			@is_parsed := is_parsed;
 		}
 
+		#~
+		Check to see if source was parsed
+		@return true if parsed, false otherwise
+		~#
 		method : public : IsParsed() ~ Bool {
 			return @is_parsed;
 		}
 
+		#~
+		Get source code analysis symbols
+		@return analysis symbols
+		~#
 		method : public : GetSymbols() ~ Result {
 			if(@symbols_result = Nil) {
 				array_args := Base->New[1];
@@ -76,6 +94,11 @@ bundle System.Diagnostics {
 			return @symbols_result;
 		}
 
+		#~
+		Get parse and analysis errors
+		@param sys_path system library path
+		@return analysis errors, Nil of no errors
+		~#
 		method : public : GetDiagnostics(sys_path : String) ~ Result[] {
 			if(@diagnostics_results = Nil) {
 				array_args := Base->New[2];
@@ -87,6 +110,13 @@ bundle System.Diagnostics {
 			return @diagnostics_results;
 		}
 		
+		#~
+		Get references specified symbol
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return symbol references, Nil of none found
+		~#
 		method : public : FindReferences(line : Int, pos : Int, sys_path : String) ~ Result[] {
 			array_args := Base->New[4];
 			array_args[0] := @self;
@@ -98,6 +128,13 @@ bundle System.Diagnostics {
 			return @references_results;
 		}
 
+		#~
+		Finds symbol deceleration
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return symbol deceleration, Nil of none found
+		~#
 		method : public : FindDeclaration(line : Int, pos : Int, sys_path : String) ~ Result {
 			array_args := Base->New[5];
 			array_args[0] := Nil;
@@ -110,6 +147,9 @@ bundle System.Diagnostics {
 			return array_args[0]->As(Result);
 		}
 		
+		#~
+		Release native resources, required for clean up.
+		~#
 		method : public : Release() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@handle);
