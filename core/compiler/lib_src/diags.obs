@@ -158,9 +158,12 @@ bundle System.Diagnostics {
 	}
 
 	#~
-	Analysis results
+	Generic analysis result
 	~#
 	class Result {
+		#~
+		Analysis type
+		~#
 		consts Kind {
 			# Severity
 			ERROR := 101,
@@ -188,34 +191,66 @@ bundle System.Diagnostics {
 		New(handle : Int) {
 		}
 
+		#~
+		Get start line
+		@return start line
+		~#
 		method : public : GetStartLine() ~ Int {
 			return @start_line;
 		}
 
+		#~
+		Get start position
+		@return start position
+		~#
 		method : public : GetStartPosition() ~ Int {
 			return @start_pos;
 		}
 
+		#~
+		Get end line
+		@return end line
+		~#
 		method : public : GetEndLine() ~ Int {
 			return @end_line;
 		}
 
+		#~
+		Get end position
+		@return end position
+		~#
 		method : public : GetEndPosition() ~ Int {
 			return @end_pos;
 		}
 
+		#~
+		Get result kind
+		@return result kind
+		~#
 		method : public : GetKind() ~ Result->Kind {
 			return @kind;
 		}
 
+		#~
+		Get result name
+		@return result name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Get child results
+		@return child results
+		~#
 		method : public : GetResults() ~ Result[] {
 			return @results;
 		}
 
+		#~
+		Result to string
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			kind := @kind->As(Int);
 			return "name='{$@name}', kind={$kind}, start_line={$@start_line}, start_pos={$@start_pos}, end_line={$@end_line}, end_pos={$@end_pos}";
