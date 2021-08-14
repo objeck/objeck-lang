@@ -26,7 +26,7 @@ bundle System.Diagnostics {
 		@param src_file file to parse
 		@return object instance used for analysis
 		~#
-		function : ParseFile(src_file : String) ~ AnalysisResult {
+		function : ParseFile(src_file : String) ~ Analysis {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
@@ -35,7 +35,7 @@ bundle System.Diagnostics {
 			
 			handle := array_args[0]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
-			return AnalysisResult->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
+			return Analysis->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 
 		#~
@@ -43,7 +43,7 @@ bundle System.Diagnostics {
 		@param src_str text to parse
 		@return object instance used for analysis
 		~#
-		function : ParseText(src_str : String) ~ AnalysisResult {
+		function : ParseText(src_str : String) ~ Analysis {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
@@ -52,14 +52,14 @@ bundle System.Diagnostics {
 			
 			handle := array_args[0]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
-			return AnalysisResult->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
+			return Analysis->New(handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
 	}
 
 	#~
 	Analysis results
 	~#
-	class AnalysisResult {
+	class Analysis {
 		@handle : Int;
 		@is_parsed : Bool;
 		@symbols_result : Result;
@@ -128,6 +128,20 @@ bundle System.Diagnostics {
 			return @references_results;
 		}
 
+		method : public : SignatureHelp(line : Int, pos : Int, trigger : String, sys_path : String) ~ Result {
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntHolder->New(line);
+			array_args[3] := IntHolder->New(pos);
+			array_args[4] := trigger;
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_signature_help", array_args);
+			
+			return array_args[0]->As(Result);
+		}
+
+
 		#~
 		Finds symbol deceleration
 		@param line line of symbol
@@ -165,17 +179,16 @@ bundle System.Diagnostics {
 		Analysis type
 		~#
 		consts Kind {
-			# Severity
 			ERROR := 101,
 			WARN := 102,
 			INFO := 103,
-			# symbols
+
 			NAMESPACE := 203,
 			CLASS := 205,
 			ENUM := 210,
 			METHOD := 206,
 			VARIABLE  := 213,
-			# other
+			
 			UNKN := 0
 		}
 
