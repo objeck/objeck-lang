@@ -298,6 +298,43 @@ extern "C" {
   }
   
   //
+  // help signature
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_signature_help(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring trigger = APITools_GetStringValue(context, 4);
+    const wstring sys_path = APITools_GetStringValue(context, 5);
+
+    SymbolTable* table = nullptr;
+    Method* method = program->FindMethod(line_num, table);
+    if(method) {
+      wstring full_path = L"lang.obl";
+      if(!sys_path.empty()) {
+        full_path += L',' + sys_path;
+      }
+
+      ContextAnalyzer analyzer(program, full_path, false, false);
+      if(analyzer.Analyze()) {
+        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
+        Method* signature = analyzer.GetSignature(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos);
+        if(signature) {
+
+        }
+      }
+    }
+
+    // APITools_SetObjectValue(context, 0, dcrl_obj);
+  }
+
+  //
   // find references
   //
 #ifdef _WIN32
