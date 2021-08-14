@@ -7438,10 +7438,34 @@ Method* MethodCallSelector::GetSelection()
   return matches[match_index]->GetMethod();
 }
 
+
 //
 // diagnostics operations
 //
 #ifdef _DIAG_LIB
+Method* ContextAnalyzer::GetSignature(Method* method, const int line_num, const int line_pos,
+                                      wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+{
+  vector<Expression*> matched_expressions;
+
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr;
+  bool is_alt = false;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
+    // function/method lookup
+    if(is_alt) {
+      return static_cast<MethodCall*>(found_expression)->GetMethod();
+    }
+  }
+
+  return nullptr;
+}
+
+//
+// diagnostics operations
+//
 bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos,
                                      wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
