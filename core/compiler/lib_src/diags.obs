@@ -84,10 +84,11 @@ bundle System.Diagnostics {
 		Get source code analysis symbols
 		@return analysis symbols
 		~#
-		method : public : GetSymbols() ~ Result {
+		method : public : GetSymbols(sys_path : String) ~ Result {
 			if(@symbols_result = Nil) {
-				array_args := Base->New[1];
+				array_args := Base->New[2];
 				array_args[0] := @self;
+				array_args[1] := sys_path;
 				Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
 			};
 			
@@ -128,14 +129,16 @@ bundle System.Diagnostics {
 			return @references_results;
 		}
 
-		method : public : SignatureHelp(line : Int, pos : Int, trigger : String, sys_path : String) ~ Result {
-			array_args := Base->New[6];
+		method : public : SignatureHelp(line : Int, pos : Int, trigger : String, var_str : String, mthd_str : String, sys_path : String) ~ Result {
+			array_args := Base->New[8];
 			array_args[0] := Nil;
 			array_args[1] := @self;
 			array_args[2] := IntHolder->New(line);
 			array_args[3] := IntHolder->New(pos);
 			array_args[4] := trigger;
-			array_args[5] := sys_path;
+			array_args[5] := var_str;;
+			array_args[6] := mthd_str;
+			array_args[7] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_signature_help", array_args);
 			
 			return array_args[0]->As(Result);
@@ -193,6 +196,7 @@ bundle System.Diagnostics {
 		}
 
 		@name : String;
+		@code : Int;
 		@kind : Result->Kind;
 		@results : Result[];
 		@desc : String;
@@ -250,6 +254,14 @@ bundle System.Diagnostics {
 		~#
 		method : public : GetName() ~ String {
 			return @name;
+		}
+
+		#~
+		Gets the code
+		@return code
+		~#
+		method : public : GetCode() ~ Int {
+			return @code;
 		}
 
 		#~
