@@ -340,14 +340,22 @@ extern "C" {
 
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(analyzer.Analyze()) {
-        analyzer.GetSignature(method, var_str, mthd_str);
-        if(method) {
-          wcout << method->GetName() << endl;
+        vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
+        if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
+          if(!found_methods.empty()) {
+
+            // APITools_SetObjectValue(context, 0, dcrl_obj);
+          }
+          else {
+
+            // APITools_SetObjectValue(context, 0, dcrl_obj);
+          }
+
+// wcout << L"methods=" << found_methods.size() << L", lib_methods=" << found_lib_methods.size() << endl;
         }
       }
     }
 
-    // APITools_SetObjectValue(context, 0, dcrl_obj);
   }
 
   //
