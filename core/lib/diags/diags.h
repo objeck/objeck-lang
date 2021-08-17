@@ -60,13 +60,14 @@ enum ResultType {
 // result positions
 enum ResultPosition {
   POS_NAME = 0,
-  POS_TYPE = 1,
-  POS_CHILDREN = 2,
-  POS_DESC = 3,
-  POS_START_LINE = 4,
-  POS_START_POS = 5,
-  POS_END_LINE = 6,
-  POS_END_POS = 7
+  POS_CODE = 1,
+  POS_TYPE = 2,
+  POS_CHILDREN = 3,
+  POS_DESC = 4,
+  POS_START_LINE = 5,
+  POS_START_POS = 6,
+  POS_END_LINE = 7,
+  POS_END_POS = 8
 };
 
 extern "C" {

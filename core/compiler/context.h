@@ -578,8 +578,7 @@ class ContextAnalyzer {
   // diagnostics operations
   //
 #ifdef _DIAG_LIB
-  Method* GetSignature(Method* method, const int line_num, const int line_pos,
-                       wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
+  Method* GetSignature(Method* method, const wstring var_str, const wstring mthd_str);
   vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos);
   bool GetDeclaration(Method* method, const int line_num, const int line_pos, 
                       wstring &found_name, int &found_line, int &found_start_pos, int& found_end_pos);
