@@ -7443,59 +7443,114 @@ Method* MethodCallSelector::GetSelection()
 // diagnostics operations
 //
 #ifdef _DIAG_LIB
-Method* ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str)
+bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*> &found_methods, vector<LibraryMethod*> & found_lib_methods)
 {
-  if(method && method->GetClass()) {
+  Class* context_klass = method->GetClass();
+
+  // local variables
+  if(method && context_klass) {
     SymbolTable* symbol_table = method->GetSymbolTable();
     vector<SymbolEntry*> entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-
       const wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          switch(entry->GetType()->GetType()) {
-          case NIL_TYPE:
-            break;
-
-          case BOOLEAN_TYPE:
-            break;
-
-          case BYTE_TYPE:
-            break;
-
-          case CHAR_TYPE:
-            break;
-
-          case INT_TYPE:
-            break;
-
-          case FLOAT_TYPE:
-            break;
-
-          case CLASS_TYPE:
-            break;
-
-          case FUNC_TYPE:
-            break;
-
-          case ALIAS_TYPE:
-            break;
-
-          case VAR_TYPE:
-            break;
-          }
+          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods);
+          return !found_methods.empty() || !found_lib_methods.empty();
         }
       }
     }
 
-    Class* klass = method->GetClass();
-
+    // class and instance variables
+    symbol_table = context_klass->GetSymbolTable();
+    entries = symbol_table->GetEntries();
+    for(size_t i = 0; i < entries.size(); ++i) {
+      SymbolEntry* entry = entries[i];
+      const wstring full_var_name = entry->GetName();
+      const size_t short_var_pos = full_var_name.find_last_of(L':');
+      if(short_var_pos != wstring::npos) {
+        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+        if(short_var_name == var_str) {
+          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods);
+          return !found_methods.empty() || !found_lib_methods.empty();
+        }
+      }
+    }
   }
   
-  return nullptr;
+  return false;
+}
+
+void ContextAnalyzer::FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*> &found_methods, vector<LibraryMethod*>& found_lib_methods)
+{
+  Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+
+  switch(entry->GetType()->GetType()) {
+  case NIL_TYPE:
+    break;
+
+  case BOOLEAN_TYPE:
+    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    break;
+
+  case BYTE_TYPE:
+    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+
+    break;
+
+  case CHAR_TYPE:
+    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    break;
+
+  case INT_TYPE:
+    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    break;
+
+  case FLOAT_TYPE:
+    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    break;
+
+  case CLASS_TYPE:
+    klass = SearchProgramClasses(entry->GetType()->GetName());
+    if(!klass) {
+      lib_klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetUses(context_klass->GetFileName()));
+    }
+    break;
+
+  case FUNC_TYPE:
+    break;
+
+  case ALIAS_TYPE:
+    break;
+
+  case VAR_TYPE:
+    break;
+  }
+
+  if(klass) {
+    vector<Method*> methods = klass->GetMethods();
+    const wstring search_str = L':' + mthd_str + L':';
+    for(size_t i = 0; i < methods.size(); ++i) {
+      wstring foo = methods[i]->GetName();
+      if(foo.find(search_str, 0) != wstring::npos) {
+        found_methods.push_back(methods[i]);
+      }
+    }
+  }
+  else if(lib_klass) {
+    map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
+    const wstring search_str = L':' + mthd_str + L':';
+    for(map<const wstring, LibraryMethod*>::iterator iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
+      if(iter->first.find(search_str, 0) != wstring::npos) {
+        found_lib_methods.push_back(iter->second);
+      }
+    }
+  }
 }
 
 //
