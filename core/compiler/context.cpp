@@ -7443,23 +7443,58 @@ Method* MethodCallSelector::GetSelection()
 // diagnostics operations
 //
 #ifdef _DIAG_LIB
-Method* ContextAnalyzer::GetSignature(Method* method, const int line_num, const int line_pos,
-                                      wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+Method* ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str)
 {
-  vector<Expression*> matched_expressions;
+  if(method && method->GetClass()) {
+    SymbolTable* symbol_table = method->GetSymbolTable();
+    vector<SymbolEntry*> entries = symbol_table->GetEntries();
+    for(size_t i = 0; i < entries.size(); ++i) {
+      SymbolEntry* entry = entries[i];
 
-  // find matching expressions
-  vector<Expression*> all_expressions;
-  Expression* found_expression = nullptr;
-  bool is_alt = false;
+      const wstring full_var_name = entry->GetName();
+      const size_t short_var_pos = full_var_name.find_last_of(L':');
+      if(short_var_pos != wstring::npos) {
+        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+        if(short_var_name == var_str) {
+          switch(entry->GetType()->GetType()) {
+          case NIL_TYPE:
+            break;
 
-  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
-    // function/method lookup
-    if(is_alt) {
-      return static_cast<MethodCall*>(found_expression)->GetMethod();
+          case BOOLEAN_TYPE:
+            break;
+
+          case BYTE_TYPE:
+            break;
+
+          case CHAR_TYPE:
+            break;
+
+          case INT_TYPE:
+            break;
+
+          case FLOAT_TYPE:
+            break;
+
+          case CLASS_TYPE:
+            break;
+
+          case FUNC_TYPE:
+            break;
+
+          case ALIAS_TYPE:
+            break;
+
+          case VAR_TYPE:
+            break;
+          }
+        }
+      }
     }
-  }
 
+    Class* klass = method->GetClass();
+
+  }
+  
   return nullptr;
 }
 

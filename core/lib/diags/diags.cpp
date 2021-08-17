@@ -123,7 +123,6 @@ extern "C" {
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const wstring sys_path = APITools_GetStringValue(context, 1);
-
     wstring full_path = L"lang.obl";
     if(!sys_path.empty()) {
       full_path += L',' + sys_path;
@@ -154,7 +153,20 @@ extern "C" {
   void diag_get_symbols(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const wstring sys_path = APITools_GetStringValue(context, 1);
+    wstring full_path = L"lang.obl";
+    if(!sys_path.empty()) {
+      full_path += L',' + sys_path;
+    }
+
+    // if parsed
+    bool validated = false;
+    if(prgm_obj[1]) {
+      ContextAnalyzer analyzer(program, full_path, false, false);
+      validated = analyzer.Analyze();
+    }
 
     const vector<ParsedBundle*> bundles = program->GetBundles();
     size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
@@ -250,11 +262,12 @@ extern "C" {
     // file root
     size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
     file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, file_name);
+    file_symb_obj[ResultPosition::POS_CODE] = validated ? 1 : 0;
     file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
     file_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)bundle_array;
     file_symb_obj[ResultPosition::POS_START_LINE] = file_symb_obj[ResultPosition::POS_START_POS] = file_symb_obj[ResultPosition::POS_END_LINE] = file_symb_obj[ResultPosition::POS_END_POS] = -1;
 
-    prgm_obj[ResultPosition::POS_CHILDREN] = (size_t)file_symb_obj;
+    prgm_obj[2] = (size_t)file_symb_obj;
   }
 
   //
@@ -266,7 +279,7 @@ extern "C" {
   void diag_find_declaration(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
@@ -306,12 +319,16 @@ extern "C" {
   void diag_signature_help(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring trigger = APITools_GetStringValue(context, 4);
-    const wstring sys_path = APITools_GetStringValue(context, 5);
+
+    const wstring var_str = APITools_GetStringValue(context, 5);
+    const wstring mthd_str = APITools_GetStringValue(context, 6);
+
+    const wstring sys_path = APITools_GetStringValue(context, 7);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
@@ -323,10 +340,9 @@ extern "C" {
 
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(analyzer.Analyze()) {
-        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
-        Method* signature = analyzer.GetSignature(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos);
-        if(signature) {
-
+        analyzer.GetSignature(method, var_str, mthd_str);
+        if(method) {
+          wcout << method->GetName() << endl;
         }
       }
     }
@@ -343,7 +359,7 @@ extern "C" {
   void diag_find_references(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[ResultPosition::POS_NAME];
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 1);
     const int line_pos = (int)APITools_GetIntValue(context, 2);
@@ -397,7 +413,7 @@ extern "C" {
           refs_array_ptr[i] = (size_t)reference_obj;
         }
 
-        prgm_obj[ResultPosition::POS_START_LINE] = (size_t)refs_array;
+        prgm_obj[4] = (size_t)refs_array;
       }
     }
   }
