@@ -342,16 +342,46 @@ extern "C" {
       if(analyzer.Analyze()) {
         vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
         if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
-          if(!found_methods.empty()) {
+          size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_str);
+          sig_root_obj[ResultPosition::POS_CODE] = found_methods.empty();
 
-            // APITools_SetObjectValue(context, 0, dcrl_obj);
+          if(!found_methods.empty()) {
+            const vector<ParsedBundle*> signatures = program->GetBundles();
+            size_t* signature_array = APITools_MakeIntArray(context, (int)signatures.size());
+            size_t* signature_array_array_ptr = signature_array + 3;
+
+            for(size_t i = 0; i < found_methods.size(); ++i) {
+              Method* found_method = found_methods[i];
+
+              size_t* mthd_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+              mthd_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_method->GetUserName());
+
+              signature_array_array_ptr[i] = (size_t)mthd_obj;
+            }
+
+            sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
           }
           else {
+            const vector<ParsedBundle*> signatures = program->GetBundles();
+            size_t* signature_array = APITools_MakeIntArray(context, (int)signatures.size());
+            size_t* signature_array_array_ptr = signature_array + 3;
 
-            // APITools_SetObjectValue(context, 0, dcrl_obj);
+            for(size_t i = 0; i < found_lib_methods.size(); ++i) {
+              LibraryMethod* found_lib_method = found_lib_methods[i];
+
+              size_t* mthd_lib_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+              mthd_lib_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_lib_method->GetUserName());
+
+              signature_array_array_ptr[i] = (size_t)mthd_lib_obj;
+            }
+
+            sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
           }
 
-// wcout << L"methods=" << found_methods.size() << L", lib_methods=" << found_lib_methods.size() << endl;
+
+          // set result
+          APITools_SetObjectValue(context, 0, sig_root_obj);
         }
       }
     }
