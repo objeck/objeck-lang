@@ -7,12 +7,30 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ED97AE452597E7DE00344432 /* diags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED97AE442597E7DE00344432 /* diags.cpp */; };
+		EDD6124626CFAAD5001C362D /* diags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124426CFAAD5001C362D /* diags.cpp */; };
+		EDD6124726CFAAD5001C362D /* diags.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6124526CFAAD5001C362D /* diags.h */; };
+		EDD6125026CFAAF8001C362D /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124826CFAAF8001C362D /* tree.cpp */; };
+		EDD6125126CFAAF8001C362D /* parser.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6124926CFAAF8001C362D /* parser.h */; };
+		EDD6125226CFAAF8001C362D /* scanner.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6124A26CFAAF8001C362D /* scanner.h */; };
+		EDD6125326CFAAF8001C362D /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124B26CFAAF8001C362D /* types.cpp */; };
+		EDD6125426CFAAF8001C362D /* tree.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6124C26CFAAF8001C362D /* tree.h */; };
+		EDD6125526CFAAF8001C362D /* types.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6124D26CFAAF8001C362D /* types.h */; };
+		EDD6125626CFAAF8001C362D /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124E26CFAAF8001C362D /* parser.cpp */; };
+		EDD6125726CFAAF8001C362D /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124F26CFAAF8001C362D /* scanner.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		ED97AE332597E75B00344432 /* libobjk_diags.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libobjk_diags.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		ED97AE442597E7DE00344432 /* diags.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = diags.cpp; path = ../../../diags.cpp; sourceTree = "<group>"; };
+		EDD6124426CFAAD5001C362D /* diags.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = diags.cpp; path = ../../../diags.cpp; sourceTree = "<group>"; };
+		EDD6124526CFAAD5001C362D /* diags.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = diags.h; path = ../../../diags.h; sourceTree = "<group>"; };
+		EDD6124826CFAAF8001C362D /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../../../../../compiler/tree.cpp; sourceTree = "<group>"; };
+		EDD6124926CFAAF8001C362D /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../../../../../compiler/parser.h; sourceTree = "<group>"; };
+		EDD6124A26CFAAF8001C362D /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../../../../../compiler/scanner.h; sourceTree = "<group>"; };
+		EDD6124B26CFAAF8001C362D /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../../../../compiler/types.cpp; sourceTree = "<group>"; };
+		EDD6124C26CFAAF8001C362D /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../../../../../compiler/tree.h; sourceTree = "<group>"; };
+		EDD6124D26CFAAF8001C362D /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = types.h; path = ../../../../../compiler/types.h; sourceTree = "<group>"; };
+		EDD6124E26CFAAF8001C362D /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../../../../../compiler/parser.cpp; sourceTree = "<group>"; };
+		EDD6124F26CFAAF8001C362D /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../../../../../compiler/scanner.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,7 +65,16 @@
 		ED97AE352597E75B00344432 /* objk_diags */ = {
 			isa = PBXGroup;
 			children = (
-				ED97AE442597E7DE00344432 /* diags.cpp */,
+				EDD6124E26CFAAF8001C362D /* parser.cpp */,
+				EDD6124926CFAAF8001C362D /* parser.h */,
+				EDD6124F26CFAAF8001C362D /* scanner.cpp */,
+				EDD6124A26CFAAF8001C362D /* scanner.h */,
+				EDD6124826CFAAF8001C362D /* tree.cpp */,
+				EDD6124C26CFAAF8001C362D /* tree.h */,
+				EDD6124B26CFAAF8001C362D /* types.cpp */,
+				EDD6124D26CFAAF8001C362D /* types.h */,
+				EDD6124426CFAAD5001C362D /* diags.cpp */,
+				EDD6124526CFAAD5001C362D /* diags.h */,
 			);
 			path = objk_diags;
 			sourceTree = "<group>";
@@ -59,6 +86,11 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EDD6125426CFAAF8001C362D /* tree.h in Headers */,
+				EDD6124726CFAAD5001C362D /* diags.h in Headers */,
+				EDD6125226CFAAF8001C362D /* scanner.h in Headers */,
+				EDD6125526CFAAF8001C362D /* types.h in Headers */,
+				EDD6125126CFAAF8001C362D /* parser.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,7 +150,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED97AE452597E7DE00344432 /* diags.cpp in Sources */,
+				EDD6125626CFAAF8001C362D /* parser.cpp in Sources */,
+				EDD6124626CFAAD5001C362D /* diags.cpp in Sources */,
+				EDD6125026CFAAF8001C362D /* tree.cpp in Sources */,
+				EDD6125326CFAAF8001C362D /* types.cpp in Sources */,
+				EDD6125726CFAAF8001C362D /* scanner.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -184,6 +220,8 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				"USER_HEADER_SEARCH_PATHS[arch=*]" = "";
 			};
 			name = Debug;
 		};
@@ -239,6 +277,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = ../../openssl/macos/include;
 			};
 			name = Release;
 		};
