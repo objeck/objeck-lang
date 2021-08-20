@@ -580,7 +580,9 @@ class ContextAnalyzer {
   // diagnostics operations
   //
 #ifdef _DIAG_LIB
-  bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
+  bool GetCompletion(Method* method, const wstring var_str, const wstring mthd_str, vector<wstring>& found_completion);
+
+  bool GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
   void FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
   void FindSignatureClass(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
