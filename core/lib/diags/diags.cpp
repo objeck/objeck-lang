@@ -323,12 +323,9 @@ extern "C" {
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const int trigger = (int)APITools_GetIntValue(context, 4);
-
-    const wstring var_str = APITools_GetStringValue(context, 5);
-    const wstring mthd_str = APITools_GetStringValue(context, 6);
-
-    const wstring sys_path = APITools_GetStringValue(context, 7);
+    const wstring var_str = APITools_GetStringValue(context, 4);
+    const wstring mthd_str = APITools_GetStringValue(context, 5);
+    const wstring sys_path = APITools_GetStringValue(context, 6);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
