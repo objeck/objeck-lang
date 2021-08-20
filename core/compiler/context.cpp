@@ -7447,7 +7447,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
 {
   Class* context_klass = method->GetClass();
 
-  if(var_str.empty()) {
+  if(var_str.empty() && !mthd_str.empty()) {
     FindSignatureClass(context_klass, nullptr, mthd_str, found_methods, found_lib_methods);
     return !found_methods.empty();
   }
