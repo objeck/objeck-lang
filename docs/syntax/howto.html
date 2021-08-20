@@ -15,7 +15,8 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
-  <w:Zoom>120</w:Zoom>
+  <w:Zoom>130</w:Zoom>
+  <w:DontDisplayPageBoundaries/>
   <w:SpellingState>Clean</w:SpellingState>
   <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
@@ -639,14 +640,14 @@ xmlns="http://www.w3.org/TR/REC-html40">
 	mso-font-charset:0;
 	mso-generic-font-family:swiss;
 	mso-font-pitch:variable;
-	mso-font-signature:-536858881 -1073711013 9 0 511 0;}
+	mso-font-signature:3 0 0 0 1 0;}
 @font-face
 	{font-family:"Cambria Math";
 	panose-1:2 4 5 3 5 4 6 3 2 4;
 	mso-font-charset:0;
 	mso-generic-font-family:roman;
 	mso-font-pitch:variable;
-	mso-font-signature:3 0 0 0 1 0;}
+	mso-font-signature:-536869121 1107305727 33554432 0 415 0;}
 @font-face
 	{font-family:Calibri;
 	panose-1:2 15 5 2 2 2 4 3 2 4;
@@ -802,8 +803,8 @@ word-wrap:break-word;text-justify-trim:punctuation'>
 <p class=MsoNormal><o:p>&nbsp;</o:p></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>The
-following outlines how to enable code syntax highlighting for various editors. Preferred
-editor is Sublime, which is cross platform, and provides both syntax
+following outlines how to enable code syntax highlighting for various editors.
+Preferred editor is Sublime, which is cross platform, and provides both syntax
 highlighting and build support.</span></p>
 
 <p class=MsoNormal><o:p>&nbsp;</o:p></p>
@@ -813,16 +814,31 @@ font-family:"Helvetica",sans-serif;color:#2E74B5'><a
 href="https://www.sublimetext.com/"><span style='text-decoration:none;
 text-underline:none'>Visual</span></a> Studio Code</span></b><span
 style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>
-(Windows/Linux/macOS)</span><o:p></o:p></p>
+(Windows/Linux/macOS)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
 for syntax highlighting and compiling code.</span></p>
 
-<p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'>Refer to the “<span
-class=SpellE>vscode</span>/<span class=SpellE>objeck</span>/README.md” file for
-installation. Refer to the “<span class=SpellE>vscode</span>/<span
-class=SpellE>tasks.json</span>” for build support.</p>
+<p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Windows</span></u><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: </span>Copy all the
+VS Code files to the directory “<span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>%USERPROFILE%</span>\.<span
+class=SpellE>vscode</span>\extensions\<span class=SpellE>objeck</span>”. <span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart the
+application</span><o:p></o:p></p>
+
+<p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p><span
+ style='text-decoration:none'>&nbsp;</span></o:p></span></u></p>
+
+<p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Linux
+and macOS</span></u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>:
+</span>Copy all the VS Code files to the directory <span style='font-size:11.0pt;
+font-family:"Helvetica",sans-serif'>“~<span class=GramE>/<span
+style='font-size:12.0pt;font-family:"Calibri",sans-serif'>.<span class=SpellE>vscode</span></span></span></span>/extensions/<span
+class=SpellE>objeck</span>”. <span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
+the application</span></p>
+
+<p class=MsoNormal><o:p>&nbsp;</o:p></p>
 
 <p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
 font-family:"Helvetica",sans-serif;color:#2E74B5'><a
@@ -841,7 +857,7 @@ style='mso-bookmark:__DdeLink__123_172101755'>objeck.sublime</span></span></span
 style='mso-bookmark:__DdeLink__123_172101755'>-syntax, <span class=SpellE>objeck.tmPreferences</span>
 and <span class=SpellE>objeck.sublime</span>-build</span> files to
 “%USERPROFILE%\<span class=SpellE>AppData</span>\Roaming\Sublime Text
-3\Packages” directory</span></p>
+3\Packages\Objeck” directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application</span></p>
@@ -852,7 +868,7 @@ the application</span></p>
 style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the <span
 class=SpellE><span class=GramE>objeck.sublime</span></span>-syntax, <span
 class=SpellE>objeck.tmPreferences</span> and <span class=SpellE>objeck.sublime</span>-build
-files to the “~/.config/sublime-text-3/Packages” directory</span></p>
+files to the “~/.config/sublime-text-3/Packages/Objeck” directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application</span></p>
@@ -863,7 +879,8 @@ the application</span></p>
 style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the <span
 class=SpellE><span class=GramE>objeck.sublime</span></span>-syntax, <span
 class=SpellE>objeck.tmPreferences</span> and <span class=SpellE>objeck.sublime</span>-build
-files to the “~/Library/Application Support/Sublime Text 3/Packages” directory</span></p>
+files to the “~/Library/Application Support/Sublime Text 3/Packages/Objeck”
+directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application.</span></p>
@@ -898,8 +915,7 @@ background:silver;mso-highlight:silver;mso-shading:yellow'>&nbsp;&nbsp;&nbsp;&nb
 &quot;<span class=SpellE>cmd</span>&quot;: [<span style='background:silver;
 mso-highlight:silver;mso-shading:yellow'>&quot;&lt;<span class=SpellE>install_path</span>&gt;/bin/<span
 class=SpellE>obc</span>&quot;</span>, &quot;-<span class=SpellE>src</span>&quot;,
-&quot;$file&quot;, &quot;-lib&quot;,
-&quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
+&quot;$file&quot;, &quot;-lib&quot;, &quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
 &quot;-<span class=SpellE>dest</span>&quot;, &quot;$<span class=SpellE>file_base_name.obe</span>&quot;],</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;

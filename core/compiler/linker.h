@@ -272,7 +272,7 @@ class LibraryMethod {
   }
 
   const wstring &GetUserName() {
-    if(user_name.size() == 0) {
+    if(user_name.empty()) {
       EncodeUserName();
     }
 

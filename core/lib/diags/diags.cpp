@@ -323,7 +323,7 @@ extern "C" {
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring trigger = APITools_GetStringValue(context, 4);
+    const int trigger = (int)APITools_GetIntValue(context, 4);
 
     const wstring var_str = APITools_GetStringValue(context, 5);
     const wstring mthd_str = APITools_GetStringValue(context, 6);
@@ -347,8 +347,7 @@ extern "C" {
           sig_root_obj[ResultPosition::POS_CODE] = found_methods.empty();
 
           if(!found_methods.empty()) {
-            const vector<ParsedBundle*> signatures = program->GetBundles();
-            size_t* signature_array = APITools_MakeIntArray(context, (int)signatures.size());
+            size_t* signature_array = APITools_MakeIntArray(context, (int)found_methods.size());
             size_t* signature_array_array_ptr = signature_array + 3;
 
             for(size_t i = 0; i < found_methods.size(); ++i) {
@@ -357,14 +356,27 @@ extern "C" {
               size_t* mthd_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
               mthd_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_method->GetUserName());
 
+              // TODO: params
+              vector<frontend::Declaration*> declarations = found_method->GetDeclarations()->GetDeclarations();
+              size_t* mthd_parm_array = APITools_MakeIntArray(context, (int)declarations.size());
+              size_t* mthd_parm_array_ptr = mthd_parm_array + 3;
+
+              for(size_t j = 0; j < declarations.size(); ++j) {
+                wstring type_name; GetTypeName(declarations[j]->GetEntry()->GetType(), type_name);
+                size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
+
+                mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
+              }
+              mthd_obj[ResultPosition::POS_CHILDREN] = (size_t)mthd_parm_array;
+
               signature_array_array_ptr[i] = (size_t)mthd_obj;
             }
 
             sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
           }
           else {
-            const vector<ParsedBundle*> signatures = program->GetBundles();
-            size_t* signature_array = APITools_MakeIntArray(context, (int)signatures.size());
+            size_t* signature_array = APITools_MakeIntArray(context, (int)found_lib_methods.size());
             size_t* signature_array_array_ptr = signature_array + 3;
 
             for(size_t i = 0; i < found_lib_methods.size(); ++i) {
@@ -373,12 +385,25 @@ extern "C" {
               size_t* mthd_lib_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
               mthd_lib_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_lib_method->GetUserName());
 
+              // TODO: params
+              vector<frontend::Type*> declarations = found_lib_method->GetDeclarationTypes();
+              size_t* mthd_parm_array = APITools_MakeIntArray(context, (int)declarations.size());
+              size_t* mthd_parm_array_ptr = mthd_parm_array + 3;
+
+              for(size_t j = 0; j < declarations.size(); ++j) {                
+                wstring type_name; GetTypeName(declarations[j], type_name);
+                size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
+
+                mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
+              }
+              mthd_lib_obj[ResultPosition::POS_CHILDREN] = (size_t)mthd_parm_array;
+
               signature_array_array_ptr[i] = (size_t)mthd_lib_obj;
             }
 
             sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
           }
-
 
           // set result
           APITools_SetObjectValue(context, 0, sig_root_obj);
@@ -386,6 +411,50 @@ extern "C" {
       }
     }
 
+  }
+
+  void GetTypeName(frontend::Type* type, wstring& output)
+  {
+    switch(type->GetType()) {
+    case EntryType::NIL_TYPE:
+      break;
+
+    case EntryType::BOOLEAN_TYPE:
+      output = BOOL_CLASS_ID;
+      break;
+
+    case EntryType::BYTE_TYPE:
+      output = BYTE_CLASS_ID;
+      break;
+
+    case EntryType::CHAR_TYPE:
+      output = CHAR_CLASS_ID;
+      break;
+
+    case EntryType::INT_TYPE:
+      output = INT_CLASS_ID;
+      break;
+
+    case EntryType::FLOAT_TYPE:
+      output = FLOAT_CLASS_ID;
+      break;
+
+    case EntryType::CLASS_TYPE:
+      output = type->GetName();
+      break;
+
+    case EntryType::FUNC_TYPE:
+      break;
+
+    case EntryType::ALIAS_TYPE:
+      break;
+
+    case EntryType::VAR_TYPE:
+      break;
+
+    default:
+      output = L"Unknown";
+    }
   }
 
   //
