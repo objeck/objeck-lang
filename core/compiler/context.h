@@ -573,19 +573,26 @@ class ContextAnalyzer {
     delete linker;
     linker = nullptr;
   }
+  
+  bool Analyze();
 
   //
   // diagnostics operations
   //
 #ifdef _DIAG_LIB
-  bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*> & found_methods, vector<LibraryMethod*> & found_lib_methods);
+  bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
   void FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
+  void FindSignatureClass(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
+
   vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos);
-  bool GetDeclaration(Method* method, const int line_num, const int line_pos, wstring &found_name, int &found_line, int &found_start_pos, int& found_end_pos);
+
+  bool GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
+
   bool LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
 #endif
-
-  bool Analyze();
+  //
+  // end: diagnostics operations
+  //
 };
 
 #endif
