@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Url</h2><p>URL parser, encoder and decoder</p><strong>Operations</strong><ul><li><a href='#url-new'>New</a></li><li><a href='#url-decode'>Decode</a></li><li><a href='#url-encode'>Encode</a></li><li><a href='#url-getfragment'>GetFragment</a></li><li><a href='#url-gethost'>GetHost</a></li><li><a href='#url-getpath'>GetPath</a></li><li><a href='#url-getport'>GetPort</a></li><li><a href='#url-getquery'>GetQuery</a></li><li><a href='#url-getscheme'>GetScheme</a></li><li><a href='#url-geturl'>GetUrl</a></li><li><a href='#url-parsed'>Parsed</a></li><li><a href='#url-tostring'>ToString</a></li></ul><hr/><h3>New</h3><a id='url-new'></a><p><strong>Parsed URL into components</strong></p><code>New(url:String)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>url</td><td><a href='system-string.html' target='main'>String</a></td><td>raw URL</td></tr></table><h3>Decode</h3><a id='url-decode'></a><p><strong>General decoding for HTML or XML strings</strong></p><code>function : public : native : Decode(str:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>str</td><td><a href='system-string.html' target='main'>String</a></td><td>encoded string</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>decoded string</td></tr></table><br/><h3>Encode</h3><a id='url-encode'></a><p><strong>General encoding for HTML or XML strings</strong></p><code>function : public : native : Encode(str:String) ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>str</td><td><a href='system-string.html' target='main'>String</a></td><td>string to encode</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>encoded string</td></tr></table><br/><h3>GetFragment</h3><a id='url-getfragment'></a><p><strong>Gets fragment</strong></p><code>method : public : GetFragment() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>fragment, Nil if not present</td></tr></table><br/><h3>GetHost</h3><a id='url-gethost'></a><p><strong>Gets host</strong></p><code>method : public : GetHost() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>host, Nil if not present</td></tr></table><br/><h3>GetPath</h3><a id='url-getpath'></a><p><strong>Gets path</strong></p><code>method : public : GetPath() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>path, Nil if not present</td></tr></table><br/><h3>GetPort</h3><a id='url-getport'></a><p><strong>Gets port</strong></p><code>method : public : GetPort() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>por, -1 if not present</td></tr></table><br/><h3>GetQuery</h3><a id='url-getquery'></a><p><strong>Gets scheme</strong></p><code>method : public : GetQuery() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>scheme, Nil if not present</td></tr></table><br/><h3>GetScheme</h3><a id='url-getscheme'></a><p><strong>Gets scheme</strong></p><code>method : public : GetScheme() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>scheme, Nil if not present</td></tr></table><br/><h3>GetUrl</h3><a id='url-geturl'></a><p><strong>Gets original URL</strong></p><code>method : public : GetUrl() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>original URL</td></tr></table><br/><h3>Parsed</h3><a id='url-parsed'></a><p><strong>Determines if given URL has been parsed correctly</strong></p><code>method : public : Parsed() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if parsed, false otherwise</td></tr></table><br/><h3>ToString</h3><a id='url-tostring'></a><p><strong>String representation of URL</strong></p><code>method : public : ToString() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>string representation of URL</td></tr></table><br/></body></html>

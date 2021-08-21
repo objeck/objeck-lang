@@ -1,0 +1,33 @@
+#~
+# compile: obc -src functions_5.obs
+# run: obr functions_5.obe
+~#
+
+class FofG {
+	@f : static : (Int) ~ Int;
+	@g : static : (Int) ~ Int;
+	
+	function : Main(args : String[]) ~ Nil {
+		compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
+		compose(13)->PrintLine();
+	}
+	
+	function : F(a : Int) ~ Int {
+		return a + 14;
+	}
+
+	function : G(a : Int) ~ Int {
+		return a + 15;
+	}
+	
+	function : native : Compose(x : Int) ~ Int {
+		return @f(@g(x));
+	}
+	
+	function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+		@f := f;
+		@g := g;
+		return Compose(Int) ~ Int;
+	}
+}
+

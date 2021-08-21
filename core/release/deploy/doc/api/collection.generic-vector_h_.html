@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Vector&lt;H&gt;</h2><p>Growable array of generics</p><strong>Operations</strong><ul><li><a href='#vector-new'>New</a></li><li><a href='#vector-addback'>AddBack</a></li><li><a href='#vector-compress'>Compress</a></li><li><a href='#vector-each'>Each</a></li><li><a href='#vector-empty'>Empty</a></li><li><a href='#vector-get'>Get</a></li><li><a href='#vector-isempty'>IsEmpty</a></li><li><a href='#vector-limit'>Limit</a></li><li><a href='#vector-map'>Map</a></li><li><a href='#vector-remove'>Remove</a></li><li><a href='#vector-removeback'>RemoveBack</a></li><li><a href='#vector-set'>Set</a></li><li><a href='#vector-size'>Size</a></li><li><a href='#vector-swap'>Swap</a></li><li><a href='#vector-toarray'>ToArray</a></li></ul><hr/><h3>New</h3><a id='vector-new'></a><p><strong>Default constructor</strong></p><code>New()</code><p><strong>Copy constructor</strong></p><code>New(values:H[])</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>values</td><td>H</td><td>values to copy</td></tr></table><p><strong>Copy constructor</strong></p><code>New(values:Vector&lt;H&gt;)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>values</td><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;H&gt;</td><td>values to copy</td></tr></table><h3>AddBack</h3><a id='vector-addback'></a><p><strong>Adds a vector of values to the end of the vector</strong></p><code>method : public : AddBack(values:Vector&lt;H&gt;) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>values</td><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;H&gt;</td><td>values to append</td></tr></table><p><strong>Adds a value to the end</strong></p><code>method : public : AddBack(value:H) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td>H</td><td>value to append</td></tr></table><h3>Compress</h3><a id='vector-compress'></a><p><strong>Compresses the Vector freeing unused memory</strong></p><code>method : public : Compress() ~ Nil</code><h3>Each</h3><a id='vector-each'></a><p><strong>Function called for each element</strong></p><code>method : public : Each(f:(H)~Nil) ~ Vector&lt;H&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(H)~Nil</td><td>function called</td></tr></table><h3>Empty</h3><a id='vector-empty'></a><p><strong>Clears the vector</strong></p><code>method : public : Empty() ~ Nil</code><h3>Get</h3><a id='vector-get'></a><p><strong>Gets an indexed value</strong></p><code>method : public : Get(index:Int) ~ H</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>index</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td>H</td><td>value</td></tr></table><br/><h3>IsEmpty</h3><a id='vector-isempty'></a><p><strong>Checks to see if the vector is empty</strong></p><code>method : public : IsEmpty() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if empty, false otherwise</td></tr></table><br/><h3>Limit</h3><a id='vector-limit'></a><p><strong>Returns a limited list</strong></p><code>method : public : Limit(l:Int) ~ Vector&lt;H&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>l</td><td><a href='system-int.html' target='main'>Int</a></td><td>limit</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;H&gt;</td><td>limited list</td></tr></table><br/><h3>Map</h3><a id='vector-map'></a><p><strong>Maps the given function to each value in the vector</strong></p><code>method : public : Map(f:(H)~H) ~ Vector&lt;H&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>f</td><td>(H)~H</td><td>function to apply</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;H&gt;</td><td>newly calculated vector</td></tr></table><br/><h3>Remove</h3><a id='vector-remove'></a><p><strong>Removes an indexed value</strong></p><code>method : public : Remove(i:Int) ~ H</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>i</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td>H</td><td>value</td></tr></table><br/><h3>RemoveBack</h3><a id='vector-removeback'></a><p><strong>Removes the last value</strong></p><code>method : public : RemoveBack() ~ H</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td>H</td><td>value</td></tr></table><br/><h3>Set</h3><a id='vector-set'></a><p><strong>Sets an indexed value</strong></p><code>method : public : Set(value:H, index:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>value</td><td>H</td><td>value</td></tr><tr><td>index</td><td><a href='system-int.html' target='main'>Int</a></td><td>index</td></tr></table><h3>Size</h3><a id='vector-size'></a><p><strong>Size of vector</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>size of vector</td></tr></table><br/><h3>Swap</h3><a id='vector-swap'></a><p><strong>Swap two values in the vector</strong></p><code>method : public : Swap(a:Int, b:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>a</td><td><a href='system-int.html' target='main'>Int</a></td><td>first value</td></tr><tr><td>b</td><td><a href='system-int.html' target='main'>Int</a></td><td>second value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if values were swapped</td></tr></table><br/><h3>ToArray</h3><a id='vector-toarray'></a><p><strong>Converts the vector into an object array</strong></p><code>method : public : ToArray() ~ H[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td>H</td><td>object array</td></tr></table><br/></body></html>

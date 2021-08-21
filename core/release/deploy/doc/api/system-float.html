@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Float</h2><p>Float class represents a double-precision floating-point value</p><strong>Operations</strong><ul><li><a href='#float-abs'>Abs</a></li><li><a href='#float-arccos'>ArcCos</a></li><li><a href='#float-arcsin'>ArcSin</a></li><li><a href='#float-arctan'>ArcTan</a></li><li><a href='#float-arctan2'>ArcTan2</a></li><li><a href='#float-ceiling'>Ceiling</a></li><li><a href='#float-compare'>Compare</a></li><li><a href='#float-cos'>Cos</a></li><li><a href='#float-e'>E</a></li><li><a href='#float-error'>Error</a></li><li><a href='#float-errorline'>ErrorLine</a></li><li><a href='#float-floor'>Floor</a></li><li><a href='#float-isneg'>IsNeg</a></li><li><a href='#float-log'>Log</a></li><li><a href='#float-max'>Max</a></li><li><a href='#float-min'>Min</a></li><li><a href='#float-notneg'>NotNeg</a></li><li><a href='#float-pi'>Pi</a></li><li><a href='#float-power'>Power</a></li><li><a href='#float-print'>Print</a></li><li><a href='#float-printline'>PrintLine</a></li><li><a href='#float-random'>Random</a></li><li><a href='#float-sin'>Sin</a></li><li><a href='#float-squareroot'>SquareRoot</a></li><li><a href='#float-tan'>Tan</a></li><li><a href='#float-tobyte'>ToByte</a></li><li><a href='#float-tochar'>ToChar</a></li><li><a href='#float-todegrees'>ToDegrees</a></li><li><a href='#float-toint'>ToInt</a></li><li><a href='#float-toradians'>ToRadians</a></li><li><a href='#float-tostring'>ToString</a></li></ul><hr/><h3>Abs</h3><a id='float-abs'></a><p><strong>Returns the absolute value</strong></p><code>function : public : native : Abs() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>absolute value</td></tr></table><br/><h3>ArcCos</h3><a id='float-arccos'></a><p><strong>Calculates the cosine value</strong></p><code>function : public : ArcCos() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>cosine value</td></tr></table><br/><h3>ArcSin</h3><a id='float-arcsin'></a><p><strong>Calculates the arc-sine value</strong></p><code>function : public : ArcSin() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>arc-sine value</td></tr></table><br/><h3>ArcTan</h3><a id='float-arctan'></a><p><strong>Calculates the arc-tangent value</strong></p><code>function : public : ArcTan() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>arc-tangent value</td></tr></table><br/><h3>ArcTan2</h3><a id='float-arctan2'></a><p><strong>Calculates arc tangent of y/x</strong></p><code>function : public : ArcTan2(y:Float, x:Float) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr><tr><td>x</td><td><a href='system-float.html' target='main'>Float</a></td><td>value</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>arc-tangent value</td></tr></table><br/><h3>Ceiling</h3><a id='float-ceiling'></a><p><strong>Calculates the ceiling value</strong></p><code>function : public : Ceiling() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>ceiling value</td></tr></table><br/><h3>Compare</h3><a id='float-compare'></a><p><strong>Compares two value</strong></p><code>function : public : native : Compare(l:Float, r:Float) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>l</td><td><a href='system-float.html' target='main'>Float</a></td><td>left compare object</td></tr><tr><td>r</td><td><a href='system-float.html' target='main'>Float</a></td><td>right compare object</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>0 if equal, -1 if types differ, 1 if equal</td></tr></table><br/><h3>Cos</h3><a id='float-cos'></a><p><strong>Calculates the cosine value</strong></p><code>function : public : Cos() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>cosine value</td></tr></table><br/><h3>E</h3><a id='float-e'></a><p><strong>Value of E</strong></p><code>function : public : native : E() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value of E</td></tr></table><br/><h3>Error</h3><a id='float-error'></a><p><strong>Prints error value</strong></p><code>function : public : Error() ~ Nil</code><h3>ErrorLine</h3><a id='float-errorline'></a><p><strong>Prints error value with newline</strong></p><code>function : public : ErrorLine() ~ Nil</code><h3>Floor</h3><a id='float-floor'></a><p><strong>Calculates the floor value</strong></p><code>function : public : Floor() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>floor value</td></tr></table><br/><h3>IsNeg</h3><a id='float-isneg'></a><p><strong>Checks is a number is negative</strong></p><code>function : public : native : IsNeg() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if negative, false otherwise</td></tr></table><br/><h3>Log</h3><a id='float-log'></a><p><strong>Calculates the log value</strong></p><code>function : public : Log() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>log value</td></tr></table><br/><h3>Max</h3><a id='float-max'></a><p><strong>Returns the largest float value</strong></p><code>function : public : native : Max(l:Float, r:Float) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>l</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to compare</td></tr><tr><td>r</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to compare</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>largest float value</td></tr></table><br/><h3>Min</h3><a id='float-min'></a><p><strong>Returns the smallest float value</strong></p><code>function : public : native : Min(r:Float) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>r</td><td><a href='system-float.html' target='main'>Float</a></td><td>value to compare</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>smallest float value</td></tr></table><br/><h3>NotNeg</h3><a id='float-notneg'></a><p><strong>Checks is a number is not negative</strong></p><code>function : public : native : NotNeg() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if not negative, false otherwise</td></tr></table><br/><h3>Pi</h3><a id='float-pi'></a><p><strong>Value of Pi</strong></p><code>function : public : native : Pi() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>value of Pi</td></tr></table><br/><h3>Power</h3><a id='float-power'></a><p><strong>Calculates the power value</strong></p><code>function : public : Power(b:Float, r:Float) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>b</td><td><a href='system-float.html' target='main'>Float</a></td><td>power base</td></tr><tr><td>r</td><td><a href='system-float.html' target='main'>Float</a></td><td>power to raise</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>pseudo power value</td></tr></table><br/><h3>Print</h3><a id='float-print'></a><p><strong>Prints value</strong></p><code>function : public : Print() ~ Nil</code><h3>PrintLine</h3><a id='float-printline'></a><p><strong>Prints value with newline</strong></p><code>function : public : PrintLine() ~ Nil</code><h3>Random</h3><a id='float-random'></a><p><strong>Returns a pseudo random value between 0.0 and 1.0</strong></p><code>function : public : Random() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>pseudo random value</td></tr></table><br/><h3>Sin</h3><a id='float-sin'></a><p><strong>Calculates the sine value</strong></p><code>function : public : Sin() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>sine value</td></tr></table><br/><h3>SquareRoot</h3><a id='float-squareroot'></a><p><strong>Calculates the natural log value</strong></p><code>function : public : SquareRoot() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>natural log value</td></tr></table><br/><h3>Tan</h3><a id='float-tan'></a><p><strong>Calculates the tangent value</strong></p><code>function : public : Tan() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>tangent value</td></tr></table><br/><h3>ToByte</h3><a id='float-tobyte'></a><p><strong>Returns the Character value</strong></p><code>function : public : ToByte() ~ Byte</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-byte.html' target='main'>Byte</a></td><td>value</td></tr></table><br/><h3>ToChar</h3><a id='float-tochar'></a><p><strong>Returns the Int value</strong></p><code>function : public : ToChar() ~ Char</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-char.html' target='main'>Char</a></td><td>value</td></tr></table><br/><h3>ToDegrees</h3><a id='float-todegrees'></a><p><strong>Converts the value into degrees</strong></p><code>function : public : native : ToDegrees() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>degree value</td></tr></table><br/><h3>ToInt</h3><a id='float-toint'></a><p><strong>Returns the Int value</strong></p><code>function : public : ToInt() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>value</td></tr></table><br/><h3>ToRadians</h3><a id='float-toradians'></a><p><strong>Converts the value into radians</strong></p><code>function : public : native : ToRadians() ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>radian value</td></tr></table><br/><h3>ToString</h3><a id='float-tostring'></a><p><strong>Returns a string representation of the value</strong></p><code>function : public : native : ToString() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>string representation of the value</td></tr></table><br/></body></html>

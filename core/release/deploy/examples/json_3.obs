@@ -1,0 +1,35 @@
+﻿#~
+# compile: obc -src json_3.obs -lib json,net
+# run: obr json_3.obe
+~#
+
+use Data.JSON;
+use Web.HTTP;
+use System.IO.Net;
+
+class JsonWeb {
+	function : Main(args : String[]) ~ Nil {		
+		url := "https://sourceforge.net/projects/openofficeorg.mirror/files/stats/json?start_date=2014-10-29&end_date=2014-11-04";
+		document := HttpsClient->GetAll(url);
+
+		parser := JsonParser->New(document);
+		if(parser->Parse()) {
+			root := parser->GetRoot();
+			countries := root->FindElements("countries");
+			if(countries <> Nil & countries->GetType() = JsonElement->JsonType->ARRAY) {
+				total := 0;
+				each(i : countries) {
+					country := countries->Get(i);
+					total += country->Get(1)->GetValue()->ToInt();
+				};
+				"total downloads is {$total}"->PrintLine();
+			}
+			else {
+				"-- Invalid Json! --"->ErrorLine();
+			};
+		}
+		else {
+			"-- Unable to parse Json! --"->ErrorLine();
+		};
+	}
+}

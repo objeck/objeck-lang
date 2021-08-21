@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Event</h2><p>SDL event</p><strong>Operations</strong><ul><li><a href='#event-new'>New</a></li><li><a href='#event-flush'>Flush</a></li><li><a href='#event-free'>Free</a></li><li><a href='#event-getjaxis'>GetJAxis</a></li><li><a href='#event-getjbutton'>GetJButton</a></li><li><a href='#event-getjhat'>GetJHat</a></li><li><a href='#event-getkey'>GetKey</a></li><li><a href='#event-getmbutton'>GetMButton</a></li><li><a href='#event-getmousemotion'>GetMouseMotion</a></li><li><a href='#event-getmousewheel'>GetMouseWheel</a></li><li><a href='#event-gettextinput'>GetTextInput</a></li><li><a href='#event-gettype'>GetType</a></li><li><a href='#event-has'>Has</a></li><li><a href='#event-isnull'>IsNull</a></li><li><a href='#event-peeps'>Peeps</a></li><li><a href='#event-poll'>Poll</a></li><li><a href='#event-pump'>Pump</a></li><li><a href='#event-push'>Push</a></li><li><a href='#event-registers'>Registers</a></li><li><a href='#event-state'>State</a></li><li><a href='#event-wait'>Wait</a></li><li><a href='#event-waittimeout'>WaitTimeout</a></li></ul><hr/><h3>New</h3><a id='event-new'></a><p><strong>Create a new event instance</strong></p><code>New()</code><h3>Flush</h3><a id='event-flush'></a><p><strong>Clear events from the event queue</strong></p><code>function : public : Flush(type:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>type</td><td><a href='system-int.html' target='main'>Int</a></td><td>the type of event to be cleared</td></tr></table><h3>Free</h3><a id='event-free'></a><p><strong>Frees the event</strong></p><code>method : public : Free() ~ Nil</code><h3>GetJAxis</h3><a id='event-getjaxis'></a><p><strong>Get joystick axis event</strong></p><code>method : public : GetJAxis() ~ JoyAxisEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-joyaxisevent.html' target='main'>JoyAxisEvent</a></td><td>joystick axis event</td></tr></table><br/><h3>GetJButton</h3><a id='event-getjbutton'></a><p><strong>Get joystick button event</strong></p><code>method : public : GetJButton() ~ JoyButtonEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-joybuttonevent.html' target='main'>JoyButtonEvent</a></td><td>joystick button event</td></tr></table><br/><h3>GetJHat</h3><a id='event-getjhat'></a><p><strong>Get joystick hat event</strong></p><code>method : public : GetJHat() ~ JoyHatEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-joyhatevent.html' target='main'>JoyHatEvent</a></td><td>joystick hat event</td></tr></table><br/><h3>GetKey</h3><a id='event-getkey'></a><p><strong>Get keyboard event</strong></p><code>method : public : GetKey() ~ KeyboardEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-keyboardevent.html' target='main'>KeyboardEvent</a></td><td>keyboard event</td></tr></table><br/><h3>GetMButton</h3><a id='event-getmbutton'></a><p><strong>Get mouse button event</strong></p><code>method : public : GetMButton() ~ MouseButtonEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-mousebuttonevent.html' target='main'>MouseButtonEvent</a></td><td>mouse button event</td></tr></table><br/><h3>GetMouseMotion</h3><a id='event-getmousemotion'></a><p><strong>Get mouse motion event</strong></p><code>method : public : GetMouseMotion() ~ MouseMotionEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-mousemotionevent.html' target='main'>MouseMotionEvent</a></td><td>mouse motion event</td></tr></table><br/><h3>GetMouseWheel</h3><a id='event-getmousewheel'></a><p><strong>Get mouse wheel event</strong></p><code>method : public : GetMouseWheel() ~ MouseWheelEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-mousewheelevent.html' target='main'>MouseWheelEvent</a></td><td>mouse wheel event</td></tr></table><br/><h3>GetTextInput</h3><a id='event-gettextinput'></a><p><strong>Get text input event</strong></p><code>method : public : GetTextInput() ~ TextInputEvent</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-textinputevent.html' target='main'>TextInputEvent</a></td><td>text input event</td></tr></table><br/><h3>GetType</h3><a id='event-gettype'></a><p><strong>Event type</strong></p><code>method : public : GetType() ~ EventType</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-eventtype.html' target='main'>EventType</a></td><td>type</td></tr></table><br/><h3>Has</h3><a id='event-has'></a><p><strong>Check for the existence of certain event types in the event queue</strong></p><code>function : public : Has(type:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>type</td><td><a href='system-int.html' target='main'>Int</a></td><td>the type of event to be queried</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if events matching type are present, false otherwise</td></tr></table><br/><h3>IsNull</h3><a id='event-isnull'></a><p><strong>Determines if the underlying SDL C-struct is NULL</strong></p><code>method : public : IsNull() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if NULL, false otherwise</td></tr></table><br/><h3>Peeps</h3><a id='event-peeps'></a><p><strong>Check the event queue for messages and optionally return them</strong></p><code>method : public : Peeps(numevents:Int, action:EventAction, minType:Int, maxType:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>numevents</td><td><a href='system-int.html' target='main'>Int</a></td><td>if action is SDL_ADDEVENT, the number of events to add back to the event queue; if action is SDL_PEEKEVENT or SDL_GETEVENT, the maximum number of events to retrieve</td></tr><tr><td>action</td><td><a href='game.sdl2-eventaction.html' target='main'>EventAction</a></td><td>action to take; see Remarks for details</td></tr><tr><td>minType</td><td><a href='system-int.html' target='main'>Int</a></td><td>minimum value of the event type to be considered; SDL_FIRSTEVENT is a safe choice</td></tr><tr><td>maxType</td><td><a href='system-int.html' target='main'>Int</a></td><td>maximum value of the event type to be considered; SDL_LASTEVENT is a safe choice</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of events actually stored or a negative error code on failure</td></tr></table><br/><h3>Poll</h3><a id='event-poll'></a><p><strong>Poll for currently pending events</strong></p><code>method : public : Poll() ~ Int</code><h3>Pump</h3><a id='event-pump'></a><p><strong>Pump the event loop, gathering events from the input devices</strong></p><code>function : public : Pump() ~ Nil</code><h3>Push</h3><a id='event-push'></a><p><strong>Add an event to the event queue</strong></p><code>method : public : Push() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>1 on success, 0 if the event was filtered, or -1 if the event queue was full or there was some other error.</td></tr></table><br/><h3>Registers</h3><a id='event-registers'></a><p><strong>Allocate a set of user-defined events, and return the beginning event number for that set of events</strong></p><code>function : public : Registers(numevents:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>numevents</td><td><a href='system-int.html' target='main'>Int</a></td><td>the number of events to be allocated</td></tr></table><h3>State</h3><a id='event-state'></a><p><strong>Allows you to set the state of processing certain events.</strong></p><code>function : public : State(type:Int, state:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>type</td><td><a href='system-int.html' target='main'>Int</a></td><td>the type of event; see SDL_EventType for details</td></tr><tr><td>state</td><td><a href='system-int.html' target='main'>Int</a></td><td>how to process the event; see Remarks for details</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>SDL_DISABLE or SDL_ENABLE, representing the processing state of the event before this function makes any changes to it</td></tr></table><br/><h3>Wait</h3><a id='event-wait'></a><p><strong>Waits indefinitely for the next available event.</strong></p><code>method : public : Wait() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>1, or 0 if there was an error while waiting for events</td></tr></table><br/><h3>WaitTimeout</h3><a id='event-waittimeout'></a><p><strong>Waits until the specified timeout (in milliseconds) for the next available event</strong></p><code>method : public : WaitTimeout(timeout:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>timeout</td><td><a href='system-int.html' target='main'>Int</a></td><td>The timeout (in milliseconds) to wait for next event</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>1, or 0 if there was an error while waiting for events</td></tr></table><br/></body></html>

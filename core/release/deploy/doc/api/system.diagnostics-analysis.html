@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Analysis</h2><p>Analysis results</p><strong>Operations</strong><ul><li><a href='#analysis-finddeclaration'>FindDeclaration</a></li><li><a href='#analysis-findreferences'>FindReferences</a></li><li><a href='#analysis-getdiagnostics'>GetDiagnostics</a></li><li><a href='#analysis-getsymbols'>GetSymbols</a></li><li><a href='#analysis-isparsed'>IsParsed</a></li><li><a href='#analysis-release'>Release</a></li></ul><hr/><h3>FindDeclaration</h3><a id='analysis-finddeclaration'></a><p><strong>Finds symbol deceleration</strong></p><code>method : public : FindDeclaration(line:Int, pos:Int, sys_path:String) ~ Result</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>line</td><td><a href='system-int.html' target='main'>Int</a></td><td>line of symbol</td></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>character position of symbol</td></tr><tr><td>sys_path</td><td><a href='system-string.html' target='main'>String</a></td><td>system library path</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system.diagnostics-result.html' target='main'>Result</a></td><td>symbol deceleration, Nil of none found</td></tr></table><br/><h3>FindReferences</h3><a id='analysis-findreferences'></a><p><strong>Get references specified symbol</strong></p><code>method : public : FindReferences(line:Int, pos:Int, sys_path:String) ~ Result[]</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>line</td><td><a href='system-int.html' target='main'>Int</a></td><td>line of symbol</td></tr><tr><td>pos</td><td><a href='system-int.html' target='main'>Int</a></td><td>character position of symbol</td></tr><tr><td>sys_path</td><td><a href='system-string.html' target='main'>String</a></td><td>system library path</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system.diagnostics-result.html' target='main'>Result[]</a></td><td>symbol references, Nil of none found</td></tr></table><br/><h3>GetDiagnostics</h3><a id='analysis-getdiagnostics'></a><p><strong>Get parse and analysis errors</strong></p><code>method : public : GetDiagnostics(sys_path:String) ~ Result[]</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>sys_path</td><td><a href='system-string.html' target='main'>String</a></td><td>system library path</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system.diagnostics-result.html' target='main'>Result[]</a></td><td>analysis errors, Nil of no errors</td></tr></table><br/><h3>GetSymbols</h3><a id='analysis-getsymbols'></a><p><strong>Get source code analysis symbols</strong></p><code>method : public : GetSymbols() ~ Result</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system.diagnostics-result.html' target='main'>Result</a></td><td>analysis symbols</td></tr></table><br/><h3>IsParsed</h3><a id='analysis-isparsed'></a><p><strong>Check to see if source was parsed</strong></p><code>method : public : IsParsed() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if parsed, false otherwise</td></tr></table><br/><h3>Release</h3><a id='analysis-release'></a><p><strong>Release native resources, required for clean up.</strong></p><code>method : public : Release() ~ Nil</code></body></html>
