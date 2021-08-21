@@ -431,23 +431,23 @@ extern "C" {
       break;
 
     case EntryType::BOOLEAN_TYPE:
-      output = BOOL_CLASS_ID;
+      output = L"Bool";
       break;
 
     case EntryType::BYTE_TYPE:
-      output = BYTE_CLASS_ID;
+      output = L"Byte";
       break;
 
     case EntryType::CHAR_TYPE:
-      output = CHAR_CLASS_ID;
+      output = L"Char";
       break;
 
     case EntryType::INT_TYPE:
-      output = INT_CLASS_ID;
+      output = L"Int";
       break;
 
     case EntryType::FLOAT_TYPE:
-      output = FLOAT_CLASS_ID;
+      output = L"Float";
       break;
 
     case EntryType::CLASS_TYPE:
