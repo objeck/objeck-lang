@@ -580,11 +580,12 @@ class ContextAnalyzer {
   // diagnostics operations
   //
 #ifdef _DIAG_LIB
-  bool GetCompletion(Method* method, const wstring var_str, const wstring mthd_str, vector<wstring>& found_completion);
+  bool GetCompletion(Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion);
+  void ContextAnalyzer::FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   bool GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
-  void FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
-  void FindSignatureClass(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
+  void FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion);
+  void FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos);
 

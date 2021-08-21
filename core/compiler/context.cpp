@@ -7438,12 +7438,11 @@ Method* MethodCallSelector::GetSelection()
   return matches[match_index]->GetMethod();
 }
 
-
 //
 // diagnostics operations
 //
 #ifdef _DIAG_LIB
-bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const wstring mthd_str, vector<wstring>& found_completion)
+bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion)
 {
   Class* context_klass = method->GetClass();
   SymbolTable* symbol_table = method->GetSymbolTable();
@@ -7457,24 +7456,51 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       const size_t short_var_pos = full_var_name.find_last_of(L':');
       const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
       if(short_var_name.rfind(mthd_str, 0) == 0) {
-        found_completion.push_back(short_var_name);
+        found_completion.push_back(pair<int, wstring>(6, short_var_name));
+      }
+    }
+    
+    // instance and class variables
+    symbol_table = context_klass->GetSymbolTable();
+    entries = symbol_table->GetEntries();
+    for(size_t i = 0; i < entries.size(); ++i) {
+      SymbolEntry* entry = entries[i];
+      const wstring full_var_name = entry->GetName();
+      const size_t short_var_pos = full_var_name.find_last_of(L':');
+      const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      if(short_var_name.rfind(mthd_str, 0) == 0) {
+        found_completion.push_back(pair<int, wstring>(6, short_var_name));
       }
     }
 
-    /*
+    // methods
     vector<Method*> methods = context_klass->GetMethods();
     const wstring search_str = L':' + mthd_str;
     for(size_t i = 0; i < methods.size(); ++i) {
       const wstring mthd_name = methods[i]->GetName();
-      
+      if(mthd_name.find(search_str, 0) != wstring::npos) {
+        found_completion.push_back(pair<int, wstring>(14, mthd_name));
+      }
     }
-    */
   }
-  else if(method && context_klass) {
+  else if(!var_str.empty() && !mthd_str.empty()) {
+    vector<Method*> found_methods;
+    vector<LibraryMethod*> found_lib_methods;
+
     // local variables
+    SymbolTable* symbol_table = method->GetSymbolTable();
+    vector<SymbolEntry*> entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-      
+      const wstring full_var_name = entry->GetName();
+      const size_t short_var_pos = full_var_name.find_last_of(L':');
+      if(short_var_pos != wstring::npos) {
+        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+        if(short_var_name == var_str) {
+          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, true);
+        }
+      }
     }
 
     // instance and class variables
@@ -7482,6 +7508,26 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
     entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
+      const wstring full_var_name = entry->GetName();
+      const size_t short_var_pos = full_var_name.find_last_of(L':');
+      if(short_var_pos != wstring::npos) {
+        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+        if(short_var_name == var_str) {
+          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, true);
+        }
+      }
+
+      if(!found_methods.empty()) {
+        for(size_t i = 0; i < found_methods.size(); ++i) {
+          found_completion.push_back(pair<int, wstring>(14, found_methods[i]->GetName()));
+        }
+      }
+      else if(!found_lib_methods.empty()) {
+        for(size_t i = 0; i < found_lib_methods.size(); ++i) {
+          found_completion.push_back(pair<int, wstring>(14, found_lib_methods[i]->GetName()));
+        }
+      }
     }
   }
 
@@ -7493,7 +7539,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
   Class* context_klass = method->GetClass();
 
   if(var_str.empty() && !mthd_str.empty()) {
-    FindSignatureClass(context_klass, nullptr, mthd_str, found_methods, found_lib_methods);
+    FindSignatureMethods(context_klass, nullptr, mthd_str, found_methods, found_lib_methods);
     return !found_methods.empty();
   }
   else if(method && context_klass) {
@@ -7508,7 +7554,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
           Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
-          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods);
+          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
         }
       }
@@ -7525,7 +7571,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
           Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
-          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods);
+          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
         }
       }
@@ -7535,7 +7581,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
   return false;
 }
 
-void ContextAnalyzer::FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*> &found_methods, vector<LibraryMethod*>& found_lib_methods)
+void ContextAnalyzer::FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*> &found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion)
 {
   Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
 
@@ -7581,10 +7627,38 @@ void ContextAnalyzer::FindSignatureClass(SymbolEntry* entry, const wstring mthd_
     break;
   }
 
-  FindSignatureClass(klass, lib_klass, mthd_str, found_methods, found_lib_methods);
+  if(is_completion) {
+    FindCompletionMethods(klass, lib_klass, mthd_str, found_methods, found_lib_methods);
+  }
+  else {
+    FindSignatureMethods(klass, lib_klass, mthd_str, found_methods, found_lib_methods);
+  }
 }
 
-void ContextAnalyzer::FindSignatureClass(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods)
+void ContextAnalyzer::FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods)
+{
+  if(klass) {
+    vector<Method*> methods = klass->GetMethods();
+    const wstring search_str = L':' + mthd_str;
+    for(size_t i = 0; i < methods.size(); ++i) {
+      const wstring mthd_name = methods[i]->GetName();
+      if(mthd_name.find(search_str, 0) != wstring::npos) {
+        found_methods.push_back(methods[i]);
+      }
+    }
+  }
+  else if(lib_klass) {
+    map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
+    const wstring search_str = L':' + mthd_str;
+    for(map<const wstring, LibraryMethod*>::iterator iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
+      if(iter->first.find(search_str, 0) != wstring::npos) {
+        found_lib_methods.push_back(iter->second);
+      }
+    }
+  }
+}
+
+void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods)
 {
   if(klass) {
     vector<Method*> methods = klass->GetMethods();

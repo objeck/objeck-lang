@@ -297,10 +297,28 @@ extern "C" {
 
       ContextAnalyzer analyzer(program, full_path, false, false);
       if(analyzer.Analyze()) {
-        vector<wstring> completions;
+        vector<pair<int, wstring>> completions;
 
         if(analyzer.GetCompletion(method, var_str, mthd_str, completions)) {
+          size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Completions");
 
+          size_t* completions_array = APITools_MakeIntArray(context, (int)completions.size());
+          size_t* completions_array_ptr = completions_array + 3;
+
+          for(size_t i = 0; i < completions.size(); ++i) {
+            pair<int, wstring> completion = completions[i];
+            size_t* completion_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            
+            completion_obj[ResultPosition::POS_CODE] = completion.first;
+            completion_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, completion.second);
+
+            completions_array_ptr[i] = (size_t)completion_obj;
+          }
+
+          // set result
+          sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)completions_array;
+          APITools_SetObjectValue(context, 0, sig_root_obj);
         }
       }
     }
