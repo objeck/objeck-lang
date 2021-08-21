@@ -7721,8 +7721,7 @@ void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass
 //
 // diagnostics operations
 //
-bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos,
-                                     wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
   vector<Expression*> matched_expressions;
 
