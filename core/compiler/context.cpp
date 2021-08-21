@@ -7479,13 +7479,12 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
     for(size_t i = 0; i < methods.size(); ++i) {
       const wstring mthd_name = methods[i]->GetName();
       if(mthd_name.find(search_str, 0) != wstring::npos) {
-        found_completion.push_back(pair<int, wstring>(14, mthd_name));
+        found_completion.push_back(pair<int, wstring>(2, mthd_name));
       }
     }
   }
   else if(!var_str.empty() && !mthd_str.empty()) {
-    vector<Method*> found_methods;
-    vector<LibraryMethod*> found_lib_methods;
+    vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
 
     // local variables
     SymbolTable* symbol_table = method->GetSymbolTable();
@@ -7518,14 +7517,36 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
         }
       }
 
+      // find unique signatures
+      set<wstring> unique_names;
       if(!found_methods.empty()) {
         for(size_t i = 0; i < found_methods.size(); ++i) {
-          found_completion.push_back(pair<int, wstring>(14, found_methods[i]->GetName()));
+          const wstring mthd_name = found_methods[i]->GetName();
+          const size_t mthd_name_start = mthd_name.find(L':');
+          const size_t mthd_name_end = mthd_name.find_last_of(L':');
+
+          if(mthd_name_start != wstring::npos && mthd_name_end != wstring::npos) {
+            wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
+            set<wstring>::iterator found = unique_names.find(short_mthd_name);
+            if(found != unique_names.end()) {
+              found_completion.push_back(pair<int, wstring>(2, short_mthd_name));
+            }
+          }
         }
       }
       else if(!found_lib_methods.empty()) {
         for(size_t i = 0; i < found_lib_methods.size(); ++i) {
-          found_completion.push_back(pair<int, wstring>(14, found_lib_methods[i]->GetName()));
+          const wstring mthd_name = found_lib_methods[i]->GetName();
+          const size_t mthd_name_start = mthd_name.find(L':');
+          const size_t mthd_name_end = mthd_name.find_last_of(L':');
+
+          if(mthd_name_start != wstring::npos && mthd_name_end != wstring::npos) {
+            wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
+            set<wstring>::iterator found = unique_names.find(short_mthd_name);
+            if(found != unique_names.end()) {
+              found_completion.push_back(pair<int, wstring>(2, short_mthd_name));
+            }
+          }
         }
       }
     }
