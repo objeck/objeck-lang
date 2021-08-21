@@ -82,6 +82,7 @@ bundle System.Diagnostics {
 
 		#~
 		Get source code analysis symbols
+		@param sys_path system library path
 		@return analysis symbols
 		~#
 		method : public : GetSymbols(sys_path : String) ~ Result {
