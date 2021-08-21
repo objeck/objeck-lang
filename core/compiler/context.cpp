@@ -7448,6 +7448,8 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
   SymbolTable* symbol_table = method->GetSymbolTable();
   vector<SymbolEntry*> entries = symbol_table->GetEntries();
 
+  set<wstring> unique_names;
+
   if(var_str.empty() && !mthd_str.empty()) {
     // local variables
     for(size_t i = 0; i < entries.size(); ++i) {
@@ -7456,7 +7458,11 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       const size_t short_var_pos = full_var_name.find_last_of(L':');
       const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
       if(short_var_name.rfind(mthd_str, 0) == 0) {
-        found_completion.push_back(pair<int, wstring>(6, short_var_name));
+        set<wstring>::iterator found = unique_names.find(short_var_name);
+        if(found == unique_names.end()) {
+          unique_names.insert(short_var_name);
+          found_completion.push_back(pair<int, wstring>(6, short_var_name));
+        }
       }
     }
     
@@ -7469,7 +7475,11 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       const size_t short_var_pos = full_var_name.find_last_of(L':');
       const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
       if(short_var_name.rfind(mthd_str, 0) == 0) {
-        found_completion.push_back(pair<int, wstring>(6, short_var_name));
+        set<wstring>::iterator found = unique_names.find(short_var_name);
+        if(found == unique_names.end()) {
+          unique_names.insert(short_var_name);
+          found_completion.push_back(pair<int, wstring>(6, short_var_name));
+        }
       }
     }
 
@@ -7479,7 +7489,11 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
     for(size_t i = 0; i < methods.size(); ++i) {
       const wstring mthd_name = methods[i]->GetName();
       if(mthd_name.find(search_str, 0) != wstring::npos) {
-        found_completion.push_back(pair<int, wstring>(2, mthd_name));
+        set<wstring>::iterator found = unique_names.find(mthd_name);
+        if(found == unique_names.end()) {
+          unique_names.insert(mthd_name);
+          found_completion.push_back(pair<int, wstring>(2, mthd_name));
+        }
       }
     }
   }
@@ -7518,7 +7532,7 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       }
 
       // find unique signatures
-      set<wstring> unique_names;
+      
       if(!found_methods.empty()) {
         for(size_t i = 0; i < found_methods.size(); ++i) {
           const wstring mthd_name = found_methods[i]->GetName();
@@ -7528,7 +7542,8 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
           if(mthd_name_start != wstring::npos && mthd_name_end != wstring::npos) {
             wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
             set<wstring>::iterator found = unique_names.find(short_mthd_name);
-            if(found != unique_names.end()) {
+            if(found == unique_names.end()) {
+              unique_names.insert(short_mthd_name);
               found_completion.push_back(pair<int, wstring>(2, short_mthd_name));
             }
           }
@@ -7543,7 +7558,8 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
           if(mthd_name_start != wstring::npos && mthd_name_end != wstring::npos) {
             wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
             set<wstring>::iterator found = unique_names.find(short_mthd_name);
-            if(found != unique_names.end()) {
+            if(found == unique_names.end()) {
+              unique_names.insert(short_mthd_name);
               found_completion.push_back(pair<int, wstring>(2, short_mthd_name));
             }
           }
