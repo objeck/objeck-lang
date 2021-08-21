@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	line-height: 1;
+	min-width: 960px; 
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	font-size: 80%;
+	width: auto;
+	overflow: auto;
+	display: block;
+}
+.doc-table th {
+	background-color: #BDBDBD;
+	font-weight: em;
+	padding: 10px 15px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #E6E6E6;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	display: block;
+	padding: 5px 10px;
+	font-size: 14px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	font-family: Monaco, Courier, monospace;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- LOOP START (=>b) -->
+	
+	<h2>@class_name</h2>
+	<p>@class_desc</p>
+
+	Operations
+		<ul>
+<!-- LOOP START (A) -->
+			<li><a href="@func_short_name">@func_short_name</a></li>
+<!-- LOOP END (=>c) -->
+		</ul>
+	<hr/>
+
+	<h3>Operations</h3>
+	<a id="aa"></a>
+	<p><strong>@func_short_name</strong></p>
+
+<!-- LOOP START (C) -->
+	<code>@func_signature</code>
+	<p>@func_desc</p>
+	
+	Parameters
+	<table class="doc-table">
+		<tr>
+			<th>Name</th>
+			<th>Type</th>
+			<th>Description</th>
+		</tr>
+
+<!-- LOOP START (C.1*) -->
+		<tr>
+			<td>@param_name</td>
+			<td>@param_type</td>
+			<td>@param_desc</td>
+		</tr>
+<!-- LOOP END (C.1) -->
+	</table>
+	
+<!-- LOOP END (C) -->
+	
+	</br>
+	Return
+	<table class="doc-table">
+		<tr>
+			<th>Type</th>
+			<th>Description</th>
+		</tr>
+
+		<tr>
+			<td>@return_type</td>
+			<td>@return_desc</td>
+		</tr>
+	</table>
+		
+	
+<!-- LOOP END (?) -->
+	
+</body>
+</html>

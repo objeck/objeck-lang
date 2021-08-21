@@ -1,0 +1,22 @@
+#~
+# compile: obc -src closure_19.obs -lib gen_collect -dest closure_19.obe
+# run: obr closure_19.obe
+~#
+
+use Collection.Generic;
+
+class Capture {
+	function : Main(args : String[]) ~ Nil {
+		 funcs := Vector->New()<FuncHolder<IntHolder>>;
+		 
+		 for(i := 0; i < 10; i += 1;) {
+		 	funcs->AddBack(FuncHolder->New(\() ~ IntHolder : () => i->Factorial() * funcs->Size())<IntHolder>);
+		 };
+
+		 each(i : funcs) {
+		 	value := funcs->Get(i)<FuncHolder>;
+			func := value->Get();
+		 	func()->Get()->PrintLine();
+		 };
+	}
+}

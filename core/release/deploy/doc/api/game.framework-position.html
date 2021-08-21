@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Position</h2><p>Shape position</p><strong>Operations</strong><ul><li><a href='#position-new'>New</a></li><li><a href='#position-addx'>AddX</a></li><li><a href='#position-addy'>AddY</a></li><li><a href='#position-contains'>Contains</a></li><li><a href='#position-distance'>Distance</a></li><li><a href='#position-getbottom'>GetBottom</a></li><li><a href='#position-getcenterx'>GetCenterX</a></li><li><a href='#position-getcentery'>GetCenterY</a></li><li><a href='#position-getleft'>GetLeft</a></li><li><a href='#position-getrect'>GetRect</a></li><li><a href='#position-getright'>GetRight</a></li><li><a href='#position-gettop'>GetTop</a></li><li><a href='#position-intersectsline'>IntersectsLine</a></li><li><a href='#position-overlaps'>Overlaps</a></li><li><a href='#position-set'>Set</a></li><li><a href='#position-setbottom'>SetBottom</a></li><li><a href='#position-setcenter'>SetCenter</a></li><li><a href='#position-setcenterx'>SetCenterX</a></li><li><a href='#position-setcentery'>SetCenterY</a></li><li><a href='#position-setleft'>SetLeft</a></li><li><a href='#position-setright'>SetRight</a></li><li><a href='#position-settop'>SetTop</a></li></ul><hr/><h3>New</h3><a id='position-new'></a><p><strong>Creates a new rectangle with given size</strong></p><code>New(rect:Rect)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>rect</td><td><a href='game.sdl2-rect.html' target='main'>Rect</a></td><td>position</td></tr></table><p><strong>Creates a new rectangle with given position and size</strong></p><code>New(x:Int, y:Int, w:Int, h:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr><tr><td>w</td><td><a href='system-int.html' target='main'>Int</a></td><td>width</td></tr><tr><td>h</td><td><a href='system-int.html' target='main'>Int</a></td><td>height</td></tr></table><p><strong>Creates a new rectangle with given size</strong></p><code>New(w:Int, h:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>w</td><td><a href='system-int.html' target='main'>Int</a></td><td>width</td></tr><tr><td>h</td><td><a href='system-int.html' target='main'>Int</a></td><td>height</td></tr></table><h3>AddX</h3><a id='position-addx'></a><p><strong>Increments the current x-position</strong></p><code>method : public : AddX(x:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>increment to the current x-position</td></tr></table><h3>AddY</h3><a id='position-addy'></a><p><strong>Increments the current y-position</strong></p><code>method : public : AddY(y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>increment to the current y-position</td></tr></table><h3>Contains</h3><a id='position-contains'></a><p><strong>Determines if position a point</strong></p><code>method : public : Contains(p:Point) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>p</td><td><a href='game.sdl2-point.html' target='main'>Point</a></td><td>point</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of intersection, false otherwise</td></tr></table><br/><p><strong>Determines if position a point</strong></p><code>method : public : Contains(x:Int, y:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of intersection, false otherwise</td></tr></table><br/><h3>Distance</h3><a id='position-distance'></a><p><strong>Calculates the distance between two points</strong></p><code>method : public : Distance(x:Int, y:Int) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>distance between the two points</td></tr></table><br/><p><strong>Calculates the distance between two points</strong></p><code>method : public : Distance(pos:Position) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='game.framework-position.html' target='main'>Position</a></td><td>position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>distance between the two points</td></tr></table><br/><h3>GetBottom</h3><a id='position-getbottom'></a><p><strong>Gets bottom position</strong></p><code>method : public : GetBottom() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>bottom position</td></tr></table><br/><h3>GetCenterX</h3><a id='position-getcenterx'></a><p><strong>Gets the center x-position</strong></p><code>method : public : GetCenterX() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>center x-position</td></tr></table><br/><h3>GetCenterY</h3><a id='position-getcentery'></a><p><strong>Gets the center y-position</strong></p><code>method : public : GetCenterY() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>center y-position</td></tr></table><br/><h3>GetLeft</h3><a id='position-getleft'></a><p><strong>Gets left position</strong></p><code>method : public : GetLeft() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>left position</td></tr></table><br/><h3>GetRect</h3><a id='position-getrect'></a><p><strong>Gets bounding size</strong></p><code>method : public : GetRect() ~ Rect</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='game.sdl2-rect.html' target='main'>Rect</a></td><td>size and rectangle</td></tr></table><br/><h3>GetRight</h3><a id='position-getright'></a><p><strong>Gets right position</strong></p><code>method : public : GetRight() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>right position</td></tr></table><br/><h3>GetTop</h3><a id='position-gettop'></a><p><strong>Gets top position</strong></p><code>method : public : GetTop() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>top position</td></tr></table><br/><h3>IntersectsLine</h3><a id='position-intersectsline'></a><p><strong>Determines if position intersect line</strong></p><code>method : public : IntersectsLine(x1:Int, y1:Int, x2:Int, y2:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x1</td><td><a href='system-int.html' target='main'>Int</a></td><td>'x' start position</td></tr><tr><td>y1</td><td><a href='system-int.html' target='main'>Int</a></td><td>'y' start position</td></tr><tr><td>x2</td><td><a href='system-int.html' target='main'>Int</a></td><td>'x' end position</td></tr><tr><td>y2</td><td><a href='system-int.html' target='main'>Int</a></td><td>'y' end position</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of intersection, false otherwise</td></tr></table><br/><h3>Overlaps</h3><a id='position-overlaps'></a><p><strong>Determines if position overlaps rectangle</strong></p><code>method : public : native : Overlaps(pos:Position) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pos</td><td><a href='game.framework-position.html' target='main'>Position</a></td><td>position to test</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of overlap, false otherwise</td></tr></table><br/><h3>Set</h3><a id='position-set'></a><p><strong>Set upper left position</strong></p><code>method : public : Set(x:Int, y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><h3>SetBottom</h3><a id='position-setbottom'></a><p><strong>Sets bottom position</strong></p><code>method : public : SetBottom(y2:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y2</td><td><a href='system-int.html' target='main'>Int</a></td><td>bottom position</td></tr></table><h3>SetCenter</h3><a id='position-setcenter'></a><p><strong>Set center position</strong></p><code>method : public : SetCenter(x:Int, y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><h3>SetCenterX</h3><a id='position-setcenterx'></a><p><strong>Set center x-position</strong></p><code>method : public : SetCenterX(x:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr></table><h3>SetCenterY</h3><a id='position-setcentery'></a><p><strong>Set center y-position</strong></p><code>method : public : SetCenterY(y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>y-position</td></tr></table><h3>SetLeft</h3><a id='position-setleft'></a><p><strong>Sets left position</strong></p><code>method : public : SetLeft(x:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x</td><td><a href='system-int.html' target='main'>Int</a></td><td>x-position</td></tr></table><h3>SetRight</h3><a id='position-setright'></a><p><strong>Sets right position</strong></p><code>method : public : SetRight(x2:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>x2</td><td><a href='system-int.html' target='main'>Int</a></td><td>right position</td></tr></table><h3>SetTop</h3><a id='position-settop'></a><p><strong>Sets top position</strong></p><code>method : public : SetTop(y:Int) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>y</td><td><a href='system-int.html' target='main'>Int</a></td><td>top position</td></tr></table></body></html>

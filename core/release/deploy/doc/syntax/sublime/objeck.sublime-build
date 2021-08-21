@@ -1,0 +1,9 @@
+{
+	"env": { 
+		"OBJECK_LIB_PATH": "<objeck_path>/lib", 
+		"PATH": "<objeck_path>/bin"
+	},
+	"cmd": ["<objeck_path>/bin/obc", "-src", "$file", "-lib", "gen_collect,diags,net,rss,misc,regex,csv,xml,json,encrypt,odbc,query,sdl2,sdl_game", "-dest", "$file_base_name.obe"],
+	"selector": "source.objeck-obs",
+	"file_regex": "^(..[^:]*):\\((\\d+),(\\d+)\\):(.*)$"
+}

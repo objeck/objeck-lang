@@ -1,0 +1,19 @@
+dependencies: \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/diags.cpp \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/diags.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../vm/lib_api.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../vm/common.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../vm/../shared/instrs.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../vm/../shared/sys.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../vm/../shared/logger.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../vm/../shared/traps.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../shared/sys.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/tree.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/linker.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/types.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/../shared/instrs.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/../shared/sys.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/../shared/traps.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/parser.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/scanner.h \
+  /Users/randyhollines/Documents/Code/objeck-lang/core/lib/diags/../../compiler/context.h
