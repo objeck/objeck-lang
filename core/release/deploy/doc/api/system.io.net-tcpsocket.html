@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>TCPSocket</h2><p>TCP/IP socket</p><p>Implements: <i>InputStream, OutputStream</i></p><strong>Operations</strong><ul><li><a href='#tcpsocket-new'>New</a></li><li><a href='#tcpsocket-close'>Close</a></li><li><a href='#tcpsocket-flush'>Flush</a></li><li><a href='#tcpsocket-getaddress'>GetAddress</a></li><li><a href='#tcpsocket-getport'>GetPort</a></li><li><a href='#tcpsocket-hostname'>HostName</a></li><li><a href='#tcpsocket-isopen'>IsOpen</a></li><li><a href='#tcpsocket-readbuffer'>ReadBuffer</a></li><li><a href='#tcpsocket-readbyte'>ReadByte</a></li><li><a href='#tcpsocket-readline'>ReadLine</a></li><li><a href='#tcpsocket-resolve'>Resolve</a></li><li><a href='#tcpsocket-writebuffer'>WriteBuffer</a></li><li><a href='#tcpsocket-writebyte'>WriteByte</a></li><li><a href='#tcpsocket-writestring'>WriteString</a></li></ul><hr/><h3>New</h3><a id='tcpsocket-new'></a><p><strong>Default constructor</strong></p><code>New(address:System.String, port:Int)</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>address</td><td><a href='system-string.html' target='main'>String</a></td><td>network address</td></tr><tr><td>port</td><td><a href='system-int.html' target='main'>Int</a></td><td>network port</td></tr></table><h3>Close</h3><a id='tcpsocket-close'></a><p><strong>Closes the socket</strong></p><code>method : public : Close() ~ Nil</code><h3>Flush</h3><a id='tcpsocket-flush'></a><p><strong>Flushes the output buffer. This is a no-opt given this socket is not backed by an output buffer.</strong></p><code>method : public : Flush() ~ Nil</code><h3>GetAddress</h3><a id='tcpsocket-getaddress'></a><p><strong>Returns the connected network address</strong></p><code>method : public : GetAddress() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>return network address</td></tr></table><br/><h3>GetPort</h3><a id='tcpsocket-getport'></a><p><strong>Returns the connected network port</strong></p><code>method : public : GetPort() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>return network port</td></tr></table><br/><h3>HostName</h3><a id='tcpsocket-hostname'></a><p><strong>Reads the host name</strong></p><code>function : public : HostName() ~ System.String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>socket host name</td></tr></table><br/><h3>IsOpen</h3><a id='tcpsocket-isopen'></a><p><strong>Returns rather the socket is open</strong></p><code>method : public : IsOpen() ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if socket is open, false otherwise</td></tr></table><br/><h3>ReadBuffer</h3><a id='tcpsocket-readbuffer'></a><p><strong>Reads bytes into a byte buffer</strong></p><code>method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>offset</td><td><a href='system-int.html' target='main'>Int</a></td><td>destination buffer offset</td></tr><tr><td>num</td><td><a href='system-int.html' target='main'>Int</a></td><td>number of values to read</td></tr><tr><td>buffer</td><td><a href='system-byte.html' target='main'>Byte[]</a></td><td>input buffer</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of values read</td></tr></table><br/><p><strong>Reads bytes into a character buffer</strong></p><code>method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>offset</td><td><a href='system-int.html' target='main'>Int</a></td><td>destination buffer offset</td></tr><tr><td>num</td><td><a href='system-int.html' target='main'>Int</a></td><td>number of values to read</td></tr><tr><td>buffer</td><td><a href='system-char.html' target='main'>Char[]</a></td><td>input buffer</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of values read</td></tr></table><br/><h3>ReadByte</h3><a id='tcpsocket-readbyte'></a><p><strong>Reads a byte</strong></p><code>method : public : ReadByte() ~ Byte</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-byte.html' target='main'>Byte</a></td><td>byte read</td></tr></table><br/><h3>ReadLine</h3><a id='tcpsocket-readline'></a><p><strong>Reads a string until a newline or character return is detected</strong></p><code>method : public : ReadLine() ~ System.String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>character string</td></tr></table><br/><h3>Resolve</h3><a id='tcpsocket-resolve'></a><p><strong>List of resolved IP addresses</strong></p><code>function : public : Resolve(n:System.String) ~ System.String[]</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>n</td><td><a href='system-string.html' target='main'>String</a></td><td>address name</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String[]</a></td><td>list of IP addresses</td></tr></table><br/><h3>WriteBuffer</h3><a id='tcpsocket-writebuffer'></a><p><strong>Writes bytes from a byte buffer</strong></p><code>method : public : WriteBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>offset</td><td><a href='system-int.html' target='main'>Int</a></td><td>destination buffer offset</td></tr><tr><td>num</td><td><a href='system-int.html' target='main'>Int</a></td><td>number of values to write</td></tr><tr><td>buffer</td><td><a href='system-byte.html' target='main'>Byte[]</a></td><td>input buffer</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of values written</td></tr></table><br/><p><strong>Writes characters from a character buffer</strong></p><code>method : public : WriteBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>offset</td><td><a href='system-int.html' target='main'>Int</a></td><td>destination buffer offset</td></tr><tr><td>num</td><td><a href='system-int.html' target='main'>Int</a></td><td>number of values to write</td></tr><tr><td>buffer</td><td><a href='system-char.html' target='main'>Char[]</a></td><td>input buffer</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of values written</td></tr></table><br/><h3>WriteByte</h3><a id='tcpsocket-writebyte'></a><p><strong>Writes a byte</strong></p><code>method : public : WriteByte(b:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>b</td><td><a href='system-int.html' target='main'>Int</a></td><td>byte to write</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true if byte was written, false otherwise</td></tr></table><br/><h3>WriteString</h3><a id='tcpsocket-writestring'></a><p><strong>Writes a character string</strong></p><code>method : public : WriteString(str:System.String) ~ Nil</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>str</td><td><a href='system-string.html' target='main'>String</a></td><td>string to be written</td></tr></table></body></html>

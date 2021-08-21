@@ -1,0 +1,27 @@
+#~
+# compile: obc -src odbc_select_11.obs -lib odbc
+# run: obr odbc_select_11.obe
+# odbc datasource: foo
+~#
+
+use Database.ODBC;
+
+class SqlTest {
+	function : Main(args : String[]) ~ Nil {
+		conn := Connection->New("foo", "", "");
+		rs : ResultSet;
+		leaving {
+			rs->Close();
+			conn->Close();
+		};
+		
+		if(conn->IsOpen()) {
+			rs := conn->Select("SELECT * FROM Students;");
+			if(rs <> Nil) {
+				while(rs->Next()) {
+					rs->GetVarchar("First Name")->PrintLine();
+				};
+			};
+		};
+	}
+}

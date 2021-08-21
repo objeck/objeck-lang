@@ -1,0 +1,85 @@
+#~
+# translation of: https://en.wikipedia.org/wiki/Visitor_pattern#C#_example
+# compile: obc -src visitor_20.obs
+# run: obr visitor_20.obe
+~#
+
+class ExpressionPrintingVisitor {
+	New() {}
+
+	method : public : PrintLiteral(literal : Literal) ~ Nil {
+		literal->GetValue()->PrintLine();
+	}
+	
+	method : public : PrintAddition(addition : Addition) ~ Nil {
+		left := addition->GetLeft()->GetValue();
+		right := addition->GetRight()->GetValue();
+		sum := addition->GetValue();
+		"{$left} + {$right} := {$sum}"->PrintLine();
+	}
+}
+
+class Expression {	
+	method : virtual : public : Accept(v : ExpressionPrintingVisitor) ~ Nil;		
+	method : virtual : public : GetValue() ~ Float;
+}
+
+class Literal from Expression {
+	@value : Float;
+
+	New(value : Float) {
+		Parent();
+		@value := value;
+	}
+	
+	method : public : Accept(v : ExpressionPrintingVisitor) ~ Nil {
+		v->PrintLiteral(@self);
+	}
+	
+	method : public : GetValue() ~ Float {
+		return @value;
+	}
+}
+
+class Addition from Expression {
+	@left : Expression;
+	@right : Expression;
+
+	New(left : Expression, right : Expression) {
+		Parent();
+		@left := left;
+		@right := right;
+	}
+	
+	method : public : Accept(v : ExpressionPrintingVisitor) ~ Nil {
+		v->PrintAddition(@self);
+	}
+	
+	method : public : GetValue() ~ Float {
+		return @left->GetValue() + @right->GetValue();	
+	}
+
+	method : public : GetLeft() ~ Expression {
+		return @left;
+	}
+
+	method : public : GetRight() ~ Expression {
+		return @right;
+	}
+}
+
+class Program {
+	function : Main(args : String[]) ~ Nil {
+		# Emulate 1 + 2 + 3
+		e := Addition->New(
+			Addition->New(
+				Literal->New(1),
+				Literal->New(2)
+			),
+			Literal->New(3)
+		);
+		
+		printingVisitor := ExpressionPrintingVisitor->New();
+		e->Accept(printingVisitor);
+	}
+}

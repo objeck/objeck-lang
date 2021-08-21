@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Objeck Classes</title>
+<style>
+body {
+	font-family: sans-serif;
+	font-size: 13px;
+	line-height: 1;
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+ul {
+	font-size: 13px;
+	list-style-type: square;
+}
+
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	width: auto;
+	overflow: auto;
+	display: block;
+	padding: 4px 8px;
+}
+.doc-table th {
+	background-color: #818286;
+	font-weight: em;
+	padding: 6px 10px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #BCBDC1;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	color: #1F1F1F;
+	display: block;
+	padding: 5px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	overflow-x: auto;
+}
+
+h2 {
+	font: normal normal normal 24px/1  sans-serif;
+	border-bottom: 2px solid #000;
+	background:#404040;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	
+}
+
+h2:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#847C6A;
+}
+
+h3 {
+	font: normal normal normal 18px/1  sans-serif;;
+	border-bottom: 2px solid #000;
+	background:#847C6A;
+	color:#fff;
+
+	display:inline-block;
+	padding:3px 15px;
+	margin-left:12px;
+}
+
+h3:after {
+  left:0px;
+  display:block;
+  position:absolute;
+  width:100%;
+  height:3px;
+  margin-top:2px;
+  content: " ";
+  background :#404040;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+} 
+
+</style>
+</head>
+
+<body>
+<a href='index.html' target='_parent'>All Bundles</a><hr/><h2>Table</h2><p>Container for semi-structured data</p><strong>Operations</strong><ul><li><a href='#table-new'>New</a></li><li><a href='#table-average'>Average</a></li><li><a href='#table-count'>Count</a></li><li><a href='#table-delete'>Delete</a></li><li><a href='#table-filter'>Filter</a></li><li><a href='#table-fromcsv'>FromCsv</a></li><li><a href='#table-fromfilesystem'>FromFilesystem</a></li><li><a href='#table-get'>Get</a></li><li><a href='#table-getall'>GetAll</a></li><li><a href='#table-getcolumnnames'>GetColumnNames</a></li><li><a href='#table-geterror'>GetError</a></li><li><a href='#table-getindex'>GetIndex</a></li><li><a href='#table-getname'>GetName</a></li><li><a href='#table-insert'>Insert</a></li><li><a href='#table-query'>Query</a></li><li><a href='#table-size'>Size</a></li><li><a href='#table-sum'>Sum</a></li><li><a href='#table-tostring'>ToString</a></li><li><a href='#table-unique'>Unique</a></li></ul><hr/><h3>New</h3><a id='table-new'></a><p><strong>Constructor</strong></p><code>New(name:String, column_names:String[])</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>table name</td></tr><tr><td>column_names</td><td><a href='system-string.html' target='main'>String[]</a></td><td>column names</td></tr></table><h3>Average</h3><a id='table-average'></a><p><strong>Gets the column average</strong></p><code>method : public : Average(name:String) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>column name</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>column average</td></tr></table><br/><h3>Count</h3><a id='table-count'></a><p><strong>Count of rows</strong></p><code>method : public : Count() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of rows</td></tr></table><br/><h3>Delete</h3><a id='table-delete'></a><p><strong>Delete row1 by primary key</strong></p><code>method : public : native : Delete(pk:Int) ~ Bool</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pk</td><td><a href='system-int.html' target='main'>Int</a></td><td>primary key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-bool.html' target='main'>Bool</a></td><td>true of successful, false otherwise</td></tr></table><br/><h3>Filter</h3><a id='table-filter'></a><p><strong>Filters table based upon conditional criteria</strong></p><code>method : public : native : Filter(cond:Conditional) ~ Vector&lt;Row&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>cond</td><td>Conditional</td><td>conditional filter</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='query.structured-row.html' target='main'>Row</a>&gt;</td><td>filtered rows</td></tr></table><br/><h3>FromCsv</h3><a id='table-fromcsv'></a><p><strong>Loads a table from a CSV file</strong></p><code>function : public : FromCsv(table_name:String, path:String) ~ Table</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>table_name</td><td><a href='system-string.html' target='main'>String</a></td><td>table name</td></tr><tr><td>path</td><td><a href='system-string.html' target='main'>String</a></td><td>to CSV</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='query.structured-table.html' target='main'>Table</a></td><td>new table</td></tr></table><br/><h3>FromFilesystem</h3><a id='table-fromfilesystem'></a><p><strong>Loads a table from a directory file system. Columns are: path_name, create_date, owner, is_dir and is_readonly.</strong></p><code>function : public : FromFilesystem(table_name:String, path:String) ~ Table</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>table_name</td><td><a href='system-string.html' target='main'>String</a></td><td>table name</td></tr><tr><td>path</td><td><a href='system-string.html' target='main'>String</a></td><td>to directory</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='query.structured-table.html' target='main'>Table</a></td><td>new table</td></tr></table><br/><h3>Get</h3><a id='table-get'></a><p><strong>Get row1 by primary key</strong></p><code>method : public : native : Get(pk:Int) ~ Row</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>pk</td><td><a href='system-int.html' target='main'>Int</a></td><td>primary key</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='query.structured-row.html' target='main'>Row</a></td><td>row1</td></tr></table><br/><h3>GetAll</h3><a id='table-getall'></a><p><strong>Get all row1</strong></p><code>method : public : native : GetAll() ~ Vector&lt;Row&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='query.structured-row.html' target='main'>Row</a>&gt;</td><td>all row1</td></tr></table><br/><h3>GetColumnNames</h3><a id='table-getcolumnnames'></a><p><strong>Gets all column names</strong></p><code>method : public : GetColumnNames() ~ String[]</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String[]</a></td><td>column names</td></tr></table><br/><h3>GetError</h3><a id='table-geterror'></a><p><strong>Gets the last query error</strong></p><code>method : public : GetError() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>last query error</td></tr></table><br/><h3>GetIndex</h3><a id='table-getindex'></a><p><strong>Get column index by name</strong></p><code>method : public : native : GetIndex(name:String) ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>column name</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>column name</td></tr></table><br/><h3>GetName</h3><a id='table-getname'></a><p><strong>Gets the table name</strong></p><code>method : public : GetName() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>table name</td></tr></table><br/><h3>Insert</h3><a id='table-insert'></a><p><strong>Inserts a new row1 into the table. After the row1 has been added it's values will need to be set.</strong></p><code>method : public : native : Insert() ~ Row</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='query.structured-row.html' target='main'>Row</a></td><td>newly inserted row1</td></tr></table><br/><h3>Query</h3><a id='table-query'></a><p><strong>Query table using SQL-like syntax. Support for 'select', 'from', 'where', 'distinct', 'order by' and logical operators.</strong></p><code>method : public : Query(statement:String) ~ Table</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>statement</td><td><a href='system-string.html' target='main'>String</a></td><td>query statement</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='query.structured-table.html' target='main'>Table</a></td><td>result table</td></tr></table><br/><h3>Size</h3><a id='table-size'></a><p><strong>Count of rows</strong></p><code>method : public : Size() ~ Int</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-int.html' target='main'>Int</a></td><td>number of rows</td></tr></table><br/><h3>Sum</h3><a id='table-sum'></a><p><strong>Gets the column sum</strong></p><code>method : public : Sum(name:String) ~ Float</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>column name</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-float.html' target='main'>Float</a></td><td>column sum</td></tr></table><br/><h3>ToString</h3><a id='table-tostring'></a><p><strong>String representation of table</strong></p><code>method : public : ToString() ~ String</code><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='system-string.html' target='main'>String</a></td><td>all row1 as a string</td></tr></table><br/><h3>Unique</h3><a id='table-unique'></a><p><strong>Gets unique rows by column name</strong></p><code>method : public : Unique(name:String) ~ Vector&lt;Row&gt;</code><div style='padding: 5px 10px; font-size: 13px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td>name</td><td><a href='system-string.html' target='main'>String</a></td><td>column name</td></tr></table><br/><div style='padding: 5px 10px; font-size: 13px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr><td><a href='collection.generic-vector_h_.html' target='main'>Vector</a>&lt;<a href='query.structured-row.html' target='main'>Row</a>&gt;</td><td>unique rows</td></tr></table><br/></body></html>
