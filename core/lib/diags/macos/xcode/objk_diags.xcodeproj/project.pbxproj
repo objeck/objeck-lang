@@ -17,6 +17,12 @@
 		EDD6125526CFAAF8001C362D /* types.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6124D26CFAAF8001C362D /* types.h */; };
 		EDD6125626CFAAF8001C362D /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124E26CFAAF8001C362D /* parser.cpp */; };
 		EDD6125726CFAAF8001C362D /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6124F26CFAAF8001C362D /* scanner.cpp */; };
+		EDD6125A26D184D3001C362D /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6125826D184D3001C362D /* logger.cpp */; };
+		EDD6125B26D184D3001C362D /* logger.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6125926D184D3001C362D /* logger.h */; };
+		EDD6125E26D1851F001C362D /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6125C26D1851F001C362D /* context.cpp */; };
+		EDD6125F26D1851F001C362D /* context.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6125D26D1851F001C362D /* context.h */; };
+		EDD6126226D18576001C362D /* linker.h in Headers */ = {isa = PBXBuildFile; fileRef = EDD6126026D18576001C362D /* linker.h */; };
+		EDD6126326D18576001C362D /* linker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDD6126126D18576001C362D /* linker.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +37,12 @@
 		EDD6124D26CFAAF8001C362D /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = types.h; path = ../../../../../compiler/types.h; sourceTree = "<group>"; };
 		EDD6124E26CFAAF8001C362D /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../../../../../compiler/parser.cpp; sourceTree = "<group>"; };
 		EDD6124F26CFAAF8001C362D /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../../../../../compiler/scanner.cpp; sourceTree = "<group>"; };
+		EDD6125826D184D3001C362D /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../../../../shared/logger.cpp; sourceTree = "<group>"; };
+		EDD6125926D184D3001C362D /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../../../../shared/logger.h; sourceTree = "<group>"; };
+		EDD6125C26D1851F001C362D /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../../../../../compiler/context.cpp; sourceTree = "<group>"; };
+		EDD6125D26D1851F001C362D /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = context.h; path = ../../../../../compiler/context.h; sourceTree = "<group>"; };
+		EDD6126026D18576001C362D /* linker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = linker.h; path = ../../../../../compiler/linker.h; sourceTree = "<group>"; };
+		EDD6126126D18576001C362D /* linker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = linker.cpp; path = ../../../../../compiler/linker.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +77,12 @@
 		ED97AE352597E75B00344432 /* objk_diags */ = {
 			isa = PBXGroup;
 			children = (
+				EDD6126126D18576001C362D /* linker.cpp */,
+				EDD6126026D18576001C362D /* linker.h */,
+				EDD6125C26D1851F001C362D /* context.cpp */,
+				EDD6125D26D1851F001C362D /* context.h */,
+				EDD6125826D184D3001C362D /* logger.cpp */,
+				EDD6125926D184D3001C362D /* logger.h */,
 				EDD6124E26CFAAF8001C362D /* parser.cpp */,
 				EDD6124926CFAAF8001C362D /* parser.h */,
 				EDD6124F26CFAAF8001C362D /* scanner.cpp */,
@@ -86,8 +104,11 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EDD6125F26D1851F001C362D /* context.h in Headers */,
 				EDD6125426CFAAF8001C362D /* tree.h in Headers */,
 				EDD6124726CFAAD5001C362D /* diags.h in Headers */,
+				EDD6126226D18576001C362D /* linker.h in Headers */,
+				EDD6125B26D184D3001C362D /* logger.h in Headers */,
 				EDD6125226CFAAF8001C362D /* scanner.h in Headers */,
 				EDD6125526CFAAF8001C362D /* types.h in Headers */,
 				EDD6125126CFAAF8001C362D /* parser.h in Headers */,
@@ -150,9 +171,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EDD6126326D18576001C362D /* linker.cpp in Sources */,
 				EDD6125626CFAAF8001C362D /* parser.cpp in Sources */,
+				EDD6125E26D1851F001C362D /* context.cpp in Sources */,
 				EDD6124626CFAAD5001C362D /* diags.cpp in Sources */,
 				EDD6125026CFAAF8001C362D /* tree.cpp in Sources */,
+				EDD6125A26D184D3001C362D /* logger.cpp in Sources */,
 				EDD6125326CFAAF8001C362D /* types.cpp in Sources */,
 				EDD6125726CFAAF8001C362D /* scanner.cpp in Sources */,
 			);
@@ -206,8 +230,8 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					_DIAG_LIB,
 					_DEBUG,
-					"$(inherited)",
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -219,8 +243,10 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "";
 				SDKROOT = macosx;
-				USER_HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				SYSTEM_HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				USER_HEADER_SEARCH_PATHS = "";
 				"USER_HEADER_SEARCH_PATHS[arch=*]" = "";
 			};
 			name = Debug;
@@ -267,6 +293,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = _DIAG_LIB;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -276,8 +303,10 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				OTHER_LDFLAGS = "";
 				SDKROOT = macosx;
-				USER_HEADER_SEARCH_PATHS = ../../openssl/macos/include;
+				SYSTEM_HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				USER_HEADER_SEARCH_PATHS = "";
 			};
 			name = Release;
 		};
@@ -296,10 +325,12 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				HEADER_SEARCH_PATHS = ../include;
 				LIBRARY_SEARCH_PATHS = "";
-				OTHER_LDFLAGS = (
-					"-Wl,../arm64/libssl.a",
-					"-Wl,../arm64/libcrypto.a",
+				OTHER_LDFLAGS = "";
+				"OTHER_LDFLAGS[arch=*]" = (
+					"-Wl,../../../openssl/macos/arm64/libssl.a",
+					"-Wl,../../../openssl/macos/arm64/libcrypto.a",
 					"-lz",
+					"-lreadline",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -321,10 +352,12 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				HEADER_SEARCH_PATHS = ../include;
 				LIBRARY_SEARCH_PATHS = "";
-				OTHER_LDFLAGS = (
-					"-Wl,../arm64/libssl.a",
-					"-Wl,../arm64/libcrypto.a",
+				OTHER_LDFLAGS = "";
+				"OTHER_LDFLAGS[arch=*]" = (
+					"-Wl,../../../openssl/macos/arm64/libssl.a",
+					"-Wl,../../../openssl/macos/arm64/libcrypto.a",
 					"-lz",
+					"-lreadline",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
