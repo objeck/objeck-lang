@@ -873,7 +873,6 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
         else {
           // full path resolution
           Enum* prgm_enum = program->GetEnum(type_klass_name);
-          vector<wstring> uses = uses;
           for(size_t i = 0; !prgm_enum && i < uses.size(); ++i) {
             prgm_enum = program->GetEnum(uses[i] + L"." + type_klass_name);
           }

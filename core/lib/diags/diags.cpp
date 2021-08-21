@@ -282,7 +282,7 @@ extern "C" {
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    // const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring var_str = APITools_GetStringValue(context, 4);
     const wstring mthd_str = APITools_GetStringValue(context, 5);
     const wstring sys_path = APITools_GetStringValue(context, 6);
@@ -336,7 +336,7 @@ extern "C" {
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    // const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring var_str = APITools_GetStringValue(context, 4);
     const wstring mthd_str = APITools_GetStringValue(context, 5);
     const wstring sys_path = APITools_GetStringValue(context, 6);
@@ -567,8 +567,8 @@ extern "C" {
       const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
       
       wchar_t* end;      
-      const int line_index = wcstol(line_str.c_str(), &end, 10);
-      const int pos_index = wcstol(pos_str.c_str(), &end, 10);
+      const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
+      const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
       
       // create objects
       size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");

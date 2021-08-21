@@ -7510,7 +7510,6 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
           FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, true);
         }
       }
@@ -7526,7 +7525,6 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
           FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, true);
         }
       }
@@ -7590,7 +7588,6 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
           FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
         }
@@ -7607,7 +7604,6 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
           FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
         }

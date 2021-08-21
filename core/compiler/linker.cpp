@@ -944,7 +944,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case LOAD_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
+      instrs.push_back(new LibraryInstr(line_num, LOAD_FUNC_VAR, (int)id, mem_context));
     }
       break;
 
@@ -965,7 +965,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case STOR_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, STOR_FUNC_VAR, id, mem_context));
+      instrs.push_back(new LibraryInstr(line_num, STOR_FUNC_VAR, (int)id, mem_context));
     }
       break;
 
