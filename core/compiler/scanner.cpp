@@ -636,7 +636,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   // set token
   wchar_t* end;
   tokens[index]->SetType(TOKEN_INT_LIT);
-  tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
+  tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &end, base));
   tokens[index]->SetLineNbr(line_nbr);
 	tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
