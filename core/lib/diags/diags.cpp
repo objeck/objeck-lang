@@ -271,6 +271,46 @@ extern "C" {
   }
 
   //
+  // find declaration
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void diag_find_declaration(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring sys_path = APITools_GetStringValue(context, 4);
+
+    SymbolTable* table = nullptr;
+    Method* method = program->FindMethod(line_num, table);
+    if(method) {
+      wstring full_path = L"lang.obl";
+      if(!sys_path.empty()) {
+        full_path += L',' + sys_path;
+      }
+
+      ContextAnalyzer analyzer(program, full_path, false, false);
+      if(analyzer.Analyze()) {
+        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
+        if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
+          size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
+          dcrl_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
+          dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = found_line - 1;
+          dcrl_obj[ResultPosition::POS_START_POS] = found_start_pos - 1;
+          dcrl_obj[ResultPosition::POS_END_POS] = found_end_pos - 1;
+
+          APITools_SetObjectValue(context, 0, dcrl_obj);
+        }
+      }
+    }
+  }
+
+  //
   // completion
   //
 #ifdef _WIN32
