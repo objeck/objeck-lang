@@ -167,7 +167,12 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
           files_paths += src_file + file_name + L',';
         }
       }
-      if(!files_paths.empty()) {
+
+      if(files_paths.empty()) {
+        wcerr << L"unknown:(0,0): Unable to open source files" << endl;
+        exit(1);
+      }
+      else {
         files_paths.pop_back();
       }
       src_file = files_paths;
