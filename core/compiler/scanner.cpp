@@ -38,11 +38,11 @@
 /****************************
  * Scanner constructor
  ****************************/
-Scanner::Scanner(wstring f, bool j, bool p)
+Scanner::Scanner(wstring f, bool a, bool p)
 {
   // copy file name
   
-  alt_syntax = j;
+  alt_syntax = a;
   cur_char = L'\0';
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; ++i) {

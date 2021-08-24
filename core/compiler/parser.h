@@ -55,7 +55,7 @@ class Parser {
   map<ScannerTokenType, wstring> error_msgs;
   map<int, wstring> errors;
   wstring src_path;
-  wstring run_prgm;
+  vector<wstring> programs;
   unsigned int anonymous_class_id;
   bool expand_generic_def;
 #ifdef _DIAG_LIB
@@ -124,7 +124,7 @@ class Parser {
 
   // parsing operations
   void ParseFile(const wstring &file_name);
-  void ParseProgram();
+  void ParseText(const wstring &progam_text);
   void ParseBundle(int depth);
   Class* ParseClass(const wstring& bundle_id, int depth);
   Class* ParseInterface(const wstring &bundle_id, int depth);
@@ -171,10 +171,10 @@ class Parser {
   Expression* ParseSimpleExpression(int depth);
 
  public:
-  Parser(const wstring &p, bool a, const wstring &r) {
-    src_path = p;
+  Parser(const wstring &s, bool a, vector<wstring> &t) {
+    src_path = s;
     alt_syntax = a;
-    run_prgm = r;
+    programs = t;
     program = new ParsedProgram;
     LoadErrorCodes();
     current_class = nullptr;
