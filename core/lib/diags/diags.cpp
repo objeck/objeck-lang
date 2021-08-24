@@ -87,7 +87,7 @@ extern "C" {
   {
     const wstring src_file(APITools_GetStringValue(context, 2));
 
-    Parser parser(src_file, false, L"");
+    Parser parser(src_file, false, vector<wstring>());
     const bool was_parsed = parser.Parse();
 
     APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
@@ -104,7 +104,10 @@ extern "C" {
   {
     const wstring src_text(APITools_GetStringValue(context, 2));
 
-    Parser parser(L"", false, src_text);
+    vector<wstring> programs;
+    programs.push_back(src_text);
+
+    Parser parser(L"", false, programs);
     const bool was_parsed = parser.Parse();
 
     APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());

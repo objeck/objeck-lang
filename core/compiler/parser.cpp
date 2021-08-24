@@ -248,8 +248,10 @@ bool Parser::Parse()
     const wstring &file_name = src_path.substr(offset, src_path.size());
     ParseFile(file_name);
   }
-  else if(run_prgm.size() > 0) {
-    ParseProgram();
+  else if(programs.size() > 0) {
+    for(size_t i = 0; i < programs.size(); ++i) {
+      ParseText(programs[i]);
+    }
   }
 
   return CheckErrors();
@@ -269,11 +271,11 @@ void Parser::ParseFile(const wstring &file_name)
 }
 
 /****************************
- * Parses a file.
+ * Parses string
  ****************************/
-void Parser::ParseProgram()
+void Parser::ParseText(const wstring& progam)
 {
-  scanner = new Scanner(run_prgm, false, true);
+  scanner = new Scanner(progam, alt_syntax, true);
   NextToken();
   ParseBundle(0);
   // clean up
