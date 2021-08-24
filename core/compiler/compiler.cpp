@@ -48,9 +48,9 @@ using namespace std;
 /****************************
  * Starts the compilation process
  ****************************/
-int Compile(const wstring& src_file, const wstring& opt, const wstring& dest_file, const wstring &run_string, const wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
-  // parse source code  
-  Parser parser(src_file, alt_syntax, run_string);
+int Compile(const wstring& src_files, const wstring& opt, const wstring& dest_file, vector<wstring> programs, const wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
+  // parse source code
+  Parser parser(src_files, alt_syntax, programs);
   if(parser.Parse()) {
     bool is_lib = false;
     bool is_web = false;
@@ -128,8 +128,8 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
 
   // check source input
-  wstring run_string;
-  wstring src_file;
+  wstring program;
+  wstring src_files;
   wstring dest_file;
 
   result = arguments.find(L"src");
@@ -139,32 +139,32 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
       wcerr << usage << endl;
       return COMMAND_ERROR;
     }
-    run_string = L"class Run { function : Main(args : String[]) ~ Nil {";
-    run_string += arguments[L"in"];
-    run_string += L"} }";
+    program = L"class Run { function : Main(args : String[]) ~ Nil {";
+    program += arguments[L"in"];
+    program += L"} }";
     argument_options.remove(L"in");
     dest_file = L"program";
   }
   else {
     argument_options.remove(L"src");
-    src_file = result->second;
+    src_files = result->second;
     // pare file name w/o extension
-    if(!frontend::EndsWith(src_file, L".obs")) {
-      src_file += L".obs";
+    if(!frontend::EndsWith(src_files, L".obs")) {
+      src_files += L".obs";
     }
     // parse file wildcard
-    else if(frontend::EndsWith(src_file, L"*.obs")) {
+    else if(frontend::EndsWith(src_files, L"*.obs")) {
       wstring dir_path;
       wstring files_paths;
-      frontend::RemoveSubString(src_file, L"*.obs");
-      if(src_file.empty()) {
-        src_file = L"./";
+      frontend::RemoveSubString(src_files, L"*.obs");
+      if(src_files.empty()) {
+        src_files = L"./";
       }
-      vector<string> file_names = ListDir(UnicodeToBytes(src_file).c_str());
+      vector<string> file_names = ListDir(UnicodeToBytes(src_files).c_str());
       for(size_t i = 0; i < file_names.size(); ++i) {
         const wstring file_name = BytesToUnicode(file_names[i]);
         if(frontend::EndsWith(file_name, L".obs")) {
-          files_paths += src_file + file_name + L',';
+          files_paths += src_files + file_name + L',';
         }
       }
 
@@ -175,7 +175,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
       else {
         files_paths.pop_back();
       }
-      src_file = files_paths;
+      src_files = files_paths;
     }
   }
 
@@ -194,8 +194,8 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   // check program output
   result = arguments.find(L"dest");
   if(result == arguments.end()) {
-    if(!src_file.empty()) {
-      dest_file = src_file;
+    if(!src_files.empty()) {
+      dest_file = src_files;
     }
     if(dest_file.find(L',') == string::npos) {
       frontend::RemoveSubString(dest_file, L".obs");
@@ -287,7 +287,10 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     return COMMAND_ERROR;
   }
 
-  return Compile(src_file, optimize, dest_file, run_string, sys_lib_path, target, alt_syntax, is_debug, show_asm);
+  vector<wstring> prgms;
+  prgms.push_back(program);
+
+  return Compile(src_files, optimize, dest_file, prgms, sys_lib_path, target, alt_syntax, is_debug, show_asm);
 }
 
 #ifdef _WIN32

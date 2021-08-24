@@ -510,7 +510,7 @@ class Scanner {
 
  public:
   // default constructor
-  Scanner(wstring f, bool j, bool p = false);
+  Scanner(wstring f, bool a, bool p = false);
   // default destructor
   ~Scanner();
 
