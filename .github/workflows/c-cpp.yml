@@ -2,10 +2,10 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ profiling-tools ]
+    branches: [ master ]
 
   pull_request:
-    branches: [ profiling-tools ]
+    branches: [ master ]
 
 jobs:
   build:
