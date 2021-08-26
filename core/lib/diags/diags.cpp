@@ -45,7 +45,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void load_lib()
+  void load_lib()
   {
 #ifdef _DEBUG
     OpenLogger("debug.log");
@@ -58,7 +58,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void unload_lib()
+  void unload_lib()
   {
 #ifdef _DEBUG
     CloseLogger();
@@ -68,7 +68,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_tree_release(VMContext& context)
+  void diag_tree_release(VMContext& context)
   {
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
@@ -83,7 +83,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_parse_file(VMContext& context)
+  void diag_parse_file(VMContext& context)
   {
     const wstring src_file(APITools_GetStringValue(context, 2));
 
@@ -100,7 +100,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_parse_text(VMContext& context)
+  void diag_parse_text(VMContext& context)
   {
     const wstring src_text(APITools_GetStringValue(context, 2));
 
@@ -120,20 +120,20 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_get_diagnosis(VMContext& context)
+  void diag_get_diagnosis(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const wstring sys_path = APITools_GetStringValue(context, 1);
-    wstring full_path = L"lang.obl";
-    if(!sys_path.empty()) {
-      full_path += L',' + sys_path;
+    const wstring lib_path = APITools_GetStringValue(context, 1);
+    wstring full_lib_path = L"lang.obl";
+    if(!lib_path.empty()) {
+      full_lib_path += L',' + lib_path;
     }
 
     // if parsed
     if(prgm_obj[1]) {
-      ContextAnalyzer analyzer(program, full_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(!analyzer.Analyze()) {
         vector<wstring> error_strings = program->GetErrorStrings();
         size_t* diagnostics_array = FormatErrors(context, error_strings);
@@ -153,21 +153,21 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_get_symbols(VMContext& context)
+  void diag_get_symbols(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const wstring sys_path = APITools_GetStringValue(context, 1);
-    wstring full_path = L"lang.obl";
-    if(!sys_path.empty()) {
-      full_path += L',' + sys_path;
+    const wstring lib_path = APITools_GetStringValue(context, 1);
+    wstring full_lib_path = L"lang.obl";
+    if(!lib_path.empty()) {
+      full_lib_path += L',' + lib_path;
     }
 
     // if parsed
     bool validated = false;
     if(prgm_obj[1]) {
-      ContextAnalyzer analyzer(program, full_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
       validated = analyzer.Analyze();
     }
 
@@ -279,24 +279,24 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_find_declaration(VMContext& context)
+  void diag_find_declaration(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const int line_num = (int)APITools_GetIntValue(context, 2);
     const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring sys_path = APITools_GetStringValue(context, 4);
+    const wstring lib_path = APITools_GetStringValue(context, 4);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
     if(method) {
-      wstring full_path = L"lang.obl";
-      if(!sys_path.empty()) {
-        full_path += L',' + sys_path;
+      wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
       }
 
-      ContextAnalyzer analyzer(program, full_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         wstring found_name; int found_line; int found_start_pos; int found_end_pos;
         if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
@@ -328,17 +328,17 @@ extern "C" {
     // const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring var_str = APITools_GetStringValue(context, 4);
     const wstring mthd_str = APITools_GetStringValue(context, 5);
-    const wstring sys_path = APITools_GetStringValue(context, 6);
+    const wstring lib_path = APITools_GetStringValue(context, 6);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
     if(method) {
-      wstring full_path = L"lang.obl";
-      if(!sys_path.empty()) {
-        full_path += L',' + sys_path;
+      wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
       }
 
-      ContextAnalyzer analyzer(program, full_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         vector<pair<int, wstring>> completions;
 
@@ -382,17 +382,17 @@ extern "C" {
     // const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring var_str = APITools_GetStringValue(context, 4);
     const wstring mthd_str = APITools_GetStringValue(context, 5);
-    const wstring sys_path = APITools_GetStringValue(context, 6);
+    const wstring lib_path = APITools_GetStringValue(context, 6);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
     if(method) {
-      wstring full_path = L"lang.obl";
-      if(!sys_path.empty()) {
-        full_path += L',' + sys_path;
+      wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
       }
 
-      ContextAnalyzer analyzer(program, full_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
         if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
@@ -524,17 +524,17 @@ extern "C" {
 
     const int line_num = (int)APITools_GetIntValue(context, 1);
     const int line_pos = (int)APITools_GetIntValue(context, 2);
-    const wstring sys_path = APITools_GetStringValue(context, 3);
+    const wstring lib_path = APITools_GetStringValue(context, 3);
 
     SymbolTable* table = nullptr;
     Method* method = program->FindMethod(line_num, table);
     if(method) {
-      wstring full_path = L"lang.obl";
-      if(!sys_path.empty()) {
-        full_path += L',' + sys_path;
+      wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
       }
 
-      ContextAnalyzer analyzer(program, full_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos);
         size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
