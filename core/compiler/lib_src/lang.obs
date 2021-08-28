@@ -2134,7 +2134,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param values integer array 
+		@param values Base array 
 		~#
 		New(values : Base[]) {
 			Parent();
@@ -2151,12 +2151,45 @@ bundle System {
 		
 		#~
 		Set values
-		@param values integer array 
+		@param values Base array 
 		~#
 		method : public : Set(values : Base[]) ~ Nil {
 			@values := values;
 		}
 	}
+
+	#~
+        Holds an base array
+        ~#
+        class StringHolder {
+                @values : String[];
+
+                #~
+                Copy constructor
+                @param values String array
+                ~#
+                New(values : String[]) {
+                        Parent();
+                        @values := values;
+                }
+
+                #~
+                Get values
+                @return values
+                ~#
+                method : public : Get() ~ String[] {
+                        return @values;
+                }
+
+                #~
+                Set values
+                @param values String array
+                ~#
+                method : public : Set(values : String[]) ~ Nil {
+                        @values := values;
+                }
+        }
+
 	
 	#~
 	Holds a function of in/out type R
