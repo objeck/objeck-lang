@@ -102,10 +102,10 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
-    const wstring src_text(APITools_GetStringValue(context, 2));
+    size_t* texts_array = APITools_GetObjectValue(context, 2);
 
     vector<wstring> programs;
-    programs.push_back(src_text);
+    programs.push_back(L"");
 
     Parser parser(L"", false, programs);
     const bool was_parsed = parser.Parse();
