@@ -40,7 +40,7 @@ bundle System.Diagnostics {
 
 		#~
 		Parsers text for analysis
-		@param src_str text to parse
+		@param src_strs named text to parse, name/content
 		@return object instance used for analysis
 		~#
 		function : ParseText(src_strs : String[,]) ~ Analysis {
@@ -54,12 +54,12 @@ bundle System.Diagnostics {
 				names[i] := src_strs[i,0];
 				texts[i] := src_strs[i,1];
 			};
-			
+
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
-			array_args[2] := StringHolder->New(names);
-			array_args[3] := StringHolder->New(texts);
+			array_args[2] := StringArrayHolder->New(names);
+			array_args[3] := StringArrayHolder->New(texts);
 			Proxy->GetDllProxy()->CallFunction("diag_parse_text", array_args);
 			
 			handle := array_args[0]->As(IntHolder);
@@ -94,6 +94,7 @@ bundle System.Diagnostics {
 
 		#~
 		Get source code analysis symbols
+		@param uri file uri
 		@param sys_path system library path
 		@return analysis symbols
 		~#
