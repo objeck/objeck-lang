@@ -48,7 +48,7 @@ using namespace std;
 /****************************
  * Starts the compilation process
  ****************************/
-int Compile(const wstring& src_files, const wstring& opt, const wstring& dest_file, vector<wstring> programs, const wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
+int Compile(const wstring& src_files, const wstring& opt, const wstring& dest_file, vector<pair<wstring, wstring> > &programs, const wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
   // parse source code
   Parser parser(src_files, alt_syntax, programs);
   if(parser.Parse()) {
@@ -287,10 +287,10 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     return COMMAND_ERROR;
   }
 
-  vector<wstring> prgms;
-  prgms.push_back(program);
+  vector<pair<wstring, wstring> > programs;
+  programs.push_back(make_pair(L"blob://program.obs", program));
 
-  return Compile(src_files, optimize, dest_file, prgms, sys_lib_path, target, alt_syntax, is_debug, show_asm);
+  return Compile(src_files, optimize, dest_file, programs, sys_lib_path, target, alt_syntax, is_debug, show_asm);
 }
 
 #ifdef _WIN32
