@@ -2443,6 +2443,8 @@ bundle System {
 
 		#~
 		Default constructor
+		@param first first compare value
+		@param second second value
 		~#
 		New(first : System.Compare, second : System.Base) {
 			Parent();
