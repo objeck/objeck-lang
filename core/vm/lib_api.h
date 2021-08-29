@@ -173,6 +173,14 @@ long APITools_GetArraySize(size_t * array) {
   return -1;
 }
 
+size_t* APITools_GetArray(size_t* array_holder) {
+  if(array_holder) {
+    return (size_t*)array_holder[0];
+  }
+
+  return nullptr;
+}
+
 size_t* APITools_MakeIntArray(VMContext & context, const long int_array_size) {
   // create character array
   const long int_array_dim = 1;
@@ -399,8 +407,7 @@ void APITools_SetStringValue(VMContext & context, int index, const wstring & val
 }
 
 // get the requested string value from an Object[].
-const wchar_t* APITools_GetStringValue(VMContext & context, int index) {
-  size_t* data_array = context.data_array;
+inline const wchar_t* APITools_GetStringValue(size_t* data_array, int index) {
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
     size_t* string_holder = (size_t*)data_array[index];
@@ -414,6 +421,11 @@ const wchar_t* APITools_GetStringValue(VMContext & context, int index) {
   }
 
   return nullptr;
+}
+
+// get the requested string value from an Object[].
+const wchar_t* APITools_GetStringValue(VMContext & context, int index) {
+  return APITools_GetStringValue(context.data_array, index);
 }
 
 size_t* APITools_GetObjectValue(VMContext & context, int index) {

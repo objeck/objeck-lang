@@ -102,16 +102,21 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
-    size_t* texts_array = APITools_GetObjectValue(context, 2);
+    size_t* texts_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
 
-    vector<wstring> programs;
-    programs.push_back(L"");
+    const int texts_array_size = APITools_GetArraySize(texts_array);
+    if(texts_array_size > 0) {
+      vector<wstring> texts;
+      for(int i = 0; i < texts_array_size; ++i) {
+        texts.push_back(APITools_GetStringValue(texts_array, i));
+      }
 
-    Parser parser(L"", false, programs);
-    const bool was_parsed = parser.Parse();
+      Parser parser(L"", false, texts);
+      const bool was_parsed = parser.Parse();
 
-    APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
-    APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
+      APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
+      APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
+    }
   }
 
   //
