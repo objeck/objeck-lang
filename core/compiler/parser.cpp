@@ -273,9 +273,9 @@ void Parser::ParseFile(const wstring &file_name)
 /****************************
  * Parses string
  ****************************/
-void Parser::ParseText(const wstring& progam)
+void Parser::ParseText(pair<wstring, wstring> &progam)
 {
-  scanner = new Scanner(progam, alt_syntax, true);
+  scanner = new Scanner(progam.first, alt_syntax, progam.second);
   NextToken();
   ParseBundle(0);
   // clean up

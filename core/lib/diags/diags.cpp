@@ -87,7 +87,9 @@ extern "C" {
   {
     const wstring src_file(APITools_GetStringValue(context, 2));
 
-    Parser parser(src_file, false, vector<wstring>());
+    vector<pair<wstring, wstring> > programs;
+
+    Parser parser(src_file, false, programs);
     const bool was_parsed = parser.Parse();
 
     APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
@@ -102,13 +104,19 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
-    size_t* texts_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
+    size_t* names_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
+    const int names_array_size = APITools_GetArraySize(names_array);
 
+    size_t* texts_array = APITools_GetArray(APITools_GetObjectValue(context, 3));
     const int texts_array_size = APITools_GetArraySize(texts_array);
-    if(texts_array_size > 0) {
-      vector<wstring> texts;
+    
+    if(names_array_size > 0 && names_array_size == texts_array_size) {
+      vector<pair<wstring,wstring>> texts;
       for(int i = 0; i < texts_array_size; ++i) {
-        texts.push_back(APITools_GetStringValue(texts_array, i));
+        const wstring file_name = APITools_GetStringValue(names_array, i);
+        const wstring file_text = APITools_GetStringValue(texts_array, i);
+
+        texts.push_back(make_pair(file_name, file_text));
       }
 
       Parser parser(L"", false, texts);
@@ -211,6 +219,7 @@ extern "C" {
 
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, klass->GetName());
+        klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, klass->GetFileName());
         klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
         klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber();
         klass_symb_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition();
@@ -233,7 +242,7 @@ extern "C" {
             mthd_name = mthd_name.substr(mthd_name_index + 1, mthd_name.size() - mthd_name_index - 1);
           }
           mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_name);
-
+          mthd_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd->GetFileName());
           mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_METHOD; // method type
           mthd_symb_obj[ResultPosition::POS_START_LINE] = mthd->GetLineNumber();
           mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
@@ -256,6 +265,7 @@ extern "C" {
 
         size_t* eenum_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, eenum_name);
+        eenum_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, eenum->GetFileName());
         eenum_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ENUM; // enum type
         eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber();
         eenum_symb_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition();
@@ -269,7 +279,7 @@ extern "C" {
 
     // file root
     size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, file_name);
+    file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, file_uri);
     file_symb_obj[ResultPosition::POS_CODE] = validated ? 1 : 0;
     file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
     file_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)bundle_array;
