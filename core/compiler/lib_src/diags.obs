@@ -43,11 +43,23 @@ bundle System.Diagnostics {
 		@param src_str text to parse
 		@return object instance used for analysis
 		~#
-		function : ParseText(src_strs : String[]) ~ Analysis {
-			array_args := Base->New[3];
+		function : ParseText(src_strs : String[,]) ~ Analysis {
+			dims := src_strs->Size();
+			size := dims[0];
+
+			names := String->New[size]; 
+			texts := String->New[size];
+
+			for(i := 0; i < size; i += 1;) {
+				names[i] := src_strs[i,0];
+				texts[i] := src_strs[i,1];
+			};
+			
+			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
-			array_args[2] := StringHolder->New(src_strs);
+			array_args[2] := StringHolder->New(names);
+			array_args[3] := StringHolder->New(texts);
 			Proxy->GetDllProxy()->CallFunction("diag_parse_text", array_args);
 			
 			handle := array_args[0]->As(IntHolder);
@@ -85,11 +97,12 @@ bundle System.Diagnostics {
 		@param sys_path system library path
 		@return analysis symbols
 		~#
-		method : public : GetSymbols(sys_path : String) ~ Result {
+		method : public : GetSymbols(uri : String, sys_path : String) ~ Result {
 			if(@symbols_result = Nil) {
-				array_args := Base->New[2];
+				array_args := Base->New[3];
 				array_args[0] := @self;
-				array_args[1] := sys_path;
+				array_args[1] := uri;
+				array_args[2] := sys_path;
 				Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
 			};
 			
