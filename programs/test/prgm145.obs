@@ -1,0 +1,17 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		texts := String->New[3,2];
+		for(i := 0; i < 3; i += 1;) {
+			name := "file://{$i}.obs";
+			content := "abcde";
+
+			texts[i,0] := name;
+			texts[i,1] := content;
+		};
+
+		for(i := 0; i < 3; i += 1;) {
+			name := texts[i,0];
+			name->PrintLine();
+		};
+	}
+}
