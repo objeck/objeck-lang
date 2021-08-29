@@ -2161,7 +2161,7 @@ bundle System {
 	#~
         Holds an base array
         ~#
-        class StringHolder {
+        class StringArrayHolder {
                 @values : String[];
 
                 #~
