@@ -38,7 +38,7 @@
 /****************************
  * Scanner constructor
  ****************************/
-Scanner::Scanner(wstring f, bool a, bool p)
+Scanner::Scanner(wstring f, bool a, const wstring c)
 {
   // copy file name
   
@@ -51,16 +51,16 @@ Scanner::Scanner(wstring f, bool a, bool p)
   // load identifiers into map
   LoadKeywords();
   // read file into memory
-  if(p) {
-    filename = RandomString(18);
+  if(!c.empty()) {
+    filename = f;
     buffer_pos = 0;
     is_first_token = true;
-    buffer_size = f.size() + 1;
+    buffer_size = c.size() + 1;
     buffer = new wchar_t[buffer_size];
 #ifdef _WIN32
-    wcscpy_s(buffer, buffer_size, f.c_str());
+    wcscpy_s(buffer, buffer_size, c.c_str());
 #else
-    wcscpy(buffer, f.c_str());
+    wcscpy(buffer, c.c_str());
 #endif
     
 #ifdef _DEBUG

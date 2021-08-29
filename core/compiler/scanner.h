@@ -510,7 +510,7 @@ class Scanner {
 
  public:
   // default constructor
-  Scanner(wstring f, bool a, bool p = false);
+  Scanner(wstring f, bool a, const wstring c = L"");
   // default destructor
   ~Scanner();
 

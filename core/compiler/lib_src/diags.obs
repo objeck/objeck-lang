@@ -302,6 +302,14 @@ bundle System.Diagnostics {
 		}
 
 		#~
+		Get result description
+		@return result description
+		~#
+		method : public : GetDescription() ~ String {
+			return @desc;
+		}
+
+		#~
 		Gets the code
 		@return code
 		~#
