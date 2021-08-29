@@ -149,6 +149,22 @@ wchar_t* APITools_GetCharArray(size_t * array) {
   return nullptr;
 }
 
+size_t* APITools_GetIntArray(size_t* array) {
+  if(array) {
+    return (size_t*)(array + 3);
+  }
+
+  return nullptr;
+}
+
+double* APITools_GetFloatArray(size_t* array) {
+  if(array) {
+    return (double*)(array + 3);
+  }
+
+  return nullptr;
+}
+
 long APITools_GetArraySize(size_t * array) {
   if(array) {
     return (long)array[0];
