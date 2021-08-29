@@ -2438,13 +2438,13 @@ bundle System {
 	Pair of comparable values
 	~#
 	class Pair implements System.Compare {
-		@first : Compare;
-		@second : Base;
+		@first : System.Compare;
+		@second : System.Base;
 
 		#~
 		Default constructor
 		~#
-		New(first : Compare, second : Base;) {
+		New(first : System.Compare, second : System.Base) {
 			Parent();
 
 			@first := first;
@@ -2457,7 +2457,7 @@ bundle System {
 		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : public : Compare(rhs : System.Compare) ~ Int {
-			return @first->Comapre(rhs);
+			return @first->Compare(rhs);
 		}
 		
 		#~
@@ -2472,7 +2472,7 @@ bundle System {
 		Gets the first value
 		@return first value
 		~#
-		method : public : GetFirst() ~ Compare {
+		method : public : GetFirst() ~ System.Compare {
 			return @first;
 		}
 
@@ -2480,7 +2480,7 @@ bundle System {
 		Sets the first value
 		@param first first value
 		~#
-		method : public : SetFirst(first : Compare) ~ Nil {
+		method : public : SetFirst(first : System.Compare) ~ Nil {
 			@first := first;
 		}
 
@@ -2488,7 +2488,7 @@ bundle System {
 		Gets the second value
 		@return second value
 		~#
-		method : public : GetSecond() ~ Base {
+		method : public : GetSecond() ~ System.Base {
 			return @second;
 		}
 
@@ -2496,7 +2496,7 @@ bundle System {
 		Sets the second value
 		@param second second value
 		~#
-		method : public : SetSecond(second : Base) ~ Nil {
+		method : public : SetSecond(second : System.Base) ~ Nil {
 			@second := second;
 		}
 	}
