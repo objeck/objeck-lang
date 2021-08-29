@@ -62,7 +62,7 @@ enum FunctionId {
   MTHD_ID
 };
 
-// gets the size of an Object[] array
+// gets number of parameters being passes
 const long APITools_GetArgumentCount(VMContext& context) {
   if(context.data_array) {
     return (long)context.data_array[0];
@@ -71,6 +71,7 @@ const long APITools_GetArgumentCount(VMContext& context) {
   return 0;
 }
 
+// gets an array element
 long APITools_GetIntArrayElement(size_t* array, int index) {
   if(!array) {
     return 0;
@@ -85,6 +86,7 @@ long APITools_GetIntArrayElement(size_t* array, int index) {
   return 0;
 }
 
+// sets an array element
 void APITools_SetIntArrayElement(size_t* array, int index, long value) {
   if(!array) {
     return;
@@ -97,6 +99,7 @@ void APITools_SetIntArrayElement(size_t* array, int index, long value) {
   }
 }
 
+// gets an array element
 double APITools_GetFloatArrayElement(size_t* array, int index) {
   if(!array) {
     return 0.0;
@@ -117,6 +120,7 @@ double APITools_GetFloatArrayElement(size_t* array, int index) {
   return 0.0;
 }
 
+// sets an array element
 void APITools_SetFloatArrayElement(size_t* array, int index, double value) {
   if(!array) {
     return;
@@ -133,6 +137,7 @@ void APITools_SetFloatArrayElement(size_t* array, int index, double value) {
   }
 }
 
+// gets the root of an array
 unsigned char* APITools_GetByteArray(size_t* array) {
   if(array) {
     return (unsigned char*)(array + 3);
@@ -141,6 +146,7 @@ unsigned char* APITools_GetByteArray(size_t* array) {
   return nullptr;
 }
 
+// gets the root of an array
 wchar_t* APITools_GetCharArray(size_t * array) {
   if(array) {
     return (wchar_t*)(array + 3);
@@ -149,6 +155,7 @@ wchar_t* APITools_GetCharArray(size_t * array) {
   return nullptr;
 }
 
+// gets the root of an array
 size_t* APITools_GetIntArray(size_t* array) {
   if(array) {
     return (size_t*)(array + 3);
@@ -157,6 +164,7 @@ size_t* APITools_GetIntArray(size_t* array) {
   return nullptr;
 }
 
+// gets the root of an array
 double* APITools_GetFloatArray(size_t* array) {
   if(array) {
     return (double*)(array + 3);
@@ -165,6 +173,7 @@ double* APITools_GetFloatArray(size_t* array) {
   return nullptr;
 }
 
+// gets size of array
 long APITools_GetArraySize(size_t * array) {
   if(array) {
     return (long)array[0];
@@ -173,6 +182,7 @@ long APITools_GetArraySize(size_t * array) {
   return -1;
 }
 
+// gets array from array holder
 size_t* APITools_GetArray(size_t* array_holder) {
   if(array_holder) {
     return (size_t*)array_holder[0];
@@ -181,6 +191,7 @@ size_t* APITools_GetArray(size_t* array_holder) {
   return nullptr;
 }
 
+// creates an array
 size_t* APITools_MakeIntArray(VMContext & context, const long int_array_size) {
   // create character array
   const long int_array_dim = 1;
@@ -193,6 +204,7 @@ size_t* APITools_MakeIntArray(VMContext & context, const long int_array_size) {
   return int_array;
 }
 
+// creates an array
 size_t* APITools_MakeFloatArray(VMContext & context, const long float_array_size) {
   // create character array
   const long float_array_dim = 1;
@@ -205,6 +217,7 @@ size_t* APITools_MakeFloatArray(VMContext & context, const long float_array_size
   return float_array;
 }
 
+// creates an array
 size_t* APITools_MakeByteArray(VMContext & context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
@@ -217,6 +230,7 @@ size_t* APITools_MakeByteArray(VMContext & context, const long char_array_size) 
   return char_array;
 }
 
+// creates an array
 size_t * APITools_MakeCharArray(VMContext & context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
