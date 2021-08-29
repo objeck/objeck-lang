@@ -855,7 +855,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     // check for return
     if(method->GetMethodType() != NEW_PUBLIC_METHOD &&
        method->GetMethodType() != NEW_PRIVATE_METHOD &&
-       method->GetReturn()->GetType() != NIL_TYPE) {
+       method->GetReturn() && method->GetReturn()->GetType() != NIL_TYPE) {
       if(!AnalyzeReturnPaths(method->GetStatements(), depth + 1) && !method->IsAlt()) {
         ProcessError(method, L"All method/function paths must return a value");
       }
@@ -1311,121 +1311,123 @@ void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int
  ****************************/
 void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 {
-  switch(statement->GetStatementType()) {
-  case EMPTY_STMT:
-  case SYSTEM_STMT:
-    break;
+  if(statement) {
+    switch(statement->GetStatementType()) {
+    case EMPTY_STMT:
+    case SYSTEM_STMT:
+      break;
 
-  case DECLARATION_STMT: {
-    Declaration* declaration = static_cast<Declaration*>(statement);
-    if(declaration->GetChild()) {
-      // build stack declarations
-      stack<Declaration*> declarations;
-      while(declaration) {
-        declarations.push(declaration);
-        declaration = declaration->GetChild();
+    case DECLARATION_STMT: {
+      Declaration* declaration = static_cast<Declaration*>(statement);
+      if(declaration->GetChild()) {
+        // build stack declarations
+        stack<Declaration*> declarations;
+        while(declaration) {
+          declarations.push(declaration);
+          declaration = declaration->GetChild();
+        }
+        // process declarations
+        while(!declarations.empty()) {
+          AnalyzeDeclaration(declarations.top(), current_class, depth);
+          declarations.pop();
+        }
       }
-      // process declarations
-      while(!declarations.empty()) {
-        AnalyzeDeclaration(declarations.top(), current_class, depth);
-        declarations.pop();
+      else {
+        AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
       }
     }
-    else {
-      AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
-    }
-  }
-    break;
+                         break;
 
-  case METHOD_CALL_STMT: {
-    MethodCall* mthd_call = static_cast<MethodCall*>(statement);
-    AnalyzeMethodCall(mthd_call, depth);
-    AnalyzeCast(mthd_call, depth + 1);
+    case METHOD_CALL_STMT: {
+      MethodCall* mthd_call = static_cast<MethodCall*>(statement);
+      AnalyzeMethodCall(mthd_call, depth);
+      AnalyzeCast(mthd_call, depth + 1);
 #ifdef _DIAG_LIB
-    diagnostic_expressions.push_back(mthd_call);
+      diagnostic_expressions.push_back(mthd_call);
 #endif
-  }
-    break;
+    }
+                         break;
 
 
-  case ADD_ASSIGN_STMT:
-    AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
-    break;
+    case ADD_ASSIGN_STMT:
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+      break;
 
-  case SUB_ASSIGN_STMT:
-  case MUL_ASSIGN_STMT:
-  case DIV_ASSIGN_STMT:
-    AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
-    break;
+    case SUB_ASSIGN_STMT:
+    case MUL_ASSIGN_STMT:
+    case DIV_ASSIGN_STMT:
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+      break;
 
-  case ASSIGN_STMT: {
-    Assignment* assignment = static_cast<Assignment*>(statement);
-    if(assignment->GetChild()) {
-      // build stack assignments
-      stack<Assignment*> assignments;
-      while(assignment) {
-        assignments.push(assignment);
-        assignment = assignment->GetChild();
+    case ASSIGN_STMT: {
+      Assignment* assignment = static_cast<Assignment*>(statement);
+      if(assignment->GetChild()) {
+        // build stack assignments
+        stack<Assignment*> assignments;
+        while(assignment) {
+          assignments.push(assignment);
+          assignment = assignment->GetChild();
+        }
+        // process assignments
+        while(!assignments.empty()) {
+          AnalyzeAssignment(assignments.top(), statement->GetStatementType(), depth);
+          assignments.pop();
+        }
       }
-      // process assignments
-      while(!assignments.empty()) {
-        AnalyzeAssignment(assignments.top(), statement->GetStatementType(), depth);
-        assignments.pop();
+      else {
+        AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
       }
     }
-    else {
-      AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
+                    break;
+
+    case SIMPLE_STMT:
+      AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
+      break;
+
+    case RETURN_STMT:
+      AnalyzeReturn(static_cast<Return*>(statement), depth);
+      break;
+
+    case LEAVING_STMT:
+      AnalyzeLeaving(static_cast<Leaving*>(statement), depth);
+      break;
+
+    case IF_STMT:
+      AnalyzeIf(static_cast<If*>(statement), depth);
+      break;
+
+    case DO_WHILE_STMT:
+      AnalyzeDoWhile(static_cast<DoWhile*>(statement), depth);
+      break;
+
+    case WHILE_STMT:
+      AnalyzeWhile(static_cast<While*>(statement), depth);
+      break;
+
+    case FOR_STMT:
+      AnalyzeFor(static_cast<For*>(statement), depth);
+      break;
+
+    case BREAK_STMT:
+    case CONTINUE_STMT:
+      if(in_loop <= 0) {
+        ProcessError(statement, L"Breaks are only allowed in loops.");
+      }
+      break;
+
+    case SELECT_STMT:
+      current_method->SetAndOr(true);
+      AnalyzeSelect(static_cast<Select*>(statement), depth);
+      break;
+
+    case CRITICAL_STMT:
+      AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
+      break;
+
+    default:
+      ProcessError(statement, L"Undefined statement");
+      break;
     }
-  }
-    break;
-
-  case SIMPLE_STMT:
-    AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
-    break;
-
-  case RETURN_STMT:
-    AnalyzeReturn(static_cast<Return*>(statement), depth);
-    break;
-
-  case LEAVING_STMT:
-    AnalyzeLeaving(static_cast<Leaving*>(statement), depth);
-    break;
-
-  case IF_STMT:
-    AnalyzeIf(static_cast<If*>(statement), depth);
-    break;
-
-  case DO_WHILE_STMT:
-    AnalyzeDoWhile(static_cast<DoWhile*>(statement), depth);
-    break;
-
-  case WHILE_STMT:
-    AnalyzeWhile(static_cast<While*>(statement), depth);
-    break;
-
-  case FOR_STMT:
-    AnalyzeFor(static_cast<For*>(statement), depth);
-    break;
-
-  case BREAK_STMT:
-  case CONTINUE_STMT:
-    if(in_loop <= 0) {
-      ProcessError(statement, L"Breaks are only allowed in loops.");
-    }
-    break;
-
-  case SELECT_STMT:
-    current_method->SetAndOr(true);
-    AnalyzeSelect(static_cast<Select*>(statement), depth);
-    break;
-
-  case CRITICAL_STMT:
-    AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
-    break;
-
-  default:
-    ProcessError(statement, L"Undefined statement");
-    break;
   }
 }
 

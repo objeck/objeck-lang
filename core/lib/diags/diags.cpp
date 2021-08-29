@@ -244,9 +244,9 @@ extern "C" {
           mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_name);
           mthd_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd->GetFileName());
           mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_METHOD; // method type
-          mthd_symb_obj[ResultPosition::POS_START_LINE] = mthd->GetLineNumber();
+          mthd_symb_obj[ResultPosition::POS_START_LINE] = mthd->GetLineNumber() - 1;
           mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
-          mthd_symb_obj[ResultPosition::POS_END_LINE] = mthd->GetEndLineNumber();
+          mthd_symb_obj[ResultPosition::POS_END_LINE] = mthd->GetEndLineNumber() - 2;
           mthd_symb_obj[ResultPosition::POS_END_POS] = mthd->GetEndLinePosition();
           mthds_array_ptr[k] = (size_t)mthd_symb_obj;
         }
