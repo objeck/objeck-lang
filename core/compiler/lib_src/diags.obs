@@ -43,11 +43,11 @@ bundle System.Diagnostics {
 		@param src_str text to parse
 		@return object instance used for analysis
 		~#
-		function : ParseText(src_str : String) ~ Analysis {
+		function : ParseText(src_strs : String[]) ~ Analysis {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
-			array_args[2] := src_str;
+			array_args[2] := StringHolder->New(src_strs);
 			Proxy->GetDllProxy()->CallFunction("diag_parse_text", array_args);
 			
 			handle := array_args[0]->As(IntHolder);
