@@ -171,8 +171,7 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const wstring file_uri = APITools_GetStringValue(context, 1);
-    const wstring lib_path = APITools_GetStringValue(context, 2);
+    const wstring lib_path = APITools_GetStringValue(context, 1);
 
     wstring full_lib_path = L"lang.obl";
     if(!lib_path.empty()) {
@@ -191,8 +190,14 @@ extern "C" {
     size_t* bundle_array_ptr = bundle_array + 3;
 
     // bundles
+    wstring file_uri;
+
     for(size_t i = 0; i < bundles.size(); ++i) {
       ParsedBundle* bundle = bundles[i];
+      
+      if(file_uri.empty()) {
+        file_uri = bundle->GetFileName();
+      }
 
       // bundle
       size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
