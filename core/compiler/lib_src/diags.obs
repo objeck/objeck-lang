@@ -94,16 +94,14 @@ bundle System.Diagnostics {
 
 		#~
 		Get source code analysis symbols
-		@param uri file uri
 		@param sys_path system library path
 		@return analysis symbols
 		~#
-		method : public : GetSymbols(uri : String, sys_path : String) ~ Result {
+		method : public : GetSymbols(sys_path : String) ~ Result {
 			if(@symbols_result = Nil) {
-				array_args := Base->New[3];
+				array_args := Base->New[2];
 				array_args[0] := @self;
-				array_args[1] := uri;
-				array_args[2] := sys_path;
+				array_args[1] := sys_path;
 				Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
 			};
 			
