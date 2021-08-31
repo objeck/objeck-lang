@@ -3,8 +3,8 @@
 # Copyright (c) 2019-2021 Randy Hollines
 # 
 # credits:
-# H.W. Lang - merge sort implementation
-# Arne Andersson - map classes uses a red-black tree variant he created
+# - H.W. Lang - merge sort implementation based on his work
+# - Arne Andersson - map classes uses a red-black tree variant he created
 ~~#
 
 #~
@@ -21,7 +21,7 @@ bundle Collection.Generic {
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity: SMALL <= 64 ITEM, MEDIUM <= 256, LARGE <= 2048, EX-LARGE >= 8192
+		Hash table capacity: SMALL <= 64 items, MEDIUM <= 256, LARGE <= 2048, EX-LARGE >= 8192
 		~#
 		consts Capacity {
 			SMALL := 83,
