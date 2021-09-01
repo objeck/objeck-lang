@@ -2433,76 +2433,7 @@ bundle System {
 			return GetInstanceID();
 		}
 	}
-
-	#~
-	Pair of comparable values
-	~#
-	class Pair implements System.Compare {
-		@first : System.Compare;
-		@second : System.Base;
-
-		#~
-		Default constructor
-		@param first first compare value
-		@param second second value
-		~#
-		New(first : System.Compare, second : System.Base) {
-			Parent();
-
-			@first := first;
-			@second := second;
-		}
-
-		#~
-		Compares two objects based upon first value
-		@param rhs compare object
-		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
-		~#
-		method : public : Compare(rhs : System.Compare) ~ Int {
-			return @first->Compare(rhs);
-		}
-		
-		#~
-		Returns the class default hash ID
-		@return hash ID
-		~#
-		method : public : HashID() ~ Int {
-			return @first->GetInstanceID();
-		}
-
-		#~
-		Gets the first value
-		@return first value
-		~#
-		method : public : GetFirst() ~ System.Compare {
-			return @first;
-		}
-
-		#~
-		Sets the first value
-		@param first first value
-		~#
-		method : public : SetFirst(first : System.Compare) ~ Nil {
-			@first := first;
-		}
-
-		#~
-		Gets the second value
-		@return second value
-		~#
-		method : public : GetSecond() ~ System.Base {
-			return @second;
-		}
-
-		#~
-		Sets the second value
-		@param second second value
-		~#
-		method : public : SetSecond(second : System.Base) ~ Nil {
-			@second := second;
-		}
-	}
-	
+    
 	#~
 	Resizeable Unicode string class that supports typical string operations.
 	~#	

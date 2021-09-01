@@ -11,6 +11,68 @@
 Generic collections (-lib gen_collect)
 ~#	
 bundle Collection.Generic {
+    #~
+	Compare pair
+	~#
+    class Pair<F : Compare, S> implements System.Compare  {
+        @first : F;
+        @second : S;
+
+        New(first : F, second : S) {
+            @first := first;
+            @second := second;
+        }
+
+        #~
+		Compares two objects based upon first value
+		@param first compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : Compare(first : System.Compare) ~ Int {
+			return @first->Compare(first);
+		}
+		
+		#~
+		Returns the class default hash ID
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @first->GetInstanceID();
+		}
+
+		#~
+		Gets the first value
+		@return first value
+		~#
+		method : public : GetFirst() ~ F {
+			return @first;
+		}
+
+		#~
+		Sets the first value
+		@param first first value
+		~#
+		method : public : SetFirst(first : F) ~ Nil {
+			@first := first;
+		}
+
+		#~
+		Gets the second value
+		@return second value
+		~#
+		method : public : GetSecond() ~ S {
+			return @second;
+		}
+
+		#~
+		Sets the second value
+		@param second second value
+		~#
+		method : public : SetSecond(second : S) ~ Nil {
+			@second := second;
+		}
+    }
+
 	#~
 	Hash table of generics 
 	~#
@@ -2231,7 +2293,32 @@ bundle Collection.Generic {
 				GetKeys(node->GetRight(), vector);
 			};
 		}
-		
+        
+        #~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : GetKeyValues() ~  Collection.Generic.Vector<Pair<K,V>> {
+			vector := Vector->New()<Pair<K,V>>;
+			GetKeyValues(@root, vector);
+			return vector;
+		}
+
+		method : GetKeyValues(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<Pair<K,V>>) ~ Nil {
+			if(node <> Nil) {
+				# process left 
+				GetKeyValues(node->GetLeft(), vector);
+				
+				key : K := node->GetKey();
+                value : V := node->Get();
+                
+				vector->AddBack(Pair->New(key, value)<K,V>);
+				
+				# process right
+				GetKeyValues(node->GetRight(), vector);
+			};
+		}
+        
 		#~
 		Gets a collection of values
 		@return vector of values
