@@ -2254,23 +2254,21 @@ bundle Collection.Generic {
 				GetValues(node->GetRight(), vector);
 			};
 		}
-
-
-
+        
 		#~
 		Gets a collection of key/value pairs
 		@return vector of key/value pairs
 		~#
-		method : public : GetKeyValues() ~  Collection.Generic.Vector<Pair<K,V>> {
-			vector := Vector->New()<Pair<K,V>>;
-			GetValues(@root, vector);
+		method : public : GetKeyValues() ~  Collection.Generic.Vector<Pair> {
+			vector := Collection.Generic.Vector->New()<Pair>;
+			GetKeyValues(@root, vector);
 			return vector;
 		}
 
-		method : GetKeyValues(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<Pair<K,V>>) ~ Nil {
+		method : GetKeyValues(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<Pair>) ~ Nil {
 			if(node <> Nil) {
 				# process left 
-				GetValues(node->GetLeft(), vector);
+				GetKeyValues(node->GetLeft(), vector);
 				
 				key : K := node->GetKey();
 				value : V := node->Get();
@@ -2278,12 +2276,10 @@ bundle Collection.Generic {
 				vector->AddBack(Pair->New(key, value));
 				
 				# process right
-				GetValues(node->GetRight(), vector);
+				GetKeyValues(node->GetRight(), vector);
 			};
 		}
-
-
-		
+        
 		#~
 		Inserts a value into the map
 		@param key key
