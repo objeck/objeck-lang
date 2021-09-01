@@ -7206,8 +7206,16 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     }
                   }
                   else {
-                    const vector<Type*> from_concrete_types = concrete_types;
+                    vector<Type*> from_concrete_types = concrete_types;
                     const vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
+                    // TODO: clean solution
+                    if(from_concrete_types.size() != to_concrete_types.size()) {
+                      from_concrete_types = method_call->GetConcreteTypes();
+                      for(size_t i = 0; i < from_concrete_types.size(); ++i) {
+                        ResolveClassEnumType(from_concrete_types[i]);
+                      }
+                    }
+
                     if(from_concrete_types.size() == to_concrete_types.size()) {
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
                         Type* from_concrete_type = from_concrete_types[j];
