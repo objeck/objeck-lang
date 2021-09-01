@@ -3935,7 +3935,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         }
         // anonymous class
         else if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
-          (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX))) {
+                (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) || 
+                 Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
           vector<Type*> generic_dclrs = ParseGenericTypes(depth);
           method_call->SetConcreteTypes(generic_dclrs);
         }
