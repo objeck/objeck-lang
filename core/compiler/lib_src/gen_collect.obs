@@ -323,10 +323,10 @@ bundle Collection.Generic {
 					while(list->More()) {
 						pair : HashPair<V> := list->Get()<V>;
 
-						k : Key := pair->Get();
+						k : K := pair->GetKey();
 						v : V := pair->Get();
 
-						values->AddBack(Pair->New(k, v));
+						values->AddBack(Pair->New(k, v)<K,V>);
 						
 
 						list->Next();
