@@ -2103,6 +2103,29 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   }
 }
 
+void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concrete_type, MethodCall* method_call)
+{
+  if(from_concrete_type->GetName() != to_concrete_type->GetName()) {
+    ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" + from_concrete_type->GetName() + L"' to '" + to_concrete_type->GetName() + L"'");
+  }
+
+  vector<Type*> from_concrete_types = from_concrete_type->GetGenerics();
+  vector<Type*> to_concrete_types = to_concrete_type->GetGenerics();
+
+  if(from_concrete_types.size() != to_concrete_types.size()) {
+    to_concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+  }
+
+  if(from_concrete_types.size() == to_concrete_types.size()) {
+    for(size_t i = 0; i < from_concrete_types.size(); ++i) {
+      ValidateConcretes(from_concrete_types[i], to_concrete_types[i], method_call);
+    }
+  }
+  else {
+    ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+  }
+}
+
 void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
 {
   const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
@@ -7220,10 +7243,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
                         Type* from_concrete_type = from_concrete_types[j];
                         Type* to_concrete_type = to_concrete_types[j];
-                        if(from_concrete_type->GetName() != to_concrete_type->GetName()) {
-                          ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
-                                       from_concrete_type->GetName() + L"' to '" + to_concrete_type->GetName() + L"'");
-                        }
+                        ValidateConcretes(from_concrete_type, to_concrete_type, method_call);
                       }
                     }
                     else {
