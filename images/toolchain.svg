@@ -24,7 +24,7 @@
 		.st10 {marker-end:url(#mrkr1-150);stroke:#4672c4;stroke-dasharray:3,3;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
 		.st11 {fill:#4672c4;fill-opacity:1;stroke:#4672c4;stroke-opacity:1;stroke-width:0.28409090909091}
 		.st12 {fill:none;stroke:none;stroke-width:0.25}
-		.st13 {fill:#4672c4;font-family:Cascadia Mono;font-size:1.99999em;font-weight:bold}
+		.st13 {fill:#4672c4;font-family:Calibri;font-size:1.5em;font-weight:bold}
 		.st14 {marker-end:url(#mrkr1-23);marker-start:url(#mrkr1-193);stroke:#4672c4;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
 		.st15 {stroke:#c7c8c8;stroke-width:0.25}
 		.st16 {fill:#4672c4;font-family:Symbol;font-size:0.75em}
@@ -655,14 +655,14 @@
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="140.4" cy="583.2" width="280.8" height="43.2"/>
 			<rect x="0" y="561.6" width="280.8" height="43.2" class="st12"/>
-			<text x="84.15" y="590.4" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Compiler</text>		</g>
+			<text x="106.5" y="588.6" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Compiler</text>		</g>
 		<g id="shape111-179" v:mID="111" v:groupContext="shape" transform="translate(132.4,-255.6)">
 			<title>Sheet.111</title>
 			<desc>Virtual Machine</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="140.4" cy="583.2" width="280.8" height="43.2"/>
 			<rect x="0" y="561.6" width="280.8" height="43.2" class="st12"/>
-			<text x="34.93" y="590.75" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Virtual Machine</text>		</g>
+			<text x="80.56" y="588.6" class="st13" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Virtual Machine</text>		</g>
 		<g id="shape112-182" v:mID="112" v:groupContext="shape" v:layerMember="1" transform="translate(407.8,-351)">
 			<title>Dynamic connector.62</title>
 			<path d="M0 597.6 L27 597.6" class="st7"/>
