@@ -2106,7 +2106,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
 void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concrete_type, MethodCall* method_call)
 {
   if(from_concrete_type->GetName() != to_concrete_type->GetName()) {
-    ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" + from_concrete_type->GetName() + L"' to '" + to_concrete_type->GetName() + L"'");
+    ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" + 
+                 FormatTypeString(from_concrete_type->GetName()) + 
+                 L"' to '" + FormatTypeString(to_concrete_type->GetName()) + L"'");
   }
 
   vector<Type*> from_concrete_types = from_concrete_type->GetGenerics();
@@ -2118,6 +2120,8 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
 
   if(from_concrete_types.size() == to_concrete_types.size()) {
     for(size_t i = 0; i < from_concrete_types.size(); ++i) {
+      ResolveClassEnumType(from_concrete_types[i]);
+      ResolveClassEnumType(to_concrete_types[i]);
       ValidateConcretes(from_concrete_types[i], to_concrete_types[i], method_call);
     }
   }
@@ -3326,11 +3330,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
           Type* generic_type = generic_types[i];
           ResolveClassEnumType(generic_type);
 
-          if(concretate_type->GetName() != generic_type->GetName()) {
-            ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_method->GetLibraryClass()->GetName() +
-                         L"' between generic types: '" + FormatTypeString(concretate_type->GetName()) +
-                         L"' and '" + FormatTypeString(generic_type->GetName()) + L"'");
-          }
+          ValidateConcretes(concretate_type, generic_type, method_call);
         }
       }
       else {
@@ -7198,7 +7198,9 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
           const vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
-            const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+            
+            // const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+            const vector<Type*> concrete_types = method_call->GetConcreteTypes();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
@@ -7223,26 +7225,20 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     Type* concrete_type = concrete_types[map_type_index];
                     ResolveClassEnumType(concrete_type);
 
-                    if(candidate_type->GetName() != concrete_type->GetName()) {
-                      ProcessError(static_cast<Expression*>(method_call), L"Invalid generic to concrete type mismatch '" +
-                                   concrete_type->GetName() + L"' to '" + candidate_type->GetName() + L"'");
-                    }
+                    ValidateConcretes(candidate_type, concrete_type, method_call);
                   }
                   else {
                     vector<Type*> from_concrete_types = concrete_types;
                     const vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
-                    // TODO: cleaner solution... a bit hacky
-                    if(from_concrete_types.size() != to_concrete_types.size()) {
-                      from_concrete_types = method_call->GetConcreteTypes();
-                      for(size_t j = 0; j < from_concrete_types.size(); ++j) {
-                        ResolveClassEnumType(from_concrete_types[j]);
-                      }
-                    }
-
+                    
                     if(from_concrete_types.size() == to_concrete_types.size()) {
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
                         Type* from_concrete_type = from_concrete_types[j];
+                        ResolveClassEnumType(from_concrete_type);
+
                         Type* to_concrete_type = to_concrete_types[j];
+                        ResolveClassEnumType(to_concrete_type);
+
                         ValidateConcretes(from_concrete_type, to_concrete_type, method_call);
                       }
                     }
