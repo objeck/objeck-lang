@@ -313,7 +313,7 @@ bundle Collection.Generic {
 		Gets a collection of key/value pairs
 		@return vector of key/value pairs
 		~#
-		method : public : native : GetKeyValues() ~ Vector<Pair<K,V>> {
+		method : public : GetKeyValues() ~ Vector<Pair<K,V>> {
 			values := Vector->New()<Pair<K,V>>;
 
 			for(i := 0; i < @buckets->Size(); i += 1;) {
