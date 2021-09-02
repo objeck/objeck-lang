@@ -11,19 +11,24 @@
 Generic collections (-lib gen_collect)
 ~#	
 bundle Collection.Generic {
-    #~
+	#~
 	Generic pair
 	~#
-    class Pair<F : Compare, S> implements System.Compare  {
-        @first : F;
-        @second : S;
+	class Pair<F : Compare, S> implements System.Compare  {
+		@first : F;
+		@second : S;
 
-        New(first : F, second : S) {
-            @first := first;
-            @second := second;
-        }
+		#~
+		Default constructor
+		@param first compare object
+		@param second object
+		~#
+		New(first : F, second : S) {
+			@first := first;
+			@second := second;
+		}
 
-        #~
+		#~
 		Compares two objects based upon first value
 		@param first compare object
 		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
@@ -71,7 +76,7 @@ bundle Collection.Generic {
 		method : public : SetSecond(second : S) ~ Nil {
 			@second := second;
 		}
-    }
+	}
 
 	#~
 	Hash table of generics 
@@ -2322,7 +2327,7 @@ bundle Collection.Generic {
 			};
 		}
         
-        #~
+		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
