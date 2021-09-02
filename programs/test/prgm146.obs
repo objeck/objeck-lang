@@ -6,13 +6,17 @@ class Test {
 	function : Main(a : String[]) ~ Nil {
 		m := Map->New()<String, String>;
 		m->Insert("a", "b");
-		v := m->GetKeyValues()<Collection.Generic.Pair<IntHolder, String>>;
+
+		v := m->GetKeyValues()<Collection.Generic.Pair<String, String>>;
+#		v := m->GetKeys()<String>;
+
 		each(i : v) {
+			"---"->PrintLine();
+#~			
 			p := v->Get(i);
 			p->GetFirst()->PrintLine();
 			p->GetSecond()->PrintLine();
+~#			
 		};
-
-		v->Size()->PrintLine();
 	}
 }
