@@ -35,7 +35,7 @@ Notable features:
   * [HTTP and HTTPS clients](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs)
   * [RegEx](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs)
   * [JSON](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [XML](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs) and [CSV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs) parsers
-  * [Encryption](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/encrypt.obs)
+  * Encryption
   * [Database access](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/odbc.obs)
   * [Query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs)
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
