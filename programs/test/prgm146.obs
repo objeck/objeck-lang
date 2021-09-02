@@ -1,0 +1,18 @@
+use Collection.Generic;
+
+
+
+class Test {
+	function : Main(a : String[]) ~ Nil {
+		m := Map->New()<String, String>;
+		m->Insert("a", "b");
+		v := m->GetKeyValues()<Collection.Generic.Pair<IntHolder, String>>;
+		each(i : v) {
+			p := v->Get(i);
+			p->GetFirst()->PrintLine();
+			p->GetSecond()->PrintLine();
+		};
+
+		v->Size()->PrintLine();
+	}
+}

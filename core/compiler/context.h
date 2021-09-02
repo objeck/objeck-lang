@@ -360,6 +360,8 @@ class ContextAnalyzer {
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
 
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
+
+  void ValidateConcretes(Type* from_concrete_type, Type* to_concrete_type, MethodCall* method_call);
   
   // validates the backing class for a generic deceleration
   void ValidateGenericBacking(Type* type, const wstring backing_inf_name, Expression * expression);
