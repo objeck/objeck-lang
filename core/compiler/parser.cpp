@@ -2852,7 +2852,8 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)ident.size(), ident);
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) && 
-      (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
+     (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) ||
+      Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
     vector<Type*> generic_dclrs = ParseGenericTypes(depth);
     variable->SetConcreteTypes(generic_dclrs);
   }
@@ -4029,7 +4030,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 
   // generics
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
-    (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX))) {
+     (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) ||
+      Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
     vector<Type*> generic_dclrs = ParseGenericTypes(depth);
     if(method_call) {
       method_call->SetConcreteTypes(generic_dclrs);

@@ -12,7 +12,7 @@ Generic collections (-lib gen_collect)
 ~#	
 bundle Collection.Generic {
     #~
-	Compare pair
+	Generic pair
 	~#
     class Pair<F : Compare, S> implements System.Compare  {
         @first : F;
@@ -309,6 +309,34 @@ bundle Collection.Generic {
 			return values;
 		}
 
+		#~
+		Gets a collection of key/value pairs
+		@return vector of key/value pairs
+		~#
+		method : public : native : GetKeyValues() ~ Vector<Pair<K,V>> {
+			values := Vector->New()<Pair<K,V>>;
+
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->More()) {
+						pair : HashPair<V> := list->Get()<V>;
+
+						k : Key := pair->Get();
+						v : V := pair->Get();
+
+						values->AddBack(Pair->New(k, v));
+						
+
+						list->Next();
+					};
+				};
+			};
+			
+			return values;
+		}
+		
 		#~
 		Clears the map
 		~#
