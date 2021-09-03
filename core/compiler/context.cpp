@@ -240,13 +240,16 @@ bool ContextAnalyzer::Analyze()
     for(size_t j = 0; j < enums.size(); ++j) {
       AnalyzeEnum(enums[j], 0);
     }
+
     // process classes
     vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       AnalyzeClass(classes[j], class_id++, 0);
     }
+
     // check for duplicate instance and class level variables
     AnalyzeDuplicateEntries(classes, 0);
+
     // process class methods
     for(size_t j = 0; j < classes.size(); ++j) {
       AnalyzeMethods(classes[j], 0);
@@ -2028,13 +2031,13 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     else if(capture_lambda) {
       const wstring full_class_name = GetProgramLibraryClassName(variable_name);
       if(!HasProgramLibraryEnum(full_class_name) && !HasProgramLibraryClass(full_class_name)) {
-  Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
-                                                             static_cast<Expression*>(method_call)->GetLineNumber(),
-                                                             static_cast<Expression*>(method_call)->GetLinePosition(),
-                                                             full_class_name);
-  AnalyzeVariable(variable, depth + 1);
-  method_call->SetVariable(variable);
-  entry = GetEntry(method_call, full_class_name, depth);
+        Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
+                                                                   static_cast<Expression*>(method_call)->GetLineNumber(),
+                                                                   static_cast<Expression*>(method_call)->GetLinePosition(),
+                                                                   full_class_name);
+        AnalyzeVariable(variable, depth + 1);
+        method_call->SetVariable(variable);
+        entry = GetEntry(method_call, full_class_name, depth);
       }
     }
     
@@ -4103,9 +4106,11 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         // resolve variable type
         Type* var_type = var_types[i];
         ResolveClassEnumType(var_type);
+
         // resolve expression type
         Type* expr_type = expr_types[i];
         ResolveClassEnumType(expr_type);
+
         // match expression types
         if(var_type->GetName() != expr_type->GetName()) {
           ProcessError(variable, L"Generic type mismatch for class '" + variable->GetEvalType()->GetName() + 
