@@ -7229,7 +7229,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   }
                   else {
                     vector<Type*> from_concrete_types = concrete_types;
-                    const vector<Type*> to_concrete_types = method_call->GetEvalType()->GetGenerics();
+                    const vector<Type*> to_concrete_types = method_call->GetConcreteTypes();
                     
                     if(from_concrete_types.size() == to_concrete_types.size()) {
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
