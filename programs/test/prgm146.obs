@@ -7,8 +7,8 @@ class Test {
 		m := Map->New()<String, String>;
 		m->Insert("a", "b");
 
-		v := m->GetKeyValues()<Collection.Generic.Pair<String, String>>;
-#		v := m->GetKeys()<String>;
+#		v := m->GetKeyValues()<Collection.Generic.Pair<String, String>>;
+		v := m->GetKeys()<IntHolder>;
 
 		each(i : v) {
 			"---"->PrintLine();

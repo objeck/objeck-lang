@@ -7204,8 +7204,9 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
           const vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
             
-            // const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
-            const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+            vector<Type*> from_concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+            // const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
@@ -7223,19 +7224,22 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   ResolveClassEnumType(map_type);
 
                   const int map_type_index = lib_klass->GenericIndex(map_type->GetName());
-                  if(map_type_index > -1 && map_type_index < (int)concrete_types.size()) {
+                  if(map_type_index > -1 && map_type_index < (int)from_concrete_types.size()) {
                     Type* candidate_type = candidate_types[i];
                     ResolveClassEnumType(candidate_type);
                     
-                    Type* concrete_type = concrete_types[map_type_index];
+                    Type* concrete_type = from_concrete_types[map_type_index];
                     ResolveClassEnumType(concrete_type);
 
                     ValidateConcretes(candidate_type, concrete_type, method_call);
                   }
                   else {
-                    vector<Type*> from_concrete_types = concrete_types;
-                    const vector<Type*> to_concrete_types = method_call->GetConcreteTypes();
-                    
+                    // TODO: this is a hack, fix it...
+                    vector<Type*> to_concrete_types = method_call->GetConcreteTypes();                    
+                    if(from_concrete_types.size() != to_concrete_types.size() && to_concrete_types.size() == 1) {
+                      to_concrete_types = to_concrete_types[0]->GetGenerics();
+                    }
+
                     if(from_concrete_types.size() == to_concrete_types.size()) {
                       for(size_t j = 0; j < from_concrete_types.size(); ++j) {
                         Type* from_concrete_type = from_concrete_types[j];
