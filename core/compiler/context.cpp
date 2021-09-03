@@ -2113,7 +2113,7 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
                  FormatTypeString(from_concrete_type->GetName()) + 
                  L"' to '" + FormatTypeString(to_concrete_type->GetName()) + L"'");
   }
-
+  /*
   vector<Type*> from_concrete_types = from_concrete_type->GetGenerics();
   vector<Type*> to_concrete_types = to_concrete_type->GetGenerics();
 
@@ -2131,6 +2131,7 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
   else {
     ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
   }
+  */
 }
 
 void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
@@ -7237,7 +7238,18 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     // TODO: this is a hack, fix it...
                     vector<Type*> to_concrete_types = method_call->GetConcreteTypes();                    
                     if(from_concrete_types.size() != to_concrete_types.size() && to_concrete_types.size() == 1) {
-                      to_concrete_types = to_concrete_types[0]->GetGenerics();
+                      vector<Type*> mthd_types;
+                      if(method_call->GetMethod()) {
+                        mthd_types = method_call->GetMethod()->GetReturn()->GetGenerics();
+                      }
+                      else if(method_call->GetLibraryMethod()) {
+                        mthd_types = method_call->GetLibraryMethod()->GetReturn()->GetGenerics();
+                      }
+
+                      for(size_t j = 0; j < mthd_types.size(); ++j) {
+                        ValidateConcretes(mthd_types[j], to_concrete_types[j], method_call);
+                        to_concrete_types = to_concrete_types[j]->GetGenerics();
+                      }
                     }
 
                     if(from_concrete_types.size() == to_concrete_types.size()) {
