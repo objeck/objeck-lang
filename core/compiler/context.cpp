@@ -1439,99 +1439,101 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
-  switch(expression->GetExpressionType()) {
-  case LAMBDA_EXPR:
-    AnalyzeLambda(static_cast<Lambda*>(expression), depth);
-    break;
-  
-  case STAT_ARY_EXPR:
-    AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
-    break;
+  if(expression) {
+    switch(expression->GetExpressionType()) {
+    case LAMBDA_EXPR:
+      AnalyzeLambda(static_cast<Lambda*>(expression), depth);
+      break;
 
-  case CHAR_STR_EXPR:
-    AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
-    break;
+    case STAT_ARY_EXPR:
+      AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
+      break;
 
-  case COND_EXPR:
-    AnalyzeConditional(static_cast<Cond*>(expression), depth);
-    break;
+    case CHAR_STR_EXPR:
+      AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
+      break;
 
-  case METHOD_CALL_EXPR:
-    AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
+    case COND_EXPR:
+      AnalyzeConditional(static_cast<Cond*>(expression), depth);
+      break;
+
+    case METHOD_CALL_EXPR:
+      AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
 #ifdef _DIAG_LIB
-    diagnostic_expressions.push_back(expression);
+      diagnostic_expressions.push_back(expression);
 #endif
-    break;
+      break;
 
-  case NIL_LIT_EXPR:
+    case NIL_LIT_EXPR:
 #ifdef _DEBUG
-    Debug(L"nil literal", expression->GetLineNumber(), depth);
+      Debug(L"nil literal", expression->GetLineNumber(), depth);
 #endif
-    break;
+      break;
 
-  case BOOLEAN_LIT_EXPR:
+    case BOOLEAN_LIT_EXPR:
 #ifdef _DEBUG
-    Debug(L"boolean literal", expression->GetLineNumber(), depth);
+      Debug(L"boolean literal", expression->GetLineNumber(), depth);
 #endif
-    break;
+      break;
 
-  case CHAR_LIT_EXPR:
+    case CHAR_LIT_EXPR:
 #ifdef _DEBUG
-    Debug(L"character literal", expression->GetLineNumber(), depth);
+      Debug(L"character literal", expression->GetLineNumber(), depth);
 #endif
-    break;
+      break;
 
-  case INT_LIT_EXPR:
+    case INT_LIT_EXPR:
 #ifdef _DEBUG
-    Debug(L"integer literal", expression->GetLineNumber(), depth);
+      Debug(L"integer literal", expression->GetLineNumber(), depth);
 #endif
-    break;
+      break;
 
-  case FLOAT_LIT_EXPR:
+    case FLOAT_LIT_EXPR:
 #ifdef _DEBUG
-    Debug(L"float literal", expression->GetLineNumber(), depth);
+      Debug(L"float literal", expression->GetLineNumber(), depth);
 #endif
-    break;
+      break;
 
-  case VAR_EXPR:
-    AnalyzeVariable(static_cast<Variable*>(expression), depth);
-    break;
+    case VAR_EXPR:
+      AnalyzeVariable(static_cast<Variable*>(expression), depth);
+      break;
 
-  case AND_EXPR:
-  case OR_EXPR:
-    current_method->SetAndOr(true);
-    AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
-    break;
+    case AND_EXPR:
+    case OR_EXPR:
+      current_method->SetAndOr(true);
+      AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
+      break;
 
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
-    break;
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR:
+    case ADD_EXPR:
+    case SUB_EXPR:
+    case MUL_EXPR:
+    case DIV_EXPR:
+    case MOD_EXPR:
+    case SHL_EXPR:
+    case SHR_EXPR:
+    case BIT_AND_EXPR:
+    case BIT_OR_EXPR:
+    case BIT_XOR_EXPR:
+      AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
+      break;
 
-  default:
-    ProcessError(expression, L"Undefined expression");
-    break;
+    default:
+      ProcessError(expression, L"Undefined expression");
+      break;
+    }
+
+    // check expression method call
+    AnalyzeExpressionMethodCall(expression, depth + 1);
+
+    // check cast
+    AnalyzeCast(expression, depth + 1);
   }
-
-  // check expression method call
-  AnalyzeExpressionMethodCall(expression, depth + 1);
-
-  // check cast
-  AnalyzeCast(expression, depth + 1);
 }
 
 /****************************
@@ -3662,12 +3664,14 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int depth)
 {
   Expression* expression = simple->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  AnalyzeExpressionMethodCall(expression, depth);
-
-  // ensure it's a valid statement
-  if(!expression->GetMethodCall()) {
-    ProcessError(expression, L"Invalid statement");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    AnalyzeExpressionMethodCall(expression, depth);
+    
+    // ensure it's a valid statement
+    if(!expression->GetMethodCall()) {
+      ProcessError(expression, L"Invalid statement");
+    }
   }
 }
 
@@ -3682,9 +3686,11 @@ void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
 
   // expression
   Expression* expression = if_stmt->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  if(!IsBooleanExpression(expression)) {
-    ProcessError(expression, L"Expected Bool expression");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    if(!IsBooleanExpression(expression)) {
+      ProcessError(expression, L"Expected Bool expression");
+    }
   }
   // 'if' statements
   AnalyzeStatements(if_stmt->GetIfStatements(), depth + 1);
@@ -3708,16 +3714,19 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 {
   // expression
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  if(!IsIntegerExpression(expression)) {
-    ProcessError(expression, L"Expected integer expression");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    if(!IsIntegerExpression(expression)) {
+      ProcessError(expression, L"Expected integer expression");
+    }
   }
+
   // labels and expressions
   map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
   if(statements.size() < 1) {
-    ProcessError(expression, L"Select statement must have at least one label");
+    ProcessError(select_stmt, L"Select statement must have at least one label");
   }
-
+  
   map<ExpressionList*, StatementList*>::iterator iter;
   // duplicate value vector
   int value = 0;
@@ -3730,50 +3739,53 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     vector<Expression*> expression_list = expressions->GetExpressions();
     for(size_t i = 0; i < expression_list.size(); ++i) {
       Expression* expression = expression_list[i];
-      switch(expression->GetExpressionType()) {
-      case CHAR_LIT_EXPR:
-        value = static_cast<CharacterLiteral*>(expression)->GetValue();
-        if(DuplicateCaseItem(label_statements, value)) {
-          ProcessError(expression, L"Duplicate select value");
-        }
-        break;
-
-      case INT_LIT_EXPR:
-        value = static_cast<IntegerLiteral*>(expression)->GetValue();
-        if(DuplicateCaseItem(label_statements, value)) {
-          ProcessError(expression, L"Duplicate select value");
-        }
-        break;
-
-      case METHOD_CALL_EXPR: {
-        // get method call
-        MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-        if(mthd_call->GetMethodCall()) {
-          mthd_call = mthd_call->GetMethodCall();
-        }
-        // check type
-        if(mthd_call->GetEnumItem()) {
-          value = mthd_call->GetEnumItem()->GetId();
+      if(expression) {
+        switch(expression->GetExpressionType()) {
+        case CHAR_LIT_EXPR:
+          value = static_cast<CharacterLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select value");
           }
-        }
-        else if(mthd_call->GetLibraryEnumItem()) {
-          value = mthd_call->GetLibraryEnumItem()->GetId();
+          break;
+
+        case INT_LIT_EXPR:
+          value = static_cast<IntegerLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select value");
           }
+          break;
+
+        case METHOD_CALL_EXPR: {
+          // get method call
+          MethodCall* mthd_call = static_cast<MethodCall*>(expression);
+          if(mthd_call->GetMethodCall()) {
+            mthd_call = mthd_call->GetMethodCall();
+          }
+          // check type
+          if(mthd_call->GetEnumItem()) {
+            value = mthd_call->GetEnumItem()->GetId();
+            if(DuplicateCaseItem(label_statements, value)) {
+              ProcessError(expression, L"Duplicate select value");
+            }
+          }
+          else if(mthd_call->GetLibraryEnumItem()) {
+            value = mthd_call->GetLibraryEnumItem()->GetId();
+            if(DuplicateCaseItem(label_statements, value)) {
+              ProcessError(expression, L"Duplicate select value");
+            }
+          }
+          else {
+            ProcessError(expression, L"Expected integer literal or enum item");
+          }
         }
-        else {
+                             break;
+
+        default:
           ProcessError(expression, L"Expected integer literal or enum item");
+          break;
         }
       }
-        break;
-        
-      default:
-        ProcessError(expression, L"Expected integer literal or enum item");
-        break;
-      }
+
       // statements get assoicated here and validated below
       label_statements.insert(pair<int, StatementList*>(value, iter->second));
     }
@@ -3794,15 +3806,17 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 {
   Variable* variable = mutex->GetVariable();
   AnalyzeVariable(variable, depth + 1);
-  if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
-    if(variable->GetEvalType()->GetName() != L"System.Concurrency.ThreadMutex") {
+  if(variable) {
+    if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
+      if(variable->GetEvalType()->GetName() != L"System.Concurrency.ThreadMutex") {
+        ProcessError(mutex, L"Expected ThreadMutex type");
+      }
+    }
+    else {
       ProcessError(mutex, L"Expected ThreadMutex type");
     }
+    AnalyzeStatements(mutex->GetStatements(), depth + 1);
   }
-  else {
-    ProcessError(mutex, L"Expected ThreadMutex type");
-  }
-  AnalyzeStatements(mutex->GetStatements(), depth + 1);
 }
 
 /****************************
@@ -3813,14 +3827,19 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   current_table->NewScope();
   // pre
   AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
+
   // expression
   Expression* expression = for_stmt->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  if(!IsBooleanExpression(expression)) {
-    ProcessError(expression, L"Expected Bool expression");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    if(!IsBooleanExpression(expression)) {
+      ProcessError(expression, L"Expected Bool expression");
+    }
   }
+
   // update
   AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
+  
   // statements
   in_loop++;
   AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
@@ -3848,9 +3867,11 @@ void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
 
   // expression
   Expression* expression = do_while_stmt->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  if(!IsBooleanExpression(expression)) {
-    ProcessError(expression, L"Expected Bool expression");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    if(!IsBooleanExpression(expression)) {
+      ProcessError(expression, L"Expected Bool expression");
+    }
   }
   current_table->PreviousScope();
 }
@@ -3866,10 +3887,13 @@ void ContextAnalyzer::AnalyzeWhile(While* while_stmt, const int depth)
 
   // expression
   Expression* expression = while_stmt->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  if(!IsBooleanExpression(expression)) {
-    ProcessError(expression, L"Expected Bool expression");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    if(!IsBooleanExpression(expression)) {
+      ProcessError(expression, L"Expected Bool expression");
+    }
   }
+
   // 'while' statements
   in_loop++;
   AnalyzeStatements(while_stmt->GetStatements(), depth + 1);
@@ -4029,190 +4053,236 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 #endif
 
   Variable* variable = assignment->GetVariable();
-  AnalyzeVariable(variable, depth + 1);
+  if(variable) {
+    AnalyzeVariable(variable, depth + 1);
+  }
 
   // get last expression for assignment
   Expression* expression = assignment->GetExpression();
-  AnalyzeExpression(expression, depth + 1);
-  if(expression->GetExpressionType() == LAMBDA_EXPR) {
-    expression = static_cast<Lambda*>(expression)->GetMethodCall();
-    if(!expression) {
-      return;
-    }
-  }
-
-  while(expression->GetMethodCall()) {
-    AnalyzeExpressionMethodCall(expression, depth + 1);
-    expression = expression->GetMethodCall();
-  }
-
-  // if uninitialized variable, bind and update entry
-  if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
-    if(variable->GetIndices()) {
-      ProcessError(expression, L"Invalid operation using Var type");
+  if(expression) {
+    AnalyzeExpression(expression, depth + 1);
+    if(expression->GetExpressionType() == LAMBDA_EXPR) {
+      expression = static_cast<Lambda*>(expression)->GetMethodCall();
+      if(!expression) {
+        return;
+      }
     }
 
-    SymbolEntry* entry = variable->GetEntry();
-    if(entry) {
-      if(expression->GetCastType()) {
-        Type* to_type = expression->GetCastType();
-        AnalyzeVariableCast(to_type, expression);
-        variable->SetTypes(to_type);
-        entry->SetType(to_type);
+    while(expression->GetMethodCall()) {
+      AnalyzeExpressionMethodCall(expression, depth + 1);
+      expression = expression->GetMethodCall();
+    }
+
+    // if uninitialized variable, bind and update entry
+    if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
+      if(variable->GetIndices()) {
+        ProcessError(expression, L"Invalid operation using Var type");
       }
-      else {
-        Type* to_type = expression->GetEvalType();
-        AnalyzeVariableCast(to_type, expression);
-        variable->SetTypes(to_type);
-        entry->SetType(to_type);
-      }
-      // set variable to scalar type if we're dereferencing an array variable
-      if(expression->GetExpressionType() == VAR_EXPR) {
-        Variable* expr_variable = static_cast<Variable*>(expression);
-        if(entry->GetType() && expr_variable->GetIndices()) {
-          variable->GetBaseType()->SetDimension(0);
-          variable->GetEvalType()->SetDimension(0);
-          entry->GetType()->SetDimension(0);
+
+      SymbolEntry* entry = variable->GetEntry();
+      if(entry) {
+        if(expression->GetCastType()) {
+          Type* to_type = expression->GetCastType();
+          AnalyzeVariableCast(to_type, expression);
+          variable->SetTypes(to_type);
+          entry->SetType(to_type);
+        }
+        else {
+          Type* to_type = expression->GetEvalType();
+          AnalyzeVariableCast(to_type, expression);
+          variable->SetTypes(to_type);
+          entry->SetType(to_type);
+        }
+        // set variable to scalar type if we're dereferencing an array variable
+        if(expression->GetExpressionType() == VAR_EXPR) {
+          Variable* expr_variable = static_cast<Variable*>(expression);
+          if(entry->GetType() && expr_variable->GetIndices()) {
+            variable->GetBaseType()->SetDimension(0);
+            variable->GetEvalType()->SetDimension(0);
+            entry->GetType()->SetDimension(0);
+          }
         }
       }
     }
-  }
-  // handle enum reference, update entry
-  else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && 
-          expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetEnumItem()) {
-    SymbolEntry* to_entry = variable->GetEntry();
-    if(to_entry) {
-      Type* to_type = to_entry->GetType();
-      Expression* box_expression = BoxExpression(to_type, expression, depth);
-      if(box_expression) {
-        expression = box_expression;
-        assignment->SetExpression(box_expression);
-      }
-      else {
-        Type* from_type = expression->GetEvalType();
-        AnalyzeClassCast(to_type, from_type, expression, false, depth);
-        variable->SetTypes(from_type);
-        to_entry->SetType(from_type);
-      }
-    }
-  }
-  
-  // handle generics, update entry
-  if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry() && variable->GetEntry()->GetType()) {
-    const vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
-    const vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
-    
-    if(var_types.size() == expr_types.size()) {
-      for(size_t i = 0; i < var_types.size(); ++i) {
-        // resolve variable type
-        Type* var_type = var_types[i];
-        ResolveClassEnumType(var_type);
-
-        // resolve expression type
-        Type* expr_type = expr_types[i];
-        ResolveClassEnumType(expr_type);
-
-        // match expression types
-        if(var_type->GetName() != expr_type->GetName()) {
-          ProcessError(variable, L"Generic type mismatch for class '" + variable->GetEvalType()->GetName() + 
-                       L"' between generic types: '" + FormatTypeString(var_type->GetName()) + 
-                       L"' and '" + FormatTypeString(expr_type->GetName()) + L"'");
+    // handle enum reference, update entry
+    else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE &&
+            expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetEnumItem()) {
+      SymbolEntry* to_entry = variable->GetEntry();
+      if(to_entry) {
+        Type* to_type = to_entry->GetType();
+        Expression* box_expression = BoxExpression(to_type, expression, depth);
+        if(box_expression) {
+          expression = box_expression;
+          assignment->SetExpression(box_expression);
+        }
+        else {
+          Type* from_type = expression->GetEvalType();
+          AnalyzeClassCast(to_type, from_type, expression, false, depth);
+          variable->SetTypes(from_type);
+          to_entry->SetType(from_type);
         }
       }
     }
-    else {
-      ProcessError(variable, L"Generic size mismatch");
+
+    // handle generics, update entry
+    if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry() && variable->GetEntry()->GetType()) {
+      const vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
+      const vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
+
+      if(var_types.size() == expr_types.size()) {
+        for(size_t i = 0; i < var_types.size(); ++i) {
+          // resolve variable type
+          Type* var_type = var_types[i];
+          ResolveClassEnumType(var_type);
+
+          // resolve expression type
+          Type* expr_type = expr_types[i];
+          ResolveClassEnumType(expr_type);
+
+          // match expression types
+          if(var_type->GetName() != expr_type->GetName()) {
+            ProcessError(variable, L"Generic type mismatch for class '" + variable->GetEvalType()->GetName() +
+                         L"' between generic types: '" + FormatTypeString(var_type->GetName()) +
+                         L"' and '" + FormatTypeString(expr_type->GetName()) + L"'");
+          }
+        }
+      }
+      else {
+        ProcessError(variable, L"Generic size mismatch");
+      }
     }
-  }
-  else if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->HasConcreteTypes()) {
-    MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-    if(variable->GetEntry()->GetType() && variable->GetEntry()->GetType()->GetGenerics().size() != mthd_call->GetConcreteTypes().size()) {
-      ProcessError(variable, L"Generic size mismatch");
+    else if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->HasConcreteTypes()) {
+      MethodCall* mthd_call = static_cast<MethodCall*>(expression);
+      if(variable->GetEntry()->GetType() && variable->GetEntry()->GetType()->GetGenerics().size() != mthd_call->GetConcreteTypes().size()) {
+        ProcessError(variable, L"Generic size mismatch");
+      }
     }
-  }
-  
-  Type* left_type = variable->GetEvalType();
-  bool check_right_cast = true;
-  if(left_type && left_type->GetType() == CLASS_TYPE) {
+
+    Type* left_type = variable->GetEvalType();
+    bool check_right_cast = true;
+    if(left_type && left_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-    LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetName(),program->GetUses(current_class->GetFileName()));
+      LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetName(), program->GetUses(current_class->GetFileName()));
 #else
-    Class* left_class = SearchProgramClasses(left_type->GetName());
+      Class* left_class = SearchProgramClasses(left_type->GetName());
 #endif
-    if(left_class) {
-      const wstring left_name = left_class->GetName();
-      //
-      // 'System.String' append operations
-      //
-      if(left_name == L"System.String") {
-        
-        Type* right_type = GetExpressionType(expression, depth + 1);
-        if(right_type && right_type->GetType() == CLASS_TYPE) {
+      if(left_class) {
+        const wstring left_name = left_class->GetName();
+        //
+        // 'System.String' append operations
+        //
+        if(left_name == L"System.String") {
+
+          Type* right_type = GetExpressionType(expression, depth + 1);
+          if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-          LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetUses(current_class->GetFileName()));
+            LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetUses(current_class->GetFileName()));
 #else
-          Class* right_class = SearchProgramClasses(right_type->GetName());
+            Class* right_class = SearchProgramClasses(right_type->GetName());
 #endif
-          if(right_class) {
-            const wstring right = right_class->GetName();
-            // rhs string append
-            if(right == L"System.String") {
-              switch(type) {
-              case ADD_ASSIGN_STMT:
-                static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-                check_right_cast = false;
-                break;
+            if(right_class) {
+              const wstring right = right_class->GetName();
+              // rhs string append
+              if(right == L"System.String") {
+                switch(type) {
+                case ADD_ASSIGN_STMT:
+                  static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+                  check_right_cast = false;
+                  break;
 
-              case SUB_ASSIGN_STMT:
-              case MUL_ASSIGN_STMT:
-              case DIV_ASSIGN_STMT:
-                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.String'");
-                break;
+                case SUB_ASSIGN_STMT:
+                case MUL_ASSIGN_STMT:
+                case DIV_ASSIGN_STMT:
+                  ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.String'");
+                  break;
 
-              case ASSIGN_STMT:
-                break;
+                case ASSIGN_STMT:
+                  break;
 
-              default:
-                ProcessError(assignment, L"Internal compiler error.");
-                exit(1);
+                default:
+                  ProcessError(assignment, L"Internal compiler error.");
+                  exit(1);
+                }
+              }
+              else {
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right + L"'");
               }
             }
             else {
-              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right + L"'");
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right_type->GetName() + L"'");
             }
           }
-          else {
-            ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right_type->GetName() + L"'");
+          // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
+          else if(right_type && (right_type->GetType() == CHAR_TYPE || right_type->GetType() == BYTE_TYPE ||
+                                 right_type->GetType() == INT_TYPE || right_type->GetType() == FLOAT_TYPE ||
+                                 right_type->GetType() == BOOLEAN_TYPE)) {
+            switch(type) {
+            case ADD_ASSIGN_STMT:
+              static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+              check_right_cast = false;
+              break;
+
+            case SUB_ASSIGN_STMT:
+            case MUL_ASSIGN_STMT:
+            case DIV_ASSIGN_STMT:
+              if(right_type->GetType() == CHAR_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Char'");
+              }
+              else if(right_type->GetType() == BYTE_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Byte'");
+              }
+              else if(right_type->GetType() == INT_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Int'");
+              }
+              else if(right_type->GetType() == FLOAT_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Float'");
+              }
+              else {
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Bool'");
+              }
+              break;
+
+            case ASSIGN_STMT:
+              break;
+
+            default:
+              ProcessError(assignment, L"Internal compiler error.");
+              exit(1);
+            }
           }
         }
-        // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
-        else if(right_type && (right_type->GetType() == CHAR_TYPE || right_type->GetType() == BYTE_TYPE ||
-                right_type->GetType() == INT_TYPE || right_type->GetType() == FLOAT_TYPE ||
-                right_type->GetType() == BOOLEAN_TYPE)) {
+        //
+        // Unboxing for assignment operations
+        //
+        else if(IsHolderType(left_name)) {
+          CalculatedExpression* calc_expression = nullptr;
           switch(type) {
           case ADD_ASSIGN_STMT:
-            static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-            check_right_cast = false;
+            calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
+                                                                                variable->GetLineNumber(),
+                                                                                variable->GetLinePosition(),
+                                                                                ADD_EXPR, variable, expression);
             break;
 
           case SUB_ASSIGN_STMT:
+            calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
+                                                                                variable->GetLineNumber(),
+                                                                                variable->GetLinePosition(),
+                                                                                SUB_EXPR, variable, expression);
+            break;
+
           case MUL_ASSIGN_STMT:
+            calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
+                                                                                variable->GetLineNumber(),
+                                                                                variable->GetLinePosition(),
+                                                                                MUL_EXPR, variable, expression);
+            break;
+
           case DIV_ASSIGN_STMT:
-            if(right_type->GetType() == CHAR_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Char'");
-            }
-            else if(right_type->GetType() == BYTE_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Byte'");
-            }
-            else if(right_type->GetType() == INT_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Int'");
-            }
-            else if(right_type->GetType() == FLOAT_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Float'");
-            }
-            else {
-              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Bool'");
-            }
+            calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
+                                                                                variable->GetLineNumber(),
+                                                                                variable->GetLinePosition(),
+                                                                                DIV_EXPR, variable, expression);
             break;
 
           case ASSIGN_STMT:
@@ -4222,77 +4292,35 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
             ProcessError(assignment, L"Internal compiler error.");
             exit(1);
           }
-        }
-      }
-      //
-      // Unboxing for assignment operations
-      //
-      else if(IsHolderType(left_name)) {
-        CalculatedExpression* calc_expression = nullptr;
-        switch(type) {
-        case ADD_ASSIGN_STMT:
-          calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
-                                                                              variable->GetLineNumber(),
-                                                                              variable->GetLinePosition(),
-                                                                              ADD_EXPR, variable, expression);
-          break;
 
-        case SUB_ASSIGN_STMT:
-          calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
-                                                                              variable->GetLineNumber(),
-                                                                              variable->GetLinePosition(),
-                                                                              SUB_EXPR, variable, expression);
-          break;
-
-        case MUL_ASSIGN_STMT:
-          calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(),
-                                                                              variable->GetLineNumber(),
-                                                                              variable->GetLinePosition(),
-                                                                              MUL_EXPR, variable, expression);
-          break;
-
-        case DIV_ASSIGN_STMT:
-          calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(), 
-                                                                              variable->GetLineNumber(),
-                                                                              variable->GetLinePosition(),
-                                                                              DIV_EXPR, variable, expression);
-          break;
-
-        case ASSIGN_STMT:
-          break;
-
-        default:
-          ProcessError(assignment, L"Internal compiler error.");
-          exit(1);
-        }
-
-        if(calc_expression) {
-          assignment->SetExpression(calc_expression);
-          expression = calc_expression;
-          static_cast<OperationAssignment*>(assignment)->SetStatementType(ASSIGN_STMT);
-          AnalyzeCalculation(calc_expression, depth + 1);
+          if(calc_expression) {
+            assignment->SetExpression(calc_expression);
+            expression = calc_expression;
+            static_cast<OperationAssignment*>(assignment)->SetStatementType(ASSIGN_STMT);
+            AnalyzeCalculation(calc_expression, depth + 1);
+          }
         }
       }
     }
-  }
 
-  if(check_right_cast) {
-    Expression* box_expression = AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
-    if(box_expression) {
-      AnalyzeExpression(box_expression, depth + 1);
-      assignment->SetExpression(box_expression);
+    if(check_right_cast) {
+      Expression* box_expression = AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
+      if(box_expression) {
+        AnalyzeExpression(box_expression, depth + 1);
+        assignment->SetExpression(box_expression);
+      }
     }
-  }
 
-  if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
-    MethodCall* method_call = static_cast<MethodCall*>(expression);
-    // 'Nil' return check
-    if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE &&
-       !method_call->IsFunctionDefinition()) {
-      ProcessError(expression, L"Invalid assignment method '" + method_call->GetMethod()->GetName() + L"(..)' does not return a value");
-    }
-    else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
-      ProcessError(expression, L"Invalid assignment, call does not return a value");
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      MethodCall* method_call = static_cast<MethodCall*>(expression);
+      // 'Nil' return check
+      if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE &&
+         !method_call->IsFunctionDefinition()) {
+        ProcessError(expression, L"Invalid assignment method '" + method_call->GetMethod()->GetName() + L"(..)' does not return a value");
+      }
+      else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
+        ProcessError(expression, L"Invalid assignment, call does not return a value");
+      }
     }
   }
 }
@@ -5708,8 +5736,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
  ****************************/
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
 {
-  if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||
-     expression->GetEvalType()->GetType() != CLASS_TYPE)) {
+  if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||  expression->GetEvalType()->GetType() != CLASS_TYPE)) {
     AnalyzeRightCast(expression->GetCastType(), expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
   }
 
@@ -6291,6 +6318,7 @@ bool ContextAnalyzer::IsBooleanExpression(Expression* expression)
   while(expression->GetMethodCall()) {
     expression = expression->GetMethodCall();
   }
+
   Type* eval_type = expression->GetEvalType();
   if(eval_type) {
     return eval_type->GetType() == BOOLEAN_TYPE;
