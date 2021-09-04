@@ -7247,8 +7247,14 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                       }
 
                       for(size_t j = 0; j < mthd_types.size(); ++j) {
-                        ValidateConcretes(mthd_types[j], to_concrete_types[j], method_call);
-                        to_concrete_types = to_concrete_types[j]->GetGenerics();
+                        Type* mthd_type = mthd_types[j];
+                        ResolveClassEnumType(mthd_type);
+
+                        Type* to_concrete_type = to_concrete_types[j];
+                        ResolveClassEnumType(to_concrete_type);
+
+                        ValidateConcretes(mthd_type, to_concrete_type, method_call);
+                        to_concrete_types = to_concrete_type->GetGenerics();
                       }
                     }
 
