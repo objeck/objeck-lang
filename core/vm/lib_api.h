@@ -425,13 +425,11 @@ inline const wchar_t* APITools_GetStringValue(size_t* data_array, int index) {
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
     size_t* string_holder = (size_t*)data_array[index];
-
-#ifdef _DEBUG
-    assert(string_holder);
-#endif
-    size_t* char_array = (size_t*)string_holder[0];
-    wchar_t* str = (wchar_t*)(char_array + 3);
-    return str;
+    if(string_holder) {
+      size_t* char_array = (size_t*)string_holder[0];
+      wchar_t* str = (wchar_t*)(char_array + 3);
+      return str;
+    }
   }
 
   return nullptr;
