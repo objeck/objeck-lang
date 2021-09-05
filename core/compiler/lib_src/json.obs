@@ -270,7 +270,7 @@ bundle Data.JSON {
 		@token_pos : Int;
 		@cur_token : Token;
 		@root : JsonElement;
-		@last_error : String;
+		@error_msg : String;
 		
 		#~
 		Creates a new parser
@@ -311,15 +311,11 @@ bundle Data.JSON {
     	}
 
     	#~
-		Get last error
-		@return last error or Nil of no errors
+		Get the current parsing error
+		@return parsing error, Nil if none
 		~#
-		method : public : GetLastError() ~ String {
-			if(@last_error <> Nil) {
-				return @last_error;
-			};
-
-			return Nil;
+		method : public : GetError() ~ String {
+			return @error_msg;
 		}
 
     	#~
@@ -387,7 +383,7 @@ bundle Data.JSON {
 				}
 				
 				other: {
-					@last_error := @last_error := "*** Unexpected value *** ";
+					@error_msg := @error_msg := "*** Unexpected value *** ";
 # @cur_token->GetType()->As(Int)->PrintLine();				
 					return Nil;
 				}
@@ -406,7 +402,7 @@ bundle Data.JSON {
 				# parse name
 				elem_name : Token;
 				if(Match(Token->Type->IDENT) = false) {
-					@last_error := "*** Expected identifier *** ";
+					@error_msg := "*** Expected identifier *** ";
 # @cur_token->GetType()->As(Int)->PrintLine();				
 					return Nil;
 				};			
@@ -414,7 +410,7 @@ bundle Data.JSON {
 				NextToken();
 				
 				if(Match(Token->Type->COLON) = false) {
-					@last_error := "*** Expected ':' *** ";
+					@error_msg := "*** Expected ':' *** ";
 # @cur_token->GetType()->As(Int)->PrintLine();				
 					return Nil;
 				};
@@ -436,7 +432,7 @@ bundle Data.JSON {
 			};
 			
 			if(Match(Token->Type->CCBR) = false) {
-				@last_error := "*** Expected '}' *** ";
+				@error_msg := "*** Expected '}' *** ";
 # @cur_token->GetType()->As(Int)->PrintLine();				
 				return Nil;
 			};
@@ -465,7 +461,7 @@ bundle Data.JSON {
 			};
 			
 			if(Match(Token->Type->CBR) = false) {
-				@last_error := "*** Expected ']' *** ";
+				@error_msg := "*** Expected ']' *** ";
 # @cur_token->GetType()->As(Int)->PrintLine();				
 				return Nil;
 			};
