@@ -50,7 +50,7 @@ bundle System.Diagnostics {
 			names := String->New[size]; 
 			texts := String->New[size];
 
-			for(i := 0; i < size; i += 1;) {
+			for(i := 0; i < size; i += 1;) {				
 				names[i] := src_strs[i,0];
 				texts[i] := src_strs[i,1];
 			};
