@@ -604,7 +604,6 @@ char* Library::LoadFileBuffer(wstring filename, size_t& buffer_size)
   }
   else {
     wcerr << L"Unable to open file: " << filename << endl;
-    exit(1);
   }
 
   return nullptr;
@@ -617,90 +616,92 @@ void Library::LoadFile(const wstring &file_name)
 {
   // read file into memory
   ReadFile(file_name);
-
-  int ver_num = ReadInt();
-  if(ver_num != VER_NUM) {
-    wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the tool chain.  Please recompile the libraries or link the correct version." << endl;
-    exit(1);
-  } 
-
-  int magic_num = ReadInt();
-  if(magic_num ==  0xdddd) {
-    wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << endl;
-    exit(1);
-  } else if(magic_num !=  0xddde) {
-    wcerr << L"Unable to link invalid library file '" << file_name << L"'." << endl;
-    exit(1);
-  }
-
-  // read float strings
-  const int num_float_strings = ReadInt();
-  for(int i = 0; i < num_float_strings; ++i) {
-    frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
-    holder->length = ReadInt();
-    holder->value = new FLOAT_VALUE[holder->length];
-    for(int j = 0; j < holder->length; ++j) {
-      holder->value[j] = ReadDouble();
+  if(buffer) {
+    const int ver_num = ReadInt();
+    if(ver_num != VER_NUM) {
+      wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the tool chain.  Please recompile the libraries or link the correct version." << endl;
+      exit(1);
     }
-#ifdef _DEBUG
-    GetLogger() << L"float string: id=" << i << L"; value=";
-    for(int j = 0; j < holder->length; ++j) {
-      GetLogger() << holder->value[j] << L",";
-    }
-    GetLogger() << endl;
-#endif
-    FloatStringInstruction* str_instr = new FloatStringInstruction;
-    str_instr->value = holder;
-    float_strings.push_back(str_instr);
-  }
-  // read int strings
-  const int num_int_strings = ReadInt();
-  for(int i = 0; i < num_int_strings; ++i) {
-    frontend::IntStringHolder* holder = new frontend::IntStringHolder;
-    holder->length = ReadInt();
-    holder->value = new INT_VALUE[holder->length];
-    for(int j = 0; j < holder->length; ++j) {
-      holder->value[j] = ReadInt();
-    }
-#ifdef _DEBUG
-    GetLogger() << L"int string: id=" << i << L"; value=";
-    for(int j = 0; j < holder->length; ++j) {
-      GetLogger() << holder->value[j] << L",";
-    }
-    GetLogger() << endl;
-#endif
-    IntStringInstruction* str_instr = new IntStringInstruction;
-    str_instr->value = holder;
-    int_strings.push_back(str_instr);
-  }
-  // read char strings
-  const int num_char_strings = ReadInt();
-  for(int i = 0; i < num_char_strings; ++i) {
-    const wstring &char_str_value = ReadString();
-#ifdef _DEBUG
-    const wstring &msg = L"char string: id=" + Linker::ToString(i) + L"; value='" + char_str_value + L"'";
-    Linker::Debug(msg, -1, 0);
-#endif
-    CharStringInstruction* str_instr = new CharStringInstruction;
-    str_instr->value = char_str_value;
-    char_strings.push_back(str_instr);
-  }
 
-  // read bundle names
-  const int num_bundle_name = ReadInt();
-  for(int i = 0; i < num_bundle_name; ++i) {
-    const wstring str_value = ReadString();
-    bundle_names.push_back(str_value);
-#ifdef _DEBUG
-    const wstring &msg = L"bundle name='" + str_value + L"'";
-    Linker::Debug(msg, -1, 0);
-#endif
-  }
+    const int magic_num = ReadInt();
+    if(magic_num == 0xdddd) {
+      wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << endl;
+      exit(1);
+    }
+    else if(magic_num != 0xddde) {
+      wcerr << L"Unable to link invalid library file '" << file_name << L"'." << endl;
+      exit(1);
+    }
 
-  // load aliases, enums and classes
-  LoadLambdas();
-  LoadEnums();
-  LoadClasses();
+    // read float strings
+    const int num_float_strings = ReadInt();
+    for(int i = 0; i < num_float_strings; ++i) {
+      frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
+      holder->length = ReadInt();
+      holder->value = new FLOAT_VALUE[holder->length];
+      for(int j = 0; j < holder->length; ++j) {
+        holder->value[j] = ReadDouble();
+      }
+#ifdef _DEBUG
+      GetLogger() << L"float string: id=" << i << L"; value=";
+      for(int j = 0; j < holder->length; ++j) {
+        GetLogger() << holder->value[j] << L",";
+      }
+      GetLogger() << endl;
+#endif
+      FloatStringInstruction* str_instr = new FloatStringInstruction;
+      str_instr->value = holder;
+      float_strings.push_back(str_instr);
+    }
+    // read int strings
+    const int num_int_strings = ReadInt();
+    for(int i = 0; i < num_int_strings; ++i) {
+      frontend::IntStringHolder* holder = new frontend::IntStringHolder;
+      holder->length = ReadInt();
+      holder->value = new INT_VALUE[holder->length];
+      for(int j = 0; j < holder->length; ++j) {
+        holder->value[j] = ReadInt();
+      }
+#ifdef _DEBUG
+      GetLogger() << L"int string: id=" << i << L"; value=";
+      for(int j = 0; j < holder->length; ++j) {
+        GetLogger() << holder->value[j] << L",";
+      }
+      GetLogger() << endl;
+#endif
+      IntStringInstruction* str_instr = new IntStringInstruction;
+      str_instr->value = holder;
+      int_strings.push_back(str_instr);
+    }
+    // read char strings
+    const int num_char_strings = ReadInt();
+    for(int i = 0; i < num_char_strings; ++i) {
+      const wstring& char_str_value = ReadString();
+#ifdef _DEBUG
+      const wstring& msg = L"char string: id=" + Linker::ToString(i) + L"; value='" + char_str_value + L"'";
+      Linker::Debug(msg, -1, 0);
+#endif
+      CharStringInstruction* str_instr = new CharStringInstruction;
+      str_instr->value = char_str_value;
+      char_strings.push_back(str_instr);
+    }
+
+    // read bundle names
+    const int num_bundle_name = ReadInt();
+    for(int i = 0; i < num_bundle_name; ++i) {
+      const wstring str_value = ReadString();
+      bundle_names.push_back(str_value);
+#ifdef _DEBUG
+      const wstring& msg = L"bundle name='" + str_value + L"'";
+      Linker::Debug(msg, -1, 0);
+#endif
+    }
+
+    // load aliases, enums and classes
+    LoadLambdas();
+    LoadEnums();
+    LoadClasses();
+  }
 }
 
 /****************************
