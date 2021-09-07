@@ -1,0 +1,5 @@
+class Test {
+	function : Main(a : String[]) ~ Nil {
+		Runtime->GetTempDir()->PrintLine();
+	}
+}
