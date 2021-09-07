@@ -4,7 +4,7 @@ use Collection.Generic;
 use Web.HTTP;
  
 #~
-Support for the FastCGI web server protocol (fcgi.obl) 
+Support for the FastCGI web server protocol (-lib fcgi.obl) 
 ~#
 bundle Web.FastCgi {
 	#~
