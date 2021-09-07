@@ -6368,16 +6368,16 @@ bundle System.IO.File {
 
         method : RandomPrefix() ~ String {
             str := "";
-
+            
             each(i : 5) {
                 if(Int->Random(10) % 2 = 0) {
-                    str->Append(Int->Random('a', 'z'));
+                    str->Append(Int->Random('a', 'z')->As(Char));
                 }
                 else {
-                    str->Append(Int->Random('0', '9'));
+                    str->Append(Int->Random('0', '9')->As(Char));
                 };
             };
-
+            
             return str;
         }
 
