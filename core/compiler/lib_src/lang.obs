@@ -6346,20 +6346,40 @@ bundle System.IO.File {
 
 			@info_dir := "";
 			@info_dir->Append(@directory);
-			@info_dir->Append("/info-objk.txt");
+			@info_dir->Append("/objk-info-");
+            @info_dir->Append(RandomPrefix());
+            @info_dir->Append(".log");
 			@info_mutex := ThreadMutex->New("info-log");
 
 			@warn_dir := "";
 			@warn_dir->Append(Runtime->GetTempDir());
-			@warn_dir->Append("/warn-objk.txt");
+			@warn_dir->Append("/objk-warn-");
+            @warn_dir->Append(RandomPrefix());
+            @warn_dir->Append(".log");
 			@warn_mutex := ThreadMutex->New("warn-log");
 
 			@err_dir := "";
 			@err_dir->Append(Runtime->GetTempDir());
-			@err_dir->Append("/err-objk.txt");
-			@warn_mutex := ThreadMutex->New("warn-log");
+			@err_dir->Append("/objk-err-");
+            @err_dir->Append(RandomPrefix());
+            @err_dir->Append(".log");
 			@err_mutex := ThreadMutex->New("err-log");
 		}
+
+        method : RandomPrefix() ~ String {
+            str := "";
+
+            each(i : 5) {
+                if(Int->Random(10) % 2 = 0) {
+                    str->Append(Int->Random('a', 'z'));
+                }
+                else {
+                    str->Append(Int->Random('0', '9'));
+                };
+            };
+
+            return str;
+        }
 
 		#~
 		Gets an instance of the logger
