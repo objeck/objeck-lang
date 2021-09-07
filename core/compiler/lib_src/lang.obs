@@ -3659,7 +3659,7 @@ bundle System {
 		@return system's temporary directory
 		~#
 		function : GetTempDir() ~ String {
-			return GetProperty("temp_dir");
+			return GetProperty("tmp_dir");
 		}
 
 		#~
