@@ -6332,37 +6332,37 @@ bundle System.IO.File {
 		@directory : String;
 
 		@info_mutex : ThreadMutex;
-		@info_dir : String;
+		@info_file : String;
 
 		@warn_mutex : ThreadMutex;
-		@warn_dir : String;
+		@warn_file : String;
 
 		@err_mutex : ThreadMutex;
-		@err_dir : String;
+		@err_file : String;
 		
 		New : private () {
 			Parent();		
 			@directory := Runtime->GetTempDir();
 
-			@info_dir := "";
-			@info_dir->Append(@directory);
-			@info_dir->Append("/objk-info-");
-            @info_dir->Append(RandomPrefix());
-            @info_dir->Append(".log");
+			@info_file := "";
+			@info_file->Append(@directory);
+			@info_file->Append("/objk-info-");
+            @info_file->Append(RandomPrefix());
+            @info_file->Append(".log");
 			@info_mutex := ThreadMutex->New("info-log");
 
-			@warn_dir := "";
-			@warn_dir->Append(Runtime->GetTempDir());
-			@warn_dir->Append("/objk-warn-");
-            @warn_dir->Append(RandomPrefix());
-            @warn_dir->Append(".log");
+			@warn_file := "";
+			@warn_file->Append(Runtime->GetTempDir());
+			@warn_file->Append("/objk-warn-");
+            @warn_file->Append(RandomPrefix());
+            @warn_file->Append(".log");
 			@warn_mutex := ThreadMutex->New("warn-log");
 
-			@err_dir := "";
-			@err_dir->Append(Runtime->GetTempDir());
-			@err_dir->Append("/objk-err-");
-            @err_dir->Append(RandomPrefix());
-            @err_dir->Append(".log");
+			@err_file := "";
+			@err_file->Append(Runtime->GetTempDir());
+			@err_file->Append("/objk-err-");
+            @err_file->Append(RandomPrefix());
+            @err_file->Append(".log");
 			@err_mutex := ThreadMutex->New("err-log");
 		}
 
@@ -6400,12 +6400,13 @@ bundle System.IO.File {
 		~#
 		method : public : Info(message : String) ~ Bool {
 			critical(@info_mutex) {
-				out := FileWriter->New(@info_dir, true);
+				out := FileWriter->New(@info_file, true);
 				if(out <> Nil) {
 					header := "[";
 					header->Append(Date->New()->ToShortString());
 					header->Append("]: ");
 					header->Append(message);
+                    header->Append("\r\n");
 					out->WriteString(header);
 				}
 				else {
@@ -6424,12 +6425,13 @@ bundle System.IO.File {
 		~#
 		method : public : Warn(message : String) ~ Bool {
 			critical(@warn_mutex) {
-				out := FileWriter->New(@warn_dir, true);
+				out := FileWriter->New(@warn_file, true);
 				if(out <> Nil) {
 					header := "[";
 					header->Append(Date->New()->ToShortString());
 					header->Append("]: ");
 					header->Append(message);
+                    header->Append("\r\n");
 					out->WriteString(header);
 				}
 				else {
@@ -6448,12 +6450,13 @@ bundle System.IO.File {
 		~#
 		method : public : Error(message : String) ~ Bool {
 			critical(@err_mutex) {
-				out := FileWriter->New(@err_dir, true);
+				out := FileWriter->New(@err_file, true);
 				if(out <> Nil) {
 					header := "[";
 					header->Append(Date->New()->ToShortString());
 					header->Append("]: ");
 					header->Append(message);
+                    header->Append("\r\n");
 					out->WriteString(header);
 				}
 				else {
@@ -6471,7 +6474,7 @@ bundle System.IO.File {
 		~#
 		method : public : ClearInfo() ~ Nil {
 			critical(@info_mutex) {
-				File->Delete(@info_dir);
+				File->Delete(@info_file);
 			};
 		}
 
@@ -6481,7 +6484,7 @@ bundle System.IO.File {
 		~#
 		method : public : ClearWarn() ~ Nil {
 			critical(@warn_mutex) {
-				File->Delete(@warn_dir);
+				File->Delete(@warn_file);
 			};
 		}
 
@@ -6491,7 +6494,7 @@ bundle System.IO.File {
 		~#
 		method : public : ClearError() ~ Nil {
 			critical(@err_mutex) {
-				File->Delete(@err_dir);
+				File->Delete(@err_file);
 			};
 		}
 
@@ -6501,6 +6504,30 @@ bundle System.IO.File {
 		~#
 		method : public : GetDirectory() ~ String {
 			return @directory;
+		}
+
+        #~
+		Gets path to warning file
+		@return path to warning file
+		~#
+		method : public : GetWarnFile() ~ String {
+			return @warn_file;
+		}
+
+        #~
+		Gets path to information file
+		@return path to information file
+		~#
+		method : public : GetInfoFile() ~ String {
+			return @info_file;
+		}
+
+        #~
+		Gets path to error file
+		@return path to error file
+		~#
+		method : public : GetErrorFile() ~ String {
+			return @err_file;
 		}
 	}
 
