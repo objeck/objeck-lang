@@ -2,7 +2,7 @@ use Collection.Generic;
 use System.API;
 
 #~
-Support for basic code diagnostics
+Support for basic code diagnostics (-lib diags)
 ~#
 bundle System.Diagnostics {
 	class Proxy {
