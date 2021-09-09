@@ -7798,10 +7798,10 @@ void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass
 //
 // definitions
 //
-bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const int line_pos, 
+                                    wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
+                                    Class* &klass, Enum* &eenum)
 {
-  vector<Expression*> matched_expressions;
-
   // find matching expressions
   vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
@@ -7816,21 +7816,21 @@ bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const in
     if(found_entry && found_entry->GetType()) {
       const wstring search_name = found_entry->GetType()->GetName();
       // found class
-      Class* klass = SearchProgramClasses(search_name);
+      klass = SearchProgramClasses(search_name);
       if(klass) {
-        wcout << L"--- CLASS ---" << endl;
+        return true;
       }
       else {
         // found enum
-        Enum* eenum = SearchProgramEnums(search_name);
+        eenum = SearchProgramEnums(search_name);
         if(eenum) {
-          wcout << L"--- ENUM ---" << endl;
+          return true;
         }
       }
     }
     // found method
     else {
-      wcout << L"--- METHOD ---" << endl;
+      return true;
     }
   }
   
