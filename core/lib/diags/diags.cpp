@@ -296,6 +296,39 @@ extern "C" {
   }
 
   //
+  // find definition
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_definition(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring lib_path = APITools_GetStringValue(context, 4);
+
+    SymbolTable* table = nullptr;
+    Method* method = program->FindMethod(line_num, table);
+    if(method) {
+      wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
+      }
+
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
+      if(analyzer.Analyze()) {
+        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
+        if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
+
+        }
+      }
+    }
+  }
+
+  //
   // find declaration
   //
 #ifdef _WIN32
