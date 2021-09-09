@@ -7807,13 +7807,24 @@ bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const in
   Expression* found_expression = nullptr;
   bool is_alt = false;
 
+  // TODO: class level?, right file
+
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
-    const wstring class_entry_name = method->GetName() + L':' + found_name;
-    SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(class_entry_name);
+    const wstring entry_name = method->GetName() + L':' + found_name;
+    SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(entry_name);
     if(found_entry && found_entry->GetType()) {
-      Class* klass = SearchProgramClasses(found_entry->GetType()->GetName());
+      const wstring search_name = found_entry->GetType()->GetName();
+      // found class
+      Class* klass = SearchProgramClasses(search_name);
       if(klass) {
-        wcout << L"--- B ---" << endl;
+        wcout << L"--- A ---" << endl;
+      }
+      else {
+        // found enum
+        Enum* eenum = SearchProgramEnums(search_name);
+        if(eenum) {
+          wcout << L"--- B ---" << endl;
+        }
       }
     }
   }
