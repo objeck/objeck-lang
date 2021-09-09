@@ -7796,7 +7796,33 @@ void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass
 }
 
 //
-// diagnostics operations
+// definitions
+//
+bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+{
+  vector<Expression*> matched_expressions;
+
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr;
+  bool is_alt = false;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
+    const wstring class_entry_name = method->GetName() + L':' + found_name;
+    SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(class_entry_name);
+    if(found_entry && found_entry->GetType()) {
+      Class* klass = SearchProgramClasses(found_entry->GetType()->GetName());
+      if(klass) {
+        wcout << L"--- B ---" << endl;
+      }
+    }
+  }
+  
+  return false;
+}
+
+//
+// declarations
 //
 bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
