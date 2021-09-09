@@ -7812,20 +7812,25 @@ bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const in
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
     const wstring entry_name = method->GetName() + L':' + found_name;
     SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(entry_name);
+    // found variable
     if(found_entry && found_entry->GetType()) {
       const wstring search_name = found_entry->GetType()->GetName();
       // found class
       Class* klass = SearchProgramClasses(search_name);
       if(klass) {
-        wcout << L"--- A ---" << endl;
+        wcout << L"--- CLASS ---" << endl;
       }
       else {
         // found enum
         Enum* eenum = SearchProgramEnums(search_name);
         if(eenum) {
-          wcout << L"--- B ---" << endl;
+          wcout << L"--- ENUM ---" << endl;
         }
       }
+    }
+    // found method
+    else {
+      wcout << L"--- METHOD ---" << endl;
     }
   }
   
@@ -7837,8 +7842,6 @@ bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const in
 //
 bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
-  vector<Expression*> matched_expressions;
-
   // find matching expressions
   vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
