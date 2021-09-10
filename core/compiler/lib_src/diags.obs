@@ -348,7 +348,7 @@ bundle System.Diagnostics {
 		~#
 		method : public : ToString() ~ String {
 			kind := @kind->As(Int);
-			return "name='{$@name}', kind={$kind}, start_line={$@start_line}, start_pos={$@start_pos}, end_line={$@end_line}, end_pos={$@end_pos}";
+			return "name='{$@name}', desc='{$@desc}', kind={$kind}, start_line={$@start_line}, start_pos={$@start_pos}, end_line={$@end_line}, end_pos={$@end_pos}";
 		}
 	}
 }
