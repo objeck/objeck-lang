@@ -321,19 +321,25 @@ extern "C" {
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; Enum* eenum = nullptr;
-        if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, 
-                                  found_start_pos, found_end_pos, klass, eenum)) {
+        if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum)) {
+          // class
           if(klass) {
 
           }
+          // enum
           else if(eenum) {
 
           }
+          // method
           else {
-
+            size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
+            dcrl_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, method->GetFileName());
+            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = method->GetLineNumber() - 1;
+            dcrl_obj[ResultPosition::POS_START_POS] = method->GetLinePosition() - 1;
+            dcrl_obj[ResultPosition::POS_END_POS] = method->GetLinePosition() + 80;
+            APITools_SetObjectValue(context, 0, dcrl_obj);
           }
-
-          // APITools_SetObjectValue(context, 0, dcrl_obj);
         }
       }
     }
@@ -368,7 +374,6 @@ extern "C" {
         if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
           size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
           dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-          dcrl_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
           dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = found_line - 1;
           dcrl_obj[ResultPosition::POS_START_POS] = found_start_pos - 1;
           dcrl_obj[ResultPosition::POS_END_POS] = found_end_pos - 1;
