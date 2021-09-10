@@ -7798,7 +7798,7 @@ void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass
 //
 // definitions
 //
-bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const int line_pos, wstring& found_name, 
+bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const int line_pos, wstring& found_name, 
                                     int& found_line, int& found_start_pos, int& found_end_pos, Class* &klass, Enum* &eenum)
 {
   // find matching expressions
@@ -7829,7 +7829,16 @@ bool ContextAnalyzer::GetDefinition(Method* method, const int line_num, const in
     }
     // found method
     else {
-      return true;
+      for(size_t i = 0; i < all_expressions.size(); ++i) {
+        Expression* expr = all_expressions[i];
+        if(expr->GetExpressionType() == METHOD_CALL_EXPR) {
+          MethodCall* mthd_call = static_cast<MethodCall*>(expr);
+          if(mthd_call->GetMethodName() == found_name && mthd_call->GetMethod()) {
+            method = mthd_call->GetMethod();
+            return true;
+          }
+        }
+      }
     }
   }
   
