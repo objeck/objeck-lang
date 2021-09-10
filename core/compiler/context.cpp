@@ -8023,11 +8023,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
       }
 
       if((start_pos <= line_pos && end_pos >= line_pos) || (alt_start_pos <= line_pos && alt_end_pos >= line_pos)) {
-        if(alt_start_pos <= line_pos && alt_end_pos >= line_pos) {
-          found_name = alt_found_name;
-          is_alt = true;
-        }
-        else if(found_name == L"@self") {
+        if((alt_start_pos <= line_pos && alt_end_pos >= line_pos) || found_name == L"@self") {
           found_name = alt_found_name;
           is_alt = true;
         }
