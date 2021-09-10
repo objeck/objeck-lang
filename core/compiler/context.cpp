@@ -8007,6 +8007,14 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
           alt_end_pos += (int)alt_found_name.size();
         }
+        else {
+          found_name = L"@self";
+          end_pos += (int)found_name.size();
+
+          alt_found_name = method_call->GetMethodName();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_end_pos += (int)alt_found_name.size();
+        }
       }
         break;
 
@@ -8016,6 +8024,10 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
 
       if((start_pos <= line_pos && end_pos >= line_pos) || (alt_start_pos <= line_pos && alt_end_pos >= line_pos)) {
         if(alt_start_pos <= line_pos && alt_end_pos >= line_pos) {
+          found_name = alt_found_name;
+          is_alt = true;
+        }
+        else if(found_name == L"@self") {
           found_name = alt_found_name;
           is_alt = true;
         }
