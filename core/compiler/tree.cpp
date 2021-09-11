@@ -1000,7 +1000,7 @@ const vector<wstring> ParsedProgram::GetUses() {
 
 
 #ifdef _DIAG_LIB
-Method* ParsedProgram::FindMethod(const int line_num, SymbolTable*& table)
+bool ParsedProgram::FindMethod(const int line_num, Class*& found_klass, Method*& found_method, SymbolTable*& table)
 {
   // bundles
   for(size_t i = 0; i < bundles.size(); ++i) {
@@ -1020,21 +1020,22 @@ Method* ParsedProgram::FindMethod(const int line_num, SymbolTable*& table)
 
         if(start_line <= line_num && end_line > line_num) {
           table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
-          return method;
+          found_method = method;
+          return true;
         }
       }
-    }
 
-    // TODO
-    /*
-    // enums
-    vector<Enum*> eenums = bundle->GetEnums();
-    for(size_t j = 0; j < eenums.size(); ++j) {
-      Enum* eenum = eenums[j];
+      const int start_line = klass->GetLineNumber() - 1;
+      const int end_line = klass->GetEndLineNumber();
+
+      if(start_line <= line_num && end_line > line_num) {
+        table = bundle->GetSymbolTableManager()->GetSymbolTable(klass->GetName());
+        found_klass = klass;
+        return true;
+      }
     }
-    */
   }
 
-  return nullptr;
+  return false;
 }
 #endif
