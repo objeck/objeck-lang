@@ -314,45 +314,46 @@ extern "C" {
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    program->FindMethod(line_num, klass, method, table);
-    if(method) {
-      wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
+    if(program->FindMethod(line_num, klass, method, table)) {
+      if(method) {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(analyzer.Analyze()) {
-        wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; Enum* eenum = nullptr;
-        if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum)) {
-          ParseNode* node = nullptr;
-          
-          // class
-          if(klass) {
-            node = klass;
-          }
-          // enum
-          else if(eenum) {
-            node = eenum;
-          }
-          // method
-          else {
-            node = method;
-          }
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+          wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; Enum* eenum = nullptr;
+          if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum)) {
+            ParseNode* node = nullptr;
 
-          size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-          def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, node->GetFileName());
-          def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = node->GetLineNumber() - 1;
-          def_obj[ResultPosition::POS_START_POS] = node->GetLinePosition() - 1;
-          def_obj[ResultPosition::POS_END_POS] = node->GetLinePosition() + 80;
-          APITools_SetObjectValue(context, 0, def_obj);
+            // class
+            if(klass) {
+              node = klass;
+            }
+            // enum
+            else if(eenum) {
+              node = eenum;
+            }
+            // method
+            else {
+              node = method;
+            }
+
+            size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
+            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, node->GetFileName());
+            def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = node->GetLineNumber() - 1;
+            def_obj[ResultPosition::POS_START_POS] = node->GetLinePosition() - 1;
+            def_obj[ResultPosition::POS_END_POS] = node->GetLinePosition() + 80;
+            APITools_SetObjectValue(context, 0, def_obj);
+          }
         }
       }
-    }
-    // TODO: class support
-    else {
+      // TODO: class support
+      else {
 
+      }
     }
   }
 
@@ -375,30 +376,31 @@ extern "C" {
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    program->FindMethod(line_num, klass, method, table);
-    if(method) {
-      wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
+    if(program->FindMethod(line_num, klass, method, table)) {
+      if(method) {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(analyzer.Analyze()) {
-        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
-        if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
-          size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-          dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = found_line - 1;
-          dcrl_obj[ResultPosition::POS_START_POS] = found_start_pos - 1;
-          dcrl_obj[ResultPosition::POS_END_POS] = found_end_pos - 1;
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+          wstring found_name; int found_line; int found_start_pos; int found_end_pos;
+          if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
+            size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
+            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = found_line - 1;
+            dcrl_obj[ResultPosition::POS_START_POS] = found_start_pos - 1;
+            dcrl_obj[ResultPosition::POS_END_POS] = found_end_pos - 1;
 
-          APITools_SetObjectValue(context, 0, dcrl_obj);
+            APITools_SetObjectValue(context, 0, dcrl_obj);
+          }
         }
       }
-    }
-    // TODO: class support
-    else {
+      // TODO: class support
+      else {
 
+      }
     }
   }
 
@@ -423,43 +425,44 @@ extern "C" {
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    program->FindMethod(line_num, klass, method, table);
-    if(method) {
-      wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
+    if(program->FindMethod(line_num, klass, method, table)) {
+      if(method) {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(analyzer.Analyze()) {
-        vector<pair<int, wstring>> completions;
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+          vector<pair<int, wstring>> completions;
 
-        if(analyzer.GetCompletion(method, var_str, mthd_str, completions)) {
-          size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Completions");
+          if(analyzer.GetCompletion(method, var_str, mthd_str, completions)) {
+            size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Completions");
 
-          size_t* completions_array = APITools_MakeIntArray(context, (int)completions.size());
-          size_t* completions_array_ptr = completions_array + 3;
+            size_t* completions_array = APITools_MakeIntArray(context, (int)completions.size());
+            size_t* completions_array_ptr = completions_array + 3;
 
-          for(size_t i = 0; i < completions.size(); ++i) {
-            pair<int, wstring> completion = completions[i];
-            size_t* completion_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            
-            completion_obj[ResultPosition::POS_CODE] = completion.first;
-            completion_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, completion.second);
+            for(size_t i = 0; i < completions.size(); ++i) {
+              pair<int, wstring> completion = completions[i];
+              size_t* completion_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
 
-            completions_array_ptr[i] = (size_t)completion_obj;
+              completion_obj[ResultPosition::POS_CODE] = completion.first;
+              completion_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, completion.second);
+
+              completions_array_ptr[i] = (size_t)completion_obj;
+            }
+
+            // set result
+            sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)completions_array;
+            APITools_SetObjectValue(context, 0, sig_root_obj);
           }
-
-          // set result
-          sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)completions_array;
-          APITools_SetObjectValue(context, 0, sig_root_obj);
         }
       }
-    }
-    // TODO: class support
-    else {
+      // TODO: class support
+      else {
 
+      }
     }
   }
 
@@ -484,88 +487,89 @@ extern "C" {
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    program->FindMethod(line_num, klass, method, table);
-    if(method) {
-      wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
+    if(program->FindMethod(line_num, klass, method, table)) {
+      if(method) {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(analyzer.Analyze()) {
-        vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
-        if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
-          size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_str);
-          sig_root_obj[ResultPosition::POS_CODE] = found_methods.empty();
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+          vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
+          if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
+            size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_str);
+            sig_root_obj[ResultPosition::POS_CODE] = found_methods.empty();
 
-          if(!found_methods.empty()) {
-            size_t* signature_array = APITools_MakeIntArray(context, (int)found_methods.size());
-            size_t* signature_array_array_ptr = signature_array + 3;
+            if(!found_methods.empty()) {
+              size_t* signature_array = APITools_MakeIntArray(context, (int)found_methods.size());
+              size_t* signature_array_array_ptr = signature_array + 3;
 
-            for(size_t i = 0; i < found_methods.size(); ++i) {
-              Method* found_method = found_methods[i];
+              for(size_t i = 0; i < found_methods.size(); ++i) {
+                Method* found_method = found_methods[i];
 
-              size_t* mthd_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-              mthd_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_method->GetUserName());
+                size_t* mthd_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                mthd_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_method->GetUserName());
 
-              // TODO: params
-              vector<frontend::Declaration*> declarations = found_method->GetDeclarations()->GetDeclarations();
-              size_t* mthd_parm_array = APITools_MakeIntArray(context, (int)declarations.size());
-              size_t* mthd_parm_array_ptr = mthd_parm_array + 3;
+                // TODO: params
+                vector<frontend::Declaration*> declarations = found_method->GetDeclarations()->GetDeclarations();
+                size_t* mthd_parm_array = APITools_MakeIntArray(context, (int)declarations.size());
+                size_t* mthd_parm_array_ptr = mthd_parm_array + 3;
 
-              for(size_t j = 0; j < declarations.size(); ++j) {
-                wstring type_name; GetTypeName(declarations[j]->GetEntry()->GetType(), type_name);
-                size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
+                for(size_t j = 0; j < declarations.size(); ++j) {
+                  wstring type_name; GetTypeName(declarations[j]->GetEntry()->GetType(), type_name);
+                  size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                  mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
 
-                mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
+                  mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
+                }
+                mthd_obj[ResultPosition::POS_CHILDREN] = (size_t)mthd_parm_array;
+
+                signature_array_array_ptr[i] = (size_t)mthd_obj;
               }
-              mthd_obj[ResultPosition::POS_CHILDREN] = (size_t)mthd_parm_array;
 
-              signature_array_array_ptr[i] = (size_t)mthd_obj;
+              sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
+            }
+            else {
+              size_t* signature_array = APITools_MakeIntArray(context, (int)found_lib_methods.size());
+              size_t* signature_array_array_ptr = signature_array + 3;
+
+              for(size_t i = 0; i < found_lib_methods.size(); ++i) {
+                LibraryMethod* found_lib_method = found_lib_methods[i];
+
+                size_t* mthd_lib_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                mthd_lib_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_lib_method->GetUserName());
+
+                // TODO: params
+                vector<frontend::Type*> declarations = found_lib_method->GetDeclarationTypes();
+                size_t* mthd_parm_array = APITools_MakeIntArray(context, (int)declarations.size());
+                size_t* mthd_parm_array_ptr = mthd_parm_array + 3;
+
+                for(size_t j = 0; j < declarations.size(); ++j) {
+                  wstring type_name; GetTypeName(declarations[j], type_name);
+                  size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                  mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
+
+                  mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
+                }
+                mthd_lib_obj[ResultPosition::POS_CHILDREN] = (size_t)mthd_parm_array;
+
+                signature_array_array_ptr[i] = (size_t)mthd_lib_obj;
+              }
+
+              sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
             }
 
-            sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
+            // set result
+            APITools_SetObjectValue(context, 0, sig_root_obj);
           }
-          else {
-            size_t* signature_array = APITools_MakeIntArray(context, (int)found_lib_methods.size());
-            size_t* signature_array_array_ptr = signature_array + 3;
-
-            for(size_t i = 0; i < found_lib_methods.size(); ++i) {
-              LibraryMethod* found_lib_method = found_lib_methods[i];
-
-              size_t* mthd_lib_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-              mthd_lib_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_lib_method->GetUserName());
-
-              // TODO: params
-              vector<frontend::Type*> declarations = found_lib_method->GetDeclarationTypes();
-              size_t* mthd_parm_array = APITools_MakeIntArray(context, (int)declarations.size());
-              size_t* mthd_parm_array_ptr = mthd_parm_array + 3;
-
-              for(size_t j = 0; j < declarations.size(); ++j) {                
-                wstring type_name; GetTypeName(declarations[j], type_name);
-                size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
-
-                mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
-              }
-              mthd_lib_obj[ResultPosition::POS_CHILDREN] = (size_t)mthd_parm_array;
-
-              signature_array_array_ptr[i] = (size_t)mthd_lib_obj;
-            }
-
-            sig_root_obj[ResultPosition::POS_CHILDREN] = (size_t)signature_array;
-          }
-
-          // set result
-          APITools_SetObjectValue(context, 0, sig_root_obj);
         }
       }
-    }
-    // TODO: class support
-    else {
+      // TODO: class support
+      else {
 
+      }
     }
   }
 
@@ -632,59 +636,60 @@ extern "C" {
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    program->FindMethod(line_num, klass, method, table);
-    if(method) {
-      wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
-
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(analyzer.Analyze()) {
-        vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos);
-        size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
-        size_t* refs_array_ptr = refs_array + 3;
-
-        for(size_t i = 0; i < expressions.size(); ++i) {
-          Expression* expression = expressions[i];
-
-          size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          int start_pos = expression->GetLinePosition() - 1;
-          int end_pos = start_pos;
-          
-          switch(expression->GetExpressionType()) {
-          case VAR_EXPR: {
-            Variable* variable = static_cast<Variable*>(expression);
-            end_pos += (int)variable->GetName().size();
-            reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
-          }
-            break;
-
-          case METHOD_CALL_EXPR: {
-            MethodCall* method_call = static_cast<MethodCall*>(expression);
-            start_pos++; end_pos++;
-            end_pos += (int)method_call->GetVariableName().size();
-            reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
-          }
-            break;
-
-          default:
-            break;
-          }
-          
-          reference_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_VARIABLE; // variable type
-          reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
-          reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
-          reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;          
-          refs_array_ptr[i] = (size_t)reference_obj;
+    if(program->FindMethod(line_num, klass, method, table)) {
+      if(method) {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
         }
 
-        prgm_obj[4] = (size_t)refs_array;
-      }
-    }
-    // TODO: class support
-    else {
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+          vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos);
+          size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+          size_t* refs_array_ptr = refs_array + 3;
 
+          for(size_t i = 0; i < expressions.size(); ++i) {
+            Expression* expression = expressions[i];
+
+            size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            int start_pos = expression->GetLinePosition() - 1;
+            int end_pos = start_pos;
+
+            switch(expression->GetExpressionType()) {
+            case VAR_EXPR: {
+              Variable* variable = static_cast<Variable*>(expression);
+              end_pos += (int)variable->GetName().size();
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+            }
+                         break;
+
+            case METHOD_CALL_EXPR: {
+              MethodCall* method_call = static_cast<MethodCall*>(expression);
+              start_pos++; end_pos++;
+              end_pos += (int)method_call->GetVariableName().size();
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+            }
+                                 break;
+
+            default:
+              break;
+            }
+
+            reference_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_VARIABLE; // variable type
+            reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
+            reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
+            reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
+            refs_array_ptr[i] = (size_t)reference_obj;
+          }
+
+          prgm_obj[4] = (size_t)refs_array;
+        }
+      }
+      // TODO: class support
+      else {
+
+      }
     }
   }
 
