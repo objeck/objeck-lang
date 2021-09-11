@@ -322,36 +322,28 @@ extern "C" {
       if(analyzer.Analyze()) {
         wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; Enum* eenum = nullptr;
         if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum)) {
+          ParseNode* node = nullptr;
+          
           // class
           if(klass) {
-            size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-            dcrl_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, klass->GetFileName());
-            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = klass->GetLineNumber() - 1;
-            dcrl_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition() - 1;
-            dcrl_obj[ResultPosition::POS_END_POS] = klass->GetLinePosition() + 80;
-            APITools_SetObjectValue(context, 0, dcrl_obj);
+            node = klass;
           }
           // enum
           else if(eenum) {
-            size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-            dcrl_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, eenum->GetFileName());
-            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = eenum->GetLineNumber() - 1;
-            dcrl_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition() - 1;
-            dcrl_obj[ResultPosition::POS_END_POS] = eenum->GetLinePosition() + 80;
-            APITools_SetObjectValue(context, 0, dcrl_obj);
+            node = eenum;
           }
           // method
           else {
-            size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-            dcrl_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, method->GetFileName());
-            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = method->GetLineNumber() - 1;
-            dcrl_obj[ResultPosition::POS_START_POS] = method->GetLinePosition() - 1;
-            dcrl_obj[ResultPosition::POS_END_POS] = method->GetLinePosition() + 80;
-            APITools_SetObjectValue(context, 0, dcrl_obj);
+            node = method;
           }
+
+          size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
+          def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, node->GetFileName());
+          def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = node->GetLineNumber() - 1;
+          def_obj[ResultPosition::POS_START_POS] = node->GetLinePosition() - 1;
+          def_obj[ResultPosition::POS_END_POS] = node->GetLinePosition() + 80;
+          APITools_SetObjectValue(context, 0, def_obj);
         }
       }
     }
