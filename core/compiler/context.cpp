@@ -1315,7 +1315,7 @@ void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int
 void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 {
   if(statement) {
-    switch(statement->GetStatementType()) {
+   switch(statement->GetStatementType()) {
     case EMPTY_STMT:
     case SYSTEM_STMT:
       break;
@@ -4030,7 +4030,7 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 
   const int level = current_table->GetDepth();
   if(level == 1) {
-    AnalyzeStatements(leaving_stmt->GetStatements(), depth + 1);
+    (leaving_stmt->GetStatements(), depth + 1);
     if(current_method->GetLeaving()) {
       ProcessError(leaving_stmt, L"Method/function may have only 1 'leaving' block defined");
     }
@@ -4856,8 +4856,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       FormatTypeString(left->GetName()) + L" and System.Int");
+          ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and System.Int");
         }
         break;
 
@@ -4867,8 +4866,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(right, true);
         } 
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       FormatTypeString(left->GetName()) + L" and System.Float");
+          ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and System.Float");
         }
         break;
 
@@ -4880,6 +4878,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         ResolveClassEnumType(right);
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramLibraryEnum(right->GetName());
+
+        if(!can_unbox_left && !is_left_enum && !can_unbox_right && !is_right_enum) {
+          ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and " + FormatTypeString(right->GetName()));
+        }
         
         if((is_left_enum && !is_right_enum) || (!is_left_enum && is_right_enum)) {
           ProcessError(left_expr, L"Invalid operation between class and enum: '" + FormatTypeString(left->GetName()) + 
@@ -4905,8 +4907,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
         
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: " +
-                     FormatTypeString(left->GetName()) + L" and System.Bool");
+        ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and System.Bool");
         break;
       }
       break;
