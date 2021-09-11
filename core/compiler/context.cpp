@@ -4879,7 +4879,8 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramLibraryEnum(right->GetName());
 
-        if(!can_unbox_left && !is_left_enum && !can_unbox_right && !is_right_enum) {
+        if(!can_unbox_left && !is_left_enum && !can_unbox_right && !is_right_enum && 
+           expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
           ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and " + FormatTypeString(right->GetName()));
         }
         
