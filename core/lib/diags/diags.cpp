@@ -310,8 +310,11 @@ extern "C" {
     const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring lib_path = APITools_GetStringValue(context, 4);
 
+    Class* klass = nullptr;
+    Method* method = nullptr;
     SymbolTable* table = nullptr;
-    Method* method = program->FindMethod(line_num, table);
+
+    program->FindMethod(line_num, klass, method, table);
     if(method) {
       wstring full_lib_path = L"lang.obl";
       if(!lib_path.empty()) {
@@ -347,6 +350,10 @@ extern "C" {
         }
       }
     }
+    // TODO: class support
+    else {
+
+    }
   }
 
   //
@@ -364,8 +371,11 @@ extern "C" {
     const int line_pos = (int)APITools_GetIntValue(context, 3);
     const wstring lib_path = APITools_GetStringValue(context, 4);
 
+    Class* klass = nullptr;
+    Method* method = nullptr;
     SymbolTable* table = nullptr;
-    Method* method = program->FindMethod(line_num, table);
+
+    program->FindMethod(line_num, klass, method, table);
     if(method) {
       wstring full_lib_path = L"lang.obl";
       if(!lib_path.empty()) {
@@ -386,6 +396,10 @@ extern "C" {
         }
       }
     }
+    // TODO: class support
+    else {
+
+    }
   }
 
   //
@@ -405,8 +419,11 @@ extern "C" {
     const wstring mthd_str = APITools_GetStringValue(context, 5);
     const wstring lib_path = APITools_GetStringValue(context, 6);
 
+    Class* klass = nullptr;
+    Method* method = nullptr;
     SymbolTable* table = nullptr;
-    Method* method = program->FindMethod(line_num, table);
+
+    program->FindMethod(line_num, klass, method, table);
     if(method) {
       wstring full_lib_path = L"lang.obl";
       if(!lib_path.empty()) {
@@ -440,6 +457,10 @@ extern "C" {
         }
       }
     }
+    // TODO: class support
+    else {
+
+    }
   }
 
   //
@@ -459,8 +480,11 @@ extern "C" {
     const wstring mthd_str = APITools_GetStringValue(context, 5);
     const wstring lib_path = APITools_GetStringValue(context, 6);
 
+    Class* klass = nullptr;
+    Method* method = nullptr;
     SymbolTable* table = nullptr;
-    Method* method = program->FindMethod(line_num, table);
+
+    program->FindMethod(line_num, klass, method, table);
     if(method) {
       wstring full_lib_path = L"lang.obl";
       if(!lib_path.empty()) {
@@ -539,7 +563,10 @@ extern "C" {
         }
       }
     }
+    // TODO: class support
+    else {
 
+    }
   }
 
   void GetTypeName(frontend::Type* type, wstring& output)
@@ -601,8 +628,11 @@ extern "C" {
     const int line_pos = (int)APITools_GetIntValue(context, 2);
     const wstring lib_path = APITools_GetStringValue(context, 3);
 
+    Class* klass = nullptr;
+    Method* method = nullptr;
     SymbolTable* table = nullptr;
-    Method* method = program->FindMethod(line_num, table);
+
+    program->FindMethod(line_num, klass, method, table);
     if(method) {
       wstring full_lib_path = L"lang.obl";
       if(!lib_path.empty()) {
@@ -651,6 +681,10 @@ extern "C" {
 
         prgm_obj[4] = (size_t)refs_array;
       }
+    }
+    // TODO: class support
+    else {
+
     }
   }
 
