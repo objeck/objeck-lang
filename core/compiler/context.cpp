@@ -7952,47 +7952,6 @@ Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, 
   }
 
   return nullptr;
-
-  /*
-  vector<Expression*> matched_expressions;
-
-  // find matching expressions
-  vector<Expression*> all_expressions;
-  Expression* found_expression = nullptr;
-  wstring found_name;
-  bool is_alt = false;
-
-  if(LocateExpression(klass, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
-    for(size_t i = 0; i < all_expressions.size(); ++i) {
-      Expression* expression = all_expressions[i];
-      switch(expression->GetExpressionType()) {
-      case VAR_EXPR: {
-        Variable* variable = static_cast<Variable*>(expression);
-        if(variable->GetName() == found_name) {
-          matched_expressions.push_back(expression);
-          if(variable->GetIndices()) {
-            variable->SetLinePosition(variable->GetLinePosition() + 1);
-          }
-        }
-      }
-        break;
-
-      case METHOD_CALL_EXPR: {
-        MethodCall* method_call = static_cast<MethodCall*>(expression);
-        if(method_call->GetVariableName() == found_name) {
-          matched_expressions.push_back(expression);
-        }
-      }
-        break;
-
-      default:
-        break;
-      }
-    }
-  }
-
-  return matched_expressions;
-  */
 }
 
 vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos)
