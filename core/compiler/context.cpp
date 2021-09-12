@@ -4030,7 +4030,7 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 
   const int level = current_table->GetDepth();
   if(level == 1) {
-    (leaving_stmt->GetStatements(), depth + 1);
+    AnalyzeStatements(leaving_stmt->GetStatements(), depth + 1);
     if(current_method->GetLeaving()) {
       ProcessError(leaving_stmt, L"Method/function may have only 1 'leaving' block defined");
     }
