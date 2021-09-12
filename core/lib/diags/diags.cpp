@@ -315,6 +315,7 @@ extern "C" {
     SymbolTable* table = nullptr;
 
     if(program->FindMethod(line_num, klass, method, table)) {
+      // method level
       if(method) {
         wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
@@ -350,7 +351,7 @@ extern "C" {
           }
         }
       }
-      // TODO: class support
+      // class level
       else {
         wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
@@ -359,29 +360,15 @@ extern "C" {
 
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
-          vector<Statement*> decelerations = klass->GetStatements();
-          for(size_t i = 0; i < decelerations.size(); ++i) {
-            if(decelerations[i]->GetStatementType() == DECLARATION_STMT) {
-              Declaration* deceleration = static_cast<Declaration*>(decelerations[i]);
-
-              const int start_line = deceleration->GetLineNumber();
-              const int start_pos = deceleration->GetLinePosition();
-              const int end_pos = deceleration->GetEndLinePosition();
-              
-              if(start_line - 1 == line_num && start_pos <= line_pos && end_pos >= line_pos) {
-                const wstring search_name = deceleration->GetEntry()->GetType()->GetName();
-                Class* found_klass = program->GetClass(search_name);
-                if(found_klass) {
-                  size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                  def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_klass->GetName());
-                  def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, found_klass->GetFileName());
-                  def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = found_klass->GetLineNumber() - 1;
-                  def_obj[ResultPosition::POS_START_POS] = found_klass->GetLinePosition() - 1;
-                  def_obj[ResultPosition::POS_END_POS] = found_klass->GetLinePosition() + 80;
-                  APITools_SetObjectValue(context, 0, def_obj);
-                }
-              }
-            }
+          Class* found_klass = nullptr;
+          if(analyzer.GetDefinition(klass, line_num, line_pos, found_klass)) {
+            size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_klass->GetName());
+            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, found_klass->GetFileName());
+            def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = found_klass->GetLineNumber() - 1;
+            def_obj[ResultPosition::POS_START_POS] = found_klass->GetLinePosition() - 1;
+            def_obj[ResultPosition::POS_END_POS] = found_klass->GetLinePosition() + 80;
+            APITools_SetObjectValue(context, 0, def_obj);
           }
         }
       }
@@ -428,10 +415,12 @@ extern "C" {
           }
         }
       }
+      /*
       // TODO: class support
       else {
 
       }
+      */
     }
   }
 
@@ -489,10 +478,6 @@ extern "C" {
             APITools_SetObjectValue(context, 0, sig_root_obj);
           }
         }
-      }
-      // TODO: class support
-      else {
-
       }
     }
   }
@@ -597,10 +582,6 @@ extern "C" {
           }
         }
       }
-      // TODO: class support
-      else {
-
-      }
     }
   }
 
@@ -693,7 +674,7 @@ extern "C" {
               end_pos += (int)variable->GetName().size();
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
             }
-                         break;
+              break;
 
             case METHOD_CALL_EXPR: {
               MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -701,7 +682,7 @@ extern "C" {
               end_pos += (int)method_call->GetVariableName().size();
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
             }
-                                 break;
+              break;
 
             default:
               break;
@@ -718,8 +699,17 @@ extern "C" {
         }
       }
       // TODO: class support
+      // look for variables across classes
       else {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
 
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+
+        }
       }
     }
   }
