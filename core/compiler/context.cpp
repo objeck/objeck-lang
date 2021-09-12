@@ -7932,8 +7932,28 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
   return false;
 }
 
-vector<Expression*> ContextAnalyzer::FindExpressions(Class* klass, const int line_num, const int line_pos)
+Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, const int line_pos)
 {
+  vector<Expression*> expressions;
+
+  vector<Statement*> decelerations = klass->GetStatements();
+  for(size_t i = 0; i < decelerations.size(); ++i) {
+    if(decelerations[i]->GetStatementType() == DECLARATION_STMT) {
+      Declaration* deceleration = static_cast<Declaration*>(decelerations[i]);
+
+      const int start_line = deceleration->GetLineNumber();
+      const int start_pos = deceleration->GetLinePosition();
+      const int end_pos = deceleration->GetEndLinePosition();
+
+      if(start_line - 1 == line_num && start_pos <= line_pos && end_pos >= line_pos) {
+        return deceleration;
+      }
+    }
+  }
+
+  return nullptr;
+
+  /*
   vector<Expression*> matched_expressions;
 
   // find matching expressions
@@ -7955,7 +7975,7 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Class* klass, const int lin
           }
         }
       }
-                   break;
+        break;
 
       case METHOD_CALL_EXPR: {
         MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -7963,7 +7983,7 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Class* klass, const int lin
           matched_expressions.push_back(expression);
         }
       }
-                           break;
+        break;
 
       default:
         break;
@@ -7972,6 +7992,7 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Class* klass, const int lin
   }
 
   return matched_expressions;
+  */
 }
 
 vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos)
