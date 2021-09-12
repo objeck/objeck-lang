@@ -741,6 +741,7 @@ extern "C" {
                   break;
                 }
 
+                reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
                 reference_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_VARIABLE; // variable type
                 reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
                 reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
