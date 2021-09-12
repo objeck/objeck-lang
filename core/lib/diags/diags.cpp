@@ -708,7 +708,45 @@ extern "C" {
 
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
+          vector<Expression*> expressions = analyzer.FindExpressions(klass, line_num, line_pos);
+          size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+          size_t* refs_array_ptr = refs_array + 3;
 
+          for(size_t i = 0; i < expressions.size(); ++i) {
+            Expression* expression = expressions[i];
+
+            size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            int start_pos = expression->GetLinePosition() - 1;
+            int end_pos = start_pos;
+
+            switch(expression->GetExpressionType()) {
+            case VAR_EXPR: {
+              Variable* variable = static_cast<Variable*>(expression);
+              end_pos += (int)variable->GetName().size();
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+            }
+                         break;
+
+            case METHOD_CALL_EXPR: {
+              MethodCall* method_call = static_cast<MethodCall*>(expression);
+              start_pos++; end_pos++;
+              end_pos += (int)method_call->GetVariableName().size();
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+            }
+                                 break;
+
+            default:
+              break;
+            }
+
+            reference_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_VARIABLE; // variable type
+            reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
+            reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
+            reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
+            refs_array_ptr[i] = (size_t)reference_obj;
+          }
+
+          prgm_obj[4] = (size_t)refs_array;
         }
       }
     }

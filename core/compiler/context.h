@@ -590,13 +590,15 @@ class ContextAnalyzer {
   void FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos);
+  vector<Expression*> FindExpressions(Class* klass, const int line_num, const int line_pos);
 
   bool GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
-  bool GetDefinition(Method* &method, const int line_num, const int line_pos,
-                     wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
-                     Class*& klass, Enum*& eenum);
+  
+  bool GetDefinition(Method* &method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,  Class*& klass, Enum*& eenum);
+  bool GetDefinition(Class* klass, const int line_num, const int line_pos, Class*& found_klass);
 
   bool LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
+  bool LocateExpression(Class* klass, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
 #endif
   //
   // end: diagnostics operations
