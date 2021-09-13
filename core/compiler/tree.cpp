@@ -896,6 +896,9 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
           }
         }
       }
+#ifdef _DEBUG
+      // assert(name != L"o.");
+#endif
     }
       break;
 
