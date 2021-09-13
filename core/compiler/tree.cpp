@@ -1005,7 +1005,7 @@ bool ParsedProgram::FindMethodOrClass(const wstring uri, const int line_num, Cla
   // bundles
   for(size_t i = 0; i < bundles.size(); ++i) {
     ParsedBundle* bundle = bundles[i];
-    
+
     // classes
     vector<Class*> klasses = bundle->GetClasses();
     for(size_t j = 0; j < klasses.size(); ++j) {
