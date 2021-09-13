@@ -3491,7 +3491,7 @@ namespace frontend {
       error_strings = msgs;
     }
 
-    bool FindMethod(const int line_num, Class* &found_klass, Method* &found_method, SymbolTable*& table);
+    bool FindMethodOrClass(const wstring uri, const int line_num, Class* &found_klass, Method* &found_method, SymbolTable*& table);
 
 #endif
     

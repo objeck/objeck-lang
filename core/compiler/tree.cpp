@@ -1000,7 +1000,7 @@ const vector<wstring> ParsedProgram::GetUses() {
 
 
 #ifdef _DIAG_LIB
-bool ParsedProgram::FindMethod(const int line_num, Class*& found_klass, Method*& found_method, SymbolTable*& table)
+bool ParsedProgram::FindMethodOrClass(const wstring uri, const int line_num, Class*& found_klass, Method*& found_method, SymbolTable*& table)
 {
   // bundles
   for(size_t i = 0; i < bundles.size(); ++i) {
@@ -1010,28 +1010,29 @@ bool ParsedProgram::FindMethod(const int line_num, Class*& found_klass, Method*&
     vector<Class*> klasses = bundle->GetClasses();
     for(size_t j = 0; j < klasses.size(); ++j) {
       Class* klass = klasses[j];
-      
-      // methods
-      vector<Method*> methods = klass->GetMethods();
-      for(size_t k = 0; k < methods.size(); ++k) {
-        Method* method = methods[k];
-        const int start_line = method->GetLineNumber() - 1;
-        const int end_line = method->GetEndLineNumber();
+      if(klass->GetFileName() == uri) {
+        // methods
+        vector<Method*> methods = klass->GetMethods();
+        for(size_t k = 0; k < methods.size(); ++k) {
+          Method* method = methods[k];
+          const int start_line = method->GetLineNumber() - 1;
+          const int end_line = method->GetEndLineNumber();
+
+          if(start_line <= line_num && end_line > line_num) {
+            table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
+            found_method = method;
+            return true;
+          }
+        }
+
+        const int start_line = klass->GetLineNumber() - 1;
+        const int end_line = klass->GetEndLineNumber();
 
         if(start_line <= line_num && end_line > line_num) {
-          table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
-          found_method = method;
+          table = bundle->GetSymbolTableManager()->GetSymbolTable(klass->GetName());
+          found_klass = klass;
           return true;
         }
-      }
-
-      const int start_line = klass->GetLineNumber() - 1;
-      const int end_line = klass->GetEndLineNumber();
-
-      if(start_line <= line_num && end_line > line_num) {
-        table = bundle->GetSymbolTableManager()->GetSymbolTable(klass->GetName());
-        found_klass = klass;
-        return true;
       }
     }
   }
