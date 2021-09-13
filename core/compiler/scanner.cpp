@@ -1012,7 +1012,7 @@ void Scanner::ParseToken(int index)
 #ifdef _SYSTEM
     while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@' || cur_char == L'$') && cur_char != EOB) {
 #else
-     while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@') && cur_char != EOB) {
+    while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@') && cur_char != EOB) {
 #endif
         NextChar();
       }
