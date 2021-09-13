@@ -140,7 +140,9 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const wstring lib_path = APITools_GetStringValue(context, 1);
+    const wstring uri = APITools_GetStringValue(context, 1);
+    
+    const wstring lib_path = APITools_GetStringValue(context, 2);
     wstring full_lib_path = L"lang.obl";
     if(!lib_path.empty()) {
       full_lib_path += L',' + lib_path;
@@ -173,8 +175,9 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const wstring lib_path = APITools_GetStringValue(context, 1);
-
+    const wstring uri = APITools_GetStringValue(context, 1);
+    
+    const wstring lib_path = APITools_GetStringValue(context, 2);
     wstring full_lib_path = L"lang.obl";
     if(!lib_path.empty()) {
       full_lib_path += L',' + lib_path;
@@ -306,16 +309,18 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring lib_path = APITools_GetStringValue(context, 4);
+    const wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+
+    const wstring lib_path = APITools_GetStringValue(context, 5);
 
     Class* klass = nullptr;
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
     // TODO: check the right file
-    if(program->FindMethod(line_num, klass, method, table)) {
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       // method level
       if(method) {
         wstring full_lib_path = L"lang.obl";
@@ -387,15 +392,17 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring lib_path = APITools_GetStringValue(context, 4);
+    const wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+
+    const wstring lib_path = APITools_GetStringValue(context, 5);
 
     Class* klass = nullptr;
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    if(program->FindMethod(line_num, klass, method, table)) {
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
@@ -436,17 +443,19 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    // const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring var_str = APITools_GetStringValue(context, 4);
-    const wstring mthd_str = APITools_GetStringValue(context, 5);
-    const wstring lib_path = APITools_GetStringValue(context, 6);
+    const wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+
+    const wstring var_str = APITools_GetStringValue(context, 5);
+    const wstring mthd_str = APITools_GetStringValue(context, 6);
+    const wstring lib_path = APITools_GetStringValue(context, 7);
 
     Class* klass = nullptr;
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    if(program->FindMethod(line_num, klass, method, table)) {
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
@@ -494,17 +503,20 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    // const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring var_str = APITools_GetStringValue(context, 4);
-    const wstring mthd_str = APITools_GetStringValue(context, 5);
-    const wstring lib_path = APITools_GetStringValue(context, 6);
+    const wstring uri = APITools_GetStringValue(context, 2);
+
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+    
+    const wstring var_str = APITools_GetStringValue(context, 5);
+    const wstring mthd_str = APITools_GetStringValue(context, 6);
+    const wstring lib_path = APITools_GetStringValue(context, 7);
 
     Class* klass = nullptr;
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    if(program->FindMethod(line_num, klass, method, table)) {
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
@@ -641,15 +653,17 @@ extern "C" {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const int line_num = (int)APITools_GetIntValue(context, 1);
-    const int line_pos = (int)APITools_GetIntValue(context, 2);
-    const wstring lib_path = APITools_GetStringValue(context, 3);
+    const wstring uri = APITools_GetStringValue(context, 1);
+    
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring lib_path = APITools_GetStringValue(context, 4);
 
     Class* klass = nullptr;
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
-    if(program->FindMethod(line_num, klass, method, table)) {
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
