@@ -94,14 +94,16 @@ bundle System.Diagnostics {
 
 		#~
 		Get source code analysis symbols
+		@param uri file uri
 		@param sys_path system library path
 		@return analysis symbols
 		~#
-		method : public : GetSymbols(sys_path : String) ~ Result {
+		method : public : GetSymbols(uri : String, sys_path : String) ~ Result {
 			if(@symbols_result = Nil) {
-				array_args := Base->New[2];
+				array_args := Base->New[3];
 				array_args[0] := @self;
-				array_args[1] := sys_path;
+				array_args[1] := uri;
+				array_args[2] := sys_path;
 				Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
 			};
 			
@@ -110,14 +112,16 @@ bundle System.Diagnostics {
 
 		#~
 		Get parse and analysis errors
+		@param uri file uri
 		@param sys_path system library path
 		@return analysis errors, Nil of no errors
 		~#
-		method : public : GetDiagnostics(sys_path : String) ~ Result[] {
+		method : public : GetDiagnostics(uri : String, sys_path : String) ~ Result[] {
 			if(@diagnostics_results = Nil) {
-				array_args := Base->New[2];
+				array_args := Base->New[3];
 				array_args[0] := @self;
-				array_args[1] := sys_path;
+				array_args[1] := uri;
+				array_args[2] := sys_path;
 				Proxy->GetDllProxy()->CallFunction("diag_get_diagnosis", array_args);
 			};
 
@@ -126,17 +130,19 @@ bundle System.Diagnostics {
 		
 		#~
 		Get references specified symbol
+		@param uri file uri
 		@param line line of symbol
 		@param pos character position of symbol
 		@param sys_path system library path
 		@return symbol references, Nil of none found
 		~#
-		method : public : FindReferences(line : Int, pos : Int, sys_path : String) ~ Result[] {
-			array_args := Base->New[4];
+		method : public : FindReferences(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			array_args := Base->New[5];
 			array_args[0] := @self;
-			array_args[1] := IntHolder->New(line);
-			array_args[2] := IntHolder->New(pos);
-			array_args[3] := sys_path;
+			array_args[1] := uri;
+			array_args[2] := IntHolder->New(line);
+			array_args[3] := IntHolder->New(pos);
+			array_args[4] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
 			
 			return @references_results;
@@ -144,6 +150,7 @@ bundle System.Diagnostics {
 
 		#~
 		Get signature definitions
+		@param uri file uri
 		@param line line of symbol
 		@param pos character position of symbol
 		@param var_str variable string name
@@ -151,15 +158,16 @@ bundle System.Diagnostics {
 		@param sys_path system library path
 		@return symbol references, Nil of none found
 		~#
-		method : public : SignatureHelp(line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
-			array_args := Base->New[7];
+		method : public : SignatureHelp(uri : String, line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
+			array_args := Base->New[8];
 			array_args[0] := Nil;
 			array_args[1] := @self;
-			array_args[2] := IntHolder->New(line);
-			array_args[3] := IntHolder->New(pos);
-			array_args[4] := var_str;
-			array_args[5] := mthd_str;
-			array_args[6] := sys_path;
+			array_args[2] := uri;
+			array_args[3] := IntHolder->New(line);
+			array_args[4] := IntHolder->New(pos);
+			array_args[5] := var_str;
+			array_args[6] := mthd_str;
+			array_args[7] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_signature_help", array_args);
 			
 			return array_args[0]->As(Result);
@@ -167,6 +175,7 @@ bundle System.Diagnostics {
 		
 		#~	
 		Get completion options
+		@param uri file uri
 		@param line line of symbol
 		@param pos character position of symbol
 		@param var_str variable string name
@@ -174,15 +183,16 @@ bundle System.Diagnostics {
 		@param sys_path system library path
 		@return symbol references, Nil of none found
 		~#
-		method : public : Completion(line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
-			array_args := Base->New[7];
+		method : public : Completion(uri : String, line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
+			array_args := Base->New[8];
 			array_args[0] := Nil;
 			array_args[1] := @self;
-			array_args[2] := IntHolder->New(line);
-			array_args[3] := IntHolder->New(pos);
-			array_args[4] := var_str;
-			array_args[5] := mthd_str;
-			array_args[6] := sys_path;
+			array_args[2] := uri;
+			array_args[3] := IntHolder->New(line);
+			array_args[4] := IntHolder->New(pos);
+			array_args[5] := var_str;
+			array_args[6] := mthd_str;
+			array_args[7] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_completion_help", array_args);
 			
 			return array_args[0]->As(Result);
@@ -190,18 +200,20 @@ bundle System.Diagnostics {
 
 		#~
 		Finds symbol deceleration
+		@param uri file uri
 		@param line line of symbol
 		@param pos character position of symbol
 		@param sys_path system library path
 		@return symbol deceleration, Nil of none found
 		~#
-		method : public : FindDeclaration(line : Int, pos : Int, sys_path : String) ~ Result {
-			array_args := Base->New[5];
+		method : public : FindDeclaration(uri : String, line : Int, pos : Int, sys_path : String) ~ Result {
+			array_args := Base->New[6];
 			array_args[0] := Nil;
 			array_args[1] := @self;
-			array_args[2] := IntHolder->New(line);
-			array_args[3] := IntHolder->New(pos);
-			array_args[4] := sys_path;
+			array_args[2] := uri;
+			array_args[3] := IntHolder->New(line);
+			array_args[4] := IntHolder->New(pos);
+			array_args[5] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_find_declaration", array_args);
 			
 			return array_args[0]->As(Result);
@@ -209,18 +221,20 @@ bundle System.Diagnostics {
 
 		#~
 		Finds symbol definition
+		@param uri file uri
 		@param line line of symbol
 		@param pos character position of symbol
 		@param sys_path system library path
 		@return symbol deceleration, Nil of none found
 		~#
-		method : public : FindDefinition(line : Int, pos : Int, sys_path : String) ~ Result {
-			array_args := Base->New[5];
+		method : public : FindDefinition(uri : String, line : Int, pos : Int, sys_path : String) ~ Result {
+			array_args := Base->New[6];
 			array_args[0] := Nil;
 			array_args[1] := @self;
-			array_args[2] := IntHolder->New(line);
-			array_args[3] := IntHolder->New(pos);
-			array_args[4] := sys_path;
+			array_args[2] := uri;
+			array_args[3] := IntHolder->New(line);
+			array_args[4] := IntHolder->New(pos);
+			array_args[5] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_find_definition", array_args);
 			
 			return array_args[0]->As(Result);
