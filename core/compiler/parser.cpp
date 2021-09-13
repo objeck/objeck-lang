@@ -2843,12 +2843,16 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 Variable* Parser::ParseVariable(const wstring &ident, int depth)
 {
   const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
+  int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Variable", depth);
 #endif
+
+  if(Match(TOKEN_SEMI_COLON)) {
+    line_pos++;
+  }
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)ident.size(), ident);
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) && 
@@ -3098,7 +3102,7 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
   Declaration* declaration;
   if(Match(TOKEN_ASSIGN)) {
     Variable* variable = ParseVariable(ident, depth + 1);
-    variable->SetLinePosition(line_pos);
+    // variable->SetLinePosition(line_pos + 1);
     Assignment* asgn = ParseAssignment(variable, depth + 1);
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child, asgn);
   }
