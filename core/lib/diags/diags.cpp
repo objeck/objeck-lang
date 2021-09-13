@@ -314,6 +314,7 @@ extern "C" {
     Method* method = nullptr;
     SymbolTable* table = nullptr;
 
+    // TODO: check the right file
     if(program->FindMethod(line_num, klass, method, table)) {
       // method level
       if(method) {
