@@ -7824,7 +7824,8 @@ bool ContextAnalyzer::GetDefinition(Class* klass, const int line_num, const int 
 }
 
 bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const int line_pos, wstring& found_name, 
-                                    int& found_line, int& found_start_pos, int& found_end_pos, Class* &klass, Enum* &eenum)
+                                    int& found_line, int& found_start_pos, int& found_end_pos, Class* &klass, 
+                                    Enum*& eenum, EnumItem*& eenum_item)
 {
   // find matching expressions
   vector<Expression*> all_expressions;
@@ -7851,6 +7852,19 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
         if(eenum) {
           return true;
         }
+      }
+    }
+    // found enum
+    else if(found_expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(found_expression)->GetEnumItem()) {
+      MethodCall* mthd_call = static_cast<MethodCall*>(found_expression);
+      eenum = SearchProgramEnums(found_name);
+      if(eenum) {
+        map<const wstring, EnumItem*> eenum_items = eenum->GetItems();
+        map<const wstring, EnumItem*>::iterator result = eenum_items.find(mthd_call->GetMethodName());
+        if(result != eenum_items.end()) {
+          eenum_item = result->second;
+        }
+        return true;
       }
     }
     // found method
@@ -8054,6 +8068,13 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           alt_found_name = method_call->GetMethodName();
           alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
           alt_end_pos += (int)alt_found_name.size();
+        }
+        else if(method_call->GetCallType() == ENUM_CALL) {
+          found_name = method_call->GetVariableName();
+          end_pos += (int)found_name.size();
+
+          alt_found_name = method_call->GetMethodName();
+          end_pos = method_call->GetEndLinePosition();
         }
         else {
           found_name = L"@self";
