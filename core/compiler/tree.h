@@ -3005,7 +3005,7 @@ namespace frontend {
     }
     
     EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, Enum* e) {
-      EnumItem* tmp = new EnumItem(file_name, line_pos, line_num, name, e);
+      EnumItem* tmp = new EnumItem(file_name, line_num, line_pos, name, e);
       nodes.push_back(tmp);
       return tmp;
     }
