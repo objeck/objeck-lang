@@ -330,13 +330,18 @@ extern "C" {
 
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
-          wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; Enum* eenum = nullptr;
-          if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum)) {
+          wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; 
+          Enum* eenum = nullptr; ; EnumItem* eenum_item = nullptr;
+          if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum, eenum_item)) {
             ParseNode* node = nullptr;
 
             // class
             if(klass) {
               node = klass;
+            }
+            // enum item
+            else if(eenum) {
+              node = eenum_item;
             }
             // enum
             else if(eenum) {
