@@ -677,7 +677,8 @@ extern "C" {
 
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
-          vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos);
+          bool is_var = true;
+          vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
           size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
           size_t* refs_array_ptr = refs_array + 3;
 

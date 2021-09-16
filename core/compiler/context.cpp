@@ -7968,7 +7968,7 @@ Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, 
   return nullptr;
 }
 
-vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos)
+vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos, bool &is_var)
 {
   vector<Expression*> matched_expressions;
 
@@ -7998,6 +7998,10 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
         if(method_call->GetVariableName() == found_name) {
           matched_expressions.push_back(expression);
         }
+        else if(method_call->GetMethodName() == found_name) {
+          matched_expressions.push_back(expression);
+          is_var = false;
+        }
       }
         break;
 
@@ -8013,6 +8017,8 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
 bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, 
                                        wstring& found_name, bool &is_alt, vector<Expression*>& all_expressions)
 {
+  // TODO: all methods for references
+
   // get all expressions
   all_expressions = method->GetExpressions();
 
