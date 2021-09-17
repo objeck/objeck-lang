@@ -2127,6 +2127,8 @@ namespace frontend {
     vector < Expression*> GetExpressions() {
       return diagnostic_expressions;
     }
+
+
 #endif
   };
 
