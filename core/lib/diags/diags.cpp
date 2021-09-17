@@ -681,7 +681,7 @@ extern "C" {
           vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
           
           // method/function
-          if(!is_var && expressions.size() == 1 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+          if(!is_var && expressions.size() > 0 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
             Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
 
             expressions.clear();
