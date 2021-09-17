@@ -679,44 +679,80 @@ extern "C" {
         if(analyzer.Analyze()) {
           bool is_var = true;
           vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
-          size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
-          size_t* refs_array_ptr = refs_array + 3;
+          
+          // method/function
+          if(!is_var && expressions.size() == 1 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+            Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
 
-          for(size_t i = 0; i < expressions.size(); ++i) {
-            Expression* expression = expressions[i];
+            expressions.clear();
 
-            size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            int start_pos = expression->GetLinePosition() - 1;
-            int end_pos = start_pos;
-
-            switch(expression->GetExpressionType()) {
-            case VAR_EXPR: {
-              Variable* variable = static_cast<Variable*>(expression);
-              end_pos += (int)variable->GetName().size();
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+            vector<ParsedBundle*> bundles = program->GetBundles();
+            for(size_t i = 0; i < bundles.size(); ++i) {
+              vector<Class*> classes = bundles[i]->GetClasses();
+              for(size_t j = 0; j < classes.size(); ++j) {
+                vector<Method*> methods = classes[j]->GetMethods();
+                for(size_t k = 0; k < methods.size(); ++k) {
+                  // TODO: all method calls (statements and expressions)
+                  vector<Expression*> method_expressions = methods[k]->GetExpressions();
+                  for(size_t l = 0; l < method_expressions.size(); ++l) {
+                    if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
+                      MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
+                      if(local_method_call->GetMethod() == search_method) {
+                        expressions.push_back(local_method_call);
+                      }
+                    }
+                  }
+                }
+              }
             }
-              break;
-
-            case METHOD_CALL_EXPR: {
-              MethodCall* method_call = static_cast<MethodCall*>(expression);
-              start_pos++; end_pos++;
-              end_pos += (int)method_call->GetVariableName().size();
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
-            }
-              break;
-
-            default:
-              break;
-            }
-
-            reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
-            reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
-            reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
-            reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
-            refs_array_ptr[i] = (size_t)reference_obj;
           }
 
-          prgm_obj[4] = (size_t)refs_array;
+          // format
+          if(!expressions.empty()) {
+            size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+            size_t* refs_array_ptr = refs_array + 3;
+
+            for(size_t i = 0; i < expressions.size(); ++i) {
+              Expression* expression = expressions[i];
+
+              size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+              int start_pos = expression->GetLinePosition() - 1;
+              int end_pos = start_pos;
+
+              switch(expression->GetExpressionType()) {
+              case VAR_EXPR: {
+                Variable* variable = static_cast<Variable*>(expression);
+                end_pos += (int)variable->GetName().size();
+                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+              }
+                break;
+
+              case METHOD_CALL_EXPR: {
+                MethodCall* method_call = static_cast<MethodCall*>(expression);
+                start_pos++; end_pos++;
+                if(is_var) {
+                  end_pos += (int)method_call->GetVariableName().size();
+                }
+                else {
+                  end_pos = method_call->GetEndLinePosition();
+                }
+                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+              }
+                break;
+
+              default:
+                break;
+              }
+
+              reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
+              reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
+              reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
+              reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
+              refs_array_ptr[i] = (size_t)reference_obj;
+            }
+
+            prgm_obj[4] = (size_t)refs_array;
+          }
         }
       }
       // look for variables across classes

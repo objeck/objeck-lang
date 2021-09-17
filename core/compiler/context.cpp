@@ -8017,8 +8017,6 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
 bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, 
                                        wstring& found_name, bool &is_alt, vector<Expression*>& all_expressions)
 {
-  // TODO: all methods for references
-
   // get all expressions
   all_expressions = method->GetExpressions();
 
