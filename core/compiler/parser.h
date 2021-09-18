@@ -158,7 +158,7 @@ class Parser {
   Leaving* ParseLeaving(int depth);
   Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
-  ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
+  ExpressionList* ParseExpressionList(int& end_pos, int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
                                       ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
   void ParseCastTypeOf(Expression* expression, int depth);
