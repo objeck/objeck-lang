@@ -2852,7 +2852,7 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
   Debug(L"Variable", depth);
 #endif
 
-  // TODO: hack like :)
+  // TODO: workable kludge
   if(Match(TOKEN_SEMI_COLON)) {
     line_pos++;
   }
