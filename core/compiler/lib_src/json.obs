@@ -474,7 +474,7 @@ bundle Data.JSON {
 		method : native : Scan() ~ Vector<Token> {
 			tokens := Vector->New()<Token>;
 				
-			input := @input->ToCharArray();
+			input := @input->Trim()->ToCharArray();
 			if(input <> Nil) {
 				index := 0;
 				# TODO: add-in line numbers
