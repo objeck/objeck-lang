@@ -474,16 +474,16 @@ bundle Data.JSON {
 		method : native : Scan() ~ Vector<Token> {
 			tokens := Vector->New()<Token>;
 				
-			input := @input->ToCharArray();
+			input := @input->Trim()->ToCharArray();
 			if(input <> Nil) {
 				index := 0;
 				# TODO: add-in line numbers
 				while(index < input->Size()) {
 					# skip whitespace
 					if(index < input->Size()) {
-						char := input[index++];
+						char := input[index];
 						while(index < input->Size() & (char = '\r' | char = '\n' | char = '\t' | char = ' ' | char = '\f' | char = '\v')) {
-							char := input[index++];
+							char := input[++index];
 						};
 					};
 					# comment
