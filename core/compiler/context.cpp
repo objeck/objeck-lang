@@ -7525,13 +7525,49 @@ Method* MethodCallSelector::GetSelection()
 // diagnostics operations
 //
 #ifdef _DIAG_LIB
-bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion)
+bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion)
 {
   Class* context_klass = method->GetClass();
   SymbolTable* symbol_table = method->GetSymbolTable();
   vector<SymbolEntry*> entries = symbol_table->GetEntries();
 
   set<wstring> unique_names;
+
+  // keywords
+  found_completion.push_back(pair<int, wstring>(14, L"if"));
+  found_completion.push_back(pair<int, wstring>(14, L"else"));
+  found_completion.push_back(pair<int, wstring>(14, L"do"));
+  found_completion.push_back(pair<int, wstring>(14, L"while"));
+  found_completion.push_back(pair<int, wstring>(14, L"static"));
+  found_completion.push_back(pair<int, wstring>(14, L"select"));
+  found_completion.push_back(pair<int, wstring>(14, L"break"));
+  found_completion.push_back(pair<int, wstring>(14, L"continue"));
+  found_completion.push_back(pair<int, wstring>(14, L"other"));
+  found_completion.push_back(pair<int, wstring>(14, L"for"));
+  found_completion.push_back(pair<int, wstring>(14, L"each"));
+  found_completion.push_back(pair<int, wstring>(14, L"reverse"));
+  found_completion.push_back(pair<int, wstring>(14, L"label"));
+  found_completion.push_back(pair<int, wstring>(14, L"return"));
+  found_completion.push_back(pair<int, wstring>(14, L"critical"));
+  found_completion.push_back(pair<int, wstring>(14, L"use"));
+  found_completion.push_back(pair<int, wstring>(14, L"leaving"));
+  found_completion.push_back(pair<int, wstring>(14, L"virtual"));
+  found_completion.push_back(pair<int, wstring>(14, L"Parent"));
+  found_completion.push_back(pair<int, wstring>(14, L"from"));
+  found_completion.push_back(pair<int, wstring>(14, L"implements"));
+  found_completion.push_back(pair<int, wstring>(14, L"Byte"));
+  found_completion.push_back(pair<int, wstring>(14, L"Int"));
+  found_completion.push_back(pair<int, wstring>(14, L"Float"));
+  found_completion.push_back(pair<int, wstring>(14, L"Char"));
+  found_completion.push_back(pair<int, wstring>(14, L"Bool"));
+  found_completion.push_back(pair<int, wstring>(14, L"String"));
+  found_completion.push_back(pair<int, wstring>(14, L"As"));
+  found_completion.push_back(pair<int, wstring>(14, L"Nil"));
+  found_completion.push_back(pair<int, wstring>(14, L"true"));
+  found_completion.push_back(pair<int, wstring>(14, L"false"));
+  found_completion.push_back(pair<int, wstring>(14, L"method"));
+  found_completion.push_back(pair<int, wstring>(14, L"function"));
+  found_completion.push_back(pair<int, wstring>(14, L"class"));
 
   if(var_str.empty() && !mthd_str.empty()) {
     // local variables
@@ -7613,7 +7649,6 @@ bool ContextAnalyzer::GetCompletion(Method* method, const wstring var_str, const
       }
 
       // find unique signatures
-      
       if(!found_methods.empty()) {
         for(size_t i = 0; i < found_methods.size(); ++i) {
           const wstring mthd_name = found_methods[i]->GetName();
