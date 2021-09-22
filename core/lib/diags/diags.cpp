@@ -471,7 +471,7 @@ extern "C" {
         if(analyzer.Analyze()) {
           vector<pair<int, wstring>> completions;
 
-          if(analyzer.GetCompletion(method, var_str, mthd_str, completions)) {
+          if(analyzer.GetCompletion(program, method, var_str, mthd_str, completions)) {
             size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Completions");
 
