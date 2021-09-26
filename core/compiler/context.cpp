@@ -4333,176 +4333,179 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
 {
   Type* cls_type = nullptr;
   Expression* left = expression->GetLeft();
-  switch(left->GetExpressionType()) {
-  case AND_EXPR:
-  case OR_EXPR:
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    AnalyzeCalculation(static_cast<CalculatedExpression*>(left), depth + 1);
-    break;
-
-  default:
-    break;
-  }
-
   Expression* right = expression->GetRight();
-  switch(right->GetExpressionType()) {
-  case AND_EXPR:
-  case OR_EXPR:
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    AnalyzeCalculation(static_cast<CalculatedExpression*>(right), depth + 1);
-    break;
 
-  default:
-    break;
-  }
-  AnalyzeExpression(left, depth + 1);
-  AnalyzeExpression(right, depth + 1);
+  if(left && right) {
+    switch(left->GetExpressionType()) {
+    case AND_EXPR:
+    case OR_EXPR:
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR:
+    case ADD_EXPR:
+    case SUB_EXPR:
+    case MUL_EXPR:
+    case DIV_EXPR:
+    case MOD_EXPR:
+    case SHL_EXPR:
+    case SHR_EXPR:
+    case BIT_AND_EXPR:
+    case BIT_OR_EXPR:
+    case BIT_XOR_EXPR:
+      AnalyzeCalculation(static_cast<CalculatedExpression*>(left), depth + 1);
+      break;
 
-  // check operations
-  AnalyzeCalculationCast(expression, depth);
+    default:
+      break;
+    }
 
-  // check for valid operation cast
-  if(left->GetCastType() && left->GetEvalType()) {
-    AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
-  }
+    switch(right->GetExpressionType()) {
+    case AND_EXPR:
+    case OR_EXPR:
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR:
+    case ADD_EXPR:
+    case SUB_EXPR:
+    case MUL_EXPR:
+    case DIV_EXPR:
+    case MOD_EXPR:
+    case SHL_EXPR:
+    case SHR_EXPR:
+    case BIT_AND_EXPR:
+    case BIT_OR_EXPR:
+    case BIT_XOR_EXPR:
+      AnalyzeCalculation(static_cast<CalculatedExpression*>(right), depth + 1);
+      break;
 
-  // check for valid operation cast
-  if(right->GetCastType() && right->GetEvalType()) {
-    AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
-  }
+    default:
+      break;
+    }
+    AnalyzeExpression(left, depth + 1);
+    AnalyzeExpression(right, depth + 1);
 
-  switch(expression->GetExpressionType()) {
-  case AND_EXPR:
-  case OR_EXPR:
-    if(!IsBooleanExpression(left) || !IsBooleanExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    break;
+    // check operations
+    AnalyzeCalculationCast(expression, depth);
 
-  case EQL_EXPR:
-  case NEQL_EXPR:
-    if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
+    // check for valid operation cast
+    if(left->GetCastType() && left->GetEvalType()) {
+      AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
     }
-    else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-    break;
 
-  case LES_EXPR:
-  case GTR_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EQL_EXPR:
-    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
+    // check for valid operation cast
+    if(right->GetCastType() && right->GetEvalType()) {
+      AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
     }
-    else if(IsEnumExpression(left) && IsEnumExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    else if((left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE) ||
-      (right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-    break;
 
-  case MOD_EXPR:
-    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) || ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
-      const wstring cls_name = cls_type->GetName();
-      if(cls_name != L"System.ByteHolder" && cls_name != L"System.CharHolder" && cls_name != L"System.IntHolder") {
+    switch(expression->GetExpressionType()) {
+    case AND_EXPR:
+    case OR_EXPR:
+      if(!IsBooleanExpression(left) || !IsBooleanExpression(right)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
-    }
+      break;
 
-    if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
-      if(left->GetCastType()) {
-        switch(left->GetCastType()->GetType()) {
-        case BYTE_TYPE:
-        case INT_TYPE:
-        case CHAR_TYPE:
-          break;
-        default:
-          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
-          break;
+    case EQL_EXPR:
+    case NEQL_EXPR:
+      if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+      break;
+
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR:
+      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      else if(IsEnumExpression(left) && IsEnumExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
+              ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      else if((left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE) ||
+              (right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+      break;
+
+    case MOD_EXPR:
+      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) || ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+        const wstring cls_name = cls_type->GetName();
+        if(cls_name != L"System.ByteHolder" && cls_name != L"System.CharHolder" && cls_name != L"System.IntHolder") {
+          ProcessError(expression, L"Invalid mathematical operation");
         }
       }
-      else {
-        ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
-      }
-    }
 
-    if(right->GetEvalType() && GetExpressionType(right, depth + 1)->GetType() == FLOAT_TYPE) {
-      if(right->GetCastType()) {
-        switch(right->GetCastType()->GetType()) {
-        case BYTE_TYPE:
-        case INT_TYPE:
-        case CHAR_TYPE:
-          break;
-        default:
+      if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
+        if(left->GetCastType()) {
+          switch(left->GetCastType()->GetType()) {
+          case BYTE_TYPE:
+          case INT_TYPE:
+          case CHAR_TYPE:
+            break;
+          default:
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+            break;
+          }
+        }
+        else {
           ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
-          break;
         }
       }
-      else {
-        ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+
+      if(right->GetEvalType() && GetExpressionType(right, depth + 1)->GetType() == FLOAT_TYPE) {
+        if(right->GetCastType()) {
+          switch(right->GetCastType()->GetType()) {
+          case BYTE_TYPE:
+          case INT_TYPE:
+          case CHAR_TYPE:
+            break;
+          default:
+            ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+            break;
+          }
+        }
+        else {
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+        }
       }
-    }
-    break;
+      break;
 
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case SHL_EXPR:
-  case SHR_EXPR:
-  case BIT_AND_EXPR:
-  case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
-    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    break;
+    case ADD_EXPR:
+    case SUB_EXPR:
+    case MUL_EXPR:
+    case DIV_EXPR:
+    case SHL_EXPR:
+    case SHR_EXPR:
+    case BIT_AND_EXPR:
+    case BIT_OR_EXPR:
+    case BIT_XOR_EXPR:
+      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      break;
 
-  default:
-    break;
+    default:
+      break;
+    }
   }
 }
 
