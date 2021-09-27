@@ -6342,7 +6342,7 @@ bundle System.IO.File {
 		
 		New : private () {
 			Parent();		
-			@directory := Runtime->GetTempDir()->ReplaceAll("\\", "/");;
+			@directory := Runtime->GetTempDir()->ReplaceAll("\\", "/");
 
 			@info_file := "";
 			@info_file->Append(@directory);
@@ -6369,7 +6369,7 @@ bundle System.IO.File {
 	        method : RandomPrefix() ~ String {
 	            str := "";
 	            
-	            each(i : 5) {
+	            each(i : 8) {
 	                if(Int->Random(10) % 2 = 0) {
 	                    str->Append(Int->Random('a', 'z')->As(Char));
 	                }
