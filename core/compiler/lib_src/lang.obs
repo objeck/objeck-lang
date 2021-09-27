@@ -6342,14 +6342,13 @@ bundle System.IO.File {
 		
 		New : private () {
 			Parent();		
-			@directory := Runtime->GetTempDir();
+			@directory := Runtime->GetTempDir()->ReplaceAll("\\", "/");;
 
 			@info_file := "";
 			@info_file->Append(@directory);
 			@info_file->Append("/objk-info-");
 			@info_file->Append(RandomPrefix());
 			@info_file->Append(".log");
-			@info_file := @info_file->ReplaceAll("\\", "/");
 			@info_mutex := ThreadMutex->New("info-log");
 
 			@warn_file := "";
@@ -6357,7 +6356,6 @@ bundle System.IO.File {
 			@warn_file->Append("/objk-warn-");
 			@warn_file->Append(RandomPrefix());
 			@warn_file->Append(".log");
-			@warn_file := @warn_file->ReplaceAll("\\", "/");
 			@warn_mutex := ThreadMutex->New("warn-log");
 
 			@err_file := "";
@@ -6365,7 +6363,6 @@ bundle System.IO.File {
 			@err_file->Append("/objk-err-");
 			@err_file->Append(RandomPrefix());
 			@err_file->Append(".log");
-			@err_file := @err_file->ReplaceAll("\\", "/");
 			@err_mutex := ThreadMutex->New("err-log");
 		}
 
