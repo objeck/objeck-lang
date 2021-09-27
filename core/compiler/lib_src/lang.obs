@@ -6347,39 +6347,42 @@ bundle System.IO.File {
 			@info_file := "";
 			@info_file->Append(@directory);
 			@info_file->Append("/objk-info-");
-            @info_file->Append(RandomPrefix());
-            @info_file->Append(".log");
+			@info_file->Append(RandomPrefix());
+			@info_file->Append(".log");
+			@info_file := @info_file->ReplaceAll("\\", "/");
 			@info_mutex := ThreadMutex->New("info-log");
 
 			@warn_file := "";
 			@warn_file->Append(Runtime->GetTempDir());
 			@warn_file->Append("/objk-warn-");
-            @warn_file->Append(RandomPrefix());
-            @warn_file->Append(".log");
+			@warn_file->Append(RandomPrefix());
+			@warn_file->Append(".log");
+			@warn_file := @warn_file->ReplaceAll("\\", "/");
 			@warn_mutex := ThreadMutex->New("warn-log");
 
 			@err_file := "";
 			@err_file->Append(Runtime->GetTempDir());
 			@err_file->Append("/objk-err-");
-            @err_file->Append(RandomPrefix());
-            @err_file->Append(".log");
+			@err_file->Append(RandomPrefix());
+			@err_file->Append(".log");
+			@err_file := @err_file->ReplaceAll("\\", "/");
 			@err_mutex := ThreadMutex->New("err-log");
 		}
 
-        method : RandomPrefix() ~ String {
-            str := "";
-            
-            each(i : 5) {
-                if(Int->Random(10) % 2 = 0) {
-                    str->Append(Int->Random('a', 'z')->As(Char));
-                }
-                else {
-                    str->Append(Int->Random('0', '9')->As(Char));
-                };
-            };
-            
-            return str;
-        }
+	        method : RandomPrefix() ~ String {
+	            str := "";
+	            
+	            each(i : 5) {
+	                if(Int->Random(10) % 2 = 0) {
+	                    str->Append(Int->Random('a', 'z')->As(Char));
+	                }
+	                else {
+	                    str->Append(Int->Random('0', '9')->As(Char));
+	                };
+	            };
+	            
+	            return str;
+	        }
 
 		#~
 		Gets an instance of the logger
@@ -6406,7 +6409,7 @@ bundle System.IO.File {
 					header->Append(Date->New()->ToShortString());
 					header->Append("]: ");
 					header->Append(message);
-                    header->Append("\r\n");
+					header->Append("\r\n");
 					out->WriteString(header);
 				}
 				else {
@@ -6431,7 +6434,7 @@ bundle System.IO.File {
 					header->Append(Date->New()->ToShortString());
 					header->Append("]: ");
 					header->Append(message);
-                    header->Append("\r\n");
+					header->Append("\r\n");
 					out->WriteString(header);
 				}
 				else {
@@ -6456,7 +6459,7 @@ bundle System.IO.File {
 					header->Append(Date->New()->ToShortString());
 					header->Append("]: ");
 					header->Append(message);
-                    header->Append("\r\n");
+					header->Append("\r\n");
 					out->WriteString(header);
 				}
 				else {
@@ -6506,7 +6509,7 @@ bundle System.IO.File {
 			return @directory;
 		}
 
-        #~
+		#~
 		Gets path to warning file
 		@return path to warning file
 		~#
@@ -6514,7 +6517,7 @@ bundle System.IO.File {
 			return @warn_file;
 		}
 
-        #~
+		#~
 		Gets path to information file
 		@return path to information file
 		~#
@@ -6522,7 +6525,7 @@ bundle System.IO.File {
 			return @info_file;
 		}
 
-        #~
+		#~
 		Gets path to error file
 		@return path to error file
 		~#
