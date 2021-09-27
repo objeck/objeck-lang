@@ -6352,14 +6352,14 @@ bundle System.IO.File {
 			@info_mutex := ThreadMutex->New("info-log");
 
 			@warn_file := "";
-			@warn_file->Append(Runtime->GetTempDir());
+			@warn_file->Append(@directory);
 			@warn_file->Append("/objk-warn-");
 			@warn_file->Append(RandomPrefix());
 			@warn_file->Append(".log");
 			@warn_mutex := ThreadMutex->New("warn-log");
 
 			@err_file := "";
-			@err_file->Append(Runtime->GetTempDir());
+			@err_file->Append(@directory);
 			@err_file->Append("/objk-err-");
 			@err_file->Append(RandomPrefix());
 			@err_file->Append(".log");
