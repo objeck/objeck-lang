@@ -4,8 +4,6 @@
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
 [![Download Objeck](https://img.shields.io/sourceforge/dt/objeck-lang.svg)](https://sourceforge.net/projects/objeck-lang/files/latest/download)
 
-Working on v6.0 with [LSP](https://github.com/objeck/objeck-lang-server) support for popular IDEs.
-
 Objeck is a stable object-oriented programming language with functional features. Objeck emphasizes simplicity, portability and scalability. The programming environment consists of a compiler, virtual machine, command line debugger and plug-ins for various text editors.
 
 ```ruby
