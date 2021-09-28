@@ -73,6 +73,7 @@ enum ResultPosition {
 extern "C" {
   size_t* FormatErrors(VMContext& context, vector<wstring> error_strings);
   void GetTypeName(frontend::Type* type, wstring &output);
+  size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const wstring uri, const int line_num, const int line_pos, const wstring lib_path);
 }
 
 #endif
