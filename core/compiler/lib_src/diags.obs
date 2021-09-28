@@ -77,6 +77,7 @@ bundle System.Diagnostics {
 		@symbols_result : Result;
 		@diagnostics_results : Result[];
 		@references_results : Result[];
+		@rename_results : Result[];
 
 		New(handle : Int, is_parsed : Bool) {
 			Parent();
@@ -146,6 +147,26 @@ bundle System.Diagnostics {
 			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
 			
 			return @references_results;
+		}
+
+		#~
+		Renames a variable or method/function
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return symbol references, Nil of none found
+		~#
+		method : public : CodeRename(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			array_args := Base->New[5];
+			array_args[0] := @self;
+			array_args[1] := uri;
+			array_args[2] := IntHolder->New(line);
+			array_args[3] := IntHolder->New(pos);
+			array_args[4] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_code_rename", array_args);
+			
+			return @rename_results;
 		}
 
 		#~

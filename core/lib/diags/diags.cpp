@@ -647,6 +647,27 @@ extern "C" {
     }
   }
 
+
+  //
+  // code rename
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_code_rename(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const wstring uri = APITools_GetStringValue(context, 1);
+
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring lib_path = APITools_GetStringValue(context, 4);
+
+    prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
+  }
+
   //
   // find references
   //
@@ -655,130 +676,100 @@ extern "C" {
 #endif
   void diag_find_references(VMContext& context)
   {
-    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
-    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+      size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+      ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-    const wstring uri = APITools_GetStringValue(context, 1);
-    
-    const int line_num = (int)APITools_GetIntValue(context, 2);
-    const int line_pos = (int)APITools_GetIntValue(context, 3);
-    const wstring lib_path = APITools_GetStringValue(context, 4);
+      const wstring uri = APITools_GetStringValue(context, 1);
 
-    Class* klass = nullptr;
-    Method* method = nullptr;
-    SymbolTable* table = nullptr;
+      const int line_num = (int)APITools_GetIntValue(context, 2);
+      const int line_pos = (int)APITools_GetIntValue(context, 3);
+      const wstring lib_path = APITools_GetStringValue(context, 4);
 
-    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
-      if(method) {
-        wstring full_lib_path = L"lang.obl";
-        if(!lib_path.empty()) {
-          full_lib_path += L',' + lib_path;
-        }
+      prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
+  }
+  
+  size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const wstring uri, const int line_num, const int line_pos, const wstring lib_path)
+    {
+      Class* klass = nullptr;
+      Method* method = nullptr;
+      SymbolTable* table = nullptr;
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
-        if(analyzer.Analyze()) {
-          bool is_var = true;
-          vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
-          
-          // method/function
-          if(!is_var && expressions.size() > 0 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
-            Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
+      if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+        if(method) {
+          wstring full_lib_path = L"lang.obl";
+          if(!lib_path.empty()) {
+            full_lib_path += L',' + lib_path;
+          }
 
-            expressions.clear();
+          ContextAnalyzer analyzer(program, full_lib_path, false, false);
+          if(analyzer.Analyze()) {
+            bool is_var = true;
+            vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
 
-            vector<ParsedBundle*> bundles = program->GetBundles();
-            for(size_t i = 0; i < bundles.size(); ++i) {
-              vector<Class*> classes = bundles[i]->GetClasses();
-              for(size_t j = 0; j < classes.size(); ++j) {
-                vector<Method*> methods = classes[j]->GetMethods();
-                for(size_t k = 0; k < methods.size(); ++k) {
-                  // TODO: all method calls (statements and expressions)
-                  vector<Expression*> method_expressions = methods[k]->GetExpressions();
-                  for(size_t l = 0; l < method_expressions.size(); ++l) {
-                    if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
-                      MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
-                      if(local_method_call->GetMethod() == search_method) {
-                        expressions.push_back(local_method_call);
+            // method/function
+            if(!is_var && expressions.size() > 0 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+              Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
+
+              expressions.clear();
+
+              vector<ParsedBundle*> bundles = program->GetBundles();
+              for(size_t i = 0; i < bundles.size(); ++i) {
+                vector<Class*> classes = bundles[i]->GetClasses();
+                for(size_t j = 0; j < classes.size(); ++j) {
+                  vector<Method*> methods = classes[j]->GetMethods();
+                  for(size_t k = 0; k < methods.size(); ++k) {
+                    // TODO: all method calls (statements and expressions)
+                    vector<Expression*> method_expressions = methods[k]->GetExpressions();
+                    for(size_t l = 0; l < method_expressions.size(); ++l) {
+                      if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
+                        MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
+                        if(local_method_call->GetMethod() == search_method) {
+                          expressions.push_back(local_method_call);
+                        }
                       }
                     }
                   }
                 }
               }
             }
-          }
 
-          // format
-          if(!expressions.empty()) {
-            size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
-            size_t* refs_array_ptr = refs_array + 3;
-
-            for(size_t i = 0; i < expressions.size(); ++i) {
-              Expression* expression = expressions[i];
-
-              size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-              int start_pos = expression->GetLinePosition() - 1;
-              int end_pos = start_pos;
-
-              switch(expression->GetExpressionType()) {
-              case VAR_EXPR: {
-                Variable* variable = static_cast<Variable*>(expression);
-                end_pos += (int)variable->GetName().size();
-                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
-              }
-                break;
-
-              case METHOD_CALL_EXPR: {
-                MethodCall* method_call = static_cast<MethodCall*>(expression);
-                start_pos++; end_pos++;
-                if(is_var) {
-                  end_pos += (int)method_call->GetVariableName().size();
-                }
-                else {
-                  end_pos = method_call->GetEndLinePosition();
-                }
-                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
-              }
-                break;
-
-              default:
-                break;
-              }
-
-              reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
-              reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
-              reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
-              reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
-              refs_array_ptr[i] = (size_t)reference_obj;
-            }
-
-            prgm_obj[4] = (size_t)refs_array;
-          }
-        }
-      }
-      // look for variables across classes
-      else {
-        wstring full_lib_path = L"lang.obl";
-        if(!lib_path.empty()) {
-          full_lib_path += L',' + lib_path;
-        }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
-        if(analyzer.Analyze()) {
-          Declaration* declaration = analyzer.FindDeclaration(klass, line_num, line_pos);
-          if(declaration && declaration->GetEntry()) {
-            vector<Variable*> expressions = declaration->GetEntry()->GetVariables();
+            // format
             if(!expressions.empty()) {
               size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
               size_t* refs_array_ptr = refs_array + 3;
 
               for(size_t i = 0; i < expressions.size(); ++i) {
-                Variable* expression = expressions[i];
+                Expression* expression = expressions[i];
 
                 size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                const int start_pos = expression->GetLinePosition() - 1;
-                const int end_pos = start_pos + (int)expression->GetName().size();
+                int start_pos = expression->GetLinePosition() - 1;
+                int end_pos = start_pos;
 
-                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, expression->GetName());
+                switch(expression->GetExpressionType()) {
+                case VAR_EXPR: {
+                  Variable* variable = static_cast<Variable*>(expression);
+                  end_pos += (int)variable->GetName().size();
+                  reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+                }
+                             break;
+
+                case METHOD_CALL_EXPR: {
+                  MethodCall* method_call = static_cast<MethodCall*>(expression);
+                  start_pos++; end_pos++;
+                  if(is_var) {
+                    end_pos += (int)method_call->GetVariableName().size();
+                  }
+                  else {
+                    end_pos = method_call->GetEndLinePosition();
+                  }
+                  reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+                }
+                                     break;
+
+                default:
+                  break;
+                }
+
                 reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
                 reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
                 reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
@@ -786,14 +777,50 @@ extern "C" {
                 refs_array_ptr[i] = (size_t)reference_obj;
               }
 
-              prgm_obj[4] = (size_t)refs_array;
+              return refs_array;
+            }
+          }
+        }
+        else {
+          wstring full_lib_path = L"lang.obl";
+          if(!lib_path.empty()) {
+            full_lib_path += L',' + lib_path;
+          }
+
+          ContextAnalyzer analyzer(program, full_lib_path, false, false);
+          if(analyzer.Analyze()) {
+            Declaration* declaration = analyzer.FindDeclaration(klass, line_num, line_pos);
+            if(declaration && declaration->GetEntry()) {
+              vector<Variable*> expressions = declaration->GetEntry()->GetVariables();
+              if(!expressions.empty()) {
+                size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+                size_t* refs_array_ptr = refs_array + 3;
+
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                  Variable* expression = expressions[i];
+
+                  size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                  const int start_pos = expression->GetLinePosition() - 1;
+                  const int end_pos = start_pos + (int)expression->GetName().size();
+
+                  reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, expression->GetName());
+                  reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
+                  reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
+                  reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
+                  reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
+                  refs_array_ptr[i] = (size_t)reference_obj;
+                }
+
+                return refs_array;
+              }
             }
           }
         }
       }
-    }
-  }
 
+      return nullptr;
+    }
+  
   //
   // Supporting functions
   //
