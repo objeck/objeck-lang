@@ -2853,7 +2853,7 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 #endif
 
   // TODO: workable kludge
-  if(Match(TOKEN_SEMI_COLON)) {
+  if(Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET)) {
     line_pos++;
   }
 
