@@ -59,8 +59,8 @@ Save the link register between function calls out of the JIT'ed code.
   * ~~Port debugger~~
   * Port libraries (enable 'Testability')
     * ~~SDL2 support~~
-    * ~~~ODBC support~~~
-    * ~~~OpenSSL support~~~
+    * ~~ODBC support~~
+    * ~~OpenSSL support~~
     * ~~zlib support~~
 * Testing
    * [Test cases](https://github.com/objeck/objeck-lang/tree/master/programs/test)
