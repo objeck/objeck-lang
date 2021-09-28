@@ -750,8 +750,9 @@ extern "C" {
                   Variable* variable = static_cast<Variable*>(expression);
                   end_pos += (int)variable->GetName().size();
                   reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+                  reference_obj[ResultPosition::POS_TYPE] = 100;
                 }
-                             break;
+                  break;
 
                 case METHOD_CALL_EXPR: {
                   MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -762,9 +763,11 @@ extern "C" {
                   else {
                     end_pos = method_call->GetEndLinePosition();
                   }
+
                   reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+                  reference_obj[ResultPosition::POS_TYPE] = 200;
                 }
-                                     break;
+                  break;
 
                 default:
                   break;
@@ -804,6 +807,7 @@ extern "C" {
                   const int end_pos = start_pos + (int)expression->GetName().size();
 
                   reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, expression->GetName());
+                  reference_obj[ResultPosition::POS_TYPE] = 100;
                   reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
                   reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
                   reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
