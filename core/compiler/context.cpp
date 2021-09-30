@@ -2115,25 +2115,6 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
                  FormatTypeString(from_concrete_type->GetName()) + 
                  L"' to '" + FormatTypeString(to_concrete_type->GetName()) + L"'");
   }
-  /*
-  vector<Type*> from_concrete_types = from_concrete_type->GetGenerics();
-  vector<Type*> to_concrete_types = to_concrete_type->GetGenerics();
-
-  if(from_concrete_types.size() != to_concrete_types.size()) {
-    to_concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
-  }
-
-  if(from_concrete_types.size() == to_concrete_types.size()) {
-    for(size_t i = 0; i < from_concrete_types.size(); ++i) {
-      ResolveClassEnumType(from_concrete_types[i]);
-      ResolveClassEnumType(to_concrete_types[i]);
-      ValidateConcretes(from_concrete_types[i], to_concrete_types[i], method_call);
-    }
-  }
-  else {
-    ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
-  }
-  */
 }
 
 void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
@@ -3077,6 +3058,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       ProcessError(static_cast<Expression*>(method_call), message);
     }
   }
+
+  // TODO: pig code?
+  const vector<Type*> concretate_types = method_call->GetConcreteTypes();
+  if(concretate_types.size() == 1) {
+    ResolveClassEnumType(concretate_types[0]);
+    method_call->SetEvalType(concretate_types[0], true);
+  }
 }
 
 /****************************
@@ -3342,6 +3330,13 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
       }
+    }
+
+    // TODO: pig code?
+    const vector<Type*> concretate_types = method_call->GetConcreteTypes();
+    if(concretate_types.size() == 1) {
+      ResolveClassEnumType(concretate_types[0]);
+      method_call->SetEvalType(concretate_types[0], true);
     }
 
     // next call
