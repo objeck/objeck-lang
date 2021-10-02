@@ -3325,6 +3325,13 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
+    // TODO: pig code?
+    const vector<Type*> concretate_types = method_call->GetConcreteTypes();
+    if(concretate_types.size() == 1) {
+      ResolveClassEnumType(concretate_types[0]);
+      method_call->SetEvalType(concretate_types[0], true);
+    }
+
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
