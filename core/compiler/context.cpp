@@ -3334,7 +3334,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
     // TODO: pig code?
     const vector<Type*> concretate_types = method_call->GetConcreteTypes();
-    if(concretate_types.size() == 1) {
+    if(concretate_types.size() == 1 && concretate_types[0]->GetGenerics().size() == 1) {
       ResolveClassEnumType(concretate_types[0]);
       method_call->SetEvalType(concretate_types[0], true);
     }
@@ -4148,8 +4148,12 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     }
     else if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->HasConcreteTypes()) {
       MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-      if(variable->GetEntry()->GetType() && variable->GetEntry()->GetType()->GetGenerics().size() != mthd_call->GetConcreteTypes().size()) {
-        ProcessError(variable, L"Generic size mismatch");
+      if(variable->GetEntry()->GetType()) {
+        const vector<Type*> generic_types = variable->GetEntry()->GetType()->GetGenerics();
+        const vector<Type*> concrete_types = mthd_call->GetConcreteTypes();
+        if(generic_types != concrete_types) {
+          ProcessError(variable, L"Generic size mismatch");
+        }
       }
     }
 
