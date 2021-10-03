@@ -3327,10 +3327,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
     // TODO: pig code?
     const vector<Type*> concretate_types = method_call->GetConcreteTypes();
-    if(method_call->GetCallType() != NEW_INST_CALL && concretate_types.size() == 1 && concretate_types[0]->GetGenerics().size() == 1) {
-      Type* t = concretate_types[0];
-      ResolveClassEnumType(t);
-      method_call->SetEvalType(t, true);
+    if(method_call->GetCallType() != NEW_INST_CALL && concretate_types.size() == 1 && concretate_types[0]->GetGenerics().size() > 0) {
+      Type* first_type = concretate_types[0];
+      ResolveClassEnumType(first_type);
+      method_call->SetEvalType(first_type, true);
     }
 
     // next call
