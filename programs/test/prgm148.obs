@@ -13,7 +13,7 @@ class Test {
 		foo := Map->New()<String, Vector<Foo>>;
 		fie := foo->GetValues()<Vector<Foo>>;
 		each(i : fie) {
-			fum := fie->Get(i)<Foo>;
+			fum := fie->Get(i);
 			fum->Bar()->PrintLine();
 		};
 	}
