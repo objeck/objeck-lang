@@ -3198,8 +3198,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
  * is method call within a linked
  * library
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
-                                        bool is_virtual, bool is_expr, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call, bool is_virtual, bool is_expr, const int depth)
 {
   if(lib_method) {
     ExpressionList* call_params = method_call->GetCallingParameters();
