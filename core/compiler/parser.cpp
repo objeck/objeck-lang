@@ -1429,7 +1429,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_OPEN_BRACKET: {
-      Variable* variable = ParseVariable(ident, false, depth + 1);
+      Variable* variable = ParseVariable(ident, depth + 1);
 
       switch(GetToken()) {
       case TOKEN_ASSIGN:
@@ -1535,13 +1535,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_ASSIGN:
-      statement = ParseAssignment(ParseVariable(ident, false, depth + 1), depth + 1);
+      statement = ParseAssignment(ParseVariable(ident, depth + 1), depth + 1);
       break;
 
     case TOKEN_ADD_ASSIGN: {
       NextToken();
 
-      Variable* asgn_var = ParseVariable(ident, false, depth + 1);
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_expr = ParseExpression(depth + 1);
@@ -1558,7 +1558,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_SUB_ASSIGN: {
       NextToken();
 
-      Variable* asgn_var = ParseVariable(ident, false, depth + 1);
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_expr = ParseExpression(depth + 1);
@@ -1575,7 +1575,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_MUL_ASSIGN: {
       NextToken();
 
-      Variable* asgn_var = ParseVariable(ident, false, depth + 1);
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
       asgn_var->SetLinePosition(line_pos + 1);
       
       Expression* asgn_expr = ParseExpression(depth + 1);
@@ -1592,7 +1592,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_DIV_ASSIGN: {
       NextToken();
 
-      Variable* asgn_var = ParseVariable(ident, false, depth + 1);
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_expr = ParseExpression(depth + 1);
@@ -1609,7 +1609,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_ADD_ADD: {
       NextToken();
 
-      Variable* asgn_var = ParseVariable(ident, false, depth + 1);
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
@@ -1623,7 +1623,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_SUB_SUB: {
       NextToken();
 
-      Variable* asgn_var = ParseVariable(ident, false, depth + 1);
+      Variable* asgn_var = ParseVariable(ident, depth + 1);
       asgn_var->SetLinePosition(line_pos + 1);
 
       Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
@@ -1646,7 +1646,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_ADD_ADD: {
       NextToken();
       if(Match(TOKEN_IDENT)) {
-        Variable* variable = ParseVariable(ParseBundleName(), false, depth + 1);
+        Variable* variable = ParseVariable(ParseBundleName(), depth + 1);
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                      ADD_ASSIGN_STMT);
@@ -1660,7 +1660,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_SUB_SUB: {
       NextToken();
       if(Match(TOKEN_IDENT)) {
-        Variable* variable = ParseVariable(ParseBundleName(), false, depth + 1);
+        Variable* variable = ParseVariable(ParseBundleName(), depth + 1);
         statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
                                                                      TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1),
                                                                      SUB_ASSIGN_STMT);
@@ -2842,7 +2842,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 /****************************
  * Parses a variable.
  ****************************/
-Variable* Parser::ParseVariable(const wstring &ident, bool inc, int depth)
+Variable* Parser::ParseVariable(const wstring &ident, int depth)
 {
   const int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
@@ -2852,7 +2852,7 @@ Variable* Parser::ParseVariable(const wstring &ident, bool inc, int depth)
   Debug(L"Variable", depth);
 #endif
 
-  if(inc) {
+  if(Match(TOKEN_SEMI_COLON)) {
     line_pos++;
   }
 
@@ -3068,7 +3068,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
 
       // apply assignment statement to other variables
       if(temp && !declaration->GetAssignment()) {
-        Variable* left = ParseVariable(ident, false, depth + 1);
+        Variable* left = ParseVariable(ident, depth + 1);
         Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), left, temp->GetExpression());
         declaration->SetAssignment(assignment);
       }
@@ -3102,7 +3102,7 @@ frontend::Declaration* Parser::AddDeclaration(const wstring& ident, Type* type, 
 
   Declaration* declaration;
   if(Match(TOKEN_ASSIGN)) {
-    Variable* variable = ParseVariable(ident, false, depth + 1);
+    Variable* variable = ParseVariable(ident, depth + 1);
     // variable->SetLinePosition(line_pos + 1);
     Assignment* asgn = ParseAssignment(variable, depth + 1);
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, child, asgn);
@@ -3683,14 +3683,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
         expression = ParseMethodCall(ident, depth + 1);
       }
       else {
-        expression = ParseVariable(ident, false, depth + 1);
+        expression = ParseVariable(ident, depth + 1);
         ParseCastTypeOf(expression, depth + 1);
       }
       break;
 
       // variable
     default: {
-      Variable* variable = ParseVariable(ident, true, depth + 1);
+      Variable* variable = ParseVariable(ident, depth + 1);
       // pre operation
       if(pre_inc) {
         variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
@@ -3749,7 +3749,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     case TOKEN_IDENT: {
       const wstring &ident = scanner->GetToken()->GetIdentifier();
-      Variable* left = ParseVariable(ident, false, depth + 1);
+      Variable* left = ParseVariable(ident, depth + 1);
       Expression* right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
       CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
       expression = calc;
@@ -3993,7 +3993,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       }
     }
     else if(Match(TOKEN_AS_ID)) {
-      Variable* variable = ParseVariable(ident, false, depth + 1);
+      Variable* variable = ParseVariable(ident, depth + 1);
 
       NextToken();
       if(!Match(TOKEN_OPEN_PAREN)) {
@@ -4410,7 +4410,7 @@ CriticalSection* Parser::ParseCritical(int depth)
     ProcessError(TOKEN_IDENT);
   }
   const wstring ident = scanner->GetToken()->GetIdentifier();
-  Variable* variable = ParseVariable(ident, false, depth + 1);
+  Variable* variable = ParseVariable(ident, depth + 1);
 
   NextToken();
   if(!Match(TOKEN_CLOSED_PAREN)) {
