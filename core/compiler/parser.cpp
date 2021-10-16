@@ -2852,8 +2852,12 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
   Debug(L"Variable", depth);
 #endif
 
+  
   if(Match(TOKEN_SEMI_COLON)) {
     line_pos++;
+  }
+  else if(Match(TOKEN_CLOSED_PAREN)) {
+    line_pos += 2;
   }
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)ident.size(), ident);
@@ -4431,7 +4435,7 @@ CriticalSection* Parser::ParseCritical(int depth)
 For* Parser::ParseEach(bool reverse, int depth)
 {
   const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
+  int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4491,6 +4495,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
+      line_pos = GetLinePosition();
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
@@ -4551,6 +4556,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
+      line_pos = GetLinePosition();
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), -1, -1,
