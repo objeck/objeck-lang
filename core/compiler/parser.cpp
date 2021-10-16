@@ -2842,10 +2842,9 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 /****************************
  * Parses a variable.
  ****************************/
-Variable* Parser::ParseVariable(const wstring &ident, int depth)
+Variable* Parser::ParseVariable(const wstring &ident, int line_pos, int depth)
 {
   const int line_num = GetLineNumber();
-  int line_pos = GetLinePosition();
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -2855,9 +2854,6 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
   
   if(Match(TOKEN_SEMI_COLON)) {
     line_pos++;
-  }
-  else if(Match(TOKEN_CLOSED_PAREN)) {
-    line_pos += 2;
   }
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)ident.size(), ident);
@@ -3694,7 +3690,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
       // variable
     default: {
-      Variable* variable = ParseVariable(ident, depth + 1);
+      Variable* variable = ParseVariable(ident, line_pos + 2, depth + 1);
       // pre operation
       if(pre_inc) {
         variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
@@ -4435,7 +4431,6 @@ CriticalSection* Parser::ParseCritical(int depth)
 For* Parser::ParseEach(bool reverse, int depth)
 {
   const int line_num = GetLineNumber();
-  int line_pos = GetLinePosition();
   const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4454,6 +4449,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     ProcessError(TOKEN_IDENT);
   }
   const wstring count_ident = scanner->GetToken()->GetIdentifier();
+  int line_pos = GetLinePosition() + (int)count_ident.size() + 1;
   NextToken();
 
   // add entry
@@ -4495,7 +4491,6 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      line_pos = GetLinePosition();
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
@@ -4510,7 +4505,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     NextToken();
 
     // pre-condition
-    Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)count_ident.size(), count_ident);
+    Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
     CalculatedExpression* pre_right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SUB_EXPR);
     pre_right->SetLeft(list_right);
     pre_right->SetRight(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1));
@@ -4556,7 +4551,6 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      line_pos = GetLinePosition();
       const wstring list_ident = scanner->GetToken()->GetIdentifier();
       const wstring ident = L"Size";
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), -1, -1,
@@ -4935,7 +4929,7 @@ Type* Parser::ParseType(int depth)
 
     return TypeFactory::Instance()->MakeType(func_params, func_rtrn);
   }
-                         break;
+    break;
 
   default:
     ProcessError(L"Expected type", TOKEN_SEMI_COLON);
