@@ -41,6 +41,38 @@ using namespace frontend;
 #define DEFAULT_BUNDLE_NAME L"Default"
 
 /****************************
+ * Identifier position
+ ****************************/
+class IdentifierContext {
+  wstring ident;
+  int line_num;
+  int line_pos;
+
+public:
+  IdentifierContext(const wstring i, int l, int p) {
+    ident = i;
+    line_num = l;
+    line_pos = p;
+  }
+
+  ~IdentifierContext() {
+
+  }
+
+  int GetLineNumber() {
+    return line_num;
+  }
+
+  int GetLinePosition() {
+    return line_pos;
+  }
+
+  const wstring GetIdentifier() {
+    return ident;
+  }
+};
+
+/****************************
  * Turns tokens into trees
  ****************************/
 class Parser {
@@ -130,10 +162,7 @@ class Parser {
   Class* ParseInterface(const wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth);
-  Variable* ParseVariable(const wstring& ident, int depth) {
-    return ParseVariable(ident, GetLinePosition(), depth);
-  }
-  Variable* ParseVariable(const wstring& ident, int line_pos, int depth);
+  Variable* ParseVariable(IdentifierContext &context, int depth);
   vector<Type*> ParseGenericTypes(int depth);
   vector<Class*> ParseGenericClasses(const wstring &bundle_name, int depth);
   MethodCall* ParseMethodCall(int depth);
