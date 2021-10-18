@@ -143,7 +143,7 @@ class Parser {
 
   wstring ParseBundleName();
 
-  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child, 
+  Declaration* AddDeclaration(IdentifierContext &context, Type* type, bool is_static, Declaration* child,
                               const int line_num, const int line_pos, int depth);
 
   // error processing
@@ -188,7 +188,7 @@ class Parser {
   For* ParseEach(bool reverse, int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
+  Declaration* ParseDeclaration(IdentifierContext &context, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int& end_pos, int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
                                       ScannerTokenType close = TOKEN_CLOSED_PAREN);
