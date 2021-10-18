@@ -790,8 +790,8 @@ void Parser::CalculateConst(Expression* expression, stack<int>& values, int dept
  ****************************/
 Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 {
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
+  int line_num = GetLineNumber();
+  int line_pos = GetLinePosition();
   const wstring file_name = GetFileName();
 
   bool is_public = true;
@@ -922,10 +922,14 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       }
     }
     else if(Match(TOKEN_IDENT)) {
-      const wstring &ident = scanner->GetToken()->GetIdentifier();
+      const wstring ident = scanner->GetToken()->GetIdentifier();
+      line_num = GetLineNumber();
+      line_pos = GetLinePosition();
+      IdentifierContext ident_context(ident, line_num, line_pos);
+
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident_context, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
@@ -1412,24 +1416,29 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   Debug(L"Statement", depth);
 #endif
 
+  int line_num = GetLineNumber();
+  int line_pos = GetLinePosition();
+  const wstring file_name = GetFileName();
+
   Statement* statement = nullptr;
 
   // identifier
   if(Match(TOKEN_IDENT)) {
-    const int line_num = GetLineNumber();
-    const int line_pos = GetLinePosition();
-    const wstring file_name = GetFileName();
     const wstring ident = ParseBundleName();
 
     switch(GetToken()) {
     case TOKEN_COLON:
-    case TOKEN_COMMA:
-      statement = ParseDeclaration(ident, true, depth + 1);
+    case TOKEN_COMMA: {
+      IdentifierContext ident_context(ident, line_num, line_pos);
+      statement = ParseDeclaration(ident_context, true, depth + 1);
+    }
       break;
 
     case TOKEN_ASSESSOR:
-    case TOKEN_OPEN_PAREN:
-      statement = ParseMethodCall(ident, depth + 1);
+    case TOKEN_OPEN_PAREN: {
+      IdentifierContext ident_context(ident, line_num, line_pos);
+      statement = ParseMethodCall(ident_context, depth + 1);
+    }
       break;
 
     case TOKEN_OPEN_BRACKET: {
@@ -1655,13 +1664,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   }
   // other
   else {
-    const int line_num = GetLineNumber();
-    const int line_pos = GetLinePosition();
-    const wstring file_name = GetFileName();
-    const wstring ident = ParseBundleName();
+    line_num = GetLineNumber();
+    line_pos = GetLinePosition();
 
     switch(GetToken()) {
     case TOKEN_ADD_ADD: {
+      const wstring ident = ParseBundleName();
       IdentifierContext ident_context(ident, line_num, line_pos);
       NextToken();
 
@@ -1678,6 +1686,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_SUB_SUB: {
+      const wstring ident = ParseBundleName();
       IdentifierContext ident_context(ident, line_num, line_pos);
       NextToken();
 
@@ -2818,7 +2827,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
           break;
 
         case TOKEN_CHAR_STRING_LIT: {
-          const wstring &ident = scanner->GetToken()->GetIdentifier();
+          const wstring ident = scanner->GetToken()->GetIdentifier();
           expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident);
           NextToken();
         }
@@ -3035,13 +3044,13 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
       if(!Match(TOKEN_IDENT)) {
         ProcessError(TOKEN_IDENT);
       }
-      // identifier
 
-      //
-      // TODO: save positions and line numbers
-      //
-      const wstring &ident = scanner->GetToken()->GetIdentifier();
-      idents.push_back(ident);
+      const wstring ident = scanner->GetToken()->GetIdentifier();
+      line_num = GetLineNumber();
+      line_pos = GetLinePosition();
+
+      IdentifierContext add_context(ident, line_num, line_pos);
+      idents.push_back(add_context);
 
       NextToken();
     }
@@ -3059,7 +3068,8 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
 
     // add declarations
     for(size_t i = 0; i < idents.size(); ++i) {
-      declaration = AddDeclaration(name, type, false, declaration, line_num, line_pos - (int)name.size(), depth);
+      IdentifierContext add_context = idents[i];
+      declaration = AddDeclaration(add_context, type, false, declaration, add_context.GetLineNumber(), add_context.GetLinePosition(), depth);
     }
   }
   else {
@@ -3081,8 +3091,8 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
     // add declarations
     Assignment* temp = nullptr;
     for(size_t i = 0; i < idents.size(); ++i) {
-      const wstring &ident = idents[i];
-      declaration = AddDeclaration(ident, type, is_static, declaration, line_num, line_pos - (int)ident.size(), depth);
+      IdentifierContext add_context = idents[i];
+      declaration = AddDeclaration(add_context, type, is_static, declaration, add_context.GetLineNumber(), add_context.GetLinePosition(), depth);
 
       // found assignment
       if(declaration->GetAssignment()) {
@@ -3091,7 +3101,7 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
 
       // apply assignment statement to other variables
       if(temp && !declaration->GetAssignment()) {
-        Variable* left = ParseVariable(ident, depth + 1);
+        Variable* left = ParseVariable(add_context, depth + 1);
         Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), left, temp->GetExpression());
         declaration->SetAssignment(assignment);
       }
@@ -3158,10 +3168,14 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
       ProcessError(TOKEN_IDENT);
     }
     // identifier
-    const wstring &ident = scanner->GetToken()->GetIdentifier();
+    const wstring ident = scanner->GetToken()->GetIdentifier();
+    const int line_num = GetLineNumber();
+    const int line_pos = GetLinePosition();
+
+    IdentifierContext ident_context(ident, line_num, line_pos);
     NextToken();
 
-    declarations->AddDeclaration(ParseDeclaration(ident, false, depth + 1));
+    declarations->AddDeclaration(ParseDeclaration(ident_context, false, depth + 1));
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -3633,8 +3647,8 @@ Expression* Parser::ParseFactor(int depth)
  ****************************/
 Expression* Parser::ParseSimpleExpression(int depth)
 {
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
+  int line_num = GetLineNumber();
+  int line_pos = GetLinePosition();
   const wstring file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -3704,17 +3718,26 @@ Expression* Parser::ParseSimpleExpression(int depth)
     case TOKEN_ASSESSOR:
     case TOKEN_OPEN_PAREN:
       if(!Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-        expression = ParseMethodCall(ident, depth + 1);
+        IdentifierContext ident_context(ident, line_num, line_pos);
+        expression = ParseMethodCall(ident_context, depth + 1);
       }
       else {
-        expression = ParseVariable(ident, depth + 1);
+        line_num = GetLineNumber();
+        line_pos = GetLinePosition();
+        IdentifierContext ident_context(ident, line_num, line_pos);
+
+        expression = ParseVariable(ident_context, depth + 1);
         ParseCastTypeOf(expression, depth + 1);
       }
       break;
 
       // variable
     default: {
-      Variable* variable = ParseVariable(ident, line_pos + 2, depth + 1);
+      line_num = GetLineNumber();
+      line_pos = GetLinePosition();
+      IdentifierContext ident_context(ident, line_num, line_pos);
+      Variable* variable = ParseVariable(ident_context, depth + 1);
+
       // pre operation
       if(pre_inc) {
         variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable,
@@ -3772,8 +3795,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_IDENT: {
-      const wstring &ident = scanner->GetToken()->GetIdentifier();
-      Variable* left = ParseVariable(ident, depth + 1);
+      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const int line_num = GetLineNumber();
+      const int line_pos = GetLinePosition();
+      IdentifierContext ident_context(ident, line_num, line_pos);
+
+      Variable* left = ParseVariable(ident_context, depth + 1);
       Expression* right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
       CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
       expression = calc;
@@ -3804,7 +3831,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_CHAR_STRING_LIT: {
-      const wstring &ident = scanner->GetToken()->GetIdentifier();
+      const wstring ident = scanner->GetToken()->GetIdentifier();
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident);
       NextToken();
     }
@@ -3936,10 +3963,11 @@ MethodCall* Parser::ParseMethodCall(int depth)
 /****************************
  * Parses a method call.
  ****************************/
-MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
+MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 {
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
+  const int line_num = context.GetLineNumber();
+  const int line_pos = context.GetLinePosition();
+  const wstring ident = context.GetIdentifier();
   const wstring file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4017,7 +4045,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       }
     }
     else if(Match(TOKEN_AS_ID)) {
-      Variable* variable = ParseVariable(ident, depth + 1);
+      Variable* variable = ParseVariable(context, depth + 1);
 
       NextToken();
       if(!Match(TOKEN_OPEN_PAREN)) {
@@ -4112,11 +4140,14 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const wstring &ident = scanner->GetToken()->GetIdentifier();
+  const wstring ident = scanner->GetToken()->GetIdentifier();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  IdentifierContext ident_context(ident, line_num, line_pos);
   NextToken();
 
   if(expression) {
-    expression->SetMethodCall(ParseMethodCall(ident, depth + 1));
+    expression->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
     // subsequent method calls
     if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
        !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -4147,18 +4178,19 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   NextToken();
   const int mid_line_num = GetLineNumber();
   const int mid_line_pos = GetLinePosition();
-  const wstring variable_name = variable->GetName();
+  const wstring mid_ident = variable->GetName();
+  IdentifierContext ident_context(mid_ident, mid_line_num, mid_line_pos);
   
   int end_pos = 0;
   ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
 
-  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)variable_name.size(),
+  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos - (int)mid_ident.size(),
                                                              mid_line_num, mid_line_pos - (int)method_ident.size(),
                                                              GetLineNumber(), end_pos, variable, method_ident, exprs);
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-    call->SetMethodCall(ParseMethodCall(variable_name, depth + 1));
+    call->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
   }
 
   return call;
@@ -4242,10 +4274,13 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
       }
     }
     else if(Match(TOKEN_IDENT)) {
-      const wstring &ident = scanner->GetToken()->GetIdentifier();
+      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const int line_num = GetLineNumber();
+      const int line_pos = GetLinePosition();
+      IdentifierContext ident_context(ident, line_num, line_pos);
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident_context, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
@@ -4415,8 +4450,6 @@ While* Parser::ParseWhile(int depth)
  ****************************/
 CriticalSection* Parser::ParseCritical(int depth)
 {
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
   const wstring file_name = GetFileName();
 
 #ifdef _DEBUG
@@ -4434,8 +4467,10 @@ CriticalSection* Parser::ParseCritical(int depth)
     ProcessError(TOKEN_IDENT);
   } 
   const wstring ident = scanner->GetToken()->GetIdentifier();
-
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
   IdentifierContext ident_context(ident, line_num, line_pos);
+
   Variable* variable = ParseVariable(ident_context, depth + 1);
 
   NextToken();
