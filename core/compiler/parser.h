@@ -166,7 +166,7 @@ class Parser {
   vector<Type*> ParseGenericTypes(int depth);
   vector<Class*> ParseGenericClasses(const wstring &bundle_name, int depth);
   MethodCall* ParseMethodCall(int depth);
-  MethodCall* ParseMethodCall(const wstring &ident, int depth);
+  MethodCall* ParseMethodCall(IdentifierContext &context, int depth);
   void ParseMethodCall(Expression* expression, int depth);
   MethodCall* ParseMethodCall(Variable* variable, int depth);
   void ParseAnonymousClass(MethodCall* method_call, int depth);
