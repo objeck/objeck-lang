@@ -742,7 +742,7 @@ extern "C" {
                 Expression* expression = expressions[i];
 
                 size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                int start_pos = expression->GetLinePosition() - 1;
+                int start_pos = expression->GetLinePosition();
                 int end_pos = start_pos;
 
                 switch(expression->GetExpressionType()) {
