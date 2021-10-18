@@ -49,6 +49,12 @@ class IdentifierContext {
   int line_pos;
 
 public:
+  IdentifierContext(const IdentifierContext &c) {
+    ident = c.ident;
+    line_num = c.line_num;
+    line_pos = c.line_pos;
+  }
+  
   IdentifierContext(const wstring i, int l, int p) {
     ident = i;
     line_num = l;
