@@ -1086,13 +1086,13 @@ Lambda* Parser::ParseLambda(int depth) {
     Expression* expression = parameters[i];
     if(expression && expression->GetExpressionType() == VAR_EXPR) {
       Variable* var_expr = static_cast<Variable*>(expression);
-      const wstring var_name = var_expr->GetName();
+      const wstring ident = var_expr->GetName();
       const int line_num = var_expr->GetLineNumber();
       const int line_pos = var_expr->GetLinePosition();
 
-      // 
-      declaration_list->AddDeclaration(AddDeclaration(var_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, nullptr, 
-                                                      expression->GetLineNumber(), expression->GetLinePosition() - (int)var_name.size(), depth));
+      IdentifierContext ident_context(ident, line_num, line_pos);
+      declaration_list->AddDeclaration(AddDeclaration(ident_context, TypeFactory::Instance()->MakeType(VAR_TYPE), false, nullptr,
+                                                      expression->GetLineNumber(), expression->GetLinePosition() - (int)ident.size(), depth));
     }
     else {
       ProcessError(L"Expected variable parameter type" , TOKEN_SEMI_COLON);
@@ -3014,18 +3014,18 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
 /****************************
  * Parses a declaration.
  ****************************/
-Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int depth)
+Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, int depth)
 {
-  const int line_num = GetLineNumber();
-  const int line_pos = GetLinePosition();
+  int line_num = GetLineNumber();
+  int line_pos = GetLinePosition();
   const wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Declaration", depth);
 #endif
 
-  vector<wstring> idents;
-  idents.push_back(name);
+  vector<IdentifierContext> idents;
+  idents.push_back(context);
 
   // parse additional names
   if(is_stmt) {
