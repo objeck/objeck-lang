@@ -1700,7 +1700,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
       }
     }
-                        break;
+      break;
 
     case TOKEN_SEMI_COLON:
       statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition());
