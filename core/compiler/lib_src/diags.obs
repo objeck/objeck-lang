@@ -53,6 +53,7 @@ bundle System.Diagnostics {
 			for(i := 0; i < size; i += 1;) {				
 				names[i] := src_strs[i,0];
 				texts[i] := src_strs[i,1];
+				texts[i] += "\r\n";
 			};
 
 			array_args := Base->New[4];
