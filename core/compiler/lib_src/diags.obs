@@ -51,9 +51,15 @@ bundle System.Diagnostics {
 			texts := String->New[size];
 
 			for(i := 0; i < size; i += 1;) {				
-				names[i] := src_strs[i,0];
-				texts[i] := src_strs[i,1];
-				texts[i] += "\r\n";
+				name := src_strs[i,0];
+				text := src_strs[i,1];
+				if(name = Nil | text = Nil) {
+					return Nil;
+				};
+				
+				names[i] := name;
+				text  += "\r\n";
+				texts[i] := text;
 			};
 
 			array_args := Base->New[4];
