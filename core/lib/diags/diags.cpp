@@ -254,9 +254,9 @@ extern "C" {
           mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_name);
           mthd_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd->GetFileName());
           mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_METHOD; // method type
-          mthd_symb_obj[ResultPosition::POS_START_LINE] = mthd->GetLineNumber() - 1;
+          mthd_symb_obj[ResultPosition::POS_START_LINE] = (size_t)mthd->GetLineNumber() - 1;
           mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
-          mthd_symb_obj[ResultPosition::POS_END_LINE] = mthd->GetEndLineNumber() - 2;
+          mthd_symb_obj[ResultPosition::POS_END_LINE] = (size_t)mthd->GetEndLineNumber() - 2;
           mthd_symb_obj[ResultPosition::POS_END_POS] = mthd->GetEndLinePosition();
           mthds_array_ptr[k] = (size_t)mthd_symb_obj;
         }
@@ -355,9 +355,9 @@ extern "C" {
             size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
             def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, node->GetFileName());
-            def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = node->GetLineNumber() - 1;
-            def_obj[ResultPosition::POS_START_POS] = node->GetLinePosition() - 1;
-            def_obj[ResultPosition::POS_END_POS] = node->GetLinePosition() + 80;
+            def_obj[ResultPosition::POS_START_LINE] = (size_t)def_obj[ResultPosition::POS_END_LINE] = (size_t)node->GetLineNumber() - 1;
+            def_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
+            def_obj[ResultPosition::POS_END_POS] = (size_t)node->GetLinePosition() + 80;
             APITools_SetObjectValue(context, 0, def_obj);
           }
         }
@@ -376,9 +376,9 @@ extern "C" {
             size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_klass->GetName());
             def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, found_klass->GetFileName());
-            def_obj[ResultPosition::POS_START_LINE] = def_obj[ResultPosition::POS_END_LINE] = found_klass->GetLineNumber() - 1;
-            def_obj[ResultPosition::POS_START_POS] = found_klass->GetLinePosition() - 1;
-            def_obj[ResultPosition::POS_END_POS] = found_klass->GetLinePosition() + 80;
+            def_obj[ResultPosition::POS_START_LINE] = (size_t)def_obj[ResultPosition::POS_END_LINE] = (size_t)found_klass->GetLineNumber() - 1;
+            def_obj[ResultPosition::POS_START_POS] = (size_t)found_klass->GetLinePosition() - 1;
+            def_obj[ResultPosition::POS_END_POS] = (size_t)found_klass->GetLinePosition() + 80;
             APITools_SetObjectValue(context, 0, def_obj);
           }
         }
@@ -420,9 +420,9 @@ extern "C" {
           if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
             size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = found_line - 1;
-            dcrl_obj[ResultPosition::POS_START_POS] = found_start_pos - 1;
-            dcrl_obj[ResultPosition::POS_END_POS] = found_end_pos - 1;
+            dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = (size_t)found_line - 1;
+            dcrl_obj[ResultPosition::POS_START_POS] = (size_t)found_start_pos - 1;
+            dcrl_obj[ResultPosition::POS_END_POS] = (size_t)found_end_pos - 1;
 
             APITools_SetObjectValue(context, 0, dcrl_obj);
           }
