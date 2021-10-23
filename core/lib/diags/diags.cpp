@@ -377,7 +377,7 @@ extern "C" {
             size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_klass->GetName());
             def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, found_klass->GetFileName());
-            def_obj[ResultPosition::POS_START_LINE] = (size_t)(node->GetLineNumber() - 1);
+            def_obj[ResultPosition::POS_START_LINE] = (size_t)(found_klass->GetLineNumber() - 1);
             def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
             def_obj[ResultPosition::POS_START_POS] = (size_t)found_klass->GetLinePosition() - 1;
             def_obj[ResultPosition::POS_END_POS] = (size_t)found_klass->GetLinePosition() + 80;
