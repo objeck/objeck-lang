@@ -3793,8 +3793,8 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 {
   Variable* variable = mutex->GetVariable();
-  AnalyzeVariable(variable, depth + 1);
   if(variable) {
+    AnalyzeVariable(variable, depth + 1);
     if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
       if(variable->GetEvalType()->GetName() != L"System.Concurrency.ThreadMutex") {
         ProcessError(mutex, L"Expected ThreadMutex type");
