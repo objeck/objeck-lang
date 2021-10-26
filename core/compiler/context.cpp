@@ -7841,7 +7841,7 @@ bool ContextAnalyzer::GetDefinition(Class* klass, const int line_num, const int 
       if(start_line - 1 == line_num && start_pos <= line_pos && end_pos >= line_pos) {
         const wstring search_name = deceleration->GetEntry()->GetType()->GetName();
         found_klass = SearchProgramClasses(search_name);
-        return true;
+        return found_klass != nullptr;
       }
     }
   }
@@ -8075,7 +8075,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
     Expression* expression = all_expressions[i];
     if(expression->GetLineNumber() == line_num + 1) {
-      const int start_pos = expression->GetLinePosition() - 1;
+      int start_pos = expression->GetLinePosition() - 1;
       int end_pos = start_pos;
       
       int alt_start_pos = -1;
@@ -8096,6 +8096,14 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetMethodName();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_end_pos += (int)alt_found_name.size();
+        }
+        else if(method_call->GetMethod()) {
+          found_name = method_call->GetMethodName();
+          end_pos += (int)found_name.size();
+
+          alt_found_name = method_call->GetVariableName();
           alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
           alt_end_pos += (int)alt_found_name.size();
         }
