@@ -8,6 +8,8 @@ class Scanner {
 	@line : String;
 	@line_num : Int;
 	@index : Int;
+
+	
 	
 	New(file : String) {
 		@file ← file;
