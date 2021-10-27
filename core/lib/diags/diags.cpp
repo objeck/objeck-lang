@@ -919,4 +919,3 @@ extern "C" {
     return diagnostics_array;
   }
 }
-
