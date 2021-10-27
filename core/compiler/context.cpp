@@ -7513,7 +7513,7 @@ Method* MethodCallSelector::GetSelection()
 }
 
 //
-// diagnostics operations
+// START: diagnostics operations
 //
 #ifdef _DIAG_LIB
 bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion)
@@ -8225,5 +8225,5 @@ bool ContextAnalyzer::LocateExpression(Class* klass, const int line_num, const i
 
 #endif
 //
-// end: diagnostics operations
+// END: diagnostics operations
 //
