@@ -1156,6 +1156,9 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   const int line_pos = GetLinePosition();
   const wstring file_name = GetFileName();
 
+  int mid_line_num = -1;
+  int mid_line_pos = -1;
+
   MethodType method_type = PRIVATE_METHOD;
   wstring method_name;
   bool is_native = false;
@@ -1326,6 +1329,8 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       ProcessError(TOKEN_IDENT);
     }
     wstring ident = scanner->GetToken()->GetIdentifier();
+    mid_line_num = GetLineNumber();
+    mid_line_pos = GetLinePosition();
     method_name = current_class->GetName() + L':' + ident;
     NextToken();
   }
@@ -1334,7 +1339,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   Debug(L"(Method/Function/New: name='" + method_name + L"')", depth);
 #endif
 
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, -1, -1, method_name, method_type, is_function, is_native);
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, mid_line_num, mid_line_pos, method_name, method_type, is_function, is_native);
   current_method = method;
 
   // declarations
