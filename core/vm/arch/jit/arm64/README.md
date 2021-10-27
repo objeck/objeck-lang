@@ -46,7 +46,7 @@ Save the link register between function calls out of the JIT'ed code.
 	```
 
 ### Optimizations
-* Take advantage of more registers, trade off is storing volatile registers between calls
+* Take advantage of more registers, trade off is saving volatile registers between calls
 * ~~Guard 12-bit intermediate values~~
 
 ### To do
