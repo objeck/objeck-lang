@@ -58,7 +58,7 @@ bundle System.Diagnostics {
 				};
 				
 				names[i] := name;
-				text  += "\r\n";
+				text += "\r\n";
 				texts[i] := text;
 			};
 

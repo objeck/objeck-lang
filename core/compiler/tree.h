@@ -1858,6 +1858,8 @@ namespace frontend {
     friend class TreeFactory;
     int end_line_num;
     int end_line_pos;
+    int mid_line_num;
+    int mid_line_pos;
     int id;
     wstring name;
     wstring parsed_name;
@@ -1881,10 +1883,11 @@ namespace frontend {
     vector<Expression*> diagnostic_expressions;
 #endif
     
-    Method(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n,
+    Method(const wstring& f, const int l, const int p, const int ml, const int mp, const wstring& n,
            MethodType m, bool s, bool c) : ParseNode(f, l, p) {
-      end_line_num = el;
-      end_line_pos = ep;
+      mid_line_num = ml;
+      mid_line_pos = mp;
+      end_line_num = end_line_pos = -1;
       name = n;
       method_type = m;
       is_static = s;
@@ -1899,9 +1902,10 @@ namespace frontend {
       original = nullptr;
     }
 
-    Method(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n) : ParseNode(f, l, p) {
-      end_line_num = el;
-      end_line_pos = ep;
+    Method(const wstring& f, const int l, const int p, const int ml, const int mp, const wstring& n) : ParseNode(f, l, p) {
+      mid_line_num = ml;
+      mid_line_pos = mp;
+      end_line_num = end_line_pos = -1;
       name = n;
       method_type = PRIVATE_METHOD;
       is_static = true;
@@ -1954,6 +1958,14 @@ namespace frontend {
 
     void SetReturn(Type* r) {
       return_type = r;
+    }
+
+    inline int GetMidLineNumber() {
+      return mid_line_num;
+    }
+
+    inline int GetMidLinePosition() {
+      return mid_line_pos;
     }
 
     inline int GetEndLineNumber() {
@@ -3033,15 +3045,15 @@ namespace frontend {
       return tmp;
     }
     
-    Method* MakeMethod(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name,
+    Method* MakeMethod(const wstring &file_name, const int line_num, const int line_pos, const int mid_line_num, const int mid_line_pos, const wstring &name,
                        MethodType type, bool is_function, bool is_native) {
-      Method* tmp = new Method(file_name, line_num, line_pos, end_line_num, end_line_pos, name, type, is_function, is_native);
+      Method* tmp = new Method(file_name, line_num, line_pos, mid_line_num, mid_line_pos, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Method* MakeMethod(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring& name) {
-      Method* tmp = new Method(file_name, line_num, line_pos, end_line_num, end_line_pos, name);
+    Method* MakeMethod(const wstring& file_name, const int line_num, const int line_pos, const int mid_line_num, const int mid_line_pos, const wstring& name) {
+      Method* tmp = new Method(file_name, line_num, line_pos, mid_line_num, mid_line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
