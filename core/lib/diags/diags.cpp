@@ -774,17 +774,8 @@ extern "C" {
                 }
                 else {
                   mthd_dclr = method_call->GetMethod();
-
-                  end_pos = method_call->GetEndLinePosition();
-                  if(method_call->GetCallingParameters()->GetExpressions().empty()) {
-                    start_pos = end_pos - (int)method_call->GetMethodName().size() - 2;
-                    end_pos -= 2;
-                  }
-                  else {
-                    const vector<Expression*> params = method_call->GetCallingParameters()->GetExpressions();
-                    end_pos -= 3;
-                    start_pos = end_pos - (int)method_call->GetMethodName().size() - (end_pos - params[0]->GetLinePosition() + 1);
-                  }
+                  start_pos = end_pos = method_call->GetMidLinePosition();
+                  end_pos += (int)method_call->GetMethodName().size();
                 }
 
                 reference_obj[ResultPosition::POS_TYPE] = 200;
