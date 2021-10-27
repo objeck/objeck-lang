@@ -6,6 +6,8 @@
 
 **Latest**: Enhancing [LSP](https://github.com/objeck/objeck-lang-server) support by adding method/function renaming and code reformatting for your favorite IDE (i.e. VS Code, Sublime, Emacs, VIM, etc.)
 
+---
+
 Objeck is a stable object-oriented programming language with functional features. Objeck emphasizes simplicity, portability and scalability. The programming environment consists of a compiler, virtual machine, command line debugger and plug-ins for various text editors.
 
 ```ruby
