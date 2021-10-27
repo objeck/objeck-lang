@@ -739,18 +739,16 @@ extern "C" {
 
           // format
           if(!expressions.empty()) {
-            Method* mthd_dclr = nullptr;
             size_t* refs_array = nullptr;
-
             if(is_var) {
               refs_array = APITools_MakeIntArray(context, (int)expressions.size());
             }
             else {
               refs_array = APITools_MakeIntArray(context, (int)expressions.size() + 1);
             }
-            
             size_t* refs_array_ptr = refs_array + 3;
 
+            Method* mthd_dclr = nullptr;
             for(size_t i = 0; i < expressions.size(); ++i) {
               Expression* expression = expressions[i];
 
