@@ -739,7 +739,16 @@ extern "C" {
 
           // format
           if(!expressions.empty()) {
-            size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+            Method* mthd_dclr = nullptr;
+            size_t* refs_array = nullptr;
+
+            if(is_var) {
+              refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+            }
+            else {
+              refs_array = APITools_MakeIntArray(context, (int)expressions.size() + 1);
+            }
+            
             size_t* refs_array_ptr = refs_array + 3;
 
             for(size_t i = 0; i < expressions.size(); ++i) {
@@ -764,11 +773,22 @@ extern "C" {
                   end_pos += (int)method_call->GetVariableName().size();
                 }
                 else {
+                  mthd_dclr = method_call->GetMethod();
+
                   end_pos = method_call->GetEndLinePosition();
+                  if(method_call->GetCallingParameters()->GetExpressions().empty()) {
+                    start_pos = end_pos - (int)method_call->GetMethodName().size() - 2;
+                    end_pos -= 2;
+                  }
+                  else {
+                    const vector<Expression*> params = method_call->GetCallingParameters()->GetExpressions();
+                    end_pos -= 3;
+                    start_pos = end_pos - (int)method_call->GetMethodName().size() - (end_pos - params[0]->GetLinePosition() + 1);
+                  }
                 }
 
-                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
                 reference_obj[ResultPosition::POS_TYPE] = 200;
+                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
               }
                 break;
 
@@ -778,9 +798,32 @@ extern "C" {
 
               reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
               reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
-              reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
-              reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
+              reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
+              reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
               refs_array_ptr[i] = (size_t)reference_obj;
+            }
+
+            // update declaration name
+            if(!is_var && mthd_dclr) {
+              size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+
+              int start_pos = mthd_dclr->GetMidLinePosition();
+
+              const wstring mthd_dclr_long_name = mthd_dclr->GetName();
+              const size_t mthd_dclr_index = mthd_dclr_long_name.find(L':');
+              if(mthd_dclr_index != wstring::npos) {
+                const wstring mthd_dclr_name = mthd_dclr_long_name.substr(mthd_dclr_index + 1);
+                int end_pos = start_pos + (int)mthd_dclr_name.size();
+
+                reference_obj[ResultPosition::POS_TYPE] = 200;
+                reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_dclr->GetName());
+                reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd_dclr->GetFileName());
+                reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = mthd_dclr->GetLineNumber() - 1;
+                reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
+                reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
+
+                refs_array_ptr[(int)expressions.size()] = (size_t)reference_obj;
+              }
             }
 
             return refs_array;
@@ -812,9 +855,9 @@ extern "C" {
                 reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, expression->GetName());
                 reference_obj[ResultPosition::POS_TYPE] = 100;
                 reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
-                reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = expression->GetLineNumber() - 1;
-                reference_obj[ResultPosition::POS_START_POS] = start_pos - 1;
-                reference_obj[ResultPosition::POS_END_POS] = end_pos - 1;
+                reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = (size_t)expression->GetLineNumber() - 1;
+                reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
+                reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
                 refs_array_ptr[i] = (size_t)reference_obj;
               }
 
@@ -867,8 +910,8 @@ extern "C" {
       diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
       diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
       diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
-      diag_obj[ResultPosition::POS_START_LINE] = line_index;
-      diag_obj[ResultPosition::POS_START_POS] = pos_index;
+      diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
+      diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
       diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
       diagnostics_array_ptr[i] = (size_t)diag_obj;
     }
