@@ -4,7 +4,7 @@
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
 [![Download Objeck](https://img.shields.io/sourceforge/dt/objeck-lang.svg)](https://sourceforge.net/projects/objeck-lang/files/latest/download)
 
-**Latest**: Enhancing [LSP](https://github.com/objeck/objeck-lang-server) support by adding method/function renaming and code reformatting for your favorite IDE (i.e. VS Code, Sublime, Emacs, VIM, etc.)
+**Latest**: Enhancing [LSP](https://github.com/objeck/objeck-lang-server) support by adding method/function renaming and code reformatting for your favorite IDE (such as VS Code, Sublime, Emacs, VIM, etc.)
 
 ---
 
