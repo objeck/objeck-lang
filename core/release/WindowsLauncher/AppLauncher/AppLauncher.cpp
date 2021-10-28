@@ -416,7 +416,7 @@ BOOL InitEnvironment()
   pathText = L"title Objeck Prompt";
   WriteLineToFile(cmdFile, pathText);
 
-  pathText = L"cd ..";
+  pathText = L"cd %HOMEDRIVE%\\%HOMEPATH%";
   WriteLineToFile(cmdFile, pathText);
 
   // close file
