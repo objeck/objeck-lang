@@ -212,6 +212,7 @@ bundle Data.XML {
 
 		#~
                 Parses a Json text
+                @param text JSON text
                 @return root document element
                 ~#
                 function : TextToElement(text : String) ~ XmlElement {
