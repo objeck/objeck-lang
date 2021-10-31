@@ -304,7 +304,7 @@ bundle Data.JSON {
 # DumpTokens(@tokens);
 				NextToken();
 				@root := ParseValue();
-				return @root <> Nil & @root->GetType() = JsonType->OBJECT;
+				return @root <> Nil;
 			};
 			
 			return false;
