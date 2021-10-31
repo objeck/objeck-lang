@@ -33,10 +33,10 @@ class Brewery {
 									max := data->FindElements("temp2m/max");
 									if(date <> Nil & max <> Nil) {
 										month := date->GetValue()->SubString(4, 2);
-										year := date->GetValue()->SubString(6, 2);
+										day := date->GetValue()->SubString(6, 2);
 										max_temp := max->GetValue()->ToFloat();
 										temp := ((max_temp * 9.0/5.0) + 32.0)->ToInt();
-										"=> {$month}/{$year}: {$temp}"->PrintLine();
+										"=> {$month}/{$day}: {$temp}"->PrintLine();
 									};
 								};
 							};
