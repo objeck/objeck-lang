@@ -1,0 +1,58 @@
+use Web.HTTP;
+use Data.JSON;
+
+class Brewery {
+	function : Main(args : String[]) ~ Nil {
+		text := HttpsClient->GetAll("https://api.openbrewerydb.org/breweries/search?query=new-belgium");
+		if(text <> Nil) {
+			parser := JsonParser->New(text);
+			if(parser->Parse()) {
+				found_brewery : JsonElement;
+				breweries := parser->GetRoot();
+				each(i : breweries) {
+					brewery := breweries->Get(i);
+					city := brewery->Get("city");
+					if(city->GetValue()->Equals("Fort Collins") | city->GetValue()->Equals("Petaluma")) {
+						found_brewery := brewery;
+					};
+				};
+
+				if(found_brewery <> Nil) {
+					lat := found_brewery->Get("latitude")->GetValue();
+					lon := found_brewery->Get("longitude")->GetValue();
+					if(lon <> Nil & lat <> Nil) {
+						text := HttpsClient->GetAll("https://www.7timer.info/bin/civillight.php?lon={$lon}&lat={$lat}&ac=0&unit=metric&output=json&tzshift=0");
+						if(text <> Nil) {
+							parser := JsonParser->New(text);
+							if(parser->Parse()) {
+								weather := parser->GetRoot();
+								data_series := weather->Get("dataseries");
+								each(j : data_series) {
+									data := data_series->Get(j);
+									date := data->Get("date");
+									max := data->FindElements("temp2m/max");
+									if(date <> Nil & max <> Nil) {
+										month := date->GetValue()->SubString(4, 2);
+										year := date->GetValue()->SubString(6, 2);
+										max_temp := max->GetValue()->ToFloat();
+										temp := ((max_temp * 9.0/5.0) + 32.0)->ToInt();
+										"=> {$month}/{$year}: {$temp}"->PrintLine();
+									};
+								};
+							};
+						}
+						else {
+							"--- Unable to fetch weather ---"->PrintLine();
+						};
+					};
+				};
+			}
+			else {
+				"--- Unable to fetch brewery ---"->PrintLine();
+			};
+		}
+		else {
+			"--- Unable to parse ---"->PrintLine();
+		};
+	}
+}
