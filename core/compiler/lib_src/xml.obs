@@ -211,6 +211,19 @@ bundle Data.XML {
 		}
 
 		#~
+                Parses a Json text
+                @return root document element
+                ~#
+                function : TextToElement(text : String) ~ XmlElement {
+                        parser := XmlParser->New(text);
+                        if(parser->Parse()) {
+                                return parser->GetRoot();
+                        };
+
+                        return Nil;
+                }
+
+		#~
 		Parses the XML document
 		@return true if parsed, false otherwise
 		~# 
