@@ -295,6 +295,19 @@ bundle Data.JSON {
 		}
 
 		#~
+		Parses a Json text
+		@return root document element
+		~#
+		function : TextToElement(text : String) ~ JsonElement {
+			parser := JsonParser->New(text);
+			if(parser->Parse()) {
+				return parser->GetRoot();
+			};
+	
+			return Nil;
+		}
+		
+		#~
 		Parses a Json string
 		@return true is successful, false otherwise
 		~#
