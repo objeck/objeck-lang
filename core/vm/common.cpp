@@ -3733,8 +3733,8 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     FILE* file = (FILE*)instance[0];
-    char buffer[SMALL_BUFFER_MAX + 1];
-    if(file && fgets(buffer, SMALL_BUFFER_MAX, file)) {
+    char buffer[MID_BUFFER_MAX + 1];
+    if(file && fgets(buffer, MID_BUFFER_MAX, file)) {
       long end_index = (long)strlen(buffer) - 1;
       if(end_index > -1) {
         if(buffer[end_index] == '\n' || buffer[end_index] == '\r') {
