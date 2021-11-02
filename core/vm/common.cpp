@@ -3751,8 +3751,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       
       // copy and remove file BOM UTF (8, 16, 32)
       wstring in = BytesToUnicode(buffer);
-      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || 
-         in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
         in.erase(in.begin(), in.begin() + 1);
       }
 
