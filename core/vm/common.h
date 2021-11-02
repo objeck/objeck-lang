@@ -85,6 +85,7 @@ using namespace stdext;
 #endif
 
 #define SMALL_BUFFER_MAX 383
+#define MID_BUFFER_MAX 1025
 #define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
 #define CACERT_PEM_FILE "cacert.pem"
