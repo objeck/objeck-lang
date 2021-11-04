@@ -1403,4 +1403,3 @@ class SnippetType {
 		return @type;
 	}
 }
-
