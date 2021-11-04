@@ -89,7 +89,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
-	copy /y ..\setup64
+	copy /y ..\win_installers\setup64
 	devenv setup.sln /rebuild "Release"
 	signtool sign /f "d:\Dropbox\Personal\signing keys\2018\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.comodoca.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win64.msi"
