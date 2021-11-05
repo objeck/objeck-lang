@@ -1395,7 +1395,6 @@ void Scanner::ParseToken(int index)
         break;
 
       default:
-        ProcessWarning();
         tokens[index]->SetType(TOKEN_UNKNOWN);
         NextChar();
         break;
