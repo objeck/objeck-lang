@@ -474,12 +474,6 @@ class Scanner {
   // line number
   int line_nbr;
   size_t line_pos;
-
-  // warning message
-  void ProcessWarning() {
-    wcout << GetToken()->GetFileName() << L':' << GetToken()->GetLineNumber() + 1
-          << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
-  }
   
   // loads file into memory
   wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size);
