@@ -7583,10 +7583,14 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       SymbolEntry* entry = entries[i];
       const wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
       if(short_var_name.rfind(mthd_str, 0) == 0) {
         set<wstring>::iterator found = unique_names.find(short_var_name);
         if(found == unique_names.end()) {
+          if(short_var_name[0] == L'@') {
+            short_var_name.erase(0, 1);
+          }
+
           unique_names.insert(short_var_name);
           found_completion.push_back(pair<int, wstring>(6, short_var_name));
         }
