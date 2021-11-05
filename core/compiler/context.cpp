@@ -7601,8 +7601,12 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       if(mthd_name.find(search_str, 0) != wstring::npos) {
         set<wstring>::iterator found = unique_names.find(mthd_name);
         if(found == unique_names.end()) {
-          unique_names.insert(mthd_name);
-          found_completion.push_back(pair<int, wstring>(2, mthd_name));
+          const size_t short_name_index = mthd_name.find_last_of(L':');
+          if(short_name_index != wstring::npos) {
+            const wstring short_name = mthd_name.substr(short_name_index + 1);
+            unique_names.insert(short_name);
+            found_completion.push_back(pair<int, wstring>(2, short_name));
+          }
         }
       }
     }
