@@ -7647,10 +7647,33 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
         }
       }
 
+      // find enums
+      const vector<ParsedBundle*> bundles = program->GetBundles();
+      for(size_t j = 0; j < bundles.size(); ++j) {
+        ParsedBundle* bundle = bundles[j];
+        const vector<Enum*> eenums = bundle->GetEnums();
+        for(size_t k = 0; k < bundles.size(); ++k) {
+          Enum* eenum = eenums[k];
+          const wstring var_str_check =  L'#' + var_str;
+          if(EndsWith(eenum->GetName(), var_str_check)) {
+            map<const wstring, EnumItem*> eenum_items = eenum->GetItems();
+            for(map<const wstring, EnumItem*>::iterator iter = eenum_items.begin(); iter != eenum_items.end(); ++iter) {
+              if(iter->first.rfind(mthd_str, 0) == 0) {
+                set<wstring>::iterator found = unique_names.find(iter->first);
+                if(found == unique_names.end()) {
+                  unique_names.insert(iter->first);
+                  found_completion.push_back(pair<int, wstring>(2, iter->first));
+                }
+              }
+            }
+          }
+        }
+      }
+
       // find unique signatures
       if(!found_methods.empty()) {
-        for(size_t i = 0; i < found_methods.size(); ++i) {
-          const wstring mthd_name = found_methods[i]->GetName();
+        for(size_t j = 0; j < found_methods.size(); ++j) {
+          const wstring mthd_name = found_methods[j]->GetName();
           const size_t mthd_name_start = mthd_name.find(L':');
           const size_t mthd_name_end = mthd_name.find_last_of(L':');
 
