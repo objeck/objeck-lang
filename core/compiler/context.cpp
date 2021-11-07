@@ -7652,7 +7652,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       for(size_t j = 0; j < bundles.size(); ++j) {
         ParsedBundle* bundle = bundles[j];
         const vector<Enum*> eenums = bundle->GetEnums();
-        for(size_t k = 0; k < bundles.size(); ++k) {
+        for(size_t k = 0; k < eenums.size(); ++k) {
           Enum* eenum = eenums[k];
           const wstring var_str_check =  L'#' + var_str;
           if(EndsWith(eenum->GetName(), var_str_check)) {
