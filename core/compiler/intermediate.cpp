@@ -3546,7 +3546,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
   }
   // check for stack swap
   new_char_str_count++;
-  if(!is_str_array && new_char_str_count >= 2) {
+  if(char_str && !is_str_array && new_char_str_count >= 2) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
     new_char_str_count = 0;
   }
