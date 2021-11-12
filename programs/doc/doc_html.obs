@@ -190,7 +190,7 @@ class HtmlMaker {
 						file_name := class_block->GetBundleName()->ToLower();
 						file_name += '-';
 						file_name += class_block->GetFileName()->ToLower();
-						link_name := String->New(file_name);
+						link_name := String->New(file_name)->ReplaceAll(">", "&gt;");;
 						link_name += ".html";
 
 						sec_b->Append(link_name->ToLower());
@@ -218,7 +218,7 @@ class HtmlMaker {
 						file_name := enum_block->GetBundleName()->ToLower();
 						file_name += '-';
 						file_name += enum_block->GetName()->ToLower();
-						link_name := String->New(file_name);
+						link_name := String->New(file_name)->ReplaceAll("&gt;", "$");
 						link_name += ".html";
 
 						sec_b->Append(link_name->ToLower());
@@ -342,7 +342,7 @@ class HtmlMaker {
 		file_name := "../html/";
 		file_name += class_block->GetBundleName()->ToLower();
 		file_name += '-';
-		file_name += class_block->GetFileName()->ToLower();
+		file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
 		file_name += ".html";
 		
 		out := FileWriter->New(file_name);
@@ -381,7 +381,7 @@ class HtmlMaker {
 		file_name := "../html/";
 		file_name += enum_block->GetBundleName()->ToLower();
 		file_name += '-';
-		file_name += enum_block->GetName()->ToLower();
+		file_name += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
 		file_name += ".html";
 		
 		out := FileWriter->New(file_name);
@@ -402,7 +402,7 @@ class HtmlMaker {
 			file_name += "<a href='";
 			file_name += class_block->GetBundleName()->ToLower();
 			file_name += '-';
-			file_name += class_block->GetFileName()->ToLower();
+			file_name += class_block->GetFileName()->ToLower()->ReplaceAll(">", "&gt;");;
 			file_name += ".html' target='main'>";
 			file_name += cls_name;
 			file_name += "</a>";				
@@ -456,7 +456,7 @@ class HtmlMaker {
 				file_name += "<a href='";
 				file_name += class_block->GetBundleName()->ToLower();
 				file_name += '-';
-				file_name += class_block->GetFileName()->ToLower();
+				file_name += class_block->GetFileName()->ToLower()->ReplaceAll(">", "&gt;");;
 				file_name += ".html' target='main'>";
 				file_name += params_name;
 				file_name += "</a>";				
@@ -474,7 +474,7 @@ class HtmlMaker {
 			file_name += "<a href='";
 			file_name += class_block->GetBundleName()->ToLower();
 			file_name += '-';
-			file_name += class_block->GetFileName()->ToLower();
+			file_name += class_block->GetFileName()->ToLower()->ReplaceAll(">", "&gt;");;
 			file_name += ".html' target='main'>";
 			file_name += name;
 			file_name += "</a>";				
@@ -540,7 +540,7 @@ class HtmlMaker {
 			file_name := "<a href='";
 			file_name += class_block->GetBundleName()->ToLower();
 			file_name += '-';
-			file_name += class_block->GetFileName()->ToLower();
+			file_name += class_block->GetFileName()->ToLower()->ReplaceAll(">", "&gt;");;
 			file_name += ".html' target='main'>";
 			file_name += full_type_name;
 			file_name += "</a>";	
@@ -561,7 +561,7 @@ class HtmlMaker {
 				file_name := "<a href='";
 				file_name += enum_block->GetBundleName()->ToLower();
 				file_name += '-';
-				file_name += enum_block->GetName()->ToLower();
+				file_name += enum_block->GetName()->ToLower()->ReplaceAll(">", "&gt;");;
 				file_name += ".html' target='main'>";
 				file_name += full_type_name;
 				file_name += "</a>";	
