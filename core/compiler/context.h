@@ -602,7 +602,8 @@ class ContextAnalyzer {
   Declaration* FindDeclaration(Class* klass, const int line_num, const int line_pos);
 
   bool GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
-  
+  bool GetHover(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
+
   bool GetDefinition(Method* &method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,  
                      Class*& klass, Enum*& eenum, EnumItem*& eenum_item);
   bool GetDefinition(Class* klass, const int line_num, const int line_pos, Class*& found_klass);
