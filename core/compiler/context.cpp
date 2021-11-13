@@ -7945,6 +7945,53 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
 //
 // declarations
 //
+bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+{
+  // find matching expressions
+  vector<Expression*> all_expressions;
+  Expression* found_expression = nullptr;
+  bool is_alt = false;
+
+  if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
+    // function/method lookup
+    if(is_alt) {
+      if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        // TODO: implement me
+        MethodCall* called_method = static_cast<MethodCall*>(found_expression);
+        if(called_method->GetMethod()) {
+        }
+        else if(called_method->GetLibraryMethod()) {
+        }
+      } 
+     else if(found_expression->GetExpressionType() == VAR_EXPR) {
+        // TODO: implement me
+      }
+    }
+    // variable lookup
+    else {
+      const wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+      SymbolEntry* found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
+      if(found_entry) {
+        // TODO: implement me
+        return true;
+      }
+      else {
+        const wstring method_entry_name = method->GetName() + L':' + found_name;
+        found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
+        if(found_entry) {
+          // TODO: implement me
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+//
+// declarations
+//
 bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
   // find matching expressions
@@ -8002,6 +8049,7 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
 
   return false;
 }
+
 
 Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, const int line_pos)
 {
