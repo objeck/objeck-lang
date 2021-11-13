@@ -200,6 +200,31 @@ bundle System.Diagnostics {
 			
 			return array_args[0]->As(Result);
 		}
+
+		#~
+		Gets hover signatures
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param var_str variable string name
+		@param mthd_str method string name
+		@param sys_path system library path
+		@return hover references, Nil of none found
+		~#
+		method : public : Hover(uri : String, line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
+			array_args := Base->New[8];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntHolder->New(line);
+			array_args[4] := IntHolder->New(pos);
+			array_args[5] := var_str;
+			array_args[6] := mthd_str;
+			array_args[7] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_hover", array_args);
+			
+			return array_args[0]->As(Result);
+		}
 		
 		#~	
 		Get completion options
