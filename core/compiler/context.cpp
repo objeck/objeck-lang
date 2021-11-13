@@ -7945,26 +7945,30 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
 //
 // declarations
 //
-bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int line_pos, 
+                               wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
+                               Expression* &found_expression, SymbolEntry* &found_entry)
 {
   // find matching expressions
-  vector<Expression*> all_expressions;
-  Expression* found_expression = nullptr;
-  bool is_alt = false;
+  found_expression = nullptr;
+  found_expression = nullptr;
 
+  vector<Expression*> all_expressions; bool is_alt = false;
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
     // function/method lookup
     if(is_alt) {
       if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
         // TODO: implement me
         MethodCall* called_method = static_cast<MethodCall*>(found_expression);
-        if(called_method->GetMethod()) {
-        }
-        else if(called_method->GetLibraryMethod()) {
+        if(called_method->GetMethod() || called_method->GetLibraryMethod()) {
+          return found_expression;
         }
       } 
      else if(found_expression->GetExpressionType() == VAR_EXPR) {
-        // TODO: implement me
+        Variable* called_variable = static_cast<Variable*>(found_expression);
+        if(called_variable) {
+          return found_expression;
+        }
       }
     }
     // variable lookup
@@ -7986,7 +7990,7 @@ bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int lin
     }
   }
 
-  return false;
+  return found_expression;
 }
 
 //
