@@ -532,8 +532,16 @@ void diag_hover(VMContext& context)
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         wstring found_name; int found_line; int found_start_pos; int found_end_pos;
-        if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
+        Expression* found_expression;  SymbolEntry* found_entry;
+        if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
           size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          
+          if(found_expression) {
+
+          }
+          else if(found_entry) {
+
+          }
           
           APITools_SetObjectValue(context, 0, dcrl_obj);
         }
