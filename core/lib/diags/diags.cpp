@@ -509,7 +509,37 @@ __declspec(dllexport)
 #endif
 void diag_hover(VMContext& context)
 {
+  size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+  ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
+  const wstring uri = APITools_GetStringValue(context, 2);
+  const int line_num = (int)APITools_GetIntValue(context, 3);
+  const int line_pos = (int)APITools_GetIntValue(context, 4);
+
+  const wstring lib_path = APITools_GetStringValue(context, 5);
+
+  Class* klass = nullptr;
+  Method* method = nullptr;
+  SymbolTable* table = nullptr;
+
+  if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+    if(method) {
+      wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
+      }
+
+      ContextAnalyzer analyzer(program, full_lib_path, false, false);
+      if(analyzer.Analyze()) {
+        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
+        if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
+          size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          
+          APITools_SetObjectValue(context, 0, dcrl_obj);
+        }
+      }
+    }
+  }
 }
 
   //
