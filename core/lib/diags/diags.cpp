@@ -502,6 +502,17 @@ extern "C" {
   }
 
   //
+  // hover support
+  //
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+void diag_hover(VMContext& context)
+{
+
+}
+
+  //
   // help signature
   //
 #ifdef _WIN32
