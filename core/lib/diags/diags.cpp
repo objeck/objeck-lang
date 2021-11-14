@@ -549,7 +549,9 @@ void diag_hover(VMContext& context)
           }
         }
         
-        if(found_entry) {
+        if(found_entry && found_entry->GetType()) {
+          Type* found_type = found_entry->GetType();
+
           hover_obj[ResultPosition::POS_TYPE] = -32;
           hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Foo");
           hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, L"Bar");
