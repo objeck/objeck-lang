@@ -531,20 +531,31 @@ void diag_hover(VMContext& context)
 
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
-        wstring found_name; int found_line; int found_start_pos; int found_end_pos;
-        Expression* found_expression;  SymbolEntry* found_entry;
+        wstring found_name; int found_line; int found_start_pos; int found_end_pos; Expression* found_expression;  SymbolEntry* found_entry;
+
+        size_t* hover_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
-          size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          
           if(found_expression) {
-
+            if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+              MethodCall* called_method = static_cast<MethodCall*>(found_expression);
+              hover_obj[ResultPosition::POS_TYPE] = -8;
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Foo");
+              hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, L"Bar");
+            }
+            else if(found_expression->GetExpressionType() == VAR_EXPR) {
+              Variable* called_variable = static_cast<Variable*>(found_expression);
+              found_entry = called_variable->GetEntry();
+            }
           }
-          else if(found_entry) {
-
-          }
-          
-          APITools_SetObjectValue(context, 0, dcrl_obj);
         }
+        
+        if(found_entry) {
+          hover_obj[ResultPosition::POS_TYPE] = -32;
+          hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Foo");
+          hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, L"Bar");
+        }
+          
+        APITools_SetObjectValue(context, 0, hover_obj);
       }
     }
   }
