@@ -62,9 +62,8 @@ class LruCache {
 
 			return true;
 		}
-		else {
-			RemoveLast();
-			Add(key, value);
+		else if(RemoveLast()) {
+			return Add(key, value);
 		};
 
 		return false;
