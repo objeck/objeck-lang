@@ -6,7 +6,7 @@ class Test {
 		b := "bbb";
 		c := "ccc";
 
-		lru := LruCache->New(2);
+		lru := LruCache->New(2)<String,String>;
 
 		
 
@@ -37,18 +37,18 @@ class Test {
 	}
 }
 
-class LruCache {
+class LruCache<K : Compare, S> {
 	@max : Int;
-	@cache : Map<Compare, Base>;
-	@priority : CompareList<Compare>;
+	@cache : Map<K, S>;
+	@priority : CompareList<K>;
 
 	New(max : Int) {
 		@max := max;
-		@cache := Map->New()<Compare, Base>;
-		@priority := CompareList->New()<Compare>;
+		@cache := Map->New()<K, S>;
+		@priority := CompareList->New()<K>;
 	}
 
-	method : public : Add(key : Compare, value : Base) ~ Bool {
+	method : public : Add(key : K, value : S) ~ Bool {
 		if(@priority->Size() < @max) {
 			if(@cache->Has(key)) {
 				@priority->Find(key);
@@ -69,7 +69,7 @@ class LruCache {
 		return false;
 	}
 
-	method : public : Remove(key : Compare) ~ Bool {
+	method : public : Remove(key : K) ~ Bool {
 		if(@cache->Has(key)) {
 			@priority->Find(key);
 			@priority->Remove();
@@ -93,23 +93,23 @@ class LruCache {
 		return false;
 	}
 
-	method : public : GetKeys() ~ Vector<Compare> {
-		return @cache->GetKeys()<Compare>;
+	method : public : GetKeys() ~ Vector<K> {
+		return @cache->GetKeys()<K>;
 	}
 
-	method : public : GetValues() ~ Vector<Base> {
-		return @cache->GetValues()<Base>;
+	method : public : GetValues() ~ Vector<S> {
+		return @cache->GetValues()<S>;
 	}
 
-	method : public : GetKeyValues() ~ Vector<Pair<Compare, Base>> {
-		return @cache->GetKeyValues()<Pair<Compare, Base>>;
+	method : public : GetKeyValues() ~ Vector<Pair<K, S>> {
+		return @cache->GetKeyValues()<Pair<K, S>>;
 	}
 
-	method : public : Find(key : Compare) ~ Base {
+	method : public : Find(key : K) ~ S {
 		return @cache->Find(key);
 	}
 
-	method : public : Has(key : Compare) ~ Bool {
+	method : public : Has(key : K) ~ Bool {
 		return @cache->Find(key) <> Nil;
 	}
 
