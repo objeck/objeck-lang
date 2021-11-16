@@ -516,7 +516,9 @@ void diag_hover(VMContext& context)
   const int line_num = (int)APITools_GetIntValue(context, 3);
   const int line_pos = (int)APITools_GetIntValue(context, 4);
 
-  const wstring lib_path = APITools_GetStringValue(context, 5);
+  const wstring var_str = APITools_GetStringValue(context, 5);
+  const wstring mthd_str = APITools_GetStringValue(context, 6);
+  wstring lib_path = APITools_GetStringValue(context, 7);
 
   Class* klass = nullptr;
   Method* method = nullptr;
@@ -542,21 +544,21 @@ void diag_hover(VMContext& context)
               // variable type
               SymbolEntry* called_method_entry = called_method->GetEntry();
               if(called_method_entry) {
-                hover_obj[ResultPosition::POS_TYPE] = (size_t)called_method_entry->GetType();
+                hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
                 hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
               }
               else if(called_method->GetVariable() && called_method->GetVariable()->GetEntry()) {
 								called_method_entry = called_method->GetVariable()->GetEntry();
-								hover_obj[ResultPosition::POS_TYPE] = (size_t)called_method_entry->GetType();
+								hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
 								hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
               }
               
               // method name
               if(called_method->GetMethod()) {
-                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethod()->GetName());
+                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
               }
               else {
-								hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetLibraryMethod()->GetName());
+								hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
 							}
             }
             else if(found_expression->GetExpressionType() == VAR_EXPR) {
