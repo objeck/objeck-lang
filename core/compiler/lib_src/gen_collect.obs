@@ -12,18 +12,25 @@ Generic collections (-lib gen_collect)
 ~#	
 bundle Collection.Generic {
 	#~
-	Most recently used cache (MRU)
+	Object MRU/LRU cache
 	~#
-	class LruCache<K : Compare, S> {
+	class Cache<K : Compare, S> {
+		@type : Cache->Type;
 		@max : Int;
 		@cache : Map<K, S>;
 		@priority : CompareList<K>;
+
+		enum Type {
+			LRU,
+			MRU
+		}
 
 		#~
 		Default constructor
 		@param max cache max size
 		~#
-		New(max : Int) {
+		New(type : Cache->Type, max : Int) {
+			@type := type;
 			@max := max;
 			@cache := Map->New()<K, S>;
 			@priority := CompareList->New()<K>;
@@ -48,8 +55,8 @@ bundle Collection.Generic {
 
 				return true;
 			}
-			else if(RemoveLast()) {
-				return Add(key, value);
+			else if(Remove()) {
+				return Insert(key, value);
 			};
 
 			return false;
@@ -71,11 +78,19 @@ bundle Collection.Generic {
 			return false;
 		}
 
-		method : RemoveLast() ~ Bool {
+		method : Remove() ~ Bool {
 			if(<>@priority->IsEmpty()) {
-				last := @priority->Back();
+				removed : K;
+
+				if(@type = Cache->Type->LRU) {
+					removed := @priority->Back();
+				}
+				else {
+					removed := @priority->Front();
+				};
+
 				@priority->RemoveBack();
-				@cache->Remove(last);
+				@cache->Remove(removed);
 
 				return true;
 			};
