@@ -32,7 +32,7 @@ class Test {
 		pairs := lru->GetKeyValues();
 		each(i : pairs) {
 			pair := pairs->Get(i)<Compare, Base>;
-			pair->GetFirst()->As(String)->PrintLine();
+			pair->GetSecond()->As(String)->PrintLine();
 		};
 	}
 }
