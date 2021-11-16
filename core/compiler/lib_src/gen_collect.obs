@@ -12,6 +12,145 @@ Generic collections (-lib gen_collect)
 ~#	
 bundle Collection.Generic {
 	#~
+	Most recently used cache (MRU)
+	~#
+	class LruCache<K : Compare, S> {
+		@max : Int;
+		@cache : Map<K, S>;
+		@priority : CompareList<K>;
+
+		#~
+		Default constructor
+		@param max cache max size
+		~#
+		New(max : Int) {
+			@max := max;
+			@cache := Map->New()<K, S>;
+			@priority := CompareList->New()<K>;
+		}
+
+		#~
+		Inserts a value into the hash
+		@param key key
+		@param value value
+		~#
+		method : public : Insert(key : K, value : S) ~ Bool {
+			if(@priority->Size() < @max) {
+				if(@cache->Has(key)) {
+					@priority->Find(key);
+					@priority->Remove();
+					@priority->AddFront(key);
+				}
+				else {
+					@cache->Insert(key, value);
+					@priority->AddFront(key);
+				};
+
+				return true;
+			}
+			else if(RemoveLast()) {
+				return Add(key, value);
+			};
+
+			return false;
+		}
+
+		#~
+		Removes a value from the cache
+		@param key key for value to remove
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			if(@cache->Has(key)) {
+				@priority->Find(key);
+				@priority->Remove();
+				@cache->Remove(key);
+
+				return true;
+			};
+
+			return false;
+		}
+
+		method : RemoveLast() ~ Bool {
+			if(<>@priority->IsEmpty()) {
+				last := @priority->Back();
+				@priority->RemoveBack();
+				@cache->Remove(last);
+
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @cache->GetKeys()<K>;
+		}
+
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
+		method : public : GetValues() ~ Vector<S> {
+			return @cache->GetValues()<S>;
+		}
+
+		#~
+		Gets a collection of key/value pairs
+		@return vector of key/value pairs
+		~#
+		method : public : GetKeyValues() ~ Vector<Pair<K, S>> {
+			return @cache->GetKeyValues()<Pair<K, S>>;
+		}
+
+		#~
+		Searches for a value in cache
+		@param key search key
+		@return found value, Nil if not found
+		~#
+		method : public : Find(key : K) ~ S {
+			return @cache->Find(key);
+		}
+
+		#~
+		Checks for a value in a cache
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @cache->Find(key) <> Nil;
+		}
+
+		#~
+		Size of cache
+		@return size of cache
+		~#
+		method : public : Size() ~ Int {
+			return @cache->Size();
+		}
+
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @cache->IsEmpty();
+		}
+
+		#~
+		Clears the vector
+		~#
+		method : public : Empty() ~ Nil {
+			@cache->Empty();
+			@priority->Empty();
+		}
+	}
+	
+	#~
 	Generic pair
 	~#
 	class Pair<F : Compare, S> implements System.Compare  {
@@ -351,7 +490,7 @@ bundle Collection.Generic {
 		
 		#~
 		Size of map
-		@return size of queue
+		@return size of map
 		~#
 		method : public : Size() ~ Int {
 			return @size;
