@@ -7290,9 +7290,6 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                         ValidateConcretes(from_concrete_type, to_concrete_type, method_call);
                       }
                     }
-                    else {
-                      ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
-                    }
                   }
                 }
                 else {
