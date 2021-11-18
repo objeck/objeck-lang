@@ -246,7 +246,7 @@ class ContextAnalyzer {
   pair<Lambda*, MethodCall*> lambda_inferred;
   map<int, wstring> errors;
   vector<wstring> alt_error_method_names;
-  map<const wstring, EntryType> type_map;
+  map<const wstring, Type*> type_map;
   unordered_set<wstring> holder_types;
   bool main_found;
   bool web_found;
@@ -553,11 +553,12 @@ class ContextAnalyzer {
     in_loop = 0;
     
     // setup type map
-    type_map[L"$Byte"] = frontend::BYTE_TYPE;
-    type_map[L"$Char"] = frontend::CHAR_TYPE;
-    type_map[L"$Int"] = frontend::INT_TYPE;
-    type_map[L"$Float"] = frontend::FLOAT_TYPE;
-    type_map[L"$Bool"] = frontend::BOOLEAN_TYPE;
+    type_map[L"Byte"] = TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
+    type_map[L"Char"] = TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
+    type_map[L"Int"] = TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
+    type_map[L"Float"] = TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
+		type_map[L"Bool"] = TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
+		type_map[L"String"] = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
 
     // type holders
     holder_types.insert(L"System.BoolHolder");
@@ -595,7 +596,7 @@ class ContextAnalyzer {
   void FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   bool GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
-  void FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion);
+  void FindSignatureClass(Type* type, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion);
   void FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos, bool& is_var);

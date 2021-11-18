@@ -1023,382 +1023,382 @@ void Scanner::ParseToken(int index)
       return;
     }
     // number
-    else if(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char))) {
-      int double_state = 0;
-      int hex_state = 0;
-      // mark
-      start_pos = buffer_pos - 1;
+  else if(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char))) {
+    int double_state = 0;
+    int hex_state = 0;
+    // mark
+    start_pos = buffer_pos - 1;
 
-      // test hex state
-      if(cur_char == L'0' && nxt_char == L'x') {
-        hex_state = 1;
-        NextChar();
-      }
-      while(iswdigit(cur_char) || cur_char == L'.' || 
-            // hex format
-            cur_char == L'x' || (cur_char >= L'a' && cur_char <= L'f') || 
-            (cur_char >= L'A' && cur_char <= L'F') ||
-            // scientific format
-            cur_char == L'e' || cur_char == L'E' || 
-            (double_state == 2 && (cur_char == L'+' || cur_char == L'-') && iswdigit(nxt_char)))  {
-        // decimal double
-        if(cur_char == L'.') {
-          // error
-          if(double_state || hex_state) {
-            tokens[index]->SetType(TOKEN_UNKNOWN);
-            NextChar();
-            break;
-          }
-          double_state = 1;
-        }
-        else if(!hex_state && (cur_char == L'e' || cur_char == L'E')) {
-          // error
-          if(double_state != 1) {
-            tokens[index]->SetType(TOKEN_UNKNOWN);
-            NextChar();
-            break;
-          }
-          double_state = 2;
-        }
-        else if(double_state == 2 && (cur_char == L'+' || cur_char == L'-')) {
-          double_state++;
-        }      
-        // hex integer
-        else if(cur_char == L'x') {
-          // error
-          if(double_state) {
-            tokens[index]->SetType(TOKEN_UNKNOWN);
-            NextChar();
-            break;
-          }
-
-          if(hex_state == 1) {
-            hex_state = 2;
-          }
-          else {
-            hex_state = 1;
-          }
-        }
-
-        // next character
-        NextChar();
-      }
-      // mark
-      end_pos = buffer_pos - 1;
-      if(double_state == 1 || double_state == 3) {
-        ParseDouble(index);
-      } 
-      else if(hex_state == 2) {
-        ParseInteger(index, 16);
-      }
-      else if(hex_state || double_state) {
-        tokens[index]->SetType(TOKEN_UNKNOWN);
-      }
-      else {
-        ParseInteger(index);
-      }
-      return;
+    // test hex state
+    if(cur_char == L'0' && nxt_char == L'x') {
+      hex_state = 1;
+      NextChar();
     }
-    // other
-    else {
-      tokens[index]->SetFileName(filename);
-      tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetLinePos((int)(line_pos - 1));
-      
-      switch(cur_char) {
-      case L':':
-        if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_ASSIGN);
-          NextChar();
-        } 
-        else {
-          tokens[index]->SetType(TOKEN_COLON);
-          NextChar();
-        }
-        break;
-
-      case L'-':
-        if(nxt_char == L'>') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_ASSESSOR);
-          NextChar();
-        } 
-        else if(nxt_char == L'-') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_SUB_SUB);
-          NextChar();
-        }
-        else if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_SUB_ASSIGN);
-          NextChar();
-        } 
-        else {
-          tokens[index]->SetType(TOKEN_SUB);
-          NextChar();
-        }
-        break;
-        
-      case L'!':
-        if(alt_syntax && nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_NEQL);
-          NextChar();
-        }
-        else if(alt_syntax) {
-          tokens[index]->SetType(TOKEN_NOT);
-          NextChar();
-        }
-        else {
+    while(iswdigit(cur_char) || cur_char == L'.' || 
+          // hex format
+          cur_char == L'x' || (cur_char >= L'a' && cur_char <= L'f') || 
+          (cur_char >= L'A' && cur_char <= L'F') ||
+          // scientific format
+          cur_char == L'e' || cur_char == L'E' || 
+          (double_state == 2 && (cur_char == L'+' || cur_char == L'-') && iswdigit(nxt_char)))  {
+      // decimal double
+      if(cur_char == L'.') {
+        // error
+        if(double_state || hex_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           NextChar();
+          break;
         }
-        break;
+        double_state = 1;
+      }
+      else if(!hex_state && (cur_char == L'e' || cur_char == L'E')) {
+        // error
+        if(double_state != 1) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          NextChar();
+          break;
+        }
+        double_state = 2;
+      }
+      else if(double_state == 2 && (cur_char == L'+' || cur_char == L'-')) {
+        double_state++;
+      }      
+      // hex integer
+      else if(cur_char == L'x') {
+        // error
+        if(double_state) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          NextChar();
+          break;
+        }
+
+        if(hex_state == 1) {
+          hex_state = 2;
+        }
+        else {
+          hex_state = 1;
+        }
+      }
+
+      // next character
+      NextChar();
+    }
+    // mark
+    end_pos = buffer_pos - 1;
+    if(double_state == 1 || double_state == 3) {
+      ParseDouble(index);
+    } 
+    else if(hex_state == 2) {
+      ParseInteger(index, 16);
+    }
+    else if(hex_state || double_state) {
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+    }
+    else {
+      ParseInteger(index);
+    }
+    return;
+  }
+  // other
+  else {
+    tokens[index]->SetFileName(filename);
+    tokens[index]->SetLineNbr(line_nbr);
+    tokens[index]->SetLinePos((int)(line_pos - 1));
+      
+    switch(cur_char) {
+    case L':':
+      if(nxt_char == L'=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_ASSIGN);
+        NextChar();
+      } 
+      else {
+        tokens[index]->SetType(TOKEN_COLON);
+        NextChar();
+      }
+      break;
+
+    case L'-':
+      if(nxt_char == L'>') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_ASSESSOR);
+        NextChar();
+      } 
+      else if(nxt_char == L'-') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_SUB_SUB);
+        NextChar();
+      }
+      else if(nxt_char == L'=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_SUB_ASSIGN);
+        NextChar();
+      } 
+      else {
+        tokens[index]->SetType(TOKEN_SUB);
+        NextChar();
+      }
+      break;
         
-      case L'{':
-        tokens[index]->SetType(TOKEN_OPEN_BRACE);
+    case L'!':
+      if(alt_syntax && nxt_char == L'=') {
         NextChar();
-        break;
-
-      case L'.':
-        tokens[index]->SetType(TOKEN_PERIOD);
+        tokens[index]->SetType(TOKEN_NEQL);
         NextChar();
-        break;
-
-      case L'~':
-        tokens[index]->SetType(TOKEN_TILDE);
+      }
+      else if(alt_syntax) {
+        tokens[index]->SetType(TOKEN_NOT);
         NextChar();
-        break;
-
-      case L'\\':
-        tokens[index]->SetType(TOKEN_BACK_SLASH);
+      }
+      else {
+        tokens[index]->SetType(TOKEN_UNKNOWN);
         NextChar();
-        break;
-
-      case L'}':
-        tokens[index]->SetType(TOKEN_CLOSED_BRACE);
-        NextChar();
-        break;
-
-      case L'[':
-        tokens[index]->SetType(TOKEN_OPEN_BRACKET);
-        NextChar();
-        break;
-
-      case L']':
-        tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
-        NextChar();
-        break;
-
-      case L'(':
-        tokens[index]->SetType(TOKEN_OPEN_PAREN);
-        NextChar();
-        break;
-
-      case L')':
-        tokens[index]->SetType(TOKEN_CLOSED_PAREN);
-        NextChar();
-        break;
-
-      case L',':
-        tokens[index]->SetType(TOKEN_COMMA);
-        NextChar();
-        break;
-
-      case L';':
-        tokens[index]->SetType(TOKEN_SEMI_COLON);
-        NextChar();
-        break;
-
-      case L'^':
-        tokens[index]->SetType(TOKEN_HAT);
-        NextChar();
-        break;
-
-      case L'&':
-        if(alt_syntax && nxt_char == L'&') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_AND);
-          NextChar();
-        }
-        else {
-          tokens[index]->SetType(TOKEN_AND);
-          NextChar();
-        }
-        break;
+      }
+      break;
         
-      case L'|':
-        if(alt_syntax && nxt_char == L'|') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_OR);
-          NextChar();
-        }
-        else {
-          tokens[index]->SetType(TOKEN_OR);
-          NextChar();
-        }
-        break;
+    case L'{':
+      tokens[index]->SetType(TOKEN_OPEN_BRACE);
+      NextChar();
+      break;
 
-      case L'?':
-        tokens[index]->SetType(TOKEN_QUESTION);
+    case L'.':
+      tokens[index]->SetType(TOKEN_PERIOD);
+      NextChar();
+      break;
+
+    case L'~':
+      tokens[index]->SetType(TOKEN_TILDE);
+      NextChar();
+      break;
+
+    case L'\\':
+      tokens[index]->SetType(TOKEN_BACK_SLASH);
+      NextChar();
+      break;
+
+    case L'}':
+      tokens[index]->SetType(TOKEN_CLOSED_BRACE);
+      NextChar();
+      break;
+
+    case L'[':
+      tokens[index]->SetType(TOKEN_OPEN_BRACKET);
+      NextChar();
+      break;
+
+    case L']':
+      tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
+      NextChar();
+      break;
+
+    case L'(':
+      tokens[index]->SetType(TOKEN_OPEN_PAREN);
+      NextChar();
+      break;
+
+    case L')':
+      tokens[index]->SetType(TOKEN_CLOSED_PAREN);
+      NextChar();
+      break;
+
+    case L',':
+      tokens[index]->SetType(TOKEN_COMMA);
+      NextChar();
+      break;
+
+    case L';':
+      tokens[index]->SetType(TOKEN_SEMI_COLON);
+      NextChar();
+      break;
+
+    case L'^':
+      tokens[index]->SetType(TOKEN_HAT);
+      NextChar();
+      break;
+
+    case L'&':
+      if(alt_syntax && nxt_char == L'&') {
         NextChar();
-        break;
+        tokens[index]->SetType(TOKEN_AND);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_AND);
+        NextChar();
+      }
+      break;
+        
+    case L'|':
+      if(alt_syntax && nxt_char == L'|') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_OR);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_OR);
+        NextChar();
+      }
+      break;
 
-      case L'=':
-        if(alt_syntax) {
-          if(nxt_char == L'=') {
-            NextChar();
-            tokens[index]->SetType(TOKEN_EQL);
-            NextChar();
-          }
-          else {
-            tokens[index]->SetType(TOKEN_ASSIGN);
-            NextChar();
-          }
-        }
-        else if(nxt_char == L'>') {
+    case L'?':
+      tokens[index]->SetType(TOKEN_QUESTION);
+      NextChar();
+      break;
+
+    case L'=':
+      if(alt_syntax) {
+        if(nxt_char == L'=') {
           NextChar();
-          tokens[index]->SetType(TOKEN_LAMBDA);
-          NextChar();
-        }
-        else {
           tokens[index]->SetType(TOKEN_EQL);
           NextChar();
         }
-        break;
-
-      case L'<':
-        if(nxt_char == L'>') {
-          NextChar();
-          if(alt_syntax) {
-            tokens[index]->SetType(TOKEN_UNKNOWN);
-            NextChar();
-          }
-          else {
-            tokens[index]->SetType(TOKEN_NEQL);
-            NextChar();
-          }
-        } 
-        else if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_LEQL);
-          NextChar();
-        } 
-        else if(nxt_char == L'<') {
-          NextChar();          
-          tokens[index]->SetType(TOKEN_SHL);
-          NextChar();
-        }
         else {
-          tokens[index]->SetType(TOKEN_LES);
+          tokens[index]->SetType(TOKEN_ASSIGN);
           NextChar();
         }
-        break;
-
-      case L'>':
-        if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_GEQL);
-          NextChar();
-        }
-        else if(nxt_char == L'>') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_SHR);
-          NextChar();
-        }
-        else {
-          tokens[index]->SetType(TOKEN_GTR);
-          NextChar();
-        }
-        break;
-
-      case L'+':
-        if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_ADD_ASSIGN);
-          NextChar();
-        }
-        else if(nxt_char == L'+') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_ADD_ADD);
-          NextChar();
-        }
-        else {
-          tokens[index]->SetType(TOKEN_ADD);
-          NextChar();
-        }
-        break;
-
-      case L'*':
-        if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_MUL_ASSIGN);
-          NextChar();
-        }
-        else {
-          tokens[index]->SetType(TOKEN_MUL);
-          NextChar();
-        }
-        break;
-        
-      case L'/':
-        if(nxt_char == L'=') {
-          NextChar();
-          tokens[index]->SetType(TOKEN_DIV_ASSIGN);
-          NextChar();
-        }
-        else {
-          tokens[index]->SetType(TOKEN_DIV);
-          NextChar();
-        }
-        break;
-
-      case L'%':
-        tokens[index]->SetType(TOKEN_MOD);
+      }
+      else if(nxt_char == L'>') {
         NextChar();
-        break;
-        
-        // L'≠':
-      case 0x2260:
-        tokens[index]->SetType(TOKEN_NEQL);
+        tokens[index]->SetType(TOKEN_LAMBDA);
         NextChar();
-        break;
-
-        // L'←':
-      case 0x2190:
-        tokens[index]->SetType(TOKEN_ASSIGN);
+      }
+      else {
+        tokens[index]->SetType(TOKEN_EQL);
         NextChar();
-        break;
+      }
+      break;
 
-      // L'→':
-      case 0x2192:
-        tokens[index]->SetType(TOKEN_ASSESSOR);
+    case L'<':
+      if(nxt_char == L'>') {
         NextChar();
-        break;
-
-        // L'≤':
-      case 0x2264:
+        if(alt_syntax) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_NEQL);
+          NextChar();
+        }
+      } 
+      else if(nxt_char == L'=') {
+        NextChar();
         tokens[index]->SetType(TOKEN_LEQL);
         NextChar();
-        break;
+      } 
+      else if(nxt_char == L'<') {
+        NextChar();          
+        tokens[index]->SetType(TOKEN_SHL);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_LES);
+        NextChar();
+      }
+      break;
 
-        // L'≥':
-      case 0x2265:
+    case L'>':
+      if(nxt_char == L'=') {
+        NextChar();
         tokens[index]->SetType(TOKEN_GEQL);
         NextChar();
-        break;
-
-      case EOB:
-      case 0xfffd:
-        tokens[index]->SetType(TOKEN_END_OF_STREAM);
-        break;
-
-      default:
-        tokens[index]->SetType(TOKEN_UNKNOWN);
-        NextChar();
-        break;
       }
-      return;
+      else if(nxt_char == L'>') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_SHR);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_GTR);
+        NextChar();
+      }
+      break;
+
+    case L'+':
+      if(nxt_char == L'=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_ADD_ASSIGN);
+        NextChar();
+      }
+      else if(nxt_char == L'+') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_ADD_ADD);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_ADD);
+        NextChar();
+      }
+      break;
+
+    case L'*':
+      if(nxt_char == L'=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_MUL_ASSIGN);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_MUL);
+        NextChar();
+      }
+      break;
+        
+    case L'/':
+      if(nxt_char == L'=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_DIV_ASSIGN);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_DIV);
+        NextChar();
+      }
+      break;
+
+    case L'%':
+      tokens[index]->SetType(TOKEN_MOD);
+      NextChar();
+      break;
+        
+      // L'≠':
+    case 0x2260:
+      tokens[index]->SetType(TOKEN_NEQL);
+      NextChar();
+      break;
+
+      // L'←':
+    case 0x2190:
+      tokens[index]->SetType(TOKEN_ASSIGN);
+      NextChar();
+      break;
+
+    // L'→':
+    case 0x2192:
+      tokens[index]->SetType(TOKEN_ASSESSOR);
+      NextChar();
+      break;
+
+      // L'≤':
+    case 0x2264:
+      tokens[index]->SetType(TOKEN_LEQL);
+      NextChar();
+      break;
+
+      // L'≥':
+    case 0x2265:
+      tokens[index]->SetType(TOKEN_GEQL);
+      NextChar();
+      break;
+
+    case EOB:
+    case 0xfffd:
+      tokens[index]->SetType(TOKEN_END_OF_STREAM);
+      break;
+
+    default:
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+      NextChar();
+      break;
     }
+    return;
   }
+}
