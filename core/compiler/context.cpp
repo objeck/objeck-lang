@@ -7639,6 +7639,10 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
         else if(!var_str.empty() && var_str.front() == L'\'') {
           FindSignatureClass(type_map[L"Char"], mthd_str, context_klass, found_methods, found_lib_methods, true);
         }
+        // string literal
+        else if(!var_str.empty() && var_str.front() == L'"') {
+          FindSignatureClass(type_map[L"String"], mthd_str, context_klass, found_methods, found_lib_methods, true);
+        }
         // variable
         else if(short_var_name == var_str) {
           FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, true);
