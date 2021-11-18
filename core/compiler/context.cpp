@@ -7618,14 +7618,24 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     // local variables
     SymbolTable* symbol_table = method->GetSymbolTable();
     vector<SymbolEntry*> entries = symbol_table->GetEntries();
-    for(size_t i = 0; i < entries.size(); ++i) {
+    for(size_t i = 0; i < entries.size(); ++i) {  
       SymbolEntry* entry = entries[i];
       const wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
-        if(short_var_name == var_str) {
-          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, true);
+        // float literal
+				if(!var_str.empty() && (iswdigit(var_str.front()))) {
+          if(var_str.find(L'.') != wstring::npos) {
+            FindSignatureClass(type_map[L"Float"], mthd_str, context_klass, found_methods, found_lib_methods, true);
+          }
+          else {
+            FindSignatureClass(type_map[L"Int"], mthd_str, context_klass, found_methods, found_lib_methods, true);
+          }
+			  }
+        // variable
+        else if(short_var_name == var_str) {
+          FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, true);
         }
       }
     }
@@ -7640,7 +7650,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, true);
+          FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, true);
         }
       }
 
@@ -7725,7 +7735,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, false);
+          FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
         }
       }
@@ -7741,7 +7751,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
-          FindSignatureClass(entry, mthd_str, context_klass, found_methods, found_lib_methods, false);
+          FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
         }
       }
@@ -7751,11 +7761,11 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
   return false;
 }
 
-void ContextAnalyzer::FindSignatureClass(SymbolEntry* entry, const wstring mthd_str, Class* context_klass, vector<Method*> &found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion)
+void ContextAnalyzer::FindSignatureClass(Type* type, const wstring mthd_str, Class* context_klass, vector<Method*> &found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion)
 {
   Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
 
-  switch(entry->GetType()->GetType()) {
+  switch(type->GetType()) {
   case NIL_TYPE:
     break;
 
@@ -7781,9 +7791,9 @@ void ContextAnalyzer::FindSignatureClass(SymbolEntry* entry, const wstring mthd_
     break;
 
   case CLASS_TYPE:
-    klass = SearchProgramClasses(entry->GetType()->GetName());
+    klass = SearchProgramClasses(type->GetName());
     if(!klass) {
-      lib_klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetUses(context_klass->GetFileName()));
+      lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetUses(context_klass->GetFileName()));
     }
     break;
 
