@@ -7624,15 +7624,21 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       const size_t short_var_pos = full_var_name.find_last_of(L':');
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
-        // float literal
-				if(!var_str.empty() && (iswdigit(var_str.front()))) {
+
+				if(!var_str.empty() && iswdigit(var_str.front())) {
+          // float literal
           if(var_str.find(L'.') != wstring::npos) {
             FindSignatureClass(type_map[L"Float"], mthd_str, context_klass, found_methods, found_lib_methods, true);
           }
+          // interger literal
           else {
             FindSignatureClass(type_map[L"Int"], mthd_str, context_klass, found_methods, found_lib_methods, true);
           }
 			  }
+        // character literal
+        else if(!var_str.empty() && var_str.front() == L'\'') {
+          FindSignatureClass(type_map[L"Char"], mthd_str, context_klass, found_methods, found_lib_methods, true);
+        }
         // variable
         else if(short_var_name == var_str) {
           FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, true);

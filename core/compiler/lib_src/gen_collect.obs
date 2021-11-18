@@ -27,6 +27,7 @@ bundle Collection.Generic {
 
 		#~
 		Default constructor
+		@param type MRU or LRU cache
 		@param max cache max size
 		~#
 		New(type : Cache->Type, max : Int) {
