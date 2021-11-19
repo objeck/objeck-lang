@@ -7513,15 +7513,10 @@ Method* MethodCallSelector::GetSelection()
 // START: diagnostics operations
 //
 #ifdef _DIAG_LIB
-bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion)
+bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str,
+                                    const int line_num, const int line_pos, vector<pair<int, wstring> >& found_completion)
 {
-  Class* context_klass = method->GetClass();
-  SymbolTable* symbol_table = method->GetSymbolTable();
-  vector<SymbolEntry*> entries = symbol_table->GetEntries();
-
-  set<wstring> unique_names;
-
-  // keywords
+  // static keywords
   found_completion.push_back(pair<int, wstring>(14, L"if"));
   found_completion.push_back(pair<int, wstring>(14, L"else"));
   found_completion.push_back(pair<int, wstring>(14, L"do"));
@@ -7556,6 +7551,13 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   found_completion.push_back(pair<int, wstring>(14, L"method"));
   found_completion.push_back(pair<int, wstring>(14, L"function"));
   found_completion.push_back(pair<int, wstring>(14, L"class"));
+
+  // search code
+  Class* context_klass = method->GetClass();
+  SymbolTable* symbol_table = method->GetSymbolTable();
+  vector<SymbolEntry*> entries = symbol_table->GetEntries();
+
+  set<wstring> unique_names;
 
   if(var_str.empty() && !mthd_str.empty()) {
     // local variables
@@ -7609,6 +7611,15 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
             found_completion.push_back(pair<int, wstring>(2, short_name));
           }
         }
+      }
+    }
+
+    // TODO: fix me
+    vector<Statement*> statements = method->GetStatements()->GetStatements();
+    for(size_t i = 0; i < statements.size(); ++i) {
+      Statement* statement = statements[i];
+      if(statement->GetLineNumber() == line_num) {
+        wcout << L"Hiya!" << endl;
       }
     }
   }
