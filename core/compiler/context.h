@@ -592,7 +592,8 @@ class ContextAnalyzer {
     return equal(ending.rbegin(), ending.rend(), value.rbegin());
   }
 
-  bool GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str, vector<pair<int, wstring> >& found_completion);
+  bool GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str, 
+                     const int line_num, const int line_pos, vector<pair<int, wstring> >& found_completion);
   void FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   bool GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
