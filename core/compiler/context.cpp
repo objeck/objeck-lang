@@ -7621,6 +7621,8 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       if(statement->GetLineNumber() == line_num + 1) {
         switch(statement->GetStatementType()) {
         case METHOD_CALL_STMT: {
+          // TODO: pull into method
+          
           // get last method call
           MethodCall* mthd_call = static_cast<MethodCall*>(statement);
           while(mthd_call->GetMethodCall()) {
