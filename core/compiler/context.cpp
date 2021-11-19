@@ -7646,7 +7646,17 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
                 vector<Method*> klass_mthds = klass->GetMethods();
                 for(size_t i = 0; i < klass_mthds.size(); ++i) {
                   Method* klass_mthd = klass_mthds[i];
-
+                  const wstring klass_mthd_name = klass_mthd->GetEncodedName();
+									if(klass_mthd_name.rfind(check_mthd_str, 0) == 0) {
+										size_t short_name_start_index = klass_mthd_name.find_first_of(L':');
+										const size_t short_name_end_index = klass_mthd_name.find_last_of(L':');
+										if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+											++short_name_start_index;
+											const wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+											unique_names.insert(short_name);
+											found_completion.push_back(pair<int, wstring>(2, short_name));
+										}
+									}
                 }
               }
               else {
