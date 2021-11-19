@@ -1339,7 +1339,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
         AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
       }
     }
-                         break;
+      break;
 
     case METHOD_CALL_STMT: {
       MethodCall* mthd_call = static_cast<MethodCall*>(statement);
@@ -1349,7 +1349,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       diagnostic_expressions.push_back(mthd_call);
 #endif
     }
-                         break;
+      break;
 
 
     case ADD_ASSIGN_STMT:
@@ -7614,21 +7614,17 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       }
     }
 
-    // TODO: fix me; check if found
-    vector<Statement*> statements = method->GetStatements()->GetStatements();
-    for(size_t i = 0; i < statements.size(); ++i) {
-      Statement* statement = statements[i];
-      if(statement->GetLineNumber() == line_num + 1) {
-        switch(statement->GetStatementType()) {
-        case METHOD_CALL_STMT: {
-          // TODO: pull into method
-          
-          // get last method call
-          MethodCall* mthd_call = static_cast<MethodCall*>(statement);
-          while(mthd_call->GetMethodCall()) {
-            mthd_call = mthd_call->GetMethodCall();
-          }
+    vector<Expression*> expressions = method->GetExpressions();
+    for(size_t i = 0; i < expressions.size(); ++ i) {
+      Expression* expression = expressions[i];
+      if(expression->GetLineNumber() == line_num + 1 && expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        // get last method call
+        MethodCall* mthd_call = static_cast<MethodCall*>(expression);
+        while(mthd_call->GetMethodCall()) {
+          mthd_call = mthd_call->GetMethodCall();
+        }
 
+        // line position
           // get the return type
           Type* rtrn_type = NULL;
           if(mthd_call->GetMethod()) {
@@ -7637,7 +7633,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
           else if(mthd_call->GetLibraryMethod()) {
             rtrn_type = mthd_call->GetLibraryMethod()->GetReturn();
           }
-          
+
           if(rtrn_type) {
             const wstring check_mthd_str = rtrn_type->GetName() + L':' + mthd_str;
             Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
@@ -7647,55 +7643,37 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
                 for(size_t i = 0; i < klass_mthds.size(); ++i) {
                   Method* klass_mthd = klass_mthds[i];
                   const wstring klass_mthd_name = klass_mthd->GetEncodedName();
-									if(klass_mthd_name.rfind(check_mthd_str, 0) == 0) {
-										size_t short_name_start_index = klass_mthd_name.find_first_of(L':');
-										const size_t short_name_end_index = klass_mthd_name.find_last_of(L':');
-										if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
-											++short_name_start_index;
-											const wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
-											unique_names.insert(short_name);
-											found_completion.push_back(pair<int, wstring>(2, short_name));
-										}
-									}
+                  if(klass_mthd_name.rfind(check_mthd_str, 0) == 0) {
+                    size_t short_name_start_index = klass_mthd_name.find_first_of(L':');
+                    const size_t short_name_end_index = klass_mthd_name.find_last_of(L':');
+                    if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+                      ++short_name_start_index;
+                      const wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+                      unique_names.insert(short_name);
+                      found_completion.push_back(pair<int, wstring>(2, short_name));
+                    }
+                  }
                 }
               }
               else {
                 map<const wstring, LibraryMethod*> klass_lib_mthds = lib_klass->GetMethods();
                 map<const wstring, LibraryMethod*>::iterator iter;
-								for(iter = klass_lib_mthds.begin(); iter != klass_lib_mthds.end(); ++iter) {
+                for(iter = klass_lib_mthds.begin(); iter != klass_lib_mthds.end(); ++iter) {
                   const wstring klass_lib_mthd_name = iter->first;
                   if(klass_lib_mthd_name.rfind(check_mthd_str, 0) == 0) {
-										size_t short_name_start_index = klass_lib_mthd_name.find_first_of(L':');
-										const size_t short_name_end_index = klass_lib_mthd_name.find_last_of(L':');
-										if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+                    size_t short_name_start_index = klass_lib_mthd_name.find_first_of(L':');
+                    const size_t short_name_end_index = klass_lib_mthd_name.find_last_of(L':');
+                    if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
                       ++short_name_start_index;
-											const wstring short_name = klass_lib_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
-											unique_names.insert(short_name);
-											found_completion.push_back(pair<int, wstring>(2, short_name));
-										}
+                      const wstring short_name = klass_lib_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+                      unique_names.insert(short_name);
+                      found_completion.push_back(pair<int, wstring>(2, short_name));
+                    }
                   }
-								}
+                }
               }
             }
-          }
-          wcout << mthd_call->GetMethodName() << endl;
-        }
-          break;
-
-				case IF_STMT:
-					break;
-
-				case WHILE_STMT:
-					break;
-
-				case DO_WHILE_STMT:
-					break;
-
-				case FOR_STMT:
-					break;
-
-				case SELECT_STMT:
-					break;
+          
         }
       }
     }
