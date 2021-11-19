@@ -7614,12 +7614,30 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       }
     }
 
-    // TODO: fix me
+    // TODO: fix me; check if found
     vector<Statement*> statements = method->GetStatements()->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       Statement* statement = statements[i];
-      if(statement->GetLineNumber() == line_num) {
-        wcout << L"Hiya!" << endl;
+      if(statement->GetLineNumber() == line_num + 1) {
+        switch(statement->GetStatementType()) {
+        case METHOD_CALL_STMT:
+          break;
+
+				case IF_STMT:
+					break;
+
+				case WHILE_STMT:
+					break;
+
+				case DO_WHILE_STMT:
+					break;
+
+				case FOR_STMT:
+					break;
+
+				case SELECT_STMT:
+					break;
+        }
       }
     }
   }
