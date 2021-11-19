@@ -534,9 +534,11 @@ namespace frontend {
     }
 
     void SetCastType(Type* c, bool zd) {
-      cast_type = TypeFactory::Instance()->MakeType(c);
-      if(zd) {
-        cast_type->SetDimension(0);
+      if(c) {
+        cast_type = TypeFactory::Instance()->MakeType(c);
+        if(zd) {
+          cast_type->SetDimension(0);
+        }
       }
     }
 
