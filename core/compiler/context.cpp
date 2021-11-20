@@ -8270,6 +8270,8 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
       int alt_end_pos = -1;
 
       switch(expression->GetExpressionType()) {
+        // TODO: literal support
+
       case VAR_EXPR: {
         Variable* variable = static_cast<Variable*>(expression);
         found_name = variable->GetName();
