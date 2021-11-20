@@ -6731,7 +6731,37 @@ bool ContextAnalyzer::GetProgramLibraryClass(Type* type, Class*& klass, LibraryC
     return true;
   }
 
-  if(GetProgramLibraryClass(type->GetName(), klass, lib_klass)) {
+  wstring type_name = type->GetName();
+  if(type_name.empty()) {
+    switch(type->GetType()) {
+    case 	BOOLEAN_TYPE:
+      type_name = L"System.$Bool";
+      break;
+
+    case 	BYTE_TYPE:
+      type_name = L"System.$Byte";
+      break;
+
+    case CHAR_TYPE:
+      type_name = L"System.$Char";
+      break;
+
+    case INT_TYPE:
+      type_name = L"System.$Int";
+      break;
+
+    case FLOAT_TYPE:
+      type_name = L"System.$Float";
+      break;
+
+    default:
+      break;
+    }
+
+    type->SetName(type_name);
+  }
+
+  if(GetProgramLibraryClass(type_name, klass, lib_klass)) {
     if(klass) {
       type->SetName(klass->GetName());
       type->SetClassPtr(klass);
@@ -7618,63 +7648,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     for(size_t i = 0; i < expressions.size(); ++ i) {
       Expression* expression = expressions[i];
       if(expression->GetLineNumber() == line_num + 1 && expression->GetExpressionType() == METHOD_CALL_EXPR) {
-        // get last method call
-        MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-        while(mthd_call->GetMethodCall()) {
-          mthd_call = mthd_call->GetMethodCall();
-        }
-
-        // line position
-          // get the return type
-          Type* rtrn_type = NULL;
-          if(mthd_call->GetMethod()) {
-            rtrn_type = mthd_call->GetMethod()->GetReturn();
-          }
-          else if(mthd_call->GetLibraryMethod()) {
-            rtrn_type = mthd_call->GetLibraryMethod()->GetReturn();
-          }
-
-          if(rtrn_type) {
-            const wstring check_mthd_str = rtrn_type->GetName() + L':' + mthd_str;
-            Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
-            if(GetProgramLibraryClass(rtrn_type, klass, lib_klass)) {
-              if(klass) {
-                vector<Method*> klass_mthds = klass->GetMethods();
-                for(size_t i = 0; i < klass_mthds.size(); ++i) {
-                  Method* klass_mthd = klass_mthds[i];
-                  const wstring klass_mthd_name = klass_mthd->GetEncodedName();
-                  if(klass_mthd_name.rfind(check_mthd_str, 0) == 0) {
-                    size_t short_name_start_index = klass_mthd_name.find_first_of(L':');
-                    const size_t short_name_end_index = klass_mthd_name.find_last_of(L':');
-                    if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
-                      ++short_name_start_index;
-                      const wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
-                      unique_names.insert(short_name);
-                      found_completion.push_back(pair<int, wstring>(2, short_name));
-                    }
-                  }
-                }
-              }
-              else {
-                map<const wstring, LibraryMethod*> klass_lib_mthds = lib_klass->GetMethods();
-                map<const wstring, LibraryMethod*>::iterator iter;
-                for(iter = klass_lib_mthds.begin(); iter != klass_lib_mthds.end(); ++iter) {
-                  const wstring klass_lib_mthd_name = iter->first;
-                  if(klass_lib_mthd_name.rfind(check_mthd_str, 0) == 0) {
-                    size_t short_name_start_index = klass_lib_mthd_name.find_first_of(L':');
-                    const size_t short_name_end_index = klass_lib_mthd_name.find_last_of(L':');
-                    if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
-                      ++short_name_start_index;
-                      const wstring short_name = klass_lib_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
-                      unique_names.insert(short_name);
-                      found_completion.push_back(pair<int, wstring>(2, short_name));
-                    }
-                  }
-                }
-              }
-            }
-          
-        }
+        GetCompletionMethods(static_cast<MethodCall*>(expression), mthd_str, unique_names, found_completion);
       }
     }
   }
@@ -7790,6 +7764,66 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   }
 
   return !found_completion.empty();
+}
+
+void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const wstring mthd_str, set<wstring> unique_names, vector<pair<int, wstring> >& found_completion)
+{
+	while(mthd_call->GetMethodCall()) {
+		mthd_call = mthd_call->GetMethodCall();
+	}
+
+	// line position
+	// get the return type
+	Type* rtrn_type = NULL;
+	if(mthd_call->GetMethod()) {
+		rtrn_type = mthd_call->GetMethod()->GetReturn();
+	}
+	else if(mthd_call->GetLibraryMethod()) {
+		rtrn_type = mthd_call->GetLibraryMethod()->GetReturn();
+	}
+
+	if(rtrn_type) {
+		Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+		if(GetProgramLibraryClass(rtrn_type, klass, lib_klass)) {
+			const wstring check_mthd_str = rtrn_type->GetName() + L':' + mthd_str;
+
+			if(klass) {
+				vector<Method*> klass_mthds = klass->GetMethods();
+				for(size_t i = 0; i < klass_mthds.size(); ++i) {
+					Method* klass_mthd = klass_mthds[i];
+					const wstring klass_mthd_name = klass_mthd->GetEncodedName();
+					if(klass_mthd_name.rfind(check_mthd_str, 0) == 0) {
+						size_t short_name_start_index = klass_mthd_name.find_first_of(L':');
+						const size_t short_name_end_index = klass_mthd_name.find_last_of(L':');
+						if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+							++short_name_start_index;
+							const wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+							unique_names.insert(short_name);
+							found_completion.push_back(pair<int, wstring>(2, short_name));
+						}
+					}
+				}
+			}
+			else {
+				map<const wstring, LibraryMethod*> klass_lib_mthds = lib_klass->GetMethods();
+				map<const wstring, LibraryMethod*>::iterator iter;
+				for(iter = klass_lib_mthds.begin(); iter != klass_lib_mthds.end(); ++iter) {
+					const wstring klass_lib_mthd_name = iter->first;
+					if(klass_lib_mthd_name.rfind(check_mthd_str, 0) == 0) {
+						size_t short_name_start_index = klass_lib_mthd_name.find_first_of(L':');
+						const size_t short_name_end_index = klass_lib_mthd_name.find_last_of(L':');
+						if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+							++short_name_start_index;
+							const wstring short_name = klass_lib_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+							unique_names.insert(short_name);
+							found_completion.push_back(pair<int, wstring>(2, short_name));
+						}
+					}
+				}
+			}
+		}
+
+	}
 }
 
 bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*> &found_methods, vector<LibraryMethod*> & found_lib_methods)

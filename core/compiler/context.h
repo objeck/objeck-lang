@@ -594,6 +594,9 @@ class ContextAnalyzer {
 
   bool GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str, 
                      const int line_num, const int line_pos, vector<pair<int, wstring> >& found_completion);
+
+  void GetCompletionMethods(MethodCall* mthd_call, const wstring mthd_str, set<wstring> unique_names, vector<pair<int, wstring> >& found_completion);
+
   void FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
   bool GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
@@ -605,9 +608,8 @@ class ContextAnalyzer {
 
   bool GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
   
-  bool GetHover(Method* method, const int line_num, const int line_pos,
-                      wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
-                      Expression* &found_expression, SymbolEntry* &found_entry);
+  bool GetHover(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
+                Expression* &found_expression, SymbolEntry* &found_entry);
 
   bool GetDefinition(Method* &method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,  
                      Class*& klass, Enum*& eenum, EnumItem*& eenum_item);
