@@ -571,7 +571,32 @@ void diag_hover(VMContext& context)
         if(found_entry && found_entry->GetType()) {
           Type* found_type = found_entry->GetType();
           hover_obj[ResultPosition::POS_TYPE] = found_type->GetType();
-          hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_type->GetName());
+          
+          switch(found_type->GetType()) {
+          case frontend::BYTE_TYPE:
+            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Byte");
+            break;
+
+          case frontend::CHAR_TYPE:
+            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Char");
+            break;
+
+          case frontend::INT_TYPE:
+            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Int");
+            break;
+
+          case frontend::FLOAT_TYPE:
+            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Float");
+            break;
+
+          case frontend::BOOLEAN_TYPE:
+            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Bool");
+            break;
+
+          default:
+            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_type->GetName());
+            break;
+          }
         }
           
         APITools_SetObjectValue(context, 0, hover_obj);
