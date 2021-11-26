@@ -15,8 +15,8 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
-  <w:Zoom>130</w:Zoom>
-  <w:DontDisplayPageBoundaries/>
+  <w:Zoom>110</w:Zoom>
+  <w:SpellingState>Clean</w:SpellingState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -33,7 +33,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNqgFAND6+bctAAAA</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNqwFAJHL4q4tAAAA</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -634,17 +634,17 @@ xmlns="http://www.w3.org/TR/REC-html40">
  @font-face
 	{font-family:Wingdings;
 	panose-1:5 0 0 0 0 0 0 0 0 0;
-	mso-font-charset:77;
-	mso-generic-font-family:decorative;
+	mso-font-charset:2;
+	mso-generic-font-family:auto;
 	mso-font-pitch:variable;
-	mso-font-signature:3 0 0 0 -2147483647 0;}
+	mso-font-signature:0 268435456 0 0 -2147483648 0;}
 @font-face
 	{font-family:"Cambria Math";
 	panose-1:2 4 5 3 5 4 6 3 2 4;
 	mso-font-charset:0;
 	mso-generic-font-family:roman;
 	mso-font-pitch:variable;
-	mso-font-signature:3 0 0 0 1 0;}
+	mso-font-signature:-536869121 1107305727 33554432 0 415 0;}
 @font-face
 	{font-family:Calibri;
 	panose-1:2 15 5 2 2 2 4 3 2 4;
@@ -732,8 +732,7 @@ p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
 a:link, span.MsoHyperlink
-	{mso-style-noshow:yes;
-	mso-style-priority:99;
+	{mso-style-priority:99;
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
@@ -825,6 +824,9 @@ span.InternetLink
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
+span.SpellE
+	{mso-style-name:"";
+	mso-spl-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
@@ -1273,7 +1275,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v6.0.5 (November 7, 2021)</span><span
+minor-latin;mso-bidi-theme-font:minor-latin'>v6.0.6 (November 26, 2021)</span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></span></p>
 
@@ -1288,7 +1290,7 @@ notes<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Enhanced LSP support and minor bug fixes<o:p></o:p></span></p>
+minor-latin'>LSP hover support and minor bug fixes<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1301,18 +1303,35 @@ minor-latin'>Highlights:<o:p></o:p></span></p>
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l5 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
 mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
-style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Enhanced and fixed bugs with LSP code completion <o:p></o:p></span></p>
+minor-latin'>Adding hover documentation support <o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l5 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
 mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
-style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Compatible with LSP v1.0.3<o:p></o:p></span></p>
+minor-latin'>Better method/function completion for literals<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l5 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
+mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
+style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Compatible with LSP v1.0.4<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l5 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
+mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
+style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Fixed issue <a
+href="https://github.com/objeck/objeck-lang/issues/43">#43</a><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1368,7 +1387,7 @@ minor-latin'>doc/ – general documentation<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>doc/api/ – class library documentation<o:p></o:p></span></p>
+minor-latin'>doc/<span class=SpellE>api</span>/ – class library documentation<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1397,7 +1416,7 @@ minor-latin'>lib/native/ – native OS shared libraries <o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>lib/sdl/ – host SDL shared libraries<o:p></o:p></span></p>
+minor-latin'>lib/<span class=SpellE>sdl</span>/ – host SDL shared libraries<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
 font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-font-family:
@@ -1410,11 +1429,11 @@ launcher<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Convenient way to run programs and access documentation. On
-Windows, configuration information is stored in the “%programdata%\Objeck”
+minor-latin'>Convenient way to run programs and access documentation. On Windows,
+configuration information is stored in the “%<span class=SpellE>programdata</span>%\Objeck”
 directory and build the first time the app runs. If you move the install
-location, delete the “%programdata%\Objeck” directory and rerun the
-launcher.&nbsp;<o:p></o:p></span></p>
+location, delete the “%<span class=SpellE>programdata</span>%\Objeck” directory
+and rerun the launcher.&nbsp;<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
 font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-font-family:
@@ -1460,9 +1479,10 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>set <a
 name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=&lt;</span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-fareast-font-family:"Times New Roman";mso-hansi-theme-font:minor-latin;
-mso-bidi-theme-font:minor-latin'> program_path</span><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'> &gt;\objeck-lang\lib<o:p></o:p></span></p>
+mso-bidi-theme-font:minor-latin'> <span class=SpellE>program_path</span></span><span
+style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> &gt;\<span
+class=SpellE>objeck</span>-lang\lib<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
@@ -1474,10 +1494,12 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&n
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>set
 PATH=%PATH%;&lt;</span><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> program_path</span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> &gt;\ objeck-lang\bin;
-C:\ Users\&lt;account&gt;\ objeck-lang\lib\sdl<o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> <span
+class=SpellE>program_path</span></span><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'> &gt;\ <span class=SpellE>objeck</span>-lang\bin; C:\
+Users\&lt;account&gt;\ <span class=SpellE>objeck</span>-lang\lib\<span
+class=SpellE>sdl</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1492,12 +1514,13 @@ minor-latin'>To manually setting the environment paths in macOS and Linux:<o:p><
      tab-stops:list .5in'><span style='font-family:"Calibri",sans-serif;
      mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
      mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>export
-     PATH=$PATH: &lt;program_path&gt;/objeck-lang/bin<o:p></o:p></span></li>
+     PATH=$PATH: &lt;<span class=SpellE>program_path</span>&gt;/<span
+     class=SpellE>objeck</span>-lang/bin<o:p></o:p></span></li>
  <li class=MsoNormal style='line-height:normal;mso-list:l0 level1 lfo2;
      tab-stops:list .5in'><span style='font-family:"Calibri",sans-serif;
      mso-ascii-theme-font:minor-latin;mso-fareast-font-family:"Times New Roman";
-     mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>export
-     OBJECK_LIB_PATH=&lt; program_path &gt;/objeck-lang/lib<o:p></o:p></span></li>
+     mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>export OBJECK_LIB_PATH=&lt;
+     <span class=SpellE>program_path</span> &gt;/<span class=SpellE>objeck</span>-lang/lib<o:p></o:p></span></li>
 </ol>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
@@ -1514,9 +1537,12 @@ margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family
 minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
 7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src
-..\examples\hello.obs <o:p></o:p></span></p>
+</span><span class=SpellE><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>obc</span></span><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'> -<span class=SpellE>src</span> ..\examples\<span class=SpellE>hello.obs</span>
+<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1529,15 +1555,19 @@ margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family
 minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
 7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src
-'C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt -dest
-myprgm.obe<o:p></o:p></span></p>
+</span><span class=SpellE><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>obc</span></span><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'> -<span class=SpellE>src</span> 'C:\Program Files\Objeck\<span
+class=SpellE>objeck</span>-lang\examples\<span class=SpellE>encrypt.obs</span>'
+-lib encrypt -<span class=SpellE>dest</span> <span class=SpellE>myprgm.obe</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>2.&nbsp;&nbsp;&nbsp; obr hello<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>2.&nbsp;&nbsp;&nbsp; <span
+class=SpellE>obr</span> hello<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1550,13 +1580,16 @@ minor-latin'>Compile/execute for code that has library dependencies:<o:p></o:p><
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>1.&nbsp;&nbsp;&nbsp; obc -src
-..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>1.&nbsp;&nbsp;&nbsp; <span
+class=SpellE>obc</span> -<span class=SpellE>src</span> ..\examples\<span
+class=SpellE>xml_path.obs</span> -lib <span class=SpellE>collect.obl,xml.obl</span>
+-<span class=SpellE>dest</span> <span class=SpellE>xml_path.obe</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>2.&nbsp;&nbsp;&nbsp; obr xml.obe <o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>2.&nbsp;&nbsp;&nbsp; <span
+class=SpellE>obr</span> <span class=SpellE>xml.obe</span> <o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1565,8 +1598,8 @@ minor-latin'>&nbsp;<o:p></o:p></span></p>
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>For OS X (10.9 or greater), you’ll need to install OpenSSL in
-order to use encryption APIs as well as iODBC to enable database support.
-Please refer to the following <a
+order to use encryption APIs as well as <span class=SpellE>iODBC</span> to
+enable database support. Please refer to the following <a
 href="http://mac-dev-env.patrickbougie.com/openssl"><span class=InternetLink><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>link</span></span></a>
@@ -1598,13 +1631,15 @@ margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family
 minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
 7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>sudo apt
-install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
-libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
-libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
-libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
-libsdl-ttf2.0-dev<o:p></o:p></span></p>
+</span><span class=SpellE><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>sudo</span></span><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'> apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev
+libsdl-gfx1.2-doc libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev
+libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2
+libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev
+libsdl-ttf2.0-0 libsdl-ttf2.0-dev<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;line-height:normal'><span style='font-family:"Calibri",sans-serif;
@@ -1619,7 +1654,7 @@ macOS:<o:p></o:p></span></p>
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Apple Silicon
 (arm64)<o:p></o:p></span></p>
@@ -1631,7 +1666,7 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>1.1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Install brew: /bin/bash -c &quot;$(curl -fsSL
+minor-latin'>Install brew: /bin/bash -c &quot;$(curl -<span class=SpellE>fsSL</span>
 https://raw.githubusercontent.com/Homebrew/install/master/install.sh)&quot;<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-left:.8in;text-indent:-.3in;mso-list:
@@ -1642,7 +1677,8 @@ style='mso-list:Ignore'>1.2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nb
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Other libraries for images, fonts and sound are required. Run:
-brew install sdl2 sdl2_ttf sdl2_image sdl2_mixer sdl2_net sdl2_gfx sdl_sound<o:p></o:p></span></p>
+brew install sdl2 sdl2_ttf sdl2_image sdl2_mixer sdl2_net sdl2_gfx <span
+class=SpellE>sdl_sound</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-left:.8in;text-indent:-.3in;mso-list:
 l3 level2 lfo3'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1651,14 +1687,14 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>1.3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Optional: sudo xcode-select -s
-/Applications/Xcode.app/Contents/Developer<o:p></o:p></span></p>
+minor-latin'>Optional: <span class=SpellE>sudo</span> <span class=SpellE>xcode</span>-select
+-s /Applications/<span class=SpellE>Xcode.app</span>/Contents/Developer<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;mso-list:l3 level1 lfo3'><![if !supportLists]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>2.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Intel (x64)<o:p></o:p></span></p>
 
@@ -1711,7 +1747,7 @@ and the source can be fetch using the following command GIT command:<o:p></o:p><
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l1 level1 lfo4'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>git clone https://github.com/objeck/objeck-lang.git<o:p></o:p></span></p>
@@ -1727,7 +1763,7 @@ font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-fo
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l4 level1 lfo5'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Software was developed under the <a
@@ -1748,13 +1784,13 @@ bugs and limitations<o:p></o:p></span></h2>
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l2 level1 lfo6'><![if !supportLists]><span
 style='font-size:8.5pt;line-height:105%;font-family:Symbol;mso-fareast-font-family:
 Symbol;mso-bidi-font-family:Symbol;color:#212529'><span style='mso-list:Ignore'>·<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Apple Silicon
-SDL2 support currently linked against homebrew libraries </span><span
-style='font-size:8.5pt;line-height:105%;font-family:"Calibri",sans-serif;
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin;color:#212529;background:white'><o:p></o:p></span></p>
+minor-latin'>Apple Silicon SDL2 support currently linked against homebrew
+libraries </span><span style='font-size:8.5pt;line-height:105%;font-family:
+"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
+minor-latin;mso-bidi-theme-font:minor-latin;color:#212529;background:white'><o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
