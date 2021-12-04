@@ -3393,6 +3393,8 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       BIO_set_accept_bios(server_bio, bio);
       BIO_do_accept(server_bio);
 
+      // TODO: access and store cert...
+
       instance[0] = (size_t)server_bio;
       instance[1] = (size_t)bio;
       instance[2] = (size_t)ctx;
