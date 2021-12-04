@@ -3383,7 +3383,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         return false;
       }
 
-      // register and accept collections
+      // register and accept connections
       SSL* ssl = nullptr;
       BIO_get_ssl(bio, &ssl);
       SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
