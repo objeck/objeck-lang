@@ -3349,6 +3349,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
 
       SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
       if(!ctx) {
+				PushInt(0, op_stack, stack_pos);
         return false;
       }
 
@@ -3372,11 +3373,13 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       const string cert_path = UnicodeToBytes(cert_str);
       const string key_path = UnicodeToBytes(key_str);
       if(!SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM)) {
+        PushInt(0, op_stack, stack_pos);
         return false;
       }
 
       BIO* bio = BIO_new_ssl(ctx, 0);
       if(!bio) {
+        PushInt(0, op_stack, stack_pos);
         return false;
       }
 
@@ -3394,10 +3397,12 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       instance[1] = (size_t)bio;
       instance[2] = (size_t)ctx;
 
+			PushInt(1, op_stack, stack_pos);
       return true;
     }
   }
   
+  PushInt(0, op_stack, stack_pos);
   return false;
 }
 
@@ -3410,30 +3415,39 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 		
     BIO* client_bio = BIO_pop(server_bio);
     if(BIO_do_handshake(client_bio) <= 0) {
-			printf("ERROR for new ssl: %d\n", ERR_get_error());
-
-      BIO_free_all(client_bio);
+			BIO_free_all(server_bio);
+			BIO_free_all(client_bio);
+			PushInt(0, op_stack, stack_pos);
       return false;
 		}
 
     int sock_fd;
 		if(BIO_get_fd(client_bio, &sock_fd) < 0) {
+      BIO_free_all(server_bio);
       BIO_free_all(client_bio);
+      PushInt(0, op_stack, stack_pos);
       return false;
 		}
 
     char host_name[SMALL_BUFFER_MAX];
-    gethostname(host_name, SMALL_BUFFER_MAX);
+    if(gethostname(host_name, SMALL_BUFFER_MAX) < 0) {
+      BIO_free_all(server_bio);
+			BIO_free_all(client_bio);
+			PushInt(0, op_stack, stack_pos);
+			return false;
+    }
 
 		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
     sock_obj[1] = (size_t)client_bio;
-    sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
+    sock_obj[3] = 1;
+		sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
     sock_obj[5] = instance[6];
 
 		PushInt((size_t)sock_obj, op_stack, stack_pos);
     return true;
   }
 
+  PushInt(0, op_stack, stack_pos);
   return false;
 }
 
@@ -3441,13 +3455,10 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 {
 	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    BIO* server_bio = (BIO*)instance[0];
-    BIO* bio = (BIO*)instance[1];
-    SSL_CTX* ctx = (SSL_CTX*)instance[2];
-
-		BIO_free_all(server_bio);
-		BIO_free_all(bio);
-		SSL_CTX_free(ctx);
+    BIO* srv_bio = (BIO*)instance[0];
+    if(srv_bio) {
+      BIO_free_all(srv_bio);
+    }
 
     return true;
   }
