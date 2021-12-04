@@ -7021,7 +7021,7 @@ bundle System.IO.Net {
 		Accepts a client connection
 		@return client socket interface
 		~#
-		method : public : Accept() ~ TCPSocket {
+		method : public : Accept() ~ TCPSecureSocket {
 			SOCK_TCP_SSL_ACCEPT;
 		}
 		
