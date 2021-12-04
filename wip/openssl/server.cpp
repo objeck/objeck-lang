@@ -20,11 +20,13 @@ int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
 }
 
 int main(int argc, char* argv[]) {
-  if(argc != 2) {
+  if(argc != 4) {
     return 1;
   }
   else {
-    char* passwd = argv[1];
+    char* cert_path = argv[1];
+    char* key_path = argv[2];
+    char* key_passwd = argv[3];
     char buffer[1024];
 
     SSL_load_error_strings();
@@ -39,13 +41,13 @@ int main(int argc, char* argv[]) {
     }
 
     // get password for private key
-    if(passwd) {
-      SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd);
+    if(key_passwd) {
+      SSL_CTX_set_default_passwd_cb_userdata(ctx, key_passwd);
       SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
     }
 
     // load certificates
-    if(!SSL_CTX_use_certificate_file(ctx, "cert.pem", SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, "key.pem", SSL_FILETYPE_PEM)) {
+    if(!SSL_CTX_use_certificate_file(ctx, cert_path, SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path, SSL_FILETYPE_PEM)) {
       printf("ERROR for certificate: %s\n", ERR_reason_error_string(ERR_get_error()));
       exit(1);
     }
