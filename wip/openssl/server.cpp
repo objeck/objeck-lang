@@ -24,8 +24,8 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   else {
-    char buffer[1024];
     char* passwd = argv[1];
+    char buffer[1024];
 
     SSL_load_error_strings();
     ERR_load_BIO_strings();
