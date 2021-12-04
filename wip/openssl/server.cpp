@@ -1,4 +1,5 @@
 /*
+  Randy Hollines
   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 365 -subj '/CN=localhost'
 */
 
@@ -29,13 +30,10 @@ int main(int argc, char* argv[]) {
     char* key_passwd = argv[3];
     char buffer[1024];
 
-    /*
-    SSL_load_error_strings();
-    ERR_load_BIO_strings();
-    OpenSSL_add_all_algorithms();
-    SSL_library_init();
-    */
-    
+    //
+    // start: SOCK_TCP_SSL_LISTEN
+    //
+
     SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
     if(!ctx) {
       printf("ERROR for context: %s\n", ERR_reason_error_string(ERR_get_error()));
@@ -69,10 +67,19 @@ int main(int argc, char* argv[]) {
     BIO_set_accept_bios(server_bio, bio);
     BIO_do_accept(server_bio);
 
+    //
+    // end: SOCK_TCP_SSL_LISTEN
+    //
+
     // wait for clients
     for(;;) {
       printf("DEBUG: waiting for connection\n");
       
+
+      //
+      // start: SOCK_TCP_SSL_ACCEPT
+      //
+
       BIO_do_accept(server_bio);
       BIO* client_bio = BIO_pop(server_bio);
 
@@ -80,6 +87,11 @@ int main(int argc, char* argv[]) {
         printf("ERROR for new ssl: %s\n", ERR_reason_error_string(ERR_get_error()));
         exit(1);
       }
+
+
+      //
+      // end: SOCK_TCP_SSL_ACCEPT
+      //
 
       char read_buffer[1024];
       int read = BIO_read(client_bio, read_buffer, 1024);
@@ -94,10 +106,19 @@ int main(int argc, char* argv[]) {
       BIO_free_all(client_bio);
     }
 
+
+    //
+    // start: SOCK_TCP_SSL_SRV_CLOSE
+    //
+
     // free server resources
     BIO_free_all(server_bio);
     BIO_free_all(bio);
     SSL_CTX_free(ctx);
+
+    //
+    // end: SOCK_TCP_SSL_SRV_CLOSE
+    //
 
     return 0;
   }
