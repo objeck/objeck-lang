@@ -1,0 +1,18 @@
+use System.IO.Net;
+use Collection.Generic;
+
+class SSLServer {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			server := TCPSecureSocketServer->New("d:/code/objeck-lang/wip/openssl/cert.pem", "d:/code/objeck-lang/wip/openssl/key.pem", args[0], 1613);
+			if(server->Listen()) {
+				client := server->Accept();
+				client->WriteString("HTTP/1.0 200 OK/r/nContent-type: text/plain/r/n/r/n");
+				client->WriteString("Hello World!/r/n/r/n");
+				client->GetCert()->PrintLine();
+				client->Close();
+			};
+			server->Close();
+		};
+	}
+}
