@@ -52,6 +52,7 @@
 #include "../shared/traps.h"
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #ifdef _WIN32
 #include <direct.h>
