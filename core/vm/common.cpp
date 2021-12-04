@@ -1980,31 +1980,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_TCP_SSL_IN_STRING:
       return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
 
-
-
-
-
-
-
-
-
-      // TOODO:
     case SOCK_TCP_SSL_LISTEN:
-      break;
+			return SockTcpSslListen(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_TCP_SSL_ACCEPT:
-      break;
+			return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
 				
     case SOCK_TCP_SSL_SRV_CLOSE:
-      break;
-
-
-
-
-
-
-
-
+			return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
 
     case SERL_CHAR:
       return SerlChar(program, inst, op_stack, stack_pos, frame);
@@ -3340,6 +3323,41 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 
   return true;
 }
+
+
+
+
+
+
+
+// TODO: ....
+
+
+bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
