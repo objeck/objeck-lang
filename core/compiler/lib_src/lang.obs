@@ -6981,6 +6981,49 @@ bundle System.IO.Net {
 			SOCK_TCP_CLOSE;
 		}
 	}
+
+	#~
+	Secure TCP/IP Server socket
+	~#
+	class TCPSecureSocketServer {
+		@server : Int;
+		@bio : Int;
+		@ctx : Int;
+		@port : Int;
+	   	
+		#~
+		Default constructor
+		@param port server port
+		~#
+		New(port : Int) {
+		  Parent();
+		  @port := port;
+		}
+	
+		#~
+		Listens for incoming client connections
+		@param backlog maximum length to queue pending connections
+		@return true if client successfully connects, false otherwise
+		~#
+		method : public : Listen(backlog : Int) ~ Bool {
+			SOCK_TCP_SSL_LISTEN;
+		}
+	
+		#~
+		Accepts a client connection
+		@return client socket interface
+		~#
+		method : public : Accept() ~ TCPSocket {
+			SOCK_TCP_SSL_ACCEPT;
+		}
+		
+		#~
+		Closes the server socket
+		~#
+		method : public : Close() ~ Nil {
+			SOCK_TCP_SSL_SRV_CLOSE;
+		}
+	}
 }
 
 #~
