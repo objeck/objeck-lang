@@ -3326,7 +3326,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 
 int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
 #ifdef _WIN32
-	strncpy_s(buffer, size, (char*)passwd, size - 1);
+	strncpy_s(buffer, MID_BUFFER_MAX - 1, (char*)passwd, size);
 #else
 	strncpy(buffer, (char*)passwd, size);
 #endif
@@ -3355,16 +3355,23 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       // get password for private key
       if(passwd_obj) {
         const wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
-        const char* passwd = UnicodeToBytes(passwd_str).c_str();
+        const string passwd = UnicodeToBytes(passwd_str);
 
-        SSL_CTX_set_default_passwd_cb_userdata(ctx, (char*)passwd);
+        char passwd_buffer[MID_BUFFER_MAX];
+#ifdef _WIN32
+        strncpy_s(passwd_buffer, MID_BUFFER_MAX - 1, passwd.c_str(), passwd.size());
+#else
+        strncpy(passwd_buffer, passwd.c_str(), passwd.size());
+#endif
+
+        SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd_buffer);
         SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
       }
       
       // load certificates
-      const char* cert_path = UnicodeToBytes(cert_str).c_str();
-      const char* key_path = UnicodeToBytes(key_str).c_str();
-      if(!SSL_CTX_use_certificate_file(ctx, cert_path, SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path, SSL_FILETYPE_PEM)) {
+      const string cert_path = UnicodeToBytes(cert_str);
+      const string key_path = UnicodeToBytes(key_str);
+      if(!SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM)) {
         return false;
       }
 
@@ -3396,6 +3403,36 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    BIO* server_bio = (BIO*)instance[0];
+		BIO_do_accept(server_bio);
+		
+    BIO* client_bio = BIO_pop(server_bio);
+		if(BIO_do_handshake(client_bio) <= 0) {
+      BIO_free_all(client_bio);
+      return false;
+		}
+
+    int sock_fd;
+		if(BIO_get_fd(client_bio, &sock_fd) < 0) {
+      BIO_free_all(client_bio);
+      return false;
+		}
+
+    struct sockaddr addr;
+    int addr_len = sizeof(addr);
+		getpeername(sock_fd, &addr, &addr_len);
+
+		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
+    sock_obj[1] = (size_t)client_bio;
+    sock_obj[5] = instance[6];
+
+		PushInt((size_t)sock_obj, op_stack, stack_pos);
+
+    return true;
+  }
+
   return false;
 }
 

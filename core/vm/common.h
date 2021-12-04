@@ -1026,7 +1026,7 @@ class StackProgram {
     if(sock_cls_id < 0) {
       StackClass* cls = GetClass(L"System.IO.Net.TCPSocket");
       if(!cls) {
-        wcerr << L">>> Internal error: unable to find class: Net.TCPSocket <<<" << endl;
+        wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSocket <<<" << endl;
         exit(1);
       }
       sock_cls_id = cls->GetId();
@@ -1034,6 +1034,19 @@ class StackProgram {
 
     return sock_cls_id;
   }
+
+	 const long GetSecureSocketObjectId() {
+		 if(sock_cls_id < 0) {
+			 StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
+			 if(!cls) {
+				 wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << endl;
+				 exit(1);
+			 }
+			 sock_cls_id = cls->GetId();
+		 }
+
+		 return sock_cls_id;
+	 }
 
    const long GetDataTypeObjectId() {
     if(data_type_cls_id < 0) {
