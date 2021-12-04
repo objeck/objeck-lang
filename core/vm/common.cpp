@@ -3409,7 +3409,9 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 		BIO_do_accept(server_bio);
 		
     BIO* client_bio = BIO_pop(server_bio);
-		if(BIO_do_handshake(client_bio) <= 0) {
+    if(BIO_do_handshake(client_bio) <= 0) {
+			printf("ERROR for new ssl: %d\n", ERR_get_error());
+
       BIO_free_all(client_bio);
       return false;
 		}
@@ -3420,16 +3422,15 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       return false;
 		}
 
-    struct sockaddr addr;
-    int addr_len = sizeof(addr);
-		getpeername(sock_fd, &addr, &addr_len);
+    char host_name[SMALL_BUFFER_MAX];
+    gethostname(host_name, SMALL_BUFFER_MAX);
 
 		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
     sock_obj[1] = (size_t)client_bio;
+    sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
     sock_obj[5] = instance[6];
 
 		PushInt((size_t)sock_obj, op_stack, stack_pos);
-
     return true;
   }
 

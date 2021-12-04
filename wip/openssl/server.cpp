@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
       BIO* client_bio = BIO_pop(server_bio);
 
       if(BIO_do_handshake(client_bio) <= 0) {
-        printf("ERROR for new ssl: %s\n", ERR_reason_error_string(ERR_get_error()));
+        printf("ERROR handshake ssl: %s\n", ERR_reason_error_string(ERR_get_error()));
         exit(1);
       }
 
