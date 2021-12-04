@@ -29,11 +29,13 @@ int main(int argc, char* argv[]) {
     char* key_passwd = argv[3];
     char buffer[1024];
 
+    /*
     SSL_load_error_strings();
     ERR_load_BIO_strings();
     OpenSSL_add_all_algorithms();
     SSL_library_init();
-
+    */
+    
     SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
     if(!ctx) {
       printf("ERROR for context: %s\n", ERR_reason_error_string(ERR_get_error()));
