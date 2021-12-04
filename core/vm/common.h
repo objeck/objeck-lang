@@ -1765,6 +1765,11 @@ bool EndsWith(wstring const& str, wstring const& ending);
 void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, 
                          const wchar_t* cls_id, const wchar_t* mthd_id);
 void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance, 
-                           const int cls_id, const int mthd_id);       
+                           const int cls_id, const int mthd_id);
+
+/********************************
+ * SSL password callback
+ ********************************/
+int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd);
 
 #endif

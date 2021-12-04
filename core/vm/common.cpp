@@ -3324,17 +3324,73 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   return true;
 }
 
-
-
-
-
-
-
-// TODO: ....
-
+int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
+#ifdef _WIN32
+	strncpy_s(buffer, size, (char*)passwd, size - 1);
+#else
+	strncpy(buffer, (char*)passwd, size);
+#endif
+	buffer[size - 1] = '\0';
+	return (int)strlen(buffer);
+}
 
 bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+		size_t* cert_obj = (size_t*)instance[3];
+		size_t* key_obj = (size_t*)instance[4];
+		size_t* passwd_obj = (size_t*)instance[5];
+		const long port = (long)instance[6];
+
+    if(cert_obj && key_obj) {
+      const wstring cert_str((wchar_t*)((size_t*)cert_obj[0] + 3));
+      const wstring key_str((wchar_t*)((size_t*)key_obj[0] + 3));
+
+      SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
+      if(!ctx) {
+        return false;
+      }
+
+      // get password for private key
+      if(passwd_obj) {
+        const wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
+        const char* passwd = UnicodeToBytes(passwd_str).c_str();
+
+        SSL_CTX_set_default_passwd_cb_userdata(ctx, (char*)passwd);
+        SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
+      }
+      
+      // load certificates
+      const char* cert_path = UnicodeToBytes(cert_str).c_str();
+      const char* key_path = UnicodeToBytes(key_str).c_str();
+      if(!SSL_CTX_use_certificate_file(ctx, cert_path, SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path, SSL_FILETYPE_PEM)) {
+        return false;
+      }
+
+      BIO* bio = BIO_new_ssl(ctx, 0);
+      if(!bio) {
+        return false;
+      }
+
+      // register and accept collections
+      SSL* ssl = nullptr;
+      BIO_get_ssl(bio, &ssl);
+      SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+
+      const string srv_addr = "localhost:" + to_string(port);
+      BIO* server_bio = BIO_new_accept(srv_addr.c_str());
+      BIO_set_accept_bios(server_bio, bio);
+      BIO_do_accept(server_bio);
+
+      instance[0] = (size_t)server_bio;
+      instance[1] = (size_t)bio;
+      instance[2] = (size_t)ctx;
+
+      return true;
+    }
+  }
+  
   return false;
 }
 
@@ -3345,19 +3401,21 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    BIO* server_bio = (BIO*)instance[0];
+    BIO* bio = (BIO*)instance[1];
+    SSL_CTX* ctx = (SSL_CTX*)instance[2];
+
+		BIO_free_all(server_bio);
+		BIO_free_all(bio);
+		SSL_CTX_free(ctx);
+
+    return true;
+  }
+
   return false;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
