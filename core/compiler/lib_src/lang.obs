@@ -6989,23 +6989,31 @@ bundle System.IO.Net {
 		@server : Int;
 		@bio : Int;
 		@ctx : Int;
+		@cert : String;
+		@key : String;
+		@passwd : String;
 		@port : Int;
 	   	
 		#~
 		Default constructor
+		@param cert path to ssl cert
+		@param key path to ssl key
+		@param passwd private key password
 		@param port server port
 		~#
-		New(port : Int) {
+		New(cert : String, key : String, passwd : String, port : Int) {
 		  Parent();
+		  @cert := cert;
+		  @key := key;
+		  @passwd := passwd;
 		  @port := port;
 		}
 	
 		#~
 		Listens for incoming client connections
-		@param backlog maximum length to queue pending connections
 		@return true if client successfully connects, false otherwise
 		~#
-		method : public : Listen(backlog : Int) ~ Bool {
+		method : public : Listen() ~ Bool {
 			SOCK_TCP_SSL_LISTEN;
 		}
 	
