@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
     }
 
     // load certificates
-    if(!SSL_CTX_use_certificate_file( ctx, "cert.pem", SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file( ctx, "key.pem", SSL_FILETYPE_PEM)) {
+    if(!SSL_CTX_use_certificate_file(ctx, "cert.pem", SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, "key.pem", SSL_FILETYPE_PEM)) {
       printf("ERROR for certificate: %s\n", ERR_reason_error_string(ERR_get_error()));
       exit(1);
     }
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     // register and accept collections
     SSL* ssl = nullptr;
     BIO_get_ssl(bio, &ssl);
-    SSL_set_mode( ssl, SSL_MODE_AUTO_RETRY );
+    SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
     BIO* server_bio = BIO_new_accept("localhost:15001");
     BIO_set_accept_bios(server_bio, bio);
