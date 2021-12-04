@@ -106,9 +106,7 @@ class StackClass;
 
 inline const wstring IntToString(int v)
 {
-  wostringstream str;
-  str << v;
-  return str.str();
+  return to_wstring(v);
 }
 
 /********************************
