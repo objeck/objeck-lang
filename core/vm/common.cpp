@@ -1980,6 +1980,32 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_TCP_SSL_IN_STRING:
       return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
 
+
+
+
+
+
+
+
+
+      // TOODO:
+    case SOCK_TCP_SSL_LISTEN:
+      break;
+
+    case SOCK_TCP_SSL_ACCEPT:
+      break;
+				
+    case SOCK_TCP_SSL_SRV_CLOSE:
+      break;
+
+
+
+
+
+
+
+
+
     case SERL_CHAR:
       return SerlChar(program, inst, op_stack, stack_pos, frame);
 
