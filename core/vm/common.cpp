@@ -3234,7 +3234,7 @@ bool TrapProcessor::SockTcpSslCert(StackProgram* program, size_t* inst, size_t* 
   X509* cert = (X509*)instance[2];
   if(cert) {
     char buffer[LARGE_BUFFER_MAX + 1];
-    X509_NAME_oneline(X509_get_subject_name(cert), buffer, LARGE_BUFFER_MAX);
+    X509_NAME_oneline(X509_get_issuer_name(cert), buffer, LARGE_BUFFER_MAX);
     const wstring in = BytesToUnicode(buffer);
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
@@ -3393,8 +3393,6 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       BIO_set_accept_bios(server_bio, bio);
       BIO_do_accept(server_bio);
 
-      // TODO: access and store cert...
-
       instance[0] = (size_t)server_bio;
       instance[1] = (size_t)bio;
       instance[2] = (size_t)ctx;
@@ -3412,7 +3410,9 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 {
 	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    BIO* server_bio = (BIO*)instance[0];
+		BIO* server_bio = (BIO*)instance[0];
+		BIO* bio = (BIO*)instance[1];
+
 		BIO_do_accept(server_bio);
 		
     BIO* client_bio = BIO_pop(server_bio);
@@ -3431,8 +3431,13 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 			return false;
     }
 
+		SSL* ssl;
+		BIO_get_ssl(bio, &ssl);
+		X509* cert = SSL_get_certificate(ssl);
+
 		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
     sock_obj[1] = (size_t)client_bio;
+    sock_obj[2] = (size_t)cert;
     sock_obj[3] = 1;
 		sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
     sock_obj[5] = instance[6];
