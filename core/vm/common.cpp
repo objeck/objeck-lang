@@ -3421,14 +3421,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       return false;
 		}
 
-    int sock_fd;
-		if(BIO_get_fd(client_bio, &sock_fd) < 0) {
-      BIO_free_all(server_bio);
-      BIO_free_all(client_bio);
-      PushInt(0, op_stack, stack_pos);
-      return false;
-		}
-
     char host_name[SMALL_BUFFER_MAX];
     if(gethostname(host_name, SMALL_BUFFER_MAX) < 0) {
       BIO_free_all(server_bio);
