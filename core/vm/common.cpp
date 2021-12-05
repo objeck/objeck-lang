@@ -3364,7 +3364,6 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
 #else
         strncpy(passwd_buffer, passwd.c_str(), passwd.size());
 #endif
-
         SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd_buffer);
         SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
       }
