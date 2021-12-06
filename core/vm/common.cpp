@@ -3353,7 +3353,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
       if(!ctx) {
 				PushInt(0, op_stack, stack_pos);
-        return false;
+				return true;
       }
 
       // get password for private key
@@ -3376,13 +3376,13 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       const string key_path = UnicodeToBytes(key_str);
       if(!SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM)) {
         PushInt(0, op_stack, stack_pos);
-        return false;
+				return true;
       }
 
       BIO* bio = BIO_new_ssl(ctx, 0);
       if(!bio) {
         PushInt(0, op_stack, stack_pos);
-        return false;
+				return true;
       }
 
       // register and accept connections
@@ -3405,7 +3405,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
   }
   
   PushInt(0, op_stack, stack_pos);
-  return false;
+	return true;
 }
 
 bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
@@ -3422,7 +3422,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 			BIO_free_all(server_bio);
 			BIO_free_all(client_bio);
 			PushInt(0, op_stack, stack_pos);
-      return false;
+			return true;
 		}
 
     char host_name[SMALL_BUFFER_MAX];
@@ -3430,7 +3430,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       BIO_free_all(server_bio);
 			BIO_free_all(client_bio);
 			PushInt(0, op_stack, stack_pos);
-			return false;
+			return true;
     }
 
 		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
@@ -3444,7 +3444,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
   }
 
   PushInt(0, op_stack, stack_pos);
-  return false;
+  return true;
 }
 
 bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
@@ -3470,13 +3470,12 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
   if(instance) {
     BIO* srv_bio = (BIO*)instance[0];
     if(srv_bio) {
+      instance[0] = 0;
       BIO_free_all(srv_bio);
     }
-
-    return true;
   }
 
-  return false;
+  return true;
 }
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
