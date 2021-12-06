@@ -1139,10 +1139,10 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Gets the socket's X.509 certificate subject name
-		@return certificate subject name
+		Gets the socket's X.509 certificate issurer name
+		@return certificate issurer name
 		~#
-		method : public : GetCert() ~ String {
+		method : public : GetIssuer() ~ String {
 			return @cert;
 		}
 		
@@ -1298,7 +1298,7 @@ bundle Web.HTTP {
 								while(count < 2);
 							};							
 						};
-						@cert := socket->GetCert();
+						@cert := socket->GetIssuer();
 					};
 					socket->Close();
 				}
