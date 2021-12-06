@@ -1,5 +1,4 @@
 use System.IO.Net;
-use Collection.Generic;
 
 class SSLServer {
 	function : Main(args : String[]) ~ Nil {
