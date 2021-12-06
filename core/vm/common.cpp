@@ -1985,7 +1985,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
     case SOCK_TCP_SSL_ACCEPT:
 			return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
-				
+
+    case SOCK_TCP_SSL_SRV_CERT:
+			return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
+	
     case SOCK_TCP_SSL_SRV_CLOSE:
 			return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
 
@@ -3442,6 +3445,23 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 
   PushInt(0, op_stack, stack_pos);
   return false;
+}
+
+bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  X509* cert = (X509*)instance[3];
+  if(cert) {
+    char buffer[LARGE_BUFFER_MAX + 1];
+    X509_NAME_oneline(X509_get_issuer_name(cert), buffer, LARGE_BUFFER_MAX);
+    const wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
 }
 
 bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
