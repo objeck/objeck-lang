@@ -5,9 +5,8 @@ class SSLServer {
 		if(args->Size() = 3) {
 			server := TCPSecureSocketServer->New(args[0], args[1], args[2], 1613);
 			if(server->Listen()) {
+				client := server->Accept();
 				while(true) {
-					# TOOD: new thread
-					client := server->Accept();
 					line := client->ReadLine();
 					while(line->Size() > 0) {
 					line->PrintLine();
@@ -18,6 +17,7 @@ class SSLServer {
 					size := text->Size();
 					out := "HTTP/1.1 200 OK\r\nContent-type: text/html\r\nContent-Length: {$size}\r\n\r\n{$text}\r\n\r\n";
 					client->WriteString(out);
+#					client->Close();
 				};
 			};
 			server->Close();
