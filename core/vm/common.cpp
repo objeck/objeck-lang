@@ -3430,10 +3430,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 			return false;
     }
 
-		SSL* ssl;
-		BIO_get_ssl(bio, &ssl);
-		X509* cert = SSL_get_certificate(ssl);
-
 		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
     sock_obj[1] = (size_t)client_bio;
     sock_obj[3] = 1;
