@@ -3436,7 +3436,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 
 		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
     sock_obj[1] = (size_t)client_bio;
-    sock_obj[2] = (size_t)cert;
     sock_obj[3] = 1;
 		sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
     sock_obj[5] = instance[6];
