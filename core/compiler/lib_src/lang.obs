@@ -7043,8 +7043,7 @@ bundle System.IO.Net {
 }
 
 #~
-Allow programmes to introspect the 
-runtime elements
+Allow programmers to introspect the runtime elements
 ~#
 bundle System.Introspection {
 	#~
