@@ -157,6 +157,7 @@ namespace instructions {
     SOCK_TCP_SSL_OUT_STRING,
     SOCK_TCP_SSL_LISTEN,
 		SOCK_TCP_SSL_ACCEPT,
+    SOCK_TCP_SSL_SRV_CERT,
 		SOCK_TCP_SSL_SRV_CLOSE,
     // serialization
     SERL_INT,
