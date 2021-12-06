@@ -6812,8 +6812,8 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Gets the X.509 certificate's subject name
-		@return certificate subject name
+		Gets the X.509 certificate's issuer name
+		@return certificate issuer name
 		~#
 		method : public : GetCert() ~ String {
 			SOCK_TCP_SSL_CERT;
@@ -7023,6 +7023,14 @@ bundle System.IO.Net {
 		~#
 		method : public : Accept() ~ TCPSecureSocket {
 			SOCK_TCP_SSL_ACCEPT;
+		}
+
+		#~
+		Gets the X.509 certificate's issuer name
+		@return certificate issuer name
+		~#
+		method : public : GetCert() ~ String {
+			SOCK_TCP_SSL_CERT;
 		}
 		
 		#~
