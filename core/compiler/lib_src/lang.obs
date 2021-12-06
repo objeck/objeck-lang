@@ -6815,7 +6815,7 @@ bundle System.IO.Net {
 		Gets the X.509 certificate's issuer name
 		@return certificate issuer name
 		~#
-		method : public : GetCert() ~ String {
+		method : public : GetIssuer() ~ String {
 			SOCK_TCP_SSL_CERT;
 		}
 		
@@ -7029,7 +7029,7 @@ bundle System.IO.Net {
 		Gets the X.509 certificate's issuer name
 		@return certificate issuer name
 		~#
-		method : public : GetCert() ~ String {
+		method : public : GetIssuer() ~ String {
 			SOCK_TCP_SSL_CERT;
 		}
 		
