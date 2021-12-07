@@ -8,17 +8,23 @@ class SSLServer {
 				while(true) {
 					# TOOD: new thread
 					client := server->Accept();
-					line := client->ReadLine();
-					while(line->Size() > 0) {
-					line->PrintLine();
+					if(client <> Nil) {
 						line := client->ReadLine();
-					};
+						while(line->Size() > 0) {
+						line->PrintLine();
+							line := client->ReadLine();
+						};
 
-					text := "<html><body><h1>Hello, World!</h1></body></html>";
-					size := text->Size();
-					out := "HTTP/1.1 200 OK\r\nContent-type: text/html\r\nContent-Length: {$size}\r\n\r\n{$text}\r\n\r\n";
-					client->WriteString(out);
-					client->Close();
+						text := "<html><body><h1>Hello, World!</h1></body></html>";
+						size := text->Size();
+						out := "HTTP/1.1 200 OK\r\nContent-type: text/html\r\nContent-Length: {$size}\r\n\r\n{$text}\r\n\r\n";
+						client->WriteString(out);
+						client->Close();
+					}
+					else {
+						server->GetLastError()->PrintLine();
+						break;
+					};
 				};
 			};
 			server->Close();
