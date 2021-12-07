@@ -1992,6 +1992,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_TCP_SSL_SRV_CLOSE:
 			return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
 
+		case SOCK_TCP_SSL_ERROR:
+			return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
+
     case SERL_CHAR:
       return SerlChar(program, inst, op_stack, stack_pos, frame);
 
@@ -3459,6 +3462,20 @@ bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_
   }
   else {
     PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  const int err_code = ERR_get_error();
+  if(!err_code) {
+    PushInt(0, op_stack, stack_pos);
+  }
+  else {
+    const wstring err_msg = BytesToUnicode(ERR_reason_error_string(err_code));
+    PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
   }
 
   return true;
