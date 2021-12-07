@@ -3356,6 +3356,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
       if(!ctx) {
 				PushInt(0, op_stack, stack_pos);
+				instance[0] = instance[1] = instance[2] = 0;
 				return true;
       }
 
@@ -3379,12 +3380,16 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       const string key_path = UnicodeToBytes(key_str);
       if(!SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM)) {
         PushInt(0, op_stack, stack_pos);
+				instance[0] = instance[1] = instance[2] = 0;
+				SSL_CTX_free(ctx);
 				return true;
       }
 
       BIO* bio = BIO_new_ssl(ctx, 0);
       if(!bio) {
         PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+				SSL_CTX_free(ctx);
 				return true;
       }
 
@@ -3418,35 +3423,40 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 		BIO* server_bio = (BIO*)instance[0];
 		BIO* bio = (BIO*)instance[1];
 
-		BIO_do_accept(server_bio);
-		
-    BIO* client_bio = BIO_pop(server_bio);
-    if(BIO_do_handshake(client_bio) <= 0) {
-			BIO_free_all(server_bio);
-			BIO_free_all(client_bio);
-			PushInt(0, op_stack, stack_pos);
-			return true;
-		}
+    if(server_bio && bio) {
+      BIO_do_accept(server_bio);
 
-    char host_name[SMALL_BUFFER_MAX];
-    if(gethostname(host_name, SMALL_BUFFER_MAX) < 0) {
-      BIO_free_all(server_bio);
-			BIO_free_all(client_bio);
-			PushInt(0, op_stack, stack_pos);
-			return true;
+      BIO* client_bio = BIO_pop(server_bio);
+      if(BIO_do_handshake(client_bio) <= 0) {
+        BIO_free_all(server_bio);
+        BIO_free_all(client_bio);
+        instance[0] = instance[1] = instance[2] = instance[3] = instance[4] = instance[5] = instance[6] = 0;
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+
+      char host_name[SMALL_BUFFER_MAX];
+      if(gethostname(host_name, SMALL_BUFFER_MAX) < 0) {
+        BIO_free_all(server_bio);
+        BIO_free_all(client_bio);
+        instance[0] = instance[1] = instance[2] = instance[3] = instance[4] = instance[5] = instance[6] = 0;
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+
+      size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
+      sock_obj[1] = (size_t)client_bio;
+      sock_obj[3] = 1;
+      sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
+      sock_obj[5] = instance[6];
+
+      PushInt((size_t)sock_obj, op_stack, stack_pos);
+      return true;
     }
-
-		size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
-    sock_obj[1] = (size_t)client_bio;
-    sock_obj[3] = 1;
-		sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
-    sock_obj[5] = instance[6];
-
-		PushInt((size_t)sock_obj, op_stack, stack_pos);
-    return true;
   }
 
   PushInt(0, op_stack, stack_pos);
+	instance[0] = instance[1] = instance[2] = instance[3] = instance[4] = instance[5] = instance[6] = 0;
   return true;
 }
 
