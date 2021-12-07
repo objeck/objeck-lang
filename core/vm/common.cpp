@@ -3363,16 +3363,17 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       // get password for private key
       if(passwd_obj) {
         const wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
-        const string passwd = UnicodeToBytes(passwd_str);
-
-        char passwd_buffer[MID_BUFFER_MAX];
+        if(!passwd_str.empty()) {
+          const string passwd = UnicodeToBytes(passwd_str);
+          char passwd_buffer[MID_BUFFER_MAX];
 #ifdef _WIN32
-        strncpy_s(passwd_buffer, MID_BUFFER_MAX - 1, passwd.c_str(), passwd.size());
+          strncpy_s(passwd_buffer, MID_BUFFER_MAX - 1, passwd.c_str(), passwd.size());
 #else
-        strncpy(passwd_buffer, passwd.c_str(), passwd.size());
+          strncpy(passwd_buffer, passwd.c_str(), passwd.size());
 #endif
-        SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd_buffer);
-        SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
+          SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd_buffer);
+          SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
+        }
       }
       
       // load certificates

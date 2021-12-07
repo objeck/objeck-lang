@@ -15,6 +15,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
+  <w:Zoom>120</w:Zoom>
   <w:SpellingState>Clean</w:SpellingState>
   <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
@@ -33,7 +34,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNqoFAFKYz4UtAAAA</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNq4FABOp1JwtAAAA</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -1778,20 +1779,18 @@ Support<o:p></o:p></span></h2>
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Try the following to generate a self-signed SSL certificate for
-the ‘<span class=SpellE>TCPSecureSocketServer</span>’ class:<o:p></o:p></span></p>
+the ‘<span class=SpellE>TCPSecureSocketServer</span>’ class using OpenSSL
+commands:<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
 style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span class=SpellE><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> <span
-class=SpellE>genrsa</span> -des3 -out self-<span class=SpellE>ssl.key</span>
-2048<o:p></o:p></span></p>
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>rm -f <span class=GramE>local.*</span> *.<span class=SpellE>pem</span>
+*.<span class=SpellE>crt</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1802,18 +1801,23 @@ style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> req -new
--key self-<span class=SpellE>ssl.key</span> -out self-<span class=SpellE>ssl.csr</span><o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> req -x509 -<span
+class=SpellE>newkey</span> rsa:4096 -sha256 -days 3650 -nodes -<span
+class=SpellE>keyout</span> <span class=SpellE>local.key</span> -out local.crt
+-subj &quot;/CN=localhost&quot; -<span class=SpellE>addext</span> &quot;<span
+class=SpellE>subjectAltName</span>=DNS:<span class=GramE>localhost,DNS</span>:www.local.net,IP:127.0.0.1&quot;<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
 style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>cp -v self-<span class=SpellE><span class=GramE>ssl</span></span><span
-class=GramE>.{</span><span class=SpellE>key,original</span>}<o:p></o:p></span></p>
+</span></span></span><![endif]><span class=SpellE><span style='font-family:
+"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
+minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
+style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> x509 -in
+local.crt -out <span class=SpellE>cert.pem</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1825,8 +1829,8 @@ style='mso-list:Ignore'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp
 minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> <span
-class=SpellE>rsa</span> -in self-<span class=SpellE><span class=GramE>ssl.original</span></span>
--out self-<span class=SpellE>ssl.key</span><o:p></o:p></span></p>
+class=SpellE>rsa</span> -aes256 -in <span class=SpellE>local.key</span> -out <span
+class=SpellE>local.encrypted.key</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1835,30 +1839,29 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>rm -v self-<span class=SpellE><span class=GramE>ssl.original</span></span><o:p></o:p></span></p>
+minor-latin'>mv <span class=SpellE>local.encrypted.key</span> <span
+class=SpellE>cert.key</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
 style='mso-list:Ignore'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span class=SpellE><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> x509 -req -days
-3650 -in self-<span class=SpellE>ssl.csr</span> -<span class=SpellE>signkey</span>
-self-<span class=SpellE>ssl.key</span> -out self-ssl.crt<o:p></o:p></span></p>
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>rm local.crt <span class=SpellE>local.key</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
 style='mso-list:Ignore'>7.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>cat self-ssl.crt self-<span class=SpellE>ssl.key</span> &gt; <span
-class=SpellE>server.pem</span><o:p></o:p></span></p>
+</span></span></span><![endif]><span class=SpellE><span style='font-family:
+"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
+minor-latin;mso-bidi-theme-font:minor-latin'>chmod</span></span><span
+style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> 600 <span
+class=SpellE>cert.key</span><o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
 font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-font-family:
