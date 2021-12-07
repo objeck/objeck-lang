@@ -6933,6 +6933,14 @@ bundle System.IO.Net {
 		method : public : Flush() ~ Nil {}
 
 		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		method : public : GetLastError() ~ String {
+			SOCK_TCP_SSL_ERROR;
+		}
+
+		#~
 		Closes the socket
 		~#
 		method : public : Close() ~ Nil {
@@ -7031,6 +7039,14 @@ bundle System.IO.Net {
 		~#
 		method : public : GetIssuer() ~ String {
 			SOCK_TCP_SSL_CERT;
+		}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		method : public : GetLastError() ~ String {
+			SOCK_TCP_SSL_ERROR;
 		}
 		
 		#~
