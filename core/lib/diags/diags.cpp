@@ -552,14 +552,8 @@ void diag_hover(VMContext& context)
 								hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
 								hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
               }
-              
-              // method name
-              if(called_method->GetMethod()) {
-                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
-              }
-              else {
-								hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
-							}
+
+              hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
             }
             else if(found_expression->GetExpressionType() == VAR_EXPR) {
               Variable* called_variable = static_cast<Variable*>(found_expression);
