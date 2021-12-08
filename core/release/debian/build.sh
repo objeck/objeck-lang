@@ -132,7 +132,7 @@ mv $BUILDDIR/src/doc/examples.tar.gz $BUILDDIR/src/doc/examples.tgz
 cd $BUILDDIR
 tar cf objeck-lang.tar *
 gzip objeck-lang.tar
-bzr dh-make objeck-lang 6.1-0 objeck-lang.tar.gz 
+bzr dh-make objeck-lang 6.1-1 objeck-lang.tar.gz 
 cd objeck-lang
 rm debian/README.Debian
 
