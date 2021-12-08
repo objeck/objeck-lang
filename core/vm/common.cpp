@@ -3454,8 +3454,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       PushInt((size_t)sock_obj, op_stack, stack_pos);
       return true;
     }
-
-    instance[0] = instance[1] = instance[2] = instance[3] = instance[4] = instance[5] = instance[6] = 0;
   }
 
   PushInt(0, op_stack, stack_pos);
