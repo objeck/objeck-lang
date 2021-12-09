@@ -5010,7 +5010,7 @@ bundle System.IO {
 		@return true if successful, false otherwise
 		~#
 		function : public : WriteBuffer(buffer : Byte[]) ~ Bool {
-			WriteBuffer(0, buffer->Size(), buffer);	
+			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
 		#~
@@ -5030,7 +5030,7 @@ bundle System.IO {
 		@return true if successful, false otherwise
 		~#
 		function : public : WriteBuffer(buffer : Char[]) ~ Bool {
-			WriteBuffer(0, buffer->Size(), buffer);	
+			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
 		#~
@@ -6294,7 +6294,7 @@ bundle System.IO.File {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteBuffer(buffer : Byte[]) ~ Bool {
-			WriteBuffer(0, buffer->Size(), buffer);	
+			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
 		#~
@@ -6314,7 +6314,7 @@ bundle System.IO.File {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteBuffer(buffer : Char[]) ~ Bool {
-			WriteBuffer(0, buffer->Size(), buffer);	
+			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
 		#~
@@ -6691,7 +6691,7 @@ bundle System.IO.Net {
 		@return number of values written
 		~#
 		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
-			WriteBuffer(0, buffer->Size(), buffer);
+			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 
 		#~
@@ -6711,7 +6711,7 @@ bundle System.IO.Net {
 		@return number of values written
 		~#
 		method : public : WriteBuffer(buffer : Char[]) ~ Int {
-			WriteBuffer(0, buffer->Size(), buffer);
+			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 		
 		#~
@@ -6886,7 +6886,7 @@ bundle System.IO.Net {
 		@return number of values written
 		~#
 		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
-			WriteBuffer(0, buffer->Size(), buffer);
+			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 
 		#~
@@ -6906,7 +6906,7 @@ bundle System.IO.Net {
 		@return number of values written
 		~#
 		method : public : WriteBuffer(buffer : Char[]) ~ Int {
-			WriteBuffer(0, buffer->Size(), buffer);
+			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 		
 		#~

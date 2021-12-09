@@ -22,10 +22,11 @@ class SSLServer {
 							image_size := image->Size();
 							out := "HTTP/1.1 200 OK\r\nContent-type: image/jpeg\r\nContent-Length: {$image_size}\r\naccpet-ranges: bytes\r\n\r\n";
 							client->WriteString(out);
-							client->WriteBuffer(0, image_size, image);
+image->Size()->PrintLine();							
+							client->WriteBuffer(#~0, image->Size(),~# image);
 						};
-						client->Close();
 					};
+					client->Close();
 				}
 				else {
 					server->GetLastError()->PrintLine();
