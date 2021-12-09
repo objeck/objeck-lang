@@ -6327,24 +6327,6 @@ bundle System.IO.File {
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
 			FILE_OUT_CHAR_ARY;
 		}
-
-		#~
-		Writes bytes from a buffer
-		@param buffer input buffer
-		@return number of values written
-		~#
-		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
-			return WriteBuffer(0, buffer->Size(), buffer);
-		}
-		
-		#~
-		Writes characters from a buffer
-		@param buffer input buffer
-		@return number of values written
-		~#
-		method : public : WriteBuffer(buffer : Char[]) ~ Int {
-			return WriteBuffer(0, buffer->Size(), buffer);
-		}
 		
 		#~
 		Writes a character string
