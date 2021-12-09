@@ -1,4 +1,5 @@
 use System.IO.Net;
+use System.IO.File;
 
 class SSLServer {
 	function : Main(args : String[]) ~ Nil {
@@ -6,19 +7,23 @@ class SSLServer {
 			server := TCPSecureSocketServer->New(args[0], args[1], args[2], 1613);
 			if(server->Listen()) {
 				while(true) {
-					# TOOD: new thread
 					client := server->Accept();
 					if(client <> Nil) {
+						# read headers
 						line := client->ReadLine();
 						while(line->Size() > 0) {
 						line->PrintLine();
 							line := client->ReadLine();
 						};
-
-						text := "<html><body><h1>Hello, World!</h1></body></html>";
-						size := text->Size();
-						out := "HTTP/1.1 200 OK\r\nContent-type: text/html\r\nContent-Length: {$size}\r\n\r\n{$text}\r\n\r\n";
-						client->WriteString(out);
+						
+						# fetch image
+						image := FileReader->ReadBinaryFile("foo.jpg");
+						if(image <> Nil) {
+							image_size := image->Size();
+							out := "HTTP/1.1 200 OK\r\nContent-type: image/jpeg\r\nContent-Length: {$image_size}\r\naccpet-ranges: bytes\r\n\r\n";
+							client->WriteString(out);
+							client->WriteBuffer(0, image_size, image);
+						};
 						client->Close();
 					}
 					else {

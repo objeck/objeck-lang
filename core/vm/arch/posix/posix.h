@@ -405,7 +405,7 @@ class IPSecureSocket {
       return -1;
     } 
     
-    return status;
+		return BIO_flush(bio);
   }
 
   static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
