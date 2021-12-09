@@ -4149,7 +4149,7 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     char* buffer = (char*)(array + 3);
@@ -4169,7 +4169,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     wchar_t* buffer = (wchar_t*)(array + 3);
@@ -4223,7 +4223,7 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     char* buffer = (char*)(array + 3);
@@ -4243,7 +4243,7 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     const wchar_t* buffer = (wchar_t*)(array + 3);
