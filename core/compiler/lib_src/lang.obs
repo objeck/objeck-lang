@@ -5004,6 +5004,15 @@ bundle System.IO {
 	            STD_IN_CHAR_ARY_LEN;
 	        }
         	
+	        #~
+		Write a byte buffer to STDOUT
+		@param buffer input buffer
+		@return true if successful, false otherwise
+		~#
+		function : public : WriteBuffer(buffer : Byte[]) ~ Bool {
+			WriteBuffer(0, buffer->Size(), buffer);	
+		}
+
 		#~
 		Write a byte buffer to STDOUT
 		@param offset destination buffer offset
@@ -5013,6 +5022,15 @@ bundle System.IO {
 		~#
 		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
 			STD_OUT_BYTE_ARY_LEN;	
+		}
+
+		#~
+		Write a byte character to STDOUT
+		@param buffer input buffer
+		@return true if successful, false otherwise
+		~#
+		function : public : WriteBuffer(buffer : Char[]) ~ Bool {
+			WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
 		#~
@@ -6272,15 +6290,33 @@ bundle System.IO.File {
 
 		#~
 		Writes bytes from a buffer
+		@param buffer output buffer
+		@return true if successful, false otherwise
+		~#
+		function : public : WriteBuffer(buffer : Byte[]) ~ Bool {
+			WriteBuffer(0, buffer->Size(), buffer);	
+		}
+
+		#~
+		Writes bytes from a buffer
 		@param offset destination buffer offset
 		@param num number of values to write
-		@param buffer input buffer
+		@param buffer output buffer
 		@return number of values written
 		~#
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_OUT_BYTE_ARY;
 		}
 		
+		#~
+		Writes characters from a buffer
+		@param buffer output buffer
+		@return true if successful, false otherwise
+		~#
+		function : public : WriteBuffer(buffer : Char[]) ~ Bool {
+			WriteBuffer(0, buffer->Size(), buffer);	
+		}
+
 		#~
 		Writes characters from a buffer
 		@param offset destination buffer offset
@@ -6669,6 +6705,15 @@ bundle System.IO.Net {
 		
 		#~
 		Writes bytes from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			WriteBuffer(0, buffer->Size(), buffer);
+		}
+
+		#~
+		Writes bytes from a byte buffer
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
@@ -6676,6 +6721,15 @@ bundle System.IO.Net {
 		~#
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			SOCK_TCP_OUT_BYTE_ARY;
+		}
+
+		#~
+		Writes characters from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
+			WriteBuffer(0, buffer->Size(), buffer);
 		}
 		
 		#~
@@ -6846,6 +6900,15 @@ bundle System.IO.Net {
 		
 		#~
 		Writes bytes from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			WriteBuffer(0, buffer->Size(), buffer);
+		}
+
+		#~
+		Writes bytes from a byte buffer
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
@@ -6853,6 +6916,15 @@ bundle System.IO.Net {
 		~#
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			SOCK_TCP_SSL_OUT_BYTE_ARY;
+		}
+
+		#~
+		Writes characters from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
+			WriteBuffer(0, buffer->Size(), buffer);
 		}
 		
 		#~
