@@ -6,16 +6,16 @@ class SSLServer {
 		if(args->Size() = 3) {
 			server := TCPSecureSocketServer->New(args[0], args[1], args[2], 1613);
 			if(server->Listen()) {
-				while(true) {
-					client := server->Accept();
-					if(client <> Nil) {
+				client := server->Accept();
+				if(client <> Nil) {
+					while(client->IsOpen()) {
 						# read headers
 						line := client->ReadLine();
 						while(line->Size() > 0) {
 						line->PrintLine();
 							line := client->ReadLine();
 						};
-						
+
 						# fetch image
 						image := FileReader->ReadBinaryFile("foo.jpg");
 						if(image <> Nil) {
@@ -25,13 +25,13 @@ class SSLServer {
 							client->WriteBuffer(0, image_size, image);
 						};
 						client->Close();
-					}
-					else {
-						server->GetLastError()->PrintLine();
-						break;
 					};
+				}
+				else {
+					server->GetLastError()->PrintLine();
 				};
 			};
+			"Fin!"->PrintLine();
 			server->Close();
 		};
 	}
