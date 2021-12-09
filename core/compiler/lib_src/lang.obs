@@ -6293,7 +6293,7 @@ bundle System.IO.File {
 		@param buffer output buffer
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteBuffer(buffer : Byte[]) ~ Bool {
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
@@ -6313,7 +6313,7 @@ bundle System.IO.File {
 		@param buffer output buffer
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteBuffer(buffer : Char[]) ~ Bool {
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
