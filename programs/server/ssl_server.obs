@@ -29,11 +29,11 @@ class RequestHandler from System.Concurrency.Thread {
 			image_name : String;
 			line := client->ReadLine();
 			while(line->Size() > 0) {
-				if(line->StartsWith("GET ")) {
+				if(line->StartsWith("GET /")) {
 					line->PrintLine();
 					get_parts := line->Split(" ");
 					if(get_parts->Size() = 3) {
-						image_name := get_parts[1]->PrintLine();
+						image_name := get_parts[1];
 					};
 					break;
 				};
@@ -41,9 +41,10 @@ class RequestHandler from System.Concurrency.Thread {
 			};
 
 			if(image_name <> Nil) {
+image_name->PrintLine();				
 				# fetch image
 				image_header := "";
-				image := LoadImage(image_name, img_header);
+				image := LoadImage(image_name, image_header);
 				if(image <> Nil) {
 					image_size := image->Size();
 					out := "HTTP/1.1 200 OK\r\nContent-type: image/jpeg\r\nContent-Length: {$image_size}\r\naccpet-ranges: bytes\r\n\r\n";
@@ -56,7 +57,11 @@ class RequestHandler from System.Concurrency.Thread {
 		};
 	}
 
-	method : LoadImage(nanme : String, img_header : String) ~ Byte[] {
-		return FileReader->ReadBinaryFile("foo.jpg");
+	method : LoadImage(image_name : String, img_header : String) ~ Byte[] {
+		path_name := ".";
+		path_name += image_name;
+
+path_name->PrintLine();		
+		return FileReader->ReadBinaryFile(path_name);
 	}
 }
