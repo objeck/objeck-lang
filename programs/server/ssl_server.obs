@@ -7,35 +7,56 @@ class SSLServer {
 			server := TCPSecureSocketServer->New(args[0], args[1], args[2], 1613);
 			if(server->Listen()) {
 				while(true) {
-					client := server->Accept();
-					if(client <> Nil) {
-						if(client->IsOpen()) {
-							# read headers
-							line := client->ReadLine();
-							while(line->Size() > 0) {
-							line->PrintLine();
-								line := client->ReadLine();
-							};
-
-							# fetch image
-							image := FileReader->ReadBinaryFile("foo.jpg");
-							if(image <> Nil) {
-								image_size := image->Size();
-								out := "HTTP/1.1 200 OK\r\nContent-type: image/jpeg\r\nContent-Length: {$image_size}\r\naccpet-ranges: bytes\r\n\r\n";
-								client->WriteString(out);
-								client->WriteBuffer(image);
-							};
-							
-							client->Close();
-						};
-					}
-					else {
-						server->GetLastError()->PrintLine();
-					};
+					RequestHandler->New()->Execute(server->Accept());
 				};
 			};
 			"Fin!"->PrintLine();
 			server->Close();
 		};
+	}
+}
+
+class RequestHandler from System.Concurrency.Thread {
+	New() {
+		Parent();
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		client := param->As(TCPSecureSocket);
+
+		if(client <> Nil & client->IsOpen()) {
+			# read headers
+			image_name : String;
+			line := client->ReadLine();
+			while(line->Size() > 0) {
+				if(line->StartsWith("GET ")) {
+					line->PrintLine();
+					get_parts := line->Split(" ");
+					if(get_parts->Size() = 3) {
+						image_name := get_parts[1]->PrintLine();
+					};
+					break;
+				};
+				line := client->ReadLine();
+			};
+
+			if(image_name <> Nil) {
+				# fetch image
+				image_header := "";
+				image := LoadImage(image_name, img_header);
+				if(image <> Nil) {
+					image_size := image->Size();
+					out := "HTTP/1.1 200 OK\r\nContent-type: image/jpeg\r\nContent-Length: {$image_size}\r\naccpet-ranges: bytes\r\n\r\n";
+					client->WriteString(out);
+					client->WriteBuffer(image);
+				};
+			};
+
+			client->Close();
+		};
+	}
+
+	method : LoadImage(nanme : String, img_header : String) ~ Byte[] {
+		return FileReader->ReadBinaryFile("foo.jpg");
 	}
 }
