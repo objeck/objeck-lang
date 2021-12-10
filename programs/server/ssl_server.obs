@@ -1,9 +1,12 @@
 use System.IO.Net;
 use System.IO.File;
+use System.Concurrency;
+use Collection.Generic;
 
 class SSLServer {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 3) {
+			RequestHandler->Init();
 			server := TCPSecureSocketServer->New(args[0], args[1], args[2], 1613);
 			if(server->Listen()) {
 				while(true) {
@@ -16,9 +19,17 @@ class SSLServer {
 	}
 }
 
-class RequestHandler from System.Concurrency.Thread {
+class RequestHandler from Thread {
+	@content_cache : static : Hash<String, ByteArrayHolder>;
+	@content_cache_mutex : static : ThreadMutex;
+
 	New() {
 		Parent();
+	}
+
+	function : Init() ~ Nil {
+		@content_cache := Hash->New()<String, ByteArrayHolder>;
+		@content_cache_mutex := ThreadMutex->New("@content_cache");
 	}
 
 	method : public : Run(param : System.Base) ~ Nil {
@@ -26,42 +37,64 @@ class RequestHandler from System.Concurrency.Thread {
 
 		if(client <> Nil & client->IsOpen()) {
 			# read headers
-			image_name : String;
+			request_name : String;
+
+			header_count := 0;
 			line := client->ReadLine();
 			while(line->Size() > 0) {
-				if(line->StartsWith("GET /")) {
-					line->PrintLine();
-					get_parts := line->Split(" ");
-					if(get_parts->Size() = 3) {
-						image_name := get_parts[1];
+line->PrintLine();
+				if(header_count = 0) {
+					header_parts := line->Split(" ");
+					if(header_parts->Size() = 3) {
+						request_name := header_parts[1];
 					};
-					break;
 				};
-				line := client->ReadLine();
-			};
 
-			if(image_name <> Nil) {
-image_name->PrintLine();				
-				# fetch image
-				image_header := "";
-				image := LoadImage(image_name, image_header);
-				if(image <> Nil) {
-					image_size := image->Size();
-					out := "HTTP/1.1 200 OK\r\nContent-type: image/jpeg\r\nContent-Length: {$image_size}\r\naccpet-ranges: bytes\r\n\r\n";
+				line := client->ReadLine();
+				header_count += 1;
+			};
+"---\n"->PrintLine();
+
+			if(request_name <> Nil) {
+				# fetch content
+				content_header := "";
+				content := LoadContent(request_name, content_header);
+				if(content <> Nil) {
+					# defer to handler
+					out := "HTTP/1.1 200 OK\r\n{$content_header}\r\n";
 					client->WriteString(out);
-					client->WriteBuffer(image);
+					client->WriteBuffer(content);
 				};
+			}
+			else {
+				# load index
 			};
 
 			client->Close();
 		};
 	}
 
-	method : LoadImage(image_name : String, img_header : String) ~ Byte[] {
-		path_name := ".";
-		path_name += image_name;
+	method : LoadContent(request_name : String, img_header : String) ~ Byte[] {
+		content : Byte[];
 
-path_name->PrintLine();		
-		return FileReader->ReadBinaryFile(path_name);
+		critical(@content_cache_mutex) {
+			path_name := ".";
+			path_name += request_name;
+
+			found := @content_cache->Find(path_name);
+			if(found <> Nil) {
+				content := found->Get();
+			}
+			else {
+				content := FileReader->ReadBinaryFile(path_name);
+				@content_cache->Insert(path_name, ByteArrayHolder->New(content));
+			};
+
+			content_size := content->Size();
+			img_header += "Content-type: image/jpeg\r\nContent-Length: {$content_size}\r\naccpet-ranges: bytes\r\n";
+
+		};
+
+		return content;
 	}
 }
