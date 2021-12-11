@@ -227,7 +227,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     long size = cls->GetInstanceMemorySize();
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
-    // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
+    // In 64-bit mode integers and floats are 8-bytes. This approach allocates more
     // memory for floats (a.k.a double) than needed.
     size *= 2;
 #endif
