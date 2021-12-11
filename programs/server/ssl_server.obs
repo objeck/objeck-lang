@@ -1,8 +1,10 @@
-use System.IO.Net;
-use System.IO.File;
 use System.Concurrency;
 use Collection.Generic;
+use System.IO.Net;
 
+#~
+Mini webserver
+~#
 class SSLServer {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 3) {
@@ -10,7 +12,7 @@ class SSLServer {
 			server := TCPSecureSocketServer->New(args[0], args[1], args[2], 1613);
 			if(server->Listen()) {
 				while(true) {
-					RequestHandler->New()->Execute(server->Accept());
+					RequestHandler->New(true)->Execute(server->Accept());
 				};
 			};
 			"Goodbye!"->PrintLine();
@@ -19,73 +21,86 @@ class SSLServer {
 	}
 }
 
+#~
+Request handler
+~#
 class RequestHandler from Thread {
 	@content_cache : static : Hash<String, ByteArrayHolder>;
 	@content_type_cache : static : Hash<String, String>;
 	@content_mutex : static : ThreadMutex;
+	@debug : Bool;
 
-	New() {
-		Parent();
+	New(debug : Bool) {
+		Parent();		
+		@debug := debug;
 	}
 
 	function : Init() ~ Nil {
+		# MIME type mapping
 		@content_type_cache := Hash->New()<String, String>;
 		@content_type_cache->Insert(".html", "text/html");
 		@content_type_cache->Insert(".htm", "text/html");
+		@content_type_cache->Insert(".css", "text/css");
 		@content_type_cache->Insert(".png", "image/png");
 		@content_type_cache->Insert(".jpg", "image/jpeg");
+		@content_type_cache->Insert(".ico", "image/x-icon");
 
-		@content_cache := Hash->New()<String, ByteArrayHolder	>;
-		@content_mutex := ThreadMutex->New("@content_cache");
+		@content_cache := Hash->New()<String, ByteArrayHolder>;
+		@content_mutex := ThreadMutex->New("_CONTENT_CACHE_");
 	}
 
 	method : public : GetHeaders(client : TCPSecureSocket) ~ Map<String, String> {
 		headers := Map->New()<String, String>;
 
-		line := client->ReadLine();
-		while(line->Size() > 0) {
-			header_parts := line->Split(" ");
+		header := client->ReadLine();
+		while(header->Size() > 0) {
+			header_parts := header->Split(" ");
 			if(header_parts->Size() = 2) {
 				headers->Insert(header_parts[0], header_parts[1]);
 			};
 
-			line := client->ReadLine();
+			header := client->ReadLine();
 		};
 
 		return headers;
 	}
 
-	method : public : Run(param : System.Base) ~ Nil {
+	method : public : Run(param : Base) ~ Nil {
 		client := param->As(TCPSecureSocket);
 
 		if(client <> Nil & client->IsOpen()) {
 			# process request
 			request_name : String;
 
-			line := client->ReadLine();
-			if(line->Size() > 0) {
-				header_parts := line->Split(" ");
-				if(header_parts->Size() = 3) {
-					request_name := header_parts[1];
+			request := client->ReadLine();
+			if(@debug) {
+				"Request: '{$request}'"->PrintLine();
+			};
+
+			if(request->Size() > 0) {
+				request_parts := request->Split(" ");
+				if(request_parts->Size() = 3) {
+					request_name := request_parts[1];
 				};
 			};
 
 			# get headers
 			headers := GetHeaders(client);
-			
+
 			# retrieve content
-			if(request_name = Nil) {
+			if(request_name = Nil | request_name->Equals("/")) {
 				request_name := "/index.html";
 			};
 
+			# write response
 			content_header := "";
 			content := LoadContent(request_name, content_header);
 			if(content <> Nil) {
 				# defer to handler
-				client->WriteString("HTTP/1.1 200 OK\r\nConnection: close\r\n{$content_header}\r\n");
+				client->WriteString("HTTP/1.1 200 OK\r\n{$content_header}\r\n");
 			}
 			else {
-				content := "<html>Not found</html>"->ToByteArray();
+				content := "<html><head><meta charset=\"utf-8\"></head><body><h1>Object not found!</h1></body></html>"->ToByteArray();
 				content_size := content->Size();
 				client->WriteString("HTTP/1.1 404 Not Found\r\nConnection: close\r\n{$content_header}\r\n");
 			};
@@ -100,20 +115,24 @@ class RequestHandler from Thread {
 
 		request_type_index := request_name->Find('.');
 		if(request_type_index > 0) {
+			# check the request type
 			request_type := request_name->SubString(request_type_index, request_name->Size() - request_type_index);
 			if(request_type <> Nil) {
 				content_type := @content_type_cache->Find(request_type);
 				if(content_type <> Nil) {
+					# lock cache for while we search or insert content
 					critical(@content_mutex) {
 						path_name := ".";
 						path_name += request_name;
 
+						# found in cache
 						found := @content_cache->Find(path_name);
 						if(found <> Nil) {
 							content := found->Get();
 						}
+						# not found, add to cache
 						else {
-							content := FileReader->ReadBinaryFile(path_name);
+							content := System.IO.File.FileReader->ReadBinaryFile(path_name);
 							if(content <> Nil) {
 								@content_cache->Insert(path_name, ByteArrayHolder->New(content));
 							};
@@ -121,7 +140,7 @@ class RequestHandler from Thread {
 
 						if(content <> Nil) {
 							content_size := content->Size();
-							header += "Content-type: {$content_type}\r\nContent-Length: {$content_size}\r\naccpet-ranges: bytes\r\n";
+							header += "Content-type: {$content_type}\r\nContent-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 						};
 					};
 				};
