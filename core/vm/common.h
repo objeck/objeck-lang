@@ -553,7 +553,7 @@ class StackClass {
     closure_dclrs = fdclr;
     inst_num_dclrs = icount;
     cls_space = InitializeClassMemory(cspace);
-    inst_space = pid > -1 ? ispace + 1 : ispace;
+    inst_space = pid > -1 ? ispace + 4 : ispace;
 		is_debug = d;
   }
   

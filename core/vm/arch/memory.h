@@ -237,6 +237,7 @@ class MemoryManager {
     if(mem && mem[TYPE] == NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
+
     return nullptr;
   }
 
