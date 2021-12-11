@@ -734,24 +734,24 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
         switch(str[1]) {
           // binary
         case L'b':
-          PushInt(stoi(str + 2, nullptr, 2), op_stack, stack_pos);
+          PushInt(stol(str + 2, nullptr, 2), op_stack, stack_pos);
           return;
 
           // octal
         case L'o':
-          PushInt(stoi(str + 2, nullptr, 8), op_stack, stack_pos);
+          PushInt(stol(str + 2, nullptr, 8), op_stack, stack_pos);
           return;
 
           // hexadecimal
         case L'x':
-          PushInt(stoi(str + 2, nullptr, 16), op_stack, stack_pos);
+          PushInt(stol(str + 2, nullptr, 16), op_stack, stack_pos);
           return;
 
         default:
           break;
         }
       }
-      PushInt(stoi(str, nullptr, base), op_stack, stack_pos);
+      PushInt(stol(str, nullptr, base), op_stack, stack_pos);
     }
     catch(std::invalid_argument &e) {
 #ifdef _WIN32    
@@ -781,9 +781,7 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
-    wstringstream stream(str);
-    FLOAT_VALUE value;
-    stream >> value;
+    const FLOAT_VALUE value = stod(str);
     PushFloat(value, op_stack, stack_pos);
   }
   else {
@@ -805,28 +803,13 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const size_t base = PopInt(op_stack, stack_pos);
     const long value = (long)PopInt(op_stack, stack_pos);
-    
-    wstringstream stream;
-    if(base == 16) {
-      stream << std::hex << value;
-      wstring conv(stream.str());
-      const size_t max = conv.size() < 16 ? conv.size() : 16; 
+    const wstring conv = to_wstring(value);
+		const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
-      wcsncpy(str, conv.c_str(), max);
+		wcsncpy(str, conv.c_str(), max);
 #endif
-    }
-    else {
-      stream << value;
-      wstring conv(stream.str());
-      const size_t max = conv.size() < 16 ? conv.size() : 16; 
-#ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
-#else
-      wcsncpy(str, conv.c_str(), max);
-#endif
-    }
   }
 }
 
@@ -835,16 +818,13 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
-    const double value = PopFloat(op_stack, stack_pos);
-    
-    wstringstream stream;
-    stream << value;
-    wstring conv(stream.str());
-    const size_t max = conv.size() < 16 ? conv.size() : 16; 
+    const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+		const wstring conv = to_wstring(value);
+		const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
-    wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
-    wcsncpy(str, conv.c_str(), max);
+		wcsncpy(str, conv.c_str(), max);
 #endif
   }
 }
