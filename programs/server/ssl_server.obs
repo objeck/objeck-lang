@@ -39,33 +39,41 @@ class RequestHandler from Thread {
 		@content_mutex := ThreadMutex->New("@content_cache");
 	}
 
+	method : public : GetHeaders(client : TCPSecureSocket) ~ Map<String, String> {
+		headers := Map->New()<String, String>;
+
+		line := client->ReadLine();
+		while(line->Size() > 0) {
+			header_parts := line->Split(" ");
+			if(header_parts->Size() = 2) {
+				headers->Insert(header_parts[0], header_parts[1]);
+			};
+
+			line := client->ReadLine();
+		};
+
+		return headers;
+	}
+
 	method : public : Run(param : System.Base) ~ Nil {
 		client := param->As(TCPSecureSocket);
 
 		if(client <> Nil & client->IsOpen()) {
-			#
-			# process headers
-			#
+			# process request
 			request_name : String;
 
-			header_count := 0;
 			line := client->ReadLine();
-			while(line->Size() > 0) {
-				if(header_count = 0) {
-					header_parts := line->Split(" ");
-					if(header_parts->Size() = 3) {
-						request_name := header_parts[1];
-					};
+			if(line->Size() > 0) {
+				header_parts := line->Split(" ");
+				if(header_parts->Size() = 3) {
+					request_name := header_parts[1];
 				};
-
-				# TODO: save headers?
-				line := client->ReadLine();
-				header_count += 1;
 			};
+
+			# get headers
+			headers := GetHeaders(client);
 			
-			#	
-			# fetch content
-			#
+			# retrieve content
 			if(request_name = Nil) {
 				request_name := "/index.html";
 			};
