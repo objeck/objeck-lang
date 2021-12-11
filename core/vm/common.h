@@ -330,12 +330,6 @@ class StackMethod {
   StackDclr** dclrs;
   long num_dclrs;
   StackClass* cls;
-#ifdef _WIN32
-  static CRITICAL_SECTION virutal_cs;
-#else 
-  static pthread_mutex_t virtual_mutex;
-#endif
-  static unordered_map<wstring, StackMethod*> virutal_cache;
 
   const wstring ParseName(const wstring &name) const;
 
@@ -376,13 +370,16 @@ class StackMethod {
     }
 
     // clean up
-    for(int i = 0; i < instr_count; ++i) {
-      StackInstr* tmp = instrs[i];
-      delete tmp;
-      tmp = nullptr;
+    if(!is_virtual) {
+      for(int i = 0; i < instr_count; ++i) {
+        StackInstr* tmp = instrs[i];
+        delete tmp;
+        tmp = nullptr;
+      }
+
+      delete[] instrs;
+      instrs = nullptr;
     }
-    delete[] instrs;
-    instrs = nullptr;
   }
 
   inline const wstring& GetName() {
@@ -452,10 +449,17 @@ class StackMethod {
     return rtrn_type;
   }
 
-  void SetInstructions(StackInstr** ii, int ic) {
+  void SetInstructions(StackClass* k, StackInstr** ii, int ic) {
+		cls = k;
     instrs = ii;
     instr_count = ic;
+
   }
+
+	void SetInstructions(StackInstr** ii, int ic) {
+		instrs = ii;
+		instr_count = ic;
+	}
 
   long GetId() const {
     return id;
@@ -493,56 +497,6 @@ class StackMethod {
   inline StackInstr** GetInstructions() const {
     return instrs;
   }
-
-#ifdef _WIN32
-  static void InitVirtualEntry() {
-    InitializeCriticalSection(&virutal_cs);
-  }
-#endif
-
-  static void AddVirtualEntry(const wstring &key, StackMethod* mthd) { 
-#ifdef _WIN32
-    EnterCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_lock(&virtual_mutex);
-#endif
-
-    virutal_cache.insert(pair<wstring, StackMethod*>(key, mthd));
-
-#ifdef _WIN32
-    LeaveCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_unlock(&virtual_mutex);
-#endif
-  }
-
-  static StackMethod* GetVirtualEntry(const wstring &key) {
-    StackMethod* mthd = nullptr;
-#ifdef _WIN32
-    EnterCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_lock(&virtual_mutex);
-#endif
-
-    unordered_map<wstring, StackMethod*>::iterator found = virutal_cache.find(key);
-    if(found != virutal_cache.end()) {
-      mthd = found->second;
-    }    
-
-#ifdef _WIN32
-    LeaveCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_unlock(&virtual_mutex);
-#endif
-
-    return mthd;
-  }
-
-#ifdef _DEBUGGER
-  static void ClearVirtualEntries() {
-    virutal_cache.clear();
-  }
-#endif
 };
 
 /********************************
@@ -550,7 +504,7 @@ class StackMethod {
  ********************************/
 class StackClass {
   unordered_map<wstring, StackMethod*> method_name_map;
-  StackMethod** methods;
+	StackMethod** methods;
   int method_num;
   long id;
   wstring name;
@@ -599,10 +553,10 @@ class StackClass {
     closure_dclrs = fdclr;
     inst_num_dclrs = icount;
     cls_space = InitializeClassMemory(cspace);
-    inst_space = ispace;
-    is_debug = d;
+    inst_space = pid > -1 ? ispace + 1 : ispace;
+		is_debug = d;
   }
-
+  
   ~StackClass() {
     // clean up
     if(cls_dclrs) {
@@ -719,6 +673,13 @@ class StackClass {
 #endif
     return methods[id];
   }
+
+	inline void SetMethod(StackMethod* m, long id) {
+#ifdef _DEBUG
+		assert(id > -1 && id < method_num);
+#endif
+		methods[id] = m;
+	}
 
 #ifdef _DEBUGGER
   vector<StackMethod*> GetMethods(const wstring &n) {
