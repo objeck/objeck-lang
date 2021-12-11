@@ -2095,20 +2095,24 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
       exit(1);
 #endif
     }
-    
+
 #ifdef _DEBUG
     wcout << L"=== Binding virtual method call: from: '" << called->GetName();
 #endif
 
-    // binding method
-    const wstring qualified_method_name = called->GetName();
-    const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
-    
-    // check method cache
-    wstring method_name = impl_class->GetName() + method_ending;
-    // called = StackMethod::GetVirtualEntry(method_name);
-    
-    StackMethod* bound = impl_class->GetMethod(method_name);
+    if(instance[impl_class->GetInstanceMemorySize() / 4]) {
+      called = (StackMethod*)instance[impl_class->GetInstanceMemorySize() / 4];
+    }
+    else {
+      // binding method
+      const wstring qualified_method_name = called->GetName();
+      const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
+
+      // check method cache
+      wstring method_name = impl_class->GetName() + method_ending;
+      // called = StackMethod::GetVirtualEntry(method_name);
+
+      StackMethod* bound = impl_class->GetMethod(method_name);
       while(!bound) {
         impl_class = impl_class->GetParent();
         method_name = impl_class->GetName() + method_ending;
@@ -2117,12 +2121,14 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
       // add cache entry
       // StackMethod::AddVirtualEntry(method_name, called);
       called = bound;
+      
+      instance[impl_class->GetInstanceMemorySize() / 4] = (size_t)called;
 
 #ifdef _DEBUG
-    wcout << L"'; to: '" << method_name << L"' ===" << endl;
+      wcout << L"'; to: '" << method_name << L"' ===" << endl;
 #endif
+    }
   }
-
 
 
 
