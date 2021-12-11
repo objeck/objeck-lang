@@ -2508,7 +2508,7 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
       wcout << std::scientific;
     }
     else {
-      wcout << setprecision(stoi(precision));
+      wcout << setprecision(stol(precision));
     }
     
     wcout << value;
@@ -2720,7 +2720,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
       wcerr << std::scientific;
     }
     else {
-      wcerr << setprecision(stoi(precision));
+      wcerr << setprecision(stol(precision));
     }
     
     wcerr << value;
