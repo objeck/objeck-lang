@@ -13,7 +13,7 @@ class SSLServer {
 					RequestHandler->New()->Execute(server->Accept());
 				};
 			};
-			"Fin!"->PrintLine();
+			"Goodbye!"->PrintLine();
 			server->Close();
 		};
 	}
@@ -21,28 +21,36 @@ class SSLServer {
 
 class RequestHandler from Thread {
 	@content_cache : static : Hash<String, ByteArrayHolder>;
-	@content_cache_mutex : static : ThreadMutex;
+	@content_type_cache : static : Hash<String, String>;
+	@content_mutex : static : ThreadMutex;
 
 	New() {
 		Parent();
 	}
 
 	function : Init() ~ Nil {
-		@content_cache := Hash->New()<String, ByteArrayHolder>;
-		@content_cache_mutex := ThreadMutex->New("@content_cache");
+		@content_type_cache := Hash->New()<String, String>;
+		@content_type_cache->Insert(".html", "text/html");
+		@content_type_cache->Insert(".htm", "text/html");
+		@content_type_cache->Insert(".png", "image/png");
+		@content_type_cache->Insert(".jpg", "image/jpeg");
+
+		@content_cache := Hash->New()<String, ByteArrayHolder	>;
+		@content_mutex := ThreadMutex->New("@content_cache");
 	}
 
 	method : public : Run(param : System.Base) ~ Nil {
 		client := param->As(TCPSecureSocket);
 
 		if(client <> Nil & client->IsOpen()) {
-			# read headers
+			#
+			# process headers
+			#
 			request_name : String;
 
 			header_count := 0;
 			line := client->ReadLine();
 			while(line->Size() > 0) {
-line->PrintLine();
 				if(header_count = 0) {
 					header_parts := line->Split(" ");
 					if(header_parts->Size() = 3) {
@@ -50,49 +58,66 @@ line->PrintLine();
 					};
 				};
 
+				# TODO: save headers?
 				line := client->ReadLine();
 				header_count += 1;
 			};
-"---\n"->PrintLine();
-
-			if(request_name <> Nil) {
-				# fetch content
-				content_header := "";
-				content := LoadContent(request_name, content_header);
-				if(content <> Nil) {
-					# defer to handler
-					out := "HTTP/1.1 200 OK\r\n{$content_header}\r\n";
-					client->WriteString(out);
-					client->WriteBuffer(content);
-				};
-			}
-			else {
-				# load index
+			
+			#	
+			# fetch content
+			#
+			if(request_name = Nil) {
+				request_name := "/index.html";
 			};
 
+			content_header := "";
+			content := LoadContent(request_name, content_header);
+			if(content <> Nil) {
+				# defer to handler
+				client->WriteString("HTTP/1.1 200 OK\r\nConnection: close\r\n{$content_header}\r\n");
+			}
+			else {
+				content := "<html>Not found</html>"->ToByteArray();
+				content_size := content->Size();
+				client->WriteString("HTTP/1.1 404 Not Found\r\nConnection: close\r\n{$content_header}\r\n");
+			};
+
+			client->WriteBuffer(content);
 			client->Close();
 		};
 	}
 
-	method : LoadContent(request_name : String, img_header : String) ~ Byte[] {
+	method : LoadContent(request_name : String, header : String) ~ Byte[] {
 		content : Byte[];
 
-		critical(@content_cache_mutex) {
-			path_name := ".";
-			path_name += request_name;
+		request_type_index := request_name->Find('.');
+		if(request_type_index > 0) {
+			request_type := request_name->SubString(request_type_index, request_name->Size() - request_type_index);
+			if(request_type <> Nil) {
+				content_type := @content_type_cache->Find(request_type);
+				if(content_type <> Nil) {
+					critical(@content_mutex) {
+						path_name := ".";
+						path_name += request_name;
 
-			found := @content_cache->Find(path_name);
-			if(found <> Nil) {
-				content := found->Get();
-			}
-			else {
-				content := FileReader->ReadBinaryFile(path_name);
-				@content_cache->Insert(path_name, ByteArrayHolder->New(content));
+						found := @content_cache->Find(path_name);
+						if(found <> Nil) {
+							content := found->Get();
+						}
+						else {
+							content := FileReader->ReadBinaryFile(path_name);
+							if(content <> Nil) {
+								@content_cache->Insert(path_name, ByteArrayHolder->New(content));
+							};
+						};
+
+						if(content <> Nil) {
+							content_size := content->Size();
+							header += "Content-type: {$content_type}\r\nContent-Length: {$content_size}\r\naccpet-ranges: bytes\r\n";
+						};
+					};
+				};
 			};
-
-			content_size := content->Size();
-			img_header += "Content-type: image/jpeg\r\nContent-Length: {$content_size}\r\naccpet-ranges: bytes\r\n";
-
 		};
 
 		return content;
