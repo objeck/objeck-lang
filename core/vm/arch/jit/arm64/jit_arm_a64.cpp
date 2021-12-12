@@ -3978,6 +3978,7 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
 #else
       wcsncpy(str, conv.c_str(), max);
 #endif
+    }
   }
     break;
 

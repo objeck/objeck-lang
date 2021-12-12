@@ -3994,7 +3994,6 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
     wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
     int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(),
-                                                           op_stack, *stack_pos);
     PushInt(op_stack, stack_pos, (int32_t)mem);
   }
    break;
@@ -4005,7 +4004,6 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       const size_t base = PopInt(op_stack, stack_pos);
       const long value = (long)PopInt(op_stack, stack_pos);
-
       const  wstring conv = to_wstring(value);
       const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32

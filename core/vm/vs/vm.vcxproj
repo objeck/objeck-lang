@@ -71,7 +71,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>..\..\lib\openssl\win\x86;..\..\lib\zlib\win\x86\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\x86;..\..\lib\zlib\win\x86\Debug;$(LibraryPath)</LibraryPath>
     <TargetName>obr</TargetName>
     <OutDir>..\$(Configuration)\</OutDir>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
@@ -96,7 +96,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>obr</TargetName>
-    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64\Debug;$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
