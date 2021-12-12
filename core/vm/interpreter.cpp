@@ -2008,75 +2008,11 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // make call
-  StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+  StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
-
-
-
-
-
-
-
-
-
-
-
-
-//  // dynamically bind class for virtual method
-//  if(called->IsVirtual()) {
-//    StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
-//    if(!impl_class) {
-//      PopFrame();
-//      wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
-//      StackErrorUnwind();
-//#ifdef _DEBUGGER
-//      halt = true;
-//      return;
-//#else
-//      exit(1);
-//#endif
-//    }
-//    
-//#ifdef _DEBUG
-//    wcout << L"=== Binding virtual method call: from: '" << called->GetName();
-//#endif
-//
-//    // binding method
-//    const wstring qualified_method_name = called->GetName();
-//    const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
-//    
-//    // check method cache
-//    wstring method_name = impl_class->GetName() + method_ending;
-//    called = StackMethod::GetVirtualEntry(method_name);
-//    if(!called) {
-//      called = impl_class->GetMethod(method_name);
-//      while(!called) {
-//        impl_class = impl_class->GetParent();
-//        method_name = impl_class->GetName() + method_ending;
-//        called = impl_class->GetMethod(method_name);
-//      }
-//      // add cache entry
-//      StackMethod::AddVirtualEntry(method_name, called);
-//    }
-//
-//#ifdef _DEBUG
-//    wcout << L"'; to: '" << method_name << L"' ===" << endl;
-//#endif
-//  }
-
-
-
-
-
-
-
-
-
-
-
-
-	// dynamically bind class for virtual method
-	if(called->IsVirtual()) {
+	// dynamic method call
+	if(concrete_call->IsVirtual()) {
+    // lookup binding
     StackMethod* virtual_call = MemoryManager::GetVirtualEntry(instance, instr->GetOperand(), instr->GetOperand2());
     if(!virtual_call) {
       StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
@@ -2093,7 +2029,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
       }
 
       // binding method
-      const wstring qualified_method_name = called->GetName();
+      const wstring qualified_method_name = concrete_call->GetName();
       const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
 
       // check method cache
@@ -2104,38 +2040,26 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
         method_name = impl_class->GetName() + method_ending;
         virtual_call = impl_class->GetMethod(method_name);
       }
-
+			// bind method call
       MemoryManager::AddVirtualEntry(instance, instr->GetOperand(), instr->GetOperand2(), virtual_call);
     }
 #ifdef _DEBUG
     assert(virtual_call);
 #endif
-    called = virtual_call;
+    concrete_call = virtual_call;
 	}
-
-
-
-
-
-
-
-
-
-
-
-
 
 #ifndef _NO_JIT
   // execute JIT call
   if(instr->GetOperand3()) {
-    ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
+    ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
   }
   // execute interpreter
   else {
-    ProcessInterpretedMethodCall(called, instance, instrs, ip);
+    ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
   }
 #else
-  ProcessInterpretedMethodCall(called, instance, instrs, ip);
+  ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
 #endif
 }
 
