@@ -2077,42 +2077,42 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 
 	// dynamically bind class for virtual method
 	if(called->IsVirtual()) {
-		StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
-		if(!impl_class) {
-			PopFrame();
-			wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
-			StackErrorUnwind();
+    StackMethod* virtual_call = MemoryManager::GetVirtualEntry(instance, instr->GetOperand(), instr->GetOperand2());
+    if(!virtual_call) {
+      StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
+      if(!impl_class) {
+        PopFrame();
+        wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
+        StackErrorUnwind();
 #ifdef _DEBUGGER
-			halt = true;
-			return;
+        halt = true;
+        return;
 #else
-			exit(1);
+        exit(1);
 #endif
-		}
+      }
 
+      // binding method
+      const wstring qualified_method_name = called->GetName();
+      const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
+
+      // check method cache
+      wstring method_name = impl_class->GetName() + method_ending;
+      virtual_call = impl_class->GetMethod(method_name);
+      while(!virtual_call) {
+        impl_class = impl_class->GetParent();
+        method_name = impl_class->GetName() + method_ending;
+        virtual_call = impl_class->GetMethod(method_name);
+      }
+
+      MemoryManager::AddVirtualEntry(instance, instr->GetOperand(), instr->GetOperand2(), virtual_call);
+    }
 #ifdef _DEBUG
-		wcout << L"=== Binding virtual method call: from: '" << called->GetName();
+    assert(virtual_call);
 #endif
-
-		// binding method
-		const wstring qualified_method_name = called->GetName();
-		const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
-
-		// check method cache
-		wstring method_name = impl_class->GetName() + method_ending;
-		if(!called) {
-			called = impl_class->GetMethod(method_name);
-			while(!called) {
-				impl_class = impl_class->GetParent();
-				method_name = impl_class->GetName() + method_ending;
-				called = impl_class->GetMethod(method_name);
-			}
-		}
-
-#ifdef _DEBUG
-		wcout << L"'; to: '" << method_name << L"' ===" << endl;
-#endif
+    called = virtual_call;
 	}
+
 
 
 
@@ -2871,13 +2871,12 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const wstring& value_str, 
 void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
 {
   long pos = (*call_stack_pos);
-  wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-  wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(method->GetName()) << L"'" << endl;
+  std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
+  std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(method->GetName()) << L"'" << std::endl;
   while(--pos) {
     if(pos > -1) {
-      wcerr << L"  method: pos=" << pos << L", name='" 
-            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << endl;
+      std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
     }
   }
-  wcerr << L"  ..." << endl;
+  std::wcerr << L"  ..." << std::endl;
 }

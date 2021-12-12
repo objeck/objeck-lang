@@ -41,6 +41,7 @@ set<size_t*> MemoryManager::allocated_memory;
 
 unordered_map<size_t, list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
+unordered_map<pair<size_t, size_t>, StackMethod*, MemoryManager::hash_pair> MemoryManager::virtual_method_table;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -1614,4 +1615,21 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       }
     }
   }
+}
+
+StackMethod* MemoryManager::GetVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id)
+{
+	pair<size_t, size_t> cantor_pair = make_pair(cls_id, mthd_id);
+	unordered_map<pair<size_t, size_t>, StackMethod*>::iterator result = virtual_method_table.find(cantor_pair);
+	if(result != virtual_method_table.end()) {
+		return result->second;
+	}
+
+	return nullptr;
+}
+
+void MemoryManager::AddVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id, StackMethod* mthd)
+{
+  pair<size_t, size_t> cantor_pair = make_pair(cls_id, mthd_id);
+  virtual_method_table.insert(pair<pair<size_t, size_t>, StackMethod*>(cantor_pair, mthd));
 }
