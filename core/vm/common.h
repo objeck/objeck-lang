@@ -555,7 +555,7 @@ class StackClass {
     cls_space = InitializeClassMemory(cspace);
     // TODO: Sort of a kludge, needs to align with compiler size types to support 32-bit targets
     inst_space = pid > -1 ? ispace + sizeof(INT_VALUE) : ispace; 
-		is_debug = d;
+    is_debug = d;
   }
   
   ~StackClass() {

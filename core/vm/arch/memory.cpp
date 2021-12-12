@@ -831,69 +831,72 @@ void* MemoryManager::CollectMemory(void* arg)
   set<size_t*> live_memory;
 
   // for(size_t i = 0; i < allocated_memory.size(); ++i) {
-  for (set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-    size_t* mem = *iter;
+	for(set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+		size_t* mem = *iter;
 
-    // check dynamic memory
-    bool found = false;
-    if(mem[MARKED_FLAG]) {
-      mem[MARKED_FLAG] = 0L;
-      found = true;
-    }
+		// check dynamic memory
+		bool found = false;
+		if(mem[MARKED_FLAG]) {
+			mem[MARKED_FLAG] = 0L;
+			found = true;
+		}
 
-    // live
-    if(found) {
-      live_memory.insert(mem);
-    }
-    // will be collected
-    else {
-      // object or array  
-      size_t mem_size;
-      if(mem[TYPE] == NIL_TYPE) {
-        StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+		// live
+		if(found) {
+			live_memory.insert(mem);
+		}
+		// will be collected
+		else {
+			// object or array  
+			size_t mem_size;
+			if(mem[TYPE] == NIL_TYPE) {
+				StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
 #ifdef _DEBUG_GC
-        assert(cls);
+				assert(cls);
 #endif
-        if(cls) {
+				if(cls) {
+					// fetch memory size
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-          mem_size = cls->GetInstanceMemorySize() * 2;
+					mem_size = cls->GetInstanceMemorySize() * 2;
 #else
-          mem_size = cls->GetInstanceMemorySize();
+					mem_size = cls->GetInstanceMemorySize();
 #endif
-          if(cls->GetParent()) {
-						// TODO: Sort of a kludge, needs to align with compiler size types to support 32-bit targets
-            const size_t ventry_index = cls->GetInstanceMemorySize() / sizeof(INT_VALUE) - 1;
-            map<size_t, StackMethod*>* vtable = (map<size_t, StackMethod*>*)mem[ventry_index];
-            if(vtable) {
-              delete vtable;
-              vtable = nullptr;
-            }
-          }
-        }
-        else {
-          mem_size = mem[SIZE_OR_CLS];
-        }
-      } 
-      else {
-        mem_size = mem[SIZE_OR_CLS];
-      }
 
-      // account for deallocated memory
-      allocation_size -= mem_size;
+					// delete vtable
+					if(cls->GetParent()) {
+						// TODO: Sort of a kludge, needs to align with compiler size types to support 32-bit targets
+						const size_t ventry_index = cls->GetInstanceMemorySize() / sizeof(INT_VALUE) - 1;
+						map<size_t, StackMethod*>* vtable = (map<size_t, StackMethod*>*)mem[ventry_index];
+						if(vtable) {
+							delete vtable;
+							vtable = nullptr;
+						}
+					}
+				}
+				else {
+					mem_size = mem[SIZE_OR_CLS];
+				}
+			}
+			else {
+				mem_size = mem[SIZE_OR_CLS];
+			}
+
+			// account for deallocated memory
+			allocation_size -= mem_size;
 
 #ifdef _MEM_LOGGING
-      mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << endl;
+			mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << endl;
 #endif
 
-      // cache or free memory
-      size_t* tmp = mem - EXTRA_BUF_SIZE;
-      AddFreeMemory(tmp - 1);
+			// cache or free memory
+			size_t* tmp = mem - EXTRA_BUF_SIZE;
+			AddFreeMemory(tmp - 1);
 #ifdef _DEBUG_GC
-      wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+			wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
+				<< L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
-    }
-  }
+		}
+	}
 
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_lock);
