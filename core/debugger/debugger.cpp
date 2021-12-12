@@ -1844,6 +1844,7 @@ void Runtime::Debugger::ClearProgram() {
   }
 
   MemoryManager::Clear();
+  StackMethod::ClearVirtualEntries();
 
   is_step_into = is_next_line = is_step_out = false;
   continue_state = 0;
