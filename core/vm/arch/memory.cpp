@@ -599,19 +599,19 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierar
   }
 
   // upcast
-  long cls_id = id;
-  while (cls_id != -1) {
-    if (cls_id == to_id) {
+  long virtual_cls_id = id;
+  while (virtual_cls_id != -1) {
+    if (virtual_cls_id == to_id) {
       return mem;
     }
     // update
-    cls_id = cls_hierarchy[cls_id];
+    virtual_cls_id = cls_hierarchy[virtual_cls_id];
   }
 
   // check interfaces
-  cls_id = id;
-  while (cls_id != -1) {
-    long* interfaces = cls_interfaces[cls_id];
+  virtual_cls_id = id;
+  while (virtual_cls_id != -1) {
+    long* interfaces = cls_interfaces[virtual_cls_id];
     if(interfaces) {
       int i = 0;
       long inf_id = interfaces[i];
@@ -623,7 +623,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierar
       }
     }
     // update
-    cls_id = cls_hierarchy[cls_id];
+    virtual_cls_id = cls_hierarchy[virtual_cls_id];
   }
 
   return nullptr;
@@ -1073,12 +1073,12 @@ void* MemoryManager::CheckJitRoots(void* arg)
         case FUNC_PARM: {
           size_t* lambda_mem = (size_t*) * (mem + 1);
           const size_t mthd_cls_id = *mem;
-          const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+          const long virtual_cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
           const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": FUNC_PARM: id=(" << cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
+          wcout << L"\t" << j << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
 #endif
-          pair<int, StackDclr**> closure_dclrs = prgm->GetClass(cls_id)->GetClosureDeclarations(mthd_id);
+          pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
           if(MarkMemory(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
@@ -1438,12 +1438,12 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case FUNC_PARM: {
       size_t* lambda_mem = (size_t*) * (mem + 1);
       const size_t mthd_cls_id = *mem;
-      const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+      const long virtual_cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
       const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": FUNC_PARM: id=(" << cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
+      wcout << L"\t" << i << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
 #endif
-      pair<int, StackDclr**> closure_dclrs = prgm->GetClass(cls_id)->GetClosureDeclarations(mthd_id);
+      pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
       if(MarkMemory(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
@@ -1620,9 +1620,9 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
   }
 }
 
-StackMethod* MemoryManager::GetVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id)
+StackMethod* MemoryManager::GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id)
 {
-  tuple<size_t*,size_t, size_t> cantor_pair = make_tuple((size_t*)cls, cls_id, mthd_id);
+  tuple<size_t*,size_t, size_t> cantor_pair = make_tuple((size_t*)concrete_cls, virtual_cls_id, virtual_mthd_id);
 	unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*>::iterator result = virtual_method_table.find(cantor_pair);
 	if(result != virtual_method_table.end()) {
 		return result->second;
@@ -1631,25 +1631,13 @@ StackMethod* MemoryManager::GetVirtualEntry(StackClass* cls, size_t cls_id, size
 	return nullptr;
 }
 
-void MemoryManager::AddVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id, StackMethod* mthd)
+void MemoryManager::AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd)
 {
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple((size_t*)cls, cls_id, mthd_id);
+	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple((size_t*)concrete_cls, virtual_cls_id, virtual_mthd_id);
   virtual_method_table.insert(pair<tuple<size_t*, size_t, size_t>, StackMethod*>(cantor_pair, mthd));
-#ifndef _GC_SERIAL
-	MUTEX_UNLOCK(&virtual_method_lock);
-#endif
-}
-
-void MemoryManager::ClearVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id)
-{
-#ifndef _GC_SERIAL
-	MUTEX_LOCK(&virtual_method_lock);
-#endif
-	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple((size_t*)cls, cls_id, mthd_id);
-  virtual_method_table.erase(cantor_pair);
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
 #endif
