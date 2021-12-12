@@ -90,10 +90,6 @@ void StackInterpreter::Initialize(StackProgram* p)
     cached_frames.push(frame);
   }
 #endif
-  
-#ifdef _WIN32
-  StackMethod::InitVirtualEntry();
-#endif 
 
 #ifndef _NO_JIT
 #if defined(_WIN64) || defined(_X64)
@@ -2014,47 +2010,120 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   // make call
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
-  // dynamically bind class for virtual method
-  if(called->IsVirtual()) {
-    StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
-    if(!impl_class) {
-      PopFrame();
-      wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
-      StackErrorUnwind();
+
+
+
+
+
+
+
+
+
+
+
+
+//  // dynamically bind class for virtual method
+//  if(called->IsVirtual()) {
+//    StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
+//    if(!impl_class) {
+//      PopFrame();
+//      wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
+//      StackErrorUnwind();
+//#ifdef _DEBUGGER
+//      halt = true;
+//      return;
+//#else
+//      exit(1);
+//#endif
+//    }
+//    
+//#ifdef _DEBUG
+//    wcout << L"=== Binding virtual method call: from: '" << called->GetName();
+//#endif
+//
+//    // binding method
+//    const wstring qualified_method_name = called->GetName();
+//    const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
+//    
+//    // check method cache
+//    wstring method_name = impl_class->GetName() + method_ending;
+//    called = StackMethod::GetVirtualEntry(method_name);
+//    if(!called) {
+//      called = impl_class->GetMethod(method_name);
+//      while(!called) {
+//        impl_class = impl_class->GetParent();
+//        method_name = impl_class->GetName() + method_ending;
+//        called = impl_class->GetMethod(method_name);
+//      }
+//      // add cache entry
+//      StackMethod::AddVirtualEntry(method_name, called);
+//    }
+//
+//#ifdef _DEBUG
+//    wcout << L"'; to: '" << method_name << L"' ===" << endl;
+//#endif
+//  }
+
+
+
+
+
+
+
+
+
+
+
+
+	// dynamically bind class for virtual method
+	if(called->IsVirtual()) {
+		StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
+		if(!impl_class) {
+			PopFrame();
+			wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
+			StackErrorUnwind();
 #ifdef _DEBUGGER
-      halt = true;
-      return;
+			halt = true;
+			return;
 #else
-      exit(1);
+			exit(1);
 #endif
-    }
-    
-#ifdef _DEBUG
-    wcout << L"=== Binding virtual method call: from: '" << called->GetName();
-#endif
-
-    // binding method
-    const wstring qualified_method_name = called->GetName();
-    const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
-    
-    // check method cache
-    wstring method_name = impl_class->GetName() + method_ending;
-    called = StackMethod::GetVirtualEntry(method_name);
-    if(!called) {
-      called = impl_class->GetMethod(method_name);
-      while(!called) {
-        impl_class = impl_class->GetParent();
-        method_name = impl_class->GetName() + method_ending;
-        called = impl_class->GetMethod(method_name);
-      }
-      // add cache entry
-      StackMethod::AddVirtualEntry(method_name, called);
-    }
+		}
 
 #ifdef _DEBUG
-    wcout << L"'; to: '" << method_name << L"' ===" << endl;
+		wcout << L"=== Binding virtual method call: from: '" << called->GetName();
 #endif
-  }
+
+		// binding method
+		const wstring qualified_method_name = called->GetName();
+		const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
+
+		// check method cache
+		wstring method_name = impl_class->GetName() + method_ending;
+		if(!called) {
+			called = impl_class->GetMethod(method_name);
+			while(!called) {
+				impl_class = impl_class->GetParent();
+				method_name = impl_class->GetName() + method_ending;
+				called = impl_class->GetMethod(method_name);
+			}
+		}
+
+#ifdef _DEBUG
+		wcout << L"'; to: '" << method_name << L"' ===" << endl;
+#endif
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 #ifndef _NO_JIT
   // execute JIT call
