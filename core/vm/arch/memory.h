@@ -93,20 +93,19 @@ class MemoryManager {
   static set<size_t*> allocated_memory;
   static unordered_map<size_t, list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
-
-  // TODO: thread safe?
-	struct hash_pair {
+  
+	struct cantor_tuple {
 		template <class T1, class T2, class T3>
     size_t operator()(const tuple<T1, T2, T3>& t) const {
       const size_t t1 = (size_t)(get<0>(t));
       const size_t t2 = (size_t)(get<1>(t));
       const size_t t3 = (size_t)(get<2>(t));
-      const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
 
+      const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
 			return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
 		}
 	};
-	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, hash_pair> virtual_method_table;
+	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, cantor_tuple> virtual_method_table;
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -116,6 +115,7 @@ class MemoryManager {
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
   static CRITICAL_SECTION free_memory_cache_lock;
+  static CRITICAL_SECTION virtual_method_lock;
 #else
   static pthread_mutex_t pda_monitor_lock;
   static pthread_mutex_t pda_frame_lock;
@@ -123,7 +123,8 @@ class MemoryManager {
   static pthread_mutex_t allocated_lock;
   static pthread_mutex_t marked_lock;
   static pthread_mutex_t marked_sweep_lock;
-  static pthread_mutex_t free_memory_cache_lock;
+	static pthread_mutex_t free_memory_cache_lock;
+	static pthread_mutex_t virtual_method_lock;
 #endif
     
   // note: protected by 'allocated_lock'
@@ -186,10 +187,11 @@ class MemoryManager {
 
   static size_t* GetMemory(size_t alloc_size);
   static void AddFreeMemory(size_t* raw_mem);
-  void static inline AddFreeCache(size_t pool, size_t* raw_mem);  
+  void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
   static void ClearFreeMemory(bool all = false);
-
+	static void ClearVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id);
+  
  public:
   static void Initialize(StackProgram* p);
 
@@ -215,6 +217,7 @@ class MemoryManager {
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
     DeleteCriticalSection(&free_memory_cache_lock);
+    DeleteCriticalSection(&virtual_method_lock);
 #endif
       
     initialized = false;

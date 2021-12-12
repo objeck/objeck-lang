@@ -41,7 +41,7 @@ set<size_t*> MemoryManager::allocated_memory;
 
 unordered_map<size_t, list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
-unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, MemoryManager::hash_pair> MemoryManager::virtual_method_table;
+unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, MemoryManager::cantor_tuple> MemoryManager::virtual_method_table;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -63,6 +63,7 @@ CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
+CRITICAL_SECTION MemoryManager::virtual_method_lock;
 #else
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -71,6 +72,7 @@ pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::virtual_method_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void MemoryManager::Initialize(StackProgram* p)
@@ -94,6 +96,7 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
+  InitializeCriticalSection(&virtual_method_lock);
 #endif
 
   initialized = true;
@@ -1630,6 +1633,24 @@ StackMethod* MemoryManager::GetVirtualEntry(size_t* instance, size_t cls_id, siz
 
 void MemoryManager::AddVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id, StackMethod* mthd)
 {
+#ifndef _GC_SERIAL
+	MUTEX_LOCK(&virtual_method_lock);
+#endif
 	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple(instance, cls_id, mthd_id);
   virtual_method_table.insert(pair<tuple<size_t*, size_t, size_t>, StackMethod*>(cantor_pair, mthd));
+#ifndef _GC_SERIAL
+	MUTEX_UNLOCK(&virtual_method_lock);
+#endif
+}
+
+void MemoryManager::ClearVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id)
+{
+#ifndef _GC_SERIAL
+	MUTEX_LOCK(&virtual_method_lock);
+#endif
+	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple(instance, cls_id, mthd_id);
+  virtual_method_table.erase(tuple<size_t*, size_t, size_t>(instance, cls_id, mthd_id));
+#ifndef _GC_SERIAL
+	MUTEX_UNLOCK(&virtual_method_lock);
+#endif
 }
