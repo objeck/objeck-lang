@@ -96,7 +96,7 @@ class MemoryManager {
   
 	struct cantor_tuple {
 		template <class T1, class T2, class T3>
-    size_t operator()(const tuple<T1, T2, T3>& t) const {
+    size_t operator() (const tuple<T1, T2, T3> &t) const {
       const size_t t1 = (size_t)(get<0>(t));
       const size_t t2 = (size_t)(get<1>(t));
       const size_t t3 = (size_t)(get<2>(t));
@@ -190,7 +190,7 @@ class MemoryManager {
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
   static void ClearFreeMemory(bool all = false);
-	static void ClearVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id);
+	static void ClearVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id);
   
  public:
   static void Initialize(StackProgram* p);
@@ -269,8 +269,8 @@ class MemoryManager {
     return -1;
   }
 
-	static StackMethod* GetVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id);
-	static void AddVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id, StackMethod* mthd);
+	static StackMethod* GetVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id);
+	static void AddVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id, StackMethod* mthd);
 
 #ifdef _DEBUGGER
   static size_t GetAllocationSize() {
