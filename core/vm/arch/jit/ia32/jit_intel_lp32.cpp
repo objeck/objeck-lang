@@ -4406,8 +4406,8 @@ void JitCompilerIA32::JitStackCallback(const int32_t instr_id, StackInstr* instr
 #else
       wcsncpy(str, conv.c_str(), max);
 #endif
-    }
   }
+    break;
     
   case F2S: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
