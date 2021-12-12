@@ -1620,9 +1620,9 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
   }
 }
 
-StackMethod* MemoryManager::GetVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id)
+StackMethod* MemoryManager::GetVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id)
 {
-  tuple<size_t*,size_t, size_t> cantor_pair = make_tuple(instance, cls_id, mthd_id);
+  tuple<size_t*,size_t, size_t> cantor_pair = make_tuple((size_t*)cls, cls_id, mthd_id);
 	unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*>::iterator result = virtual_method_table.find(cantor_pair);
 	if(result != virtual_method_table.end()) {
 		return result->second;
@@ -1631,25 +1631,25 @@ StackMethod* MemoryManager::GetVirtualEntry(size_t* instance, size_t cls_id, siz
 	return nullptr;
 }
 
-void MemoryManager::AddVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id, StackMethod* mthd)
+void MemoryManager::AddVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id, StackMethod* mthd)
 {
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple(instance, cls_id, mthd_id);
+	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple((size_t*)cls, cls_id, mthd_id);
   virtual_method_table.insert(pair<tuple<size_t*, size_t, size_t>, StackMethod*>(cantor_pair, mthd));
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
 #endif
 }
 
-void MemoryManager::ClearVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id)
+void MemoryManager::ClearVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id)
 {
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple(instance, cls_id, mthd_id);
-  virtual_method_table.erase(tuple<size_t*, size_t, size_t>(instance, cls_id, mthd_id));
+	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple((size_t*)cls, cls_id, mthd_id);
+  virtual_method_table.erase(cantor_pair);
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
 #endif

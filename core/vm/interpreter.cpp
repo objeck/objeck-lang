@@ -2013,10 +2013,10 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 	// dynamic method call
 	if(concrete_call->IsVirtual()) {
     // lookup binding
-    StackMethod* virtual_call = MemoryManager::GetVirtualEntry(instance, instr->GetOperand(), instr->GetOperand2());
+		StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
+    StackMethod* virtual_call = MemoryManager::GetVirtualEntry(concrete_class, instr->GetOperand(), instr->GetOperand2());
     if(!virtual_call) {
-      StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
-      if(!impl_class) {
+      if(!concrete_class) {
         PopFrame();
         wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
         StackErrorUnwind();
@@ -2033,15 +2033,15 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
       const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
 
       // check method cache
-      wstring method_name = impl_class->GetName() + method_ending;
-      virtual_call = impl_class->GetMethod(method_name);
+      wstring method_name = concrete_class->GetName() + method_ending;
+      virtual_call = concrete_class->GetMethod(method_name);
       while(!virtual_call) {
-        impl_class = impl_class->GetParent();
-        method_name = impl_class->GetName() + method_ending;
-        virtual_call = impl_class->GetMethod(method_name);
+        concrete_class = concrete_class->GetParent();
+        method_name = concrete_class->GetName() + method_ending;
+        virtual_call = concrete_class->GetMethod(method_name);
       }
 			// bind method call
-      MemoryManager::AddVirtualEntry(instance, instr->GetOperand(), instr->GetOperand2(), virtual_call);
+      MemoryManager::AddVirtualEntry(concrete_class, instr->GetOperand(), instr->GetOperand2(), virtual_call);
     }
 #ifdef _DEBUG
     assert(virtual_call);
