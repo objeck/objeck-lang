@@ -190,7 +190,6 @@ class MemoryManager {
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
   static void ClearFreeMemory(bool all = false);
-	static void ClearVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id);
   
  public:
   static void Initialize(StackProgram* p);
@@ -269,8 +268,8 @@ class MemoryManager {
     return -1;
   }
 
-	static StackMethod* GetVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id);
-	static void AddVirtualEntry(StackClass* cls, size_t cls_id, size_t mthd_id, StackMethod* mthd);
+	static StackMethod* GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id);
+	static void AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd);
 
 #ifdef _DEBUGGER
   static size_t GetAllocationSize() {
