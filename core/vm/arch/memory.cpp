@@ -832,7 +832,6 @@ void* MemoryManager::CollectMemory(void* arg)
 
   // for(size_t i = 0; i < allocated_memory.size(); ++i) {
   for (set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-    // size_t* mem = allocated_memory[i];
     size_t* mem = *iter;
 
     // check dynamic memory
@@ -861,6 +860,15 @@ void* MemoryManager::CollectMemory(void* arg)
 #else
           mem_size = cls->GetInstanceMemorySize();
 #endif
+          if(cls->GetParent()) {
+						// TODO: Sort of a kludge, needs to align with compiler size types to support 32-bit targets
+            const size_t ventry_index = cls->GetInstanceMemorySize() / sizeof(INT_VALUE) - 1;
+            map<size_t, StackMethod*>* vtable = (map<size_t, StackMethod*>*)mem[ventry_index];
+            if(vtable) {
+              delete vtable;
+              vtable = nullptr;
+            }
+          }
         }
         else {
           mem_size = mem[SIZE_OR_CLS];
