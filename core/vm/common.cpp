@@ -44,11 +44,9 @@
 
 #ifdef _WIN32
 CRITICAL_SECTION StackProgram::program_cs;
-CRITICAL_SECTION StackMethod::virutal_cs;
 CRITICAL_SECTION StackProgram::prop_cs;
 #else
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t StackMethod::virtual_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
@@ -197,8 +195,6 @@ StackClass* StackClass::GetParent() {
 
   return parent;
 }
-
-unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
 
 const wstring StackMethod::ParseName(const wstring& name) const
 {
