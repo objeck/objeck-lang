@@ -464,11 +464,9 @@ void Loader::LoadInitializationCode(StackMethod* method)
   instrs.push_back(new StackInstr(-1, RTRN));
 
   // copy and set instructions
-  if(instrs.size()) {
-    StackInstr** mthd_instrs = new StackInstr * [instrs.size()];
-    copy(instrs.begin(), instrs.end(), mthd_instrs);
-    method->SetInstructions(mthd_instrs, (int)instrs.size());
-  }
+  StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
+  copy(instrs.begin(), instrs.end(), mthd_instrs);
+  method->SetInstructions(mthd_instrs, (int)instrs.size());
 }
 
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
@@ -1005,7 +1003,5 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   }
 
   // copy and set instructions
-  if(num_instrs) {
-    method->SetInstructions(mthd_instrs, num_instrs);
-  }
+  method->SetInstructions(mthd_instrs, num_instrs);
 }
