@@ -98,10 +98,13 @@ class MemoryManager {
 	struct hash_pair {
 		template <class T1, class T2, class T3>
     size_t operator()(const tuple<T1, T2, T3>& p) const {
-      // return std::get<1>(p);
+      size_t* a = std::get<0>(p);
+      size_t b = std::get<1>(p);
+      size_t c = std::get<2>(p);
+
       size_t seed = 13;
-      hash_combine_tup(p);
-      return seed;
+      auto h = tie(a, b, c);
+      return h;
 		}
 	};
 	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, hash_pair> virtual_method_table;
