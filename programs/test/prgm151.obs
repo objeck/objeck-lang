@@ -1,0 +1,51 @@
+class Fie {
+	@a : Int;
+	New() {
+		@a := 13;
+	}
+
+	method : virtual : public : SayHi() ~ String;
+} 
+
+class Fum from Fie {
+	@b : Int;
+
+	New() {
+		Parent();
+		@b := @a * 3;
+	}
+
+	method : public : SayHi() ~ String {
+		return "And we're...";
+	}
+}
+
+class Foe from Fie {
+	@c : Int;
+	@d : Float;
+	@e : String;
+
+	New(e : String) {
+		Parent();
+		@c := @a + 7;
+		@d := 3.145;
+		@e := e;
+	}
+
+	method : public : SayHi() ~ String {
+		return @e;
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a : Fie := Fum->New();
+		a->SayHi()->PrintLine();
+		a->SayHi()->PrintLine();
+
+		b : Fie := Foe->New("Like what!");
+		each(i : 3) {
+			b->SayHi()->PrintLine();
+		};
+	}
+}
