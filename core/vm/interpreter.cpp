@@ -2086,7 +2086,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
     if(!impl_class) {
       PopFrame();
-      wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
+      wcerr << L">>> Invalid class instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
@@ -2105,7 +2105,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
       map<size_t, StackMethod*>::iterator found = vtable->find(instr->GetOperand2());
       if(found == vtable->end()) {
 				PopFrame();
-				wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << endl;
+        wcerr << L">>> Unable to access vtable instance <<<" << endl;
 				StackErrorUnwind();
 #ifdef _DEBUGGER
 				halt = true;
