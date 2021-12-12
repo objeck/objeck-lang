@@ -94,6 +94,15 @@ class MemoryManager {
   static unordered_map<size_t, list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
 
+  // TODO: thread safe?
+	struct hash_pair {
+		template <class T1, class T2>
+		size_t operator()(const pair<T1, T2>& p) const {
+      return (p.first + p.second) * (p.first + p.second + 1) / 2 + p.second;
+		}
+	};
+	static unordered_map<pair<size_t, size_t>, StackMethod*, hash_pair> virtual_method_table;
+  
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
@@ -251,6 +260,9 @@ class MemoryManager {
     
     return -1;
   }
+
+	static StackMethod* GetVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id);
+	static void AddVirtualEntry(size_t* instance, size_t cls_id, size_t mthd_id, StackMethod* mthd);
 
 #ifdef _DEBUGGER
   static size_t GetAllocationSize() {
