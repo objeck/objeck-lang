@@ -97,14 +97,13 @@ class MemoryManager {
   // TODO: thread safe?
 	struct hash_pair {
 		template <class T1, class T2, class T3>
-    size_t operator()(const tuple<T1, T2, T3>& p) const {
-      size_t* a = std::get<0>(p);
-      size_t b = std::get<1>(p);
-      size_t c = std::get<2>(p);
+    size_t operator()(const tuple<T1, T2, T3>& t) const {
+      const size_t t1 = (size_t)(get<0>(t));
+      const size_t t2 = (size_t)(get<1>(t));
+      const size_t t3 = (size_t)(get<2>(t));
+      const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
 
-      size_t seed = 13;
-      auto h = tie(a, b, c);
-      return h;
+			return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
 		}
 	};
 	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, hash_pair> virtual_method_table;
