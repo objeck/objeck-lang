@@ -330,12 +330,6 @@ class StackMethod {
   StackDclr** dclrs;
   long num_dclrs;
   StackClass* cls;
-#ifdef _WIN32
-  static CRITICAL_SECTION virutal_cs;
-#else 
-  static pthread_mutex_t virtual_mutex;
-#endif
-  static unordered_map<wstring, StackMethod*> virutal_cache;
 
   const wstring ParseName(const wstring &name) const;
 
@@ -493,56 +487,6 @@ class StackMethod {
   inline StackInstr** GetInstructions() const {
     return instrs;
   }
-
-#ifdef _WIN32
-  static void InitVirtualEntry() {
-    InitializeCriticalSection(&virutal_cs);
-  }
-#endif
-
-  static void AddVirtualEntry(const wstring &key, StackMethod* mthd) { 
-#ifdef _WIN32
-    EnterCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_lock(&virtual_mutex);
-#endif
-
-    virutal_cache.insert(pair<wstring, StackMethod*>(key, mthd));
-
-#ifdef _WIN32
-    LeaveCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_unlock(&virtual_mutex);
-#endif
-  }
-
-  static StackMethod* GetVirtualEntry(const wstring &key) {
-    StackMethod* mthd = nullptr;
-#ifdef _WIN32
-    EnterCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_lock(&virtual_mutex);
-#endif
-
-    unordered_map<wstring, StackMethod*>::iterator found = virutal_cache.find(key);
-    if(found != virutal_cache.end()) {
-      mthd = found->second;
-    }    
-
-#ifdef _WIN32
-    LeaveCriticalSection(&virutal_cs);
-#else
-    pthread_mutex_unlock(&virtual_mutex);
-#endif
-
-    return mthd;
-  }
-
-#ifdef _DEBUGGER
-  static void ClearVirtualEntries() {
-    virutal_cache.clear();
-  }
-#endif
 };
 
 /********************************
