@@ -96,12 +96,15 @@ class MemoryManager {
 
   // TODO: thread safe?
 	struct hash_pair {
-		template <class T1, class T2>
-		size_t operator()(const pair<T1, T2>& p) const {
-      return (p.first + p.second) * (p.first + p.second + 1) / 2 + p.second;
+		template <class T1, class T2, class T3>
+    size_t operator()(const tuple<T1, T2, T3>& p) const {
+      // return std::get<1>(p);
+      size_t seed = 13;
+      hash_combine_tup(p);
+      return seed;
 		}
 	};
-	static unordered_map<pair<size_t, size_t>, StackMethod*, hash_pair> virtual_method_table;
+	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, hash_pair> virtual_method_table;
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
