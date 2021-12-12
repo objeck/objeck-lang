@@ -3967,7 +3967,7 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
 
   case I2S: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    if (str_ptr) {
+    if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       const size_t base = PopInt(op_stack, stack_pos);
       const long value = (long)PopInt(op_stack, stack_pos);
@@ -3978,6 +3978,7 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
 #else
       wcsncpy(str, conv.c_str(), max);
 #endif
+    }
   }
     break;
 

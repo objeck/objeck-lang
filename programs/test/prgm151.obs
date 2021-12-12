@@ -1,0 +1,50 @@
+class Fie {
+	New() {
+	}
+
+	method : public : Hi() ~ String {
+		return "Hi!";
+	}
+
+	method : virtual : public : Bye() ~ String;
+}
+
+class Foo from Fie {
+	@i : Int;
+	@o : Int;
+
+	New() {
+		Parent();
+		@i := 13;
+		@o := @i * 3;
+	}
+
+	method : public : Bye() ~ String {
+		return "Bye!";
+	}
+}
+
+class Fum from Fie {
+	@i : Int;
+	@v : String;
+
+	New(v : String) {
+		Parent();
+		@v := v;
+		@i := 26;
+	}
+
+	method : public : Bye() ~ String {
+		return @v;
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		fie : Fie := Foo->New();
+		each(i : 3) { fie->Bye()->PrintLine(); };
+
+		fie := Fum->New("hello world!");
+		each(i : 3) { fie->Bye()->PrintLine(); };
+	}
+}
