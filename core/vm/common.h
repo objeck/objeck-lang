@@ -553,7 +553,8 @@ class StackClass {
     closure_dclrs = fdclr;
     inst_num_dclrs = icount;
     cls_space = InitializeClassMemory(cspace);
-    inst_space = pid > -1 ? ispace + 4 : ispace;
+    // TODO: Sort of a kludge, needs to align with compiler size types to support 32-bit targets
+    inst_space = pid > -1 ? ispace + sizeof(INT_VALUE) : ispace; 
 		is_debug = d;
   }
   
