@@ -1622,7 +1622,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 
 StackMethod* MemoryManager::GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id)
 {
-  const size_t cantor_key = CantorHash(concrete_cls, virtual_cls_id, virtual_mthd_id);
+  const size_t cantor_key = CantorHash((size_t)concrete_cls, virtual_cls_id, virtual_mthd_id);
 	unordered_map<size_t, StackMethod*>::iterator result = virtual_method_table.find(cantor_key);
 	if(result != virtual_method_table.end()) {
 		return result->second;
@@ -1636,7 +1636,7 @@ void MemoryManager::AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-  const size_t cantor_key = CantorHash(concrete_cls, virtual_cls_id, virtual_mthd_id);
+  const size_t cantor_key = CantorHash((size_t)concrete_cls, virtual_cls_id, virtual_mthd_id);
   virtual_method_table.insert(pair<size_t, StackMethod*>(cantor_key, mthd));
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
