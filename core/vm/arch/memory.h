@@ -63,8 +63,7 @@ struct StackOperMemory {
   long* stack_pos;
 };
 
-// used to monitor the state of
-// active stack frames
+// used to monitor the state of active stack frames
 struct StackFrameMonitor {
   StackFrame** call_stack;
   long* call_stack_pos;
@@ -84,7 +83,7 @@ struct ClassMethodId {
   long mthd_id;
 };
 
-using cantor_tuple_key = std::tuple<StackClass*, size_t, size_t>;
+using cantor_tuple_key = tuple<StackClass*, size_t, size_t>;
 
 class MemoryManager {
   static bool initialized;
@@ -98,7 +97,8 @@ class MemoryManager {
   
   struct cantor_tuple {
       template <class T1, class T2, class T3>
-      std::size_t operator () (const std::tuple<T1,T2,T3> &t) const {
+
+      size_t operator () (const tuple<T1,T2,T3> &t) const {
         const size_t t1 = (size_t)get<0>(t);
         const size_t t2 = get<1>(t);
         const size_t t3 = get<2>(t);
@@ -110,21 +110,6 @@ class MemoryManager {
       }
   };
   static unordered_map<cantor_tuple_key, StackMethod*, cantor_tuple> virtual_method_table;
-  
-  /*
-	struct cantor_tuple {
-		template <class T1, class T2, class T3>
-    size_t operator() (const tuple<T1, T2, T3> &t) const {
-      const size_t t1 = (size_t)(get<0>(t));
-      const size_t t2 = (size_t)(get<1>(t));
-      const size_t t3 = (size_t)(get<2>(t));
-
-      const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
-			return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
-		}
-	};
-	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, cantor_tuple> virtual_method_table;
-  */
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
