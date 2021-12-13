@@ -1622,9 +1622,8 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 
 StackMethod* MemoryManager::GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id)
 {
-  auto cantor_hash = make_tuple((size_t*)concrete_cls, virtual_cls_id, virtual_mthd_id);
-  
-  auto result = virtual_method_table.find(cantor_hash);
+  const auto cantor_hash = make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
+  const auto result = virtual_method_table.find(cantor_hash);
   if(result != virtual_method_table.end()) {
     return result->second;
   }
@@ -1637,10 +1636,8 @@ void MemoryManager::AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-  
-  auto cantor_hash = make_tuple((size_t*)concrete_cls, virtual_cls_id, virtual_mthd_id);
+  const auto cantor_hash = make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
   virtual_method_table.insert(pair<cantor_tuple_key, StackMethod*>(cantor_hash, mthd));
-
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
 #endif

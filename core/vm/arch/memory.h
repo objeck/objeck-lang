@@ -84,7 +84,7 @@ struct ClassMethodId {
   long mthd_id;
 };
 
-using cantor_tuple_key = std::tuple<size_t*, size_t, size_t>;
+using cantor_tuple_key = std::tuple<StackClass*, size_t, size_t>;
 
 class MemoryManager {
   static bool initialized;
@@ -99,12 +99,14 @@ class MemoryManager {
   struct cantor_tuple {
       template <class T1, class T2, class T3>
       std::size_t operator () (const std::tuple<T1,T2,T3> &t) const {
-        const size_t t1 = (size_t)(get<0>(t));
-        const size_t t2 = (size_t)(get<1>(t));
-        const size_t t3 = (size_t)(get<2>(t));
+        const size_t t1 = (size_t)get<0>(t);
+        const size_t t2 = get<1>(t);
+        const size_t t3 = get<2>(t);
 
         const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
-        return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
+        const size_t p2 = (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
+        
+        return p1 ^ p2;
       }
   };
   static unordered_map<cantor_tuple_key, StackMethod*, cantor_tuple> virtual_method_table;
