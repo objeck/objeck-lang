@@ -609,12 +609,9 @@ void diag_hover(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
-
-    const wstring uri = APITools_GetStringValue(context, 2);
-
-    const int line_num = (int)APITools_GetIntValue(context, 3);
-    const int line_pos = (int)APITools_GetIntValue(context, 4);
     
+    const wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);    
     const wstring var_str = APITools_GetStringValue(context, 5);
     const wstring mthd_str = APITools_GetStringValue(context, 6);
     const wstring lib_path = APITools_GetStringValue(context, 7);
