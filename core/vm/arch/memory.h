@@ -94,18 +94,12 @@ class MemoryManager {
   static unordered_map<size_t, list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
-	struct cantor_tuple {
-		template <class T1, class T2, class T3>
-    size_t operator() (const tuple<T1, T2, T3> &t) const {
-      const size_t t1 = (size_t)(get<0>(t));
-      const size_t t2 = (size_t)(get<1>(t));
-      const size_t t3 = (size_t)(get<2>(t));
-
-      const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
-			return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
-		}
-	};
-	static unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, cantor_tuple> virtual_method_table;
+  static size_t CantorHash(size_t t1, size_t t2, size_t t3) {
+    const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
+    return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
+  }
+  
+	static unordered_map<size_t, StackMethod*> virtual_method_table;
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
