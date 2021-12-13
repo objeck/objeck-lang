@@ -94,8 +94,9 @@ class MemoryManager {
   static unordered_map<size_t, list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
-  static size_t CantorHash(size_t t1, size_t t2, size_t t3) {
+  static size_t CantorHash(StackClass* c1, size_t t2, size_t t3) {
     const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
+    const size_t t1 = (size_t)c1;
     return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
   }
   
