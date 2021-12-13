@@ -41,7 +41,7 @@ set<size_t*> MemoryManager::allocated_memory;
 
 unordered_map<size_t, list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
-unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*, MemoryManager::cantor_tuple> MemoryManager::virtual_method_table;
+unordered_map<size_t, StackMethod*> MemoryManager::virtual_method_table;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -1622,8 +1622,8 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 
 StackMethod* MemoryManager::GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id)
 {
-  tuple<size_t*,size_t, size_t> cantor_pair = make_tuple((size_t*)concrete_cls, virtual_cls_id, virtual_mthd_id);
-	unordered_map<tuple<size_t*, size_t, size_t>, StackMethod*>::iterator result = virtual_method_table.find(cantor_pair);
+  const size_t cantor_key = CantorHash((size_t)concrete_cls, virtual_cls_id, virtual_mthd_id);
+	unordered_map<size_t, StackMethod*>::iterator result = virtual_method_table.find(cantor_key);
 	if(result != virtual_method_table.end()) {
 		return result->second;
 	}
@@ -1636,8 +1636,8 @@ void MemoryManager::AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-	tuple<size_t*, size_t, size_t> cantor_pair = make_tuple((size_t*)concrete_cls, virtual_cls_id, virtual_mthd_id);
-  virtual_method_table.insert(pair<tuple<size_t*, size_t, size_t>, StackMethod*>(cantor_pair, mthd));
+  const size_t cantor_key = CantorHash((size_t)concrete_cls, virtual_cls_id, virtual_mthd_id);
+  virtual_method_table.insert(pair<size_t, StackMethod*>(cantor_key, mthd));
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
 #endif
