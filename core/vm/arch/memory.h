@@ -104,9 +104,7 @@ class MemoryManager {
         const size_t t3 = get<2>(t);
 
         const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
-        const size_t p2 = (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
-        
-        return p1 ^ p2;
+        return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
       }
   };
   static unordered_map<cantor_tuple_key, StackMethod*, cantor_tuple> virtual_method_table;
