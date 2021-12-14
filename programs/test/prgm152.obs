@@ -7,6 +7,7 @@ class Test {
 	function : IsInt(str : String) ~ Bool {
 		if(<>str->IsEmpty()) {
 			check_hex := false;
+			# TODO: unicode
 
 			start := 0;
 			if(str->Get(start) = '-' | str->Get(start) = '+') {
