@@ -424,7 +424,7 @@ class IPSocket {
       client_port = -1;
       return -1;
     }
-    strncpy_s(client_address, SMALL_BUFFER_MAX + 1, inet_ntoa(pin.sin_addr), 255);
+    strncpy_s(client_address, SMALL_BUFFER_MAX - 1, inet_ntoa(pin.sin_addr), 255);
     client_port = ntohs(pin.sin_port);
 
     return client;
