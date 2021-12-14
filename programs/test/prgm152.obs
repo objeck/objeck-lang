@@ -1,0 +1,46 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		str := "0x0fae7";
+		IsInt(str)->PrintLine();
+	}
+
+	function : IsInt(str : String) ~ Bool {
+		if(<>str->IsEmpty()) {
+			check_hex := false;
+
+			start := 0;
+			if(str->Get(start) = '-' | str->Get(start) = '+') {
+				start += 1;
+			}
+			else if(str->Get(start) = '0') {
+				start += 1;
+				check_hex := true;
+			};
+
+			if(check_hex) {
+				if(str->Get(start) = 'x') {
+					start += 1;
+
+					for(i := start; i < str->Size(); i += 1;) {
+						if(<>(str->Get(i) >= '0' & str->Get(i) <= '9') & <>((str->Get(i) >= 'a' & str->Get(i) <= 'f') | (str->Get(i) >= 'A' & str->Get(i) <= 'F'))) {
+							return false;
+						};
+					};
+
+					return true;
+				};
+			}
+			else {
+				for(i := start; i < str->Size(); i += 1;) {
+					if(<>str->Get(i)->IsDigit()) {
+						return false;
+					};
+				};
+
+				return true;
+			};
+		};
+
+		return false;
+	}
+}
