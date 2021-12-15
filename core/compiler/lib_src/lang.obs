@@ -3604,6 +3604,26 @@ bundle System {
 	~#	
 	class Runtime {
 		#~
+		Signal types
+		~#
+		enum Signal {
+			SIGABRT,
+			SIGFPE,
+			SIGILL,
+			SIGINT,
+			SIGSEGV,
+			SIGTERM
+		}
+
+		#~
+		Sets a system signal	
+		@param signal type
+		~#
+		function : SetSignal(type : Runtime->Signal, func : (Int) ~ Nil) ~ Nil {
+#			SIGNAL;
+		}
+
+		#~
 		Causes the executing program to halt
 		@param code exit code
 		~#
@@ -7218,7 +7238,20 @@ bundle System.Introspection {
 	Represents a runtime data type
 	~#
 	class DataType {
-		@type  : TypeId;
+		#~
+		Data type types
+		~#
+		enum TypeId := -1000 {
+			BOOL,
+			BYTE,
+			CHAR,
+			INT,
+			FLOAT,
+			CLASS,
+			FUNC
+		}
+
+		@type  : DataType->TypeId;
 		@cls_name : String;
 		@dimension : Int;
 		
@@ -7226,7 +7259,7 @@ bundle System.Introspection {
 		Returns the data type's type
 		@return data type's type
 		~#
-		method : public : GetType() ~ TypeId {
+		method : public : GetType() ~ DataType->TypeId {
 			return @type;
 		}
 		
@@ -7247,17 +7280,4 @@ bundle System.Introspection {
 			return @cls_name;
 		}
 	}
-	
-	#~
-	Data type types
-	~#
-	enum TypeId := -1000 {
-		BOOL,
-		BYTE,
-		CHAR,
-		INT,
-		FLOAT,
-		CLASS,
-		FUNC
-	}	
 }
