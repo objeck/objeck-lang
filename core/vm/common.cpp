@@ -1883,6 +1883,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SYS_CMD:
       return SysCmd(program, inst, op_stack, stack_pos, frame);
 
+		case SIGNAL:
+			return SysSignal(program, inst, op_stack, stack_pos, frame);
+
     case  SYS_CMD_OUT:
       return SysCmdOut(program, inst, op_stack, stack_pos, frame);
 
@@ -2795,6 +2798,11 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
   }
 
   return true;
+}
+
+bool TrapProcessor::SysSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
 }
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
