@@ -261,6 +261,7 @@ void Scanner::LoadKeywords()
   ident_map[L"ASSERT_TRUE"] = ASSERT_TRUE;
   ident_map[L"SYS_CMD"] = SYS_CMD;
   ident_map[L"SYS_CMD_OUT"] = SYS_CMD_OUT;
+  ident_map[L"SIGNAL"] = SIGNAL;
   ident_map[L"EXIT"] = EXIT;
   ident_map[L"TIMER_START"] = TIMER_START;
   ident_map[L"TIMER_END"] =  TIMER_END;
@@ -488,6 +489,7 @@ void Scanner::CheckIdentifier(int index)
     case ASSERT_TRUE:
     case SYS_CMD:
     case SYS_CMD_OUT:
+    case SIGNAL:
     case EXIT:
     case TIMER_START:
     case TIMER_END:
