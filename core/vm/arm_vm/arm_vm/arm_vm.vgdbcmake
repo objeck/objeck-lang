@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
-<VisualGDBProjectSettings2 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <ConfigurationName>Debug</ConfigurationName>
+<VisualGDBProjectSettings2 xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Project xsi:type="com.visualgdb.project.linux">
     <CustomSourceDirectories>
       <Directories />
@@ -32,7 +31,7 @@
     <MainSourceDirectoryForLocalBuilds>$(ProjectDir)</MainSourceDirectoryForLocalBuilds>
     <AlternateSysrootSource>
       <Host>
-        <HostName>192.168.4.95</HostName>
+        <HostName>192.168.4.229</HostName>
         <Transport>SSH</Transport>
         <UserName>pi</UserName>
       </Host>
@@ -44,9 +43,9 @@
     <ToolchainID>
       <ID>com.visualgdb.raspberry_pi</ID>
       <Version>
-        <GCC>8.3.0</GCC>
-        <GDB>8.2.1</GDB>
-        <Revision>4</Revision>
+        <GCC>10.2.1</GCC>
+        <GDB>10.1</GDB>
+        <Revision>1</Revision>
       </Version>
     </ToolchainID>
     <RelativeSourceDirectory />
@@ -245,6 +244,7 @@
       <EnableNonStopMode>false</EnableNonStopMode>
       <MaxBreakpointLimit>0</MaxBreakpointLimit>
       <EnableVerboseMode>true</EnableVerboseMode>
+      <EnablePrettyPrinters>false</EnablePrettyPrinters>
     </AdditionalGDBSettings>
     <LaunchGDBSettings xsi:type="GDBLaunchParametersNewInstance">
       <DebuggedProgram>$(TargetPath)</DebuggedProgram>
