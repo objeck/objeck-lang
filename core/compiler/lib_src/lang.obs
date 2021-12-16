@@ -3619,7 +3619,7 @@ bundle System {
 		Sets a system signal	
 		@param signal type
 		~#
-		function : SetSignal(type : Runtime->Signal, func : (Runtime->Signal) ~ Nil) ~ Nil {
+		function : SetSignal(id : Int, func : (Int) ~ Nil) ~ Nil {
 			SIGNAL;
 		}
 
