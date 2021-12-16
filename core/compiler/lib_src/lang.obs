@@ -3607,7 +3607,7 @@ bundle System {
 		Signal types
 		~#
 		enum Signal {
-			SIGABRT,
+			SIGABRT := -20,
 			SIGFPE,
 			SIGILL,
 			SIGINT,
@@ -3619,7 +3619,7 @@ bundle System {
 		Sets a system signal	
 		@param signal type
 		~#
-		function : SetSignal(type : Runtime->Signal, func : (Int) ~ Nil) ~ Nil {
+		function : SetSignal(type : Runtime->Signal, func : (Runtime->Signal) ~ Nil) ~ Nil {
 			SIGNAL;
 		}
 
@@ -7241,7 +7241,7 @@ bundle System.Introspection {
 		#~
 		Data type types
 		~#
-		enum TypeId := -1000 {
+		enum TypeId := -40 {
 			BOOL,
 			BYTE,
 			CHAR,
