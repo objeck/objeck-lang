@@ -1,6 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->SetSignal(Runtime->Signal->SIGINT, Handler(Int) ~ Nil);
+		func := Handler(Int) ~ Nil;
+		Runtime->SetSignal(13, func);
 	}
     
 	function : Handler(id : Int) ~ Nil {
