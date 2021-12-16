@@ -2802,6 +2802,12 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
 
 bool TrapProcessor::SysSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+	const size_t signal_id = frame->mem[1];	
+  const size_t mthd_cls_id = frame->mem[2];
+	const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+	const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+
+  
   return false;
 }
 
