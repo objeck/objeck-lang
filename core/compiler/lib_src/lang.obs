@@ -3606,8 +3606,8 @@ bundle System {
 		#~
 		Signal types
 		~#
-		enum Signal {
-			SIGABRT := -20,
+		enum Signal := - 20 {
+			SIGABRT,
 			SIGFPE,
 			SIGILL,
 			SIGINT,
