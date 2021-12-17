@@ -5,7 +5,7 @@ class Foo {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		handler := H2(Int) ~ Nil;
+		handler := H1(Foo->Bar) ~ Nil;
 	}
     
 	function : H1(v : Foo->Bar) ~ Nil {
