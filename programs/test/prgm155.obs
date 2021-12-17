@@ -1,0 +1,16 @@
+class Foo {
+	enum Bar {
+		ONE,
+		TWO		
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		handler := H2(Int) ~ Nil;
+	}
+    
+	function : H1(v : Foo->Bar) ~ Nil {
+	}
+
+	function : H2(v : Int) ~ Nil {
+	}
+}
