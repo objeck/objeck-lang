@@ -6,6 +6,7 @@ class Foo {
 
 	function : Main(args : String[]) ~ Nil {
 		handler := H1(Foo->Bar) ~ Nil;
+		handler(Foo->Bar->ONE);
 	}
     
 	function : H1(v : Foo->Bar) ~ Nil {
