@@ -159,7 +159,7 @@ void StackProgram::SignalHandler(int signal)
 	if(called_method) {
 		// init
 		size_t* op_stack = new size_t[OP_STACK_SIZE];
-    (* op_stack) = sys_value;
+    (*op_stack) = sys_value;
 		long* stack_pos = new long;
 		(*stack_pos) = 1;
 
