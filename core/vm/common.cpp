@@ -60,7 +60,11 @@ void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
 
 StackMethod* StackProgram::GetSignalHandler(long key)
 {
-	// signal_handler_func.insert(make_pair(key, signal_mthd));
+	unordered_map<long, StackMethod*>::iterator found = signal_handler_func.find(key);
+	if(found != signal_handler_func.end()) {
+		return found->second;
+	}
+
   return nullptr;
 }
 
