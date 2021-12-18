@@ -97,7 +97,40 @@ StackMethod* StackProgram::GetSignalHandler(long key)
 
 void StackProgram::SignalHandler(int signal)
 {
-  wcout << L"Hello World!" << endl;
+  // TODO: fully implement...
+
+	switch(signal) {
+	case SIGABRT:
+		break;
+
+	case SIGFPE:
+		break;
+
+  case SIGILL: {
+    unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGILL);
+    if(found != signal_handler_func.end()) {
+      StackMethod* mthd = found->second;
+
+    }
+  }
+		break;
+
+  case SIGINT: {
+    unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGINT);
+    if(found != signal_handler_func.end()) {
+      StackMethod* mthd = found->second;
+
+    }
+  }
+		break;
+
+	case SIGSEGV:
+		break;
+
+	case SIGTERM:
+		break;
+	}
+
 }
 
 void StackProgram::InitializeProprieties()
