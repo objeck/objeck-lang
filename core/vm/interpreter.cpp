@@ -143,10 +143,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
   // execute
-  halt = 0;
+  halt = false;
   do {
-    ON_THE_TOP:
-
     StackInstr* instr = instrs[ip++];
     
 #ifdef _DEBUGGER
@@ -651,12 +649,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     }
   }
   while(!halt);
-
-  if(halt == 2) {
-    // TODO:
-    wcerr << "-- Umk ---" << endl;
-    goto ON_THE_TOP;
-  }
   
 #ifdef _TIMING
   clock_t end = clock();
@@ -1818,7 +1810,7 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
   } 
   else {
     (*frame) = nullptr;
-    halt = 1;
+    halt = true;
   }
 }
 
