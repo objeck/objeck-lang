@@ -102,6 +102,15 @@ using namespace stdext;
 using namespace std;
 using namespace instructions;
 
+enum {
+  VM_SIGABRT = -20,
+  VM_SIGFPE,
+  VM_SIGILL,
+  VM_SIGINT,
+  VM_SIGSEGV,
+  VM_SIGTERM
+};
+
 class StackClass;
 
 inline const wstring IntToString(int v)

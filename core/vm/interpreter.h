@@ -87,7 +87,7 @@ namespace Runtime {
     StackFrameMonitor* monitor;
 
     // halt
-    bool halt;
+    int halt;
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
@@ -405,7 +405,7 @@ namespace Runtime {
 
     //
     void Halt() {
-      halt = true;
+      halt = 1;
     }
     
     // free static resources
