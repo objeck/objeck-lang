@@ -97,9 +97,8 @@ StackMethod* StackProgram::GetSignalHandler(long key)
 
 void StackProgram::SignalHandler(int signal)
 {
-  // TODO: fully implement...
-
   StackMethod* called_method = nullptr;
+
 	switch(signal) {
   case SIGABRT: {
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGABRT);
@@ -153,11 +152,12 @@ void StackProgram::SignalHandler(int signal)
 	if(called_method) {
 		// init
 		size_t* op_stack = new size_t[OP_STACK_SIZE];
+    op_stack[0] = VM_SIGTERM;
 		long* stack_pos = new long;
-		(*stack_pos) = 0;
+		(*stack_pos) = 1;
 
 		// execute
-		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter();
 		Runtime::StackInterpreter::AddThread(intpr);
 		intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
 	}
