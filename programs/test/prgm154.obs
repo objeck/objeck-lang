@@ -8,11 +8,13 @@ class Test {
 
 		while(<>@stop) {};
 
-		"big nate dog!"->PrintLine();
+		each(i : 3) {
+			"big nate dog!"->PrintLine();
+		};
 	}
     
 	function : Handler(id : Int) ~ Nil {
-		"..."->PrintLine();
+		".. {$id} .."->PrintLine();
 		@stop := true;
 	}
 }
