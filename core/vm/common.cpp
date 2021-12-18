@@ -164,7 +164,7 @@ void StackProgram::SignalHandler(int signal)
 		(*stack_pos) = 1;
 
 		// execute
-		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter();
+		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
 		Runtime::StackInterpreter::AddThread(intpr);
 		intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
 	}
