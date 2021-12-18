@@ -6208,7 +6208,6 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
       MethodCall* mthd_call = static_cast<MethodCall*>(expressions[i]);
 
       wstring klass_name = mthd_call->GetVariableName();
-
 			Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
 			if(GetProgramLibraryClass(klass_name, klass, lib_klass)) {
 				if(klass) {
