@@ -925,7 +925,6 @@ class StackProgram {
   static void AddSignalHandler(long key, StackMethod* mthd);
   StackMethod* GetSignalHandler(long key);
 
-
   static void InitializeProprieties();
   
   void SetInitializationMethod(StackMethod* i) {
