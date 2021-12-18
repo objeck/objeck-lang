@@ -3,6 +3,7 @@ class Test {
 		Runtime->SetSignal(Runtime->Signal->SIGINT, Handler(Int) ~ Nil);
 		Runtime->SetSignal(Runtime->Signal->SIGILL, Handler(Int) ~ Nil);
 		Runtime->SetSignal(Runtime->Signal->SIGTERM, Handler(Int) ~ Nil);
+		
 		while(true) {};
 	}
     
