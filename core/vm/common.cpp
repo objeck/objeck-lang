@@ -56,6 +56,9 @@ unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
 void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
 {
   signal_handler_func.insert(make_pair(key, mthd));
+
+  // void signal_handler(int signal) {}
+  // std::signal(SIGINT, signal_handler);
 }
 
 StackMethod* StackProgram::GetSignalHandler(long key)
