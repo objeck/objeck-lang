@@ -97,7 +97,7 @@ StackMethod* StackProgram::GetSignalHandler(long key)
 
 void StackProgram::SignalHandler(int signal)
 {
-
+  wcout << L"Hello World!" << endl;
 }
 
 void StackProgram::InitializeProprieties()
@@ -2860,7 +2860,7 @@ bool TrapProcessor::SysSignal(StackProgram* program, size_t* inst, size_t*& op_s
     program->AddSignalHandler(signal_id, signal_mthd);
   }
   
-  return false;
+  return true;
 }
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
