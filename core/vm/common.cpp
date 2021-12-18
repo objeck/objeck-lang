@@ -167,6 +167,18 @@ void StackProgram::SignalHandler(int signal)
 		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
 		Runtime::StackInterpreter::AddThread(intpr);
 		intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
+
+		// clean up
+		delete[] op_stack;
+		op_stack = nullptr;
+
+		delete stack_pos;
+		stack_pos = nullptr;
+
+		Runtime::StackInterpreter::RemoveThread(intpr);
+
+		delete intpr;
+		intpr = nullptr;
 	}
 }
 
