@@ -55,6 +55,7 @@ unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
 
 void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
 {
+  // remap key to native signal IDs
   signal_handler_func.insert(make_pair(key, mthd));
 
   // void signal_handler(int signal) {}
