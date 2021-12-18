@@ -759,7 +759,8 @@ class StackProgram {
   long data_type_cls_id;
   StackMethod* init_method;
   static map<wstring, wstring> properties_map;
-
+	static unordered_map<long, StackMethod*> signal_handler_func;
+  
   FLOAT_VALUE** float_strings;
   int num_float_strings;
 
@@ -920,6 +921,9 @@ class StackProgram {
     pthread_mutex_unlock(&prop_mutex);
   }
 #endif
+
+  static void AddSignalHandler(long key, StackMethod* mthd);
+  StackMethod* GetSignalHandler(long key);
 
   static void InitializeProprieties();
   

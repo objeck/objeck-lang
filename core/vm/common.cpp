@@ -51,6 +51,18 @@ pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 map<wstring, wstring> StackProgram::properties_map;
+unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
+
+void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
+{
+  signal_handler_func.insert(make_pair(key, mthd));
+}
+
+StackMethod* StackProgram::GetSignalHandler(long key)
+{
+	// signal_handler_func.insert(make_pair(key, signal_mthd));
+  return nullptr;
+}
 
 void StackProgram::InitializeProprieties()
 {
@@ -2802,11 +2814,15 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
 
 bool TrapProcessor::SysSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	const size_t signal_id = frame->mem[1];	
+	const long signal_id = (long)frame->mem[1];	
   const size_t mthd_cls_id = frame->mem[2];
 	const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
 	const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 
+	StackMethod* signal_mthd = Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id);
+  if(signal_mthd) {
+    program->AddSignalHandler(signal_id, signal_mthd);
+  }
   
   return false;
 }
