@@ -6206,8 +6206,21 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
     }
     else if(expressions[i]->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expressions[i])->GetCallType() == ENUM_CALL) {
       MethodCall* mthd_call = static_cast<MethodCall*>(expressions[i]);
+
+      wstring klass_name = mthd_call->GetVariableName();
+
+			Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+			if(GetProgramLibraryClass(klass_name, klass, lib_klass)) {
+				if(klass) {
+          klass_name = klass->GetName();
+				}
+				else if(lib_klass) {
+          klass_name = lib_klass->GetName();
+				}
+			}
+
       encoded_name += L"o.";
-      encoded_name += mthd_call->GetVariableName();
+      encoded_name += klass_name;
       encoded_name += L'#';
       encoded_name += mthd_call->GetMethodName();
       encoded_name += L',';
