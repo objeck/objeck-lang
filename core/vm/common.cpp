@@ -99,18 +99,28 @@ void StackProgram::SignalHandler(int signal)
 {
   // TODO: fully implement...
 
+  StackMethod* called_method = nullptr;
 	switch(signal) {
-	case SIGABRT:
+  case SIGABRT: {
+    unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGABRT);
+    if(found != signal_handler_func.end()) {
+      called_method = found->second;
+    }
+  }
 		break;
 
-	case SIGFPE:
+  case SIGFPE: {
+    unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGFPE);
+    if(found != signal_handler_func.end()) {
+      called_method = found->second;
+    }
+  }
 		break;
 
   case SIGILL: {
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGILL);
     if(found != signal_handler_func.end()) {
-      StackMethod* mthd = found->second;
-
+      called_method = found->second;
     }
   }
 		break;
@@ -118,19 +128,39 @@ void StackProgram::SignalHandler(int signal)
   case SIGINT: {
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGINT);
     if(found != signal_handler_func.end()) {
-      StackMethod* mthd = found->second;
-
+			called_method = found->second;
     }
   }
 		break;
 
-	case SIGSEGV:
-		break;
+	case SIGSEGV: {
+		unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGSEGV);
+		if(found != signal_handler_func.end()) {
+			called_method = found->second;
+		}
+	}
+    break;
 
-	case SIGTERM:
+  case SIGTERM: {
+			unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGTERM);
+			if(found != signal_handler_func.end()) {
+				called_method = found->second;
+			}
+		}
 		break;
 	}
 
+	if(called_method) {
+		// init
+		size_t* op_stack = new size_t[OP_STACK_SIZE];
+		long* stack_pos = new long;
+		(*stack_pos) = 0;
+
+		// execute
+		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+		Runtime::StackInterpreter::AddThread(intpr);
+		intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
+	}
 }
 
 void StackProgram::InitializeProprieties()
