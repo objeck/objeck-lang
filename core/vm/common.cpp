@@ -99,11 +99,13 @@ void StackProgram::SignalHandler(int signal)
 {
   StackMethod* called_method = nullptr;
 
+  long sys_value = 0;
 	switch(signal) {
   case SIGABRT: {
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGABRT);
     if(found != signal_handler_func.end()) {
       called_method = found->second;
+      sys_value = SIGABRT;
     }
   }
 		break;
@@ -112,6 +114,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGFPE);
     if(found != signal_handler_func.end()) {
       called_method = found->second;
+      sys_value = SIGFPE;
     }
   }
 		break;
@@ -120,6 +123,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGILL);
     if(found != signal_handler_func.end()) {
       called_method = found->second;
+      sys_value = SIGILL;
     }
   }
 		break;
@@ -128,6 +132,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGINT);
     if(found != signal_handler_func.end()) {
 			called_method = found->second;
+      sys_value = SIGINT;
     }
   }
 		break;
@@ -136,6 +141,7 @@ void StackProgram::SignalHandler(int signal)
 		unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGSEGV);
 		if(found != signal_handler_func.end()) {
 			called_method = found->second;
+      sys_value = SIGSEGV;
 		}
 	}
     break;
@@ -144,6 +150,7 @@ void StackProgram::SignalHandler(int signal)
 			unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGTERM);
 			if(found != signal_handler_func.end()) {
 				called_method = found->second;
+        sys_value = SIGTERM;
 			}
 		}
 		break;
@@ -152,7 +159,7 @@ void StackProgram::SignalHandler(int signal)
 	if(called_method) {
 		// init
 		size_t* op_stack = new size_t[OP_STACK_SIZE];
-    op_stack[0] = VM_SIGTERM;
+    op_stack[0] = sys_value;
 		long* stack_pos = new long;
 		(*stack_pos) = 1;
 
