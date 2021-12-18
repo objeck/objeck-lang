@@ -56,13 +56,33 @@ unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
 
 void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
 {
-  // remap key to native signal IDs
-  signal_handler_func.insert(make_pair(key, mthd));
+	signal_handler_func.insert(make_pair(key, mthd));
 
-  // void signal_handler(int signal) {}
-  //std::signal(SIGINT, signal_handler);
+  switch(key) {
+  case VM_SIGABRT:
+		std::signal(SIGABRT, StackProgram::SignalHandler);
+    break;
 
-  std::signal(SIGINT, StackProgram::SignalHandler);
+	case VM_SIGFPE:
+		std::signal(SIGFPE, StackProgram::SignalHandler);
+		break;
+
+	case VM_SIGILL:
+		std::signal(SIGILL, StackProgram::SignalHandler);
+		break;
+
+	case VM_SIGINT:
+    std::signal(SIGINT, StackProgram::SignalHandler);
+		break;
+
+	case VM_SIGSEGV:
+		std::signal(SIGSEGV, StackProgram::SignalHandler);
+		break;
+
+	case VM_SIGTERM:
+		std::signal(SIGTERM, StackProgram::SignalHandler);
+		break;
+  }
 }
 
 StackMethod* StackProgram::GetSignalHandler(long key)
