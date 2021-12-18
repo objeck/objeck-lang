@@ -66,6 +66,9 @@ namespace Runtime {
     size_t* param;
   };
   
+  //
+  // StackInterpreter
+  //
   class StackInterpreter {
     // program
     static StackProgram* program;
@@ -349,7 +352,7 @@ namespace Runtime {
     inline void ProcessDllCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
   public:
-    // initialize the runtime system
+		// initialize the runtime system
     static void Initialize(StackProgram* p);
 
     static void AddThread(StackInterpreter* i) {

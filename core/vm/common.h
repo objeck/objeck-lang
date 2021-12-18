@@ -1110,6 +1110,12 @@ class StackProgram {
     return false;
   }
 #endif
+
+  public:
+		//
+		// TODO
+		//
+		static void SignalHandler(int signal);
 };
 
 /********************************

@@ -41,6 +41,7 @@
 #include "arch/memory.h"
 #include "arch/posix/posix.h"
 #endif
+#include <csignal>
 
 #ifdef _WIN32
 CRITICAL_SECTION StackProgram::program_cs;
@@ -59,7 +60,9 @@ void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
   signal_handler_func.insert(make_pair(key, mthd));
 
   // void signal_handler(int signal) {}
-  // std::signal(SIGINT, signal_handler);
+  //std::signal(SIGINT, signal_handler);
+
+  std::signal(SIGINT, StackProgram::SignalHandler);
 }
 
 StackMethod* StackProgram::GetSignalHandler(long key)
@@ -70,6 +73,11 @@ StackMethod* StackProgram::GetSignalHandler(long key)
 	}
 
   return nullptr;
+}
+
+void StackProgram::SignalHandler(int signal)
+{
+
 }
 
 void StackProgram::InitializeProprieties()
