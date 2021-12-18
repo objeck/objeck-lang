@@ -105,7 +105,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGABRT);
     if(found != signal_handler_func.end()) {
       called_method = found->second;
-      sys_value = SIGABRT;
+      sys_value = VM_SIGABRT;
     }
   }
 		break;
@@ -114,7 +114,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGFPE);
     if(found != signal_handler_func.end()) {
       called_method = found->second;
-      sys_value = SIGFPE;
+      sys_value = VM_SIGFPE;
     }
   }
 		break;
@@ -123,7 +123,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGILL);
     if(found != signal_handler_func.end()) {
       called_method = found->second;
-      sys_value = SIGILL;
+      sys_value = VM_SIGILL;
     }
   }
 		break;
@@ -132,7 +132,7 @@ void StackProgram::SignalHandler(int signal)
     unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGINT);
     if(found != signal_handler_func.end()) {
 			called_method = found->second;
-      sys_value = SIGINT;
+      sys_value = VM_SIGINT;
     }
   }
 		break;
@@ -141,7 +141,7 @@ void StackProgram::SignalHandler(int signal)
 		unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGSEGV);
 		if(found != signal_handler_func.end()) {
 			called_method = found->second;
-      sys_value = SIGSEGV;
+      sys_value = VM_SIGSEGV;
 		}
 	}
     break;
@@ -150,7 +150,7 @@ void StackProgram::SignalHandler(int signal)
 			unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGTERM);
 			if(found != signal_handler_func.end()) {
 				called_method = found->second;
-        sys_value = SIGTERM;
+        sys_value = VM_SIGTERM;
 			}
 		}
 		break;
