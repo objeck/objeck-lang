@@ -2935,8 +2935,8 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
 
 bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  const long signal_id = (long)PopInt(op_stack, stack_pos);
-  const size_t mthd_cls_id = frame->mem[2];
+	const long mthd_cls_id = (long)PopInt(op_stack, stack_pos);
+	const long signal_id = (long)PopInt(op_stack, stack_pos);
 
 	const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
 	const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
@@ -2944,9 +2944,10 @@ bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_s
 	StackMethod* signal_mthd = Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id);
   if(signal_mthd) {
     program->AddSignalHandler(signal_id, signal_mthd);
+    return true;
   }
   
-  return true;
+  return false;
 }
 
 bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
