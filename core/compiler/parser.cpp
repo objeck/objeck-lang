@@ -1947,9 +1947,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-		case SIGNAL:
+		case SET_SIGNAL:
 			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-				                                                       instructions::SIGNAL);
+				                                                       instructions::SET_SIGNAL);
+			NextToken();
+			break;
+
+		case RAISE_SIGNAL:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+				instructions::RAISE_SIGNAL);
 			NextToken();
 			break;
 
