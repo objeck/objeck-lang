@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM common.
  *
- * Copyright (c) 2008-2021, Randy Hollines
+ * Copyright (c) 2008-2022, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,7 +54,7 @@ pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 map<wstring, wstring> StackProgram::properties_map;
 unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
 
-void StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
+bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 {
 	signal_handler_func.insert(make_pair(signal_id, mthd));
 
@@ -82,7 +82,12 @@ void StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 	case VM_SIGTERM:
 		std::signal(SIGTERM, StackProgram::SignalHandler);
 		break;
+
+  default:
+    return false;
   }
+
+  return true;
 }
 
 StackMethod* StackProgram::GetSignalHandler(long key)
@@ -2943,8 +2948,7 @@ bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_s
 
 	StackMethod* signal_mthd = Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id);
   if(signal_mthd) {
-    program->AddSignalHandler(signal_id, signal_mthd);
-    return true;
+    return program->AddSignalHandler(signal_id, signal_mthd);
   }
   
   return false;
@@ -2978,6 +2982,9 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 	case VM_SIGTERM:
 		std::raise(SIGTERM);
 		break;
+
+    default:
+      return false;
 	}
 
   return true;
