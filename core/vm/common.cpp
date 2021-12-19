@@ -2013,8 +2013,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SYS_CMD:
       return SysCmd(program, inst, op_stack, stack_pos, frame);
 
-		case SIGNAL:
-			return SysSignal(program, inst, op_stack, stack_pos, frame);
+		case SET_SIGNAL:
+			return SetSignal(program, inst, op_stack, stack_pos, frame);
+
+		case RAISE_SIGNAL:
+			return RaiseSignal(program, inst, op_stack, stack_pos, frame);
 
     case  SYS_CMD_OUT:
       return SysCmdOut(program, inst, op_stack, stack_pos, frame);
@@ -2930,7 +2933,7 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
   return true;
 }
 
-bool TrapProcessor::SysSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   const long signal_id = (long)PopInt(op_stack, stack_pos);
   const size_t mthd_cls_id = frame->mem[2];
@@ -2944,6 +2947,11 @@ bool TrapProcessor::SysSignal(StackProgram* program, size_t* inst, size_t*& op_s
   }
   
   return true;
+}
+
+bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
 }
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
