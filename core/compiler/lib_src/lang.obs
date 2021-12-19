@@ -3605,7 +3605,7 @@ bundle System {
 	class Runtime {
 		#~
 		Runtime signal types.<br/>
-		Enum type: <pre>Runtime->Signal</pre>
+		<p><pre>Runtime->Signal</pre></p>
 		~#
 		enum Signal := -20 {
 			SIGABRT,
@@ -7250,7 +7250,7 @@ bundle System.Introspection {
 	class DataType {
 		#~
 		Data type types<br/>
-		Enum type: <pre>DataType->TypeId</pre>
+		<p><pre>DataType->TypeId</pre></p>
 		~#
 		enum TypeId := -40 {
 			BOOL,
