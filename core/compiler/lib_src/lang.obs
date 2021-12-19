@@ -3621,7 +3621,15 @@ bundle System {
 		@param func function handler for signal
 		~#
 		function : SetSignal(type : Runtime->Signal, func : (Int) ~ Nil) ~ Nil {
-			SIGNAL;
+			SET_SIGNAL;
+		}
+
+		#~
+		Raises a system signal	
+		@param type signal type
+		~#
+		function : SetSignal(type : Runtime->Signal) ~ Nil {
+			RAISE_SIGNAL;
 		}
 
 		#~
