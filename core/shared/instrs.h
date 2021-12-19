@@ -139,7 +139,8 @@ namespace instructions {
     // external OS traps
     TRAP,
     TRAP_RTRN,
-    SIGNAL,
+    SET_SIGNAL,
+    RAISE_SIGNAL,
     // shared libraries
     DLL_LOAD,
     DLL_UNLOAD,

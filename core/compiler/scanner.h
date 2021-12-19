@@ -344,7 +344,8 @@ enum ScannerTokenType {
   ASSERT_TRUE,
   SYS_CMD,
   SYS_CMD_OUT,
-  SIGNAL,
+  SET_SIGNAL,
+  RAISE_SIGNAL,
   EXIT
 #endif
 };
