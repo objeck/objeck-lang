@@ -3628,7 +3628,7 @@ bundle System {
 		Raises a system signal	
 		@param type signal type
 		~#
-		function : SetSignal(type : Runtime->Signal) ~ Nil {
+		function : RaiseSignal(type : Runtime->Signal) ~ Nil {
 			RAISE_SIGNAL;
 		}
 
