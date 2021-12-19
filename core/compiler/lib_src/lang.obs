@@ -10,7 +10,7 @@ Core system classes
 bundle System {
 	#~
 	Boolean class
-	~#	
+	~#
 	class $Bool {
 		#~
 		Prints a boolean value
@@ -3604,7 +3604,7 @@ bundle System {
 	~#	
 	class Runtime {
 		#~
-		Signal types
+		Runtime signal types
 		~#
 		enum Signal := - 20 {
 			SIGABRT,
@@ -3625,7 +3625,7 @@ bundle System {
 		}
 
 		#~
-		Raises a system signal	git
+		Raises a system signal
 		@param type signal type
 		~#
 		function : RaiseSignal(type : Runtime->Signal) ~ Nil {
