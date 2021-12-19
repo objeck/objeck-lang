@@ -15,7 +15,7 @@ class Test {
 		};
 	}
     
-	function : Handler(id : Int) ~ Nil {
+	function : Shutdown(id : Int) ~ Nil {
 		".. {$id} .."->PrintLine();
 		@stop := true;
 	}
