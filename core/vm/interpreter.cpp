@@ -797,14 +797,13 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
-    const size_t base = PopInt(op_stack, stack_pos);
     const long value = (long)PopInt(op_stack, stack_pos);
     const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16;
+    const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
-		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+    wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
-		wcsncpy(str, conv.c_str(), max);
+    wcsncpy(str, conv.c_str(), max);
 #endif
   }
 }
