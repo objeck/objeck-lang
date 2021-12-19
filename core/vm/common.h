@@ -1,7 +1,7 @@
 /***************************************************************************
  * Defines the VM execution model.
  *
- * Copyright (c) 2008-2021, Randy Hollines
+ * Copyright (c) 2008-2022, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -931,7 +931,7 @@ class StackProgram {
   }
 #endif
 
-  static void AddSignalHandler(long key, StackMethod* mthd);
+  static bool AddSignalHandler(long key, StackMethod* mthd);
   StackMethod* GetSignalHandler(long key);
 
   static void InitializeProprieties();
