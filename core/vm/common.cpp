@@ -54,11 +54,11 @@ pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 map<wstring, wstring> StackProgram::properties_map;
 unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
 
-void StackProgram::AddSignalHandler(long key, StackMethod* mthd)
+void StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 {
-	signal_handler_func.insert(make_pair(key, mthd));
+	signal_handler_func.insert(make_pair(signal_id, mthd));
 
-  switch(key) {
+  switch(signal_id) {
   case VM_SIGABRT:
 		std::signal(SIGABRT, StackProgram::SignalHandler);
     break;
@@ -2951,7 +2951,35 @@ bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_s
 
 bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  return false;
+	const long signal_id = (long)PopInt(op_stack, stack_pos);
+
+	switch(signal_id) {
+	case VM_SIGABRT:
+    std::raise(SIGABRT);
+		break;
+
+	case VM_SIGFPE:
+		std::raise(SIGFPE);
+		break;
+
+	case VM_SIGILL:
+		std::raise(SIGILL);
+		break;
+
+	case VM_SIGINT:
+		std::raise(SIGINT);
+		break;
+
+	case VM_SIGSEGV:
+		std::raise(SIGSEGV);
+		break;
+
+	case VM_SIGTERM:
+		std::raise(SIGTERM);
+		break;
+	}
+
+  return true;
 }
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
