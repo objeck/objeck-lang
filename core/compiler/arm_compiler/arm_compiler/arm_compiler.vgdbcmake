@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <VisualGDBProjectSettings2 xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <ConfigurationName>Debug</ConfigurationName>
   <Project xsi:type="com.visualgdb.project.linux">
     <CustomSourceDirectories>
       <Directories />
@@ -9,7 +8,7 @@
     </CustomSourceDirectories>
     <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
     <DeploymentHost>
-      <HostName>192.168.4.230</HostName>
+      <HostName>192.168.4.229</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
@@ -36,9 +35,9 @@
     <ToolchainID>
       <ID>com.visualgdb.raspberry_pi</ID>
       <Version>
-        <GCC>10.2.1</GCC>
-        <GDB>10.1</GDB>
-        <Revision>1</Revision>
+        <GCC>8.3.0</GCC>
+        <GDB>8.2.1</GDB>
+        <Revision>4</Revision>
       </Version>
     </ToolchainID>
     <RelativeSourceDirectory />
@@ -85,7 +84,22 @@
         <BuildAllTargetsInSubdir>false</BuildAllTargetsInSubdir>
         <FoldSingleItemPathLevels>true</FoldSingleItemPathLevels>
       </ProjectItemSettings>
-      <TargetSpecificSettings />
+      <TargetSpecificSettings>
+        <CMakeTargetSpecificSettings>
+          <TargetID>obc</TargetID>
+          <Debug>
+            <Arguments>-src /home/pi/Documents/Code/objeck-lang/examples/hello_0.obs</Arguments>
+            <WorkingDirectory>/home/pi/Documents/Code/objeck-lang/bin</WorkingDirectory>
+          </Debug>
+          <Deployment>
+            <Mode>Auto</Mode>
+            <DeployIfNotSpecificallyReferenced>false</DeployIfNotSpecificallyReferenced>
+            <DoNotDeployVersionedBinaries>false</DoNotDeployVersionedBinaries>
+          </Deployment>
+          <HeaderDiscoveryMode>Default</HeaderDiscoveryMode>
+          <ResourceDirectories />
+        </CMakeTargetSpecificSettings>
+      </TargetSpecificSettings>
       <DeploymentDirectory>/home/pi/Documents/Code/objeck-lang/core/compiler</DeploymentDirectory>
       <SetLDLibraryPathFromDependentArtifacts>true</SetLDLibraryPathFromDependentArtifacts>
       <ProjectGUID>909c2596-22e9-4c76-9969-d65c0cd23c13</ProjectGUID>
