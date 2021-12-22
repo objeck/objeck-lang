@@ -9,6 +9,7 @@ REM build binaries
 devenv objeck.sln /rebuild "Release|x86"
 mkdir deploy\bin
 copy ..\compiler\Release\*.exe deploy\bin
+mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\Release\obr.exe;1
 copy ..\vm\Release\*.exe deploy\bin
 copy ..\debugger\Release\*.exe deploy\bin
 
