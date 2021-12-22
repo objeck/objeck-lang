@@ -73,4 +73,7 @@
   <ItemGroup>
     <Image Include="..\..\..\images\Gear.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <Xml Include="manifest.xml" />
+  </ItemGroup>
 </Project>
