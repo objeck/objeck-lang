@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
 	<assemblyIdentity
-        type="win32"
-        name="Contoso.ExampleApplication.ExampleBinary"
-        version="1.2.3.4"
-        processorArchitecture="x86"
+        name="Objeck.VM.Obr"
+        version="1.0.0.0"
     />
-	<description>Contoso Example Application</description>
+	<description>Objeck Virtual Machine</description>
 	<compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
 		<application>
 			<!-- Windows 10 and Windows 11 -->
