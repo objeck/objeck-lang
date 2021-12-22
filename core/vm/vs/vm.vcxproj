@@ -118,6 +118,12 @@
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
+    <PostBuildEvent>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Add manifest</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -137,6 +143,10 @@
       <AdditionalDependencies>libcrypto.lib;libssl.lib;crypt32.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
+    <PostBuildEvent>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
+      <Message>Add manifest</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -160,6 +170,12 @@
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
+    <PostBuildEvent>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:..\$(Configuration)\\obr.exe;1</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Add manifest</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -185,6 +201,12 @@
       <AdditionalDependencies>libcrypto.lib;libssl.lib;crypt32.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
+    <PostBuildEvent>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:..\$(Configuration)\win64\\obr.exe;1</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Add manifest</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
@@ -217,6 +239,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\images\Gear.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="manifest.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
