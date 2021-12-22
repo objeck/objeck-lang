@@ -639,7 +639,7 @@ class System {
   static BOOL GetOSDisplayString(LPTSTR buffer)
   {
     if(IsWindows10OrGreater()) {
-      StringCchCopy(buffer, BUFSIZE, TEXT("Windows 10"));
+      StringCchCopy(buffer, BUFSIZE, TEXT("Windows 10/11"));
       return TRUE;
     }
     else if(IsWindows8Point1OrGreater()) {
