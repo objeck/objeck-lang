@@ -64,15 +64,15 @@ vector<string> IPSocket::Resolve(const char* address) {
 	struct addrinfo* result;
 	if(getaddrinfo(address, nullptr, nullptr, &result)) {
 		freeaddrinfo(result);
-		return addresses;
+		return vector<string>();
 	}
 
 	struct addrinfo* res;
 	for(res = result; res != nullptr; res = res->ai_next) {
 		char hostname[NI_MAXHOST] = {0};
-		if(!getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
+		if(getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
 			freeaddrinfo(result);
-			return addresses;
+			return vector<string>();
 		}
 
 		if(*hostname != '\0') {
