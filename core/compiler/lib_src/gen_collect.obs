@@ -1,6 +1,6 @@
 #~~
 # Core collections for Objeck
-# Copyright (c) 2019-2021 Randy Hollines
+# Copyright (c) 2019-2022 Randy Hollines
 # 
 # credits:
 # - H.W. Lang - merge sort implementation based on his work
@@ -20,6 +20,9 @@ bundle Collection.Generic {
 		@cache : Map<K, S>;
 		@priority : CompareList<K>;
 
+		#~
+		Cache type
+		~#
 		enum Type {
 			LRU,
 			MRU
