@@ -3646,14 +3646,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
       
-      /*
-      if(gethostname(host_name, SMALL_BUFFER_MAX - 1) < 0) {
-        BIO_free_all(client_bio);
-        PushInt(0, op_stack, stack_pos);
-        return true;
-      }
-      */
-      
       char host_name[NI_MAXHOST];
       char port[NI_MAXSERV];
       status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,

@@ -205,46 +205,63 @@ class IPSocket {
   static vector<string> Resolve(const char* address) {
     vector<string> addresses;
 
-    struct hostent* host_info = gethostbyname(address);
-    if(!host_info) {
+    struct addrinfo* result;
+    if(getaddrinfo(address, nullptr, nullptr, &result)) {
+      freeaddrinfo(result);
       return addresses;
     }
+    
+    struct addrinfo* res;
+    for(res = result; res != nullptr; res = res->ai_next) {
+      char hostname[NI_MAXHOST];
+      if(!getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
+        freeaddrinfo(result);
+        return addresses;
+      }
 
-    struct in_addr host_addr;
-    for(int i = 0; host_info->h_addr_list[i] != NULL; ++i) {
-      memcpy(&host_addr, host_info->h_addr_list[i], host_info->h_length);
-      const string dot_name(inet_ntoa(host_addr));
-      addresses.push_back(dot_name);
+      if(*hostname != '\0') {
+        addresses.push_back(hostname);
+      }
     }
 
+    freeaddrinfo(result);
     return addresses;
   }
   
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(sock < 0) {
-      return -1;
-    }
-
-    struct hostent* host_info = gethostbyname(address);
-    if(!host_info) {
       close(sock);
       return -1;
     }
-    
-    long host_addr;
-    memcpy(&host_addr, host_info->h_addr, host_info->h_length);
-    
-    struct sockaddr_in ip_addr;
-    ip_addr.sin_addr.s_addr = host_addr;;
-    ip_addr.sin_port=htons(port);
-    memset(&ip_addr.sin_zero, 0, sizeof(ip_addr.sin_zero));
-    ip_addr.sin_family = AF_INET;
-    
-    if(!connect(sock, (struct sockaddr*)&ip_addr,sizeof(ip_addr))) {
+
+    struct addrinfo* result;
+    if(getaddrinfo(address, nullptr, nullptr, &result)) {
+      freeaddrinfo(result);
+      close(sock);
+      return -1;
+    }
+
+    bool found = false;
+    struct addrinfo* res;
+    for(res = result; res != nullptr && !found; res = res->ai_next) {
+      char hostname[NI_MAXHOST];
+      if(!getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
+        freeaddrinfo(result);
+        close(sock);
+        return -1;
+      }
+		
+      if(*hostname != '\0') {
+        found = true;
+      }
+    }
+
+    if(found && !connect(sock, res->ai_addr, (int)res->ai_addrlen)) {
       return sock;
     }
-     
+
+    freeaddrinfo(result);
     close(sock);
     return -1;
   }
@@ -279,17 +296,20 @@ class IPSocket {
   
   static SOCKET Accept(SOCKET server, char* client_address, int &client_port) {
     struct sockaddr_in pin;
-    socklen_t addrlen = sizeof(pin); 
-    SOCKET client = accept(server, (struct sockaddr *)&pin, &addrlen);
+    socklen_t addrlen = sizeof(pin);
+
+    SOCKET client = accept(server, (struct sockaddr*)&pin, &addrlen);
     if(client < 0) {
       client_address[0] = '\0';
       client_port = -1;
       return -1;
     }
     
-    strncpy(client_address, inet_ntoa(pin.sin_addr), 255);
+    char buffer[INET_ADDRSTRLEN] = { 0 };
+    inet_ntop(AF_INET, &(pin.sin_addr), buffer, INET_ADDRSTRLEN);
+    strncpy(client_address, buffer, INET_ADDRSTRLEN);
     client_port = ntohs(pin.sin_port);
-    
+
     return client;
   }
   
