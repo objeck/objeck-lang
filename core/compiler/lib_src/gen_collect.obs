@@ -51,7 +51,6 @@ bundle Collection.Generic {
 				found := @priority->Find(key);
 				if(found <> Nil) {
 					@priority->Remove();
-					@priority->AddFront(key);
 				}
 				else {
 					@cache->Insert(key, value);
@@ -61,7 +60,9 @@ bundle Collection.Generic {
 				return true;
 			}
 			else if(Remove()) {
-				return Insert(key, value);
+				@priority->AddFront(key);
+				@cache->Insert(key, value);
+				return true;
 			};
 
 			return false;
