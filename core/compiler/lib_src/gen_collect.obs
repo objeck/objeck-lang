@@ -48,8 +48,8 @@ bundle Collection.Generic {
 		method : public : Insert(key : K, value : S) ~ Bool {
 			if(@priority->Size() < @max) {
 				@priority->Rewind();
-				value := @priority->Find(key);
-				if(value <> Nil) {
+				found := @priority->Find(key);
+				if(found <> Nil) {
 					@priority->Remove();
 					@priority->AddFront(key);
 				}
