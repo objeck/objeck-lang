@@ -289,51 +289,9 @@ class File {
  ****************************/
 class IPSocket {
  public:
-  static vector<string> Resolve(const char* address) {
-    vector<string> addresses;
+   static vector<string> Resolve(const char* address);
 
-    struct hostent* host_info = gethostbyname(address);
-    if(!host_info) {
-      return addresses;
-    }
-
-    struct in_addr host_addr;
-    for(int i = 0; host_info->h_addr_list[i] != nullptr; ++i) {
-      memcpy(&host_addr, host_info->h_addr_list[i], host_info->h_length);
-      const string dot_name(inet_ntoa(host_addr));
-      addresses.push_back(dot_name);
-    }
-
-    return addresses;
-  }
-
-  static SOCKET Open(const char* address, int port) {
-    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(sock == INVALID_SOCKET) {
-      return -1;
-    }
-
-    struct hostent* host_info = gethostbyname(address);
-    if(!host_info) {
-      closesocket(sock);
-      return -1;
-    }
-
-    long host_addr;
-    memcpy(&host_addr, host_info->h_addr, host_info->h_length);
-
-    struct sockaddr_in ip_addr;
-    ip_addr.sin_addr.s_addr = host_addr;
-    ip_addr.sin_port=htons(port);
-    ip_addr.sin_family = AF_INET;
-
-    if(!connect(sock, (struct sockaddr*)&ip_addr,sizeof(ip_addr))) {
-      return sock;
-    }
-
-    closesocket(sock);
-    return -1;
-  }
+   static SOCKET Open(const char* address, int port);
   
   static int WriteByte(char value, SOCKET sock) {
     int status = send(sock, &value, 1, 0);
@@ -414,21 +372,7 @@ class IPSocket {
     return true;
   }
 
-  static SOCKET Accept(SOCKET server, char* client_address, int &client_port) {
-    struct sockaddr_in pin;
-    int addrlen = sizeof(pin);
-
-    SOCKET client = accept(server, (struct sockaddr *)&pin, &addrlen);
-    if(client == INVALID_SOCKET) {
-      client_address[0] = '\0';
-      client_port = -1;
-      return -1;
-    }
-    strncpy_s(client_address, SMALL_BUFFER_MAX - 1, inet_ntoa(pin.sin_addr), 255);
-    client_port = ntohs(pin.sin_port);
-
-    return client;
-  }
+  static SOCKET Accept(SOCKET server, char* client_address, int& client_port);
 };
 
 /****************************
