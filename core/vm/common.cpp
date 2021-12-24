@@ -204,7 +204,7 @@ void StackProgram::InitializeProprieties()
   }
 #else
   ssize_t status = 0;
-  char install_path[SMALL_BUFFER_MAX];
+  char install_path[SMALL_BUFFER_MAX] = {0};
 #ifdef _OSX
   uint32_t size = SMALL_BUFFER_MAX;
   if(_NSGetExecutablePath(install_path, &size) != 0) {
@@ -240,7 +240,7 @@ void StackProgram::InitializeProprieties()
   }
 #else
   ssize_t status = 0;
-  char install_path[SMALL_BUFFER_MAX];
+  char install_path[SMALL_BUFFER_MAX] = {0};
 #ifdef _OSX
   uint32_t size = SMALL_BUFFER_MAX;
   if(_NSGetExecutablePath(install_path, &size) != 0) {
@@ -3199,7 +3199,7 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t*
     wchar_t* str = (wchar_t*)(array + 3);
 
     // get host name
-    char buffer[SMALL_BUFFER_MAX];
+    char buffer[SMALL_BUFFER_MAX] = {0};
     if(!gethostname(buffer, SMALL_BUFFER_MAX - 1)) {
       // copy name   
       long i = 0;
@@ -3292,7 +3292,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
     SOCKET server = (SOCKET)instance[0];
-    char client_address[SMALL_BUFFER_MAX];
+    char client_address[SMALL_BUFFER_MAX] = {0};
     int client_port;
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
@@ -3354,7 +3354,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && (long)instance[0] > -1) {
-    char buffer[LARGE_BUFFER_MAX];
+    char buffer[LARGE_BUFFER_MAX] = {0};
     SOCKET sock = (SOCKET)instance[0];
     int status;
 
@@ -3479,7 +3479,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
-    char buffer[LARGE_BUFFER_MAX];
+    char buffer[LARGE_BUFFER_MAX] = {0};
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     int status;
@@ -3554,7 +3554,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         const wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
         if(!passwd_str.empty()) {
           const string passwd = UnicodeToBytes(passwd_str);
-          char passwd_buffer[MID_BUFFER_MAX];
+          char passwd_buffer[MID_BUFFER_MAX] = {0};
 #ifdef _WIN32
           strncpy_s(passwd_buffer, MID_BUFFER_MAX - 1, passwd.c_str(), passwd.size());
 #else
@@ -3624,6 +3624,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
+      /*
       int sock_fd;
       if(BIO_get_fd(client_bio, &sock_fd) < 0) {
         BIO_free_all(client_bio);
@@ -3635,21 +3636,14 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       memset((void*)&pin, 0, sizeof(pin));
       int pen_len = sizeof(pin);
       getsockname(sock_fd, (LPSOCKADDR)&pin, &pen_len);
+      */
 
-      /*
-      char client_address[SMALL_BUFFER_MAX];
-      strncpy_s(client_address, SMALL_BUFFER_MAX - 1, inet_ntoa(pin.sin_addr), 255);
-      
-
-      char host_name[SMALL_BUFFER_MAX];
+      char host_name[SMALL_BUFFER_MAX] = {0};
       if(gethostname(host_name, SMALL_BUFFER_MAX - 1) < 0) {
         BIO_free_all(client_bio);
         PushInt(0, op_stack, stack_pos);
         return true;
       }
-      */
-
-      char host_name[SMALL_BUFFER_MAX];
 
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[1] = (size_t)client_bio;
@@ -3671,7 +3665,7 @@ bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   X509* cert = (X509*)instance[3];
   if(cert) {
-    char buffer[LARGE_BUFFER_MAX];
+    char buffer[LARGE_BUFFER_MAX] = {0};
     X509_NAME_oneline(X509_get_issuer_name(cert), buffer, LARGE_BUFFER_MAX - 1);
     const wstring in = BytesToUnicode(buffer);
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
@@ -4129,7 +4123,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     FILE* file = (FILE*)instance[0];
-    char buffer[MID_BUFFER_MAX];
+    char buffer[MID_BUFFER_MAX] = {0};
     if(file && fgets(buffer, MID_BUFFER_MAX - 1, file)) {
       long end_index = (long)strlen(buffer) - 1;
       if(end_index > -1) {
