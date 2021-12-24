@@ -29,6 +29,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+
 #include "common.h"
 #include "loader.h"
 #include "interpreter.h"
@@ -3624,7 +3629,6 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
-      /*
       int sock_fd;
       if(BIO_get_fd(client_bio, &sock_fd) < 0) {
         BIO_free_all(client_bio);
@@ -3632,19 +3636,33 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
       
-      sockaddr_in pin;
-      memset((void*)&pin, 0, sizeof(pin));
+      struct sockaddr_storage pin;
+      memset(&pin, 0, sizeof(pin));
       int pen_len = sizeof(pin);
-      getsockname(sock_fd, (LPSOCKADDR)&pin, &pen_len);
-      */
-
-      char host_name[SMALL_BUFFER_MAX] = {0};
+      int status = getpeername(sock_fd, (sockaddr*)&pin, &pen_len);
+      if(status < 0) {
+				BIO_free_all(client_bio);
+				PushInt(0, op_stack, stack_pos);
+				return true;
+      }
+            
+      /*
       if(gethostname(host_name, SMALL_BUFFER_MAX - 1) < 0) {
         BIO_free_all(client_bio);
         PushInt(0, op_stack, stack_pos);
         return true;
       }
-
+      */
+			
+			char host_name[NI_MAXHOST];
+			char port[NI_MAXSERV];
+			status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
+      if(status < 0) {
+				BIO_free_all(client_bio);
+				PushInt(0, op_stack, stack_pos);
+				return true;
+			}
+			
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[1] = (size_t)client_bio;
       sock_obj[3] = 1;
