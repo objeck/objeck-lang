@@ -3588,7 +3588,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       BIO_get_ssl(bio, &ssl);
       SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
-      const string srv_addr = "*:" + to_string(port);
+      const string srv_addr = ":" + to_string(port);
       BIO* server_bio = BIO_new_accept(srv_addr.c_str());
       BIO_set_accept_bios(server_bio, bio);
       BIO_do_accept(server_bio);
@@ -3612,6 +3612,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
   if(instance) {
 		BIO* server_bio = (BIO*)instance[0];
 		BIO* bio = (BIO*)instance[1];
+    SSL_CTX* ctx = (SSL_CTX*)instance[2];
 
     if(server_bio && bio) {
       BIO_do_accept(server_bio);
@@ -3623,12 +3624,32 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
+      int sock_fd;
+      if(BIO_get_fd(client_bio, &sock_fd) < 0) {
+        BIO_free_all(client_bio);
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+      
+      sockaddr_in pin;
+      memset((void*)&pin, 0, sizeof(pin));
+      int pen_len = sizeof(pin);
+      getsockname(sock_fd, (LPSOCKADDR)&pin, &pen_len);
+
+      /*
+      char client_address[SMALL_BUFFER_MAX];
+      strncpy_s(client_address, SMALL_BUFFER_MAX - 1, inet_ntoa(pin.sin_addr), 255);
+      
+
       char host_name[SMALL_BUFFER_MAX];
       if(gethostname(host_name, SMALL_BUFFER_MAX - 1) < 0) {
         BIO_free_all(client_bio);
         PushInt(0, op_stack, stack_pos);
         return true;
       }
+      */
+
+      char host_name[SMALL_BUFFER_MAX];
 
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[1] = (size_t)client_bio;
