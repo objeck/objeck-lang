@@ -3588,7 +3588,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       BIO_get_ssl(bio, &ssl);
       SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
-      const string srv_addr = "localhost:" + to_string(port);
+      const string srv_addr = "*:" + to_string(port);
       BIO* server_bio = BIO_new_accept(srv_addr.c_str());
       BIO_set_accept_bios(server_bio, bio);
       BIO_do_accept(server_bio);
