@@ -203,29 +203,29 @@ class File {
 class IPSocket {
  public:
   static vector<string> Resolve(const char* address) {
-    vector<string> addresses;
+		vector<string> addresses;
 
-    struct addrinfo* result;
-    if(getaddrinfo(address, nullptr, nullptr, &result)) {
-      freeaddrinfo(result);
-      return addresses;
-    }
-    
-    struct addrinfo* res;
-    for(res = result; res != nullptr; res = res->ai_next) {
-      char hostname[NI_MAXHOST];
-      if(!getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
-        freeaddrinfo(result);
-        return addresses;
-      }
+		struct addrinfo* result;
+		if(getaddrinfo(address, nullptr, nullptr, &result)) {
+			freeaddrinfo(result);
+			return vector<string>();
+		}
 
-      if(*hostname != '\0') {
-        addresses.push_back(hostname);
-      }
-    }
+		struct addrinfo* res;
+		for(res = result; res != nullptr; res = res->ai_next) {
+			char hostname[NI_MAXHOST] = { 0 };
+			if(getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
+				freeaddrinfo(result);
+				return vector<string>();
+			}
 
-    freeaddrinfo(result);
-    return addresses;
+			if(*hostname != '\0') {
+				addresses.push_back(hostname);
+			}
+		}
+
+		freeaddrinfo(result);
+		return addresses;
   }
   
   static SOCKET Open(const char* address, int port) {
