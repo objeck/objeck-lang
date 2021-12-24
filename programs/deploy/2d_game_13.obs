@@ -60,7 +60,7 @@ class Game {
 		game := Game->New();
 
 		@level_mutex := ThreadMutex->New("level_lock");
-		while(game->TileScreen()) {
+		while(game->TidleScreen()) {
 			game->Play();
 		};
 		
@@ -120,7 +120,7 @@ class Game {
 		@current_level := 1;
 	}
 
-	method : TileScreen() ~ Bool {
+	method : TidleScreen() ~ Bool {
 		e := @framework->GetEvent();
 
 		@high_score_text := @framework->AddTextSprite();
