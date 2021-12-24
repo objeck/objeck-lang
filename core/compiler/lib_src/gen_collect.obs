@@ -47,8 +47,9 @@ bundle Collection.Generic {
 		~#
 		method : public : Insert(key : K, value : S) ~ Bool {
 			if(@priority->Size() < @max) {
-				if(@cache->Has(key)) {
-					@priority->Find(key);
+				@priority->Rewind();
+				value := @priority->Find(key);
+				if(value <> Nil) {
 					@priority->Remove();
 					@priority->AddFront(key);
 				}
@@ -88,17 +89,17 @@ bundle Collection.Generic {
 
 				if(@type = Cache->Type->LRU) {
 					removed := @priority->Back();
+					@priority->RemoveBack();
 				}
 				else {
 					removed := @priority->Front();
+					@priority->RemoveFront();
 				};
-
-				@priority->RemoveBack();
 				@cache->Remove(removed);
-
+				
 				return true;
 			};
-
+			
 			return false;
 		}
 
