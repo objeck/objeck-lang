@@ -229,41 +229,27 @@ class IPSocket {
   }
   
   static SOCKET Open(const char* address, int port) {
-    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(sock < 0) {
-      close(sock);
-      return -1;
-    }
+		addrinfo* addr;
+		if(getaddrinfo(address, nullptr, nullptr, &addr)) {
+			return -1;
+		}
 
-    struct addrinfo* result;
-    if(getaddrinfo(address, nullptr, nullptr, &result)) {
-      freeaddrinfo(result);
-      close(sock);
-      return -1;
-    }
+		SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+		if(sock < 0) {
+			return -1;
+		}
 
-    bool found = false;
-    struct addrinfo* res;
-    for(res = result; res != nullptr && !found; res = res->ai_next) {
-      char hostname[NI_MAXHOST];
-      if(!getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
-        freeaddrinfo(result);
-        close(sock);
-        return -1;
-      }
-		
-      if(*hostname != '\0') {
-        found = true;
-      }
-    }
+		sockaddr_in pin;
+		memset(&pin, 0, sizeof(pin));
+		pin.sin_family = addr->ai_family;
+		pin.sin_addr.s_addr = *((uint32_t*)&(((sockaddr_in*)addr->ai_addr)->sin_addr));
+		pin.sin_port = htons(port);
 
-    if(found && !connect(sock, res->ai_addr, (int)res->ai_addrlen)) {
-      return sock;
-    }
+		if(connect(sock, (struct sockaddr*)&pin, sizeof(pin)) < 0) {
+			return -1;
+		}
 
-    freeaddrinfo(result);
-    close(sock);
-    return -1;
+		return sock;
   }
   
   static SOCKET Bind(int port) {
