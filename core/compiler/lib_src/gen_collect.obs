@@ -62,6 +62,7 @@ bundle Collection.Generic {
 			else if(Remove()) {
 				@priority->AddFront(key);
 				@cache->Insert(key, value);
+
 				return true;
 			};
 
