@@ -184,7 +184,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_WIN64;_OBJECK_NATIVE_LIB_PATH</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;_OBJECK_NATIVE_LIB_PATH;_WINSOCK_DEPRECATED_NO_WARNINGS</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
