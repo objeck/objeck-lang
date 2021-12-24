@@ -1,5 +1,5 @@
 /***************************************************************************
- * VM stack machine.
+ * Provides runtime support for Windows (Win32) based systems.
  *
  * Copyright (c) 2008-2022, Randy Hollines
  * All rights reserved.
