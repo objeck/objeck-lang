@@ -3638,14 +3638,14 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       
       struct sockaddr_storage pin;
       memset(&pin, 0, sizeof(pin));
-      int pen_len = sizeof(pin);
+      socklen_t pen_len = sizeof(pin);
       int status = getpeername(sock_fd, (sockaddr*)&pin, &pen_len);
       if(status < 0) {
-				BIO_free_all(client_bio);
-				PushInt(0, op_stack, stack_pos);
-				return true;
+        BIO_free_all(client_bio);
+        PushInt(0, op_stack, stack_pos);
+        return true;
       }
-            
+      
       /*
       if(gethostname(host_name, SMALL_BUFFER_MAX - 1) < 0) {
         BIO_free_all(client_bio);
@@ -3653,16 +3653,17 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
       */
-			
-			char host_name[NI_MAXHOST];
-			char port[NI_MAXSERV];
-			status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
+      
+      char host_name[NI_MAXHOST];
+      char port[NI_MAXSERV];
+      status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
+                           sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
       if(status < 0) {
-				BIO_free_all(client_bio);
-				PushInt(0, op_stack, stack_pos);
-				return true;
-			}
-			
+        BIO_free_all(client_bio);
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+      
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[1] = (size_t)client_bio;
       sock_obj[3] = 1;
