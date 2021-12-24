@@ -3646,8 +3646,8 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
       
-      char host_name[NI_MAXHOST];
-      char port[NI_MAXSERV];
+      char host_name[NI_MAXHOST] = {0};
+      char port[NI_MAXSERV] = {0};
       status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
                            sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
       if(status < 0) {
