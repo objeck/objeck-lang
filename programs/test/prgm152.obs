@@ -1,9 +1,31 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := "0x0fae7";
-		IsInt(str)->PrintLine();
+		str := ".5";
+		IsFloat(str)->PrintLine();
 	}
 	
+	function : IsFloat(str : String) ~ Bool {
+		count := str->Count('.');
+		if(count = 1) {
+			halves := str->Split(".");
+			first := halves[0];
+			second := halves[1];
+
+			result := false;
+			if(first <> Nil) {
+				IsInt(first)->PrintLine();
+			};
+
+			if(second <> Nil) {
+				IsInt(second)->PrintLine();
+			};
+
+			return false;
+		};
+
+		return false;
+	}
+
 	function : IsInt(str : String) ~ Bool {
 		if(<>str->IsEmpty()) {
 			check_hex := false;
