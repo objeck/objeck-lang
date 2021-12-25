@@ -236,6 +236,7 @@ class IPSocket {
 
 		SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 		if(sock < 0) {
+			close(sock);
 			return -1;
 		}
 
@@ -246,6 +247,7 @@ class IPSocket {
 		pin.sin_port = htons(port);
 
 		if(connect(sock, (struct sockaddr*)&pin, sizeof(pin)) < 0) {
+			close(sock);
 			return -1;
 		}
 
