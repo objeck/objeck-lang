@@ -11,16 +11,16 @@ class Test {
 			first := halves[0];
 			second := halves[1];
 
-			result := false;
+			result := true;
 			if(first <> Nil) {
-				IsInt(first)->PrintLine();
+				result := IsInt(first);
 			};
 
 			if(second <> Nil) {
-				IsInt(second)->PrintLine();
+				result := IsInt(second);
 			};
 
-			return false;
+			return result;
 		};
 
 		return false;
