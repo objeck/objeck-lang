@@ -1,8 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := 5;
-		each(i : 'a') {
-			i->PrintLine();
-		};
+		
 	}
 }

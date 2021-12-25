@@ -3,7 +3,7 @@ class Test {
 		str := "0x0fae7";
 		IsInt(str)->PrintLine();
 	}
-
+	
 	function : IsInt(str : String) ~ Bool {
 		if(<>str->IsEmpty()) {
 			check_hex := false;
