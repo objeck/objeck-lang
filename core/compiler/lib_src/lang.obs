@@ -2825,6 +2825,37 @@ bundle System {
 
 			return -1;
 		}
+
+		#~
+		Counts the occurrence of a character
+		@param char character to search for
+		@return count of occurrences or -1 if not found
+		~#
+		method : public : Count(char : Char) ~ Int {
+			return Count(0, char);
+		}
+		
+		#~
+		Counts the occurrence of a character
+		@param offset search offset
+		@param char character to search for
+		@return count of occurrences or -1 if not found
+		~#
+		method : public : native : Count(offset : Int, char : Char) ~ Int {
+			if(offset < @pos & offset > -1) {
+				count := 0;
+
+				for(i := offset; i < @pos; i += 1;) {
+					if(@string[i] = char) {
+						count += 1;
+					};
+				};
+
+				return count;
+			};
+
+			return -1;
+		}
 		
 		#~
 		Searches for the last occurrence of a character
