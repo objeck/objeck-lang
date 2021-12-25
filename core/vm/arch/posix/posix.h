@@ -231,7 +231,6 @@ class IPSocket {
   static SOCKET Open(const char* address, int port) {
 		addrinfo* addr;
 		if(getaddrinfo(address, nullptr, nullptr, &addr)) {
-			close(sock);
 			return -1;
 		}
 
