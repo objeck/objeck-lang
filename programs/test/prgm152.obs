@@ -1,26 +1,41 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := "1./5";
-		IsFloat(str)->PrintLine();
+		if(args->Size() = 1) {
+			IsFloat(args[0])->PrintLine();
+		};
 	}
 	
 	function : IsFloat(str : String) ~ Bool {
 		count := str->Count('.');
 		if(count = 1) {
 			halves := str->Split(".");
-			first := halves[0];
-			second := halves[1];
+			if(halves->Size() = 0) {
+				str->Pop();	
+				return IsInt(str);
+			}
+			else {
+				first := halves[0];
+				second := halves[1];
+"first='{$first}', second='{$second}'"->PrintLine();
+				if(first <> Nil) {
+					if(<>IsInt(first)) {
+						return false;
+					};
+				};
+"p2"->PrintLine();
+				if(second <> Nil) {
+					if(<>IsInt(second)) {
+						return false;
+					};
+				};
 
-			result := true;
-			if(first <> Nil) {
-				result := IsInt(first);
+				return true;
 			};
 
-			if(second <> Nil) {
-				result := IsInt(second);
-			};
-
-			return result;
+			return false;
+		}
+		else {
+			return IsInt(str);
 		};
 
 		return false;
@@ -35,7 +50,7 @@ class Test {
 			if(str->Get(start) = '-' | str->Get(start) = '+') {
 				start += 1;
 			}
-			else if(str->Get(start) = '0') {
+			else if(str->Size() > 1 & str->Get(start) = '0') {
 				start += 1;
 				check_hex := true;
 			};

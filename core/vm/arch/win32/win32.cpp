@@ -42,6 +42,7 @@ SOCKET IPSocket::Open(const char* address, int port) {
 
 	SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 	if(sock < 0) {
+		closesocket(sock);
 		return -1;
 	}
 
@@ -52,6 +53,7 @@ SOCKET IPSocket::Open(const char* address, int port) {
 	pin.sin_port = htons(port);
 
 	if(connect(sock, (struct sockaddr*)&pin, sizeof(pin)) < 0) {
+		closesocket(sock);
 		return -1;
 	}
 
