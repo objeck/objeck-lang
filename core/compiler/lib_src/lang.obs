@@ -2809,6 +2809,130 @@ bundle System {
 			return -1;
 		}
 
+        #~
+        Checks to see if the string can be represented as an float
+        @return true if the string can be represented as an float, false otherwise
+        ~#
+        method : public : IsFloat() ~ Bool {
+		    if(@pos > 1) {
+			    count := Count('.');
+			    if(count = 1) {
+				    halves := Split(".");
+								    
+				    count := halves->Size();
+				    if(count = 0) {
+					    for(i := 0; i < @pos - 1; i +=1;) {
+						    c := @string[i];
+						    if(<>(c >= '0' & c <= '9')) {
+							    return false;
+						    };
+					    };
+
+					    return true;
+				    }
+				    else if(count = 2) {
+					    first := halves[0];
+					    second := halves[1];
+
+					    if(first <> Nil & second <> Nil) {
+						    return IsInt(first) & IsInt(second);
+					    }
+					    else {
+						    return IsInt(second);
+					    };
+				    };
+			    };
+
+			    return false;
+		    };
+
+		    return IsInt();
+	    }
+        
+        method : IsInt(str : String) ~ Bool {
+		    # empty string
+		    if(str->Size() > 0) {
+			    i := 0;
+
+			    if(str->Get(0) = '+' | str->Get(0) = '-') {
+				    i += 1;
+			    };
+
+			    # hex
+			    if(str->Size() > i + 2 & str->Get(i) = '0' & (str->Get(i + 1) = 'x' | str->Get(i + 1) = 'X')) {
+				    for(i := i + 2; i < str->Size(); i +=1;) {
+					    c := str->Get(i);					
+					    first := c >= '0' & c <= '9';
+					    second := c >= 'a' & c <= 'f';
+					    third := c >= 'A' & c <= 'F';
+
+					    if(<>first & <>second & <>third) {
+						    return false;
+					    };
+				    };
+
+				    return true;
+			    }
+			    # decimal
+			    else if(str->Size() > i) {	
+				    for(i := i; i < str->Size(); i +=1;) {
+					    c := str->Get(i);
+					    if(<>(c >= '0' & c <= '9')) {
+						    return false;
+					    };
+				    };
+
+				    return true;
+			    };
+		    };
+
+		    return false;
+	    }        
+
+        #~
+        Checks to see if the string can be represented as an interger
+        @return true if the string can be represented as an interger, false otherwise
+        ~#
+        method : public : native : IsInt() ~ Bool {
+		    # empty string
+		    if(@pos > 0) {
+			    i := 0;
+
+			    if(@string[0] = '+' | @string[0] = '-') {
+				    i += 1;
+			    };
+
+			    # hex
+			    if(@pos > i + 2 & @string[i] = '0' & (@string[i + 1] = 'x' | @string[i + 1] = 'X')) {
+				    for(i := i + 2; i < @pos; i +=1;) {
+					    c := @string[i];					
+					    first := c >= '0' & c <= '9';
+					    second := c >= 'a' & c <= 'f';
+					    third := c >= 'A' & c <= 'F';
+
+					    if(<>first & <>second & <>third) {
+						    return false;
+					    };
+				    };
+
+				    return true;
+			    }
+			    # decimal
+			    else if(@pos > i) {	
+				    for(i := i; i < @pos; i +=1;) {
+					    c := @string[i];
+					    if(<>(c >= '0' & c <= '9')) {
+						    return false;
+					    };
+				    };
+
+				    return true;
+			    };
+		    };
+
+		    return false;
+	    }
+
 		#~
 		Counts the occurrence of a character
 		@param char character to search for
