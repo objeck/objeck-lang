@@ -60,6 +60,7 @@ SOCKET IPSocket::Open(const char* address, int port) {
 		return -1;
 	}
 
+	freeaddrinfo(addr);
 	return sock;
 }
 
