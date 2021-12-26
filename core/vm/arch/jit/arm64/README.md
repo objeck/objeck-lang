@@ -1,7 +1,7 @@
 ## JIT Compiler for Apple Silicon (ARM64) 
 Code now released and stable.
 
-While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers. Values stored in volatile registers need to saved between function calls. ARMv8 does not support novel conditional instruction execution.
+While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers an increase. Values stored in volatile registers need to be saved between function calls. ARMv8 does not support novel conditional instruction execution.
 
 ### Registers and Stack
 Using 8 registers for general usage and an additional 2 for conversions. Using 8 floating point registers for general calculations.
