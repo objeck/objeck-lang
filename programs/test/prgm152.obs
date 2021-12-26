@@ -2,90 +2,14 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			if(args[0]->Equals("float")) {
-				IsFloat(args[1])->PrintLine();
+				args[1]->IsFloat()->PrintLine();
 			}
 			else if(args[0]->Equals("int")) {
-				IsInt(args[1])->PrintLine();
+				args[1]->IsInt()->PrintLine();
 			}
 			else {
 				"unknown type"->PrintLine();
 			};
 		};
-	}
-
-	function : IsFloat(str : String) ~ Bool {
-		if(str->Size() > 1) {
-			count := str->Count('.');
-			if(count = 1) {
-				halves := str->Split(".");
-								
-				count := halves->Size();
-				if(count = 0) {
-					for(i := 0; i < str->Size() - 1; i +=1;) {
-						c := str->Get(i);
-						if(<>(c >= '0' & c <= '9')) {
-							return false;
-						};
-					};
-
-					return true;
-				}
-				else if(count = 2) {
-					first := halves[0];
-					second := halves[1];
-
-					if(first <> Nil & second <> Nil) {
-						return IsInt(first) & IsInt(second);
-					}
-					else {
-						return IsInt(second);
-					};
-				};
-			};
-
-			return false;
-		};
-
-		return IsInt(str);
-	}
-
-	function : IsInt(str : String) ~ Bool {
-		# empty string
-		if(str->Size() > 0) {
-			i := 0;
-
-			if(str->Get(0) = '+' | str->Get(0) = '-') {
-				i += 1;
-			};
-
-			# hex
-			if(str->Size() > i + 2 & str->Get(i) = '0' & (str->Get(i + 1) = 'x' | str->Get(i + 1) = 'X')) {
-				for(i := i + 2; i < str->Size(); i +=1;) {
-					c := str->Get(i);					
-					first := c >= '0' & c <= '9';
-					second := c >= 'a' & c <= 'f';
-					third := c >= 'A' & c <= 'F';
-
-					if(<>first & <>second & <>third) {
-						return false;
-					};
-				};
-
-				return true;
-			}
-			# decimal
-			else if(str->Size() > i) {	
-				for(i := i; i < str->Size(); i +=1;) {
-					c := str->Get(i);
-					if(<>(c >= '0' & c <= '9')) {
-						return false;
-					};
-				};
-
-				return true;
-			};
-		};
-
-		return false;
 	}
 }
