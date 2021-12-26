@@ -4,12 +4,15 @@ class Test {
 			if(args[0]->Equals("float")) {
 				IsFloat(args[1])->PrintLine();
 			}
-			else {
+			else if(args[0]->Equals("int")) {
 				IsInt(args[1])->PrintLine();
+			}
+			else {
+				"unknown type"->PrintLine();
 			};
 		};
 	}
-
+	
 	function : IsFloat(str : String) ~ Bool {
 		return false;
 	}
