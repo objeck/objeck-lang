@@ -2510,6 +2510,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 			NextToken();
 			break;
 
+		case SOCK_TCP_ERROR:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_TCP_ERROR);
+			NextToken();
+			break;
+
     case SOCK_TCP_IS_CONNECTED:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_IS_CONNECTED);
