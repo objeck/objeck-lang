@@ -6982,6 +6982,14 @@ bundle System.IO.Net {
 		method : public : Close() ~ Nil {
 			SOCK_TCP_CLOSE;
 		}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		method : public : GetLastError() ~ String {
+			SOCK_TCP_ERROR;
+		}
 	}
 	
 	#~
@@ -7167,6 +7175,14 @@ bundle System.IO.Net {
 		~#
 		method : public : Close() ~ Nil {
 			SOCK_TCP_SSL_CLOSE;
+		}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		method : public : GetLastError() ~ String {
+			SOCK_TCP_ERROR;
 		}
 	}
 	
