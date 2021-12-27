@@ -7006,31 +7006,7 @@ bundle System.IO.Net {
 			@port := port;
 			SOCK_TCP_SSL_CONNECT;
 		}
-
-		#~
-		Returns the connected network address
-		@return return network address
-		~#
-		method : public : GetAddress() ~ String {
-			return @address;
-		}
-		
-		#~
-		Returns the connected network port
-		@return return network port
-		~#
-		method : public : GetPort() ~ Int {
-			return @port;
-		}
-
-		#~
-		Returns rather the socket is open
-		@return true if socket is open, false otherwise
-		~#
-		method : public : IsOpen() ~ Bool {
-			return @is_open;
-		}
-
+        
 		#~
 		Returns the connected network address
 		@return return network address
