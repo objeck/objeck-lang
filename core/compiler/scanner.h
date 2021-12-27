@@ -254,6 +254,7 @@ enum ScannerTokenType {
   SOCK_TCP_BIND,
   SOCK_TCP_LISTEN,
   SOCK_TCP_ACCEPT,
+  SOCK_TCP_ERROR,
 	// secure socket server operations
 	SOCK_TCP_SSL_LISTEN,
 	SOCK_TCP_SSL_ACCEPT,
