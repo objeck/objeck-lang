@@ -2107,6 +2107,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_TCP_IN_STRING:
       return SockTcpInString(program, inst, op_stack, stack_pos, frame);
 
+		case SOCK_TCP_ERROR:
+			return SockTcpError(program, inst, op_stack, stack_pos, frame);
+
     case SOCK_TCP_SSL_CONNECT:
       return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
 
@@ -3685,6 +3688,11 @@ bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_
     PushInt(0, op_stack, stack_pos);
   }
 
+  return true;
+}
+
+bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
   return true;
 }
 
