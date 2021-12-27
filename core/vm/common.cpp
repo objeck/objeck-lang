@@ -3693,8 +3693,6 @@ bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_
 
 bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
 #ifdef _WIN32
   char error_msg[SMALL_BUFFER_MAX] = {0};
 	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,	0, WSAGetLastError(), 0, error_msg, SMALL_BUFFER_MAX, 0);
@@ -3708,30 +3706,20 @@ bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& o
 		const wstring err_msg = BytesToUnicode(strerror(errno));
 		PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
 #endif
-  }
-	else {
-	  PushInt(0, op_stack, stack_pos);
-	}
-
+  
   return true;
 }
 
 bool TrapProcessor::SockTcpSslError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
-    const int err_code = ERR_get_error();
-    if(!err_code) {
-      PushInt(0, op_stack, stack_pos);
-    }
-    else {
-      const wstring err_msg = BytesToUnicode(ERR_reason_error_string(err_code));
-      PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
-    }
-	}
-	else {
-		PushInt(0, op_stack, stack_pos);
-	}
+  const int err_code = ERR_get_error();
+  if(!err_code) {
+    PushInt(0, op_stack, stack_pos);
+  }
+  else {
+    const wstring err_msg = BytesToUnicode(ERR_reason_error_string(err_code));
+    PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
 
   return true;
 }
