@@ -6987,7 +6987,7 @@ bundle System.IO.Net {
 		Get the last error
 		@return last error message, or Nil of no error
 		~#
-		method : public : GetLastError() ~ String {
+		function : GetLastError() ~ String {
 			SOCK_TCP_ERROR;
 		}
 	}
@@ -7166,7 +7166,7 @@ bundle System.IO.Net {
 		Get the last error
 		@return last error message, or Nil of no error
 		~#
-		method : public : GetLastError() ~ String {
+		function : GetLastError() ~ String {
 			SOCK_TCP_SSL_ERROR;
 		}
 
@@ -7223,7 +7223,7 @@ bundle System.IO.Net {
 		Get the last error
 		@return last error message, or Nil of no error
 		~#
-		method : public : GetLastError() ~ String {
+		function : GetLastError() ~ String {
 			SOCK_TCP_ERROR;
 		}
 	}
@@ -7283,7 +7283,7 @@ bundle System.IO.Net {
 		Get the last error
 		@return last error message, or Nil of no error
 		~#
-		method : public : GetLastError() ~ String {
+		function : GetLastError() ~ String {
 			SOCK_TCP_SSL_ERROR;
 		}
 		
