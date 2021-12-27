@@ -1,15 +1,11 @@
-class Test {
+class Numeric {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
-			if(args[0]->Equals("float")) {
-				args[1]->IsFloat()->PrintLine();
-			}
-			else if(args[0]->Equals("int")) {
-				args[1]->IsInt()->PrintLine();
-			}
-			else {
-				"unknown type"->PrintLine();
-			};
+		if(args->Size() = 1) {
+			IsNumeric(args[0])->PrintLine();
 		};
+	}
+	
+	function : IsNumeric(str : String) ~ Bool {
+		return str->IsFloat();
 	}
 }
