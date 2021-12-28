@@ -2829,8 +2829,12 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
   // evaluate matches
   MethodCallSelector selector(method_call, matches);
   Method* method = selector.GetSelection();
-
   if(method) {
+#ifdef _DIAG_LIB
+    // associate method call with method for diagnostics
+    method->AddMethodCall(method_call);
+#endif
+
     // check casts on final candidate
     vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
     for(size_t j = 0; j < expr_params.size(); ++j) {
@@ -3113,7 +3117,6 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   // evaluate matches
   LibraryMethodCallSelector selector(method_call, matches);
   LibraryMethod* lib_method = selector.GetSelection();
-  
   if(lib_method) {
     // check casts on final candidate
     vector<Type*> method_parms = lib_method->GetDeclarationTypes();
@@ -8025,8 +8028,6 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
   Expression* found_expression = nullptr;
   bool is_alt = false;
 
-  // TODO: class level?, right file
-
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
     const wstring entry_name = method->GetName() + L':' + found_name;
     SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(entry_name);
@@ -8240,6 +8241,37 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
 
       default:
         break;
+      }
+    }
+  }
+
+  // find method calls associated with methods
+  if(matched_expressions.empty()) {
+		vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t i = 0; i < bundles.size(); ++i) {
+      vector<Class*> classes = bundles[i]->GetClasses();
+      for(size_t j = 0; j < classes.size(); ++j) {
+        vector<Method*> methods = classes[j]->GetMethods();
+        for(size_t k = 0; k < methods.size(); ++k) {
+          Method* method = methods[k];
+          const int mthd_line_num = method->GetLineNumber() - 1;
+          if(mthd_line_num == line_num) {
+            const wstring mthd_long_name = method->GetName();
+            const size_t mthd_long_name_index = mthd_long_name.find(':');
+            if(mthd_long_name_index != wstring::npos) {
+              const wstring mthd_name = mthd_long_name.substr(mthd_long_name_index + 1);
+              const int start_pos = method->GetMidLinePosition();
+              const int end_pos = start_pos + (int)mthd_name.size();
+              if(start_pos < line_pos && end_pos > line_pos) {
+                is_var = false;
+                const vector<MethodCall*> method_calls = method->GetMethodCalls();
+                for(auto method_call : method_calls) {
+									matched_expressions.push_back(method_call);
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

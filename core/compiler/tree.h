@@ -1883,6 +1883,7 @@ namespace frontend {
     Class* klass;
 #ifdef _DIAG_LIB
     vector<Expression*> diagnostic_expressions;
+    vector<MethodCall*> diagnostic_method_calls;
 #endif
     
     Method(const wstring& f, const int l, const int p, const int ml, const int mp, const wstring& n,
@@ -2138,11 +2139,17 @@ namespace frontend {
       diagnostic_expressions = e;
     }
 
-    vector < Expression*> GetExpressions() {
+    vector <Expression*> GetExpressions() {
       return diagnostic_expressions;
     }
 
+    void AddMethodCall(MethodCall* method_call) {
+      diagnostic_method_calls.push_back(method_call);
+    }
 
+		vector <MethodCall*> GetMethodCalls() {
+			return diagnostic_method_calls;
+		}
 #endif
   };
 
