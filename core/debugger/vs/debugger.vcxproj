@@ -122,7 +122,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>libcrypto.lib;libssl.lib;crypt32.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcrypto.lib;libssl.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
@@ -188,6 +188,7 @@
     <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\..\vm\arch\jit\ia32\jit_intel_lp32.cpp" Condition="'$(Platform)'=='Win32'" />
     <ClCompile Include="..\..\vm\arch\memory.cpp" />
+    <ClCompile Include="..\..\vm\arch\win32\win32.cpp" />
     <ClCompile Include="..\..\vm\common.cpp" />
     <ClCompile Include="..\..\vm\interpreter.cpp" />
     <ClCompile Include="..\..\vm\loader.cpp" />
