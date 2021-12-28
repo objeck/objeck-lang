@@ -164,7 +164,7 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Clears the vector
+		Clears the cache
 		~#
 		method : public : Empty() ~ Nil {
 			@cache->Empty();
