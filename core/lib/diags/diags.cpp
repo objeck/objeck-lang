@@ -870,8 +870,14 @@ void diag_hover(VMContext& context)
                 }
                 else {
                   mthd_dclr = method_call->GetMethod();
-                  start_pos = end_pos = method_call->GetMidLinePosition();
-                  end_pos += (int)method_call->GetMethodName().size();
+                  if(method_call->GetMidLinePosition() < 0) {
+										start_pos = end_pos = expression->GetLinePosition();
+										end_pos += (int)method_call->GetMethodName().size();
+                  }
+                  else {
+                    start_pos = end_pos = method_call->GetMidLinePosition();
+                    end_pos += (int)method_call->GetMethodName().size();
+                  }
                 }
 
                 reference_obj[ResultPosition::POS_TYPE] = 200;
