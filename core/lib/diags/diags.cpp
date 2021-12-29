@@ -231,10 +231,10 @@ extern "C" {
         klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, klass->GetName());
         klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, klass->GetFileName());
         klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
-        klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber();
-        klass_symb_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition();
-        klass_symb_obj[ResultPosition::POS_END_LINE] = klass->GetEndLineNumber();
-        klass_symb_obj[ResultPosition::POS_END_POS] = klass->GetEndLinePosition();
+        klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber() - 1;
+        klass_symb_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition() - 1;
+        klass_symb_obj[ResultPosition::POS_END_LINE] = klass->GetEndLineNumber() - 1;
+        klass_symb_obj[ResultPosition::POS_END_POS] = klass->GetEndLinePosition() - 1;
         klass_array_ptr[index++] = (size_t)klass_symb_obj;
 
         // methods
@@ -811,22 +811,23 @@ void diag_hover(VMContext& context)
           // method/function
           if(!is_var && expressions.size() > 0 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
             Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
-
             expressions.clear();
 
-            vector<ParsedBundle*> bundles = program->GetBundles();
-            for(size_t i = 0; i < bundles.size(); ++i) {
-              vector<Class*> classes = bundles[i]->GetClasses();
-              for(size_t j = 0; j < classes.size(); ++j) {
-                vector<Method*> methods = classes[j]->GetMethods();
-                for(size_t k = 0; k < methods.size(); ++k) {
-                  // TODO: all method calls (statements and expressions)
-                  vector<Expression*> method_expressions = methods[k]->GetExpressions();
-                  for(size_t l = 0; l < method_expressions.size(); ++l) {
-                    if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
-                      MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
-                      if(local_method_call->GetMethod() == search_method) {
-                        expressions.push_back(local_method_call);
+            if(search_method) {
+              vector<ParsedBundle*> bundles = program->GetBundles();
+              for(size_t i = 0; i < bundles.size(); ++i) {
+                vector<Class*> classes = bundles[i]->GetClasses();
+                for(size_t j = 0; j < classes.size(); ++j) {
+                  vector<Method*> methods = classes[j]->GetMethods();
+                  for(size_t k = 0; k < methods.size(); ++k) {
+                    // TODO: all method calls (statements and expressions)
+                    vector<Expression*> method_expressions = methods[k]->GetExpressions();
+                    for(size_t l = 0; l < method_expressions.size(); ++l) {
+                      if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
+                        MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
+                        if(local_method_call->GetMethod() == search_method) {
+                          expressions.push_back(local_method_call);
+                        }
                       }
                     }
                   }
