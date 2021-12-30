@@ -7599,8 +7599,8 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   found_completion.push_back(pair<int, wstring>(14, L"String"));
   found_completion.push_back(pair<int, wstring>(14, L"As"));
   found_completion.push_back(pair<int, wstring>(14, L"Nil"));
-  found_completion.push_back(pair<int, wstring>(14, L"true"));
-  found_completion.push_back(pair<int, wstring>(14, L"false"));
+  // found_completion.push_back(pair<int, wstring>(12, L"true"));
+  // found_completion.push_back(pair<int, wstring>(12, L"false"));
   found_completion.push_back(pair<int, wstring>(14, L"method"));
   found_completion.push_back(pair<int, wstring>(14, L"function"));
   found_completion.push_back(pair<int, wstring>(14, L"class"));
