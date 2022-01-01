@@ -1190,7 +1190,8 @@ void TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, lo
     APITools_MethodCall(op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    wcerr << L">>> Unable to load class; name='" << cls_id.c_str() << L"' <<<" << endl;
+    exit(1);
   }
 }
 
