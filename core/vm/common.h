@@ -1713,7 +1713,7 @@ class TrapProcessor {
   //
   // creates new object and call default constructor
   //
-  static inline void CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos);
+  static inline bool CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos);
 
   //
   // creates a new class instance
