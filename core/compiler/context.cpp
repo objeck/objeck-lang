@@ -3249,6 +3249,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
+    // TODO: testing
+    if(!method_call->GetVariable() && !method_call->GetEntry() && !lib_method->IsStatic() &&
+      lib_method->GetMethodType() != NEW_PUBLIC_METHOD && lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
+    }
+
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
