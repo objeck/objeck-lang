@@ -1182,7 +1182,7 @@ void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
 /********************************
  *  TrapManager class
  ********************************/
-void TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos) {
+bool TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos) {
   size_t* obj = MemoryManager::AllocateObject(cls_id.c_str(), op_stack, *stack_pos, false);
   if(obj) {
     // instance will be put on stack by method call
@@ -1191,8 +1191,10 @@ void TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, lo
   }
   else {
     wcerr << L">>> Unable to load class; name='" << cls_id.c_str() << L"' <<<" << endl;
-    exit(1);
+    return false;
   }
+
+  return true;
 }
 
 /********************************
@@ -2368,7 +2370,7 @@ bool TrapProcessor::LoadNewObjInst(StackProgram* program, size_t* inst, size_t* 
 #ifdef _DEBUG
     wcout << L"stack oper: LOAD_NEW_OBJ_INST; name='" << name << L"'" << endl;
 #endif
-    CreateNewObject(name, op_stack, stack_pos);
+    return CreateNewObject(name, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
