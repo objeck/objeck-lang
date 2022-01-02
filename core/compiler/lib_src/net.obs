@@ -1336,7 +1336,7 @@ bundle Web.HTTP {
 
 			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
 				while(true) {
-					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
 					handler->Execute(@secure_server->Accept());
 				};
 			}
@@ -1362,7 +1362,7 @@ bundle Web.HTTP {
 
 			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
 				while(true) {
-					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
 					handler->Execute(@server->Accept());
 				};
 			}
@@ -1388,9 +1388,9 @@ bundle Web.HTTP {
 	}
 
 	#~
-	Request handler for GET and POST requests
+	Request handler for HTTPS GET and POST requests
 	~#
-	class HttpRequestHandler from Thread {
+	class HttpsRequestHandler from System.Concurrency.Thread {
 		@client : TCPSecureSocket;
 		@debug : Bool;
 
@@ -1401,6 +1401,132 @@ bundle Web.HTTP {
 
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSecureSocket);
+
+			if(@client <> Nil & @client->IsOpen()) {
+				# get request
+				request := @client->ReadLine();
+				if(@debug) {
+					request_address := @client->GetAddress();
+					"Request: '{$request}' from '{$request_address}'"->PrintLine();
+				};
+
+				# parse request
+				request_verb : String; request_url : String;
+				if(request->Size() > 0) {
+					request_parts := request->Split(" ");
+					if(request_parts->Size() = 3) {
+						request_verb := request_parts[0];
+						request_url := request_parts[1];
+					};
+				};
+
+				# verify request
+				if(request_verb <> Nil & request_url <> Nil & <>request_url->IsEmpty()) {
+					# get request headers
+					request_headers := GetHeaders();
+
+					# GET request
+					if(request_verb->Equals("GET")) {
+
+						# retrieve content
+						if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
+							request_url := "/index.html";
+						};
+
+						# write response
+						response_headers := Map->New()<String, String>;
+						content := ProcessGet(request_url, request_headers, response_headers);
+						if(content <> Nil) {
+							response_header := "";
+							key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+							each(i : key_values) {
+								key_value := key_values->Get(i);
+								key := key_value->GetFirst();
+								value := key_value->GetSecond();
+								response_header += "{$key}: {$value}\r\n";
+							};
+
+							content_size := content->Size();
+							response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+							@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+							@client->WriteBuffer(content);
+						}
+						else {
+							@client->WriteString("HTTP/1.1 302 Found\r\nLocation: /index.html\r\nConnection: close\r\n\r\n");
+						};
+					}
+					# POST request
+					else if(request_verb->Equals("POST")) {
+						content_length := request_headers->Find("Content-Length");
+						if(content_length <> Nil) {
+							buffer := Byte->New[content_length->ToInt()];
+							@client->ReadBuffer(0, buffer->Size(), buffer);
+							if(ProcessPost(buffer)) {
+								@client->WriteString("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+							}
+							else {
+
+							};
+						};
+					};
+				};
+				
+				@client->Close();
+			};
+		}
+		
+		#~
+		Get HTTP headers
+		@return HTTP headers
+		~#
+		method : public : GetHeaders() ~ Map<String, String> {
+			headers := Map->New()<String, String>;
+			
+			header := @client->ReadLine();
+			while(header <> Nil & header->Size() > 0) {
+				# "header: {$header}"->PrintLine();			
+				header_parts := header->Split(": ");
+				if(header_parts->Size() = 2) {
+					headers->Insert(header_parts[0], header_parts[1]);
+				};
+
+				header := @client->ReadLine();
+			};
+
+			return headers;
+		}
+
+		#~
+		Callback for GET requests
+		@param request_url URL requested
+		@param request_headers URL request headers
+		@param response_headers URL response headers
+		@return GET request content
+		~#
+		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
+
+		#~
+		Callback for POST requests
+		@param buffer content to POST
+		@return true if successful, false otherwise
+		~#
+		method : virtual : ProcessPost(buffer : Byte[]) ~ Bool;
+	}
+    
+    #~
+	Request handler for HTTP GET and POST requests
+	~#
+	class HttpRequestHandler from System.Concurrency.Thread {
+		@client : TCPSocket;
+		@debug : Bool;
+        
+		New() {
+			Parent();		
+			@debug := true;
+		}
+
+		method : public : Run(param : Base) ~ Nil {
+			@client := param->As(TCPSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
 				# get request
