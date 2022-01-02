@@ -1312,12 +1312,13 @@ bundle Web.HTTP {
 	}
 	
 	#~
-	HTTP and HTTP server
+	HTTP and HTTP web server
 	~#
-	class HttpServer {
+	class WebServer {
 		@secure_server : static : TCPSecureSocketServer;
 		@server : static : TCPSocketServer;
-
+        @is_debug : static : Bool;
+        
 		#~
 		Starts a HTTPS server that listens for requests
 		@param callback class instantiated to server requests
@@ -1326,22 +1327,26 @@ bundle Web.HTTP {
 		@param cert_key SSL certificate key
 		@param cert_key_passwd SSL certificate password
 		~#
-		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String) ~ Nil {
+		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
 			@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, port);
+            @is_debug := is_debug;
 
 	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@secure_server->Listen()) {
 				platform := Runtime->GetPlatform();
 				host := TCPSocket->HostName();
 
-			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+                if(@is_debug) {
+    			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+                };
+                
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+                    handler->SetDebug(@is_debug);
 					handler->Execute(@secure_server->Accept());
 				};
 			}
 			else {
-				# TODO: log errors
 				err_msg := @secure_server->GetLastError();
 				"Error: '{$err_msg}'"->ErrorLine();
 			};
@@ -1352,22 +1357,26 @@ bundle Web.HTTP {
 		@param callback class instantiated to server requests
 		@param port server port
 		~#
-	  	function : Serve(callback : Class, port : Int) ~ Nil {
+	  	function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
 	  		@server := TCPSocketServer->New(port);
+            @is_debug := is_debug;
 
 	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@server->Listen(8)) {
 				platform := Runtime->GetPlatform();
 				host := TCPSocket->HostName();
 
-			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+                if(@is_debug) {
+    			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+                };
+                
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+                    handler->SetDebug(@is_debug);
 					handler->Execute(@server->Accept());
 				};
 			}
 			else {
-				# TODO: log errors
 				err_msg := @server->GetLastError();
 				"Error: '{$err_msg}'"->ErrorLine();
 			};
@@ -1381,8 +1390,10 @@ bundle Web.HTTP {
 			if(@server <> Nil) {
 				@server->Close();
 			};
-
-			"Shutting down..."->PrintLine();
+            
+            if(@is_debug) {
+    			"Shutting down..."->PrintLine();
+            };
 			Runtime->Exit(0);
 		}
 	}
@@ -1392,20 +1403,23 @@ bundle Web.HTTP {
 	~#
 	class HttpsRequestHandler from System.Concurrency.Thread {
 		@client : TCPSecureSocket;
-		@debug : Bool;
+		@is_debug : Bool;
 
 		New() {
-			Parent();		
-			@debug := true;
+			Parent();
 		}
 
+        method : public : SetDebug(is_debug : Bool) ~ Nil {
+            @is_debug := is_debug;
+        }
+        
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSecureSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
 				# get request
 				request := @client->ReadLine();
-				if(@debug) {
+				if(@is_debug) {
 					request_address := @client->GetAddress();
 					"Request: '{$request}' from '{$request_address}'"->PrintLine();
 				};
@@ -1484,7 +1498,10 @@ bundle Web.HTTP {
 			
 			header := @client->ReadLine();
 			while(header <> Nil & header->Size() > 0) {
-				# "header: {$header}"->PrintLine();			
+                if(@is_debug) {				
+                    "header: {$header}"->PrintLine();
+                };
+                
 				header_parts := header->Split(": ");
 				if(header_parts->Size() = 2) {
 					headers->Insert(header_parts[0], header_parts[1]);
@@ -1492,6 +1509,10 @@ bundle Web.HTTP {
 
 				header := @client->ReadLine();
 			};
+
+            if(@is_debug) {				
+                "----\n"->PrintLine();
+            };
 
 			return headers;
 		}
@@ -1518,12 +1539,15 @@ bundle Web.HTTP {
 	~#
 	class HttpRequestHandler from System.Concurrency.Thread {
 		@client : TCPSocket;
-		@debug : Bool;
+		@is_debug : Bool;
         
 		New() {
-			Parent();		
-			@debug := true;
+			Parent();
 		}
+
+        method : public : SetDebug(is_debug : Bool) ~ Nil {
+            @is_debug := is_debug;
+        }
 
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSocket);
@@ -1531,7 +1555,7 @@ bundle Web.HTTP {
 			if(@client <> Nil & @client->IsOpen()) {
 				# get request
 				request := @client->ReadLine();
-				if(@debug) {
+				if(@is_debug) {
 					request_address := @client->GetAddress();
 					"Request: '{$request}' from '{$request_address}'"->PrintLine();
 				};
@@ -1610,7 +1634,10 @@ bundle Web.HTTP {
 			
 			header := @client->ReadLine();
 			while(header <> Nil & header->Size() > 0) {
-				# "header: {$header}"->PrintLine();			
+                if(@is_debug) {
+                    "header: {$header}"->PrintLine();
+                };
+
 				header_parts := header->Split(": ");
 				if(header_parts->Size() = 2) {
 					headers->Insert(header_parts[0], header_parts[1]);
@@ -1618,6 +1645,10 @@ bundle Web.HTTP {
 
 				header := @client->ReadLine();
 			};
+
+            if(@is_debug) {				
+                "----\n"->PrintLine();
+            };
 
 			return headers;
 		}
