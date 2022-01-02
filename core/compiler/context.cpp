@@ -3248,13 +3248,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
         ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
       }
     }
-
-    // TODO: testing
-    if(!method_call->GetVariable() && !method_call->GetEntry() && !lib_method->IsStatic() &&
-      lib_method->GetMethodType() != NEW_PUBLIC_METHOD && lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a method from this context");
+    
+    // static check
+    if(InvalidStatic(method_call, lib_method)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
     }
-
+    
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
@@ -6478,6 +6477,15 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
   }
 
   return false;
+}
+
+bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* lib_method)
+{
+  const bool not_variable = !method_call->GetVariable() && !method_call->GetEntry();
+  const bool not_static_prev = !lib_method->IsStatic() && !method_call->GetPreviousExpression();
+  const bool not_new = lib_method->GetMethodType() != NEW_PUBLIC_METHOD && lib_method->GetMethodType() != NEW_PRIVATE_METHOD;
+  
+  return not_variable && not_static_prev && not_new;
 }
 
 SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
