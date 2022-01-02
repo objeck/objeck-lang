@@ -1475,11 +1475,29 @@ bundle Web.HTTP {
 						if(content_length <> Nil) {
 							buffer := Byte->New[content_length->ToInt()];
 							@client->ReadBuffer(0, buffer->Size(), buffer);
-							if(ProcessPost(buffer)) {
-								@client->WriteString("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-							}
-							else {
 
+							# retrieve content
+							if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
+								request_url := "/index.html";
+							};
+
+							# write response
+							response_headers := Map->New()<String, String>;
+							content := ProcessPost(buffer, request_url, request_headers, response_headers);
+							if(content <> Nil) {
+								response_header := "";
+								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : key_values) {
+									key_value := key_values->Get(i);
+									key := key_value->GetFirst();
+									value := key_value->GetSecond();
+									response_header += "{$key}: {$value}\r\n";
+								};
+
+								content_size := content->Size();
+								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+								@client->WriteBuffer(content);
 							};
 						};
 					};
@@ -1529,9 +1547,12 @@ bundle Web.HTTP {
 		#~
 		Callback for POST requests
 		@param buffer content to POST
-		@return true if successful, false otherwise
+		@param request_url URL requested
+		@param request_headers URL request headers
+		@param response_headers URL response headers
+		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[]) ~ Bool;
+		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
 	}
     
     #~
@@ -1611,11 +1632,29 @@ bundle Web.HTTP {
 						if(content_length <> Nil) {
 							buffer := Byte->New[content_length->ToInt()];
 							@client->ReadBuffer(0, buffer->Size(), buffer);
-							if(ProcessPost(buffer)) {
-								@client->WriteString("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-							}
-							else {
 
+							# retrieve content
+							if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
+								request_url := "/index.html";
+							};
+
+							# write response
+							response_headers := Map->New()<String, String>;
+							content := ProcessPost(buffer, request_url, request_headers, response_headers);
+							if(content <> Nil) {
+								response_header := "";
+								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : key_values) {
+									key_value := key_values->Get(i);
+									key := key_value->GetFirst();
+									value := key_value->GetSecond();
+									response_header += "{$key}: {$value}\r\n";
+								};
+
+								content_size := content->Size();
+								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+								@client->WriteBuffer(content);
 							};
 						};
 					};
@@ -1658,15 +1697,18 @@ bundle Web.HTTP {
 		@param request_url URL requested
 		@param request_headers URL request headers
 		@param response_headers URL response headers
-		@return GET request content
+		@return content
 		~#
 		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
 
 		#~
 		Callback for POST requests
 		@param buffer content to POST
-		@return true if successful, false otherwise
+		@param request_url URL requested
+		@param request_headers URL request headers
+		@param response_headers URL response headers
+		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[]) ~ Bool;
+		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
 	}
 }
