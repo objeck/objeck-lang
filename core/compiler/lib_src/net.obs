@@ -1321,7 +1321,7 @@ bundle Web.HTTP {
         
 		#~
 		Starts a HTTPS server that listens for requests
-		@param callback class instantiated to server requests
+		@param callback class inherited from 'HttpsRequestHandler'
 		@param port server port
 		@param cert SSL certificate
 		@param cert_key SSL certificate key
@@ -1354,7 +1354,7 @@ bundle Web.HTTP {
 
 	  	#~
 		Starts a HTTP server that listens for requests
-		@param callback class instantiated to server requests
+		@param callback class inherited from 'HttpRequestHandler'
 		@param port server port
 		~#
 	  	function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
@@ -1399,7 +1399,7 @@ bundle Web.HTTP {
 	}
 
 	#~
-	HTTP and HTTP web server
+	HTTP and HTTP web server response
 	~#
 	class Response {
 		@code : Int;
@@ -1420,10 +1420,18 @@ bundle Web.HTTP {
 			@content := content;
 		}
 
+		#~
+		Get the response code
+		@return response code
+		~#
 		method : public : GetCode() ~ Int {
 			return @code;
 		}
 
+		#~
+		Get the response content
+		@return response content
+		~#
 		method : public : GetContent() ~ Byte[] {
 			return @content;
 		}
@@ -1432,6 +1440,10 @@ bundle Web.HTTP {
 			@reason := reason;
 		}
 
+		#~
+		Get the reason string
+		@return reason sting
+		~#
 		method : public : GetReason() ~ String {
 			return @reason;
 		}		
