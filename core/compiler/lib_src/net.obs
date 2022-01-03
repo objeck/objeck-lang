@@ -1399,7 +1399,7 @@ bundle Web.HTTP {
 	}
 
 	#~
-	HTTP and HTTP web server response
+	Web server response
 	~#
 	class Response {
 		@code : Int;
