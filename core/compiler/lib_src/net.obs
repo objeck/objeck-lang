@@ -1501,10 +1501,15 @@ bundle Web.HTTP {
 								};
 
 								content := response->GetContent();
-								content_size := content->Size();
-								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-								@client->WriteBuffer(content);
+								if(content <> Nil) {
+									content_size := content->Size();
+									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+									@client->WriteBuffer(content);
+								}
+								else {
+									@client->WriteString("HTTP/1.1 200\r\n\r\n");
+								}
 							}
 							else {
 								select(response->GetCode()) {
@@ -1514,12 +1519,12 @@ bundle Web.HTTP {
 											@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 										}
 										else {
-											@client->WriteString("HTTP/1.1400\r\n\r\n");
+											@client->WriteString("HTTP/1.1 400\r\n\r\n");
 										};
 									}
 
 									other {
-										@client->WriteString("HTTP/1.1400\r\n\r\n");
+										@client->WriteString("HTTP/1.1 400\r\n\r\n");
 									}
 								};
 							};
@@ -1551,10 +1556,15 @@ bundle Web.HTTP {
 								};
 
 								content := response->GetContent();
-								content_size := content->Size();
-								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-								@client->WriteBuffer(content);
+								if(content <> Nil) {
+									content_size := content->Size();
+									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+									@client->WriteBuffer(content);
+								}
+								else {
+									@client->WriteString("HTTP/1.1 200\r\n\r\n");
+								};
 							};
 						};
 					};
@@ -1676,10 +1686,15 @@ bundle Web.HTTP {
 								};
 
 								content := response->GetContent();
-								content_size := content->Size();
-								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-								@client->WriteBuffer(content);
+								if(content <> Nil) {
+									content_size := content->Size();
+									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+									@client->WriteBuffer(content);
+								}
+								else {
+									@client->WriteString("HTTP/1.1 200\r\n\r\n");
+								}
 							}
 							else {
 								select(response->GetCode()) {
@@ -1689,12 +1704,12 @@ bundle Web.HTTP {
 											@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 										}
 										else {
-											@client->WriteString("HTTP/1.1400\r\n\r\n");
+											@client->WriteString("HTTP/1.1 400\r\n\r\n");
 										};
 									}
 
 									other {
-										@client->WriteString("HTTP/1.1400\r\n\r\n");
+										@client->WriteString("HTTP/1.1 400\r\n\r\n");
 									}
 								};
 							};
@@ -1726,10 +1741,15 @@ bundle Web.HTTP {
 								};
 
 								content := response->GetContent();
-								content_size := content->Size();
-								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-								@client->WriteBuffer(content);
+								if(content <> Nil) {
+									content_size := content->Size();
+									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+									@client->WriteBuffer(content);
+								}
+								else {
+									@client->WriteString("HTTP/1.1 200\r\n\r\n");
+								};
 							};
 						};
 					};

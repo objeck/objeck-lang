@@ -17,6 +17,7 @@ class Test {
 			cert_key_passwd := args[2];
 			port := args[3]->ToInt();
 			
+			MyHandler->Init();
 			WebServer->ServeSecure(MyHandler->New()->GetClass(), port, cert, cert_key, cert_key_passwd, true);
 		};
 	}
@@ -26,27 +27,34 @@ class Test {
 My handler
 ~#
 class MyHandler from HttpsRequestHandler {
+	@url_mapping : static : Hash<String, String>;
+
+	function : Init() ~ Nil {
+		@url_mapping := Hash->New()<String, String>;
+	}
+
 	New() {
 		Parent();
 	}
 
 	method : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
-		return Nil;
+		request_url
 	}
-
+	
 	method : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
 		response : Byte[];
-
+		
 		json := JsonParser->New(String->New(buffer));
 		if(json->Parse()) {
 			url_json := json->GetRoot()->Get("long");
 			url_long := url_json->GetValue();
 			url_long->PrintLine();
 
-
+			short_url := "http://localhost:8080/9eXmFnuj";
+			@url_mapping->Insert(short_url, url_long);
 
 			response_headers->Insert("Content-type", "application/json");
-			response := "{ \"short\": \"http://localhost:8080/9eXmFnuj\" }"->ToByteArray();
+			response := "{ \"short\": \"{$short_url}\" }"->ToByteArray();
 		};
 
 		return Response->New(200, response);
