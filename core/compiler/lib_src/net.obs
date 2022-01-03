@@ -1489,46 +1489,7 @@ bundle Web.HTTP {
 						# write response
 						response_headers := Map->New()<String, String>;
 						response := ProcessGet(request_url, request_headers, response_headers);
-						if(response <> Nil) {
-							if(response->GetCode() = 200) {
-								response_header := "";
-								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-								each(i : key_values) {
-									key_value := key_values->Get(i);
-									key := key_value->GetFirst();
-									value := key_value->GetSecond();
-									response_header += "{$key}: {$value}\r\n";
-								};
-
-								content := response->GetContent();
-								if(content <> Nil) {
-									content_size := content->Size();
-									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-									@client->WriteBuffer(content);
-								}
-								else {
-									@client->WriteString("HTTP/1.1 200\r\n\r\n");
-								}
-							}
-							else {
-								select(response->GetCode()) {
-									label 302 {
-										reason := response->GetReason();
-										if(reason <> Nil) {
-											@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
-										}
-										else {
-											@client->WriteString("HTTP/1.1 400\r\n\r\n");
-										};
-									}
-
-									other {
-										@client->WriteString("HTTP/1.1 400\r\n\r\n");
-									}
-								};
-							};
-						};
+						ProcessResponse(response, response_headers);
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
@@ -1545,32 +1506,55 @@ bundle Web.HTTP {
 							# write response
 							response_headers := Map->New()<String, String>;
 							response := ProcessPost(buffer, request_url, request_headers, response_headers);
-							if(response <> Nil) {
-								response_header := "";
-								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-								each(i : key_values) {
-									key_value := key_values->Get(i);
-									key := key_value->GetFirst();
-									value := key_value->GetSecond();
-									response_header += "{$key}: {$value}\r\n";
-								};
-
-								content := response->GetContent();
-								if(content <> Nil) {
-									content_size := content->Size();
-									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-									@client->WriteBuffer(content);
-								}
-								else {
-									@client->WriteString("HTTP/1.1 200\r\n\r\n");
-								};
-							};
+							ProcessResponse(response, response_headers);
 						};
 					};
 				};
 				
 				@client->Close();
+			};
+		}
+
+		method : ProcessResponse(response : Response, response_headers : Map<String, String>) ~ Nil {
+			if(response <> Nil) {
+				if(response->GetCode() = 200) {
+					response_header := "";
+					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+					each(i : key_values) {
+						key_value := key_values->Get(i);
+						key := key_value->GetFirst();
+						value := key_value->GetSecond();
+						response_header += "{$key}: {$value}\r\n";
+					};
+
+					content := response->GetContent();
+					if(content <> Nil) {
+						content_size := content->Size();
+						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+						@client->WriteBuffer(content);
+					}
+					else {
+						@client->WriteString("HTTP/1.1 200\r\n\r\n");
+					};
+				}
+				else {
+					select(response->GetCode()) {
+						label 302 {
+							reason := response->GetReason();
+							if(reason <> Nil) {
+								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+							}
+							else {
+								@client->WriteString("HTTP/1.1 400\r\n\r\n");
+							};
+						}
+
+						other {
+							@client->WriteString("HTTP/1.1 400\r\n\r\n");
+						}
+					};
+				};
 			};
 		}
 		
@@ -1674,46 +1658,7 @@ bundle Web.HTTP {
 						# write response
 						response_headers := Map->New()<String, String>;
 						response := ProcessGet(request_url, request_headers, response_headers);
-						if(response <> Nil) {
-							if(response->GetCode() = 200) {
-								response_header := "";
-								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-								each(i : key_values) {
-									key_value := key_values->Get(i);
-									key := key_value->GetFirst();
-									value := key_value->GetSecond();
-									response_header += "{$key}: {$value}\r\n";
-								};
-
-								content := response->GetContent();
-								if(content <> Nil) {
-									content_size := content->Size();
-									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-									@client->WriteBuffer(content);
-								}
-								else {
-									@client->WriteString("HTTP/1.1 200\r\n\r\n");
-								}
-							}
-							else {
-								select(response->GetCode()) {
-									label 302 {
-										reason := response->GetReason();
-										if(reason <> Nil) {
-											@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
-										}
-										else {
-											@client->WriteString("HTTP/1.1 400\r\n\r\n");
-										};
-									}
-
-									other {
-										@client->WriteString("HTTP/1.1 400\r\n\r\n");
-									}
-								};
-							};
-						};
+						ProcessResponse(response, response_headers);
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
@@ -1726,36 +1671,59 @@ bundle Web.HTTP {
 							if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
 								request_url := "/index.html";
 							};
-
+							
 							# write response
 							response_headers := Map->New()<String, String>;
 							response := ProcessPost(buffer, request_url, request_headers, response_headers);
-							if(response <> Nil) {
-								response_header := "";
-								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-								each(i : key_values) {
-									key_value := key_values->Get(i);
-									key := key_value->GetFirst();
-									value := key_value->GetSecond();
-									response_header += "{$key}: {$value}\r\n";
-								};
-
-								content := response->GetContent();
-								if(content <> Nil) {
-									content_size := content->Size();
-									response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-									@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-									@client->WriteBuffer(content);
-								}
-								else {
-									@client->WriteString("HTTP/1.1 200\r\n\r\n");
-								};
-							};
+							ProcessResponse(response, response_headers);
 						};
 					};
 				};
 				
 				@client->Close();
+			};
+		}
+
+		method : ProcessResponse(response : Response, response_headers : Map<String, String>) ~ Nil {
+			if(response <> Nil) {
+				if(response->GetCode() = 200) {
+					response_header := "";
+					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+					each(i : key_values) {
+						key_value := key_values->Get(i);
+						key := key_value->GetFirst();
+						value := key_value->GetSecond();
+						response_header += "{$key}: {$value}\r\n";
+					};
+
+					content := response->GetContent();
+					if(content <> Nil) {
+						content_size := content->Size();
+						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+						@client->WriteBuffer(content);
+					}
+					else {
+						@client->WriteString("HTTP/1.1 200\r\n\r\n");
+					};
+				}
+				else {
+					select(response->GetCode()) {
+						label 302 {
+							reason := response->GetReason();
+							if(reason <> Nil) {
+								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+							}
+							else {
+								@client->WriteString("HTTP/1.1 400\r\n\r\n");
+							};
+						}
+
+						other {
+							@client->WriteString("HTTP/1.1 400\r\n\r\n");
+						}
+					};
+				};
 			};
 		}
 		
