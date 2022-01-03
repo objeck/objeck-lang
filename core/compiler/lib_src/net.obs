@@ -1399,6 +1399,45 @@ bundle Web.HTTP {
 	}
 
 	#~
+	HTTP and HTTP web server
+	~#
+	class Response {
+		@code : Int;
+		@content : Byte[];
+		@reason : String;
+
+		New(code : Int) {
+			@code := code;
+		}
+
+		New(code : Int, content : String) {
+			@code := code;
+			@content := content->ToByteArray();
+		}
+
+		New(code : Int, content : Byte[]) {
+			@code := code;
+			@content := content;
+		}
+
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+
+		method : public : GetContent() ~ Byte[] {
+			return @content;
+		}
+
+		method : public : SetReason(reason : String) ~ Nil {
+			@reason := reason;
+		}
+
+		method : public : GetReason() ~ String {
+			return @reason;
+		}		
+	}
+	
+	#~
 	Request handler for HTTPS GET and POST requests
 	~#
 	class HttpsRequestHandler from System.Concurrency.Thread {
@@ -1449,24 +1488,41 @@ bundle Web.HTTP {
 
 						# write response
 						response_headers := Map->New()<String, String>;
-						content := ProcessGet(request_url, request_headers, response_headers);
-						if(content <> Nil) {
-							response_header := "";
-							key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-							each(i : key_values) {
-								key_value := key_values->Get(i);
-								key := key_value->GetFirst();
-								value := key_value->GetSecond();
-								response_header += "{$key}: {$value}\r\n";
-							};
+						response := ProcessGet(request_url, request_headers, response_headers);
+						if(response <> Nil) {
+							if(response->GetCode() = 200) {
+								response_header := "";
+								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : key_values) {
+									key_value := key_values->Get(i);
+									key := key_value->GetFirst();
+									value := key_value->GetSecond();
+									response_header += "{$key}: {$value}\r\n";
+								};
 
-							content_size := content->Size();
-							response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-							@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-							@client->WriteBuffer(content);
-						}
-						else {
-							@client->WriteString("HTTP/1.1 302 Found\r\nLocation: /index.html\r\nConnection: close\r\n\r\n");
+								content := response->GetContent();
+								content_size := content->Size();
+								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+								@client->WriteBuffer(content);
+							}
+							else {
+								select(response->GetCode()) {
+									label 302 {
+										reason := response->GetReason();
+										if(reason <> Nil) {
+											@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+										}
+										else {
+											@client->WriteString("HTTP/1.1400\r\n\r\n");
+										};
+									}
+
+									other {
+										@client->WriteString("HTTP/1.1400\r\n\r\n");
+									}
+								};
+							};
 						};
 					}
 					# POST request
@@ -1483,8 +1539,8 @@ bundle Web.HTTP {
 
 							# write response
 							response_headers := Map->New()<String, String>;
-							content := ProcessPost(buffer, request_url, request_headers, response_headers);
-							if(content <> Nil) {
+							response := ProcessPost(buffer, request_url, request_headers, response_headers);
+							if(response <> Nil) {
 								response_header := "";
 								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
 								each(i : key_values) {
@@ -1494,6 +1550,7 @@ bundle Web.HTTP {
 									response_header += "{$key}: {$value}\r\n";
 								};
 
+								content := response->GetContent();
 								content_size := content->Size();
 								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
@@ -1542,7 +1599,7 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return GET request content
 		~#
-		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
+		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 
 		#~
 		Callback for POST requests
@@ -1552,7 +1609,7 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
+		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 	}
     
     #~
@@ -1606,24 +1663,41 @@ bundle Web.HTTP {
 
 						# write response
 						response_headers := Map->New()<String, String>;
-						content := ProcessGet(request_url, request_headers, response_headers);
-						if(content <> Nil) {
-							response_header := "";
-							key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-							each(i : key_values) {
-								key_value := key_values->Get(i);
-								key := key_value->GetFirst();
-								value := key_value->GetSecond();
-								response_header += "{$key}: {$value}\r\n";
-							};
+						response := ProcessGet(request_url, request_headers, response_headers);
+						if(response <> Nil) {
+							if(response->GetCode() = 200) {
+								response_header := "";
+								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : key_values) {
+									key_value := key_values->Get(i);
+									key := key_value->GetFirst();
+									value := key_value->GetSecond();
+									response_header += "{$key}: {$value}\r\n";
+								};
 
-							content_size := content->Size();
-							response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-							@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-							@client->WriteBuffer(content);
-						}
-						else {
-							@client->WriteString("HTTP/1.1 302 Found\r\nLocation: /index.html\r\nConnection: close\r\n\r\n");
+								content := response->GetContent();
+								content_size := content->Size();
+								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+								@client->WriteBuffer(content);
+							}
+							else {
+								select(response->GetCode()) {
+									label 302 {
+										reason := response->GetReason();
+										if(reason <> Nil) {
+											@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+										}
+										else {
+											@client->WriteString("HTTP/1.1400\r\n\r\n");
+										};
+									}
+
+									other {
+										@client->WriteString("HTTP/1.1400\r\n\r\n");
+									}
+								};
+							};
 						};
 					}
 					# POST request
@@ -1640,8 +1714,8 @@ bundle Web.HTTP {
 
 							# write response
 							response_headers := Map->New()<String, String>;
-							content := ProcessPost(buffer, request_url, request_headers, response_headers);
-							if(content <> Nil) {
+							response := ProcessPost(buffer, request_url, request_headers, response_headers);
+							if(response <> Nil) {
 								response_header := "";
 								key_values := response_headers->GetKeyValues()<Pair<String, String>>;
 								each(i : key_values) {
@@ -1651,6 +1725,7 @@ bundle Web.HTTP {
 									response_header += "{$key}: {$value}\r\n";
 								};
 
+								content := response->GetContent();
 								content_size := content->Size();
 								response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 								@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
@@ -1699,7 +1774,7 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
+		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 
 		#~
 		Callback for POST requests
@@ -1709,6 +1784,6 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[];
+		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 	}
 }

@@ -30,11 +30,11 @@ class MyHandler from HttpsRequestHandler {
 		Parent();
 	}
 
-	method : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[] {
+	method : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
 		return Nil;
 	}
 
-	method : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Byte[] {
+	method : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
 		response : Byte[];
 
 		json := JsonParser->New(String->New(buffer));
@@ -49,6 +49,6 @@ class MyHandler from HttpsRequestHandler {
 			response := "{ \"short\": \"http://localhost:8080/9eXmFnuj\" }"->ToByteArray();
 		};
 
-		return response;
+		return Response->New(200, response);
 	}
 }
