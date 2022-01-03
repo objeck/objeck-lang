@@ -1391,9 +1391,9 @@ bundle Web.HTTP {
 				@server->Close();
 			};
             
-            if(@is_debug) {
-    			"Shutting down..."->PrintLine();
-            };
+			if(@is_debug) {
+				"Shutting down..."->PrintLine();
+			};
 			Runtime->Exit(0);
 		}
 	}
