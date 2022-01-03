@@ -1317,7 +1317,7 @@ bundle Web.HTTP {
 	class WebServer {
 		@secure_server : static : TCPSecureSocketServer;
 		@server : static : TCPSocketServer;
-        @is_debug : static : Bool;
+		@is_debug : static : Bool;
         
 		#~
 		Starts a HTTPS server that listens for requests
@@ -1329,20 +1329,20 @@ bundle Web.HTTP {
 		~#
 		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
 			@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, port);
-            @is_debug := is_debug;
+			@is_debug := is_debug;
 
 	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@secure_server->Listen()) {
 				platform := Runtime->GetPlatform();
 				host := TCPSocket->HostName();
 
-                if(@is_debug) {
-    			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
-                };
-                
+				if(@is_debug) {
+					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+				};
+
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-                    handler->SetDebug(@is_debug);
+                   			handler->SetDebug(@is_debug);
 					handler->Execute(@secure_server->Accept());
 				};
 			}
@@ -1359,20 +1359,20 @@ bundle Web.HTTP {
 		~#
 	  	function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
 	  		@server := TCPSocketServer->New(port);
-            @is_debug := is_debug;
+			@is_debug := is_debug;
 
 	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@server->Listen(8)) {
 				platform := Runtime->GetPlatform();
 				host := TCPSocket->HostName();
 
-                if(@is_debug) {
-    			 	"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
-                };
+		                if(@is_debug) {
+					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+		                };
                 
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-                    handler->SetDebug(@is_debug);
+					handler->SetDebug(@is_debug);
 					handler->Execute(@server->Accept());
 				};
 			}
@@ -1460,9 +1460,9 @@ bundle Web.HTTP {
 			Parent();
 		}
 
-        method : public : SetDebug(is_debug : Bool) ~ Nil {
-            @is_debug := is_debug;
-        }
+		method : public : SetDebug(is_debug : Bool) ~ Nil {
+			@is_debug := is_debug;
+		}
         
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSecureSocket);
@@ -1578,9 +1578,9 @@ bundle Web.HTTP {
 			
 			header := @client->ReadLine();
 			while(header <> Nil & header->Size() > 0) {
-                if(@is_debug) {				
-                    "header: {$header}"->PrintLine();
-                };
+				if(@is_debug) {				
+					"header: {$header}"->PrintLine();
+				};
                 
 				header_parts := header->Split(": ");
 				if(header_parts->Size() = 2) {
@@ -1590,9 +1590,9 @@ bundle Web.HTTP {
 				header := @client->ReadLine();
 			};
 
-            if(@is_debug) {				
-                "----\n"->PrintLine();
-            };
+			if(@is_debug) {				
+				"----\n"->PrintLine();
+			};
 
 			return headers;
 		}
@@ -1616,8 +1616,8 @@ bundle Web.HTTP {
 		~#
 		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 	}
-    
-    #~
+	   
+	#~
 	Request handler for HTTP GET and POST requests
 	~#
 	class HttpRequestHandler from System.Concurrency.Thread {
@@ -1628,9 +1628,9 @@ bundle Web.HTTP {
 			Parent();
 		}
 
-        method : public : SetDebug(is_debug : Bool) ~ Nil {
-            @is_debug := is_debug;
-        }
+		method : public : SetDebug(is_debug : Bool) ~ Nil {
+			@is_debug := is_debug;
+		}
 
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSocket);
@@ -1746,9 +1746,9 @@ bundle Web.HTTP {
 			
 			header := @client->ReadLine();
 			while(header <> Nil & header->Size() > 0) {
-                if(@is_debug) {
-                    "header: {$header}"->PrintLine();
-                };
+				if(@is_debug) {
+					"header: {$header}"->PrintLine();
+				};
 
 				header_parts := header->Split(": ");
 				if(header_parts->Size() = 2) {
@@ -1758,9 +1758,9 @@ bundle Web.HTTP {
 				header := @client->ReadLine();
 			};
 
-            if(@is_debug) {				
-                "----\n"->PrintLine();
-            };
+			if(@is_debug) {				
+				"----\n"->PrintLine();
+			};
 
 			return headers;
 		}
