@@ -1480,7 +1480,6 @@ bundle Web.HTTP {
 
 					# GET request
 					if(request_verb->Equals("GET")) {
-
 						# retrieve content
 						if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
 							request_url := "/index.html";
@@ -1649,7 +1648,6 @@ bundle Web.HTTP {
 
 					# GET request
 					if(request_verb->Equals("GET")) {
-
 						# retrieve content
 						if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
 							request_url := "/index.html";

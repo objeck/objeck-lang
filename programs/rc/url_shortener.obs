@@ -38,7 +38,14 @@ class MyHandler from HttpsRequestHandler {
 	}
 
 	method : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
-		request_url
+		request_url->PrintLine();
+
+		long_url := @url_mapping->Find(request_url);
+		if(long_url <> Nil) {
+			long_url->PrintLine();
+		};
+
+		return Response->New(200);
 	}
 	
 	method : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
@@ -47,11 +54,12 @@ class MyHandler from HttpsRequestHandler {
 		json := JsonParser->New(String->New(buffer));
 		if(json->Parse()) {
 			url_json := json->GetRoot()->Get("long");
-			url_long := url_json->GetValue();
-			url_long->PrintLine();
+			long_url := url_json->GetValue();
+			long_url->PrintLine();
 
-			short_url := "http://localhost:8080/9eXmFnuj";
-			@url_mapping->Insert(short_url, url_long);
+			post_fix := "/9eXmFnuj";
+			short_url := "http://localhost:60013{$post_fix}";
+			@url_mapping->Insert(post_fix, long_url);
 
 			response_headers->Insert("Content-type", "application/json");
 			response := "{ \"short\": \"{$short_url}\" }"->ToByteArray();
