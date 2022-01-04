@@ -48,10 +48,12 @@ class MyHandler from HttpRequestHandler {
 
 		long_url := @url_mapping->Find(request_url);
 		if(long_url <> Nil) {
-			long_url->PrintLine();
+			response_headers->Insert("Content-type", "application/json");
+			response := "{ \"short\": \"{$long_url}\" }"->ToByteArray();
+			return Response->New(200, response);
 		};
 
-		return Response->New(200);
+		return Response->New(404);
 	}
 	
 	method : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
