@@ -1497,7 +1497,7 @@ bundle Web.HTTP {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					"Request: '{$request}' from '{$request_address}'\n==="->PrintLine();
+					"Request: '{$request}' from '{$request_address}'\n---"->PrintLine();
 				};
 
 				# parse request
@@ -1626,11 +1626,7 @@ bundle Web.HTTP {
 
 				header := @client->ReadLine();
 			};
-
-			if(@is_debug) {				
-				"----\n"->PrintLine();
-			};
-
+			
 			return headers;
 		}
 
@@ -1677,7 +1673,7 @@ bundle Web.HTTP {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					"Request: '{$request}' from '{$request_address}'\n==="->PrintLine();
+					"Request: '{$request}' from '{$request_address}'\n---"->PrintLine();
 				};
 
 				# parse request
