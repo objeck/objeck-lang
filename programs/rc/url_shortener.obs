@@ -19,6 +19,12 @@ class Test {
 			
 			MyHandler->Init();
 			WebServer->ServeSecure(MyHandler->New()->GetClass(), port, cert, cert_key, cert_key_passwd, true);
+		}
+		else if(args->Size() = 1) {
+			port := args[0]->ToInt();
+
+			MyHandler->Init();
+			WebServer->Serve(MyHandler->New()->GetClass(), port, true);
 		};
 	}
 }
@@ -26,7 +32,7 @@ class Test {
 #~
 My handler
 ~#
-class MyHandler from HttpsRequestHandler {
+class MyHandler from HttpRequestHandler {
 	@url_mapping : static : Hash<String, String>;
 
 	function : Init() ~ Nil {
