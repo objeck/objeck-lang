@@ -49,7 +49,7 @@ class MyHandler from HttpRequestHandler {
 		long_url := @url_mapping->Find(request_url);
 		if(long_url <> Nil) {
 			response_headers->Insert("Content-type", "application/json");
-			response := "{ \"short\": \"{$long_url}\" }"->ToByteArray();
+			response := "{ \"long\": \"{$long_url}\" }"->ToByteArray();
 			return Response->New(200, response);
 		};
 
@@ -65,7 +65,11 @@ class MyHandler from HttpRequestHandler {
 			long_url := url_json->GetValue();
 			long_url->PrintLine();
 
-			post_fix := "/9eXmFnuj";
+			post_fix := "/";
+			each(i : 6)	{
+				post_fix += Int->Random('a', 'z')->As(Char);
+			};
+
 			short_url := "http://localhost:60013{$post_fix}";
 			@url_mapping->Insert(post_fix, long_url);
 
