@@ -1342,7 +1342,7 @@ bundle Web.HTTP {
 
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-                   			handler->SetDebug(@is_debug);
+					handler->SetDebug(@is_debug);
 					handler->Execute(@secure_server->Accept());
 				};
 			}
@@ -1371,7 +1371,7 @@ bundle Web.HTTP {
 		                };
                 
 				while(true) {
-					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
 					handler->SetDebug(@is_debug);
 					handler->Execute(@server->Accept());
 				};
@@ -1551,6 +1551,10 @@ bundle Web.HTTP {
 				}
 				else {
 					select(response->GetCode()) {
+						label 202 {
+							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
+						}
+
 						label 302 {
 							reason := response->GetReason();
 							if(reason <> Nil) {
@@ -1559,6 +1563,14 @@ bundle Web.HTTP {
 							else {
 								@client->WriteString("HTTP/1.1 400\r\n\r\n");
 							};
+						}
+
+						label 404 {
+							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
+						}
+
+						label 410 {
+							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
 						}
 
 						other {
@@ -1719,6 +1731,10 @@ bundle Web.HTTP {
 				}
 				else {
 					select(response->GetCode()) {
+						label 202 {
+							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
+						}
+						
 						label 302 {
 							reason := response->GetReason();
 							if(reason <> Nil) {
@@ -1727,6 +1743,14 @@ bundle Web.HTTP {
 							else {
 								@client->WriteString("HTTP/1.1 400\r\n\r\n");
 							};
+						}
+
+						label 404 {
+							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
+						}
+
+						label 410 {
+							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
 						}
 
 						other {
