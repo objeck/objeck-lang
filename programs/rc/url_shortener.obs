@@ -31,11 +31,12 @@ class Shortner from HttpRequestHandler {
 
 		long_url := @url_mapping->Find(request_url);
 		if(long_url <> Nil) {
-			response_headers->Insert("Content-type", "application/json");
-			response := "{ \"long\": \"{$long_url}\" }"->ToByteArray();
-			return Response->New(200, response);
-		};
+			response := Response->New(302);
+			response->SetReason(long_url);
 
+			return response;
+		};
+		
 		return Response->New(404);
 	}
 	
@@ -50,7 +51,12 @@ class Shortner from HttpRequestHandler {
 
 			post_fix := "/";
 			each(i : 6)	{
-				post_fix += Int->Random('a', 'z')->As(Char);
+				if(Int->Random(1) % 2 = 0) {
+					post_fix += Int->Random('a', 'z')->As(Char);
+				}
+				else {
+					post_fix += Int->Random('A', 'Z')->As(Char);
+				};
 			};
 
 			short_url := "http://localhost:60013{$post_fix}";
