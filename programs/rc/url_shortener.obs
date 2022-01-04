@@ -5,34 +5,10 @@ use Web.HTTP;
 #~
 URL shortner
 
-- curl -k -X POST https://localhost:60013 -H "Content-Type: application/json" -d "{ \"long\": \"https://www.cockroachlabs.com/docs/stable/build-a-go-app-with-cockroachdb.html\" }"
-- objeck_lsp.obe objk_apis.json 6013 debug
-- ..\..\..\..\objeck-lsp\server
+1) curl -X POST http://localhost:60013 -H "Content-Type: application/json" -d "{ \"long\": \"https://www.cockroachlabs.com/docs/stable/build-a-go-app-with-cockroachdb.html\" }"
+2) curl http://localhost:60013/fyweks
 ~#
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 4) {
-			cert := args[0];
-			cert_key := args[1];
-			cert_key_passwd := args[2];
-			port := args[3]->ToInt();
-			
-			MyHandler->Init();
-			WebServer->ServeSecure(MyHandler->New()->GetClass(), port, cert, cert_key, cert_key_passwd, true);
-		}
-		else if(args->Size() = 1) {
-			port := args[0]->ToInt();
-
-			MyHandler->Init();
-			WebServer->Serve(MyHandler->New()->GetClass(), port, true);
-		};
-	}
-}
-
-#~
-My handler
-~#
-class MyHandler from HttpRequestHandler {
+class Shortner from HttpRequestHandler {
 	@url_mapping : static : Hash<String, String>;
 
 	function : Init() ~ Nil {
@@ -41,6 +17,13 @@ class MyHandler from HttpRequestHandler {
 
 	New() {
 		Parent();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			Shortner->Init();
+			WebServer->Serve(Shortner->New()->GetClass(), args[0]->ToInt(), true);
+		};
 	}
 
 	method : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
