@@ -1326,6 +1326,20 @@ bundle Web.HTTP {
 		@param cert SSL certificate
 		@param cert_key SSL certificate key
 		@param cert_key_passwd SSL certificate password
+		@param is_debug true for debug output, false otherwise
+		~#
+		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String) ~ Nil {
+			ServeSecure(callback, port, cert, cert_key, cert_key_passwd, false);
+		}
+
+		#~
+		Starts a HTTPS server that listens for requests
+		@param callback class inherited from 'HttpsRequestHandler'
+		@param port server port
+		@param cert SSL certificate
+		@param cert_key SSL certificate key
+		@param cert_key_passwd SSL certificate password
+		@param is_debug true for debug output, false otherwise
 		~#
 		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
 			@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, port);
@@ -1356,6 +1370,17 @@ bundle Web.HTTP {
 		Starts a HTTP server that listens for requests
 		@param callback class inherited from 'HttpRequestHandler'
 		@param port server port
+		@param is_debug true for debug output, false otherwise
+		~#
+	  	function : Serve(callback : Class, port : Int) ~ Nil {
+	  		Serve(callback, port, false);
+	  	}
+
+	  	#~
+		Starts a HTTP server that listens for requests
+		@param callback class inherited from 'HttpRequestHandler'
+		@param port server port
+		@param is_debug true for debug output, false otherwise
 		~#
 	  	function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
 	  		@server := TCPSocketServer->New(port);
@@ -1734,7 +1759,7 @@ bundle Web.HTTP {
 						label 202 {
 							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
 						}
-						
+
 						label 302 {
 							reason := response->GetReason();
 							if(reason <> Nil) {
