@@ -1831,7 +1831,7 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : private : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 
 		#~
 		Callback for POST requests
@@ -1841,6 +1841,6 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : private : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 	}
 }

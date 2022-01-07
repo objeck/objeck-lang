@@ -970,6 +970,8 @@ class FuncSnippet from Snippet {
 		@desc := "";
 		@tags := Map->New()<String, SnippetTag>;
 		@func_types := Vector->New()<SnippetType>;
+		@is_private := true;
+
 		@parsed := Parse();
 	}
 	
@@ -1160,10 +1162,10 @@ class FuncSnippet from Snippet {
 				meta := ParseIdent();
 				if(meta->Size() > 0) {
 					if(meta->Equals("public")) {
-						@is_public := true;
+						@is_private := false;
 					}
 					else if(meta->Equals("private")) {
-						@is_public := false;
+						@is_private := true;
 					}
 					else if(meta->Equals("native")) {
 						@is_native := true;
