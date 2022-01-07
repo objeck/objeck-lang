@@ -1431,15 +1431,29 @@ bundle Web.HTTP {
 		@content : Byte[];
 		@reason : String;
 
+		#~
+		Constructor
+		@param code status code
+		~#
 		New(code : Int) {
 			@code := code;
 		}
 
+		#~
+		Constructor
+		@param code status code
+		@param content content
+		~#
 		New(code : Int, content : String) {
 			@code := code;
 			@content := content->ToByteArray();
 		}
 
+		#~
+		Constructor
+		@param code status code
+		@param content content
+		~#
 		New(code : Int, content : Byte[]) {
 			@code := code;
 			@content := content;
@@ -1817,7 +1831,7 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : private : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 
 		#~
 		Callback for POST requests
@@ -1827,6 +1841,6 @@ bundle Web.HTTP {
 		@param response_headers URL response headers
 		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : private : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
 	}
 }
