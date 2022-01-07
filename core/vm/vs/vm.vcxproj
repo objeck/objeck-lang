@@ -142,6 +142,7 @@
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>libcrypto.lib;libssl.lib;crypt32.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <PostBuildEvent>
       <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
@@ -202,7 +203,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:..\$(Configuration)\win64\\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:..\$(Configuration)\win64\\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
