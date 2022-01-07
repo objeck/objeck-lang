@@ -502,7 +502,6 @@ class HtmlMaker {
 		index := type_name->Find('[');
 		full_type_name := String->New(type_name);
 		if(index > -1) {
-			array_count := 1;
 			array_count := type_name->Count(',');
 			type_name := type_name->SubString(index);
 			array := true;
@@ -543,15 +542,7 @@ class HtmlMaker {
 			file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
 			file_name += ".html' target='main'>";
 			file_name += full_type_name;
-			file_name += "</a>";	
-			
-			if(array_count > 0) {
-				file_name += '[';
-				for(i := 1; i < array_count; i +=1;) {
-					file_name += ',';
-				};
-				file_name += ']';
-			};
+			file_name += "</a>";
 
 			return file_name;
 		}
@@ -564,16 +555,8 @@ class HtmlMaker {
 				file_name += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
 				file_name += ".html' target='main'>";
 				file_name += full_type_name;
-				file_name += "</a>";	
+				file_name += "</a>";
 				
-				if(array_count > 0) {
-					file_name += '[';
-					for(i := 1; i < array_count; i +=1;) {
-						file_name += ',';
-					};
-					file_name += ']';
-				};
-
 				return file_name;
 			};
 		};
