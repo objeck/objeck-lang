@@ -1009,11 +1009,13 @@ class FuncSnippet from Snippet {
 					@signature->Append("method : ");
 				};
 				
-				if(@is_private) {
-					@signature->Append("private : ");
-				}
-				else {
-					@signature->Append("public : ");
+				if(<>@is_func) {
+					if(@is_private) {
+						@signature->Append("private : ");
+					}
+					else {
+						@signature->Append("public : ");
+					};
 				};
 		
 				if(@is_native) {
