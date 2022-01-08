@@ -238,7 +238,7 @@ class IPSocket {
 		SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 		if(sock < 0) {
 			freeaddrinfo(addr);
-			close(sock);
+			// close(sock);
 			return -1;
 		}
 
