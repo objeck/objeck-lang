@@ -53,12 +53,46 @@ class vList {
         };
     }
 
+    method : public : Size() ~ Int {
+        if(@base = Nil) {
+            return 0;
+        };
+
+        return @base->GetEle()->Size() * 2 - @offset - 1;
+    }
+
     method : public : ToString() ~ String {
         if(@base = Nil) {
             return "[]";
         };
 
-        return "";
+        r := "[";
+        ele := @base->GetEle();
+        r += ele[@offset];
+        r += ' ';
+
+        sg := @base;
+        offset := @offset + 1;
+        
+        done := false;
+        while(<>done) {
+            for(i := offset; i < ele->Size(); i += 1;) {
+                r += ele[i];
+                r += ' ';
+            };
+
+            sg := sg->GetNext();
+            if(sg <> Nil) {
+                ele := sg->GetEle();
+                offset := 0;
+            }
+            else {
+                done := true;
+            };
+        };
+        r += ']';
+
+        return r;
     }
 }
  
@@ -125,5 +159,10 @@ class Test {
         v := v->Cdr();
         "demonstrate cdr. 1 element removed: {$v}"->PrintLine();
         PrintStructure(v);
+
+        size := v->Size();
+        "Demonstrating size property, size = {$size}"->PrintLine();
+
+        
     }
 }
