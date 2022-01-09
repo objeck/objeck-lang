@@ -1,0 +1,65 @@
+class vList {
+    @base : vSeg;
+    @offset : Int;
+
+    New() {}
+
+    method : public : GetBase() ~ vSeg {
+        return @base;
+    }
+
+    method : public : GetOffset() ~ Int {
+        return @offset;
+    }
+
+    method : public : Cons(a : String) ~ vList {
+        if(@base = Nil) {
+            
+        };
+        
+        return Nil;
+    }
+}
+ 
+class vSeg {
+    @next : vSeg;
+    @ele : String[];
+
+    New() {}
+
+    method : public : GetNext() ~ vSeg {
+        return @next;
+    }
+
+    method : public : GetEle() ~ String[] {
+        return @ele;
+    }
+}
+
+class Test {
+    function : PrintStructure(v : vList) ~ Nil {
+        offset := v->GetOffset();
+        "offset: {$offset}"->PrintLine();
+        
+        for(sg := v->GetBase(); sg <> Nil; sg := sg->GetNext();) {
+            values := sg->GetEle();
+            each(i : values) {
+                value := values[i];
+                " {$value}"->Print();
+            };
+        };
+        ""->PrintLine();
+    }
+
+    
+
+    function : Main(args : String[]) ~ Nil {
+        v := vList->New();
+
+        PrintStructure(v);
+
+        for(a := '6'; a >= '1'; a -=1;) {
+            v := v->Cons("{$a}");
+        };
+    }
+}
