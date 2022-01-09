@@ -112,6 +112,31 @@ class vList {
 
         return r;
     }
+
+    method : public : PrintStructure() ~ Nil {
+        offset := @offset;
+        "  offset: {$offset}"->PrintLine();
+        
+        for(sg := @base; sg <> Nil; sg := sg->GetNext();) {
+            values := sg->GetEle();
+            "  ["->Print();
+            each(i : values) {
+                value := values[i];
+                if(value <> Nil) {
+                    "{$value}"->Print();
+                }
+                else {
+                    "{Nil}"->Print();
+                };
+
+                if(i + 1 < values->Size()) {
+                    ", "->Print();
+                };
+            };
+            "]"->PrintLine();
+        };
+        ""->PrintLine();
+    }
 }
  
 class vSeg {
@@ -138,45 +163,20 @@ class vSeg {
 }
 
 class Test {
-    function : PrintStructure(v : vList) ~ Nil {
-        offset := v->GetOffset();
-        "  offset: {$offset}"->PrintLine();
-        
-        for(sg := v->GetBase(); sg <> Nil; sg := sg->GetNext();) {
-            values := sg->GetEle();
-            "  ["->Print();
-            each(i : values) {
-                value := values[i];
-                if(value <> Nil) {
-                    "{$value}"->Print();
-                }
-                else {
-                    "{Nil}"->Print();
-                };
-
-                if(i + 1 < values->Size()) {
-                    ", "->Print();
-                };
-            };
-            "]"->PrintLine();
-        };
-        ""->PrintLine();
-    }
-
     function : Main(args : String[]) ~ Nil {
         v := vList->New();
         "Zero value for type. empty vList: {$v}"->PrintLine();
-        PrintStructure(v);
+        v->PrintStructure();
 
         for(a := '6'; a >= '1'; a -=1;) {
             v := v->Cons("{$a}");
         };
         "Demonstrate cons. 6 elements added: {$v}"->PrintLine();
-        PrintStructure(v);
+        v->PrintStructure();
 
         v := v->Cdr();
         "Demonstrate cdr. 1 element removed: {$v}"->PrintLine();
-        PrintStructure(v);
+        v->PrintStructure();
 
         size := v->Size();
         "Demonstrating size property, size = {$size}"->PrintLine();
@@ -186,6 +186,6 @@ class Test {
 
         v := v->Cdr()->Cdr();
         "Demonstrate cdr. 2 elements removed: {$v}"->PrintLine();
-        PrintStructure(v);
+        v->PrintStructure();
     }
 }
