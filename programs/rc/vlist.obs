@@ -23,8 +23,7 @@ class vList {
 
     method : public : Cons(a : String) ~ vList {
         if(@base = Nil) {
-            s := vSeg->New(a);
-            return vList->New(s);
+            return vList->New(vSeg->New(a));
         }
         else if(@offset = 0) {
             l2 := @base->GetEle()->Size() * 2;
@@ -175,6 +174,7 @@ class Test {
         v->PrintStructure();
 
         v := v->Cdr();
+        Runtime->Assert(v <> Nil);
         "Demonstrate cdr. 1 element removed: {$v}"->PrintLine();
         v->PrintStructure();
 
@@ -182,9 +182,11 @@ class Test {
         "Demonstrating size property, size = {$size}"->PrintLine();
 
         e := v->Index(3);
+        Runtime->Assert(e <> Nil);
         "Demonstrate element access. v[3] = {$e}"->PrintLine();
 
         v := v->Cdr()->Cdr();
+        Runtime->Assert(v <> Nil);
         "Demonstrate cdr. 2 elements removed: {$v}"->PrintLine();
         v->PrintStructure();
     }
