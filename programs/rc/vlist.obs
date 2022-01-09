@@ -54,6 +54,10 @@ class vList {
     }
 
     method : public : ToString() ~ String {
+        if(@base = Nil) {
+            return "[]";
+        };
+
         return "";
     }
 }
@@ -108,18 +112,18 @@ class Test {
     }
 
     function : Main(args : String[]) ~ Nil {
-        "zero value for type. empty vList:"->PrintLine();
         v := vList->New();
+        "zero value for type. empty vList: {$v}"->PrintLine();
         PrintStructure(v);
 
         for(a := '6'; a >= '1'; a -=1;) {
             v := v->Cons("{$a}");
         };
-        "demonstrate cons. 6 elements added:"->PrintLine();
+        "demonstrate cons. 6 elements added: {$v}"->PrintLine();
         PrintStructure(v);
 
         v := v->Cdr();
-        "demonstrate cdr. 1 element removed:"->PrintLine();
+        "demonstrate cdr. 1 element removed: {$v}"->PrintLine();
         PrintStructure(v);
     }
 }
