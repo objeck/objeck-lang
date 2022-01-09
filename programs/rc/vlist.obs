@@ -27,7 +27,6 @@ class vList {
             return vList->New(s);
         }
         else if(@offset = 0) {
-"--- 0 ---"->PrintLine();            
             l2 := @base->GetEle()->Size() * 2;
             ele := String->New[l2];
             ele[l2 - 1] := a;
@@ -35,7 +34,6 @@ class vList {
             return vList->New(s, l2 - 1);
         }
         else {
-"--- 1 ---"->PrintLine();            
             @offset -= 1;
             ele := @base->GetEle();
             ele[@offset] := a;
@@ -46,17 +44,17 @@ class vList {
     method : public : Cdr() ~ vList {
         Runtime->Assert(@base <> Nil);
 
-foo := @base->GetEle()->Size();
-
         @offset += 1;
         if(@offset < @base->GetEle()->Size()) {
-"--- {$@offset} < {$foo} ---"->PrintLine();            
             return @self;
         }
         else {
-"--- 3 ---"->PrintLine();            
             return vList->New(@base->GetNext(), 0);
         };
+    }
+
+    method : public : ToString() ~ String {
+        return "";
     }
 }
  
@@ -86,16 +84,25 @@ class vSeg {
 class Test {
     function : PrintStructure(v : vList) ~ Nil {
         offset := v->GetOffset();
-        " offset: {$offset}"->PrintLine();
+        "  offset: {$offset}"->PrintLine();
         
         for(sg := v->GetBase(); sg <> Nil; sg := sg->GetNext();) {
             values := sg->GetEle();
+            "  ["->Print();
             each(i : values) {
                 value := values[i];
                 if(value <> Nil) {
-                    " {$value}"->Print();
+                    "{$value}"->Print();
+                }
+                else {
+                    "{Nil}"->Print();
+                };
+
+                if(i + 1 < values->Size()) {
+                    ", "->Print();
                 };
             };
+            "]"->PrintLine();
         };
         ""->PrintLine();
     }
