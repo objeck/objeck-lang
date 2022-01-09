@@ -4,6 +4,15 @@ class vList {
 
     New() {}
 
+    New(base : vSeg, offset : Int) {
+        @base := base;
+        @offset := offset;
+    }
+
+    New(base : vSeg) {
+        @base := base;
+    }
+
     method : public : GetBase() ~ vSeg {
         return @base;
     }
@@ -14,10 +23,40 @@ class vList {
 
     method : public : Cons(a : String) ~ vList {
         if(@base = Nil) {
-            
+            s := vSeg->New(a);
+            return vList->New(s);
+        }
+        else if(@offset = 0) {
+"--- 0 ---"->PrintLine();            
+            l2 := @base->GetEle()->Size() * 2;
+            ele := String->New[l2];
+            ele[l2 - 1] := a;
+            s := vSeg->New(@base, ele);
+            return vList->New(s, l2 - 1);
+        }
+        else {
+"--- 1 ---"->PrintLine();            
+            @offset -= 1;
+            ele := @base->GetEle();
+            ele[@offset] := a;
+            return @self;
         };
-        
-        return Nil;
+    }
+
+    method : public : Cdr() ~ vList {
+        Runtime->Assert(@base <> Nil);
+
+foo := @base->GetEle()->Size();
+
+        @offset += 1;
+        if(@offset < @base->GetEle()->Size()) {
+"--- {$@offset} < {$foo} ---"->PrintLine();            
+            return @self;
+        }
+        else {
+"--- 3 ---"->PrintLine();            
+            return vList->New(@base->GetNext(), 0);
+        };
     }
 }
  
@@ -25,7 +64,15 @@ class vSeg {
     @next : vSeg;
     @ele : String[];
 
-    New() {}
+    New(next : vSeg, ele : String[]) {
+        @next := next;
+        @ele := ele;
+    }
+
+    New(s : String) {
+        @ele := String->New[1];
+        @ele[0] := s;
+    }
 
     method : public : GetNext() ~ vSeg {
         return @next;
@@ -39,27 +86,33 @@ class vSeg {
 class Test {
     function : PrintStructure(v : vList) ~ Nil {
         offset := v->GetOffset();
-        "offset: {$offset}"->PrintLine();
+        " offset: {$offset}"->PrintLine();
         
         for(sg := v->GetBase(); sg <> Nil; sg := sg->GetNext();) {
             values := sg->GetEle();
             each(i : values) {
                 value := values[i];
-                " {$value}"->Print();
+                if(value <> Nil) {
+                    " {$value}"->Print();
+                };
             };
         };
         ""->PrintLine();
     }
 
-    
-
     function : Main(args : String[]) ~ Nil {
+        "zero value for type. empty vList:"->PrintLine();
         v := vList->New();
-
         PrintStructure(v);
 
         for(a := '6'; a >= '1'; a -=1;) {
             v := v->Cons("{$a}");
         };
+        "demonstrate cons. 6 elements added:"->PrintLine();
+        PrintStructure(v);
+
+        v := v->Cdr();
+        "demonstrate cdr. 1 element removed:"->PrintLine();
+        PrintStructure(v);
     }
 }
