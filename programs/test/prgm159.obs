@@ -1,0 +1,8 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a : Stringify := "foo";
+		a->ToString()->PrintLine();
+		b : String := a->As(String);
+		b->PrintLine();
+	}
+}
