@@ -102,6 +102,8 @@ using namespace stdext;
 using namespace std;
 using namespace instructions;
 
+#define INF_ENDING -2
+
 enum {
   VM_SIGABRT = -20,
   VM_SIGFPE,
