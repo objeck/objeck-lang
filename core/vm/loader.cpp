@@ -256,7 +256,7 @@ void Loader::LoadClasses()
       while(j < interface_size) {
         interfaces[j++] = ReadInt();
       }
-      interfaces[j] = -1;
+      interfaces[j] = INF_ENDING;
       cls_interfaces[id] = interfaces;
     }
     else {
