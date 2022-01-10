@@ -98,7 +98,7 @@ bundle System {
 	#~
 	The byte class represents a 1-byte value.
 	~#
-	class $Byte {
+	class $Byte implements {
 		#~
 		Compresses a byte stream using zlib
 		@ignore-params
@@ -171,37 +171,37 @@ bundle System {
 			return 0;
 		}
 
-        #~
-        Returns the Float value
-        @ignore-params
-        @return value
-        ~#
-        function : ToFloat(v : Byte) ~ Float {
-			return v->As(Float);
-        }
+	        #~
+	        Returns the Float value
+	        @ignore-params
+	        @return value
+	        ~#
+	        function : ToFloat(v : Byte) ~ Float {
+				return v->As(Float);
+	        }
 
-        #~
-        Returns the Character value
-        @ignore-params
-        @return value
-        ~#
-        function : ToChar(v : Byte) ~ Char {
-                return v->As(Char);
-        }
+	        #~
+	        Returns the Character value
+	        @ignore-params
+	        @return value
+	        ~#
+	        function : ToChar(v : Byte) ~ Char {
+	                return v->As(Char);
+	        }
 
-        #~
-        Returns the Int value
-        @ignore-params
-        @return value
-        ~#
-        function : ToInt(v : Byte) ~ Int {
-                return v->As(Int);
-        }
+	        #~
+	        Returns the Int value
+	        @ignore-params
+	        @return value
+	        ~#
+	        function : ToInt(v : Byte) ~ Int {
+	                return v->As(Int);
+	        }
 
-        function : Size(v : Byte) ~ Byte {
+	        function : Size(v : Byte) ~ Byte {
 			return v;
 		}
-        
+
 		#~
 		Returns the absolute value
 		@ignore-params
@@ -303,7 +303,7 @@ bundle System {
 				while(array[i] < pivot) {
 					i+=1;
 				};
-	
+
 				while(array[j] > pivot) {
 					j-=1;
 				};
@@ -315,7 +315,7 @@ bundle System {
 					i+=1; j-=1;
 				};
 			};
-	
+
 			if(low < j) {
 				Sort(array, low, j);
 			};
@@ -397,7 +397,7 @@ bundle System {
 	#~
 	Character class represents a Unicode character value.
 	~#	
-	class $Char {
+	class $Char implements {
 		#~
 		Converts character to lower-case
 		@ignore-params
@@ -429,31 +429,31 @@ bundle System {
 		}
 		
 		#~
-        Returns the Float value
-        @ignore-params
-        @return value
-        ~#
-        function : ToFloat(v : Char) ~ Float {
-                return v->As(Float);
-        }
+	        Returns the Float value
+	        @ignore-params
+	        @return value
+	        ~#
+	        function : ToFloat(v : Char) ~ Float {
+	                return v->As(Float);
+	        }
 
-        #~
-        Returns the Character value
-        @ignore-params
-        @return value
-        ~#
-        function : ToByte(v : Byte) ~ Byte {
-                return v->As(Byte);
-        }
+	        #~
+	        Returns the Character value
+	        @ignore-params
+	        @return value
+	        ~#
+	        function : ToByte(v : Byte) ~ Byte {
+	                return v->As(Byte);
+	        }
 
-        #~
-        Returns the Int value
-        @ignore-params
-        @return value
-        ~#
-        function : ToInt(v : Char) ~ Int {
-                return v->As(Int);
-        }
+	        #~
+	        Returns the Int value
+	        @ignore-params
+	        @return value
+	        ~#
+	        function : ToInt(v : Char) ~ Int {
+	                return v->As(Int);
+	        }
 		
 		#~
 		Checks if the character is lower-case
@@ -677,7 +677,7 @@ bundle System {
 	#~
 	Integer class represents an operating system long value
 	~#
-	class $Int {
+	class $Int implements {
 		#~
 		Returns the maximum size of an integer
 		@return maximum size of an integer
@@ -1476,7 +1476,7 @@ bundle System {
 	#~
 	Holds a boolean value
 	~#
-	class BoolHolder implements System.Compare, System.Clone {
+	class BoolHolder implements System.Compare, System.Clone, System.Stringify {
 		@value : Bool;
 
 		#~
@@ -1555,7 +1555,7 @@ bundle System {
 			@value->PrintLine();
 		}
 
-        method : public : ToString() ~ String {
+		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
 	}
@@ -1563,7 +1563,7 @@ bundle System {
 	#~
 	Holds an byte value
 	~#
-	class ByteHolder implements System.Compare, System.Clone {
+	class ByteHolder implements System.Compare, System.Clone, System.Stringify {
 		@value : Byte;
 
 		#~
@@ -1645,7 +1645,7 @@ bundle System {
 			@value->PrintLine();
 		}
 
-        method : public : ToString() ~ String {
+		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
 	}
@@ -1653,7 +1653,7 @@ bundle System {
 	#~
 	Holds an character value
 	~#
-	class CharHolder implements System.Compare, System.Clone {
+	class CharHolder implements System.Compare, System.Clone, System.Stringify {
 		@value : Char;
 
 		#~
@@ -1743,7 +1743,7 @@ bundle System {
 	#~
 	Holds an integer value
 	~#
-	class IntHolder implements System.Compare, System.Clone {
+	class IntHolder implements System.Compare, System.Clone, System.Stringify {
 		@value : Int;
 
 		#~
@@ -1871,7 +1871,7 @@ bundle System {
 			@value->PrintLine();
 		}
 
-        method : public : ToString() ~ String {
+		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
 	}
@@ -1879,7 +1879,7 @@ bundle System {
 	#~
 	Holds a float
 	~#
-	class FloatHolder implements System.Compare, System.Clone {
+	class FloatHolder implements System.Compare, System.Clone, System.Stringify {
 		@value : Float;
 
 		#~
@@ -2368,6 +2368,17 @@ bundle System {
 			LOAD_INST_UID;
 		}
 	}
+
+	#~
+	Used to compare two abstract values
+	~#	
+	interface Stringify {
+		#~
+		Converts an instance to a string
+		@return string representation of instance
+		~#
+		method : virtual : public : ToString() ~ System.String;
+	}
 	
 	#~
 	Used to compare two abstract values
@@ -2437,7 +2448,7 @@ bundle System {
 	#~
 	Resizeable Unicode string class that supports typical string operations.
 	~#	
-	class String implements System.Compare, System.Clone {
+	class String implements System.Compare, System.Clone, System.Stringify {
 		@string : Char[];
 		@max : Int;
 		@pos : Int;
@@ -2549,6 +2560,14 @@ bundle System {
 			@pos := 0;
 
 			Append(bytes->ToUnicode(), offset, length);
+		}
+
+		#~
+		Returns string of self
+		@return string of self
+		~#
+		method : public : ToString() ~ String {
+			return @self;
 		}
 
 		#~
@@ -4020,7 +4039,7 @@ bundle System.Time {
 	#~
 	Provides date and time functionality 
 	~#	
-	class Date implements System.Compare, System.Clone {
+	class Date implements System.Compare, System.Clone, System.Stringify {
 		@day : Int;
 		@month : Int;
 		@year : Int;
