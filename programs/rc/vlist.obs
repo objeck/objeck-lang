@@ -1,4 +1,4 @@
-class vList<T> {
+class vList<T:Stringify> {
     @base : vSeg<T>;
     @offset : Int;
 
@@ -137,7 +137,7 @@ class vList<T> {
     }
 }
  
-class vSeg<T> {
+class vSeg<T:Stringify> {
     @next : vSeg<T>;
     @ele : T[];
 
