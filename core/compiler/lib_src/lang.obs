@@ -2368,14 +2368,14 @@ bundle System {
 			LOAD_INST_UID;
 		}
 	}
-
+	
 	#~
-	Used to compare two abstract values
+	Used to represent the string value of an object instance
 	~#	
 	interface Stringify {
 		#~
 		Converts an instance to a string
-		@return string representation of instance
+		@return string representation of the instance
 		~#
 		method : virtual : public : ToString() ~ System.String;
 	}
