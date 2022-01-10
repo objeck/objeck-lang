@@ -232,16 +232,16 @@ char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
 
 void Loader::LoadClasses()
 {
-  const int number = ReadInt();
-  long* cls_hierarchy = new long[number];
-  long** cls_interfaces = new long*[number];
-  StackClass** classes = new StackClass*[number];
+  const int num_classes = ReadInt();
+  long* cls_hierarchy = new long[num_classes];
+  long** cls_interfaces = new long*[num_classes];
+  StackClass** classes = new StackClass*[num_classes];
 
 #ifdef _DEBUG
-  wcout << L"Reading " << number << L" classe(s)..." << endl;
+  wcout << L"Reading " << num_classes << L" classe(s)..." << endl;
 #endif
 
-  for(int i = 0; i < number; ++i) {
+  for(int i = 0; i < num_classes; ++i) {
     // read id and pid
     const int id = ReadInt();
     wstring name = ReadString();
@@ -249,11 +249,11 @@ void Loader::LoadClasses()
     wstring parent_name = ReadString();
 
     // read interface ids
-    const int interface_size = ReadInt();
-    if(interface_size > 0) {
-      long* interfaces = new long[interface_size + 1];
+    const int num_interfaces = ReadInt();
+    if(num_interfaces > 0) {
+      long* interfaces = new long[num_interfaces + 1];
       int j = 0;
-      while(j < interface_size) {
+      while(j < num_interfaces) {
         interfaces[j++] = ReadInt();
       }
       interfaces[j] = INF_ENDING;
@@ -308,13 +308,13 @@ void Loader::LoadClasses()
     LoadMethods(cls, is_debug);
     // add class
 #ifdef _DEBUG
-    assert(id < number);
+    assert(id < num_classes);
 #endif
     classes[id] = cls;
   }
 
   // set class hierarchy and interfaces
-  program->SetClasses(classes, number);
+  program->SetClasses(classes, num_classes);
   program->SetHierarchy(cls_hierarchy);
   program->SetInterfaces(cls_interfaces);
 }
