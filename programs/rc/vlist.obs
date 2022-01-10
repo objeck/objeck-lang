@@ -169,7 +169,7 @@ class Test {
         for(a := '6'; a >= '1'; a -=1;) {
             v := v->Cons("{$a}")<String>;
         };
-        
+
         "Demonstrate cons. 6 elements added: {$v}"->PrintLine();
         v->PrintStructure();
 
@@ -185,7 +185,7 @@ class Test {
         Runtime->Assert(e <> Nil);
         "Demonstrate element access. v[3] = {$e}"->PrintLine();
 
-        v := v->Cdr()<String>->Cdr()<String>;
+        v := v->Cdr()->Cdr()<String>;
         Runtime->Assert(v <> Nil);
         "Demonstrate cdr. 2 elements removed: {$v}"->PrintLine();
         v->PrintStructure();
