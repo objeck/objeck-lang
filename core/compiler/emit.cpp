@@ -198,15 +198,13 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
     classes[i]->Write(emit_lib, out_stream);
   }
   
-  wcout << L"Compiled " << num_src_classes
-        << (num_src_classes > 1 ? L" source classes" : L" source class");
+  wcout << L"Compiled " << num_src_classes << (num_src_classes > 1 ? L" source classes" : L" source class");
   if(is_debug) {
     wcout << L" with debug symbols";
   }
   wcout << L'.' << endl;
   
-  wcout << L"Linked " << num_lib_classes
-        << (num_lib_classes > 1 ? L" library classes." : L" library class.") << endl;
+  wcout << L"Linked " << num_lib_classes << (num_lib_classes > 1 ? L" library classes." : L" library class.") << endl;
 }
 
 /****************************
@@ -876,12 +874,16 @@ void IntermediateInstruction::Debug() {
     }
     break;
 
-  case OBJ_INST_CAST:
-    GetLogger() << L"OBJ_INST_CAST: to=" << operand << endl;
+  case OBJ_INST_CAST: {
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
+    GetLogger() << L"OBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << endl;
+  }
     break;
 
-  case OBJ_TYPE_OF:
-    GetLogger() << L"OBJ_TYPE_OF: check=" << operand << endl;
+  case OBJ_TYPE_OF: {
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
+    GetLogger() << L"OBJ_TYPE_OF: check='" << klass->GetName() << L"', id=" << operand << endl;
+  }
     break;
 
   case NEW_FLOAT_ARY:
@@ -902,7 +904,7 @@ void IntermediateInstruction::Debug() {
 
   case NEW_OBJ_INST: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
-    GetLogger() << L"NEW_OBJ_INST: class=" << klass->GetName() << endl;
+    GetLogger() << L"NEW_OBJ_INST: class='" << klass->GetName() << L"'" << endl;
   }
     break;
 

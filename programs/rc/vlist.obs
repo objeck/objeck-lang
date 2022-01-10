@@ -84,7 +84,7 @@ class vList<T:Stringify> {
 
         r := "[";
         ele := @base->GetEle();
-        r += ele[@offset];
+        r += ele[@offset]->ToString();
         r += ' ';
 
         sg := @base;
@@ -93,7 +93,7 @@ class vList<T:Stringify> {
         done := false;
         while(<>done) {
             for(i := offset; i < ele->Size(); i += 1;) {
-                r += ele[i];
+                r += ele[i]->ToString();
                 r += ' ';
             };
 
@@ -169,6 +169,7 @@ class Test {
         for(a := '6'; a >= '1'; a -=1;) {
             v := v->Cons("{$a}")<String>;
         };
+        
         "Demonstrate cons. 6 elements added: {$v}"->PrintLine();
         v->PrintStructure();
 
