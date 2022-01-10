@@ -1,19 +1,19 @@
-class vList {
-    @base : vSeg;
+class vList<T> {
+    @base : vSeg<T>;
     @offset : Int;
 
     New() {}
 
-    New(base : vSeg, offset : Int) {
+    New(base : vSeg<T>, offset : Int) {
         @base := base;
         @offset := offset;
     }
 
-    New(base : vSeg) {
+    New(base : vSeg<T>) {
         @base := base;
     }
 
-    method : public : GetBase() ~ vSeg {
+    method : public : GetBase() ~ vSeg<T> {
         return @base;
     }
 
@@ -21,16 +21,15 @@ class vList {
         return @offset;
     }
 
-    method : public : Cons(a : String) ~ vList {
+    method : public : Cons(a : T) ~ vList<T> {
         if(@base = Nil) {
-            return vList->New(vSeg->New(a));
+            return vList->New(vSeg->New(a)<T>)<T>;
         }
         else if(@offset = 0) {
             l2 := @base->GetEle()->Size() * 2;
-            ele := String->New[l2];
+            ele := T->New[l2];
             ele[l2 - 1] := a;
-            s := vSeg->New(@base, ele);
-            return vList->New(s, l2 - 1);
+            return vList->New(vSeg->New(@base, ele)<T>, l2 - 1)<T>;
         }
         else {
             @offset -= 1;
@@ -40,7 +39,7 @@ class vList {
         };
     }
 
-    method : public : Cdr() ~ vList {
+    method : public : Cdr() ~ vList<T> {
         if(@base = Nil) {
             return Nil;
         };
@@ -50,11 +49,11 @@ class vList {
             return @self;
         }
         else {
-            return vList->New(@base->GetNext(), 0);
+            return vList->New(@base->GetNext(), 0)<T>;
         };
     }
 
-    method : public : Index(i : Int) ~ String {
+    method : public : Index(i : Int) ~ T {
         if(i >= 0) {
             i += @offset;
             for(sg := @base; sg <> Nil; sg := sg->GetNext();) {
@@ -138,42 +137,42 @@ class vList {
     }
 }
  
-class vSeg {
-    @next : vSeg;
-    @ele : String[];
+class vSeg<T> {
+    @next : vSeg<T>;
+    @ele : T[];
 
-    New(next : vSeg, ele : String[]) {
+    New(next : vSeg<T>, ele : T[]) {
         @next := next;
         @ele := ele;
     }
 
-    New(s : String) {
-        @ele := String->New[1];
+    New(s : T) {
+        @ele := T->New[1];
         @ele[0] := s;
     }
 
-    method : public : GetNext() ~ vSeg {
+    method : public : GetNext() ~ vSeg<T> {
         return @next;
     }
 
-    method : public : GetEle() ~ String[] {
+    method : public : GetEle() ~ T[] {
         return @ele;
     }
 }
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        v := vList->New();
+        v := vList->New()<String>;
         "Zero value for type. empty vList: {$v}"->PrintLine();
         v->PrintStructure();
 
         for(a := '6'; a >= '1'; a -=1;) {
-            v := v->Cons("{$a}");
+            v := v->Cons("{$a}")<String>;
         };
         "Demonstrate cons. 6 elements added: {$v}"->PrintLine();
         v->PrintStructure();
 
-        v := v->Cdr();
+        v := v->Cdr()<String>;
         Runtime->Assert(v <> Nil);
         "Demonstrate cdr. 1 element removed: {$v}"->PrintLine();
         v->PrintStructure();
@@ -185,7 +184,7 @@ class Test {
         Runtime->Assert(e <> Nil);
         "Demonstrate element access. v[3] = {$e}"->PrintLine();
 
-        v := v->Cdr()->Cdr();
+        v := v->Cdr()<String>->Cdr()<String>;
         Runtime->Assert(v <> Nil);
         "Demonstrate cdr. 2 elements removed: {$v}"->PrintLine();
         v->PrintStructure();
