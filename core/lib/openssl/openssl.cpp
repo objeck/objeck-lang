@@ -221,7 +221,7 @@ extern "C" {
     const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
     
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
-    const int input_size =  APITools_GetArraySize(input_array) - 1;
+    const int input_size =  APITools_GetArraySize(input_array);
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
     // TODO: add salt
