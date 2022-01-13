@@ -3530,6 +3530,8 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   return true;
 }
 
+char passwd_buffer[MID_BUFFER_MAX] = {0};
+
 int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
 #ifdef _WIN32
 	strncpy_s(buffer, MID_BUFFER_MAX - 1, (char*)passwd, size);
@@ -3565,7 +3567,6 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         const wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
         if(!passwd_str.empty()) {
           const string passwd = UnicodeToBytes(passwd_str);
-          char passwd_buffer[MID_BUFFER_MAX] = {0};
 #ifdef _WIN32
           strncpy_s(passwd_buffer, MID_BUFFER_MAX - 1, passwd.c_str(), passwd.size());
 #else
@@ -3579,7 +3580,11 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       // load certificates
       const string cert_path = UnicodeToBytes(cert_str);
       const string key_path = UnicodeToBytes(key_str);
-      if(!SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) || !SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM)) {
+      
+      const int ok_cert = SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM);
+      const int ok_key = SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM);
+      
+      if(!ok_cert || !ok_key) {
         PushInt(0, op_stack, stack_pos);
 				instance[0] = instance[1] = instance[2] = 0;
 				SSL_CTX_free(ctx);
