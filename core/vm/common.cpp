@@ -3530,14 +3530,14 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   return true;
 }
 
-char passwd_buffer[MID_BUFFER_MAX];
+char passwd_buffer[MID_BUFFER_MAX]; // global ssl password buffer
+
 int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
 #ifdef _WIN32
 	strncpy_s(buffer, MID_BUFFER_MAX - 1, (char*)passwd, size);
 #else
 	strncpy(buffer, (char*)passwd, size);
 #endif
-	buffer[size - 1] = '\0';
 	return (int)strlen(buffer);
 }
 
@@ -3564,7 +3564,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       // get password for private key
       if(passwd_obj) {
         const wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
-        if(!passwd_str.empty()) {
+        if(!passwd_str.empty() && passwd_str.size() < MID_BUFFER_MAX) {
           memset(passwd_buffer, 0, sizeof(passwd_buffer));
           const string passwd = UnicodeToBytes(passwd_str);
 #ifdef _WIN32
