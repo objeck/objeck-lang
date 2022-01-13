@@ -15,7 +15,9 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
-  <w:DontDisplayPageBoundaries/>
+  <w:Zoom>110</w:Zoom>
+  <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -32,7 +34,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyMze0MDM2szAxNTI3tjBQ0lEKTi0uzszPAykwrAUAU+oTOywAAAA=</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyMze0MDM2szAxNTI3tjBQ0lEKTi0uzszPAykwqgUAkLk+ECwAAAA=</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -644,7 +646,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
 	mso-font-charset:0;
 	mso-generic-font-family:roman;
 	mso-font-pitch:variable;
-	mso-font-signature:-536869121 1107305727 33554432 0 415 0;}
+	mso-font-signature:3 0 0 0 1 0;}
 @font-face
 	{font-family:Calibri;
 	panose-1:2 15 5 2 2 2 4 3 2 4;
@@ -739,6 +741,12 @@ p.msochpdefault, li.msochpdefault, div.msochpdefault
 	font-family:"Calibri",sans-serif;
 	mso-fareast-font-family:"Times New Roman";
 	mso-fareast-theme-font:minor-fareast;}
+span.SpellE
+	{mso-style-name:"";
+	mso-spl-e:yes;}
+span.GramE
+	{mso-style-name:"";
+	mso-gram-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
@@ -788,23 +796,21 @@ word-wrap:break-word;text-justify-trim:punctuation'>
 
 <div class=WordSection1>
 
-<h1><span style='mso-fareast-font-family:"Times New Roman"'>Text Editor Support<o:p></o:p></span></h1>
+<h1><b>Text Editor Support<o:p></o:p></b></h1>
 
 <p class=MsoNormal><o:p>&nbsp;</o:p></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>The
-following outlines how to enable code syntax highlighting for various editors. Preferred
-editor is Sublime, which is cross platform, and provides both syntax
+following outlines how to enable code syntax highlighting for various editors.
+Preferred editor is Sublime, which is cross platform, and provides both syntax
 highlighting and build support.</span></p>
 
 <p class=MsoNormal><o:p>&nbsp;</o:p></p>
 
 <p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
 font-family:"Helvetica",sans-serif;color:#2E74B5'><a
-href="https://www.sublimetext.com/"><span style='text-decoration:none;
-text-underline:none'>Visual</span></a> Studio Code</span></b><span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>
-(Windows/Linux/macOS)</span></p>
+href="https://www.sublimetext.com/">Visual Studio Code</a> </span></b><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(Windows/Linux/macOS)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
@@ -813,9 +819,9 @@ for syntax highlighting and compiling code.</span></p>
 <p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Windows</span></u><span
 style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: </span>Copy all
 the VS Code files to the directory “<span style='font-size:11.0pt;font-family:
-"Helvetica",sans-serif'>%USERPROFILE%</span>\.vscode\extensions\objeck”. <span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart the
-application</span></p>
+"Helvetica",sans-serif'>%USERPROFILE%</span>\.<span class=SpellE>vscode</span>\extensions\<span
+class=SpellE>objeck</span>”. <span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
+the application</span></p>
 
 <p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p><span
  style='text-decoration:none'>&nbsp;</span></o:p></span></u></p>
@@ -823,9 +829,10 @@ application</span></p>
 <p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Linux
 and macOS</span></u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>:
 </span>Copy all the VS Code files to the directory <span style='font-size:11.0pt;
-font-family:"Helvetica",sans-serif'>“~/</span>.vscode/extensions/objeck”. <span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart the
-application<o:p></o:p></span></p>
+font-family:"Helvetica",sans-serif'>“~<span class=GramE>/<span
+style='font-size:12.0pt;font-family:"Calibri",sans-serif'>.<span class=SpellE>vscode</span></span></span></span>/extensions/<span
+class=SpellE>objeck</span>”. <span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
+the application<o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p>&nbsp;</o:p></span></p>
 
@@ -839,9 +846,8 @@ href="https://github.com/objeck/objeck-lang-server">Objeck LSP</a> project page.
 
 <p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
 font-family:"Helvetica",sans-serif;color:#2E74B5'><a
-href="https://www.sublimetext.com/"><span style='text-decoration:none;
-text-underline:none'>Sublime</span></a></span></b><span style='font-size:11.0pt;
-font-family:"Helvetica",sans-serif;color:#2E74B5'> (Windows/Linux/macOS)</span></p>
+href="https://www.sublimetext.com/">Sublime</a> </span></b><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(Windows/Linux/macOS)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
@@ -849,8 +855,11 @@ for syntax highlighting and compiling code.</span></p>
 
 <p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Windows</span></u><span
 style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the <a
-name="__DdeLink__123_172101755">objeck.sublime-syntax, objeck.tmPreferences and
-objeck.sublime-build</a> files to “%USERPROFILE%\AppData\Roaming\Sublime Text
+name="__DdeLink__123_172101755"></a><span class=SpellE><span class=GramE><span
+style='mso-bookmark:__DdeLink__123_172101755'>objeck.sublime</span></span></span><span
+style='mso-bookmark:__DdeLink__123_172101755'>-syntax, <span class=SpellE>objeck.tmPreferences</span>
+and <span class=SpellE>objeck.sublime</span>-build</span> files to
+“%USERPROFILE%\<span class=SpellE>AppData</span>\Roaming\Sublime Text
 3\Packages\Objeck” directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
@@ -859,9 +868,10 @@ the application</span></p>
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Linux</span></u><span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the
-objeck.sublime-syntax, objeck.tmPreferences and objeck.sublime-build files to
-the “~/.config/sublime-text-3/Packages/Objeck” directory</span></p>
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the <span
+class=SpellE><span class=GramE>objeck.sublime</span></span>-syntax, <span
+class=SpellE>objeck.tmPreferences</span> and <span class=SpellE>objeck.sublime</span>-build
+files to the “~/.config/sublime-text-3/Packages/Objeck” directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application</span></p>
@@ -869,9 +879,11 @@ the application</span></p>
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal><u><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>macOS</span></u><span
-style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the
-objeck.sublime-syntax, objeck.tmPreferences and objeck.sublime-build files to
-the “~/Library/Application Support/Sublime Text 3/Packages/Objeck” directory</span></p>
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>: Copy the <span
+class=SpellE><span class=GramE>objeck.sublime</span></span>-syntax, <span
+class=SpellE>objeck.tmPreferences</span> and <span class=SpellE>objeck.sublime</span>-build
+files to the “~/Library/Application Support/Sublime Text 3/Packages/Objeck”
+directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application.</span></p>
@@ -885,9 +897,9 @@ your environment path.<o:p></o:p></span></p>
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p>&nbsp;</o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>For
-<u>Windows</u>:</span><o:p></o:p></p>
+<u>Windows</u>:</span></p>
 
-<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>{</span><o:p></o:p></p>
+<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>{</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
 <span style='background:silver;mso-highlight:silver;mso-shading:yellow'>&quot;env&quot;:
@@ -895,33 +907,35 @@ your environment path.<o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New";
 background:silver;mso-highlight:silver;mso-shading:yellow'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;OBJECK_LIB_PATH&quot;: &quot;&lt;install_path&gt;/lib&quot;, </span><span
-style='background:silver;mso-highlight:silver'><o:p></o:p></span></p>
+&quot;OBJECK_LIB_PATH&quot;: &quot;&lt;<span class=SpellE>install_path</span>&gt;/lib&quot;,
+</span><span style='background:silver;mso-highlight:silver'><o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New";
 background:silver;mso-highlight:silver;mso-shading:yellow'>&nbsp;&nbsp;&nbsp;&nbsp;
-},</span><o:p></o:p></p>
+},</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;cmd&quot;: [<span style='background:silver;mso-highlight:silver;
-mso-shading:yellow'>&quot;&lt;install_path&gt;/bin/obc&quot;</span>,
-&quot;-src&quot;, &quot;$file&quot;, &quot;-lib&quot;, &quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
-&quot;-dest&quot;, &quot;$file_base_name.obe&quot;],</span><o:p></o:p></p>
+&quot;<span class=SpellE>cmd</span>&quot;: [<span style='background:silver;
+mso-highlight:silver;mso-shading:yellow'>&quot;&lt;<span class=SpellE>install_path</span>&gt;/bin/<span
+class=SpellE>obc</span>&quot;</span>, &quot;-<span class=SpellE>src</span>&quot;,
+&quot;$file&quot;, &quot;-lib&quot;, &quot;<span class=GramE>collect.obl,gen_collect.obl</span>,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
+&quot;-<span class=SpellE>dest</span>&quot;, &quot;$<span class=SpellE>file_base_name.obe</span>&quot;],</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;selector&quot;: &quot;source.objeck-obs&quot;,</span><o:p></o:p></p>
+&quot;selector&quot;: &quot;<span class=SpellE><span class=GramE>source.objeck</span>-obs</span>&quot;,</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;file_regex&quot;: &quot;^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$&quot;</span><o:p></o:p></p>
+&quot;<span class=SpellE>file_regex</span>&quot;: &quot;^<span class=GramE>(..</span>[^:]*):([0-9]+):?([0-9]+)?:?
+(.*)$&quot;</span></p>
 
-<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>}</span><o:p></o:p></p>
+<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>}</span></p>
 
-<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>&nbsp;</span><o:p></o:p></p>
+<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>For
-<u>Linux</u> and <u>macOS</u>: </span><o:p></o:p></p>
+<u>Linux</u> and <u>macOS</u>: </span></p>
 
-<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>{</span><o:p></o:p></p>
+<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>{</span></p>
 
 <p class=MsoNormal style='margin-left:.5in'><span style='font-size:11.0pt;
 font-family:"Courier New";background:silver;mso-highlight:silver;mso-shading:
@@ -930,34 +944,35 @@ silver'><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:.5in'><span style='font-size:11.0pt;
 font-family:"Courier New";background:silver;mso-highlight:silver;mso-shading:
-yellow'>&nbsp;&nbsp;&nbsp;&nbsp; &quot;OBJECK_LIB_PATH&quot;:
-&quot;&lt;install_path&gt;/lib&quot;, </span><span style='background:silver;
-mso-highlight:silver'><o:p></o:p></span></p>
+yellow'>&nbsp;&nbsp;&nbsp;&nbsp; &quot;OBJECK_LIB_PATH&quot;: &quot;&lt;<span
+class=SpellE>install_path</span>&gt;/lib&quot;, </span><span style='background:
+silver;mso-highlight:silver'><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:.5in'><span style='font-size:11.0pt;
 font-family:"Courier New";background:silver;mso-highlight:silver;mso-shading:
-yellow'>&nbsp;&nbsp;&nbsp;&nbsp; &quot;PATH&quot;:
-&quot;&lt;install_path&gt;/bin&quot;</span><span style='background:silver;
-mso-highlight:silver'><o:p></o:p></span></p>
+yellow'>&nbsp;&nbsp;&nbsp;&nbsp; &quot;PATH&quot;: &quot;&lt;<span
+class=SpellE>install_path</span>&gt;/bin&quot;</span><span style='background:
+silver;mso-highlight:silver'><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:.5in'><span style='font-size:11.0pt;
 font-family:"Courier New";background:silver;mso-highlight:silver;mso-shading:
-yellow'>},</span><o:p></o:p></p>
+yellow'>},</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;cmd&quot;: [<span style='background:silver;mso-highlight:silver;
-mso-shading:yellow'>&quot;obc&quot;</span>, &quot;-src&quot;,
-&quot;$file&quot;, &quot;-lib&quot;,
-&quot;collect.obl,gen_collect.obl,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
-&quot;-dest&quot;, &quot;$file_base_name.obe&quot;],</span><o:p></o:p></p>
+&quot;<span class=SpellE>cmd</span>&quot;: [<span style='background:silver;
+mso-highlight:silver;mso-shading:yellow'>&quot;<span class=SpellE>obc</span>&quot;</span>,
+&quot;-<span class=SpellE>src</span>&quot;, &quot;$file&quot;,
+&quot;-lib&quot;, &quot;<span class=GramE>collect.obl,gen_collect.obl</span>,net.obl,rss.obl,misc.obl,regex.obl,csv.obl,xml.obl,json.obl,encrypt.obl,odbc.obl,query.obl,sdl2.obl,sdl_game.obl&quot;,
+&quot;-<span class=SpellE>dest</span>&quot;, &quot;$<span class=SpellE>file_base_name.obe</span>&quot;],</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;selector&quot;: &quot;source.objeck-obs&quot;,</span><o:p></o:p></p>
+&quot;selector&quot;: &quot;<span class=SpellE><span class=GramE>source.objeck</span>-obs</span>&quot;,</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
-&quot;file_regex&quot;: &quot;^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$&quot;</span><o:p></o:p></p>
+&quot;<span class=SpellE>file_regex</span>&quot;: &quot;^<span class=GramE>(..</span>[^:]*):([0-9]+):?([0-9]+)?:?
+(.*)$&quot;</span></p>
 
-<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>}</span><o:p></o:p></p>
+<p class=MsoNormal><span style='font-size:11.0pt;font-family:"Courier New"'>}</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p>&nbsp;</o:p></span></p>
 
@@ -968,13 +983,15 @@ Support</span></u><span style='font-size:11.0pt;font-family:"Helvetica",sans-ser
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Install
 the <a href="https://github.com/sublimelsp/LSP/">Sublime LSP</a> package and
-the <a href="https://github.com/objeck/objeck-lang-server">Objeck LSP</a> server.<o:p></o:p></span></p>
+the <a href="https://github.com/objeck/objeck-lang-server">Objeck LSP</a>
+server.<o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p>&nbsp;</o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Open
-Preferences &gt; Package Settings &gt; LSP &gt; Settings and add the &quot;objeck-lsp&quot;
-client configuration to the &quot;clients&quot;:<o:p></o:p></span></p>
+Preferences &gt; Package Settings &gt; LSP &gt; Settings and add the &quot;<span
+class=SpellE>objeck-lsp</span>&quot; client configuration to the
+&quot;clients&quot;:<o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'><o:p>&nbsp;</o:p></span></p>
 
@@ -982,7 +999,8 @@ client configuration to the &quot;clients&quot;:<o:p></o:p></span></p>
 {<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:.5in'><span style='font-size:11.0pt;
-font-family:"Courier New"'>&quot;objeck-lsp&quot;: {<o:p></o:p></span></p>
+font-family:"Courier New"'>&quot;<span class=SpellE><span class=GramE>objeck</span>-lsp</span>&quot;:
+{<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.0in'><span style='font-size:11.0pt;
 font-family:"Courier New"'>&quot;enabled&quot;: true,<o:p></o:p></span></p>
@@ -991,10 +1009,11 @@ font-family:"Courier New"'>&quot;enabled&quot;: true,<o:p></o:p></span></p>
 font-family:"Courier New"'>&quot;command&quot;: [<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.5in'><span style='font-size:11.0pt;
-font-family:"Courier New"'>&quot;&lt;install_path&gt;/bin/obr.exe&quot;,<o:p></o:p></span></p>
+font-family:"Courier New"'>&quot;&lt;<span class=SpellE>install_path</span>&gt;/bin/obr.exe&quot;,<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.5in'><span style='font-size:11.0pt;
-font-family:"Courier New"'>&quot;&quot;&lt;server_path&gt;/objk_lang_server.obe&quot;,<o:p></o:p></span></p>
+font-family:"Courier New"'>&quot;&quot;&lt;<span class=SpellE>server_path</span>&gt;/<span
+class=SpellE>objk_lang_server.obe</span>&quot;,<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.5in'><span style='font-size:11.0pt;
 font-family:"Courier New"'>&quot;6013&quot;<o:p></o:p></span></p>
@@ -1006,16 +1025,19 @@ font-family:"Courier New"'>],<o:p></o:p></span></p>
 font-family:"Courier New"'>&quot;env&quot;: {<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.5in'><span style='font-size:11.0pt;
-font-family:"Courier New"'>&quot;OBJECK_LIB_PATH&quot;: &quot;&lt;install_path&gt;/lib&quot;<o:p></o:p></span></p>
+font-family:"Courier New"'>&quot;OBJECK_LIB_PATH&quot;: &quot;&lt;<span
+class=SpellE>install_path</span>&gt;/lib&quot;<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.0in'><span style='font-size:11.0pt;
 font-family:"Courier New"'>},<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.0in'><span style='font-size:11.0pt;
-font-family:"Courier New"'>&quot;selector&quot;: &quot;source.objeck-obs&quot;,<o:p></o:p></span></p>
+font-family:"Courier New"'>&quot;selector&quot;: &quot;<span class=SpellE><span
+class=GramE>source.objeck</span>-obs</span>&quot;,<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:1.0in'><span style='font-size:11.0pt;
-font-family:"Courier New"'>&quot;tcp_port&quot;: 6013<o:p></o:p></span></p>
+font-family:"Courier New"'>&quot;<span class=SpellE><span class=GramE>tcp</span>_port</span>&quot;:
+6013<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-left:.5in'><span style='font-size:11.0pt;
 font-family:"Courier New"'>}<o:p></o:p></span></p>
@@ -1026,16 +1048,15 @@ font-family:"Courier New"'>}<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
 font-family:"Helvetica",sans-serif;color:#2E74B5'><a
-href="https://notepad-plus-plus.org/"><span style='text-decoration:none;
-text-underline:none'>Notepad++</span></a></span></b><span style='font-size:
-11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'> (Windows)</span></p>
+href="https://notepad-plus-plus.org/">Notepad++</a> </span></b><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(Windows)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
 for syntax highlighting</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Open
-application click “Language” ”Define your language”</span></p>
+application click “Language<span class=GramE>” ”Define</span> your language”</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Select
 “Import” and navigate to the objeck.xml file</span></p>
@@ -1047,17 +1068,18 @@ the application </span></p>
 
 <p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
 font-family:"Helvetica",sans-serif;color:#2E74B5'><a
-href="https://www.barebones.com/products/bbedit/"><span style='text-decoration:
-none;text-underline:none'>BBEdit</span></a> </span></b><span style='font-size:
-11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(macOS)</span></p>
+href="https://www.barebones.com/products/bbedit/">BBEdit</a> </span></b><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(macOS)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
 for syntax highlighting</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Copy
-objeck.plist to the “/Library/Application Support/BBEdit/Language Modules/” or
-“/Library/Application Support/TextWrangler/Language Modules/” directory</span></p>
+<span class=SpellE><span class=GramE>objeck.plist</span></span> to the
+“/Library/Application Support/BBEdit/Language Modules/” or
+“/Library/Application Support/<span class=SpellE>TextWrangler</span>/Language
+Modules/” directory</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application </span></p>
@@ -1069,16 +1091,16 @@ you may need to create this directory</span></p>
 
 <p class=MsoNormal style='margin-top:2.0pt'><b><span style='font-size:11.0pt;
 font-family:"Helvetica",sans-serif;color:#2E74B5'><a
-href="https://wiki.gnome.org/Apps/Gedit"><span style='text-decoration:none;
-text-underline:none'>gEdit</span></a></span></b><span style='font-size:11.0pt;
-font-family:"Helvetica",sans-serif;color:#2E74B5'> (Linux)</span></p>
+href="https://wiki.gnome.org/Apps/Gedit"><span class=SpellE>gEdit</span></a> </span></b><span
+style='font-size:11.0pt;font-family:"Helvetica",sans-serif;color:#2E74B5'>(Linux)</span></p>
 
 <p class=MsoNormal style='margin-bottom:8.0pt;line-height:105%'><span
 style='font-size:11.0pt;line-height:105%;font-family:"Helvetica",sans-serif'>Support
 for syntax highlighting</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Copy
-objeck.lang to the “/usr/share/gtksourceview-3.0/language-specs/”</span></p>
+<span class=SpellE><span class=GramE>objeck.lang</span></span> to the “/<span
+class=SpellE>usr</span>/share/gtksourceview-3.0/language-specs/”</span></p>
 
 <p class=MsoNormal><span style='font-size:11.0pt;font-family:"Helvetica",sans-serif'>Restart
 the application</span></p>
