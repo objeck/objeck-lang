@@ -53,7 +53,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "/Users/randyhollines/Documents/Code/objeck-web-server/ssl_server.obe /Users/randyhollines/Documents/Code/objeck-web-server/keys/myCA.pem /Users/randyhollines/Documents/Code/objeck-web-server/keys/myCA.key 1234 60013"
+            argument = "/Users/randyhollines/Documents/Code/objeck-web-server/ssl_server.obe /Users/randyhollines/Documents/Code/objeck-web-server/keys/cert.pem /Users/randyhollines/Documents/Code/objeck-web-server/keys/cert.key 1234 60013"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
