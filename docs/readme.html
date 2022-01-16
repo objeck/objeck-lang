@@ -36,7 +36,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwsawFABxXdGMtAAAA</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNagFAGKGdLMtAAAA</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -647,7 +647,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
 	mso-font-charset:0;
 	mso-generic-font-family:roman;
 	mso-font-pitch:variable;
-	mso-font-signature:-536869121 1107305727 33554432 0 415 0;}
+	mso-font-signature:3 0 0 0 1 0;}
 @font-face
 	{font-family:Calibri;
 	panose-1:2 15 5 2 2 2 4 3 2 4;
@@ -735,7 +735,8 @@ p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
 a:link, span.MsoHyperlink
-	{mso-style-priority:99;
+	{mso-style-noshow:yes;
+	mso-style-priority:99;
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
@@ -1353,8 +1354,8 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>For macOS Apple Silicon, all libraries are linked locally, including
-SLD2 and LibreSSL (new)<o:p></o:p></span></p>
+minor-latin'>For macOS Apple Silicon, all libraries are linked locally,
+including SLD2 and LibreSSL (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l1 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1697,12 +1698,10 @@ l4 level2 lfo3'><![if !supportLists]><span style='font-family:"Calibri",sans-ser
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
 style='mso-list:Ignore'>1.1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;
-</span></span></span><![endif]><span class=SpellE><span style='font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>Untar</span></span><span
-style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> the “sdl2_arm64.tgz”
-file<o:p></o:p></span></p>
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Go to the “lib/native” directory an <span class=SpellE>untar</span>
+the “sdl2_arm64.tgz” file<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-left:.8in;text-indent:-.3in;mso-list:
 l4 level2 lfo3'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1749,8 +1748,8 @@ style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> x509 -in
-local.crt -out <span class=SpellE>cert.pem</span><o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> x509 -in local.crt
+-out <span class=SpellE>cert.pem</span><o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1847,8 +1846,8 @@ Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>The software was developed under the <a
-href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>.
-Supporting software licenses can be found <a
+href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>. Supporting
+software licenses can be found <a
 href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">here</a>.<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:12.0pt;line-height:105%;
