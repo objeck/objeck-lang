@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -21,6 +21,10 @@
 		ED2B5A3D259CF06D00668C70 /* sdl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdl.cpp; path = ../../../sdl.cpp; sourceTree = "<group>"; };
 		ED2B5A3F259CF06D00668C70 /* SDL2_framerate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SDL2_framerate.c; path = ../../../SDL2_framerate.c; sourceTree = "<group>"; };
 		ED2B5A40259CF06D00668C70 /* SDL2_imageFilter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = SDL2_imageFilter.c; path = ../../../SDL2_imageFilter.c; sourceTree = "<group>"; };
+		EDD9EA9727933E1C00842681 /* libSDL2_ttf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2_ttf.a; path = ../lib/libSDL2_ttf.a; sourceTree = "<group>"; };
+		EDD9EA9827933E1C00842681 /* libSDL2_mixer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2_mixer.a; path = ../lib/libSDL2_mixer.a; sourceTree = "<group>"; };
+		EDD9EA9927933E1C00842681 /* libSDL2_image.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2_image.a; path = ../lib/libSDL2_image.a; sourceTree = "<group>"; };
+		EDD9EA9A27933E1C00842681 /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = ../lib/libSDL2.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,6 +43,7 @@
 			children = (
 				ED2B5A2A259CF03C00668C70 /* xcode */,
 				ED2B5A29259CF03C00668C70 /* Products */,
+				EDD9EA9627933E1C00842681 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -60,6 +65,17 @@
 				ED2B5A38259CF06D00668C70 /* SDL2_rotozoom.c */,
 			);
 			path = xcode;
+			sourceTree = "<group>";
+		};
+		EDD9EA9627933E1C00842681 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				EDD9EA9927933E1C00842681 /* libSDL2_image.a */,
+				EDD9EA9827933E1C00842681 /* libSDL2_mixer.a */,
+				EDD9EA9727933E1C00842681 /* libSDL2_ttf.a */,
+				EDD9EA9A27933E1C00842681 /* libSDL2.a */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -106,7 +122,7 @@
 				};
 			};
 			buildConfigurationList = ED2B5A23259CF03B00668C70 /* Build configuration list for PBXProject "SDL2" */;
-			compatibilityVersion = "Xcode 9.3";
+			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -271,21 +287,34 @@
 					_THREAD_SAFE,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				HEADER_SEARCH_PATHS = (
-					../../../openssl/macos/include,
-					/opt/homebrew/include,
-					/opt/homebrew/include/SDL2,
-				);
-				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib/;
+				HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				LIBRARY_SEARCH_PATHS = "";
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
+					"-L../arm64/lib",
 					"-lSDL2",
-					"-lSDL2_image",
 					"-lSDL2_ttf",
 					"-lSDL2_mixer",
+					"-lSDL2_image",
+					"-lm",
+					"-liconv",
+					"-Wl,-framework,CoreAudio",
+					"-Wl,-framework,AudioToolbox",
+					"-Wl,-weak_framework,CoreHaptics",
+					"-Wl,-weak_framework,GameController",
+					"-Wl,-framework,ForceFeedback",
+					"-lobjc",
+					"-Wl,-framework,CoreVideo",
+					"-Wl,-framework,Cocoa",
+					"-Wl,-framework,Carbon",
+					"-Wl,-framework,IOKit",
+					"-Wl,-weak_framework,QuartzCore",
+					"-Wl,-weak_framework,Metal",
 				);
 				PRODUCT_NAME = objk_openssl;
 				SKIP_INSTALL = YES;
+				"SYSTEM_HEADER_SEARCH_PATHS[arch=*]" = ../arm64/include/SDL2;
 			};
 			name = Debug;
 		};
@@ -310,21 +339,34 @@
 					_THREAD_SAFE,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				HEADER_SEARCH_PATHS = (
-					../../../openssl/macos/include,
-					/opt/homebrew/include,
-					/opt/homebrew/include/SDL2,
-				);
-				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib/;
+				HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				LIBRARY_SEARCH_PATHS = "";
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
+					"-L../arm64/lib",
 					"-lSDL2",
-					"-lSDL2_image",
 					"-lSDL2_ttf",
 					"-lSDL2_mixer",
+					"-lSDL2_image",
+					"-lm",
+					"-liconv",
+					"-Wl,-framework,CoreAudio",
+					"-Wl,-framework,AudioToolbox",
+					"-Wl,-weak_framework,CoreHaptics",
+					"-Wl,-weak_framework,GameController",
+					"-Wl,-framework,ForceFeedback",
+					"-lobjc",
+					"-Wl,-framework,CoreVideo",
+					"-Wl,-framework,Cocoa",
+					"-Wl,-framework,Carbon",
+					"-Wl,-framework,IOKit",
+					"-Wl,-weak_framework,QuartzCore",
+					"-Wl,-weak_framework,Metal",
 				);
 				PRODUCT_NAME = objk_openssl;
 				SKIP_INSTALL = YES;
+				"SYSTEM_HEADER_SEARCH_PATHS[arch=*]" = ../arm64/include/SDL2;
 			};
 			name = Release;
 		};
