@@ -66,6 +66,14 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		function : Size(b : Bool[,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(b : Bool[,,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
 		#~
 		Formats the boolean value into a string
 		@ignore-params
@@ -330,6 +338,14 @@ bundle System {
 		}
 
 		function : Size(b : Byte[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(b : Byte[,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(b : Byte[,,,,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
 		
@@ -662,6 +678,14 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		function : Size(c : Char[,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(c : Char[,,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
 		#~
 		Returns a string representation of the value
 		@ignore-params
@@ -904,6 +928,14 @@ bundle System {
 		}
 
 		function : Size(i : Int[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(i : Int[,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(i : Int[,,,,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
@@ -1363,6 +1395,14 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		function : Size(f : Float[,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(f : Float[,,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
 		#~
 		Returns a string representation of the value
 		@ignore-params
@@ -1469,6 +1509,14 @@ bundle System {
 		}
 
 		function : Size(f : System.Base[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(f : System.Base[,,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(f : System.Base[,,,,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
 	}
