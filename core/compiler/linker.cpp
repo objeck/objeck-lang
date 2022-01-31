@@ -1326,6 +1326,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case F2S:
       instrs.push_back(new LibraryInstr(line_num, F2S)); 
       break;
+
+    case F2S_FORMAT:
+      instrs.push_back(new LibraryInstr(line_num, F2S_FORMAT)); 
+      break;
       
     case LOAD_CLS_MEM:
       instrs.push_back(new LibraryInstr(line_num, LOAD_CLS_MEM));
