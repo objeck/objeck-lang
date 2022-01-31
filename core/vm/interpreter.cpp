@@ -837,14 +837,40 @@ void inline StackInterpreter::Float2StrFormat(size_t* &op_stack, long* &stack_po
     const int precision = PopInt(op_stack, stack_pos);
     const int format = PopInt(op_stack, stack_pos);
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-    // ...
-		const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16;
+
+    if(precision > -1) {
+      wostringstream stream_out;
+      switch(format) {
+        // FIXED
+      case -40:
+        stream_out << fixed;
+        break;
+
+        // SCIENTIFIC
+      case -39:
+        stream_out << scientific;
+        break;
+
+        // HEXFLOAT
+      case -38:
+        stream_out << hexfloat;
+        break;
+
+        // DEFAULT
+      default:
+        stream_out << defaultfloat;
+        break;
+      }
+      
+      stream_out << std::setprecision(precision);
+			const wstring conv = stream_out.str();
+			const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
-		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+			wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
-		wcsncpy(str, conv.c_str(), max);
+			wcsncpy(str, conv.c_str(), max);
 #endif
+    }
   }
 }
 
