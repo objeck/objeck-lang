@@ -113,7 +113,7 @@ bundle System {
 		}
 
 		function : FloatToString(value : Float, format : Number->FloatFormat, precision : Int, buffer : Char[]) ~ Nil {
-			F2S;
+			F2S_FORMAT;
 		}
 	}
 	
@@ -1379,7 +1379,7 @@ bundle System {
 			STD_OUT_FLOAT;
 			'\n'->Print();
 		}
-		
+
 		#~
 		Prints error value
 		@ignore-params
