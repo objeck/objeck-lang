@@ -4756,7 +4756,7 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
       const long value = (long)PopInt(op_stack, stack_pos);
 
       const  wstring conv = to_wstring(value);
-      const size_t max = conv.size() < 16 ? conv.size() : 16;
+      const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
 #ifdef _WIN32
       wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
@@ -4772,7 +4772,7 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
       const wstring conv = to_wstring(value);
-      const size_t max = conv.size() < 16 ? conv.size() : 16;
+      const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
 #ifdef _WIN32
       wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
@@ -4812,7 +4812,7 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
 
         stream_out << value;
         const wstring conv = stream_out.str();
-        const size_t max = conv.size() < 16 ? conv.size() : 16;
+        const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
 #ifdef _WIN32
         wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
