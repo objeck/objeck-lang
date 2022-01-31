@@ -4756,7 +4756,7 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
       const long value = (long)PopInt(op_stack, stack_pos);
 
       const  wstring conv = to_wstring(value);
-      const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
+      const size_t max = conv.size() > 32 ? conv.size() : 32;
 #ifdef _WIN32
       wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
@@ -4768,17 +4768,42 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
 
   case F2S: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    if(str_ptr) {
-      wchar_t* str = (wchar_t*)(str_ptr + 3);
-      const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-      const wstring conv = to_wstring(value);
-      const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
+		if(str_ptr) {
+			wchar_t* str = (wchar_t*)(str_ptr + 3);
+			const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+
+      // TODO: fixed:2
+			wstring conv;
+			const wstring precision = program->GetProperty(L"precision");
+			if(precision.size() > 0) {
+				wostringstream stream_out;
+
+				if(precision == L"fixed") {
+					stream_out << std::fixed;
+				}
+				else if(precision == L"scientific") {
+					stream_out << std::scientific;
+				}
+				else {
+          stream_out << std::fixed;
+					stream_out << setprecision(stol(precision));
+				}
+				stream_out << value;
+				conv = stream_out.str();
+			}
+			else {
+				conv = to_wstring(value);
+			}
+			const size_t max = conv.size() > 64 ? conv.size() : 64;
 #ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+			wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
-      wcsncpy(str, conv.c_str(), max);
+			wcsncpy(str, conv.c_str(), max);
 #endif
-    }
+		}
+
+
+
   }
     break;
 
@@ -4812,7 +4837,7 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
 
         stream_out << value;
         const wstring conv = stream_out.str();
-        const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
+        const size_t max = conv.size() > 64 ? conv.size() : 64;
 #ifdef _WIN32
         wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
