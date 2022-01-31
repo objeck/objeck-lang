@@ -97,7 +97,7 @@ bundle System {
 		#~
 		Float format
 		~#
-		enum FloatFormat {
+		enum FloatFormat := -40 {
 			FIXED,
 			SCIENTIFIC,
 			HEXFLOAT,
@@ -112,7 +112,7 @@ bundle System {
 			F2S;
 		}
 
-		function : FloatToString(value : Float, Number->FloatFormat, precision : Int, buffer : Char[]) ~ Nil {
+		function : FloatToString(value : Float, format : Number->FloatFormat, precision : Int, buffer : Char[]) ~ Nil {
 			F2S;
 		}
 	}
@@ -1379,26 +1379,7 @@ bundle System {
 			STD_OUT_FLOAT;
 			'\n'->Print();
 		}
-
-		#~
-		Prints value 
-		@ignore-param f
-		@param format output format
-		@param precision decimal precision
-		~#
-		function : Print(f : Float, format : Number->FloatFormat, precision : Int) ~ Nil {
-			STD_OUT_FLOAT_FORMAT;
-		}
-
-		#~
-		Prints value with newline
-		@ignore-params
-		~#
-		function : PrintLine(f : Float, format : Number->FloatFormat, precision : Int) ~ Nil {
-			STD_OUT_FLOAT_FORMAT;
-			'\n'->Print();
-		}
-
+		
 		#~
 		Prints error value
 		@ignore-params

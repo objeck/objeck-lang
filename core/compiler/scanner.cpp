@@ -181,7 +181,6 @@ void Scanner::LoadKeywords()
   ident_map[L"STD_OUT_CHAR"] = STD_OUT_CHAR;
   ident_map[L"STD_OUT_INT"] = STD_OUT_INT;
   ident_map[L"STD_OUT_FLOAT"] = STD_OUT_FLOAT;
-  ident_map[L"STD_OUT_FLOAT_FORMAT"] = STD_OUT_FLOAT_FORMAT;
   ident_map[L"STD_OUT_CHAR_ARY"] = STD_OUT_CHAR_ARY;
   ident_map[L"STD_OUT_BYTE_ARY_LEN"] = STD_OUT_BYTE_ARY_LEN;
   ident_map[L"STD_OUT_CHAR_ARY_LEN"] = STD_OUT_CHAR_ARY_LEN;
@@ -422,7 +421,6 @@ void Scanner::CheckIdentifier(int index)
     case STD_OUT_CHAR:
     case STD_OUT_INT:
     case STD_OUT_FLOAT:
-    case STD_OUT_FLOAT_FORMAT:
     case STD_FLUSH:
     case STD_ERR_FLUSH:
     case STD_ERR_CHAR_ARY:
