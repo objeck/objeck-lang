@@ -94,12 +94,26 @@ bundle System {
 	}
 	
 	class Number {
+		#~
+		Float format
+		~#
+		enum FloatFormat {
+			FIXED,
+			SCIENTIFIC,
+			HEXFLOAT,
+			DEFAULT
+		}
+
 		function : IntToString(value : Int, base : Int, buffer : Char[]) ~ Nil {
 			I2S;
 		}
 
 		function : FloatToString(value : Float, buffer : Char[]) ~ Nil {
 			F2S;
+		}
+
+		function : FloatToString(value : Float, buffer : Char[], format : Number->FloatFormat, precision : Int) ~ Nil {
+			F2S_FORMAT;
 		}
 	}
 	
@@ -1367,6 +1381,25 @@ bundle System {
 		}
 
 		#~
+		Prints value 
+		@ignore-param f
+		@param format output format
+		@param precision decimal precision
+		~#
+		function : Print(f : Float, format : Number->FloatFormat, precision : Int) ~ Nil {
+			STD_OUT_FLOAT_FORMAT;
+		}
+
+		#~
+		Prints value with newline
+		@ignore-params
+		~#
+		function : PrintLine(f : Float, format : Number->FloatFormat, precision : Int) ~ Nil {
+			STD_OUT_FLOAT;
+			'\n'->Print();
+		}
+
+		#~
 		Prints error value
 		@ignore-params
 		~#
@@ -1411,6 +1444,17 @@ bundle System {
 		function : native : ToString(f : Float) ~ String {
 			buffer := Char->New[16];
 			Number->FloatToString(f, buffer);
+			return String->New(buffer, false);
+		}
+
+		#~
+		Returns a string representation of the value
+		@ignore-params
+		@return string representation of the value
+		~#
+		function : native : ToString(f : Float, format : Number->FloatFormat, precision : Int) ~ String {
+			buffer := Char->New[16];
+			Number->FloatToString(f, buffer, format, precision);
 			return String->New(buffer, false);
 		}
 

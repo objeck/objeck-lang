@@ -74,6 +74,7 @@ namespace instructions {
     STD_OUT_CHAR,
     STD_OUT_INT,
     STD_OUT_FLOAT,
+    STD_OUT_FLOAT_FORMAT,
     STD_OUT_CHAR_ARY,
     STD_OUT_BYTE_ARY_LEN,
     STD_OUT_CHAR_ARY_LEN,
