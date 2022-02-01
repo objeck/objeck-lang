@@ -800,7 +800,7 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
     const size_t base = PopInt(op_stack, stack_pos);
     const long value = (long)PopInt(op_stack, stack_pos);
     const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16;
+		const size_t max = conv.size() < 32 ? conv.size() : 32;
 #ifdef _WIN32
 		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
@@ -815,8 +815,53 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-		const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16;
+		
+    wstringstream formatter;
+    wstring conv;
+
+		const wstring float_format = program->GetProperty(L"float:format");
+		const wstring float_precision = program->GetProperty(L"float:precision");
+
+    if(!float_format.empty() && !float_precision.empty()) {
+      if(float_format == L"fixed") {
+        formatter << std::fixed;
+      }
+      else if(float_format == L"scientific") {
+        formatter << std::scientific;
+      }
+      else if(float_format == L"hex") {
+        formatter << std::hexfloat;
+      }
+      formatter << setprecision(stol(float_precision));
+      
+      formatter << value;
+      conv = formatter.str();
+    }
+    else if(!float_format.empty()) {
+			if(float_format == L"fixed") {
+				formatter << std::fixed;
+			}
+			else if(float_format == L"scientific") {
+				formatter << std::scientific;
+			}
+			else if(float_format == L"hex") {
+				formatter << std::hexfloat;
+			}
+
+			formatter << value;
+			conv = formatter.str();
+    }
+    else if(!float_precision.empty()) {
+			formatter << setprecision(stol(float_precision));
+
+			formatter << value;
+			conv = formatter.str();
+    }
+    else {
+      conv = to_wstring(value);
+    }
+
+    const size_t max = conv.size() < 64 ? conv.size() : 64;
 #ifdef _WIN32
 		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
