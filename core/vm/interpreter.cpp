@@ -804,7 +804,7 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
     const size_t base = PopInt(op_stack, stack_pos);
     const long value = (long)PopInt(op_stack, stack_pos);
     const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
+		const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
 		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
@@ -820,7 +820,7 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
 		const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
+		const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
 		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
@@ -860,7 +860,7 @@ void inline StackInterpreter::Float2StrFormat(size_t* &op_stack, long* &stack_po
 
 			stream_out << value;
 			const wstring conv = stream_out.str();
-			const size_t max = conv.size() < 16 ? conv.size() : 16; // TODO: FIX ME
+			const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
 			wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
