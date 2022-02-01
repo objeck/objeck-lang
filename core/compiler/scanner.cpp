@@ -150,7 +150,6 @@ void Scanner::LoadKeywords()
   ident_map[L"S2F"] = S2F;
   ident_map[L"I2S"] = I2S;
   ident_map[L"F2S"] = F2S;
-  ident_map[L"F2S_FORMAT"] = F2S_FORMAT;
   ident_map[L"LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
   ident_map[L"CPY_BYTE_ARY"] = CPY_BYTE_ARY;
   ident_map[L"CPY_CHAR_ARY"] = CPY_CHAR_ARY;
@@ -181,7 +180,6 @@ void Scanner::LoadKeywords()
   ident_map[L"STD_OUT_CHAR"] = STD_OUT_CHAR;
   ident_map[L"STD_OUT_INT"] = STD_OUT_INT;
   ident_map[L"STD_OUT_FLOAT"] = STD_OUT_FLOAT;
-  ident_map[L"STD_OUT_FLOAT_FORMAT"] = STD_OUT_FLOAT_FORMAT;
   ident_map[L"STD_OUT_CHAR_ARY"] = STD_OUT_CHAR_ARY;
   ident_map[L"STD_OUT_BYTE_ARY_LEN"] = STD_OUT_BYTE_ARY_LEN;
   ident_map[L"STD_OUT_CHAR_ARY_LEN"] = STD_OUT_CHAR_ARY_LEN;
@@ -387,7 +385,6 @@ void Scanner::CheckIdentifier(int index)
     case S2F:
     case I2S:
     case F2S:
-    case F2S_FORMAT:
     case LOAD_ARY_SIZE:
     case CPY_BYTE_ARY:
     case CPY_CHAR_ARY:
@@ -422,7 +419,6 @@ void Scanner::CheckIdentifier(int index)
     case STD_OUT_CHAR:
     case STD_OUT_INT:
     case STD_OUT_FLOAT:
-    case STD_OUT_FLOAT_FORMAT:
     case STD_FLUSH:
     case STD_ERR_FLUSH:
     case STD_ERR_CHAR_ARY:

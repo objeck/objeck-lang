@@ -116,7 +116,6 @@ namespace instructions {
     S2F,
     I2S,
     F2S,
-    F2S_FORMAT,    
     // control
     MTHD_CALL,
     DYN_MTHD_CALL,
