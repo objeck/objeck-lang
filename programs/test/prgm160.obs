@@ -1,6 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := 160.5->ToString(Number->FloatFormat->DEFAULT, 2);
-		str->PrintLine();
+		160.5->PrintLine(Number->FloatFormat->DEFAULT, 2);
 	}
 }
