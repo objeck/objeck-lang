@@ -712,13 +712,6 @@ void JitCompilerA32::ProcessInstructions() {
 #endif
       ProcessStackCallback(F2S, instr, instr_index, 2);
       break;
-
-    case F2S_FORMAT:
-#ifdef _DEBUG_JIT
-      wcout << L"F2S_FORMAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
-#endif
-      ProcessStackCallback(F2S_FORMAT, instr, instr_index, 4);
-      break;
       
     case S2F:
 #ifdef _DEBUG_JIT
@@ -4036,47 +4029,6 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
     }
   }
     break;
-
-  case F2S_FORMAT: {
-    size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    if(str_ptr) {
-      wchar_t* str = (wchar_t*)(str_ptr + 3);
-      const int precision = (int)PopInt(op_stack, stack_pos);
-      const int format = (int)PopInt(op_stack, stack_pos);
-      const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-
-      if(precision > -1) {
-        wostringstream stream_out;
-        switch(format) {
-                    // DEFAULT
-                default:
-                    stream_out << fixed;
-                    break;
-
-          // SCIENTIFIC
-        case -39:
-          stream_out << scientific;
-          break;
-
-          // HEXFLOAT
-        case -38:
-          stream_out << hexfloat;
-          break;
-        }
-        stream_out << std::setprecision(precision);
-
-        stream_out << value;
-        const wstring conv = stream_out.str();
-        const size_t max = conv.size() < 16 ? conv.size() : 16;
-#ifdef _WIN32
-        wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
-#else
-        wcsncpy(str, conv.c_str(), max);
-#endif
-      }
-    }
-    }
-      break;
 
   case S2F: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
