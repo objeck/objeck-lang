@@ -1395,7 +1395,7 @@ bundle System {
 		@ignore-params
 		~#
 		function : PrintLine(f : Float, format : Number->FloatFormat, precision : Int) ~ Nil {
-			STD_OUT_FLOAT_FORMAT;
+			STD_OUT_FLOAT;
 			'\n'->Print();
 		}
 

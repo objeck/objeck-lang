@@ -1975,9 +1975,6 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case STD_OUT_FLOAT:
       return StdOutFloat(program, inst, op_stack, stack_pos, frame);
 
-		case STD_OUT_FLOAT_FORMAT:
-			return StdOutFloatFormat(program, inst, op_stack, stack_pos, frame);
-
     case STD_OUT_CHAR_ARY:
       return StdOutCharAry(program, inst, op_stack, stack_pos, frame);
 
@@ -2671,21 +2668,6 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
   }
   
   return true;
-}
-
-bool TrapProcessor::StdOutFloatFormat(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
-{
-#ifdef _DEBUG
-	wcout << L"  STD_OUT_FLOAT" << endl;
-#endif
-
-	const size_t precision = PopInt(op_stack, stack_pos);
-	const size_t format = PopInt(op_stack, stack_pos);
-	const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-	
-
-
-	return true;
 }
 
 bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
