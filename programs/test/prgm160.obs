@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := 160.5->ToString(Number->FloatFormat->HEXFLOAT, 2);
+		str := 160.5->ToString(Number->FloatFormat->FIXED, 2);
 		str->PrintLine();
 	}
 }

@@ -2647,7 +2647,7 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
   const wstring precision = program->GetProperty(L"precision");
   if(precision.size() > 0) {
     ios_base::fmtflags flags(wcout.flags());
-    // streamsize ss = wcout.precision();
+    streamsize ss = wcout.precision();
     
     if(precision == L"fixed") {
       wcout << std::fixed;
@@ -2660,7 +2660,7 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
     }
     
     wcout << value;
-    // cout.precision (ss);
+    cout.precision (ss);
     cout.flags(flags);
   }
   else {
