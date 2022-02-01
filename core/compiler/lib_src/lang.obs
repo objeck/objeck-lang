@@ -100,7 +100,8 @@ bundle System {
 		enum FloatFormat := -40 {
 			FIXED,
 			SCIENTIFIC,
-			HEXFLOAT
+			HEXFLOAT,
+			DEFAULT
 		}
 
 		function : IntToString(value : Int, base : Int, buffer : Char[]) ~ Nil {
