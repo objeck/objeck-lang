@@ -1,5 +1,0 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		160.5->PrintLine(Number->FloatFormat->DEFAULT, 2);
-	}
-}
