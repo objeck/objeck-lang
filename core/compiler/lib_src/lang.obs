@@ -995,7 +995,7 @@ bundle System {
 		@return string value
 		~#
 		function : ToString(v : Int) ~ String {
-			buffer := Char->New[16];
+			buffer := Char->New[32];
 			Number->IntToString(v->As(Int), 10, buffer);
 			return String->New(buffer, false);
 		}
@@ -1006,7 +1006,7 @@ bundle System {
 		@return string value
 		~#
 		function : native : ToCommaString(v : Int) ~ String {
-			buffer := Char->New[16];
+			buffer := Char->New[32];
 			Number->IntToString(v->As(Int), 10, buffer);
 			str := String->New(buffer, false);
 
@@ -1031,7 +1031,7 @@ bundle System {
 		function : native : ToString(v : Int[]) ~ String {
 			out := "[";
 			each(i : v) {
-				buffer := Char->New[16];
+				buffer := Char->New[32];
 				Number->IntToString(v[i]->As(Int), 10, buffer);
 				out->Append(buffer);
 				if(i + 1 < v->Size()) {
@@ -1369,7 +1369,7 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(f : Float) ~ String {
-			buffer := Char->New[16];
+			buffer := Char->New[64];
 			Number->FloatToString(f, buffer);
 			return String->New(buffer, false);
 		}
@@ -1377,7 +1377,7 @@ bundle System {
 		function : native : ToString(v : Float[]) ~ String {
 			out := "[";
 			each(i : v) {
-				buffer := Char->New[16];
+				buffer := Char->New[64];
 				Number->FloatToString(v[i], buffer);
 				out->Append(buffer);
 				if(i + i < v->Size()) {
@@ -3875,11 +3875,19 @@ bundle System {
 		}
 		
 		#~
-		Set floating point display precision. Valid values are a number, 'fixed' or 'scientific'.
+		Set floating point display format. Valid values are a number, 'fixed', 'scientific' and 'hex'.
 		@param value property value
 		~#
-		function : SetPrecision(value : String) ~ Nil {
-			SetProperty("precision", value);
+		function : SetFloatFormat(value : String) ~ Nil {
+			SetProperty("float:format", value);
+		}
+
+		#~
+		Set floating point display precision.
+		@param value decimal precision
+		~#
+		function : SetFloatPrecision(value : Int) ~ Nil {
+			SetProperty("float:precision", value->ToString());
 		}
 
 		#~
