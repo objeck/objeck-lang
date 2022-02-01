@@ -780,7 +780,7 @@ void JitCompilerIA64::ProcessInstructions() {
 #endif
       ProcessStackCallback(F2S, instr, instr_index, 2);
       break;
-      
+
 		case F2S_FORMAT:
 #ifdef _DEBUG_JIT
 			wcout << L"F2S_FORMAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
@@ -4822,7 +4822,7 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
     }
 	}
 	  break;
-    
+
   case S2F: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {

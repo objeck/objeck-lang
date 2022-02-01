@@ -742,13 +742,13 @@ void JitCompilerA64::ProcessInstructions() {
 #endif
       ProcessStackCallback(F2S, instr, instr_index, 2);
       break;
-      
-    case F2S_FORMAT:
+
+      case F2S_FORMAT:
 #ifdef _DEBUG_JIT
-      wcout << L"F2S_FORMAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+            wcout << L"F2S_FORMAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
-      ProcessStackCallback(F2S_FORMAT, instr, instr_index, 4);
-      break;
+            ProcessStackCallback(F2S_FORMAT, instr, instr_index, 4);
+            break;
       
     case S2F:
 #ifdef _DEBUG_JIT_JIT
@@ -4005,8 +4005,8 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
   }
     break;
 
-  case F2S_FORMAT: {
-    size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    case F2S_FORMAT: {
+        size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       const int precision = (int)PopInt(op_stack, stack_pos);
@@ -4016,10 +4016,10 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
       if(precision > -1) {
         wostringstream stream_out;
         switch(format) {
-          // DEFAULT
-        default:
-          stream_out << fixed;
-          break;
+                    // DEFAULT
+                default:
+                    stream_out << fixed;
+                    break;
 
           // SCIENTIFIC
         case -39:
@@ -4043,9 +4043,9 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
 #endif
       }
     }
-  }
-    break;
-      
+    }
+      break;
+
   case S2F: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
