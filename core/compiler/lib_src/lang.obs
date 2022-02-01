@@ -111,10 +111,6 @@ bundle System {
 		function : FloatToString(value : Float, buffer : Char[]) ~ Nil {
 			F2S;
 		}
-
-		function : FloatToString(value : Float, Number->FloatFormat, precision : Int, buffer : Char[]) ~ Nil {
-			F2S;
-		}
 	}
 	
 	#~
@@ -1444,19 +1440,6 @@ bundle System {
 		function : native : ToString(f : Float) ~ String {
 			buffer := Char->New[16];
 			Number->FloatToString(f, buffer);
-			return String->New(buffer, false);
-		}
-
-		#~
-		Returns a string representation of the value
-		@ignore-param f
-		@param format output format
-		@param precision decimal precision
-		@return string representation of the value
-		~#
-		function : native : ToString(f : Float, format : Number->FloatFormat, precision : Int) ~ String {
-			buffer := Char->New[16];
-			Number->FloatToString(f, format, precision, buffer);
 			return String->New(buffer, false);
 		}
 
