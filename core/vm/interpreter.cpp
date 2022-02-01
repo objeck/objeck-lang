@@ -431,10 +431,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case F2S:
       Float2Str(op_stack, stack_pos);
       break;
-
-    case F2S_FORMAT:
-      Float2StrFormat(op_stack, stack_pos);
-      break;
       
     case SWAP_INT:
 #ifdef _DEBUG
@@ -819,25 +815,6 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-		const wstring conv = to_wstring(value);
-		const size_t max = conv.size() < 16 ? conv.size() : 16;
-#ifdef _WIN32
-		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
-#else
-		wcsncpy(str, conv.c_str(), max);
-#endif
-  }
-}
-
-void inline StackInterpreter::Float2StrFormat(size_t* &op_stack, long* &stack_pos)
-{
-  size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
-  if(str_ptr) {
-    wchar_t* str = (wchar_t*)(str_ptr + 3);
-    const int precision = PopInt(op_stack, stack_pos);
-    const int format = PopInt(op_stack, stack_pos);
-    const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-    // ...
 		const wstring conv = to_wstring(value);
 		const size_t max = conv.size() < 16 ? conv.size() : 16;
 #ifdef _WIN32
