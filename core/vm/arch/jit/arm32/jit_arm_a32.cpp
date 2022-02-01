@@ -4036,7 +4036,7 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
     }
   }
     break;
-    
+
   case F2S_FORMAT: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
@@ -4048,10 +4048,10 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
       if(precision > -1) {
         wostringstream stream_out;
         switch(format) {
-          // DEFAULT
-        default:
-          stream_out << fixed;
-          break;
+                    // DEFAULT
+                default:
+                    stream_out << fixed;
+                    break;
 
           // SCIENTIFIC
         case -39:
@@ -4075,9 +4075,9 @@ void JitCompilerA32::JitStackCallback(const int32_t instr_id, StackInstr* instr,
 #endif
       }
     }
-  }
-    break;
-    
+    }
+      break;
+
   case S2F: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
