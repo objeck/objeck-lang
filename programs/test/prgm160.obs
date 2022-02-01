@@ -1,0 +1,7 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		System.Runtime->SetFloatPrecision(1);
+		str := 3.145->ToString();
+		str->PrintLine();
+	}
+}
