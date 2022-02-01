@@ -2644,24 +2644,56 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
 #endif
 
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-  const wstring precision = program->GetProperty(L"precision");
-  if(precision.size() > 0) {
+  
+  const wstring float_format = program->GetProperty(L"float:format");
+	const wstring float_precision = program->GetProperty(L"float:precision");
+  if(!float_format.empty() && !float_precision.empty()) {
     ios_base::fmtflags flags(wcout.flags());
     streamsize ss = wcout.precision();
     
-    if(precision == L"fixed") {
+    if(float_format == L"fixed") {
       wcout << std::fixed;
     }
-    else if(precision == L"scientific") {
+    else if(float_format == L"scientific") {
       wcout << std::scientific;
     }
-    else {
-      wcout << setprecision(stol(precision));
-    }
+		else if(float_format == L"hex") {
+			wcout << std::hexfloat;
+		}
+    
+    wcout << setprecision(stol(float_precision));
     
     wcout << value;
     cout.precision (ss);
     cout.flags(flags);
+  }
+  else if(!float_format.empty()) {
+		ios_base::fmtflags flags(wcout.flags());
+		streamsize ss = wcout.precision();
+
+		if(float_format == L"fixed") {
+			wcout << std::fixed;
+		}
+		else if(float_format == L"scientific") {
+			wcout << std::scientific;
+		}
+		else if(float_format == L"hex") {
+			wcout << std::hexfloat;
+		}
+
+		wcout << value;
+		cout.precision(ss);
+		cout.flags(flags);
+  }
+  else if(!float_precision.empty()) {
+		ios_base::fmtflags flags(wcout.flags());
+		streamsize ss = wcout.precision();
+
+    wcout << setprecision(stol(float_precision));
+
+		wcout << value;
+		cout.precision(ss);
+		cout.flags(flags);
   }
   else {
     wcout << setprecision(6) << value;
