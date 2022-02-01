@@ -1076,7 +1076,7 @@ bundle System {
 		function : native : ToString(v : Int[]) ~ String {
 			out := "[";
 			each(i : v) {
-				buffer := Char->New[32];
+				buffer := Char->New[16];
 				Number->IntToString(v[i]->As(Int), 10, buffer);
 				out->Append(buffer);
 				if(i + 1 < v->Size()) {
@@ -1435,7 +1435,7 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(f : Float, format : Number->FloatFormat, precision : Int) ~ String {
-			buffer := Char->New[64];
+			buffer := Char->New[16];
 			Number->FloatToString(f, format, precision, buffer);
 			return String->New(buffer, false);
 		}
@@ -1443,7 +1443,7 @@ bundle System {
 		function : native : ToString(v : Float[]) ~ String {
 			out := "[";
 			each(i : v) {
-				buffer := Char->New[64];
+				buffer := Char->New[16];
 				Number->FloatToString(v[i], buffer);
 				out->Append(buffer);
 				if(i + i < v->Size()) {
