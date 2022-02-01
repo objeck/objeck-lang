@@ -3774,6 +3774,17 @@ bundle System {
 		}
 
 		#~
+		Floating point formats.<br/>
+		<p><pre>Runtime->FloatFormat</pre></p>
+		~#
+		enum FloatFormat := -20 {
+			FIXED,
+			SCIENTIFIC,
+			HEXFLOAT,
+			DEFAULT
+		}
+
+		#~
 		Sets a system signal	
 		@param type signal type
 		@param func function handler for signal
@@ -3875,11 +3886,24 @@ bundle System {
 		}
 		
 		#~
-		Set floating point display format. Valid values are a number, 'fixed', 'scientific' and 'hex'.
+		Set floating point display format.
 		@param value property value
 		~#
-		function : SetFloatFormat(value : String) ~ Nil {
-			SetProperty("float:format", value);
+		function : SetFloatFormat(value : Runtime->FloatFormat) ~ Nil {
+			select(value) {
+				label Runtime->FloatFormat->FIXED
+				label Runtime->FloatFormat->DEFAULT {
+					SetProperty("float:format", "fixed");
+				}
+
+				label Runtime->FloatFormat->SCIENTIFIC {
+					SetProperty("float:format", "scientific");
+				}
+
+				label Runtime->FloatFormat->HEXFLOAT {
+					SetProperty("float:format", "hex");
+				}
+			};
 		}
 
 		#~
@@ -3887,7 +3911,9 @@ bundle System {
 		@param value decimal precision
 		~#
 		function : SetFloatPrecision(value : Int) ~ Nil {
-			SetProperty("float:precision", value->ToString());
+			if(value > -1) {
+				SetProperty("float:precision", value->ToString());
+			};
 		}
 
 		#~
