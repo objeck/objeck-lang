@@ -4768,8 +4768,8 @@ void Runtime::JitCompilerIA64::JitStackCallback(const long instr_id, StackInstr*
 			wstringstream formatter;
 			wstring conv;
 
-			const wstring float_format = program->GetProperty(L"float:format");
-			const wstring float_precision = program->GetProperty(L"float:precision");
+			const wstring float_format = program->GetProperty(L"float:string:format");
+			const wstring float_precision = program->GetProperty(L"float:string:precision");
 
 			if(!float_format.empty() && !float_precision.empty()) {
 				if(float_format == L"fixed") {
