@@ -2648,9 +2648,6 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
   const wstring float_format = program->GetProperty(L"float:format");
 	const wstring float_precision = program->GetProperty(L"float:precision");
   if(!float_format.empty() && !float_precision.empty()) {
-    ios_base::fmtflags flags(wcout.flags());
-    streamsize ss = wcout.precision();
-    
     if(float_format == L"fixed") {
       wcout << std::fixed;
     }
@@ -2661,16 +2658,10 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
 			wcout << std::hexfloat;
 		}
     
-    wcout << setprecision(stol(float_precision));
-    
+    wcout << setprecision(stol(float_precision));    
     wcout << value;
-    cout.precision (ss);
-    cout.flags(flags);
   }
   else if(!float_format.empty()) {
-		ios_base::fmtflags flags(wcout.flags());
-		streamsize ss = wcout.precision();
-
 		if(float_format == L"fixed") {
 			wcout << std::fixed;
 		}
@@ -2682,18 +2673,10 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
 		}
 
 		wcout << value;
-		cout.precision(ss);
-		cout.flags(flags);
   }
   else if(!float_precision.empty()) {
-		ios_base::fmtflags flags(wcout.flags());
-		streamsize ss = wcout.precision();
-
-    wcout << setprecision(stol(float_precision));
-
+		wcout << setprecision(stol(float_precision));
 		wcout << value;
-		cout.precision(ss);
-		cout.flags(flags);
   }
   else {
     wcout << setprecision(6) << value;
