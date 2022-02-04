@@ -3917,6 +3917,37 @@ bundle System {
 		}
 
 		#~
+		Set floating point string format.
+		@param value property value
+		~#
+		function : SetFloatStringFormat(value : Runtime->FloatFormat) ~ Nil {
+			select(value) {
+				label Runtime->FloatFormat->FIXED
+				label Runtime->FloatFormat->DEFAULT {
+					SetProperty("float:string:format", "fixed");
+				}
+
+				label Runtime->FloatFormat->SCIENTIFIC {
+					SetProperty("float:string:format", "scientific");
+				}
+
+				label Runtime->FloatFormat->HEXFLOAT {
+					SetProperty("float:string:format", "hex");
+				}
+			};
+		}
+		
+		#~
+		Set floating point string precision.
+		@param value decimal precision
+		~#
+		function : SetFloatStringPrecision(value : Int) ~ Nil {
+			if(value > -1) {
+				SetProperty("float:string:precision", value->ToString());
+			};
+		}
+
+		#~
 		Sets a runtime property 
 		@param key property key
 		@param value property value

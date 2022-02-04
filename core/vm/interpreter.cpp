@@ -819,8 +819,8 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
     wstringstream formatter;
     wstring conv;
 
-		const wstring float_format = program->GetProperty(L"float:format");
-		const wstring float_precision = program->GetProperty(L"float:precision");
+		const wstring float_format = program->GetProperty(L"float:string:format");
+		const wstring float_precision = program->GetProperty(L"float:string:precision");
 
     if(!float_format.empty() && !float_precision.empty()) {
       if(float_format == L"fixed") {
