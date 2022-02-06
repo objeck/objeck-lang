@@ -1,5 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
 		System.IO.Standard->SetFloatPrecision(2);
 		System.IO.Standard->SetFloatFormat(Number->Format->SCIENTIFIC);
 		value := 3.145;
@@ -13,5 +14,8 @@ class Test {
 		String->SetIntFormat(Number->Format->HEX);
 		str := 13->ToString();
 		str->PrintLine();
+~#
+		System.IO.Standard->SetWidth(20);
+		System.IO.Standard->Print(101.515)->PrintLine(33.33);
 	}
 }
