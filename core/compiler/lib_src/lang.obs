@@ -5281,6 +5281,26 @@ bundle System.IO {
 			};
 		}
 
+		#~
+		Sets the output width
+		@param width output width
+		~#
+		function : SetWidth(width : Int) ~ Nil {
+			if(precision > -1) {
+				Runtime->SetProperty("format:width", width->ToString());
+			};
+		}
+
+		#~
+		Sets the output fill
+		@param fill output fill
+		~#
+		function : SetFill(fill : Int) ~ Nil {
+			if(precision > -1) {
+				Runtime->SetProperty("format:fill", fill->ToString());
+			};
+		}
+
         #~
 		Reads bytes from STDIN
 		@param offset destination buffer offset
