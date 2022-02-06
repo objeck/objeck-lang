@@ -5228,7 +5228,7 @@ bundle System.IO {
  	#~
 	Provides standard I/O operations
 	~#
-	class Standard implements Base {
+	class Standard {
 		#~
 		Reads bytes from STDIN
 		@param offset destination buffer offset
@@ -5635,7 +5635,7 @@ bundle System.IO {
 		@param fill output fill
 		~#
 		function : SetFill(fill : Char) ~ ConsoleIO {
-			return IO.ConsoleIO->Instance()->SetFill(width);
+			return IO.ConsoleIO->Instance()->SetFill(fill);
 		}
 	}
  	
@@ -5660,7 +5660,7 @@ bundle System.IO {
 			return System.String->New(buffer);
 		}
 
-		method : public : SetIntFormat(format : Number->Format) ~ ConsoleIO
+		method : public : SetIntFormat(format : Number->Format) ~ ConsoleIO {
 			select(format) {
 				label Number->Format->DEC
 				label Number->Format->DEFAULT {
