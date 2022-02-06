@@ -86,17 +86,6 @@ bundle System {
 	}
 	
 	class Number {
-		#~
-		Floating point formats.<br/>
-		<p><pre>FloatFormat</pre></p>
-		~#
-		enum FloatFormat := -20 {
-			FIXED,
-			SCIENTIFIC,
-			HEXFLOAT,
-			DEFAULT
-		}
-
 		function : IntToString(value : Int, base : Int, buffer : Char[]) ~ Nil {
 			I2S;
 		}
@@ -1058,6 +1047,17 @@ bundle System {
 	Float class represents a double-precision floating-point value
 	~#	
 	class $Float from Number {
+		#~
+		Floating point formats.<br/>
+		<p><pre>FloatFormat</pre></p>
+		~#
+		enum FloatFormat := -20 {
+			FIXED,
+			SCIENTIFIC,
+			HEXFLOAT,
+			DEFAULT
+		}
+		
 		#~
 		Value of Pi
 		@return value of Pi

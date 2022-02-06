@@ -1,6 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		System.IO.Standard->SetFloatPrecision(2);
+		System.IO.Standard->SetFloatFormat(Float->FIXED);
 		value := 3.145;
 		value->PrintLine();
 
