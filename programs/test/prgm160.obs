@@ -1,11 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->SetFloatPrecision(2);
+		System.IO.Standard->SetFloatPrecision(2);
 		value := 3.145;
 		value->PrintLine();
 
-		Runtime->SetFloatStringPrecision(1);
-
+		String->SetFloatPrecision(1);
 		str := value->ToString();
 		
 		str->PrintLine();
