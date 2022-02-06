@@ -5661,64 +5661,27 @@ bundle System.IO {
 		}
 
 		method : public : SetIntFormat(format : Number->Format) ~ ConsoleIO {
-			select(format) {
-				label Number->Format->DEC
-				label Number->Format->DEFAULT {
-					Runtime->SetProperty("int:format", "dec");
-				}
-
-				label Number->Format->OCT {
-					Runtime->SetProperty("int:format", "oct");
-				}
-
-				label Number->Format->HEX {
-					Runtime->SetProperty("int:format", "hex");
-				}
-			};
-
+			STD_INT_FMT;
 			return @console;
 		}
 
 		method : public : SetFloatFormat(format : Number->Format) ~ ConsoleIO {
-			select(format) {
-				label Number->Format->FIXED
-				label Number->Format->DEFAULT {
-					Runtime->SetProperty("float:format", "fixed");
-				}
-
-				label Number->Format->SCIENTIFIC {
-					Runtime->SetProperty("float:format", "scientific");
-				}
-
-				label Number->Format->HEX {
-					Runtime->SetProperty("float:format", "hex");
-				}
-			};
-
+			STD_FLOAT_FMT;
 			return @console;
 		}
 
 		method : public : SetFloatPrecision(precision : Int) ~ ConsoleIO {
-			if(precision > -1) {
-				Runtime->SetProperty("float:precision", precision->ToString());
-			};
-
+			STD_FLOAT_PER;
 			return @console;
 		}
 
 		method : public : SetWidth(width : Int) ~ ConsoleIO {
-			if(width > -1) {
-				Runtime->SetProperty("format:width", width->ToString());
-			};
-
+			STD_WIDTH;
 			return @console;
 		}
 
 		method : public : SetFill(fill : Int) ~ ConsoleIO {
-			if(fill->Size() = 1) {
-				Runtime->SetProperty("format:fill", fill->ToString());
-			};
-
+			STD_FILL;
 			return @console;
 		}
 		

@@ -2265,6 +2265,31 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+		case STD_INT_FMT:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_INT_FMT);
+			NextToken();
+			break;
+
+		case STD_FLOAT_FMT:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),	instructions::STD_FLOAT_FMT);
+			NextToken();
+			break;
+
+		case STD_FLOAT_PER:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),	instructions::STD_FLOAT_PER);
+			NextToken();
+			break;
+
+		case STD_WIDTH:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_WIDTH);
+			NextToken();
+			break;
+
+		case STD_FILL:
+			statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),	instructions::STD_FILL);
+			NextToken();
+			break;
+
     case COMPRESS_BYTES:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::COMPRESS_BYTES);
