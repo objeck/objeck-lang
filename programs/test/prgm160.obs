@@ -16,6 +16,6 @@ class Test {
 		str->PrintLine();
 ~#
 		System.IO.Standard->SetWidth(8);
-		System.IO.Standard->Print(101.515)->PrintLine(33.33);
+		System.IO.Standard->Print(101.515)->SetWidth(16)->PrintLine(33.33);
 	}
 }
