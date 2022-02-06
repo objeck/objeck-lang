@@ -1,7 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->SetFloatPrecision(1);
-		str := 3.145->ToString();
+		Runtime->SetFloatPrecision(2);
+		value := 3.145;
+		value->PrintLine();
+
+		Runtime->SetFloatStringPrecision(1);
+
+		str := value->ToString();
+		
 		str->PrintLine();
 	}
 }
