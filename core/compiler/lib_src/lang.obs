@@ -85,7 +85,23 @@ bundle System {
 		}
 	}
 	
+	#~
+	Base class for numbers
+	~#
 	class Number {
+		#~
+		Number formats.<br/>
+		<p><pre>Number->Format</pre></p>
+		~#
+		enum Format := -20 {
+			FIXED,
+			SCIENTIFIC,
+			HEX,
+			DEC,
+			OCT,
+			DEFAULT
+		}
+
 		function : IntToString(value : Int, base : Int, buffer : Char[]) ~ Nil {
 			I2S;
 		}
@@ -1047,17 +1063,6 @@ bundle System {
 	Float class represents a double-precision floating-point value
 	~#	
 	class $Float from Number {
-		#~
-		Floating point formats.<br/>
-		<p><pre>$Float->Format</pre></p>
-		~#
-		enum Format := -20 {
-			FIXED,
-			SCIENTIFIC,
-			HEXFLOAT,
-			DEFAULT
-		}
-
 		#~
 		Value of Pi
 		@return value of Pi
@@ -2582,21 +2587,42 @@ bundle System {
 		}
 
 		#~
+		Set integer string format.
+		@param format integer format
+		~#
+		function : SetIntFormat(format : Number->Format) ~ Nil {
+			select(format) {
+				label Number->Format->DEC
+				label Number->Format->DEFAULT {
+					Runtime->SetProperty("int:string:format", "dec");
+				}
+
+				label Number->Format->OCT {
+					Runtime->SetProperty("int:string:format", "oct");
+				}
+
+				label Number->Format->HEX {
+					Runtime->SetProperty("int:string:format", "hex");
+				}
+			};
+		}
+
+		#~
 		Set floating point string format.
 		@param format float format
 		~#
-		function : SetFloatFormat(format : $Float->Format) ~ Nil {
+		function : SetFloatFormat(format : Number->Format) ~ Nil {
 			select(format) {
-				label $Float->Format->FIXED
-				label $Float->Format->DEFAULT {
+				label Number->Format->FIXED
+				label Number->Format->DEFAULT {
 					Runtime->SetProperty("float:string:format", "fixed");
 				}
 
-				label $Float->Format->SCIENTIFIC {
+				label Number->Format->SCIENTIFIC {
 					Runtime->SetProperty("float:string:format", "scientific");
 				}
 
-				label $Float->Format->HEXFLOAT {
+				label Number->Format->HEX {
 					Runtime->SetProperty("float:string:format", "hex");
 				}
 			};
@@ -5204,21 +5230,42 @@ bundle System.IO {
 	~#
 	class Standard implements {
 		#~
-		Set floating point display format.
-		@param format float format
+		Set integer display format.
+		@param format integer format
 		~#
-		function : SetFloatFormat(format : $Float->Format) ~ Nil {
+		function : SetIntFormat(format : Number->Format) ~ Nil {
 			select(format) {
-				label $Float->Format->FIXED
-				label $Float->Format->DEFAULT {
+				label Number->Format->DEC
+				label Number->Format->DEFAULT {
+					Runtime->SetProperty("int:format", "dec");
+				}
+
+				label Number->Format->OCT {
+					Runtime->SetProperty("int:format", "oct");
+				}
+
+				label Number->Format->HEX {
+					Runtime->SetProperty("int:format", "hex");
+				}
+			};
+		}
+
+		#~
+		Set floating point display format.
+		@param format integer format
+		~#
+		function : SetFloatFormat(format : Number->Format) ~ Nil {
+			select(format) {
+				label Number->Format->FIXED
+				label Number->Format->DEFAULT {
 					Runtime->SetProperty("float:format", "fixed");
 				}
 
-				label $Float->Format->SCIENTIFIC {
+				label Number->Format->SCIENTIFIC {
 					Runtime->SetProperty("float:format", "scientific");
 				}
 
-				label $Float->Format->HEXFLOAT {
+				label Number->Format->HEX {
 					Runtime->SetProperty("float:format", "hex");
 				}
 			};
