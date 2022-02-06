@@ -2664,12 +2664,33 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t*& op
 	return true;
 }
 
-//////
 bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_INT_FMT" << endl;
 #endif
+
+	const size_t std_format = PopInt(op_stack, stack_pos);
+	switch(std_format) {
+		// DEC
+		// DEFAULT
+	case -17:
+    wcout << dec;
+		break;
+
+		// HEX
+	case -18:
+		wcout << hex;
+		break;
+
+		// OCT
+	case -16:
+		wcout << oct;
+		break;
+
+	default:
+		break;
+	}
 
   return true;
 }
@@ -2680,6 +2701,28 @@ bool TrapProcessor::StdOutFloatFrmt(StackProgram* program, size_t* inst, size_t*
 	wcout << L"  STD_OUT_FLOAT" << endl;
 #endif
 
+  const size_t std_format = PopInt(op_stack, stack_pos);
+  switch(std_format) {
+		// FIXED
+    // DEFAULT
+  case -20:
+    wcout << fixed;
+    break;
+
+	  // SCIENTIFIC
+	case -19:
+    wcout << scientific;
+		break;
+
+	  // HEX
+	case -18:
+    wcout << hexfloat;
+		break;
+
+  default:
+    break;
+  }
+
 	return true;
 }
 
@@ -2688,6 +2731,9 @@ bool TrapProcessor::StdOutFloatPer(StackProgram* program, size_t* inst, size_t*&
 #ifdef _DEBUG
 	wcout << L"  STD_FLOAT_PER" << endl;
 #endif
+
+	const size_t std_per = PopInt(op_stack, stack_pos);
+	wcout << setprecision(std_per);
 
 	return true;
 }
@@ -2698,6 +2744,9 @@ bool TrapProcessor::StdOutWidth(StackProgram* program, size_t* inst, size_t*& op
 	wcout << L"  STD_WIDTH" << endl;
 #endif
 
+  const size_t std_width = PopInt(op_stack, stack_pos);
+  wcout << setw(std_width);
+
 	return true;
 }
 
@@ -2707,9 +2756,11 @@ bool TrapProcessor::StdOutFill(StackProgram* program, size_t* inst, size_t*& op_
 	wcout << L"  STD_FILL" << endl;
 #endif
 
+  const wchar_t std_fill = (wchar_t)PopInt(op_stack, stack_pos);
+	wcout << setfill(std_fill);
+
 	return true;
 }
-//////
 
 bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
