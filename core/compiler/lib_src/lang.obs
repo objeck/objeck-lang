@@ -2589,15 +2589,15 @@ bundle System {
 			select(format) {
 				label FloatFormat->FIXED
 				label FloatFormat->DEFAULT {
-					SetProperty("float:string:format", "fixed");
+					Runtime->SetProperty("float:string:format", "fixed");
 				}
 
 				label FloatFormat->SCIENTIFIC {
-					SetProperty("float:string:format", "scientific");
+					Runtime->SetProperty("float:string:format", "scientific");
 				}
 
 				label FloatFormat->HEXFLOAT {
-					SetProperty("float:string:format", "hex");
+					Runtime->SetProperty("float:string:format", "hex");
 				}
 			};
 		}
@@ -2608,7 +2608,7 @@ bundle System {
 		~#
 		function : SetFloatPrecision(precision : Int) ~ Nil {
 			if(precision > -1) {
-				SetProperty("float:string:precision", precision->ToString());
+				Runtime->SetProperty("float:string:precision", precision->ToString());
 			};
 		}
 
@@ -5211,15 +5211,15 @@ bundle System.IO {
 			select(format) {
 				label FloatFormat->FIXED
 				label FloatFormat->DEFAULT {
-					SetProperty("float:format", "fixed");
+					Runtime->SetProperty("float:format", "fixed");
 				}
 
 				label FloatFormat->SCIENTIFIC {
-					SetProperty("float:format", "scientific");
+					Runtime->SetProperty("float:format", "scientific");
 				}
 
 				label FloatFormat->HEXFLOAT {
-					SetProperty("float:format", "hex");
+					Runtime->SetProperty("float:format", "hex");
 				}
 			};
 		}
@@ -5230,7 +5230,7 @@ bundle System.IO {
 		~#
 		function : SetFloatPrecision(precision : Int) ~ Nil {
 			if(precision > -1) {
-				SetProperty("float:precision", precision->ToString());
+				Runtime->SetProperty("float:precision", precision->ToString());
 			};
 		}
 
