@@ -1048,6 +1048,17 @@ bundle System {
 	~#	
 	class $Float {
 		#~
+		Floating point formats.<br/>
+		<p><pre>Float->FloatFormat</pre></p>
+		~#
+		enum FloatFormat := -20 {
+			FIXED,
+			SCIENTIFIC,
+			HEXFLOAT,
+			DEFAULT
+		}
+
+		#~
 		Value of Pi
 		@return value of Pi
 		~#
@@ -2571,6 +2582,37 @@ bundle System {
 		}
 
 		#~
+		Set floating point string format.
+		@param format float format
+		~#
+		function : SetFloatFormat(format : Float->FloatFormat) ~ Nil {
+			select(format) {
+				label Float->FloatFormat->FIXED
+				label Float->FloatFormat->DEFAULT {
+					SetProperty("float:string:format", "fixed");
+				}
+
+				label Float->FloatFormat->SCIENTIFIC {
+					SetProperty("float:string:format", "scientific");
+				}
+
+				label Float->FloatFormat->HEXFLOAT {
+					SetProperty("float:string:format", "hex");
+				}
+			};
+		}
+		
+		#~
+		Set floating point string precision.
+		@param precision decimal precision
+		~#
+		function : SetFloatPrecision(precision : Int) ~ Nil {
+			if(precision > -1) {
+				SetProperty("float:string:precision", precision->ToString());
+			};
+		}
+
+		#~
 		Returns a character array representation of the String
 		@return character array
 		~#
@@ -3774,17 +3816,6 @@ bundle System {
 		}
 
 		#~
-		Floating point formats.<br/>
-		<p><pre>Runtime->FloatFormat</pre></p>
-		~#
-		enum FloatFormat := -20 {
-			FIXED,
-			SCIENTIFIC,
-			HEXFLOAT,
-			DEFAULT
-		}
-
-		#~
 		Sets a system signal	
 		@param type signal type
 		@param func function handler for signal
@@ -3885,68 +3916,6 @@ bundle System {
 			GET_SYS_PROP;
 		}
 		
-		#~
-		Set floating point display format.
-		@param value property value
-		~#
-		function : SetFloatFormat(value : Runtime->FloatFormat) ~ Nil {
-			select(value) {
-				label Runtime->FloatFormat->FIXED
-				label Runtime->FloatFormat->DEFAULT {
-					SetProperty("float:format", "fixed");
-				}
-
-				label Runtime->FloatFormat->SCIENTIFIC {
-					SetProperty("float:format", "scientific");
-				}
-
-				label Runtime->FloatFormat->HEXFLOAT {
-					SetProperty("float:format", "hex");
-				}
-			};
-		}
-
-		#~
-		Set floating point display precision.
-		@param value decimal precision
-		~#
-		function : SetFloatPrecision(value : Int) ~ Nil {
-			if(value > -1) {
-				SetProperty("float:precision", value->ToString());
-			};
-		}
-
-		#~
-		Set floating point string format.
-		@param value property value
-		~#
-		function : SetFloatStringFormat(value : Runtime->FloatFormat) ~ Nil {
-			select(value) {
-				label Runtime->FloatFormat->FIXED
-				label Runtime->FloatFormat->DEFAULT {
-					SetProperty("float:string:format", "fixed");
-				}
-
-				label Runtime->FloatFormat->SCIENTIFIC {
-					SetProperty("float:string:format", "scientific");
-				}
-
-				label Runtime->FloatFormat->HEXFLOAT {
-					SetProperty("float:string:format", "hex");
-				}
-			};
-		}
-		
-		#~
-		Set floating point string precision.
-		@param value decimal precision
-		~#
-		function : SetFloatStringPrecision(value : Int) ~ Nil {
-			if(value > -1) {
-				SetProperty("float:string:precision", value->ToString());
-			};
-		}
-
 		#~
 		Sets a runtime property 
 		@param key property key
@@ -5234,7 +5203,38 @@ bundle System.IO {
 	Provides standard I/O operations
 	~#
 	class Standard implements {
-        	#~
+		#~
+		Set floating point display format.
+		@param format float format
+		~#
+		function : SetFloatFormat(format : Float->FloatFormat) ~ Nil {
+			select(format) {
+				label Float->FloatFormat->FIXED
+				label Float->FloatFormat->DEFAULT {
+					SetProperty("float:format", "fixed");
+				}
+
+				label Float->FloatFormat->SCIENTIFIC {
+					SetProperty("float:format", "scientific");
+				}
+
+				label Float->FloatFormat->HEXFLOAT {
+					SetProperty("float:format", "hex");
+				}
+			};
+		}
+
+		#~
+		Set floating point display precision.
+		@param precision decimal precision
+		~#
+		function : SetFloatPrecision(precision : Int) ~ Nil {
+			if(precision > -1) {
+				SetProperty("float:precision", precision->ToString());
+			};
+		}
+
+        #~
 		Reads bytes from STDIN
 		@param offset destination buffer offset
 		@param num number of values to read
@@ -5242,8 +5242,8 @@ bundle System.IO {
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
-            		STD_IN_BYTE_ARY_LEN;
-        	}
+			STD_IN_BYTE_ARY_LEN;
+		}
 		
 		#~
 		Read characters from STDIN
@@ -5253,10 +5253,10 @@ bundle System.IO {
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-	            STD_IN_CHAR_ARY_LEN;
-	        }
-        	
-	        #~
+            STD_IN_CHAR_ARY_LEN;
+        }
+    	
+        #~
 		Write a byte buffer to STDOUT
 		@param buffer input buffer
 		@return true if successful, false otherwise
