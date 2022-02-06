@@ -86,6 +86,17 @@ bundle System {
 	}
 	
 	class Number {
+		#~
+		Floating point formats.<br/>
+		<p><pre>FloatFormat</pre></p>
+		~#
+		enum FloatFormat := -20 {
+			FIXED,
+			SCIENTIFIC,
+			HEXFLOAT,
+			DEFAULT
+		}
+
 		function : IntToString(value : Int, base : Int, buffer : Char[]) ~ Nil {
 			I2S;
 		}
@@ -98,7 +109,7 @@ bundle System {
 	#~
 	The byte class represents a 1-byte value.
 	~#
-	class $Byte implements {
+	class $Byte from Number {
 		#~
 		Compresses a byte stream using zlib
 		@ignore-params
@@ -397,7 +408,7 @@ bundle System {
 	#~
 	Character class represents a Unicode character value.
 	~#	
-	class $Char implements {
+	class $Char from Number {
 		#~
 		Converts character to lower-case
 		@ignore-params
@@ -677,7 +688,7 @@ bundle System {
 	#~
 	Integer class represents an operating system long value
 	~#
-	class $Int implements {
+	class $Int from Number {
 		#~
 		Returns the maximum size of an integer
 		@return maximum size of an integer
@@ -1046,7 +1057,7 @@ bundle System {
 	#~
 	Float class represents a double-precision floating-point value
 	~#	
-	class $Float {
+	class $Float from Number {
 		#~
 		Value of Pi
 		@return value of Pi
@@ -1458,17 +1469,6 @@ bundle System {
 		}
 	}
 
-	#~
-	Floating point formats.<br/>
-	<p><pre>FloatFormat</pre></p>
-	~#
-	enum FloatFormat := -20 {
-		FIXED,
-		SCIENTIFIC,
-		HEXFLOAT,
-		DEFAULT
-	}
-	
 	# Array class support
 	class $BaseArray {
 		function : Size(f : System.Base[]) ~ Int {
