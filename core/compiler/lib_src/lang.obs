@@ -94,7 +94,7 @@ bundle System {
 			F2S;
 		}
 	}
-	
+
 	#~
 	The byte class represents a 1-byte value.
 	~#
@@ -1048,17 +1048,6 @@ bundle System {
 	~#	
 	class $Float {
 		#~
-		Floating point formats.<br/>
-		<p><pre>Float->FloatFormat</pre></p>
-		~#
-		enum FloatFormat := -20 {
-			FIXED,
-			SCIENTIFIC,
-			HEXFLOAT,
-			DEFAULT
-		}
-
-		#~
 		Value of Pi
 		@return value of Pi
 		~#
@@ -1469,6 +1458,17 @@ bundle System {
 		}
 	}
 
+	#~
+	Floating point formats.<br/>
+	<p><pre>FloatFormat</pre></p>
+	~#
+	enum FloatFormat := -20 {
+		FIXED,
+		SCIENTIFIC,
+		HEXFLOAT,
+		DEFAULT
+	}
+	
 	# Array class support
 	class $BaseArray {
 		function : Size(f : System.Base[]) ~ Int {
@@ -2585,18 +2585,18 @@ bundle System {
 		Set floating point string format.
 		@param format float format
 		~#
-		function : SetFloatFormat(format : Float->FloatFormat) ~ Nil {
+		function : SetFloatFormat(format : FloatFormat) ~ Nil {
 			select(format) {
-				label Float->FloatFormat->FIXED
-				label Float->FloatFormat->DEFAULT {
+				label FloatFormat->FIXED
+				label FloatFormat->DEFAULT {
 					SetProperty("float:string:format", "fixed");
 				}
 
-				label Float->FloatFormat->SCIENTIFIC {
+				label FloatFormat->SCIENTIFIC {
 					SetProperty("float:string:format", "scientific");
 				}
 
-				label Float->FloatFormat->HEXFLOAT {
+				label FloatFormat->HEXFLOAT {
 					SetProperty("float:string:format", "hex");
 				}
 			};
@@ -5207,18 +5207,18 @@ bundle System.IO {
 		Set floating point display format.
 		@param format float format
 		~#
-		function : SetFloatFormat(format : Float->FloatFormat) ~ Nil {
+		function : SetFloatFormat(format : FloatFormat) ~ Nil {
 			select(format) {
-				label Float->FloatFormat->FIXED
-				label Float->FloatFormat->DEFAULT {
+				label FloatFormat->FIXED
+				label FloatFormat->DEFAULT {
 					SetProperty("float:format", "fixed");
 				}
 
-				label Float->FloatFormat->SCIENTIFIC {
+				label FloatFormat->SCIENTIFIC {
 					SetProperty("float:format", "scientific");
 				}
 
-				label Float->FloatFormat->HEXFLOAT {
+				label FloatFormat->HEXFLOAT {
 					SetProperty("float:format", "hex");
 				}
 			};
