@@ -1049,15 +1049,15 @@ bundle System {
 	class $Float from Number {
 		#~
 		Floating point formats.<br/>
-		<p><pre>FloatFormat</pre></p>
+		<p><pre>Float->Format</pre></p>
 		~#
-		enum FloatFormat := -20 {
+		enum Format := -20 {
 			FIXED,
 			SCIENTIFIC,
 			HEXFLOAT,
 			DEFAULT
 		}
-		
+
 		#~
 		Value of Pi
 		@return value of Pi
@@ -2585,18 +2585,18 @@ bundle System {
 		Set floating point string format.
 		@param format float format
 		~#
-		function : SetFloatFormat(format : FloatFormat) ~ Nil {
+		function : SetFloatFormat(format : Float->Format) ~ Nil {
 			select(format) {
-				label FloatFormat->FIXED
-				label FloatFormat->DEFAULT {
+				label Float->Format->FIXED
+				label Float->Format->DEFAULT {
 					Runtime->SetProperty("float:string:format", "fixed");
 				}
 
-				label FloatFormat->SCIENTIFIC {
+				label Float->Format->SCIENTIFIC {
 					Runtime->SetProperty("float:string:format", "scientific");
 				}
 
-				label FloatFormat->HEXFLOAT {
+				label Float->Format->HEXFLOAT {
 					Runtime->SetProperty("float:string:format", "hex");
 				}
 			};
@@ -5207,18 +5207,18 @@ bundle System.IO {
 		Set floating point display format.
 		@param format float format
 		~#
-		function : SetFloatFormat(format : FloatFormat) ~ Nil {
+		function : SetFloatFormat(format : Float->Format) ~ Nil {
 			select(format) {
-				label FloatFormat->FIXED
-				label FloatFormat->DEFAULT {
+				label Float->Format->FIXED
+				label Float->Format->DEFAULT {
 					Runtime->SetProperty("float:format", "fixed");
 				}
 
-				label FloatFormat->SCIENTIFIC {
+				label Float->Format->SCIENTIFIC {
 					Runtime->SetProperty("float:format", "scientific");
 				}
 
-				label FloatFormat->HEXFLOAT {
+				label Float->Format->HEXFLOAT {
 					Runtime->SetProperty("float:format", "hex");
 				}
 			};
