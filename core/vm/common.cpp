@@ -3153,6 +3153,17 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
         wcout << std::hexfloat;
       }
     }
+    else if(key == L"int:format") {
+      if(value == L"dec") {
+        wcout << std::dec;
+      }
+      else if(value == L"oct") {
+        wcout << std::oct;
+      }
+      else if(value == L"hex") {
+        wcout << std::hex;
+      }
+    }
     else if(key == L"float:precision") {
       wcout << setprecision(stol(value));
     }
