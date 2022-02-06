@@ -3167,6 +3167,12 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     else if(key == L"float:precision") {
       wcout << setprecision(stol(value));
     }
+		else if(key == L"format:width") {
+			wcout << setw(stol(value));
+		}
+		else if(key == L"format:fill") {
+			wcout << setfill(value[0]);
+		}
     else {
       program->SetProperty(key, value);
     }
