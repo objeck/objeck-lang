@@ -9,7 +9,7 @@ class Test {
 		str := value->ToString();
 		
 		str->PrintLine();
-
+		
 		String->SetIntFormat(Number->Format->HEX);
 		str := 13->ToString();
 		str->PrintLine();
