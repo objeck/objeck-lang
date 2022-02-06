@@ -5286,7 +5286,7 @@ bundle System.IO {
 		@param width output width
 		~#
 		function : SetWidth(width : Int) ~ Nil {
-			if(precision > -1) {
+			if(width > -1) {
 				Runtime->SetProperty("format:width", width->ToString());
 			};
 		}
@@ -5296,7 +5296,7 @@ bundle System.IO {
 		@param fill output fill
 		~#
 		function : SetFill(fill : Int) ~ Nil {
-			if(precision > -1) {
+			if(fill > -1) {
 				Runtime->SetProperty("format:fill", fill->ToString());
 			};
 		}
