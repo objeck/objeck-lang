@@ -2644,44 +2644,8 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
 #endif
 
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-  
-  const wstring float_format = program->GetProperty(L"float:format");
-	const wstring float_precision = program->GetProperty(L"float:precision");
-  if(!float_format.empty() && !float_precision.empty()) {
-    if(float_format == L"fixed") {
-      wcout << std::fixed;
-    }
-    else if(float_format == L"scientific") {
-      wcout << std::scientific;
-    }
-		else if(float_format == L"hex") {
-			wcout << std::hexfloat;
-		}
-    
-    wcout << setprecision(stol(float_precision));    
-    wcout << value;
-  }
-  else if(!float_format.empty()) {
-		if(float_format == L"fixed") {
-			wcout << std::fixed;
-		}
-		else if(float_format == L"scientific") {
-			wcout << std::scientific;
-		}
-		else if(float_format == L"hex") {
-			wcout << std::hexfloat;
-		}
+  wcout << value;
 
-		wcout << value;
-  }
-  else if(!float_precision.empty()) {
-		wcout << setprecision(stol(float_precision));
-		wcout << value;
-  }
-  else {
-    wcout << setprecision(6) << value;
-  }
-  
   return true;
 }
 
@@ -3175,9 +3139,26 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     value_array = (size_t*)value_array[0];
     key_array = (size_t*)key_array[0];
 
-    const wchar_t* key = (wchar_t*)(key_array + 3);
-    const wchar_t* value = (wchar_t*)(value_array + 3);
-    program->SetProperty(key, value);
+    const wstring key((wchar_t*)(key_array + 3));
+    const wstring value((wchar_t*)(value_array + 3));
+
+    if(key == L"float:format") {
+      if(value == L"fixed") {
+        wcout << std::fixed;
+      }
+      else if(value == L"scientific") {
+        wcout << std::scientific;
+      }
+      else if(value == L"hex") {
+        wcout << std::hexfloat;
+      }
+    }
+    else if(key == L"float:precision") {
+      wcout << setprecision(stol(value));
+    }
+    else {
+      program->SetProperty(key, value);
+    }
   }
 
   return true;
