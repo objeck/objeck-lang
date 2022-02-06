@@ -5296,7 +5296,7 @@ bundle System.IO {
 		@param fill output fill
 		~#
 		function : SetFill(fill : Char) ~ Nil {
-			if(fill->Size() == 1) {
+			if(fill->Size() = 1) {
 				Runtime->SetProperty("format:fill", fill->ToString());
 			};
 		}
