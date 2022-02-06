@@ -15,7 +15,7 @@ class Test {
 		str := 13->ToString();
 		str->PrintLine();
 ~#
-		System.IO.Standard->SetWidth(20);
+		System.IO.Standard->SetWidth(8);
 		System.IO.Standard->Print(101.515)->PrintLine(33.33);
 	}
 }

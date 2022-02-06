@@ -5228,80 +5228,8 @@ bundle System.IO {
  	#~
 	Provides standard I/O operations
 	~#
-	class Standard implements {
+	class Standard implements Base {
 		#~
-		Set integer display format.
-		@param format integer format
-		~#
-		function : SetIntFormat(format : Number->Format) ~ Nil {
-			select(format) {
-				label Number->Format->DEC
-				label Number->Format->DEFAULT {
-					Runtime->SetProperty("int:format", "dec");
-				}
-
-				label Number->Format->OCT {
-					Runtime->SetProperty("int:format", "oct");
-				}
-
-				label Number->Format->HEX {
-					Runtime->SetProperty("int:format", "hex");
-				}
-			};
-		}
-
-		#~
-		Set floating point display format.
-		@param format integer format
-		~#
-		function : SetFloatFormat(format : Number->Format) ~ Nil {
-			select(format) {
-				label Number->Format->FIXED
-				label Number->Format->DEFAULT {
-					Runtime->SetProperty("float:format", "fixed");
-				}
-
-				label Number->Format->SCIENTIFIC {
-					Runtime->SetProperty("float:format", "scientific");
-				}
-
-				label Number->Format->HEX {
-					Runtime->SetProperty("float:format", "hex");
-				}
-			};
-		}
-
-		#~
-		Set floating point display precision.
-		@param precision decimal precision
-		~#
-		function : SetFloatPrecision(precision : Int) ~ Nil {
-			if(precision > -1) {
-				Runtime->SetProperty("float:precision", precision->ToString());
-			};
-		}
-
-		#~
-		Sets the output width
-		@param width output width
-		~#
-		function : SetWidth(width : Int) ~ Nil {
-			if(width > -1) {
-				Runtime->SetProperty("format:width", width->ToString());
-			};
-		}
-
-		#~
-		Sets the output fill
-		@param fill output fill
-		~#
-		function : SetFill(fill : Char) ~ Nil {
-			if(fill->Size() = 1) {
-				Runtime->SetProperty("format:fill", fill->ToString());
-			};
-		}
-
-        #~
 		Reads bytes from STDIN
 		@param offset destination buffer offset
 		@param num number of values to read
@@ -5393,7 +5321,7 @@ bundle System.IO {
 			STD_FLUSH;
 		}
 
-        	#~
+        #~
 		Reads a string from STDIN
 		@return string read
 		~#
@@ -5669,6 +5597,46 @@ bundle System.IO {
 		function : ErrorLine() ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine();
 		}
+
+		#~
+		Set integer display format.
+		@param format integer format
+		~#
+		function : SetIntFormat(format : Number->Format) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->SetIntFormat(format);
+		}
+
+		#~
+		Set floating point display format.
+		@param format integer format
+		~#
+		function : SetFloatFormat(format : Number->Format) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->SetFloatFormat(format);
+		}
+
+		#~
+		Set floating point display precision.
+		@param precision decimal precision
+		~#
+		function : SetFloatPrecision(precision : Int) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->SetFloatPrecision(precision);
+		}
+
+		#~
+		Sets the output width
+		@param width output width
+		~#
+		function : SetWidth(width : Int) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->SetWidth(width);
+		}
+
+		#~
+		Sets the output fill
+		@param fill output fill
+		~#
+		function : SetFill(fill : Char) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->SetFill(width);
+		}
 	}
  	
  	class ConsoleIO {
@@ -5690,6 +5658,68 @@ bundle System.IO {
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
 			return System.String->New(buffer);
+		}
+
+		method : public : SetIntFormat(format : Number->Format) ~ ConsoleIO
+			select(format) {
+				label Number->Format->DEC
+				label Number->Format->DEFAULT {
+					Runtime->SetProperty("int:format", "dec");
+				}
+
+				label Number->Format->OCT {
+					Runtime->SetProperty("int:format", "oct");
+				}
+
+				label Number->Format->HEX {
+					Runtime->SetProperty("int:format", "hex");
+				}
+			};
+
+			return @console;
+		}
+
+		method : public : SetFloatFormat(format : Number->Format) ~ ConsoleIO {
+			select(format) {
+				label Number->Format->FIXED
+				label Number->Format->DEFAULT {
+					Runtime->SetProperty("float:format", "fixed");
+				}
+
+				label Number->Format->SCIENTIFIC {
+					Runtime->SetProperty("float:format", "scientific");
+				}
+
+				label Number->Format->HEX {
+					Runtime->SetProperty("float:format", "hex");
+				}
+			};
+
+			return @console;
+		}
+
+		method : public : SetFloatPrecision(precision : Int) ~ ConsoleIO {
+			if(precision > -1) {
+				Runtime->SetProperty("float:precision", precision->ToString());
+			};
+
+			return @console;
+		}
+
+		method : public : SetWidth(width : Int) ~ ConsoleIO {
+			if(width > -1) {
+				Runtime->SetProperty("format:width", width->ToString());
+			};
+
+			return @console;
+		}
+
+		method : public : SetFill(fill : Int) ~ ConsoleIO {
+			if(fill->Size() = 1) {
+				Runtime->SetProperty("format:fill", fill->ToString());
+			};
+
+			return @console;
 		}
 		
 		method : public : Print(b : Bool) ~ ConsoleIO {
