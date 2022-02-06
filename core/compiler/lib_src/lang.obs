@@ -3832,7 +3832,7 @@ bundle System {
 		Runtime signal types.<br/>
 		<p><pre>Runtime->Signal</pre></p>
 		~#
-		enum Signal := -20 {
+		enum Signal := -40 {
 			SIGABRT,
 			SIGFPE,
 			SIGILL,
@@ -7537,7 +7537,7 @@ bundle System.Introspection {
 		Data type types<br/>
 		<p><pre>DataType->TypeId</pre></p>
 		~#
-		enum TypeId := -40 {
+		enum TypeId := -60 {
 			BOOL,
 			BYTE,
 			CHAR,
