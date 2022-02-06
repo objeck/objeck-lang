@@ -799,7 +799,29 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const size_t base = PopInt(op_stack, stack_pos);
     const long value = (long)PopInt(op_stack, stack_pos);
-    const wstring conv = to_wstring(value);
+    
+    wstringstream formatter;
+    wstring conv;
+
+    const wstring int_format = program->GetProperty(L"int:string:format");
+    if(!int_format.empty()) {
+      if(int_format == L"dec") {
+        formatter << std::dec;
+      }
+      else if(int_format == L"oct") {
+        formatter << std::oct;
+      }
+      else if(int_format == L"hex") {
+        formatter << std::hex;
+      }
+
+      formatter << value;
+      conv = formatter.str();
+  }
+    else {
+      conv = to_wstring(value);
+    }
+
 		const size_t max = conv.size() < 32 ? conv.size() : 32;
 #ifdef _WIN32
 		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
