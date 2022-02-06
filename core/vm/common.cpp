@@ -1975,6 +1975,21 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case STD_OUT_FLOAT:
       return StdOutFloat(program, inst, op_stack, stack_pos, frame);
 
+		case STD_INT_FMT:
+			return StdOutIntFrmt(program, inst, op_stack, stack_pos, frame);
+
+		case STD_FLOAT_FMT:
+			return StdOutFloatFrmt(program, inst, op_stack, stack_pos, frame);
+
+		case STD_FLOAT_PER:
+			return StdOutFloatPer(program, inst, op_stack, stack_pos, frame);
+
+		case STD_WIDTH:
+			return StdOutWidth(program, inst, op_stack, stack_pos, frame);
+
+		case STD_FILL:
+			return StdOutFill(program, inst, op_stack, stack_pos, frame);
+
     case STD_OUT_CHAR_ARY:
       return StdOutCharAry(program, inst, op_stack, stack_pos, frame);
 
@@ -2637,17 +2652,64 @@ bool TrapProcessor::StdOutInt(StackProgram* program, size_t* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
-  wcout << L"  STD_OUT_FLOAT" << endl;
+	wcout << L"  STD_OUT_FLOAT" << endl;
 #endif
 
-  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-  wcout << value;
+	const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+	wcout << value;
+
+	return true;
+}
+
+//////
+bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+  wcout << L"  STD_INT_FMT" << endl;
+#endif
 
   return true;
 }
+
+bool TrapProcessor::StdOutFloatFrmt(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+	wcout << L"  STD_OUT_FLOAT" << endl;
+#endif
+
+	return true;
+}
+
+bool TrapProcessor::StdOutFloatPer(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+	wcout << L"  STD_FLOAT_PER" << endl;
+#endif
+
+	return true;
+}
+
+bool TrapProcessor::StdOutWidth(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+	wcout << L"  STD_WIDTH" << endl;
+#endif
+
+	return true;
+}
+
+bool TrapProcessor::StdOutFill(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+	wcout << L"  STD_FILL" << endl;
+#endif
+
+	return true;
+}
+//////
 
 bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
@@ -3139,43 +3201,10 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     value_array = (size_t*)value_array[0];
     key_array = (size_t*)key_array[0];
 
-    const wstring key((wchar_t*)(key_array + 3));
-    const wstring value((wchar_t*)(value_array + 3));
+    const wchar_t* key = (wchar_t*)(key_array + 3);
+    const wchar_t* value = (wchar_t*)(value_array + 3);
 
-    if(key == L"float:format") {
-      if(value == L"fixed") {
-        wcout << std::fixed;
-      }
-      else if(value == L"scientific") {
-        wcout << std::scientific;
-      }
-      else if(value == L"hex") {
-        wcout << std::hexfloat;
-      }
-    }
-    else if(key == L"int:format") {
-      if(value == L"dec") {
-        wcout << std::dec;
-      }
-      else if(value == L"oct") {
-        wcout << std::oct;
-      }
-      else if(value == L"hex") {
-        wcout << std::hex;
-      }
-    }
-    else if(key == L"float:precision") {
-      wcout << setprecision(stol(value));
-    }
-		else if(key == L"format:width") {
-			wcout << setw(stol(value));
-		}
-		else if(key == L"format:fill") {
-			wcout << setfill(value[0]);
-		}
-    else {
-      program->SetProperty(key, value);
-    }
+    program->SetProperty(key, value);
   }
 
   return true;
