@@ -1,4 +1,4 @@
-ARGS=-pthread -O3 -Wall -D_OSX -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -D_NO_JIT -Wno-unused-function -Wno-deprecated-declarations
+ARGS=-pthread -O3 -Wall -std=c++17 -D_OSX -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -D_NO_JIT -Wno-unused-function -Wno-deprecated-declarations
 # ARGS=-pthread -g -Wall -D_X64 -D_DEBUGGER
 # ARGS=-pthread -g -Wall -D_X64 -D_DEBUG -D_DEBUGGER
 

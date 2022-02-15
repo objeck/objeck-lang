@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -Wno-deprecated-declarations -Wno-unused-function -pthread -D_X64 -D_OSX -D_DEBUGGER
+ARGS=-O3 -Wall -std=c++17 -Wno-deprecated-declarations -Wno-unused-function -pthread -D_X64 -D_OSX -D_DEBUGGER
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
