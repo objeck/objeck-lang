@@ -662,6 +662,16 @@ bundle Web.HTTP {
 		function : GetAll(url : String) ~ String {
 			return GetAll(url, "text/plain", Nil);
 		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output as one string
+		~#
+		function : GetAll(url : String, headers : Map<String, String>) ~ String {
+			return GetAll(url, "text/plain", headers);
+		}
 		
 		#~
 		Performs a HTTP GET and returns results as a String
@@ -1153,6 +1163,16 @@ bundle Web.HTTP {
 		~#
 		function : GetAll(url : String) ~ String {
 			return GetAll(url, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output as one string
+		~#
+		function : GetAll(url : String, headers : Map<String, String>) ~ String {
+			return GetAll(url, "text/plain", headers);
 		}
 
 		#~
