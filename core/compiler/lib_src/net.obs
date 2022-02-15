@@ -490,12 +490,21 @@ bundle Web.HTTP {
 		@param url URL
 		@param data data to post
 		@param content_type content type
+		@param headers key/value headers
 		@return read strings
 		~#
-		function : PostAll(url : String, data : String, content_type : String) ~ String {
+		function : PostAll(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {
 			document := "";
 			
 			client := HttpClient->New();
+			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+			each(i : header_key_values) {
+				key_value := header_key_values->Get(i);
+				key := key_value->GetFirst();
+				value := key_value->GetSecond();
+				client->AddHeader(key, value);
+			};
+
 			lines := client->Post(url, data, content_type);
 			if(lines = Nil) {
 				return Nil;
@@ -651,10 +660,31 @@ bundle Web.HTTP {
 		@return output as one string
 		~#
 		function : GetAll(url : String) ~ String {
+			return GetAll(url, "text/plain", Nil);
+		}
+		
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output as one string
+		~#
+		function : GetAll(url : String, content_type : String, headers : Map<String, String>) ~ String {
 			document := "";
 			
 			client := HttpClient->New();
-			lines := client->Get(url);
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
+			};
+
+			lines := client->Get(url, content_type);
 			if(lines = Nil) {
 				return Nil;
 			};
@@ -938,12 +968,21 @@ bundle Web.HTTP {
 		@param url URL
 		@param data data to post
 		@param content_type content type
+		@param headers key/value headers
 		@return read strings
 		~#
-		function : PostAll(url : String, data : String, content_type : String) ~ String {
+		function : PostAll(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {
 			document := "";
 			
 			client := HttpsClient->New();
+			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+			each(i : header_key_values) {
+				key_value := header_key_values->Get(i);
+				key := key_value->GetFirst();
+				value := key_value->GetSecond();
+				client->AddHeader(key, value);
+			};
+
 			lines := client->Post(url, data, content_type);
 			if(lines = Nil) {
 				return Nil;
@@ -1107,17 +1146,37 @@ bundle Web.HTTP {
 			return content;
 		}
 		
-
 		#~
 		Performs a HTTP GET and returns results as a String
 		@param url URL
 		@return output as one string
 		~#
 		function : GetAll(url : String) ~ String {
+			return GetAll(url, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output as one string
+		~#
+		function : GetAll(url : String, content_type : String, headers : Map<String, String>) ~ String {
 			document := "";
 			
 			client := HttpsClient->New();
-			lines := client->Get(url);
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
+			};
+
+			lines := client->Get(url, content_type);
 			if(lines = Nil) {
 				return Nil;
 			};
