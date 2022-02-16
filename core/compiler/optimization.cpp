@@ -872,20 +872,20 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
 	case 8192:
 		shift = 13;
 		break;
-
+    
 	case 16384:
 		shift = 14;
 		break;
-
+    
 	case 32768:
 		shift = 15;
 		break;
-
+    
     // C64 (brun)
 	case 65536:
 		shift = 16;
 		break;
-
+    
   default:
     AddBackReduction(instr, top_instr, working_stack, outputs);
     break;
