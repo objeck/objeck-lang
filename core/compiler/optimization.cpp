@@ -515,9 +515,7 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
   return outputs;
 }
 
-void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr,
-                                                  deque<IntermediateInstruction*> &working_stack,
-                                                  IntermediateBlock* outputs)
+void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   if(!working_stack.empty()) {
     IntermediateInstruction* top_instr = working_stack.front();
@@ -588,8 +586,6 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
   if(curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
     return false;
   }
-
-  
 
   // check instructions
   vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
@@ -786,9 +782,7 @@ IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* in
   return outputs;
 }
 
-void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
-                                              deque<IntermediateInstruction*> &working_stack,
-                                              IntermediateBlock* outputs)
+void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   if(working_stack.size() > 1) {
     IntermediateInstruction* top_instr = working_stack.front();
@@ -823,9 +817,7 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
   }
 }
 
-void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, 
-                                          IntermediateInstruction* top_instr, deque<IntermediateInstruction*> &working_stack, 
-                                          IntermediateBlock* outputs)
+void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   int shift = 0;
   switch(test->GetOperand()) {
@@ -860,6 +852,39 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
   case 256:
     shift = 8;
     break;
+
+	case 512:
+		shift = 9;
+		break;
+
+	case 1024:
+		shift = 10;
+		break;
+
+	case 2048:
+		shift = 11;
+		break;
+
+	case 4096:
+		shift = 12;
+		break;
+
+	case 8192:
+		shift = 13;
+		break;
+
+	case 16384:
+		shift = 14;
+		break;
+
+	case 32768:
+		shift = 15;
+		break;
+
+    // C64 (brun)
+	case 65536:
+		shift = 16;
+		break;
 
   default:
     AddBackReduction(instr, top_instr, working_stack, outputs);
