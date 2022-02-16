@@ -817,7 +817,7 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr, de
   }
 }
 
-void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
+void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr, deque<IntermediateInstruction*>& working_stack, IntermediateBlock* outputs)
 {
   int shift = 0;
   switch(test->GetOperand()) {
@@ -853,39 +853,39 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
     shift = 8;
     break;
 
-	case 512:
-		shift = 9;
-		break;
+  case 512:
+    shift = 9;
+    break;
 
-	case 1024:
-		shift = 10;
-		break;
+  case 1024:
+    shift = 10;
+    break;
 
-	case 2048:
-		shift = 11;
-		break;
+  case 2048:
+    shift = 11;
+    break;
 
-	case 4096:
-		shift = 12;
-		break;
+  case 4096:
+    shift = 12;
+    break;
 
-	case 8192:
-		shift = 13;
-		break;
-    
-	case 16384:
-		shift = 14;
-		break;
-    
-	case 32768:
-		shift = 15;
-		break;
-    
+  case 8192:
+    shift = 13;
+    break;
+
+  case 16384:
+    shift = 14;
+    break;
+
+  case 32768:
+    shift = 15;
+    break;
+
     // C64 (brun)
-	case 65536:
-		shift = 16;
-		break;
-    
+  case 65536:
+    shift = 16;
+    break;
+
   default:
     AddBackReduction(instr, top_instr, working_stack, outputs);
     break;
