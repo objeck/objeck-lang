@@ -345,4 +345,3 @@ extern "C" {
     buffer = nullptr;
   }
 }
-
