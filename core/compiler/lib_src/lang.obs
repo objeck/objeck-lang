@@ -3406,6 +3406,26 @@ bundle System {
 		}
 
 		#~
+		Returns the first character
+		@return first character
+		~#
+		method : public : native : First() ~ Char {
+			return @string[0];
+		}
+
+		#~
+		Returns the last character
+		@return last character
+		~#
+		method : public : native : Last() ~ Char {
+			if(@pos > 0) {
+				return @string[@pos - 1];
+			};
+			
+			return '\0';
+		}
+
+		#~
 		Sets character at the given index
 		@param char charter to set
 		@param index index offset
