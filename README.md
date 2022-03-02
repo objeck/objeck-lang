@@ -1,5 +1,13 @@
 # Objeck
 
+<!-- Begin SF Tag -->
+<div class="sf-root" data-id="3029931" data-badge="oss-community-choice-white" data-metadata="achievement=oss-community-choice" style="width:125px">
+    <a href="https://sourceforge.net/projects/objeck-lang/" target="_blank">Objeck</a>
+</div>
+<script>(function () {var sc=document.createElement('script');sc.type='text/javascript';sc.async=true;sc.src='https://b.sf-syn.com/badge_js?sf_id=3029931';var p=document.getElementsByTagName('script')[0];p.parentNode.insertBefore(sc, p);})();
+</script>
+<!-- End SF Tag -->
+
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
 [![Download Objeck](https://img.shields.io/sourceforge/dt/objeck-lang.svg)](https://sourceforge.net/projects/objeck-lang/)
