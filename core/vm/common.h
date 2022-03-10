@@ -105,7 +105,7 @@ using namespace instructions;
 #define INF_ENDING -2
 
 enum {
-  VM_SIGABRT = -20,
+  VM_SIGABRT = -40,
   VM_SIGFPE,
   VM_SIGILL,
   VM_SIGINT,
