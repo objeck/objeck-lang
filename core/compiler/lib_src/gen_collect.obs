@@ -2603,14 +2603,14 @@ bundle Collection.Generic {
 					return Nil;
 				}
 				else if(node->GetLeft() = Nil) {
-					left : K := Successor(node);
-					node->SetRight(Remove(left, node->GetRight()));
-					node->SetKey(left);
+					left : TreeNode<K, V> := Successor(node);
+					node->SetRight(Remove(left->GetKey(), node->GetRight()));
+					node := left;
 				} 
 				else {
-					left : K := Predecessor(node);
-					node->SetLeft(Remove(left, node->GetLeft()));
-					node->SetKey(left);
+					left : TreeNode<K, V> := Predecessor(node);
+					node->SetLeft(Remove(left->GetKey(), node->GetLeft()));
+					node := left;
 				};
 				
 			};
@@ -2628,30 +2628,30 @@ bundle Collection.Generic {
 			return node;
 		}
 		
-		method : Predecessor(node : Collection.Generic.TreeNode<K, V>) ~ K {
+		method : Predecessor(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode<K, V> := node->GetLeft();
 				while(left->GetLeft() <> Nil) {
 					left := left->GetLeft();
 				};
 
-				return left->GetKey();
+				return left;
 			};
 
-			return node->GetKey();
+			return node;
 		}
 
-		method : Successor(node : Collection.Generic.TreeNode<K, V>) ~ K {
+		method : Successor(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode<K, V> := node->GetRight();
 				while(right->GetRight() <> Nil) {
 					right := right->GetRight();
 				};
 
-				return right->GetKey();
+				return right;
 			};
 
-			return node->GetKey();
+			return node;
 		}
 
 		 method : DecreaseLevel(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
