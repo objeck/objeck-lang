@@ -2320,7 +2320,6 @@ bundle Collection.Generic {
 		@root : TreeNode<K, V>;
 		@last : TreeNode<K, V>;
 		@size : Int;
-		@found : Bool;
 
 		#~
 		Default constructor 
@@ -2368,7 +2367,6 @@ bundle Collection.Generic {
 			@root := Nil;
 			@last := Nil;
 			@size := 0;
-			@found := false;
 		}
 		
 		method : native : Split(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
@@ -2576,9 +2574,8 @@ bundle Collection.Generic {
 		@param key key for value to remove
 		~#
 		method : public : Remove(key : K) ~ Bool {
-			@found := true;
 			@root := Remove(key, @root);
-			if(@found) {
+			if(@root <> Nil) {
 				@size := @size - 1;
 				return true;
 			};
@@ -2588,7 +2585,6 @@ bundle Collection.Generic {
 		
 		method : native : Remove(key : K, node : Collection.Generic.TreeNode<K, V>) ~  Collection.Generic.TreeNode<K, V> {
 			if(node = Nil) {
-				@found := false;
 				return Nil;
 			};
 
