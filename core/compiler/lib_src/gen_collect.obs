@@ -2574,13 +2574,14 @@ bundle Collection.Generic {
 		@param key key for value to remove
 		~#
 		method : public : Remove(key : K) ~ Bool {
-			@root := Remove(key, @root);
-			if(@root <> Nil) {
-				@size := @size - 1;
-				return true;
+			node := Remove(key, @root);
+			if(node = Nil) {
+				return false;
 			};
-
-			return false;
+			
+			@root := node;
+			@size -= 1;
+			return true;
 		}
 		
 		method : native : Remove(key : K, node : Collection.Generic.TreeNode<K, V>) ~  Collection.Generic.TreeNode<K, V> {
@@ -2599,14 +2600,14 @@ bundle Collection.Generic {
 					return Nil;
 				}
 				else if(node->GetLeft() = Nil) {
-					left : TreeNode<K, V> := Successor(node);
-					node->SetRight(Remove(left->GetKey(), node->GetRight()));
-					node := left;
+					temp : TreeNode<K, V> := Successor(node);
+					node->SetRight(Remove(temp->GetKey(), node->GetRight()));
+					node := temp;
 				} 
 				else {
-					left : TreeNode<K, V> := Predecessor(node);
-					node->SetLeft(Remove(left->GetKey(), node->GetLeft()));
-					node := left;
+					temp : TreeNode<K, V> := Predecessor(node);
+					node->SetLeft(Remove(temp->GetKey(), node->GetLeft()));
+					node := temp;
 				};
 				
 			};
