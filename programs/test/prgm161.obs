@@ -4,7 +4,7 @@ class Test {
 		map->Insert("file:///d%3A/Code/objeck-lsp/server/format_code/test.obs", 0);
 		map->Insert("file:///d%3A/Code/objeck-lsp/server/format_code/formatter.obs", 1);
 		map->Remove("file:///d%3A/Code/objeck-lsp/server/format_code/abc.obs")->PrintLine();
-#		map->Insert("file:///d%3A/Code/objeck-lsp/server/format_code/scanner.obs", 2);
+		map->Insert("file:///d%3A/Code/objeck-lsp/server/format_code/scanner.obs", 2);
 
 		value := map->Find("file:///d%3A/Code/objeck-lsp/server/format_code/test.obs");
 		value->PrintLine();
