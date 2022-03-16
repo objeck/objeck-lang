@@ -206,8 +206,8 @@ extern "C" {
       }
 
       // bundle
-      const wstring bundle_name = bundle->GetName();
       size_t* bundle_symb_obj = nullptr;
+      const wstring bundle_name = bundle->GetName();
       if(!bundle_name.empty()) {
         bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
         size_t* bundle_array_ptr = bundle_array + 3;
