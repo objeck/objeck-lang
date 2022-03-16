@@ -190,12 +190,13 @@ extern "C" {
       validated = analyzer.Analyze();
     }
 
-    const vector<ParsedBundle*> bundles = program->GetBundles();
-    size_t* bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
-    size_t* bundle_array_ptr = bundle_array + 3;
+    // list of bundles for classes
+    size_t* bundle_array = nullptr;
+    size_t* klass_array = nullptr;
 
     // bundles
     wstring file_uri;
+    const vector<ParsedBundle*> bundles = program->GetBundles();
 
     for(size_t i = 0; i < bundles.size(); ++i) {
       ParsedBundle* bundle = bundles[i];
@@ -205,22 +206,29 @@ extern "C" {
       }
 
       // bundle
-      size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
       const wstring bundle_name = bundle->GetName();
-      bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, bundle_name.empty() ? L"Default" : bundle_name);
-      bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
-      bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
-      bundle_symb_obj[ResultPosition::POS_START_POS] = bundle->GetLinePosition();
-      bundle_symb_obj[ResultPosition::POS_END_LINE] = bundle->GetEndLineNumber();
-      bundle_symb_obj[ResultPosition::POS_END_POS] = bundle->GetEndLinePosition();
-      bundle_array_ptr[i] = (size_t)bundle_symb_obj;
+      size_t* bundle_symb_obj = nullptr;
+      if(!bundle_name.empty()) {
+        bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
+        size_t* bundle_array_ptr = bundle_array + 3;
+
+        size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, bundle_name);
+        bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
+        bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
+        bundle_symb_obj[ResultPosition::POS_START_POS] = bundle->GetLinePosition();
+        bundle_symb_obj[ResultPosition::POS_END_LINE] = bundle->GetEndLineNumber();
+        bundle_symb_obj[ResultPosition::POS_END_POS] = bundle->GetEndLinePosition();
+
+        bundle_array_ptr[i] = (size_t)bundle_symb_obj;
+      }
 
       // get classes and enums
       const vector<Class*> klasses = bundle->GetClasses();
       const vector<Enum*> eenums = bundle->GetEnums();
 
       // classes
-      size_t* klass_array = APITools_MakeIntArray(context, (int)(klasses.size() + eenums.size()));
+      klass_array = APITools_MakeIntArray(context, (int)(klasses.size() + eenums.size()));
       size_t* klass_array_ptr = klass_array + 3;
 
       size_t index = 0;
@@ -284,7 +292,10 @@ extern "C" {
         klass_array_ptr[index++] = (size_t)eenum_symb_obj;
       }
 
-      bundle_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)klass_array;
+      // attach list of bundles or classes
+      if(bundle_symb_obj) {
+        bundle_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)klass_array;
+      }
     }
 
     // file root
@@ -292,7 +303,7 @@ extern "C" {
     file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, file_uri);
     file_symb_obj[ResultPosition::POS_CODE] = validated ? 1 : 0;
     file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
-    file_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)bundle_array;
+    file_symb_obj[ResultPosition::POS_CHILDREN] = bundle_array ? (size_t)bundle_array : (size_t)klass_array;
     file_symb_obj[ResultPosition::POS_START_LINE] = file_symb_obj[ResultPosition::POS_START_POS] = file_symb_obj[ResultPosition::POS_END_LINE] = file_symb_obj[ResultPosition::POS_END_POS] = -1;
 
     prgm_obj[2] = (size_t)file_symb_obj;
