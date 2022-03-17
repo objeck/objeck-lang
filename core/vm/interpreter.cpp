@@ -385,7 +385,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case MOD_FLOAT:
       right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(fmod(left_double, right_double), op_stack, stack_pos);
+      PushFloat(fmod(right_double, left_double), op_stack, stack_pos);
       break;
       
     case LOG_FLOAT:
