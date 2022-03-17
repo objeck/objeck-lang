@@ -291,9 +291,9 @@ namespace Runtime {
     void inline MulInt(size_t* &op_stack, long* &stack_pos);
     void inline DivInt(size_t* &op_stack, long* &stack_pos);
     void inline MulFloat(size_t* &op_stack, long* &stack_pos);
-    void inline DivFloat(size_t* &op_stack, long* &stack_pos);
+    void inline DivFloat(size_t*& op_stack, long*& stack_pos);
     void inline ModInt(size_t* &op_stack, long* &stack_pos);
-    void inline BitAndInt(size_t* &op_stack, long* &stack_pos);
+    void inline BitAndInt(size_t*& op_stack, long*& stack_pos);
     void inline BitOrInt(size_t* &op_stack, long* &stack_pos);
     void inline BitXorInt(size_t* &op_stack, long* &stack_pos);
     void inline LesEqlInt(size_t* &op_stack, long* &stack_pos);
