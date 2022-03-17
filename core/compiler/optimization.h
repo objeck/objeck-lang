@@ -34,6 +34,7 @@
 
 #include "emit.h"
 #include <deque>
+#include <math.h>
 
 using namespace backend;
 
