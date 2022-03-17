@@ -4468,7 +4468,8 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
         }
       }
 
-      if(right->GetEvalType() && GetExpressionType(right, depth + 1)->GetType() == FLOAT_TYPE) {
+      expr_type = GetExpressionType(right, depth + 1);
+      if(right->GetEvalType() && expr_type && expr_type->GetType() == FLOAT_TYPE) {
         if(right->GetCastType()) {
           switch(right->GetCastType()->GetType()) {
           case BYTE_TYPE:
