@@ -261,7 +261,23 @@ extern "C" {
           }
           mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_name);
           mthd_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd->GetFileName());
-          mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_METHOD; // method type
+
+          if(mthd->IsStatic()) {
+            mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FUNC; // function
+          }
+          else {
+            switch(mthd->GetMethodType()) {
+            case NEW_PUBLIC_METHOD:
+            case NEW_PRIVATE_METHOD:
+              mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CONSTR; // constructor
+              break;
+
+            default:
+              mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_METHOD; // method
+              break;
+            }
+          }
+          
           mthd_symb_obj[ResultPosition::POS_START_LINE] = (size_t)mthd->GetLineNumber() - 1;
           mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
           mthd_symb_obj[ResultPosition::POS_END_LINE] = (size_t)mthd->GetEndLineNumber() - 2;
