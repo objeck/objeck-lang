@@ -709,6 +709,10 @@ void IntermediateInstruction::Debug() {
     GetLogger() << L"DIV_FLOAT" << endl;
     break;
 
+  case MOD_FLOAT:
+    GetLogger() << L"MOD_FLOAT" << endl;
+    break;
+
   case EQL_FLOAT:
     GetLogger() << L"EQL_FLOAT" << endl;
     break;

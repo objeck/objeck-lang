@@ -1403,6 +1403,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, DIV_FLOAT));
       break;
 
+    case MOD_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, MOD_FLOAT));
+      break;
+
     case EQL_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, EQL_FLOAT));
       break;
