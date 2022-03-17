@@ -2670,7 +2670,7 @@ bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& 
   wcout << L"  STD_INT_FMT" << endl;
 #endif
 
-	const long std_format = PopInt(op_stack, stack_pos);
+	const long std_format = (long)PopInt(op_stack, stack_pos);
 	switch(std_format) {
 		// DEC
 		// DEFAULT
@@ -2701,7 +2701,7 @@ bool TrapProcessor::StdOutFloatFrmt(StackProgram* program, size_t* inst, size_t*
 	wcout << L"  STD_OUT_FLOAT" << endl;
 #endif
 
-  const long std_format = PopInt(op_stack, stack_pos);
+  const long std_format = (long)PopInt(op_stack, stack_pos);
   switch(std_format) {
 		// FIXED
     // DEFAULT
