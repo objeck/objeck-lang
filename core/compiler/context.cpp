@@ -4439,7 +4439,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
       expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
       break;
 
-    case MOD_EXPR:
+    case MOD_EXPR: {
       if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
@@ -4450,7 +4450,8 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
         }
       }
 
-      if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
+      Type* expr_type = GetExpressionType(left, depth + 1);
+      if(left->GetEvalType() && expr_type && expr_type->GetType() == FLOAT_TYPE) {
         if(left->GetCastType()) {
           switch(left->GetCastType()->GetType()) {
           case BYTE_TYPE:
@@ -4483,6 +4484,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
           ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
         }
       }
+    }
       break;
 
     case ADD_EXPR:
