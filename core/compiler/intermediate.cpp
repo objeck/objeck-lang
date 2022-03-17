@@ -3837,14 +3837,20 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case DIV_EXPR:
     if(eval_type == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
-    } else {
+    } 
+    else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
     }
     EmitCast(expression);
     break;
 
   case MOD_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_INT));
+    if(eval_type == frontend::FLOAT_TYPE) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_FLOAT));
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_INT));
+    }
     EmitCast(expression);
     break;
 
