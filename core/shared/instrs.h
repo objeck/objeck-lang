@@ -105,6 +105,7 @@ namespace instructions {
     ACOS_FLOAT,
     ATAN_FLOAT,
     ATAN2_FLOAT,
+    MOD_FLOAT,
     LOG_FLOAT,
     POW_FLOAT,
     SQRT_FLOAT,
