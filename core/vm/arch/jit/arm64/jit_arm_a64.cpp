@@ -465,8 +465,9 @@ void JitCompilerA64::ProcessInstructions() {
       
     case ATAN2_FLOAT:
     case POW_FLOAT:
+    case MOD_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-      wcout << L"POW/ATAN2: regs=" << aval_regs.size() << endl;
+      wcout << L"POW/ATAN2/MOD_FLOAT: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatOperation2(instr);
       break;
@@ -3649,6 +3650,10 @@ void JitCompilerA64::ProcessFloatOperation2(StackInstr* instruction)
     
     case POW_FLOAT:
       func_ptr = pow;
+      break;
+
+    case MOD_FLOAT:
+      func_ptr = fmod;
       break;
       
     default:

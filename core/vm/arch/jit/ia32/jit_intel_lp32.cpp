@@ -421,6 +421,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case ATAN2_FLOAT:
+    case MOD_FLOAT:
     case POW_FLOAT:
     case LOG_FLOAT:
 #ifdef _DEBUG_JIT
@@ -2185,6 +2186,10 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
 
   case ATAN2_FLOAT:
     holder = call_xfunc2(atan2, left);
+    break;
+
+  case MOD_FLOAT:
+    holder = call_xfunc2(fmod, left);
     break;
 
   case POW_FLOAT:
