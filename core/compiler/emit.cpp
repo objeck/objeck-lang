@@ -793,6 +793,10 @@ void IntermediateInstruction::Debug() {
     GetLogger() << L"ATAN2_FLOAT" << endl;
     break;
 
+  case instructions::MOD_FLOAT:
+    GetLogger() << L"MOD_FLOAT" << endl;
+    break;
+
   case instructions::LOG_FLOAT:
     GetLogger() << L"LOG_FLOAT" << endl;
     break;

@@ -1293,6 +1293,16 @@ bundle System {
 		function : ArcTan2(y : Float, x : Float) ~ Float {
 			ATAN2_FLOAT;
 		}
+
+		#~
+		Calculates the decimal mod
+		@param y value
+		@param x value
+		@return decimial mod
+		~#
+		function : Mod(a : Float, b : Float) ~ Float {
+			MOD_FLOAT;
+		}
 		
 		#~
 		Calculates the log value

@@ -776,6 +776,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, ATAN2_FLOAT);
       break;
 
+    case MOD_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, MOD_FLOAT);
+      break;
+
     case LOG_FLOAT:
       mthd_instrs[i] = new StackInstr(line_num, LOG_FLOAT);
       break;
