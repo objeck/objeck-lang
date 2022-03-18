@@ -19,8 +19,8 @@ class AngleBearings {
         GetDifference(60175.77306795546, 42213.07192354373)->PrintLine();
     }
 
-    function : GetDifference(b1 : Float, b2 : Float) ~ Float {
-        r := (b2 - b1) % 360.0;
+    function : native : GetDifference(b1 : Float, b2 : Float) ~ Float {
+        r := Float->Mod((b2 - b1), 360.0);
         if (r < -180.0) {
             r += 360.0;
         };
