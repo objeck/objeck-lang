@@ -1296,8 +1296,8 @@ bundle System {
 
 		#~
 		Calculates the decimal mod
-		@param y value
-		@param x value
+		@param a value
+		@param b value
 		@return decimial mod
 		~#
 		function : Mod(a : Float, b : Float) ~ Float {
