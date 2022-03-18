@@ -96,7 +96,6 @@ namespace instructions {
     SUB_FLOAT,
     MUL_FLOAT,
     DIV_FLOAT,
-    MOD_FLOAT,
     FLOR_FLOAT,
     CEIL_FLOAT,
     SIN_FLOAT,

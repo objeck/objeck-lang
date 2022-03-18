@@ -1221,7 +1221,6 @@ IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* i
     case SUB_FLOAT:
     case MUL_FLOAT:
     case DIV_FLOAT:
-    case MOD_FLOAT:
       CalculateFloatFold(instr, working_stack, outputs);
       break;
 
@@ -1282,12 +1281,6 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, de
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
-
-    case MOD_FLOAT: {
-      FLOAT_VALUE value = fmod(left->GetOperand4(), right->GetOperand4());
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
-    }
-                  break;
       
     default:
       break;
