@@ -409,7 +409,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case MUL_FLOAT:
     case DIV_FLOAT:
 #ifdef _DEBUG_JIT
-      wcout << L"FLOAT ADD/SUB/MUL/DIV: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT ADD/SUB/MUL/DIV/: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
       break;
@@ -423,9 +423,8 @@ void JitCompilerIA32::ProcessInstructions() {
     case ATAN2_FLOAT:
     case POW_FLOAT:
     case LOG_FLOAT:
-    case MOD_FLOAT:
 #ifdef _DEBUG_JIT
-      wcout << L"FLOAT SIN/COS/TAN/SQRT/POW/MOD_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -2178,10 +2177,6 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
 
   case ACOS_FLOAT:
     holder = call_xfunc(acos, left);
-    break;
-
-  case MOD_FLOAT:
-    holder = call_xfunc(fmod, left);
     break;
 
   case LOG_FLOAT:
