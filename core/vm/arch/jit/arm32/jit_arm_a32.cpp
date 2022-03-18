@@ -413,7 +413,7 @@ void JitCompilerA32::ProcessInstructions() {
     case MUL_FLOAT:
     case DIV_FLOAT:
 #ifdef _DEBUG_JIT
-      wcout << L"FLOAT ADD/SUB/MUL/DIV: regs=" << aval_regs.size() << endl;
+      wcout << L"FLOAT ADD/SUB/MUL/DIV/: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
       break;
@@ -427,9 +427,8 @@ void JitCompilerA32::ProcessInstructions() {
     case LOG_FLOAT:
     case FLOR_FLOAT:
     case CEIL_FLOAT:
-    case MOD_FLOAT:
 #ifdef _DEBUG_JIT
-      wcout << L"FLOAT SIN/COS/TAN/SQRT/FLOR/CEIL/MOD_FLOAT: regs=" << aval_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT/FLOR/CEIL: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -3603,10 +3602,6 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
 
   case ACOS_FLOAT:
     func_ptr = acos;
-    break;
-
-  case MOD_FLOAT:
-    func_ptr = fmod;
     break;
 
   case LOG_FLOAT:
