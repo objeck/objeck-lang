@@ -3674,7 +3674,7 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
       func_ptr = pow;
       break;
 
-    case POW_FLOAT:
+    case MOD_FLOAT:
       func_ptr = fmod;
       break;
       
