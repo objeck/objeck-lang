@@ -4459,12 +4459,12 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
           case CHAR_TYPE:
             break;
           default:
-            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type\n\tConsider 'Float->Mod(..)' for floating point values");
             break;
           }
         }
         else {
-          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type\n\tConsider 'Float->Mod(..)' for floating point values");
         }
       }
 
