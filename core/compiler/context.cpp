@@ -4439,11 +4439,59 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
       expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
       break;
 
+    case MOD_EXPR: {
+      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+        ProcessError(expression, L"Invalid mathematical operation");
+      }
+      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) || ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+        const wstring cls_name = cls_type->GetName();
+        if(cls_name != L"System.ByteHolder" && cls_name != L"System.CharHolder" && cls_name != L"System.IntHolder") {
+          ProcessError(expression, L"Invalid mathematical operation");
+        }
+      }
+
+      Type* expr_type = GetExpressionType(left, depth + 1);
+      if(expr_type && expr_type->GetType() == FLOAT_TYPE && left->GetEvalType()) {
+        if(left->GetCastType()) {
+          switch(left->GetCastType()->GetType()) {
+          case BYTE_TYPE:
+          case INT_TYPE:
+          case CHAR_TYPE:
+            break;
+          default:
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+            break;
+          }
+        }
+        else {
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+        }
+      }
+
+      expr_type = GetExpressionType(right, depth + 1);
+      if(expr_type && expr_type->GetType() == FLOAT_TYPE && right->GetEvalType()) {
+        if(right->GetCastType()) {
+          switch(right->GetCastType()->GetType()) {
+          case BYTE_TYPE:
+          case INT_TYPE:
+          case CHAR_TYPE:
+            break;
+          default:
+            ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+            break;
+          }
+        }
+        else {
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+        }
+      }
+    }
+      break;
+
     case ADD_EXPR:
     case SUB_EXPR:
     case MUL_EXPR:
     case DIV_EXPR:
-    case MOD_EXPR:
     case SHL_EXPR:
     case SHR_EXPR:
     case BIT_AND_EXPR:
