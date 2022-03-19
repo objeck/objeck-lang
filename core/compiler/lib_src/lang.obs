@@ -6706,14 +6706,20 @@ bundle System.IO.File {
 
 			@info_file := "";
 			@info_file->Append(@directory);
-			@info_file->Append("/objk-info-");
+			if(<>@info_file->EndsWith('/')) {
+				@info_file->Append('/');
+			};
+			@info_file->Append("objk-info-");
 			@info_file->Append(RandomPrefix());
 			@info_file->Append(".log");
 			@info_mutex := ThreadMutex->New("info-log");
 
 			@warn_file := "";
 			@warn_file->Append(@directory);
-			@warn_file->Append("/objk-warn-");
+			if(<>@warn_file->EndsWith('/')) {
+				@warn_file->Append('/');
+			};
+			@warn_file->Append("objk-warn-");
 			@warn_file->Append(RandomPrefix());
 			@warn_file->Append(".log");
 			@warn_mutex := ThreadMutex->New("warn-log");
