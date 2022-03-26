@@ -157,7 +157,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_OBJECK_NATIVE_LIB_PATH</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -172,7 +172,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:..\$(Configuration)\\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:..\$(Configuration)\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
@@ -186,7 +186,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WIN64;_OBJECK_NATIVE_LIB_PATH</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -203,7 +203,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:..\$(Configuration)\win64\\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:..\$(Configuration)\win64\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
