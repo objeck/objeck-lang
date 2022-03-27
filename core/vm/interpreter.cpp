@@ -375,7 +375,19 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case ATAN_FLOAT:
       PushFloat(atan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
-      
+    
+    case LOG_FLOAT:
+      PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case SQRT_FLOAT:
+      PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case RAND_FLOAT:
+      PushFloat(GetRandomValue(), op_stack, stack_pos);
+      break;
+
     case ATAN2_FLOAT:
       right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
@@ -388,22 +400,10 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(fmod(left_double, right_double), op_stack, stack_pos);
       break;
       
-    case LOG_FLOAT:
-      PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-      
     case POW_FLOAT:
       right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
       PushFloat(pow(left_double, right_double), op_stack, stack_pos);
-      break;
-      
-    case SQRT_FLOAT:
-      PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case RAND_FLOAT:
-      PushFloat(GetRandomValue(), op_stack, stack_pos);
       break;
 
       // Note: no supported via JIT -- *end*
