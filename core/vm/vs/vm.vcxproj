@@ -106,7 +106,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_GC_SERIAL</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <EnablePREfast>false</EnablePREfast>
@@ -119,7 +119,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:$(SolutionDir)$(Configuration)\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
