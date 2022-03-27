@@ -1166,12 +1166,12 @@ void StackInterpreter::LesEqlFloat(size_t* &op_stack, long* &stack_pos)
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double <= right_double;
+  op_stack[(*stack_pos) - 2] = left_double <= right_double;
   (*stack_pos)--;
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double <= right_double;
+  op_stack[(*stack_pos) - 4] = left_double <= right_double;
   (*stack_pos) -= 2;
 #endif
 }
@@ -1185,12 +1185,12 @@ void StackInterpreter::GtrEqlFloat(size_t* &op_stack, long* &stack_pos)
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double >= right_double;
+  op_stack[(*stack_pos) - 2] = left_double >= right_double;
   (*stack_pos)--;
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double >= right_double;
+  op_stack[(*stack_pos) - 4] = = left_double >= right_double;
   (*stack_pos) -= 2;
 #endif
 }
@@ -1248,12 +1248,12 @@ void StackInterpreter::EqlFloat(size_t* &op_stack, long* &stack_pos)
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double == right_double;
+  op_stack[(*stack_pos) - 2] = left_double == right_double;
   (*stack_pos)--;
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double == right_double;
+  op_stack[(*stack_pos) - 4] = left_double == right_double;
   (*stack_pos) -= 2;
 #endif
 }
@@ -1267,12 +1267,12 @@ void StackInterpreter::NeqlFloat(size_t* &op_stack, long* &stack_pos)
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double != right_double;
+  op_stack[(*stack_pos) - 2] = left_double != right_double;
   (*stack_pos)--;
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double != right_double;
+  op_stack[(*stack_pos) - 4] = left_double != right_double;
   (*stack_pos) -= 2;
 #endif
 }
@@ -1286,12 +1286,12 @@ void StackInterpreter::LesFloat(size_t* &op_stack, long* &stack_pos)
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double < right_double;
+  op_stack[(*stack_pos) - 2] = left_double < right_double;
   (*stack_pos)--;
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double < right_double;
+  op_stack[(*stack_pos) - 4] = left_double < right_double;
   (*stack_pos) -= 2;
 #endif
 }
@@ -1305,12 +1305,12 @@ void StackInterpreter::GtrFloat(size_t* &op_stack, long* &stack_pos)
 #if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double > right_double;
+  op_stack[(*stack_pos) - 2] = left_double > right_double;
   (*stack_pos)--;
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double > right_double;
+  op_stack[(*stack_pos) - 4] = = left_double > right_double;
   (*stack_pos) -= 2;
 #endif
 }
