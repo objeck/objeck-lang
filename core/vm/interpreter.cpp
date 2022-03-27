@@ -903,9 +903,10 @@ void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: SHL_INT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left << right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left << right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
@@ -913,9 +914,10 @@ void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: SHR_INT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left >> right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left >> right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
@@ -951,9 +953,10 @@ void StackInterpreter::AndInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: AND; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left && right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left && right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::OrInt(size_t* &op_stack, long* &stack_pos)
@@ -961,9 +964,10 @@ void StackInterpreter::OrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: OR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left || right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left || right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::AddInt(size_t* &op_stack, long* &stack_pos)
@@ -971,9 +975,10 @@ void StackInterpreter::AddInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left + right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left + right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::AddFloat(size_t* &op_stack, long* &stack_pos)
@@ -991,9 +996,10 @@ void StackInterpreter::SubInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left - right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left - right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::SubFloat(size_t* &op_stack, long* &stack_pos)
@@ -1011,9 +1017,10 @@ void StackInterpreter::MulInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left * right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left *  right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
@@ -1021,9 +1028,10 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left / right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left / right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::MulFloat(size_t* &op_stack, long* &stack_pos)
@@ -1051,9 +1059,10 @@ void StackInterpreter::ModInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: MOD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left % right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left % right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::BitAndInt(size_t* &op_stack, long* &stack_pos)
@@ -1061,9 +1070,10 @@ void StackInterpreter::BitAndInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_AND; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left & right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left & right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::BitOrInt(size_t* &op_stack, long* &stack_pos)
@@ -1071,9 +1081,10 @@ void StackInterpreter::BitOrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_OR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left | right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left | right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::BitXorInt(size_t* &op_stack, long* &stack_pos)
@@ -1081,9 +1092,10 @@ void StackInterpreter::BitXorInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_XOR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left ^ right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left ^ right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::LesEqlInt(size_t* &op_stack, long* &stack_pos)
@@ -1091,9 +1103,10 @@ void StackInterpreter::LesEqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left <= right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left <= right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::GtrEqlInt(size_t* &op_stack, long* &stack_pos)
@@ -1101,9 +1114,10 @@ void StackInterpreter::GtrEqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left >= right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left >= right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::LesEqlFloat(size_t* &op_stack, long* &stack_pos)
@@ -1131,9 +1145,10 @@ void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left == right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left == right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
@@ -1141,9 +1156,10 @@ void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left != right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left != right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::LesInt(size_t* &op_stack, long* &stack_pos)
@@ -1151,9 +1167,10 @@ void StackInterpreter::LesInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left < right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left < right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::GtrInt(size_t* &op_stack, long* &stack_pos)
@@ -1161,9 +1178,10 @@ void StackInterpreter::GtrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: GTR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  const long left = (long)PopInt(op_stack, stack_pos);
-  const long right = (long)PopInt(op_stack, stack_pos);
-  PushInt(left > right, op_stack, stack_pos);
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
+  op_stack[(*stack_pos) - 2] = left > right;
+  --(*stack_pos);
 }
 
 void StackInterpreter::EqlFloat(size_t* &op_stack, long* &stack_pos)
