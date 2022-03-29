@@ -1190,7 +1190,7 @@ void StackInterpreter::GtrEqlFloat(size_t* &op_stack, long* &stack_pos)
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = = left_double >= right_double;
+  op_stack[(*stack_pos) - 4] = left_double >= right_double;
   (*stack_pos) -= 2;
 #endif
 }
@@ -1310,7 +1310,7 @@ void StackInterpreter::GtrFloat(size_t* &op_stack, long* &stack_pos)
 #else
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = = left_double > right_double;
+  op_stack[(*stack_pos) - 4] = left_double > right_double;
   (*stack_pos) -= 2;
 #endif
 }
