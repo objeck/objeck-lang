@@ -212,7 +212,7 @@ extern "C" {
         bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
         size_t* bundle_array_ptr = bundle_array + 3;
 
-        size_t* bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, bundle_name);
         bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
         bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
