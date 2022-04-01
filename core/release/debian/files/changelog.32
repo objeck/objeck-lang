@@ -1,4 +1,4 @@
-objeck-lang-i386 (6.3-2-1) unstable; urgency=low
+objeck-lang-i386 (6.3-3-1) unstable; urgency=low
 
   * Optimized stack operations for floating point operations (new)
   * Fixed ODBC “select” bug and added missing ODBC API documentation (bug/high)
