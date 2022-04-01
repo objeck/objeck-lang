@@ -389,21 +389,45 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case ATAN2_FLOAT:
-      right_double = PopFloat(op_stack, stack_pos);
-      left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(atan2(left_double, right_double), op_stack, stack_pos);
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
+      (*stack_pos)--;
+#else
+      const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
+      const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = atan2(left_double, right_double);
+      (*stack_pos) -= 2;
+#endif
       break;
 
     case MOD_FLOAT:
-      right_double = PopFloat(op_stack, stack_pos);
-      left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(fmod(left_double, right_double), op_stack, stack_pos);
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = fmod(left_double, right_double);
+      (*stack_pos)--;
+#else
+      const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
+      const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = fmod(left_double, right_double);
+      (*stack_pos) -= 2;
+#endif
       break;
       
     case POW_FLOAT:
-      right_double = PopFloat(op_stack, stack_pos);
-      left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(pow(left_double, right_double), op_stack, stack_pos);
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
+      (*stack_pos)--;
+#else
+      const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
+      const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = pow(left_double, right_double);
+      (*stack_pos) -= 2;
+#endif
       break;
 
       // Note: no supported via JIT -- *end*
