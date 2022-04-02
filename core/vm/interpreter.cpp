@@ -395,8 +395,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
       (*stack_pos)--;
 #else
-      const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-      const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
+      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = atan2(left_double, right_double);
       (*stack_pos) -= 2;
 #endif
@@ -409,8 +409,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = fmod(left_double, right_double);
       (*stack_pos)--;
 #else
-      const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-      const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
+      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = fmod(left_double, right_double);
       (*stack_pos) -= 2;
 #endif
@@ -423,8 +423,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
       (*stack_pos)--;
 #else
-      const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-      const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
+      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = pow(left_double, right_double);
       (*stack_pos) -= 2;
 #endif
