@@ -74,9 +74,19 @@ int Execute(const int argc, const char* argv[])
     delete[] op_stack;
     op_stack = nullptr;
     
+#ifdef _SANITIZE
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); ++i) {
+        wcout << L"dump: value=" << *(stack_pos + 1) << endl;
+      }
+    }
+
+    assert(!(*stack_pos));
+
     delete stack_pos;
     stack_pos = nullptr;
-    
+
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
@@ -87,14 +97,6 @@ int Execute(const int argc, const char* argv[])
 
     delete intpr;
     intpr = nullptr;
-
-#ifdef _SANITIZE
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
-    if((*stack_pos) > 0) {
-      for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << *(stack_pos + 1) << endl;
-      }
-    }
 
     Runtime::StackInterpreter::Clear();
     MemoryManager::Clear();
