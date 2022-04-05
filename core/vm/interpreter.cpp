@@ -698,10 +698,11 @@ void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 
 void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
-  /*
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
+
+  /*
   size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
     wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -975,7 +976,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif      
-  size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* cls_inst_mem = (size_t*)op_stack[(*stack_pos) - 1];
   if(!cls_inst_mem) {
     wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -986,7 +987,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
     exit(1);
 #endif
   }
-  PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
+  op_stack[(*stack_pos) - 1] = cls_inst_mem[instr->GetOperand()];
 }
 
 void StackInterpreter::AndInt(size_t* &op_stack, long* &stack_pos)
