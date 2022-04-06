@@ -702,22 +702,6 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
   wcout << L"stack oper: STOR_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
 
-  /*
-  size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
-  if(!cls_inst_mem) {
-    wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
-    StackErrorUnwind();
-#ifdef _DEBUGGER
-    halt = true;
-    return;
-#else
-    exit(1);
-#endif
-  }
-  size_t mem = PopInt(op_stack, stack_pos);
-  cls_inst_mem[instr->GetOperand()] = mem;
-  */
-
   size_t* cls_inst_mem = (size_t*)op_stack[(*stack_pos) - 1];
   if(!cls_inst_mem) {
     wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
