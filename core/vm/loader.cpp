@@ -500,10 +500,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case LOAD_INT_VAR: {
       const long id = ReadInt();
-      MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, 
-              mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
-              id, mem_context);
+      const MemoryContext mem_context = (MemoryContext)ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
 
@@ -523,10 +521,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case STOR_INT_VAR: {
       const long id = ReadInt();
-      MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, 
-              mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
-              id, mem_context);
+      const MemoryContext mem_context = (MemoryContext)ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
 
@@ -546,10 +542,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case COPY_INT_VAR: {
       const long id = ReadInt();
-      MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, 
-              mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
-              id, mem_context);
+      const MemoryContext mem_context = (MemoryContext)ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
 
