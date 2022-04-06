@@ -391,13 +391,10 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   case JMP:
   case DYN_MTHD_CALL:
-  case LOAD_INT_VAR:
   case LOAD_FLOAT_VAR:
   case LOAD_FUNC_VAR:
-  case STOR_INT_VAR:
   case STOR_FLOAT_VAR:
   case STOR_FUNC_VAR:
-  case COPY_INT_VAR:
   case COPY_FLOAT_VAR:
   case COPY_FUNC_VAR:
   case LOAD_BYTE_ARY_ELM:
@@ -410,6 +407,33 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case STOR_FLOAT_ARY_ELM:
     WriteInt(operand, out_stream);
     WriteInt(operand2, out_stream);
+    break;
+
+  case LOAD_INT_VAR:
+    if(operand2 == LOCL) {
+      WriteInt(LOAD_LOCL_INT_VAR, out_stream);
+    }
+    else {
+      WriteInt(LOAD_CLS_INST_INT_VAR, out_stream);
+    }
+    break;
+
+  case STOR_INT_VAR:
+    if(operand2 == LOCL) {
+      WriteInt(STOR_LOCL_INT_VAR, out_stream);
+    }
+    else {
+      WriteInt(STOR_CLS_INST_INT_VAR, out_stream);
+    }
+    break;
+
+  case COPY_INT_VAR:
+    if(operand2 == LOCL) {
+      WriteInt(COPY_LOCL_INT_VAR, out_stream);
+    }
+    else {
+      WriteInt(COPY_CLS_INST_INT_VAR, out_stream);
+    }
     break;
 
   case LOAD_FLOAT_LIT:
