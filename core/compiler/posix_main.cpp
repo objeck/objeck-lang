@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
 
     // single command line option is the source file
-    if(arguments.empty() && argc == 2) {
+    if(argc == 2 && arguments.empty()) {
       arguments[L"src"] = path_string.erase(0, 1);
     }
     
