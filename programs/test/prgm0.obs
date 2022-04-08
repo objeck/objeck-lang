@@ -1,5 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		
+		"Nada!"->PrintLine();
 	}
 }

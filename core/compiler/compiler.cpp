@@ -148,11 +148,11 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   else {
     argument_options.remove(L"src");
     src_files = result->second;
-    // pare file name w/o extension
+    // parse file name w/o extension
     if(!frontend::EndsWith(src_files, L".obs")) {
       src_files += L".obs";
     }
-    // parse file wildcard
+    // parse file wild card
     else if(frontend::EndsWith(src_files, L"*.obs")) {
       wstring dir_path;
       wstring files_paths;
