@@ -101,11 +101,17 @@ int main(int argc, char* argv[])
         path += cmd_param;
       }
     }    
-    const wstring path_string(path.begin(), path.end());
+    wstring path_string(path.begin(), path.end());
     
     // get command line parameters
     list<wstring> argument_options;
     map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
+
+    // single command line option is the source file
+    if(arguments.empty() && argc == 2) {
+      arguments[L"src"] = path_string.erase(0, 1);
+    }
+    
     for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
       argument_options.push_back(intr->first);
     }
