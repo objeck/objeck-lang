@@ -51,17 +51,17 @@ int main(int argc, char* argv[])
   wstring usage;
   usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
   usage += L"Options:\n";
-  usage += L"  -src:    [input] source files (separated by ',')\n";
-  usage += L"  -in:     [input] input source code from command line instead of files\n";
-  usage += L"  -lib:    [input] list of linked libraries (separated by ',')\n";
+  usage += L"  -src:    [input] source files (separated by commas)\n";
+  usage += L"  -in:     [input] inline source code statements instead of specifying files\n";
+  usage += L"  -lib:    [input] list of linked libraries (separated by commas)\n";
   usage += L"  -ver:    [input] displays the compiler version\n";
-  usage += L"  -tar:    [output] target type 'lib' for linkable library or 'exe' for executable default is 'exe'\n";
-  usage += L"  -dest:   [output] file name\n";
+  usage += L"  -tar:    [output] target type 'lib' for linkable library or 'exe' for executable (the default)\n";
+  usage += L"  -dest:   [output] output file name\n";
   usage += L"  -asm:    [output][end-flag] emits a human readable debug byte assembly file\n";
-  usage += L"  -opt:    [option] compiler optimizations s0-s3 (s3 being the most aggressive) default is s3\n";
-  usage += L"  -alt:    [option][end-flag] use C like syntax instead of Pascal like default\n";
+  usage += L"  -opt:    [option] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
+  usage += L"  -alt:    [option][end-flag] use alternative C like syntax\n";
   usage += L"  -debug:  [option][end-flag] compile with debug symbols\n";
-  usage += L"  -strict: [input][end-flag] exclude default system libraries and provide them manually\n";
+  usage += L"  -strict: [input][end-flag] exclude default system libraries and specify them manually\n";
   usage += L"\nExample: \"obc -src hello.obs\"\n\nVersion: ";
   usage += VERSION_STRING;
   
@@ -100,10 +100,10 @@ int main(int argc, char* argv[])
       else {
         path += cmd_param;
       }
-    }    
-    wstring path_string(path.begin(), path.end());
-    
+    }
+
     // get command line parameters
+    wstring path_string(path.begin(), path.end());
     list<wstring> argument_options;
     map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
 
