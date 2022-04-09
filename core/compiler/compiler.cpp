@@ -139,7 +139,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
       wcerr << usage << endl;
       return COMMAND_ERROR;
     }
-    program = L"class Run { function : Main(args : String[]) ~ Nil {";
+    program = L"class Objeck { function : Main(args : String[]) ~ Nil {";
     program += arguments[L"in"];
     program += L"} }";
     argument_options.remove(L"in");
