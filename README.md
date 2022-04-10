@@ -9,9 +9,9 @@ Objeck is an object-oriented programming language with functional features. Obje
 ```ruby
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World" → PrintLine();
-    "Καλημέρα κόσμε" → PrintLine();
-    "こんにちは 世界" → PrintLine();
+    "Hello World"->PrintLine();
+    "Καλημέρα κόσμε"->PrintLine();
+    "こんにちは 世界"->PrintLine();
   }
 }
 ```
