@@ -96,22 +96,31 @@ void JitCompilerIA64::Epilog()
 #endif
   epilog_index = code_index;
 
-  // nominal
+  // jump to nominal
   AddMachineCode(0xe9);
-  AddImm(45);
-  // null deref
+  AddImm(60);
+
+  // null deference
   move_imm_reg(-1, RAX);
   AddMachineCode(0xe9);
-  AddImm(40);
+  AddImm(55);
+  
   // under bounds
   move_imm_reg(-2, RAX);
   AddMachineCode(0xe9);
-  AddImm(25);
+  AddImm(40);
+  
   // over bounds
   move_imm_reg(-3, RAX);
   AddMachineCode(0xe9);
+  AddImm(25);
+  
+  // divide by 0
+  move_imm_reg(-4, RAX);
+  AddMachineCode(0xe9);
   AddImm(10);
-  // nominal
+  
+  // set nominal
   move_imm_reg(0, RAX);
   
   unsigned char teardown_code[] = {
@@ -3543,6 +3552,8 @@ void JitCompilerIA64::div_imm_reg(long imm, Register reg, bool is_mod) {
 }
 
 void JitCompilerIA64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
+  CheckDivideByZero(src);
+  
   if(is_mod) {
     if(dest != RDX) {
       move_reg_mem(RDX, TMP_REG_1, RBP);
@@ -3603,6 +3614,8 @@ void JitCompilerIA64::div_mem_reg(long offset, Register src, Register dest, bool
 }
 
 void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
+  CheckDivideByZero(src);
+
   if(is_mod) {
     if(dest != RDX) {
       move_reg_mem(RDX, TMP_REG_1, RBP);
@@ -5550,6 +5563,11 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
       memcpy(&code[index], &offset, 4);
     }
 
+    for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
+      const long index = div_by_zero_offsets[i];
+      long offset = epilog_index - index + 46;
+      memcpy(&code[index], &offset, 4);
+    }
 #ifdef _DEBUG_JIT
     wcout << L"Caching JIT code: actual=" << code_index
       << L", buffer=" << code_buf_max << L" byte(s)" << endl;

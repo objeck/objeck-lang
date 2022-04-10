@@ -340,6 +340,7 @@ namespace Runtime {
     vector<long> nil_deref_offsets;      // code -1
     vector<long> bounds_less_offsets;    // code -2
     vector<long> bounds_greater_offsets; // code -3
+    vector<long> div_by_zero_offsets;    // code -4
     long local_space, org_local_space;
     StackMethod* method;
     long instr_count;
@@ -590,6 +591,22 @@ namespace Runtime {
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
       nil_deref_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
+    }
+
+    /***********************************
+     * Check for divide by 0
+     **********************************/
+    inline void CheckDivideByZero(Register reg) {
+      cmp_imm_reg(0, reg);
+#ifdef _DEBUG_JIT
+      wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x84);
+      div_by_zero_offsets.push_back(code_index);
       AddImm(0);
       // jump to exit
     }

@@ -333,6 +333,7 @@ namespace Runtime {
     vector<int32_t> deref_offsets;          // -1
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
+    vector<int32_t> div_by_zero_offsets;    // code -4
     int32_t local_space;
     StackMethod* method;
     int32_t instr_count;
@@ -447,6 +448,19 @@ namespace Runtime {
     }
 
     /***********************************
+     * Check for divide by 0
+     **********************************/
+    inline void CheckDivideByZero(Register reg) {
+      // is zero
+      cmp_imm_reg(0, reg);
+      AddMachineCode(0x0f);
+      AddMachineCode(0x84);
+      div_by_zero_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
+    }
+
+    /***********************************
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
@@ -468,7 +482,7 @@ namespace Runtime {
     }
 
     /***********************************
-     * Gets an avaiable register from
+     * Gets an available register from
      ***********************************/
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;

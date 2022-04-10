@@ -1074,6 +1074,16 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
 #endif
   const long left = (long)op_stack[(*stack_pos) - 1];
   const long right = (long)op_stack[(*stack_pos) - 2];
+  if(!right) {
+    wcerr << L">>> Attempting to divide by zero <<<" << endl;
+    StackErrorUnwind();
+#ifdef _DEBUGGER
+    halt = true;
+    return;
+#else
+    exit(1);
+#endif
+  }
   op_stack[(*stack_pos) - 2] = left / right;
   (*stack_pos)--;
 }
@@ -2310,9 +2320,17 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
     case -1:
       wcerr << L">>> Attempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
       break;
+
     case -2:
+      wcerr << L">>> Index under bounds in native JIT code <<<" << endl;
+      break;
+
     case -3:
-      wcerr << L">>> Index out of bounds in native JIT code! <<<" << endl;
+      wcerr << L">>> Index over bounds in native JIT code <<<" << endl;
+      break;
+
+    case -4:
+      wcerr << L">>> Attempting to divide by zero in native JIT code <<<" << endl;
       break;
     }
     StackErrorUnwind(called);
