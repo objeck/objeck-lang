@@ -74,7 +74,7 @@ void JitCompilerIA32::Prolog() {
   }
 }
 
-// teardown of stackframe
+// tear down of stack frame
 void JitCompilerIA32::Epilog() {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
@@ -82,26 +82,31 @@ void JitCompilerIA32::Epilog() {
 
   epilog_index = code_index;
 
-  // nominal
+  // jump to nominal
   AddMachineCode(0xe9);
-  AddImm(30);
+  AddImm(40);
 
   // nullptr deref
   move_imm_reg(-1, EAX);
   AddMachineCode(0xe9);
-  AddImm(25);
+  AddImm(35);
 
   // under bounds
   move_imm_reg(-2, EAX);
   AddMachineCode(0xe9);
-  AddImm(15);
+  AddImm(25);
 
   // over bounds
   move_imm_reg(-3, EAX);
   AddMachineCode(0xe9);
+  AddImm(15);
+
+  // divide by 0
+  move_imm_reg(-4, EAX);
+  AddMachineCode(0xe9);
   AddImm(5);
 
-  // nominal
+  // set nominal
   move_imm_reg(0, EAX);
 
   // assume return value is in EAX
@@ -3354,6 +3359,8 @@ void JitCompilerIA32::div_imm_reg(int32_t imm, Register reg, bool is_mod) {
 }
 
 void JitCompilerIA32::div_mem_reg(int32_t offset, Register src, Register dest, bool is_mod) {
+  CheckDivideByZero(src);
+
   if(is_mod) {
     if(dest != EDX) {
       move_reg_mem(EDX, TMP_REG_1, EBP);
@@ -3412,6 +3419,8 @@ void JitCompilerIA32::div_mem_reg(int32_t offset, Register src, Register dest, b
 }
 
 void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
+  CheckDivideByZero(src);
+  
   if(is_mod) {
     if(dest != EDX) {
       move_reg_mem(EDX, TMP_REG_1, EBP);
@@ -5141,6 +5150,12 @@ bool JitCompilerIA32::Compile(StackMethod* cm)
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const int32_t index = bounds_greater_offsets[i];
       int32_t offset = epilog_index - index + 21;
+      memcpy(&code[index], &offset, 4);
+    }
+
+    for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
+      const int32_t index = div_by_zero_offsets[i];
+      int32_t offset = epilog_index - index + 31;
       memcpy(&code[index], &offset, 4);
     }
 
