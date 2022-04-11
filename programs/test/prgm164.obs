@@ -1,0 +1,18 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Foo();
+	}
+
+	function : native : Foo() ~ Nil {
+		a := 0;
+		a->PrintLine();
+		b := 13;
+		b := b / a;
+		b->PrintLine();
+
+
+#		ax := Int->New[3];
+#		ax[-3] := 13;
+
+	}
+}
