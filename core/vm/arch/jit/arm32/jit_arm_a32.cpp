@@ -2349,6 +2349,8 @@ void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [div.f64 " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
+
+  CheckDivideByZero(src);
   
   uint32_t op_code = 0xee800b00;
   
@@ -2736,10 +2738,10 @@ void JitCompilerA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::cmp_imm_xreg(size_t addr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
+  move_imm_reg(addr, imm_holder->GetRegister());
   cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -4663,6 +4665,7 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     float_consts = new double[MAX_DBLS];
     
     local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
+    float_consts[floats_index++] = 0.0;
     
     // general use registers
     aval_regs.push_back(new RegisterHolder(R7, false));
