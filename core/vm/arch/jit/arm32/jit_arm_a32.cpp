@@ -77,24 +77,28 @@ void JitCompilerA32::Epilog() {
   epilog_index = code_index;
   
   // nominal
-  AddMachineCode(0xea000005);
+  AddMachineCode(0xea000007);
   
   // nullptr deref
   move_imm_reg(-1, R0);
-  AddMachineCode(0xea000004);
+  AddMachineCode(0xea000006);
 
   // under bounds
   move_imm_reg(-2, R0);
-  AddMachineCode(0xea000002);
+  AddMachineCode(0xea000004);
 
   // over bounds
   move_imm_reg(-3, R0);
+  AddMachineCode(0xea000002);
+
+  // divide by zero
+  move_imm_reg(-4, R0);
   AddMachineCode(0xea000000);
     
   move_imm_reg(0, R0);
   uint32_t teardown_code[] = {
     0xe24bd000, // sub sp, fp, #0
-    0xe8bd01f0, // pop {r4-r7}ΓÇ¼
+    0xe8bd01f0, // pop {r4-r7}
     0xe49db004, // pop {fp}
     0xe12fff1e  // bx  lr
   };
@@ -2952,6 +2956,8 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   << L", " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
 
+  CheckDivideByZero(src);
+
   RegisterHolder* result_holder = nullptr;
 
   // sign divide
@@ -4744,6 +4750,12 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const int32_t index = bounds_greater_offsets[i]  - 1;
       int32_t offset = epilog_index - index - 2 + 3;
+      code[index] |= offset;
+    }
+
+    for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
+      const int32_t index = div_by_zero_offsets[i] - 1;
+      int32_t offset = epilog_index - index - 2 + 7;
       code[index] |= offset;
     }
     
