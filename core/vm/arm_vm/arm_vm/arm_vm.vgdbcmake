@@ -8,7 +8,7 @@
     </CustomSourceDirectories>
     <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
     <DeploymentHost>
-      <HostName>192.168.4.229</HostName>
+      <HostName>192.168.5.12</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
@@ -110,7 +110,7 @@
         <CMakeTargetSpecificSettings>
           <TargetID>obr</TargetID>
           <Debug>
-            <Arguments>../compiler/prgm8.obe </Arguments>
+            <Arguments>/tmp/prgm164</Arguments>
             <WorkingDirectory />
           </Debug>
           <Deployment>
