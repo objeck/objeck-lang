@@ -3148,6 +3148,20 @@ void JitCompilerIA64::cmp_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
+void JitCompilerIA64::cmp_imm_mem(int32_t offset, Register src, int32_t imm) {
+#ifdef _DEBUG_JIT
+  wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", " 
+        << offset << L"(%"<< GetRegisterName(src) << L")]" << endl;
+#endif
+  // encode
+  AddMachineCode(XB(src));
+  AddMachineCode(0x81);
+  AddMachineCode(ModRM(src, RDI));
+  // write value
+  AddImm(offset);
+  AddImm(imm);
+}
+
 void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
   // set register to 0; if eflag than set to 1
   move_imm_reg(0, reg);
@@ -3552,7 +3566,7 @@ void JitCompilerIA64::div_imm_reg(long imm, Register reg, bool is_mod) {
 }
 
 void JitCompilerIA64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
-  CheckDivideByZero(src);
+  CheckDivideByZero(offset, src);
   
   if(is_mod) {
     if(dest != RDX) {
