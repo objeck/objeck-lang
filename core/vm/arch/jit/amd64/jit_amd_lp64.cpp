@@ -3047,7 +3047,7 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_imm_xreg(instr, reg);
+    cmp_imm_xreg(instr->GetOperand2(), reg);
     if(!cond_jmp(type)) {
       cmov_reg(reg, type);
     }
@@ -3363,6 +3363,8 @@ void JitCompilerIA64::div_xreg_xreg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [divsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
+  CheckDivideByZero(src);
+
   // encode
   AddMachineCode(0xf2);
   AddMachineCode(ROB(src, dest));
@@ -3961,7 +3963,7 @@ void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x66);
-  AddMachineCode(RXB(src, dest));
+   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2e);
   AddMachineCode(ModRM(src, dest));
@@ -3969,11 +3971,11 @@ void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::cmp_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerIA64::cmp_imm_xreg(size_t addr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(addr, imm_holder->GetRegister());
 #else
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
 #endif
@@ -5455,6 +5457,7 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
     }
 #endif    
     local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
+    float_consts[floats_index++] = 0.0;
 
     rax_reg = new RegisterHolder(RAX);
 #ifdef _WIN64
