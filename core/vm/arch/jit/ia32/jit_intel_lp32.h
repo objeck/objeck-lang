@@ -452,7 +452,13 @@ namespace Runtime {
      **********************************/
     inline void CheckDivideByZero(Register reg) {
       // is zero
-      cmp_imm_reg(0, reg);
+      if(reg < XMM0) {
+        cmp_imm_reg(0, reg);
+      }
+      else {
+        cmp_imm_xreg((size_t)(&float_consts[0]), reg);
+      }
+
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
       div_by_zero_offsets.push_back(code_index);
@@ -686,7 +692,7 @@ namespace Runtime {
     void cmp_imm_mem(int32_t offset, Register src, int32_t imm);
     void cmp_xreg_xreg(Register src, Register dest);
     void cmp_mem_xreg(int32_t offset, Register src, Register dest);
-    void cmp_imm_xreg(RegInstr* instr, Register reg);
+    void cmp_imm_xreg(size_t addr, Register reg);
     void cmov_reg(Register reg, InstructionType oper);
 
     // inc/dec instructions
