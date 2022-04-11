@@ -461,6 +461,19 @@ namespace Runtime {
     }
 
     /***********************************
+     * Check for divide by 0
+     **********************************/
+    inline void CheckDivideByZero(int32_t offset, Register src) {
+      // is zero
+      cmp_imm_mem(offset, src, 0);
+      AddMachineCode(0x0f);
+      AddMachineCode(0x84);
+      div_by_zero_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
+    }
+
+    /***********************************
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
@@ -670,6 +683,7 @@ namespace Runtime {
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(int32_t offset, Register src, Register dest);
     void cmp_imm_reg(int32_t imm, Register reg);
+    void cmp_imm_mem(int32_t offset, Register src, int32_t imm);
     void cmp_xreg_xreg(Register src, Register dest);
     void cmp_mem_xreg(int32_t offset, Register src, Register dest);
     void cmp_imm_xreg(RegInstr* instr, Register reg);
