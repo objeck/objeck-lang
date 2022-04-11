@@ -599,7 +599,12 @@ namespace Runtime {
      * Check for divide by 0
      **********************************/
     inline void CheckDivideByZero(Register reg) {
-      cmp_imm_reg(0, reg);
+      if(reg < XMM0) {
+        cmp_imm_reg(0, reg);
+      }
+      else {
+        cmp_imm_xreg((size_t)&float_consts[0], reg);
+      }
 #ifdef _DEBUG_JIT
       wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
 #endif
@@ -855,7 +860,7 @@ namespace Runtime {
     void cmp_imm_mem(int32_t offset, Register src, int32_t imm);
     void cmp_xreg_xreg(Register src, Register dest);
     void cmp_mem_xreg(long offset, Register src, Register dest);
-    void cmp_imm_xreg(RegInstr* instr, Register reg);
+    void cmp_imm_xreg(size_t addr, Register reg);
     void cmov_reg(Register reg, InstructionType oper);
 
     // inc/dec instructions
