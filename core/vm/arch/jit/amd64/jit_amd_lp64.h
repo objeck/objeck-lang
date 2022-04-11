@@ -190,7 +190,7 @@ namespace Runtime {
       instr = nullptr;
     }
 
-    RegInstr(StackInstr* si, double* da) {
+    RegInstr(double* da) {
       type = IMM_FLOAT;
 #ifdef _WIN64    
       operand2 = (size_t)da;

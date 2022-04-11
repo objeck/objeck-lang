@@ -158,7 +158,7 @@ namespace Runtime {
       instr = nullptr;
     }  
 
-    RegInstr(StackInstr* si, double* da) {
+    RegInstr(double* da) {
       type = IMM_FLOAT;
       operand = (long)da;
       holder = nullptr;

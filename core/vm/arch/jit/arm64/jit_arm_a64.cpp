@@ -361,7 +361,7 @@ void JitCompilerA64::ProcessInstructions() {
             << L"; regs=" << aval_regs.size() << endl;
 #endif
       float_consts[floats_index] = instr->GetFloatOperand();
-      working_stack.push_front(new RegInstr(instr, &float_consts[floats_index++]));
+      working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
       break;
       
       // load self
