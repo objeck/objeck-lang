@@ -311,6 +311,7 @@ namespace Runtime {
     vector<int32_t> deref_offsets;          // -1
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
+    vector<int32_t> div_by_zero_offsets;          // -4
     int32_t local_space;
     bool realign_stack;
     StackMethod* method;
@@ -391,6 +392,17 @@ namespace Runtime {
       cmp_imm_reg(0, reg);
       AddMachineCode(0x0a000000);
       deref_offsets.push_back(code_index);
+      // jump to exit
+    }
+
+    /***********************************
+     * Check for divide by 0
+     **********************************/
+    inline void CheckDivideByZero(Register reg) {
+      // less than zero
+      cmp_imm_reg(0, reg);
+      AddMachineCode(0x0a000000);
+      div_by_zero_offsets.push_back(code_index);
       // jump to exit
     }
 
