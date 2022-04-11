@@ -327,6 +327,7 @@ namespace Runtime {
     vector<long> deref_offsets;          // -1
     vector<long> bounds_less_offsets;    // -2
     vector<long> bounds_greater_offsets; // -3
+    vector<long> div_by_zero_offsets;    // code -4
     long local_space;
     bool realign_stack;
     StackMethod* method;
@@ -402,7 +403,6 @@ namespace Runtime {
     /**
      * Check for 'Nil' dereferencing
      */
-    // TODO: implement
     inline void CheckNilDereference(Register reg) {
       // less than zero
       cmp_imm_reg(0, reg);
@@ -416,11 +416,27 @@ namespace Runtime {
       // jump to exit
       // ...
     }
-    
+
+    /**
+     * Check for divide by 0
+     */
+    inline void CheckDivideByZero(Register reg) {
+      // less than zero
+      cmp_imm_reg(0, reg);
+ #ifdef _DEBUG_JIT_JIT
+      std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
+ #endif
+      div_by_zero_offsets.push_back(code_index);
+      AddMachineCode(0x54000000);
+      
+      
+      // jump to exit
+      // ...
+    }
+        
     /**
      * Checks array bounds
      */
-    // TODO: implement
     inline void CheckArrayBounds(Register reg, Register max_reg) {
       // less than zero
       cmp_imm_reg(0, reg);

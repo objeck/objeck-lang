@@ -90,23 +90,29 @@ void JitCompilerA64::Epilog() {
   
   // nominal
   uint32_t op_code = B_INSTR;
-  op_code |= 7;
+  op_code |= 9;
   AddMachineCode(op_code);
   
   // nullptr deref
   move_imm_reg(-1, X0);
   op_code = B_INSTR;
-  op_code |= 6;
+  op_code |= 8;
   AddMachineCode(op_code);
   
   // under bounds
   move_imm_reg(-2, X0);
   op_code = B_INSTR;
-  op_code |= 4;
+  op_code |= 6;
   AddMachineCode(op_code);
 
   // over bounds
   move_imm_reg(-3, X0);
+  op_code = B_INSTR;
+  op_code |= 4;
+  AddMachineCode(op_code);
+
+  // divide by zero
+  move_imm_reg(-4, X0);
   op_code = B_INSTR;
   op_code |= 2;
   AddMachineCode(op_code);
@@ -2369,6 +2375,8 @@ void JitCompilerA64::div_reg_reg(Register src, Register dest, bool is_mod) {
 #ifdef _DEBUG_JIT_JIT
   wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
+
+  CheckDivideByZero(src);
   
   uint32_t op_code = 0x9AC00C00;
   
@@ -4752,6 +4760,12 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const long index = bounds_greater_offsets[i];
       const long offset = epilog_index - index + 5;
+      code[index] |= offset << 5;
+    }
+    
+    for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
+      const long index = div_by_zero_offsets[i];
+      const long offset = epilog_index - index + 7;
       code[index] |= offset << 5;
     }
     
