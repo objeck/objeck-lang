@@ -931,8 +931,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case LOAD_FLOAT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT,
-              ReadDouble());
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
       break;
 
     case RTRN:
