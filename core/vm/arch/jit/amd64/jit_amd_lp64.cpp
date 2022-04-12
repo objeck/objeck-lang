@@ -3047,7 +3047,11 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
+#ifdef _WIN64
     cmp_imm_xreg(instr->GetOperand2(), reg);
+#else
+    cmp_imm_xreg(instr->GetOperand(), reg);
+#endif
     if(!cond_jmp(type)) {
       cmov_reg(reg, type);
     }
@@ -3974,11 +3978,7 @@ void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
 void JitCompilerIA64::cmp_imm_xreg(size_t addr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-#ifdef _WIN64
   move_imm_reg(addr, imm_holder->GetRegister());
-#else
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-#endif
   cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
