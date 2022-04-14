@@ -2798,6 +2798,8 @@ void JitCompilerA64::div_freg_freg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [fdiv " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
+
+  CheckDivideByZero(src);
   
   uint32_t op_code = 0x1e601800;
   
@@ -2948,7 +2950,7 @@ void JitCompilerA64::math_imm_freg(RegInstr *instr, RegisterHolder *&reg, Instru
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_imm_freg(instr, reg->GetRegister());
+    cmp_imm_freg(instr->GetOperand(), reg->GetRegister());
     if(!cond_jmp(type)) {
       ReleaseFpRegister(reg);
       reg = GetRegister();
@@ -3045,10 +3047,10 @@ void JitCompilerA64::div_mem_freg(long offset, Register src, Register dest) {
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA64::cmp_imm_freg(RegInstr* instr, Register reg) {
+void JitCompilerA64::cmp_imm_freg(size_t addr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
+  move_imm_reg(addr, imm_holder->GetRegister());
   cmp_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -4644,6 +4646,7 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     
     float_consts = new double[MAX_DBLS];
     local_space = floats_index = instr_index = code_index = instr_count = 0;
+    float_consts[floats_index++] = 0.0;
     
     // general use registers
     aval_regs.push_back(new RegisterHolder(X7, false));
