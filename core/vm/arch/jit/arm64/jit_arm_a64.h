@@ -422,7 +422,13 @@ namespace Runtime {
      */
     inline void CheckDivideByZero(Register reg) {
       // less than zero
-      cmp_imm_reg(0, reg);
+      if(reg < DO) {
+        cmp_imm_reg(0, reg);
+      }
+      else {
+        cmp_imm_freg((size_t)(&float_consts[0]), reg);
+      }
+
  #ifdef _DEBUG_JIT_JIT
       std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
  #endif
@@ -626,7 +632,7 @@ namespace Runtime {
     
     void cmp_freg_freg(Register src, Register dest);
     void cmp_mem_freg(long offset, Register src, Register dest);
-    void cmp_imm_freg(RegInstr* instr, Register reg);
+    void cmp_imm_freg(size_t addr, Register reg);
     
     void cmov_reg(Register reg, InstructionType oper);
 
