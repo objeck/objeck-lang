@@ -349,7 +349,7 @@ class IPSecureSocket {
     string cert_path(path.begin(), path.end());
     cert_path += CACERT_PEM_FILE;
     
-    if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), NULL)) {
+    if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
       return false;

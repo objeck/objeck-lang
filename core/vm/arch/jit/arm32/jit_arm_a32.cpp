@@ -2422,7 +2422,7 @@ void JitCompilerA32::math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, Instru
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_imm_xreg(instr, reg->GetRegister());
+    cmp_imm_xreg(instr->GetOperand(), reg->GetRegister());
     if(!cond_jmp(type)) {
       ReleaseFpRegister(reg);
       reg = GetRegister();
