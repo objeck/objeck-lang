@@ -96,7 +96,7 @@
     <OutDir>$(ProjectDir)$(Configuration)\$(Platform)\</OutDir>
     <TargetName>libobjk_diags</TargetName>
     <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>..\..\zlib\win\x86\Release;..\..\openssl\win\x86;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\x86\Debug;..\..\openssl\win\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
