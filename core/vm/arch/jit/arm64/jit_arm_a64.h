@@ -422,7 +422,7 @@ namespace Runtime {
      */
     inline void CheckDivideByZero(Register reg) {
       // less than zero
-      if(reg < DO) {
+      if(reg < D0) {
         cmp_imm_reg(0, reg);
       }
       else {
