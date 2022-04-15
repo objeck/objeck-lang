@@ -1168,15 +1168,14 @@ class Node {
 
 class Scanner {
 	function : Scan(input : String) ~ Vector<Token> {
-		keywords : Hash<String, Token->Type>;
-		keywords := Hash->New()<String, Token->Type>;
-		keywords->Insert("let", Token->Type->LET_KEYWORD);
-		keywords->Insert("write", Token->Type->WRITE_KEYWORD);
-		keywords->Insert("list", Token->Type->LIST_KEYWORD);
-		keywords->Insert("cond", Token->Type->COND_KEYWORD);
-		keywords->Insert("cons", Token->Type->CONS_KEYWORD);
-		keywords->Insert("length", Token->Type->LENGTH_KEYWORD);
-		keywords->Insert("defun", Token->Type->DEFUN_KEYWORD);
+		keywords := Hash->New()<String, IntHolder>;
+		keywords->Insert("let", IntHolder->New(Token->Type->LET_KEYWORD));
+		keywords->Insert("write", IntHolder->New(Token->Type->WRITE_KEYWORD));
+		keywords->Insert("list", IntHolder->New(Token->Type->LIST_KEYWORD));
+		keywords->Insert("cond", IntHolder->New(Token->Type->COND_KEYWORD));
+		keywords->Insert("cons", IntHolder->New(Token->Type->CONS_KEYWORD));
+		keywords->Insert("length", IntHolder->New(Token->Type->LENGTH_KEYWORD));
+		keywords->Insert("defun", IntHolder->New(Token->Type->DEFUN_KEYWORD));
 
 		tokens := Vector->New()<Token>;
 
@@ -1194,7 +1193,7 @@ class Scanner {
 
 				found := keywords->Find(ident);
 				if(found <> 0) {
-					tokens->AddBack(Token->New(found));					
+					tokens->AddBack(Token->New(found->Get()->As(Token->Type)));					
 				}
 				else {
 					tokens->AddBack(Token->New(Token->Type->VAR, ident));
