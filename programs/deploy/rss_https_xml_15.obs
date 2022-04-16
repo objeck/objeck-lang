@@ -57,33 +57,35 @@ class RSS {
 			description := post->GetDescription();
 			link := post->GetLink();
 			pub_date := post->GetDate();
-
-			if(description <> Nil & (description->Find("href") > -1 | description->Find("HREF") > -1)) {
-				html += "<p><h3>";
-				html += pub_date;
-				html += "</h3>";
-				html += description;
-				html += "</p>";
-			}
-			else if(description <> Nil) {
-				html += "<p><h3>";
-				html += pub_date;
-				html += "</h3><b><a href='";
-				html += link;
-				html += "'>";
-				html += title;
-				html += "</a></b></br>";
-				html += description;
-				html += "</p>";
-			}
-			else {
-				html += "<p><h3>";
-				html += pub_date;
-				html += "</h3><b><a href='";
-				html += link;
-				html += "'>";
-				html += title;
-				html += "</a></b></br></p>";
+						
+			if(pub_date <> Nil & link <> Nil & title <> Nil) {
+				if(description <> Nil & (description->Find("href") > -1 | description->Find("HREF") > -1)) {
+					html += "<p><h3>";
+					html += pub_date;
+					html += "</h3>";
+					html += description;
+					html += "</p>";
+				}
+				else if(description <> Nil) {
+					html += "<p><h3>";
+					html += pub_date;
+					html += "</h3><b><a href='";
+					html += link;
+					html += "'>";
+					html += title;
+					html += "</a></b></br>";
+					html += description;
+					html += "</p>";
+				}
+				else {
+					html += "<p><h3>";
+					html += pub_date;
+					html += "</h3><b><a href='";
+					html += link;
+					html += "'>";
+					html += title;
+					html += "</a></b></br></p>";
+				};
 			};
 		};
 	}
