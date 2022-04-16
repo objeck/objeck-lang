@@ -2050,7 +2050,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       if(method_call->IsFunctionDefinition()) {
         AnalyzeFunctionReference(klass, method_call, encoding, depth);
       }
-      else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
+      else if(!method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
       }
       return;
@@ -2061,7 +2061,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       if(method_call->IsFunctionDefinition()) {
         AnalyzeFunctionReference(lib_klass, method_call, encoding, depth);
       }
-      else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
+      else {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       }
       return;
@@ -3622,6 +3622,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 {
   AnalyzeExpressions(indices, depth + 1);
 
+  vector<Expression*> unboxed_expressions;
   vector<Expression*> expressions = indices->GetExpressions();
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
@@ -3638,7 +3639,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
         if(!IsEnumExpression(expression)) {
           Expression* unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
           if(unboxed_expresion) {
-            expressions.push_back(unboxed_expresion);
+            unboxed_expressions.push_back(unboxed_expresion);
           }
           else {
             ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
@@ -3651,6 +3652,10 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
         break;
       }
     }
+  }
+
+  if(!unboxed_expressions.empty()) {
+    indices->SetExpressions(unboxed_expressions);
   }
 }
 
@@ -5689,8 +5694,8 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
     else if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(to_type->GetName())) {
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
                                                                             -1, -1, -1, -1, from_expr->GetEvalType()->GetName(), L"Get", TreeFactory::Instance()->MakeExpressionList());
-      AnalyzeMethodCall(box_method_call, depth);
       from_expr->SetMethodCall(box_method_call);
+      AnalyzeMethodCall(static_cast<MethodCall*>(from_expr), depth);
       return from_expr;
     }
   }
