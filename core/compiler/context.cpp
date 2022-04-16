@@ -3624,8 +3624,9 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 
   vector<Expression*> unboxed_expressions;
   vector<Expression*> expressions = indices->GetExpressions();
+
   for(size_t i = 0; i < expressions.size(); ++i) {
-    Expression* expression = expressions[i];
+    Expression* expression = expressions[i];    
     AnalyzeExpression(expression, depth + 1);
     Type* eval_type = expression->GetEvalType();
     if(eval_type) {
@@ -3633,6 +3634,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:
+        unboxed_expressions.push_back(expression);
         break;
 
       case CLASS_TYPE:
@@ -3654,9 +3656,8 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
     }
   }
 
-  if(!unboxed_expressions.empty()) {
-    indices->SetExpressions(unboxed_expressions);
-  }
+  // reset expressions
+  indices->SetExpressions(unboxed_expressions);
 }
 
 /****************************
