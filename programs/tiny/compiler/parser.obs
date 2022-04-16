@@ -1,16 +1,16 @@
-use Collection;
+use Collection.Generic;
 
 class Parser {
-	@tokens : Vector;
-	@statements : Vector;
-	@sym_table : StringMap;
+	@tokens : Vector<Token>;
+	@statements : Vector<ParseNode>;
+	@sym_table : Map<String, ParseNode>;
 	@var_index : Int;
 	@token_index : Int;
 	
-	New(tokens : Vector) {
+	New(tokens : Vector<Token>) {
 		@tokens ← tokens;
-		@statements ← Vector → New();
-		@sym_table ← StringMap → New();
+		@statements ← Vector → New()<ParseNode>;
+		@sym_table ← Map → New()<String, ParseNode>;
 		@token_index ← 0;
 		@var_index ← 0;
 	}
@@ -21,7 +21,7 @@ class Parser {
 	
 	method : native : GetToken(index : Int) ~ Token {
 		if(index < @tokens → Size()) {
-			return @tokens → Get(index) → As(Token);
+			return @tokens → Get(index);
 		};
 		
 		return Token → New(-1, Token → Type → EOS, "eos");
@@ -43,7 +43,7 @@ class Parser {
 		return Nil;
 	}
 	
-	method : public : GetStatements() ~ Vector {
+	method : public : GetStatements() ~ Vector<ParseNode> {
 		return @statements;
 	}
 	
@@ -121,7 +121,7 @@ class Parser {
 				if(Match(Token → Type → ELSE)) {
 					NextToken();
 
-					statements ← Vector → New();					
+					statements ← Vector → New()<ParseNode>;					
 					if(Match(Token → Type → OCBRACE)) {
 						NextToken();
 
@@ -164,7 +164,7 @@ class Parser {
 				};
 				NextToken();
 				
-				expressions ← Vector → New();
+				expressions ← Vector → New()<ParseNode>;
 				node ← ParseNode → New(ParseNode → Type → PRINT);
 				while(GetToken() → GetType() <> Token → Type → EOS & GetToken() → GetType() <> Token → Type → CPREN) {
 					expression ← PrintInt();
@@ -382,7 +382,7 @@ class Parser {
 		};
 		NextToken();
 		
-		statements ← Vector → New();
+		statements ← Vector → New()<ParseNode>;
 		if(Match(Token → Type → OCBRACE)) {
 			NextToken();
 		
@@ -685,7 +685,7 @@ class Parser {
 	}
 	
 	method : Variable() ~ ParseNode {
-		node ← @sym_table → Find(GetToken() → GetName()) → As(ParseNode);
+		node ← @sym_table → Find(GetToken() → GetName());
 		if(node = Nil) {
 			node ← ParseNode → New(ParseNode → Type → VAR, @var_index);
 			@sym_table → Insert(GetToken() → GetName(), node);
@@ -702,7 +702,7 @@ class ParseNode {
 	@value : Int;
 	@left : ParseNode;
 	@right : ParseNode;
-	@statements : Vector;
+	@statements : Vector<ParseNode>;
 	
 	enum Type ← -64 {
 		ASGN,
@@ -733,7 +733,7 @@ class ParseNode {
 		NUM
 	}
 	
-	New(type : ParseNode → Type, statements : Vector) {
+	New(type : ParseNode → Type, statements : Vector<ParseNode>) {
 		@type ← type;
 		@statements ← statements;
 	}
@@ -777,11 +777,11 @@ class ParseNode {
 		@right ← right;
 	}
 	
-	method : public : SetStatements(statements : Vector) ~ Nil {
+	method : public : SetStatements(statements : Vector<ParseNode>) ~ Nil {
 		@statements ← statements;
 	}
 	
-	method : public : GetStatements() ~ Vector {
+	method : public : GetStatements() ~ Vector<ParseNode> {
 		return @statements;
 	}
 }
