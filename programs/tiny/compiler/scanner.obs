@@ -1,32 +1,30 @@
 use System.IO.File;
-use Collection;
+use Collection.Generic;
 
 class Scanner {
 	@file : String;
-	@tokens : Vector;
-	@strings : Vector;
+	@tokens : Vector<Token>;
+	@strings : Vector<String>;
 	@line : String;
 	@line_num : Int;
 	@index : Int;
 
-	
-	
 	New(file : String) {
 		@file ← file;
-		@tokens ← Vector → New();
-		@strings ← Vector → New();
+		@tokens ← Vector → New()<Token>;
+		@strings ← Vector → New()<String>;
 	}
 	
-	method : public : GetTokens() ~ Vector {
+	method : public : GetTokens() ~ Vector<Token> {
 		return @tokens;
 	}
 	
-	method : public : GetStrings() ~ Vector {
+	method : public : GetStrings() ~ Vector<String> {
 		return @strings;
 	}
 	
 	method : NextLine(reader : FileReader) ~ Nil {
-		@line ← reader → ReadString();
+		@line ← reader → ReadLine();
 		@line_num += 1;
 		@index ← 0;
 	}
@@ -41,7 +39,7 @@ class Scanner {
 		if(@index + 1 < @line → Size()) {
 			if(@line → Get(@index) = '/') {
 				if(@line → Get(@index + 1) = '/') {
-					@line ← reader → ReadString();
+					@line ← reader → ReadLine();
 					@line_num += 1;
 					@index ← 0;  
 					while(@index < @line → Size() & (@line → Get(@index) = ' ' | @line → Get(@index) = '\t')) {
@@ -82,7 +80,7 @@ class Scanner {
 	}
 	
 	method : public : native : Scan() ~ Bool {
-		reserved ← StringMap → New();
+		reserved ← Map → New()<String, IntHolder>;
 		reserved → Insert("while", IntHolder → New(Token → Type → WHILE → As(Int)));
 		reserved → Insert("if", IntHolder → New(Token → Type → IF → As(Int)));
 		reserved → Insert("else", IntHolder → New(Token → Type → ELSE → As(Int)));
@@ -167,7 +165,7 @@ class Scanner {
 						};
 						
 						if(@line → Get(@index) <> '\'') {
-							System.IO.Console → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
+							System.IO.Standard → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
 							System.Runtime → Exit(1);
 						};
 						@index += 1;
@@ -295,7 +293,7 @@ class Scanner {
 							}
 							
 							other: {
-								System.IO.Console → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
+								System.IO.Standard → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
 								System.Runtime → Exit(1);
 							}
 						};
@@ -309,9 +307,9 @@ class Scanner {
 		return true;
 	}
 	
-	function : DumpTokens(tokens : Vector) ~ Nil {
+	function : DumpTokens(tokens : Vector<Token>) ~ Nil {
 		each(@index : tokens) {
-			token ← tokens → Get(@index) → As(Token);
+			token ← tokens → Get(@index);
 			name ← token → GetName();
 			
 			select(token → GetType()) {

@@ -1,8 +1,8 @@
 use System.IO.File;
-use Collection;
+use Collection.Generic;
 
 class Interpreter {
-	@instructions : Vector;
+	@instructions : Vector<Instruction>;
 	@strings : String[];
 	@file : String;
 	
@@ -16,32 +16,33 @@ class Interpreter {
 	
 	New(file : String) {
 		@file ← file;
-		@instructions ← Vector → New();
+		@instructions ← Vector → New()<Instruction>;
 	}
 	
 	method : native : Run() ~ Nil  {
 		varibles ← Int → New[16];
-		calc_stack ← IntStack → New();
+		calc_stack ← Stack → New()<IntHolder>;
 		
 		pc ← 0;
 		while(pc < @instructions → Size()) {
-			instruction ← @instructions → Get(pc) → As(Instruction);
+			instruction ← @instructions → Get(pc);
 			select(instruction → GetType()) {
+
 				label Instruction → Type → PUTS: {
 					@strings[calc_stack → Pop()] → Print();
 					pc += 1;
 				}
-				
+
 				label Instruction → Type → PUTI: {
 					calc_stack → Pop() → Print();
 					pc += 1;
 				}
 				
 				label Instruction → Type → PUTC: {
-					calc_stack → Pop() → As(Char) → Print();
+					calc_stack → Pop() → Get() → As(Char) → Print();
 					pc += 1;
 				}
-				
+			
 				label Instruction → Type → ST: {
 					index ← instruction → GetValue();
 					varibles[index] ← calc_stack → Pop();
@@ -73,84 +74,86 @@ class Interpreter {
 				}
 				
 				label Instruction → Type → AND: {
-					calc_stack → Push(((calc_stack → Pop() <> 0) & (calc_stack → Pop() <> 0)) → As(Int));
+					value := ((calc_stack → Pop()  → Get() <> 0) & (calc_stack → Pop()  → Get() <> 0));
+					calc_stack → Push( value ? 1 : 0);
 					pc += 1;
 				}
 				
 				label Instruction → Type → OR: {
-					calc_stack → Push(((calc_stack → Pop() <> 0) | (calc_stack → Pop() <> 0)) → As(Int));
+					value := ((calc_stack → Pop()  → Get() <> 0) | (calc_stack → Pop()  → Get() <> 0));
+					calc_stack → Push( value ? 1 : 0);
 					pc += 1;
 				}
 				
 				label Instruction → Type → LT: {
-					calc_stack → Push((calc_stack → Pop() < calc_stack → Pop()) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() < calc_stack → Pop()) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → GT: {
-					calc_stack → Push((calc_stack → Pop() > calc_stack → Pop()) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() > calc_stack → Pop()) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → LE: {
-					calc_stack → Push((calc_stack → Pop() <= calc_stack → Pop()) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() <= calc_stack → Pop()) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → GE: {
-					calc_stack → Push((calc_stack → Pop() >= calc_stack → Pop()) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() >= calc_stack → Pop()) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → EQ: {
-					calc_stack → Push((calc_stack → Pop() = calc_stack → Pop()) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() = calc_stack → Pop()) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → NEQ: {
-					calc_stack → Push((calc_stack → Pop() <> calc_stack → Pop()) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() <> calc_stack → Pop()) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → NOT: {
-					calc_stack → Push((calc_stack → Pop() = 0) → As(Int));
+					calc_stack → Push((calc_stack → Pop()  → Get() = 0) → As(Int));
 					pc += 1;
 				}
 				
 				label Instruction → Type → NEG: {
-					calc_stack → Push(calc_stack → Pop() * -1);
+					calc_stack → Push(calc_stack → Pop()  → Get() * -1);
 					pc += 1;
 				}
 				
 				label Instruction → Type → ADD: {
-					calc_stack → Push(calc_stack → Pop() + calc_stack → Pop());
+					calc_stack → Push(calc_stack → Pop()  → Get() + calc_stack → Pop());
 					pc += 1;
 				}
 				
 				label Instruction → Type → SUB: {
-					calc_stack → Push(calc_stack → Pop() - calc_stack → Pop());
+					calc_stack → Push(calc_stack → Pop()  → Get() - calc_stack → Pop());
 					pc += 1;
 				}
 				
 				label Instruction → Type → MUL: {
-					calc_stack → Push(calc_stack → Pop() * calc_stack → Pop());
+					calc_stack → Push(calc_stack → Pop()  → Get() * calc_stack → Pop());
 					pc += 1;
 				}
 				
 				label Instruction → Type → DIV: {
-					calc_stack → Push(calc_stack → Pop() / calc_stack → Pop());
+					calc_stack → Push(calc_stack → Pop()  → Get() / calc_stack → Pop());
 					pc += 1;
 				}
 				
 				label Instruction → Type → MOD: {
-					calc_stack → Push(calc_stack → Pop() % calc_stack → Pop());
+					calc_stack → Push(calc_stack → Pop()  → Get() % calc_stack → Pop());
 					pc += 1;
 				}
 			};
 		};
 		
-#		"---" → PrintLine();
-#		calc_stack → Size() → PrintLine();
+		"---" → PrintLine();
+		calc_stack → Size() → PrintLine();
 	}
 	
 	method : native : Load() ~ Nil {
@@ -159,12 +162,12 @@ class Interpreter {
 			reader → Close();
 		};
 		
-		line ← reader → ReadString() → Trim();
+		line ← reader → ReadLine() → Trim();
 		string_count ← line → ToInt();		
 		@strings ← String → New[string_count];
 		for(i ← 0; i < string_count; i += 1;) {
 			string ← "";
-			line ← reader → ReadString();
+			line ← reader → ReadLine();
 			each(j : line) {
 				c ← line → Get(j);
 				if(c = '\\' & j + 1 < line → Size()) {
@@ -198,7 +201,7 @@ class Interpreter {
 		};
 
 		while(<>reader → IsEOF()) {
-			line ← reader → ReadString();
+			line ← reader → ReadLine();
 			opers ← line → Split("\t");
 			if(opers <> Nil) {
 				if(opers → Size() = 2) {

@@ -1,16 +1,16 @@
-use Collection;
+use Collection.Generic;
 use System.IO.File;
 
 class Emitter {
-	@statements : Vector;
-	@instructions : Vector;
-	@strings : Vector;
+	@statements : Vector<ParseNode>;
+	@instructions : Vector<Instruction>;
+	@strings : Vector<String>;
 	@code_index : Int;
 	
-	New(statements : Vector, strings : Vector) {
+	New(statements : Vector<ParseNode>, strings : Vector<String>) {
 		@statements ← statements;
 		@strings ← strings;
-		@instructions ← Vector → New();
+		@instructions ← Vector → New()<Instruction>;
 		@code_index ← 0;
 	}
 	
@@ -24,7 +24,7 @@ class Emitter {
 		Statements(@statements);
 		
 		each(i : @instructions) {
-			instruction ← @instructions → Get(i) → As(Instruction);
+			instruction ← @instructions → Get(i);
 			select(instruction → GetType()) {
 				label Instruction → Type → PUTS: {
 					out → WriteString("{$i}\tputs\r\n");
@@ -140,11 +140,11 @@ class Emitter {
 		};
 	}
 	
-	method : Statements(statements : Vector) ~ Bool {
+	method : Statements(statements : Vector<ParseNode>) ~ Bool {
 		temp : Instruction;
 		
 		each(i : statements) {
-			node ← statements → Get(i) → As(ParseNode);
+			node ← statements → Get(i);
 			select(node → GetType()) {
 				label ParseNode → Type → ASGN: {
 					if(<>Expression(node → GetRight())) {
