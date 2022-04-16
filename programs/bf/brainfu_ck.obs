@@ -20,7 +20,7 @@ class Brainfu_k {
 		buffer := "";
 		reader := FileReader → New(file);
 		while(<>reader → IsEOF()) {
-			line := reader → ReadString();
+			line := reader → ReadLine();
 			each(i : line) {
 				char := line → Get(i);
 				select(char) {
@@ -100,7 +100,7 @@ class Brainfu_k {
 	
 	method : Read() ~ Byte {		
 		if(@input = Nil) {
-			@input := IO.Console → ReadString();
+			@input := System.IO.Standard → ReadLine();
 		};
 		
 		if(@input_ptr < @input → Size()) {
