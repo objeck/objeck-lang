@@ -233,7 +233,7 @@ class Scanner {
 							}
 							
 							label '<': {
-								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+								if(MatchNext('=')) {
 									@tokens → AddBack(Token → New(@line_num, Token → Type → LESS_EQL, "equal"));
 									@index += 1;
 								}
@@ -243,7 +243,7 @@ class Scanner {
 							}
 							
 							label '>': {
-								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+								if(MatchNext('=')) {
 									@tokens → AddBack(Token → New(@line_num, Token → Type → GTR_EQL, "equal"));
 									@index += 1;
 								}
@@ -253,7 +253,7 @@ class Scanner {
 							}
 							
 							label '=': {
-								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+								if(MatchNext('=')) {
 									@tokens → AddBack(Token → New(@line_num, Token → Type → EQL, "equal"));
 									@index += 1;
 								}
@@ -263,7 +263,7 @@ class Scanner {
 							}
 							
 							label '&': {
-								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '&') {
+								if(MatchNext('&')) {
 									@tokens → AddBack(Token → New(@line_num, Token → Type → AND, "and"));
 									@index += 1;
 								}
@@ -273,7 +273,7 @@ class Scanner {
 							}
 							
 							label '|': {
-								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '|') {
+								if(MatchNext('|')) {
 									@tokens → AddBack(Token → New(@line_num, Token → Type → OR, "or"));
 									@index += 1;
 								}
@@ -283,7 +283,7 @@ class Scanner {
 							}
 							
 							label '!': {
-								if(@index + 1 < @line → Size() & @line → Get(@index + 1) = '=') {
+								if(MatchNext('=')) {
 									@tokens → AddBack(Token → New(@line_num, Token → Type → NEQL, "neql"));
 									@index += 1;
 								}
@@ -307,6 +307,10 @@ class Scanner {
 		return true;
 	}
 	
+	method : MatchNext(char : Char) ~ Bool {
+		return @index + 1 < @line → Size() & @line → Get(@index + 1) = char;
+	}
+
 	function : DumpTokens(tokens : Vector<Token>) ~ Nil {
 		each(@index : tokens) {
 			token ← tokens → Get(@index);
