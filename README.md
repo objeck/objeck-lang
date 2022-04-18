@@ -42,9 +42,9 @@ Notable features:
 * JIT support for all targets
 * Supported targets
   * x86-64: Windows, macOS and Linux
+  * ARM64: macOS (Apple Silicon)
   * x86: Windows and Linux
   * ARMv7: Linux (Raspberry Pi 3/4)
-  * ARM64: macOS (Apple Silicon)
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
