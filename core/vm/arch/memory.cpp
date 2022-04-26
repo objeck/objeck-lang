@@ -1452,7 +1452,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     }
       break;
 
-  case CHAR_PARM:
+    case CHAR_PARM:
     case INT_PARM:
 #ifdef _DEBUG_GC
       wcout << L"\t" << i << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
@@ -1468,7 +1468,12 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       wcout << L"\t" << i << L": FLOAT_PARM: value=" << value << endl;
 #endif
       // update
+      // TODO: mapped such that all 64-bit values the same size
+#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+      mem++;
+#else
       mem += 2;
+#endif
     }
       break;
 
