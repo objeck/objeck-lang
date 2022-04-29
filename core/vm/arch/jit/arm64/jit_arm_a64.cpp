@@ -4180,30 +4180,18 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-
-#ifdef _WIN64
-    HANDLE vm_thread = (HANDLE)instance[0];
-    if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
-      wcerr << L"Unable to join thread!" << endl;
-      exit(-1);
-    }
-#else
+    
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
     if(pthread_join(vm_thread, &status)) {
       wcerr << L"Unable to join thread!" << endl;
       exit(-1);
     }
-#endif
   }
     break;
 
   case THREAD_SLEEP:
-#ifdef _WIN64
-    Sleep((DWORD)PopInt(op_stack, stack_pos));
-#else
     usleep(PopInt(op_stack, stack_pos));
-#endif
     break;
 
   case THREAD_MUTEX: {
@@ -4213,11 +4201,7 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN64
-    InitializeCriticalSection((CRITICAL_SECTION*)& instance[1]);
-#else
     pthread_mutex_init((pthread_mutex_t*)& instance[1], nullptr);
-#endif
   }
     break;
 
@@ -4228,11 +4212,7 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN64
-    EnterCriticalSection((CRITICAL_SECTION*)& instance[1]);
-#else
     pthread_mutex_lock((pthread_mutex_t*)& instance[1]);
-#endif
   }
      break;
 
@@ -4243,11 +4223,7 @@ void JitCompilerA64::JitStackCallback(const long instr_id, StackInstr* instr, co
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN64
-    LeaveCriticalSection((CRITICAL_SECTION*)& instance[1]);
-#else
     pthread_mutex_unlock((pthread_mutex_t*)& instance[1]);
-#endif
   }
     break;
 
