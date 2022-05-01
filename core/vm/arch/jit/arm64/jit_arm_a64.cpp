@@ -2376,7 +2376,7 @@ void JitCompilerA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
 
-  
+  CheckIntDivideByZero(src);
   
   uint32_t op_code = 0x9AC00C00;
   
@@ -2398,9 +2398,7 @@ void JitCompilerA64::div_reg_reg(Register src, Register dest, bool is_mod) {
     
     ReleaseRegister(holder);
   }
-  else {
-    CheckDivideByZero(src);
-    
+  else {    
     op_dest = dest;
     op_code |= op_dest;
     AddMachineCode(op_code);
@@ -2800,8 +2798,8 @@ void JitCompilerA64::div_freg_freg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [fdiv " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-
-  CheckDivideByZero(src);
+        
+  CheckFloatDivideByZero(src);
   
   uint32_t op_code = 0x1e601800;
   
