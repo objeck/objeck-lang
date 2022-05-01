@@ -420,18 +420,28 @@ namespace Runtime {
     /**
      * Check for divide by 0
      */
-    inline void CheckDivideByZero(Register reg) {
+    inline void CheckIntDivideByZero(Register reg) {
       // less than zero
-      if(reg < D0) {
-        cmp_imm_reg(0, reg);
-      }
-      else {
-        cmp_imm_freg((size_t)(&float_consts[0]), reg);
-      }
+      cmp_imm_reg(0, reg);
 
  #ifdef _DEBUG_JIT_JIT
       std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
  #endif
+      div_by_zero_offsets.push_back(code_index);
+      AddMachineCode(0x54000000);
+      
+      
+      // jump to exit
+      // ...
+    }
+
+    inline void CheckFloatDivideByZero(Register reg) {
+      // less than zero
+      cmp_imm_freg((size_t)(&float_consts[0]), reg);
+      
+#ifdef _DEBUG_JIT_JIT
+      std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
+#endif
       div_by_zero_offsets.push_back(code_index);
       AddMachineCode(0x54000000);
       
