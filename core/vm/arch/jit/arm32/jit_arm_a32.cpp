@@ -223,7 +223,7 @@ void JitCompilerA32::ProcessParameters(int32_t params) {
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
       shl_imm_reg(2, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
-      move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_freg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store float
       ProcessStore(instr);
@@ -299,7 +299,7 @@ void JitCompilerA32::ProcessFloatCallParameter() {
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(2, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
-  move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+  move_mem_freg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
   
   ReleaseRegister(op_stack_holder);
@@ -858,7 +858,7 @@ void JitCompilerA32::ProcessLoad(StackInstr* instr) {
     // float value
     else {
       RegisterHolder* fp_holder = GetFpRegister();
-      move_mem_xreg(instr->GetOperand3(), holder->GetRegister(), fp_holder->GetRegister());
+      move_mem_freg(instr->GetOperand3(), holder->GetRegister(), fp_holder->GetRegister());
       ReleaseRegister(holder);
       working_stack.push_front(new RegInstr(fp_holder));	  
     }
@@ -989,7 +989,7 @@ void JitCompilerA32::ProcessLoadIntElement(StackInstr* instr) {
 void JitCompilerA32::ProcessLoadFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(0, elem_holder->GetRegister(), holder->GetRegister());
+  move_mem_freg(0, elem_holder->GetRegister(), holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
   ReleaseRegister(elem_holder);
 }
@@ -1114,15 +1114,15 @@ void JitCompilerA32::ProcessStoreFloatElement(StackInstr* instr) {
   case MEM_FLOAT: 
   case MEM_INT: {
     RegisterHolder* holder = GetFpRegister();
-    move_mem_xreg(left->GetOperand(), FP, holder->GetRegister());
-    move_xreg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
+    move_mem_freg(left->GetOperand(), FP, holder->GetRegister());
+    move_freg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseFpRegister(holder);
   }
     break;
 
   case REG_FLOAT: {
     RegisterHolder* holder = left->GetRegister();
-    move_xreg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
+    move_freg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseFpRegister(holder);
   }
     break;
@@ -1143,7 +1143,7 @@ void JitCompilerA32::ProcessFloor(StackInstr* instr) {
   switch(left->GetType()) {
   case IMM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    round_imm_xreg(left, holder->GetRegister(), true);
+    round_imm_freg(left, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
     left = nullptr;
@@ -1153,7 +1153,7 @@ void JitCompilerA32::ProcessFloor(StackInstr* instr) {
   case MEM_FLOAT:
   case MEM_INT: {
     RegisterHolder* holder = GetFpRegister();
-    round_mem_xreg(left->GetOperand(), FP, holder->GetRegister(), true);
+    round_mem_freg(left->GetOperand(), FP, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
     left = nullptr;
@@ -1161,7 +1161,7 @@ void JitCompilerA32::ProcessFloor(StackInstr* instr) {
     break;
     
   case REG_FLOAT:
-    round_xreg_xreg(left->GetRegister()->GetRegister(), 
+    round_freg_freg(left->GetRegister()->GetRegister(), 
                     left->GetRegister()->GetRegister(), true);
     working_stack.push_front(left);
     break;
@@ -1178,7 +1178,7 @@ void JitCompilerA32::ProcessCeiling(StackInstr* instr) {
   switch(left->GetType()) {
   case IMM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    round_imm_xreg(left, holder->GetRegister(), false);
+    round_imm_freg(left, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
     left = nullptr;
@@ -1188,7 +1188,7 @@ void JitCompilerA32::ProcessCeiling(StackInstr* instr) {
   case MEM_FLOAT:
   case MEM_INT: {
     RegisterHolder* holder = GetFpRegister();
-    round_mem_xreg(left->GetOperand(), FP, holder->GetRegister(), false);
+    round_mem_freg(left->GetOperand(), FP, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
     left = nullptr;
@@ -1196,7 +1196,7 @@ void JitCompilerA32::ProcessCeiling(StackInstr* instr) {
     break;
     
   case REG_FLOAT:
-    round_xreg_xreg(left->GetRegister()->GetRegister(), left->GetRegister()->GetRegister(), false);
+    round_freg_freg(left->GetRegister()->GetRegister(), left->GetRegister()->GetRegister(), false);
     working_stack.push_front(left);
     break;
 
@@ -1221,7 +1221,7 @@ void JitCompilerA32::ProcessFloatToInt(StackInstr* instr) {
     break;
 
   case REG_FLOAT:
-    vcvt_xreg_reg(left->GetRegister()->GetRegister(), holder->GetRegister());
+    vcvt_freg_reg(left->GetRegister()->GetRegister(), holder->GetRegister());
     ReleaseFpRegister(left->GetRegister());
     break;
 
@@ -1241,16 +1241,16 @@ void JitCompilerA32::ProcessIntToFloat(StackInstr* instr) {
   RegisterHolder* holder = GetFpRegister();
   switch(left->GetType()) {
   case IMM_INT:
-    vcvt_imm_xreg(left, holder->GetRegister());
+    vcvt_imm_freg(left, holder->GetRegister());
     break;
     
   case MEM_INT:
-    vcvt_mem_xreg(left->GetOperand(), 
+    vcvt_mem_freg(left->GetOperand(), 
      FP, holder->GetRegister());
     break;
 
   case REG_INT:
-    vcvt_reg_xreg(left->GetRegister()->GetRegister(), 
+    vcvt_reg_freg(left->GetRegister()->GetRegister(), 
                  holder->GetRegister());
     ReleaseRegister(left->GetRegister());
     break;
@@ -1360,15 +1360,15 @@ void JitCompilerA32::ProcessStore(StackInstr* instr) {
     
   case MEM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    move_mem_xreg(left->GetOperand(), FP, holder->GetRegister());
-    move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    move_mem_freg(left->GetOperand(), FP, holder->GetRegister());
+    move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     ReleaseFpRegister(holder);
   }
     break;
     
   case REG_FLOAT: {
     RegisterHolder* holder = left->GetRegister();
-    move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     ReleaseFpRegister(holder);
   }
     break;
@@ -1439,8 +1439,8 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
 
   case IMM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    move_imm_xreg(left, holder->GetRegister());
-    move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    move_imm_freg(left, holder->GetRegister());
+    move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
     working_stack.push_front(new RegInstr(holder));
@@ -1452,8 +1452,8 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
 
   case MEM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    move_mem_xreg(left->GetOperand(), FP, holder->GetRegister());
-    move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    move_mem_freg(left->GetOperand(), FP, holder->GetRegister());
+    move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
     working_stack.push_front(new RegInstr(holder));
@@ -1465,7 +1465,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
     
   case REG_FLOAT: {
     RegisterHolder* holder = left->GetRegister();
-    move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
   }
     break;
   }
@@ -1505,7 +1505,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
         break;
 
       case REG_FLOAT:
-        move_xreg_mem(left->GetRegister()->GetRegister(), fp_offset, FP);
+        move_freg_mem(left->GetRegister()->GetRegister(), fp_offset, FP);
         dirty_fp_regs.push(fp_offset);
         fp_regs.push(left);
         fp_offset -= 8;
@@ -1572,7 +1572,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
   
   while(!dirty_fp_regs.empty()) {
     RegInstr* left = fp_regs.top();
-    move_mem_xreg(dirty_fp_regs.top(), FP, left->GetRegister()->GetRegister());
+    move_mem_freg(dirty_fp_regs.top(), FP, left->GetRegister()->GetRegister());
     // update
     fp_regs.pop();
     dirty_fp_regs.pop();
@@ -1641,8 +1641,8 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
   
         case MEM_FLOAT: {
             RegisterHolder* temp_holder = GetFpRegister();
-            move_mem_xreg(left->GetOperand(), FP, temp_holder->GetRegister());
-            move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
+            move_mem_freg(left->GetOperand(), FP, temp_holder->GetRegister());
+            move_freg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             add_imm_mem(2, 0, stack_pos_holder->GetRegister());
             add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
             ReleaseFpRegister(temp_holder); 
@@ -1650,7 +1650,7 @@ void JitCompilerA32::ProcessReturn(int32_t params) {
           break;
   
         case REG_FLOAT:
-          move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
+          move_freg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
           add_imm_mem(2, 0, stack_pos_holder->GetRegister());
           add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
           break;
@@ -1885,12 +1885,12 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_FLOAT: {
       RegisterHolder* left_holder = GetFpRegister();
-      move_imm_xreg(left, left_holder->GetRegister());      
+      move_imm_freg(left, left_holder->GetRegister());      
       
       RegisterHolder* right_holder = GetFpRegister();
-      move_imm_xreg(right, right_holder->GetRegister());      
+      move_imm_freg(right, right_holder->GetRegister());      
       
-      math_xreg_xreg(right_holder->GetRegister(), left_holder, instruction->GetType());
+      math_freg_freg(right_holder->GetRegister(), left_holder, instruction->GetType());
       ReleaseFpRegister(right_holder);
       working_stack.push_front(new RegInstr(left_holder));
     }
@@ -1898,9 +1898,9 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
       
     case REG_FLOAT: {      
       RegisterHolder* imm_holder = GetFpRegister();
-      move_imm_xreg(left, imm_holder->GetRegister());
+      move_imm_freg(left, imm_holder->GetRegister());
       
-      math_xreg_xreg(right->GetRegister()->GetRegister(), imm_holder, type);
+      math_freg_freg(right->GetRegister()->GetRegister(), imm_holder, type);
       ReleaseFpRegister(right->GetRegister());
       working_stack.push_front(new RegInstr(imm_holder));
     }
@@ -1909,12 +1909,12 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* holder = GetFpRegister();
-      move_mem_xreg(right->GetOperand(), FP, holder->GetRegister());
+      move_mem_freg(right->GetOperand(), FP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetFpRegister();
-      move_imm_xreg(left, imm_holder->GetRegister());
+      move_imm_freg(left, imm_holder->GetRegister());
 
-      math_xreg_xreg(holder->GetRegister(), imm_holder, type);
+      math_freg_freg(holder->GetRegister(), imm_holder, type);
       ReleaseFpRegister(holder);
       working_stack.push_front(new RegInstr(imm_holder));
     }
@@ -1931,9 +1931,9 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case IMM_FLOAT: {
       RegisterHolder* left_holder = left->GetRegister();
       RegisterHolder* right_holder = GetFpRegister();
-      move_imm_xreg(right, right_holder->GetRegister());
+      move_imm_freg(right, right_holder->GetRegister());
       
-      math_xreg_xreg(right_holder->GetRegister(), left_holder, instruction->GetType());
+      math_freg_freg(right_holder->GetRegister(), left_holder, instruction->GetType());
       ReleaseFpRegister(right_holder);      
       working_stack.push_front(new RegInstr(left_holder));
     }
@@ -1942,7 +1942,7 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
       RegisterHolder* temp = left->GetRegister();
-      math_xreg_xreg(holder->GetRegister(), temp, instruction->GetType());
+      math_freg_freg(holder->GetRegister(), temp, instruction->GetType());
       working_stack.push_front(new RegInstr(temp));
       ReleaseFpRegister(holder);
     }
@@ -1951,7 +1951,7 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* holder = left->GetRegister();
-      math_mem_xreg(right->GetOperand(), holder, instruction->GetType());
+      math_mem_freg(right->GetOperand(), holder, instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -1966,11 +1966,11 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_FLOAT: {
       RegisterHolder* holder = GetFpRegister();
-      move_mem_xreg(left->GetOperand(), FP, holder->GetRegister());
+      move_mem_freg(left->GetOperand(), FP, holder->GetRegister());
       
       RegisterHolder* imm_holder = GetFpRegister();
-      move_imm_xreg(right, imm_holder->GetRegister());
-      math_xreg_xreg(imm_holder->GetRegister(), holder, type);
+      move_imm_freg(right, imm_holder->GetRegister());
+      math_freg_freg(imm_holder->GetRegister(), holder, type);
       ReleaseFpRegister(imm_holder);
       working_stack.push_front(new RegInstr(holder));
     }
@@ -1979,8 +1979,8 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
       RegisterHolder* right_holder = GetFpRegister();
-      move_mem_xreg(left->GetOperand(), FP, right_holder->GetRegister());
-      math_xreg_xreg(holder->GetRegister(), right_holder, instruction->GetType());
+      move_mem_freg(left->GetOperand(), FP, right_holder->GetRegister());
+      math_freg_freg(holder->GetRegister(), right_holder, instruction->GetType());
       ReleaseFpRegister(holder);
       working_stack.push_front(new RegInstr(right_holder));
     }
@@ -1989,11 +1989,11 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* left_holder = GetFpRegister();
-      move_mem_xreg(left->GetOperand(), FP, left_holder->GetRegister());
+      move_mem_freg(left->GetOperand(), FP, left_holder->GetRegister());
 
       RegisterHolder* right_holder = GetFpRegister();
-      move_mem_xreg(right->GetOperand(), FP, right_holder->GetRegister());
-      math_xreg_xreg(right_holder->GetRegister(), left_holder, instruction->GetType());	
+      move_mem_freg(right->GetOperand(), FP, right_holder->GetRegister());
+      math_freg_freg(right_holder->GetRegister(), left_holder, instruction->GetType());	
       ReleaseFpRegister(right_holder);
       working_stack.push_front(new RegInstr(left_holder));
     }
@@ -2212,20 +2212,20 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
 
 void JitCompilerA32::move_imm_memx(RegInstr* instr, int32_t offset, Register dest) {
   RegisterHolder* tmp_holder = GetFpRegister();
-  move_imm_xreg(instr, tmp_holder->GetRegister());
-  move_xreg_mem(tmp_holder->GetRegister(), offset, dest);
+  move_imm_freg(instr, tmp_holder->GetRegister());
+  move_freg_mem(tmp_holder->GetRegister(), offset, dest);
   ReleaseFpRegister(tmp_holder);
 }
 
-void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::move_imm_freg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());  
-  move_mem_xreg(0, imm_holder->GetRegister(), reg);
+  move_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::move_mem_freg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vldr " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -2254,7 +2254,7 @@ void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) 
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) {
+void JitCompilerA32::move_freg_mem(Register src, int32_t offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vstr %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2284,7 +2284,7 @@ void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) 
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::add_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::add_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vadd.f64 " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
@@ -2304,7 +2304,7 @@ void JitCompilerA32::add_xreg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::sub_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::sub_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vsub.f64 " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
@@ -2324,7 +2324,7 @@ void JitCompilerA32::sub_xreg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);    
 }
 
-void JitCompilerA32::mul_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::mul_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vmul.f64 " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
@@ -2344,13 +2344,13 @@ void JitCompilerA32::mul_xreg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::div_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [div.f64 " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
 
-  CheckDivideByZero(src);
+  CheckFloatDivideByZero(src);
   
   uint32_t op_code = 0xee800b00;
   
@@ -2366,54 +2366,54 @@ void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::add_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::add_imm_freg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  add_mem_xreg(0, imm_holder->GetRegister(), reg);
+  add_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::sub_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::sub_imm_freg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  sub_mem_xreg(0, imm_holder->GetRegister(), reg);
+  sub_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::div_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::div_imm_freg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  div_mem_xreg(0, imm_holder->GetRegister(), reg);
+  div_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::mul_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::mul_imm_freg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  mul_mem_xreg(0, imm_holder->GetRegister(), reg);
+  mul_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, InstructionType type) {
+void JitCompilerA32::math_imm_freg(RegInstr *instr, RegisterHolder *&reg, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
-    add_imm_xreg(instr, reg->GetRegister());
+    add_imm_freg(instr, reg->GetRegister());
     break;
 
   case SUB_FLOAT:
-    sub_imm_xreg(instr, reg->GetRegister());
+    sub_imm_freg(instr, reg->GetRegister());
     break;
 
   case MUL_FLOAT:
-    mul_imm_xreg(instr, reg->GetRegister());
+    mul_imm_freg(instr, reg->GetRegister());
     break;
 
   case DIV_FLOAT:
-    div_imm_xreg(instr, reg->GetRegister());
+    div_imm_freg(instr, reg->GetRegister());
     break;
     
   case LES_FLOAT:
@@ -2422,7 +2422,7 @@ void JitCompilerA32::math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, Instru
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_imm_xreg(instr->GetOperand(), reg->GetRegister());
+    cmp_imm_freg(instr->GetOperand(), reg->GetRegister());
     if(!cond_jmp(type)) {
       ReleaseFpRegister(reg);
       reg = GetRegister();
@@ -2435,29 +2435,29 @@ void JitCompilerA32::math_imm_xreg(RegInstr *instr, RegisterHolder *&reg, Instru
   }
 }
 
-void JitCompilerA32::math_mem_xreg(int32_t offset, RegisterHolder* &dest, InstructionType type) {
+void JitCompilerA32::math_mem_freg(int32_t offset, RegisterHolder* &dest, InstructionType type) {
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(offset, FP, holder->GetRegister());
-  math_xreg_xreg(holder->GetRegister(), dest, type);
+  move_mem_freg(offset, FP, holder->GetRegister());
+  math_freg_freg(holder->GetRegister(), dest, type);
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA32::math_xreg_xreg(Register src, RegisterHolder *&dest, InstructionType type) {
+void JitCompilerA32::math_freg_freg(Register src, RegisterHolder *&dest, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
-    add_xreg_xreg(src, dest->GetRegister());
+    add_freg_freg(src, dest->GetRegister());
     break;
 
   case SUB_FLOAT:
-    sub_xreg_xreg(src, dest->GetRegister());
+    sub_freg_freg(src, dest->GetRegister());
     break;
 
   case MUL_FLOAT:
-    mul_xreg_xreg(src, dest->GetRegister());
+    mul_freg_freg(src, dest->GetRegister());
     break;
 
   case DIV_FLOAT:
-    div_xreg_xreg(src, dest->GetRegister());
+    div_freg_freg(src, dest->GetRegister());
     break;
     
   case LES_FLOAT:
@@ -2466,7 +2466,7 @@ void JitCompilerA32::math_xreg_xreg(Register src, RegisterHolder *&dest, Instruc
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_xreg_xreg(src, dest->GetRegister());
+    cmp_freg_freg(src, dest->GetRegister());
     if(!cond_jmp(type)) {
       ReleaseFpRegister(dest);
       dest = GetRegister();
@@ -2479,7 +2479,7 @@ void JitCompilerA32::math_xreg_xreg(Register src, RegisterHolder *&dest, Instruc
   }
 }
 
-void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::move_freg_freg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vmov.f64 " << GetRegisterName(dest) 
@@ -2498,7 +2498,7 @@ void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
   }
 }
 
-void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {  
+void JitCompilerA32::cmp_freg_freg(Register src, Register dest) {  
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vcmp.f64 " << GetRegisterName(dest) 
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
@@ -2521,11 +2521,11 @@ void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0xeef1fa10);
 }
 
-void JitCompilerA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::cmp_mem_freg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(offset, src, holder->GetRegister());
-  cmp_xreg_xreg(dest, holder->GetRegister());
-  move_xreg_xreg(holder->GetRegister(), dest);
+  move_mem_freg(offset, src, holder->GetRegister());
+  cmp_freg_freg(dest, holder->GetRegister());
+  move_freg_freg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
 }
 
@@ -2706,43 +2706,43 @@ void JitCompilerA32::shr_mem_reg(int32_t offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::add_mem_freg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(offset, src, holder->GetRegister());
-  add_xreg_xreg(dest, holder->GetRegister());
-  move_xreg_xreg(holder->GetRegister(), dest);
+  move_mem_freg(offset, src, holder->GetRegister());
+  add_freg_freg(dest, holder->GetRegister());
+  move_freg_freg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA32::mul_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::mul_mem_freg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(offset, src, holder->GetRegister());
-  mul_xreg_xreg(dest, holder->GetRegister());
-  move_xreg_xreg(holder->GetRegister(), dest);
+  move_mem_freg(offset, src, holder->GetRegister());
+  mul_freg_freg(dest, holder->GetRegister());
+  move_freg_freg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA32::sub_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::sub_mem_freg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(offset, src, holder->GetRegister());
-  sub_xreg_xreg(dest, holder->GetRegister());
-  move_xreg_xreg(holder->GetRegister(), dest);
+  move_mem_freg(offset, src, holder->GetRegister());
+  sub_freg_freg(dest, holder->GetRegister());
+  move_freg_freg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::div_mem_freg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
-  move_mem_xreg(offset, src, holder->GetRegister());
-  div_xreg_xreg(dest, holder->GetRegister());
-  move_xreg_xreg(holder->GetRegister(), dest);
+  move_mem_freg(offset, src, holder->GetRegister());
+  div_freg_freg(dest, holder->GetRegister());
+  move_freg_freg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
 }
 
-void JitCompilerA32::cmp_imm_xreg(size_t addr, Register reg) {
+void JitCompilerA32::cmp_imm_freg(size_t addr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(addr, imm_holder->GetRegister());
-  cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
+  cmp_mem_freg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
@@ -2958,7 +2958,7 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   << L", " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
 
-  CheckDivideByZero(src);
+  CheckIntDivideByZero(src);
 
   RegisterHolder* result_holder = nullptr;
 
@@ -3580,11 +3580,11 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   // save D0, if needed
   RegisterHolder *holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    move_xreg_mem(D0, TMP_D_0, FP);
+    move_freg_mem(D0, TMP_D_0, FP);
   }
   
   // load D0
-  move_mem_xreg(left->GetOperand(), FP, D0);
+  move_mem_freg(left->GetOperand(), FP, D0);
   
   // choose function
   double(*func_ptr)(double);
@@ -3637,9 +3637,9 @@ void JitCompilerA32::ProcessFloatOperation(StackInstr* instruction)
   move_mem_reg(TMP_REG_0, FP, R8);
   
   // get return and restore D0, if needed
-  move_xreg_xreg(D0, holder->GetRegister());
+  move_freg_freg(D0, holder->GetRegister());
   if(holder->GetRegister() != D0) {
-    move_mem_xreg(TMP_D_0, FP, D0);
+    move_mem_freg(TMP_D_0, FP, D0);
   }
   working_stack.push_front(new RegInstr(holder));  
   
@@ -3663,13 +3663,13 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   // save D0, if needed
   RegisterHolder *holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    move_xreg_mem(D0, TMP_D_0, FP);
+    move_freg_mem(D0, TMP_D_0, FP);
   }
-  move_xreg_mem(D1, TMP_D_1, FP);
+  move_freg_mem(D1, TMP_D_1, FP);
    
   // load D0
-  move_mem_xreg(right->GetOperand(), FP, D0);
-  move_mem_xreg(left->GetOperand(), FP, D1);
+  move_mem_freg(right->GetOperand(), FP, D0);
+  move_mem_freg(left->GetOperand(), FP, D1);
   
   // choose function
   double(*func_ptr)(double, double);
@@ -3698,10 +3698,10 @@ void JitCompilerA32::ProcessFloatOperation2(StackInstr* instruction)
   move_mem_reg(TMP_REG_0, FP, R8);
   
   // get return and restore D0, if needed
-  move_xreg_xreg(D0, holder->GetRegister());
-  move_mem_xreg(TMP_D_1, FP, D1);
+  move_freg_freg(D0, holder->GetRegister());
+  move_mem_freg(TMP_D_1, FP, D1);
   if(holder->GetRegister() != D0) {
-    move_mem_xreg(TMP_D_0, FP, D0);
+    move_mem_freg(TMP_D_0, FP, D0);
   }
   working_stack.push_front(new RegInstr(holder));  
   
@@ -3737,15 +3737,15 @@ void JitCompilerA32::vcvt_imm_reg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::vcvt_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::vcvt_imm_freg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  vcvt_reg_xreg(imm_holder->GetRegister(), reg);
+  vcvt_reg_freg(imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::vcvt_reg_xreg(Register src, Register dest) {
+void JitCompilerA32::vcvt_reg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vcvt.f64.s32 %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3761,14 +3761,14 @@ void JitCompilerA32::vcvt_reg_xreg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::vcvt_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::vcvt_mem_freg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
-  vcvt_reg_xreg(mem_holder->GetRegister(), dest);
+  vcvt_reg_freg(mem_holder->GetRegister(), dest);
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerA32::vcvt_xreg_reg(Register src, Register dest) {  
+void JitCompilerA32::vcvt_freg_reg(Register src, Register dest) {  
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [vcvt.s32.f64 %" << GetRegisterName(dest) 
         << L", %" << GetRegisterName(src) << L"]" << endl;
@@ -3785,28 +3785,28 @@ void JitCompilerA32::vcvt_xreg_reg(Register src, Register dest) {
 
 void JitCompilerA32::vcvt_mem_reg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetFpRegister();
-  move_mem_xreg(offset, src, mem_holder->GetRegister());
-  vcvt_xreg_reg(mem_holder->GetRegister(), dest);
+  move_mem_freg(offset, src, mem_holder->GetRegister());
+  vcvt_freg_reg(mem_holder->GetRegister(), dest);
   ReleaseFpRegister(mem_holder);
 }
 
-void JitCompilerA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
+void JitCompilerA32::round_imm_freg(RegInstr* instr, Register reg, bool is_floor) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  round_xreg_xreg(imm_holder->GetRegister(), reg, is_floor);
+  round_freg_freg(imm_holder->GetRegister(), reg, is_floor);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
+void JitCompilerA32::round_mem_freg(int32_t offset, Register src, Register dest, bool is_floor) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
-  round_xreg_xreg(mem_holder->GetRegister(), dest, is_floor);
+  round_freg_freg(mem_holder->GetRegister(), dest, is_floor);
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
-  throw runtime_error("Method 'round_xreg_xreg(..)' not implemented for ARM32 target");
+void JitCompilerA32::round_freg_freg(Register src, Register dest, bool is_floor) {
+  throw runtime_error("Method 'round_freg_freg(..)' not implemented for ARM32 target");
 }
 
 //
@@ -4678,14 +4678,14 @@ bool JitCompilerA32::Compile(StackMethod* cm)
     aval_regs.push_back(new RegisterHolder(R0, false));
 
     // floating point registers
-    aval_xregs.push_back(new RegisterHolder(D7, true));
-    aval_xregs.push_back(new RegisterHolder(D6, true));
-    aval_xregs.push_back(new RegisterHolder(D5, true));
-    aval_xregs.push_back(new RegisterHolder(D4, true)); 
-    aval_xregs.push_back(new RegisterHolder(D3, true));
-    aval_xregs.push_back(new RegisterHolder(D2, true)); 
-    aval_xregs.push_back(new RegisterHolder(D1, true));
-    aval_xregs.push_back(new RegisterHolder(D0, true));
+    aval_fregs.push_back(new RegisterHolder(D7, true));
+    aval_fregs.push_back(new RegisterHolder(D6, true));
+    aval_fregs.push_back(new RegisterHolder(D5, true));
+    aval_fregs.push_back(new RegisterHolder(D4, true)); 
+    aval_fregs.push_back(new RegisterHolder(D3, true));
+    aval_fregs.push_back(new RegisterHolder(D2, true)); 
+    aval_fregs.push_back(new RegisterHolder(D1, true));
+    aval_fregs.push_back(new RegisterHolder(D0, true));
 #ifdef _DEBUG_JIT
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
