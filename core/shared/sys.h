@@ -48,8 +48,9 @@
 #include "logger.h"
 
 // memory size for local stack frames
-#define LOCAL_SIZE 512
+#define LOCAL_SIZE 768
 #define INT_VALUE int32_t
+#define INT64_VALUE int64_t
 #define FLOAT_VALUE double
 
 using namespace std;

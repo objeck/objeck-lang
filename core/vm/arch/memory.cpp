@@ -228,15 +228,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
   size_t* mem = nullptr;
   if(cls) {
-    long size = cls->GetInstanceMemorySize();
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-    // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
-    // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
-    // memory for floats (a.k.a double) than needed.
-    size *= 2;
-#endif
-
     // collect memory
+    long size = cls->GetInstanceMemorySize();
     if(collect && allocation_size + size > mem_max_size) {
       CollectAllMemory(op_stack, stack_pos);
     }
@@ -860,11 +853,7 @@ void* MemoryManager::CollectMemory(void* arg)
         assert(cls);
 #endif
         if(cls) {
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-          mem_size = cls->GetInstanceMemorySize() * 2;
-#else
           mem_size = cls->GetInstanceMemorySize();
-#endif
         }
         else {
           mem_size = mem[SIZE_OR_CLS];
@@ -1103,12 +1092,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
           wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
 #endif
           // update
-          // TODO: mapped such that all 64-bit values the same size
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
           mem++;
-#else
-          mem += 2;
-#endif
         }
           break;
 
@@ -1468,7 +1452,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       wcout << L"\t" << i << L": FLOAT_PARM: value=" << value << endl;
 #endif
       // update
-      mem += 2;
+      mem++;
     }
       break;
 

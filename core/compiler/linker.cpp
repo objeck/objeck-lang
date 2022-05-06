@@ -917,7 +917,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       line_num = ReadInt();
     }    
 
-    int type = ReadByte();
+    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, (INT_VALUE)ReadInt()));

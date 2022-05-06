@@ -54,13 +54,13 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
     other_label = ++emitter->conditional_label;
   }
   // create tree
-  root = divide(0, (int)label_statements.size() - 1);
+  root = Divide(0, (int)label_statements.size() - 1);
 }
 
 /****************************
  * Divides value array
  ****************************/
-SelectNode* SelectArrayTree::divide(int start, int end)
+SelectNode* SelectArrayTree::Divide(int start, int end)
 {
   const int size =  end - start + 1;
   if(size < 4) {
@@ -82,14 +82,14 @@ SelectNode* SelectArrayTree::divide(int start, int end)
     SelectNode* node;
     const int middle = size / 2 + start;
     if(size % 2 == 0) {
-      SelectNode* left = divide(start, middle - 1);
-      SelectNode* right = divide(middle, end);
+      SelectNode* left = Divide(start, middle - 1);
+      SelectNode* right = Divide(middle, end);
       node = new SelectNode(++emitter->conditional_label, 
                             values[middle], left, right);
     }
     else {
-      SelectNode* left = divide(start, middle - 1);
-      SelectNode* right = divide(middle + 1, end);
+      SelectNode* left = Divide(start, middle - 1);
+      SelectNode* right = Divide(middle + 1, end);
       node = new SelectNode(++emitter->conditional_label, values[middle], 
                             values[middle], left, right);
     }
@@ -917,7 +917,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
         GetLogger() << L"\t" << entry->GetId() << L": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
-        closure_space += 2;
+        closure_space++;
       }
       break;
 
@@ -933,7 +933,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       break;
     }
   }
-  closure_space *= sizeof(INT_VALUE);
+  closure_space *= sizeof(INT64_VALUE);
 
   // add closure
   MethodCall* method_call = lambda->GetMethodCall();
@@ -5021,9 +5021,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
             GetLogger() << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
-            entry->SetId(index);
-            index += 2;
-            var_space += 2;
+            entry->SetId(index++);
+            var_space++;
           }
           break;
     
@@ -5043,7 +5042,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
       }
     }
     
-    return var_space * sizeof(INT_VALUE);
+    return var_space * sizeof(INT64_VALUE);
   }
 
   return 0;
@@ -5096,7 +5095,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
           declarations->AddParameter(lib_inst_dclrs[i]->Copy());
         }
       }
-      index = size / sizeof(INT_VALUE);
+      index = size / sizeof(INT64_VALUE);
     }
 
     // emit source dependencies
