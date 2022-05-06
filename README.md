@@ -39,9 +39,8 @@ Notable features:
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
 * Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
-* JIT support for all targets
-* Supported targets
-  * ARM64: Linux, macOS
+* JIT support for all targets supported targets
+  * AArch64: Linux, macOS
   * x86-64: Linux, macOS and Windows
 
 ## Documentation
