@@ -35,12 +35,8 @@
 #ifndef _NO_JIT
 #if defined(_WIN64) || defined(_X64)
 #include "arch/jit/amd64/jit_amd_lp64.h"
-#elif defined(_ARM64)
-#include "arch/jit/arm64/jit_arm_a64.h"
-#elif defined(_ARM32)
-#include "arch/jit/arm32/jit_arm_a32.h"
 #else
-#include "arch/jit/ia32/jit_intel_lp32.h"
+#include "arch/jit/arm64/jit_arm_a64.h"
 #endif
 #endif
 
@@ -62,6 +58,7 @@ using namespace Runtime;
 StackProgram* StackInterpreter::program;
 stack<StackFrame*> StackInterpreter::cached_frames;
 set<StackInterpreter*> StackInterpreter::intpr_threads;
+
 #ifdef _WIN32
 CRITICAL_SECTION StackInterpreter::cached_frames_cs;
 CRITICAL_SECTION StackInterpreter::intpr_threads_cs;
@@ -94,12 +91,8 @@ void StackInterpreter::Initialize(StackProgram* p)
 #ifndef _NO_JIT
 #if defined(_WIN64) || defined(_X64)
   JitCompilerIA64::Initialize(program);
-#elif _ARM32
-  JitCompilerA32::Initialize(program);
-#elif _ARM64
-  JitCompilerA64::Initialize(program);
 #else
-  JitCompilerIA32::Initialize(program);
+  JitCompilerA64::Initialize(program);
 #endif
 #endif
   MemoryManager::Initialize(program);
@@ -389,45 +382,24 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case ATAN2_FLOAT:
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
       left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
       (*stack_pos)--;
-#else
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = atan2(left_double, right_double);
-      (*stack_pos) -= 2;
-#endif
       break;
 
     case MOD_FLOAT:
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
       left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = fmod(left_double, right_double);
       (*stack_pos)--;
-#else
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = fmod(left_double, right_double);
-      (*stack_pos) -= 2;
-#endif
       break;
       
     case POW_FLOAT:
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
       left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
       (*stack_pos)--;
-#else
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = pow(left_double, right_double);
-      (*stack_pos) -= 2;
-#endif
       break;
 
       // Note: no supported via JIT -- *end*
@@ -1011,19 +983,11 @@ void StackInterpreter::AddFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << endl;
-#endif
-  
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+#endif  
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double + right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double + right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::SubInt(size_t* &op_stack, long* &stack_pos)
@@ -1042,18 +1006,10 @@ void StackInterpreter::SubFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double - right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double - right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::MulInt(size_t* &op_stack, long* &stack_pos)
@@ -1090,22 +1046,13 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
 
 void StackInterpreter::MulFloat(size_t* &op_stack, long* &stack_pos)
 {
-
 #ifdef _DEBUG
   wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double * right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double * right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::DivFloat(size_t* &op_stack, long* &stack_pos)
@@ -1113,18 +1060,10 @@ void StackInterpreter::DivFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double / right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4])) = left_double / right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::ModInt(size_t* &op_stack, long* &stack_pos)
@@ -1198,18 +1137,10 @@ void StackInterpreter::LesEqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double <= right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = left_double <= right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::GtrEqlFloat(size_t* &op_stack, long* &stack_pos)
@@ -1217,18 +1148,10 @@ void StackInterpreter::GtrEqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double >= right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = left_double >= right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
@@ -1280,18 +1203,10 @@ void StackInterpreter::EqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double == right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = left_double == right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::NeqlFloat(size_t* &op_stack, long* &stack_pos)
@@ -1299,18 +1214,10 @@ void StackInterpreter::NeqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double != right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = left_double != right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::LesFloat(size_t* &op_stack, long* &stack_pos)
@@ -1318,18 +1225,10 @@ void StackInterpreter::LesFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double < right_double;
   (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = left_double < right_double;
-  (*stack_pos) -= 2;
-#endif
 }
 
 void StackInterpreter::GtrFloat(size_t* &op_stack, long* &stack_pos)
@@ -1337,18 +1236,10 @@ void StackInterpreter::GtrFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_FLOAT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
   const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double > right_double;
-  (*stack_pos)--;
-#else
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 4]));
-  op_stack[(*stack_pos) - 4] = left_double > right_double;
-  (*stack_pos) -= 2;
-#endif
+  (*stack_pos)--;;
 }
 
 void StackInterpreter::LoadArySize(size_t* &op_stack, long* &stack_pos)
@@ -1899,11 +1790,7 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
   wcout << L"stack oper: NEW_FUNC_INST: mem_size=" << instr->GetOperand() << endl;
 #endif
 
-  long size = (long)instr->GetOperand();
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-  size *= 2;
-#endif
-
+  const long size = (long)instr->GetOperand();
   size_t func_mem = (size_t)MemoryManager::AllocateArray(size, BYTE_ARY_TYPE, op_stack, *stack_pos);
   PushInt(func_mem, op_stack, stack_pos);
 }
@@ -1927,19 +1814,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
     indices[dim++] = value;
   }
 
-  size_t* mem;  
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-  mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
-#else
-  if(is_float) {
-    // doubles are twice the size of integers for 32-bit target
-    mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, FLOAT_TYPE, op_stack, *stack_pos);
-  }
-  else {
-    mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
-  }
-#endif
-
+  size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 
@@ -2291,17 +2166,13 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   // compile, if needed
-  if(!called->GetNativeCode()) {
-    
+  if(!called->GetNativeCode()) {    
 #if defined(_WIN64) || defined(_X64)
     JitCompilerIA64 jit_compiler;
-#elif _ARM32
-    JitCompilerA32 jit_compiler;
-#elif _ARM64
-    JitCompilerA64 jit_compiler;
 #else
-    JitCompilerIA32 jit_compiler;
+    JitCompilerA64 jit_compiler;
 #endif
+
     if(!jit_compiler.Compile(called)) {
       ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #ifdef _DEBUG
@@ -2959,33 +2830,12 @@ long Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, con
   wcout << L"  [raw index=" << index << L", raw size=" << size << L"]" << endl;
 #endif
 
-  // 64-bit bounds check
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+  // bounds check
   if(index < 0 || index >= size) {
     wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
     StackErrorUnwind();
     exit(1);
   }
-#else
-      // 32-bit bounds check
-  if(instr->GetType() == LOAD_FLOAT_ARY_ELM || instr->GetType() == STOR_FLOAT_ARY_ELM) {
-    // float array
-    index *= 2;
-    if(index < 0 || index >= size * 2) {
-      wcerr << L">>> Index out of bounds: " << index << L"," << (size * 2) << L" <<<" << endl;
-      StackErrorUnwind();
-      exit(1);
-    }
-  }
-  else {
-    // integer array
-    if(index < 0 || index >= size) {
-      wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
-      StackErrorUnwind();
-      exit(1);
-    }
-  }
-#endif
 
   return index;
 }

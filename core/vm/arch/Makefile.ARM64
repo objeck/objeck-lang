@@ -1,10 +1,10 @@
 ARGS=-g -D_DEBUG -D_ARM32 -Wunused -Wall -Wno-unused-function -std=c++11 -std=c++11
-# ARGS=-O3 -D_ARM32 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-unused-function
+# ARGS=-O3 -D_ARM64 -D_RPI64 -Wall -Wno-unused-function -std=c++11 -std=c++11
 
 CC=g++
 AR=ar
-SRC= jit_arm_a32.o
-LIB= ../../../jit_arm_a32.a
+SRC= memory.o
+LIB= ../memory.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)

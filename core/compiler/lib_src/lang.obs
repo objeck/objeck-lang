@@ -187,34 +187,34 @@ bundle System {
 			return 0;
 		}
 
-	        #~
-	        Returns the Float value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToFloat(v : Byte) ~ Float {
-				return v->As(Float);
-	        }
+		#~
+		Returns the Float value
+		@ignore-params
+		@return value
+		~#
+		function : ToFloat(v : Byte) ~ Float {
+			return v->As(Float);
+		}
 
-	        #~
-	        Returns the Character value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToChar(v : Byte) ~ Char {
-	                return v->As(Char);
-	        }
+		#~
+		Returns the Character value
+		@ignore-params
+		@return value
+		~#
+		function : ToChar(v : Byte) ~ Char {
+		        return v->As(Char);
+		}
 
-	        #~
-	        Returns the Int value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToInt(v : Byte) ~ Int {
-	                return v->As(Int);
-	        }
+		#~
+		Returns the Int value
+		@ignore-params
+		@return value
+		~#
+		function : ToInt(v : Byte) ~ Int {
+		        return v->As(Int);
+		}
 
-	        function : Size(v : Byte) ~ Byte {
+		function : Size(v : Byte) ~ Byte {
 			return v;
 		}
 
@@ -627,11 +627,11 @@ bundle System {
 			};
 		}
 
-		function : native :  Print(c : Char[]) ~ Nil {
+		function : Print(c : Char[]) ~ Nil {
 			STD_OUT_CHAR_ARY;
 		}
 
-		function : native :  PrintLine(c : Char[]) ~ Nil {
+		function : PrintLine(c : Char[]) ~ Nil {
 			STD_OUT_CHAR_ARY;
 			'\n'->Print();
 		}
@@ -653,11 +653,11 @@ bundle System {
 			'\n'->Error();
 		}
 
-		function : native :  Error(c : Char[]) ~ Nil {
+		function : Error(c : Char[]) ~ Nil {
 			STD_ERR_CHAR_ARY;
 		}
 
-		function : native :  ErrorLine(c : Char[]) ~ Nil {
+		function : ErrorLine(c : Char[]) ~ Nil {
 			STD_ERR_CHAR_ARY;
 			'\n'->Error();
 		}
@@ -698,7 +698,7 @@ bundle System {
 		Returns the maximum size of an integer
 		@return maximum size of an integer
 		~#
-		function : native : MaxSize() ~ Int {
+		function : MaxSize() ~ Int {
 			return 2147483647;
 		}
 		
@@ -706,7 +706,7 @@ bundle System {
 		Returns the minimum size of an integer
 		@return maximum size of an integer
 		~#
-		function : native : MinSize() ~ Int {
+		function : MinSize() ~ Int {
 			return -2147483648;
 		}
 		
@@ -812,7 +812,7 @@ bundle System {
 		@ignore-params
 		@return absolute value
 		~#
-		function : native : Abs(v : Int) ~ Int {
+		function : Abs(v : Int) ~ Int {
 			if(v < 0) {
 				return v * -1;
 			};
@@ -825,7 +825,7 @@ bundle System {
 		@ignore-params
 		@return true if negative, false otherwise
 		~#
-		function : native : IsNeg(v : Int) ~ Bool {
+		function : IsNeg(v : Int) ~ Bool {
 			if(v < 0) {
 				return true;
 			};
@@ -838,7 +838,7 @@ bundle System {
 		@ignore-params
 		@return true if not negative, false otherwise
 		~#
-		function : native : NotNeg(v : Int) ~ Bool {
+		function : NotNeg(v : Int) ~ Bool {
 			if(v > -1) {
 				return true;
 			};
@@ -1067,7 +1067,7 @@ bundle System {
 		Value of Pi
 		@return value of Pi
 		~#
-		function : native : Pi() ~ Float {
+		function : Pi() ~ Float {
 			return 3.1415926536;
 		}
 
@@ -1079,7 +1079,7 @@ bundle System {
 		Value of E
 		@return value of E
 		~#
-		function : native : E() ~ Float {
+		function : E() ~ Float {
 			return 2.7182818285;
 		}	
 
@@ -1088,7 +1088,7 @@ bundle System {
 		@ignore-params
 		@return radian value
 		~#
-		function : native : ToRadians(v : Float) ~ Float {
+		function : ToRadians(v : Float) ~ Float {
 			return v * 3.1415926536 / 180.0;
 		}
 		
@@ -1097,7 +1097,7 @@ bundle System {
 		@ignore-params
 		@return degree value
 		~#
-		function : native : ToDegrees(v : Float) ~ Float {
+		function : ToDegrees(v : Float) ~ Float {
 			return v * 180.0 / 3.1415926536;
 		}
 
@@ -1191,7 +1191,7 @@ bundle System {
 		@ignore-params
 		@return true if negative, false otherwise
 		~#
-		function : native : IsNeg(v : Float) ~ Bool {
+		function : IsNeg(v : Float) ~ Bool {
 			if(v < 0.0) {
 				return true;
 			};
@@ -1204,7 +1204,7 @@ bundle System {
 		@ignore-params
 		@return true if not negative, false otherwise
 		~#
-		function : native : NotNeg(v : Float) ~ Bool {
+		function : NotNeg(v : Float) ~ Bool {
 			if(v > -1.0) {
 				return true;
 			};
@@ -2382,7 +2382,7 @@ bundle System {
 		Returns the unique class ID
 		@return unique class ID
 		~#
-		method : public : native : GetClassID() ~ ClassID {
+		method : public : GetClassID() ~ ClassID {
 			LOAD_CLS_INST_ID;
 		}
 
@@ -2390,7 +2390,7 @@ bundle System {
 		Returns the unique instance ID
 		@return unique instance ID
 		~#
-		method : public : native : GetInstanceID() ~ Int {
+		method : public : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
 		}
 	}
@@ -2705,7 +2705,7 @@ bundle System {
 		Appends a string
 		@param str string object
 		~#
-		method : public : native : Append(str : String) ~ Nil {
+		method : public : Append(str : String) ~ Nil {
 			Append(str->ToCharArray());
 		}
 		
@@ -3419,7 +3419,7 @@ bundle System {
 		Returns the first character
 		@return first character
 		~#
-		method : public : native : First() ~ Char {
+		method : public : First() ~ Char {
 			return @string[0];
 		}
 
@@ -3441,7 +3441,7 @@ bundle System {
 		@param index index offset
 		@return true if successful, false otherwise
 		~#
-		method : public : native : Set(char : Char, index : Int) ~ Bool {
+		method : public : Set(char : Char, index : Int) ~ Bool {
 			if(index > -1 & index < @pos) {
 				@string[index] := char;
 			};
@@ -3828,28 +3828,28 @@ bundle System {
 		#~
 		Print a string
 		~#
-		method : public : native : Print() ~ Nil {
+		method : public : Print() ~ Nil {
 			@string->Print();
 		}
 
 		#~
 		Print a string with a newline
 		~#
-		method : public : native : PrintLine() ~ Nil {
+		method : public : PrintLine() ~ Nil {
 			@string->PrintLine();
 		}
 
 		#~
 		Print an error string
 		~#
-		method : public : native : Error() ~ Nil {
+		method : public : Error() ~ Nil {
 			@string->Error();
 		}
 
 		#~
 		Print an error string with a newline
 		~#
-		method : public : native : ErrorLine() ~ Nil {
+		method : public : ErrorLine() ~ Nil {
 			@string->ErrorLine();
 		}
 	}
