@@ -274,22 +274,15 @@ class NativeCode {
 #endif
 
   ~NativeCode() {
-#if defined(_ARM32) || defined(_ARM64)
-    delete[] ints;
+#ifdef _ARM64
+    free(ints);
     ints = nullptr;
 #endif
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+    
 #ifdef _WIN64
     VirtualFree(floats, 0, MEM_RELEASE);
 #else
-    free(floats); 
-#endif
-#else  
-#ifdef _WIN32
-    delete[] floats;
-#else
     free(floats);
-#endif
 #endif
     floats = nullptr;
   }
@@ -524,12 +517,6 @@ class StackClass {
   bool is_debug;
 
   long InitializeClassMemory(long size) {
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-    // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
-    // In 64-bit mode integers and floats are 8-bytes. This approach allocates more
-    // memory for floats (a.k.a double) than needed.
-    size *= 2;
-#endif
     if(size > 0) {
       cls_mem = (size_t*)calloc(size, sizeof(char));
     }
@@ -1395,12 +1382,7 @@ class TrapProcessor {
     wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
 #endif
     memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     (*stack_pos)++;
-#else
-    (*stack_pos) += 2;
-#endif
   }
 
   //
@@ -1417,12 +1399,7 @@ class TrapProcessor {
   //
   static inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
-
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     (*stack_pos)--;
-#else
-    (*stack_pos) -= 2;
-#endif
 
     memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
@@ -1453,12 +1430,7 @@ class TrapProcessor {
   static inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
     long index = (*stack_pos) - 1;
-#else
-    long index = (*stack_pos) - 2;
-#endif
-
     memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
     wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;

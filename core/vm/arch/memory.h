@@ -34,21 +34,15 @@
 
 #include "../common.h"
 
-// basic VM tuning parameters
-
-/* FOR DEBUGGING ONLY
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
-#define MEM_MAX 1024 * 3
-#else
-#define MEM_MAX 1024 * 2
-#endif
+/*
+Start: GC tuning parameters
 */
 
-#if defined(_WIN64) || defined(_X64) || defined(_ARM64)
+// FOR DEBUGGING ONLY
+// #define MEM_MAX 256 * 3
+
+// FOR PRODUCTION
 #define MEM_MAX 4096 * 256 * 2
-#else
-#define MEM_MAX 4096 * 256 * 1
-#endif
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
@@ -57,6 +51,10 @@
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
+
+/*
+End: GC tuning parameters
+*/
 
 struct StackOperMemory {
   size_t* op_stack;

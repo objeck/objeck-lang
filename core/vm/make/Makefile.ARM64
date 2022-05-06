@@ -1,0 +1,27 @@
+# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DEBUG -Wno-unused-function -std=c++11
+# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DTIMING -Wno-unused-function
+ARGS=-O3 -Wall -pthread -D_ARM64 -D_RPI64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -std=c++11
+
+CC=g++
+SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+OBJ_LIBS= jit_arm64.a memory.a
+MEM_PATH= arch
+JIT_PATH= arch/jit/arm64
+EXE= obr
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
+
+memory.a:
+	cd $(MEM_PATH); make -f Makefile.ARM64
+	
+jit_arm64.a:
+	cd $(JIT_PATH); make -f Makefile.ARM64
+	
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< 
+
+clean:
+	cd $(MEM_PATH); make clean -f Makefile.ARM64
+	cd $(JIT_PATH); make clean -f Makefile.ARM64
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~

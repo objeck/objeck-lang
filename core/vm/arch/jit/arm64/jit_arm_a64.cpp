@@ -30,7 +30,8 @@
  */
 
 #include "jit_arm_a64.h"
-#include <string>
+
+#include <bitset>
 
 using namespace Runtime;
 
@@ -2375,7 +2376,7 @@ void JitCompilerA64::div_reg_reg(Register src, Register dest, bool is_mod) {
 #ifdef _DEBUG_JIT_JIT
   wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-
+  
   CheckIntDivideByZero(src);
   
   uint32_t op_code = 0x9AC00C00;
@@ -2798,7 +2799,7 @@ void JitCompilerA64::div_freg_freg(Register src, Register dest) {
   wcout << L"  " << (++instr_count) << L": [fdiv " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
-        
+
   CheckFloatDivideByZero(src);
   
   uint32_t op_code = 0x1e601800;
@@ -4619,8 +4620,8 @@ bool JitCompilerA64::Compile(StackMethod* cm)
     code_buf_max = BUFFER_SIZE;
     
     ints = new long[MAX_INTS];
-    
     float_consts = new double[MAX_DBLS];
+    
     local_space = floats_index = instr_index = code_index = instr_count = 0;
     float_consts[floats_index++] = 0.0;
     
@@ -4900,10 +4901,17 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   
   // copy and flush instruction cache
   const uint32_t byte_size = size * sizeof(uint32_t);
-  pthread_jit_write_protect_np(false);
+  
+#ifdef _OSX
+  pthread_jit_write_protect_np(false);			  
+#endif
+  
   memcpy(temp, code, byte_size);
   __clear_cache(temp, temp + byte_size);
+  
+#ifdef _OSX
   pthread_jit_write_protect_np(true);
+#endif
   
   index += size;
   available -= byte_size;

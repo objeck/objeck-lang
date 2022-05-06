@@ -300,7 +300,7 @@ class SelectArrayTree {
   Select* select;
   int other_label;
 
-  SelectNode* divide(int start, int end);
+  SelectNode* Divide(int start, int end);
   void Emit(SelectNode* node, int end_label);
 
 public:
