@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "arm64_sdl", "arm64_sdl.vcxproj", "{17B4BC58-2D16-454F-85E2-A5D57677C75C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|VisualGDB = Debug|VisualGDB
+		Release|VisualGDB = Release|VisualGDB
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{17B4BC58-2D16-454F-85E2-A5D57677C75C}.Debug|VisualGDB.ActiveCfg = Debug|VisualGDB
+		{17B4BC58-2D16-454F-85E2-A5D57677C75C}.Debug|VisualGDB.Build.0 = Debug|VisualGDB
+		{17B4BC58-2D16-454F-85E2-A5D57677C75C}.Release|VisualGDB.ActiveCfg = Release|VisualGDB
+		{17B4BC58-2D16-454F-85E2-A5D57677C75C}.Release|VisualGDB.Build.0 = Release|VisualGDB
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B7295647-7DBC-4E25-97A3-5C1D8755FD19}
+	EndGlobalSection
+EndGlobal
