@@ -1,7 +1,5 @@
 REM build targets
-REM ??? call deploy_ia32.cmd %1 %2
 call deploy_amd64.cmd %1 %2
-REM ??? call deploy_arm32.cmd %1 %2
 call deploy_arm64.cmd %1 %2
 
 REM build LSP
