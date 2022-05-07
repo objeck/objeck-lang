@@ -37,9 +37,9 @@ devenv arm64_obc\arm64_odbc.sln /rebuild "Release|VisualGDB"
 copy arm64_obc\VisualGDB\Release\arm64_odbc.so ..\..\release\deploy_arm64\lib\native\libobjk_odbc.so
 
 REM sdl support
-cd ..\..\sdl\arm_sdl
-REM <= %VISUAL_GDB% /rebuild /config:Release arm_sdl.vgdbcmake
-REM <= copy VisualGDB\Release\*.so ..\..\..\Release\deploy_arm64\lib\native
+cd ..\..\sdl
+devenv arm64_sdl\arm64_sdl.sln /rebuild "Release|VisualGDB"
+copy arm64_sdl\VisualGDB\Release\arm64_sdl.so ..\..\release\deploy_arm64\lib\native\libobjk_sdl.so
 copy ..\lib\fonts\*.ttf ..\..\..\Release\deploy_arm64\lib\sdl\fonts
 
 REM diags support
