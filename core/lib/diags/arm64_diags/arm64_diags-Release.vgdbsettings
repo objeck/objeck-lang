@@ -17,7 +17,7 @@
     <SkipBuildIfNoSourceFilesChanged>false</SkipBuildIfNoSourceFilesChanged>
     <IgnoreFileTransferErrors>false</IgnoreFileTransferErrors>
     <RemoveRemoteDirectoryOnClean>false</RemoveRemoteDirectoryOnClean>
-    <SkipDeploymentTests>true</SkipDeploymentTests>
+    <SkipDeploymentTests>false</SkipDeploymentTests>
     <MainSourceDirectoryForLocalBuilds>$(ProjectDir)</MainSourceDirectoryForLocalBuilds>
   </Project>
   <Build xsi:type="com.visualgdb.build.msbuild">
@@ -30,8 +30,11 @@
         <Revision>1</Revision>
       </Version>
     </ToolchainID>
-    <ProjectFile>arm_openssl64.vcxproj</ProjectFile>
-    <ParallelJobCount>0</ParallelJobCount>
+    <ProjectFile>arm64_diags.vcxproj</ProjectFile>
+    <RemoteBuildEnvironment>
+      <Records />
+    </RemoteBuildEnvironment>
+    <ParallelJobCount>1</ParallelJobCount>
     <SuppressDirectoryChangeMessages>true</SuppressDirectoryChangeMessages>
     <BuildAsRoot>false</BuildAsRoot>
   </Build>

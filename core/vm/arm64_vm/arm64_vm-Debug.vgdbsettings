@@ -9,7 +9,7 @@
     </CustomSourceDirectories>
     <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
     <DeploymentHost>
-      <HostName>192.168.0.102</HostName>
+      <HostName>192.168.5.18</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
