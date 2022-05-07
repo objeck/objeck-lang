@@ -83,7 +83,7 @@ void StackInterpreter::Initialize(StackProgram* p)
   // allocate frames
   for(size_t i = 0; i < FRAME_CACHE_SIZE; ++i) {
     StackFrame* frame = new StackFrame();
-    frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(size_t));
+    frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(char));
     cached_frames.push(frame);
   }
 #endif
@@ -2727,7 +2727,7 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
     // load cache
     for(int i = 0; i < CALL_STACK_SIZE; ++i) {
       StackFrame* frame = new StackFrame();
-      frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(size_t));
+      frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(char));
       cached_frames.push(frame);
     }
   }
@@ -2762,7 +2762,7 @@ void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
 
   // load cache
   frame->jit_mem = nullptr;
-  memset(frame->mem, 0, LOCAL_SIZE * sizeof(size_t));
+  memset(frame->mem, 0, LOCAL_SIZE * sizeof(char));
   cached_frames.push(frame);
 #ifdef _DEBUG
   wcout << L"caching frame=" << frame << endl;
