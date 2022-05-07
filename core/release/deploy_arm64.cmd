@@ -32,22 +32,22 @@ devenv arm_openssl64\arm_openssl64.sln /rebuild "Release|VisualGDB"
 copy arm_openssl64\VisualGDB\Release\arm_openssl64.so ..\..\release\deploy_arm64\lib\native\libobjk_openssl.so
 
 REM odbc support
-cd ..\..\odbc\arm_odbc
-devenv arm64_obc\arm64_odbc.sln /rebuild "Release|VisualGDB"
-copy arm64_obc\VisualGDB\Release\arm64_odbc.so ..\..\release\deploy_arm64\lib\native\libobjk_odbc.so
+cd ..\odbc
+devenv arm64_odbc\arm64_odbc.sln /rebuild "Release|VisualGDB"
+copy arm64_odbc\VisualGDB\Release\arm64_odbc.so ..\..\release\deploy_arm64\lib\native\libobjk_odbc.so
 
 REM sdl support
-cd ..\..\sdl
+cd ..\sdl
 devenv arm64_sdl\arm64_sdl.sln /rebuild "Release|VisualGDB"
 copy arm64_sdl\VisualGDB\Release\arm64_sdl.so ..\..\release\deploy_arm64\lib\native\libobjk_sdl.so
-copy ..\lib\fonts\*.ttf ..\..\..\Release\deploy_arm64\lib\sdl\fonts
+copy lib\fonts\*.ttf ..\..\Release\deploy_arm64\lib\sdl\fonts
 
 REM diags support
-cd ..\..\diags\arm_diags
-REM <= %VISUAL_GDB% /rebuild /config:Release arm_diags.vgdbcmake
-REM <= copy VisualGDB\Release\*.so ..\..\..\Release\deploy_arm64\lib\native
+cd ..\diags
+REM ??? %VISUAL_GDB% /rebuild /config:Release arm_diags.vgdbcmake
+REM ??? copy VisualGDB\Release\*.so ..\..\..\Release\deploy_arm64\lib\native
 
-cd ..\..\..\release
+cd ..\..\release
 
 REM copy examples
 mkdir deploy_arm64\examples\
