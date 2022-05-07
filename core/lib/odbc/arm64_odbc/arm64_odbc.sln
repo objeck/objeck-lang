@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "arm64_odbc", "arm64_odbc.vcxproj", "{AB18DD0E-5862-4DB6-BF99-52791E8195A8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|VisualGDB = Debug|VisualGDB
+		Release|VisualGDB = Release|VisualGDB
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB18DD0E-5862-4DB6-BF99-52791E8195A8}.Debug|VisualGDB.ActiveCfg = Debug|VisualGDB
+		{AB18DD0E-5862-4DB6-BF99-52791E8195A8}.Debug|VisualGDB.Build.0 = Debug|VisualGDB
+		{AB18DD0E-5862-4DB6-BF99-52791E8195A8}.Release|VisualGDB.ActiveCfg = Release|VisualGDB
+		{AB18DD0E-5862-4DB6-BF99-52791E8195A8}.Release|VisualGDB.Build.0 = Release|VisualGDB
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {36AEAF16-18AD-4CCC-905F-726FD44C6F01}
+	EndGlobalSection
+EndGlobal
