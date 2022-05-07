@@ -39,12 +39,9 @@ Notable features:
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
 * Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
-* JIT support for all targets
-* Supported targets
-  * x86-64: Windows, macOS and Linux
-  * ARM64: macOS (Apple Silicon)
-  * x86: Windows and Linux
-  * ARMv7: Linux (Raspberry Pi 3/4)
+* JIT support for all targets supported targets
+  * AArch64: Linux, macOS
+  * x86-64: Linux, macOS and Windows
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
@@ -60,7 +57,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 
 Building on Linux and macOS:
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
-*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>32</code>, <code>64</code> or <code>osx</code> representing the bit version of Linux
+*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>osx</code> representing the bit version of Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
 
