@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source files">
+      <UniqueIdentifier>{a6202b25-91b2-4de8-85e9-c187863c6ef8}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header files">
+      <UniqueIdentifier>{7b84fde2-a7b6-451c-bb75-2b3ad41936d0}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource files">
+      <UniqueIdentifier>{9c0d0271-c76d-45b2-8bfd-87e718303cef}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="VisualGDB settings">
+      <UniqueIdentifier>{fb6312ef-1a0b-425c-875f-978274bd62eb}</UniqueIdentifier>
+      <Extensions>vgdbsettings</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\SDL2_framerate.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SDL2_gfxPrimitives.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SDL2_gfxPrimitives_font.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SDL2_imageFilter.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SDL2_rotozoom.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="arm64_sdl-Debug.vgdbsettings">
+      <Filter>VisualGDB settings</Filter>
+    </None>
+    <None Include="arm64_sdl-Release.vgdbsettings">
+      <Filter>VisualGDB settings</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\sdl.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SDL2_framerate.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SDL2_gfxPrimitives.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SDL2_imageFilter.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SDL2_rotozoom.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
