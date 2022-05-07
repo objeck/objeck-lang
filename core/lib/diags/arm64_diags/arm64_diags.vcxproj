@@ -12,7 +12,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{AB18DD0E-5862-4DB6-BF99-52791E8195A8}</ProjectGuid>
+    <ProjectGuid>{7F3C177E-8627-4085-8803-402FF15DB7B8}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|VisualGDB'">
@@ -39,19 +39,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|VisualGDB'">
     <ClCompile>
       <AdditionalIncludeDirectories>;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;%(ClCompile.PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <AdditionalLinkerInputs>;%(Link.AdditionalLinkerInputs)</AdditionalLinkerInputs>
-      <LibrarySearchDirectories>;%(Link.LibrarySearchDirectories)</LibrarySearchDirectories>
-      <AdditionalLibraryNames>;%(Link.AdditionalLibraryNames)</AdditionalLibraryNames>
-      <LinkerScript />
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|VisualGDB'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>;%(ClCompile.PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DIAG_LIB;%(ClCompile.PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLinkerInputs>;%(Link.AdditionalLinkerInputs)</AdditionalLinkerInputs>
@@ -61,11 +49,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="arm64_odbc-Debug.vgdbsettings" />
-    <None Include="arm64_odbc-Release.vgdbsettings" />
+    <None Include="arm64_diags-Debug.vgdbsettings" />
+    <None Include="arm64_diags-Release.vgdbsettings" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\odbc.cpp" />
+    <ClCompile Include="..\..\..\compiler\context.cpp" />
+    <ClCompile Include="..\..\..\compiler\parser.cpp" />
+    <ClCompile Include="..\..\..\compiler\scanner.cpp" />
+    <ClCompile Include="..\..\..\compiler\tree.cpp" />
+    <ClCompile Include="..\..\..\compiler\types.cpp" />
+    <ClCompile Include="..\..\..\shared\logger.cpp" />
+    <ClCompile Include="..\diags.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\compiler\context.h" />
+    <ClInclude Include="..\..\..\compiler\parser.h" />
+    <ClInclude Include="..\..\..\compiler\scanner.h" />
+    <ClInclude Include="..\..\..\compiler\tree.h" />
+    <ClInclude Include="..\..\..\compiler\types.h" />
+    <ClInclude Include="..\..\..\shared\logger.h" />
+    <ClInclude Include="..\diags.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
