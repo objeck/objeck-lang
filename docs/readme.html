@@ -34,7 +34,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwtawFACs9tmItAAAA</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwM6wFAHoJKagtAAAA</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -1305,7 +1305,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v6.3.6 (April 25, 2022)<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>v6.4.0 (May 9, 2022)<o:p></o:p></span></p>
 
 <p class=MsoSubtitle><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p>&nbsp;</o:p></span></p>
@@ -1334,7 +1334,8 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Additional performance improvements for interpreted code (new)<o:p></o:p></span></p>
+minor-latin'>Optimized 64-bit targets (ARM64 and x64) and retired 32-bit
+support<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1343,27 +1344,8 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Divide by zero detection in interpreted and JIT compiled code
-(new)<o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
-mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Fixed array indexing issue with nested method calls (bug: medium)<o:p></o:p></span></p>
-
-<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
-mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
-minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Reenabled garbage collection, which was mistakenly disabled, in the
-last release that was backed out (bug: high)<o:p></o:p></span></p>
+minor-latin'>Fixed divide by zero check in JITed code on ARM targets (bug =&gt;
+low)<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
