@@ -44,8 +44,8 @@ copy lib\fonts\*.ttf ..\..\Release\deploy_arm64\lib\sdl\fonts
 
 REM diags support
 cd ..\diags
-REM ??? %VISUAL_GDB% /rebuild /config:Release arm_diags.vgdbcmake
-REM ??? copy VisualGDB\Release\*.so ..\..\..\Release\deploy_arm64\lib\native
+devenv arm64_diags\arm64_diags.sln /rebuild "Release|VisualGDB"
+copy arm64_diags\VisualGDB\Release\arm64_diags.so ..\..\release\deploy_arm64\lib\native\libobjk_diags.so
 
 cd ..\..\release
 
@@ -79,7 +79,7 @@ REM finished
 if [%1] NEQ [deploy] goto end
 	rmdir /s /q "%USERPROFILE%\Desktop\ReleaseARM64"
 	mkdir "%USERPROFILE%\Desktop\ReleaseARM64"
-	%ZIP_BIN%\7z.exe a -r -ttar "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm32.tar" ".\deploy_arm64\*"
-	%ZIP_BIN%\7z.exe a -tgzip "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm32.tgz" "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm32.tar"
-	del "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm32.tar"
+	%ZIP_BIN%\7z.exe a -r -ttar "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar" ".\deploy_arm64\*"
+	%ZIP_BIN%\7z.exe a -tgzip "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tgz" "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar"
+	del "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar"
 :end
