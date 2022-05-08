@@ -5122,7 +5122,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     if(current_method->HasAndOr()) {
       size = index = 1;
     }
-    // size = CalculateEntrySpace(current_table, index, declarations, false);
+    size = CalculateEntrySpace(current_table, index, declarations, false);
   }
 
   return size;
