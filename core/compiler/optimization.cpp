@@ -119,12 +119,14 @@ void ItermediateOptimizer::Optimize()
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
     
-    for(size_t j = 0; j < methods.size(); ++j) {
-      current_method = methods[j];
+    if(!is_lib) {
+      for(size_t j = 0; j < methods.size(); ++j) {
+        current_method = methods[j];
 #ifdef _DEBUG
-      GetLogger() << L"Optimizing method, pass 2: name='" << current_method->GetName() << "'" << endl;
+        GetLogger() << L"Optimizing method, pass 2: name='" << current_method->GetName() << "'" << endl;
 #endif
-      current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
+        current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
+      }
     }
   }
 
@@ -219,7 +221,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   }
   
   vector<IntermediateBlock*> folded_float_blocks;
-  if(optimization_level > 0) {
+  if(!is_lib && optimization_level > 0) {
     vector<IntermediateBlock*> getter_setter_blocks;
     // getter/setter inlining
 #ifdef _DEBUG
