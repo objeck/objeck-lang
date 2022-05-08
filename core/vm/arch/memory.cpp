@@ -1550,7 +1550,15 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  if(mem) {
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+  const bool found = allocated_memory.find(mem) != allocated_memory.end();
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&allocated_lock);
+#endif
+
+  if(found) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
