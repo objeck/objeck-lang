@@ -4846,22 +4846,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
   if(table) {
     int var_space = 0;
     vector<SymbolEntry*> entries = table->GetEntries();
-
-    if(!current_method) {
-      if(is_static && current_class->GetLibraryParent() && current_class->GetLibraryParent()->GetClassEntries()) {
-        const vector<IntermediateDeclaration*> parent_cls_dclrs = current_class->GetLibraryParent()->GetClassEntries()->GetParameters();
-        for(size_t i = 0; i < parent_cls_dclrs.size(); ++i) {
-          declarations->AddParameter(parent_cls_dclrs[i]->Copy());
-        }
-      }
-      else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->GetInstanceEntries()) {
-        const vector<IntermediateDeclaration*> parent_inst_dclrs = current_class->GetLibraryParent()->GetInstanceEntries()->GetParameters();
-        for(size_t i = 0; i < parent_inst_dclrs.size(); ++i) {
-          declarations->AddParameter(parent_inst_dclrs[i]->Copy());
-        }
-      }
-    }
-    
+        
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       if(!entry->IsSelf() && entry->IsStatic() == is_static) {
@@ -5064,20 +5049,13 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     // setup dependency order
     stack<Class*> parents;
     Class* parent = current_class->GetParent();
-    LibraryClass* lib_parent = current_class->GetLibraryParent();
-    while(parent || lib_parent) {
-      if(parent) {
-        parents.push(parent);
-        // next        
-        lib_parent = parent->GetLibraryParent();
-        parent = parent->GetParent();
-      }
-      else if(lib_parent) {
-        break;
-      }
+    while(parent) {
+      parents.push(parent);
+      parent = parent->GetParent();
     }
 
     // emit derived library first
+    LibraryClass* lib_parent = current_class->GetLibraryParent();
     if(lib_parent) {
       if(is_static) {
         size += lib_parent->GetClassSpace();
