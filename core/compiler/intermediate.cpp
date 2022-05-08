@@ -5046,15 +5046,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   if(!current_method) {
     SymbolTableManager* symbol_table = parsed_bundle->GetSymbolTableManager();
     
-    // setup dependency order
-    stack<Class*> parents;
-    Class* parent = current_class->GetParent();
-    while(parent) {
-      parents.push(parent);
-      parent = parent->GetParent();
-    }
-
-    // emit derived library first
+    // emit derived library dependencies
     LibraryClass* lib_parent = current_class->GetLibraryParent();
     if(lib_parent) {
       if(is_static) {
@@ -5077,6 +5069,14 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     }
 
     // emit source dependencies
+    stack<Class*> parents;
+    
+    Class* parent = current_class->GetParent();
+    while(parent) {
+      parents.push(parent);
+      parent = parent->GetParent();
+    }
+    
     while(!parents.empty()) {
       parent = parents.top();
       parents.pop();
