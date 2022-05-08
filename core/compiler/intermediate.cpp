@@ -5115,7 +5115,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     }
     
     // emit current class
-    // size += CalculateEntrySpace(current_table, index, declarations, is_static);
+    size += CalculateEntrySpace(current_table, index, declarations, is_static);
   }
   // method
   else {
