@@ -301,7 +301,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, siz
   }
 
   // collect memory
-  if (collect && allocation_size + calc_size > mem_max_size) {
+  if(collect && allocation_size + calc_size > mem_max_size) {
     CollectAllMemory(op_stack, stack_pos);
   }
 
@@ -1192,10 +1192,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       // NOTE: this marks temporary variables that are stored in JIT memory
       // during some method calls. There are 6 integer temp addresses
       // TODO: for non-ARM64 targets, skip 'has_and_or' variable addressed
-#ifdef _ARM32
-      // for ARM32, skip the link register
-      for(int i = 1; i <= 6; ++i) {
-#elif _ARM64
+#ifdef _ARM64
       mem = start;
       for(int i = 0; i > -6; --i) {
 #else
@@ -1589,15 +1586,14 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkValidMemory(mem)) {
         // ensure we're only checking int and obj arrays
-        if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-          (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
-            size_t* array = mem;
-            const size_t size = array[0];
-            const size_t dim = array[1];
-            size_t* objects = (size_t*)(array + 2 + dim);
-            for(size_t i = 0; i < size; ++i) {
-              CheckObject((size_t*)objects[i], false, 2);
-            }
+        if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
+          size_t* array = mem;
+          const size_t size = array[0];
+          const size_t dim = array[1];
+          size_t* objects = (size_t*)(array + 2 + dim);
+          for(size_t i = 0; i < size; ++i) {
+            CheckObject((size_t*)objects[i], false, 2);
+          }
         }
       }
     }
