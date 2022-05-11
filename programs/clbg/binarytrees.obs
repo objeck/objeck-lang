@@ -21,7 +21,7 @@ class BinaryTrees {
 		stretchDepth := maxDepth + 1;
 	
 		check := (TreeNode->BottomUpTree(0, stretchDepth))->ItemCheck();
-		IO.Console->Print("stretch tree of depth ")->Print(stretchDepth)->Print("\t check: ")->PrintLine(check);
+		IO.Standard->Print("stretch tree of depth ")->Print(stretchDepth)->Print("\t check: ")->PrintLine(check);
 
 		longLivedTree := TreeNode->BottomUpTree(0, maxDepth);
 		for(depth := minDepth; depth <= maxDepth; depth += 2;) {
@@ -32,10 +32,10 @@ class BinaryTrees {
 				check += (TreeNode->BottomUpTree(i, depth))->ItemCheck();
 				check += (TreeNode->BottomUpTree(-1 * i, depth))->ItemCheck();
 			};
-			IO.Console->Print(iterations*2)->Print("\t trees of depth ")
+			IO.Standard->Print(iterations*2)->Print("\t trees of depth ")
 				->Print(depth)->Print("\t check: ")->PrintLine(check);
 		};
-		IO.Console->Print("long lived tree of depth ")->Print(maxDepth)->Print("\t check: ")
+		IO.Standard->Print("long lived tree of depth ")->Print(maxDepth)->Print("\t check: ")
 			->PrintLine(longLivedTree->ItemCheck());
 	}
 }
