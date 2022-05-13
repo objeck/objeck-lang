@@ -272,7 +272,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
 {
   if (size < 0) {
-    wcerr << L">>> Invalid allocation size: " << size << L" <<<" << endl;
+    wcerr << L">>> Invalid allocation: size=" << size << L" <<<" << endl;
     exit(1);
   }
 
@@ -531,7 +531,7 @@ size_t MemoryManager::GetAlignedSize(size_t size)
   }
   // > 128MB
   else if(size > 134217728) {
-    wcerr << L"Unable to allocate memory!" << endl;
+    wcerr << L">>> Unable to allocation: size=" << size << L" <<<" << endl;
     exit(-1);
   }
   else {
