@@ -900,7 +900,7 @@ void* MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size = (mem_max_size >> 1) / 2;
+      mem_max_size >>= 2;
       if(mem_max_size <= 0) {
         mem_max_size = MEM_MAX << 3;
       }
