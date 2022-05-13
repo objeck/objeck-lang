@@ -39,10 +39,10 @@ Start: GC tuning parameters
 */
 
 // FOR DEBUGGING ONLY
-// #define MEM_MAX 256 * 3
+// #define MEM_MAX 768
 
 // FOR PRODUCTION
-#define MEM_MAX 4096 * 256 * 2
+#define MEM_MAX 4096 * 768
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
