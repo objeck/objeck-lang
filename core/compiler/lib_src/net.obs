@@ -395,6 +395,7 @@ bundle Web.HTTP {
 	~#
 	class HttpClient {
 		@headers : Hash<String, String>;
+		@added_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
 		@cookies: Vector<String>;
 		
@@ -406,6 +407,8 @@ bundle Web.HTTP {
 			@headers->Insert("Connection", "keep-alive");							
 			@headers->Insert("Cache-Control", "max-age=0");
 			@headers->Insert("User-Agent", "Mozilla/5.0 (compatible)");
+
+			@added_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := false;
 			@cookies := Vector->New()<String>;
@@ -426,7 +429,9 @@ bundle Web.HTTP {
 		@param value header value
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
-			@headers->Insert(name->ToLower(), value);
+			name := name->ToLower();
+			@headers->Insert(name, value);
+			@added_headers->Insert(name, value);
 		}
 		
 		#~
@@ -599,18 +604,50 @@ bundle Web.HTTP {
 # status_line->PrintLine();
 					
 					if(status_code <> 500) {
-					  # get @headers
+						# get @headers
 						do {
 							line := socket->ReadLine();
 							if(line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
-								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
-								@headers->Insert(name->ToLower(), value);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+								
 # IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									offset := value->Find(';');
+									if(offset > -1) {
+										value := value->SubString(offset);
+									};
+									@cookies->AddBack(value);
+# IO.Standard->Print("cookie=")->PrintLine(value);									
+								}
+								else {
+									@headers->Insert(name->ToLower(), value);
+								};
 							};
 						}
 						while(line->Size() > 0);
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
+						
+						# permanently moved
+						if(status_code = 301) {
+							moved_location := @headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url := "https://";
+								moved_url += address;
+								moved_url += moved_location;
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
+		
+								@headers->Empty();
+								names_values := @added_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : names_values) {
+									name_value := names_values->Get(i);
+									@headers->Insert(name_value->GetFirst(), name_value->GetSecond());
+								};
+
+								return Get(moved_url, content_type);
+							};
+						};
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -813,9 +850,28 @@ bundle Web.HTTP {
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line->Size() > 0);						
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
-# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());						
+						# permanently moved
+						if(status_code = 301) {
+							moved_location := @headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url := "https://";
+								moved_url += address;
+								moved_url += moved_location;
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
+		
+								@headers->Empty();
+								names_values := @added_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : names_values) {
+									name_value := names_values->Get(i);
+									@headers->Insert(name_value->GetFirst(), name_value->GetSecond());
+								};
+
+								return Get(moved_url, content_type);
+							};
+						};
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -893,6 +949,7 @@ bundle Web.HTTP {
 	~#
 	class HttpsClient {
 		@headers : Hash<String, String>;
+		@added_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
 		@cookies: Vector<String>;
 		@cert : String;
@@ -905,6 +962,8 @@ bundle Web.HTTP {
 			@headers->Insert("Connection", "keep-alive");							
 			@headers->Insert("Cache-Control", "max-age=0");
 			@headers->Insert("User-Agent", "Mozilla/5.0 (compatible)");
+			
+			@added_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := false;
 			@cookies := Vector->New()<String>;
@@ -924,7 +983,9 @@ bundle Web.HTTP {
 		@param value header value
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
-			@headers->Insert(name->ToLower(), value);
+			name := name->ToLower();
+			@headers->Insert(name, value);
+			@added_headers->Insert(name, value);
 		}
 		
 		#~
@@ -1109,7 +1170,27 @@ bundle Web.HTTP {
 							};
 						}
 						while(line->Size() > 0);
-# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());						
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
+
+						# permanently moved
+						if(status_code = 301) {
+							moved_location := @headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url := "https://";
+								moved_url += address;
+								moved_url += moved_location;
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
+		
+								@headers->Empty();
+								names_values := @added_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : names_values) {
+									name_value := names_values->Get(i);
+									@headers->Insert(name_value->GetFirst(), name_value->GetSecond());
+								};
+
+								return Post(moved_url, content_type);
+							};
+						};
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
@@ -1297,8 +1378,7 @@ bundle Web.HTTP {
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
-					};
-					
+					};					
 # status_code->PrintLine();
 
 					if(status_code <> 500) {
@@ -1324,7 +1404,27 @@ bundle Web.HTTP {
 							};
 						}
 						while(line->Size() > 0);						
-# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());						
+# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
+
+						# permanently moved
+						if(status_code = 301) {
+							moved_location := @headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url := "https://";
+								moved_url += address;
+								moved_url += moved_location;
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
+		
+								@headers->Empty();
+								names_values := @added_headers->GetKeyValues()<Pair<String, String>>;
+								each(i : names_values) {
+									name_value := names_values->Get(i);
+									@headers->Insert(name_value->GetFirst(), name_value->GetSecond());
+								};
+
+								return Get(moved_url, content_type);
+							};
+						};
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("transfer-encoding");
