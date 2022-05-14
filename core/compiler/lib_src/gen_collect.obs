@@ -156,7 +156,7 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Checks to see if the vector is empty
+		Checks to see if the cache is empty
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
@@ -509,6 +509,14 @@ bundle Collection.Generic {
 			@buckets := CompareList->New[@capacity]<K>;
 			@size := 0;
 		}
+
+		#~
+		Checks to see if the hash table is empty
+		@return true if empty, false otherwise
+		~#
+		method : public: IsEmpty() ~ Bool {
+			return @size = 0;
+		}
 		
 		#~
 		Size of map
@@ -606,7 +614,7 @@ bundle Collection.Generic {
 		}
 		
 		#~
-		Checks to see if the vector is empty
+		Checks to see if the stack is empty
 		@return true if empty, false otherwise
 		~#
 		method : public: IsEmpty() ~ Bool {
@@ -2353,7 +2361,7 @@ bundle Collection.Generic {
 		}
 		
 		#~
-		Checks to see if the queue is empty
+		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
@@ -2796,7 +2804,7 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Checks to see if the map is empty
+		Checks to see if the set is empty
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
@@ -2877,7 +2885,7 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Checks to see if the queue is empty
+		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
