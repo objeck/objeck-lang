@@ -39,12 +39,12 @@ Start: GC tuning parameters
 */
 
 // FOR DEBUGGING ONLY
-// #define MEM_MAX 256 * 3
+// #define MEM_MAX 512
 
 // FOR PRODUCTION
-#define MEM_MAX 4096 * 256 * 2
+#define MEM_MAX 512 * 4096
 
-#define UNCOLLECTED_COUNT 11
+#define UNCOLLECTED_COUNT 13
 #define COLLECTED_COUNT 29
 
 #define EXTRA_BUF_SIZE 3
@@ -190,6 +190,7 @@ class MemoryManager {
   static size_t GetAllocSize(size_t size);
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
+  static size_t GetAlignedSize(size_t size);
   static void ClearFreeMemory(bool all = false);
   
  public:
