@@ -272,7 +272,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
 {
   if (size < 0) {
-    wcerr << L">>> Invalid allocation size: " << size << L" <<<" << endl;
+    wcerr << L">>> Invalid allocation: size=" << size << L" <<<" << endl;
     exit(1);
   }
 
@@ -360,7 +360,7 @@ void MemoryManager::AddFreeMemory(size_t* raw_mem) {
   }
   
   const size_t size = raw_mem[0];
-  AddFreeCache(GetAllocSize(size), raw_mem);
+  AddFreeCache(size, raw_mem);
 }
 
 void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
@@ -385,8 +385,8 @@ void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
 }
 
 size_t* MemoryManager::GetFreeMemory(size_t size) {
-  const size_t cache_size = GetAllocSize(size);
-  
+  size_t cache_size = GetAlignedSize(size);
+
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
@@ -395,26 +395,15 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
     bool found = false;
     list<size_t*>* free_cache = result->second;
 
-    std::list<size_t*>::iterator iter = free_cache->begin();
-    for(; !found && iter != free_cache->end(); ++iter) {
-      size_t* check_mem = *iter;
-      const size_t check_size = check_mem[0];
-      if(check_size >= size) {
-        found = true;
-      }
-    }
-
-    if(found) {
-      --iter;
-      size_t* raw_mem = *iter;
-      free_cache->erase(iter);
-
+    if(!free_cache->empty()) {
+      size_t* raw_mem = free_cache->front();
+      free_cache->pop_front();
       const size_t mem_size = raw_mem[0];
       free_memory_cache_size -= mem_size;
-      memset(raw_mem + 1, 0, mem_size);
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif
+      memset(raw_mem + 1, 0, mem_size);
       return raw_mem + 1;
     }
   }
@@ -456,71 +445,56 @@ void MemoryManager::ClearFreeMemory(bool all) {
 #endif
 }
 
-size_t MemoryManager::GetAllocSize(size_t size) {
-  if(size > 0 && size <= 8) {
-    return 8;
+size_t MemoryManager::GetAlignedSize(size_t size)
+{
+  size_t cache_size;
+
+  // 32 B
+  if(size > size <= 32) {
+    cache_size = 32;
   }
-  else if(size > 8 && size <= 16) {
-    return 16;
+  else if(size > 32 && size <= 256) {
+    cache_size = 256;
   }
-  else if(size > 16 && size <= 32) {
-    return 32;
+  else if(size > 256 && size <= 2048) {
+    cache_size = 2048;
   }
-  else if(size > 32 && size <= 64) {
-    return 64;
+  else if(size > 2048 && size <= 16384) {
+    cache_size = 16384;
   }
-  else if(size > 64 && size <= 128) {
-    return 128;
+  // 128 K
+  else if(size > 16384 && size <= 131072) {
+    cache_size = 131072;
   }
-  else if(size > 128 && size <= 256) {
-    return 256;
+  else if(size > 131072 && size <= 1048576) {
+    cache_size = 1048576;
   }
-  else if(size > 256 && size <= 512) {
-    return 512;
+  else if(size > 1048576 && size <= 8388608) {
+    cache_size = 8388608;
   }
-  else if(size > 512 && size <= 1024) {
-    return 1024;
+  else if(size > 8388608 && size <= 67108864) {
+    cache_size = 67108864;
   }
-  else if(size > 1024 && size <= 2048) {
-    return 2048;
+  // 512 M
+  else if(size > 67108864 && size <= 536870912) {
+    cache_size = 536870912;
   }
-  else if(size > 2048 && size <= 4096) {
-    return 4096;
+  else if(size > 536870912 && size <= 1073741824) {
+    cache_size = 1073741824;
   }
-  else if(size > 4096 && size <= 8192) {
-    return 8192;
+  else if(size > 1073741824 && size <= 2147483648) {
+    cache_size = 2147483648;
   }
-  else if(size > 8192 && size <= 16384) {
-    return 16384;
+  else if(size > 4294967296) {
+    wcerr << L">>> Unable to allocation: size=" << size << L" <<<" << endl;
+    exit(-1);
   }
-  else if(size > 16384 && size <= 32768) {
-    return 32768;
-  }
-  else if(size > 32768 && size <= 65536) {
-    return 65536;
-  }
-  else if(size > 65536 && size <= 131072) {
-    return 131072;
-  }
-  else if(size > 131072 && size <= 262144) {
-    return 262144;
-  }
-  else if(size > 262144 && size <= 524288) {
-    return 524288;
-  }
-  else if(size > 524288 && size <= 1048576) {
-    return 1048576;
-  }
-  else if(size > 1048576 && size <= 2097152) {
-    return 2097152;
-  }
-  else if(size > 2097152 && size <= 4194304) {
-    return 4194304;
-  }
-  // > 4MB
+  // 4 GB
   else {
-    return 16777216;
+    cache_size = 4294967296;
   }
+
+  return cache_size;
 }
 
 size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces)
@@ -840,7 +814,7 @@ void* MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size = (mem_max_size >> 1) / 2;
+      mem_max_size >>= 1;
       if(mem_max_size <= 0) {
         mem_max_size = MEM_MAX << 3;
       }
