@@ -630,7 +630,7 @@ bundle Web.HTTP {
 # IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
-						if(status_code = 301) {
+						if(status_code = 301 | status_code = 302) {
 							moved_location := @headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url := "https://";
@@ -854,7 +854,7 @@ bundle Web.HTTP {
 # IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
-						if(status_code = 301) {
+						if(status_code = 301 | status_code = 302) {
 							moved_location := @headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url := "https://";
@@ -1173,7 +1173,7 @@ bundle Web.HTTP {
 # IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 
 						# permanently moved
-						if(status_code = 301) {
+						if(status_code = 301 | status_code = 302) {
 							moved_location := @headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url := "https://";
@@ -1407,7 +1407,7 @@ bundle Web.HTTP {
 # IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 
 						# permanently moved
-						if(status_code = 301) {
+						if(status_code = 301 | status_code = 302) {
 							moved_location := @headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url := "https://";
