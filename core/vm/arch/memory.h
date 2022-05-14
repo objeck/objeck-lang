@@ -90,7 +90,7 @@ class MemoryManager {
   static unordered_set<StackFrame**> pda_frames;
   static vector<StackFrame*> jit_frames; // deleted elsewhere
   static set<size_t*> allocated_memory;
-  static unordered_map<size_t, list<size_t*>*> free_memory_cache;
+  static unordered_map<size_t, stack<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
   struct cantor_tuple {
@@ -189,7 +189,7 @@ class MemoryManager {
   static void AddFreeMemory(size_t* raw_mem);
   static size_t GetAllocSize(size_t size);
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
-  static size_t* GetFreeMemory(size_t size);
+  static size_t* GetFreeMemory(size_t cache_size);
   static size_t GetAlignedSize(size_t size);
   static void ClearFreeMemory(bool all = false);
   
