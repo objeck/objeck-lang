@@ -644,6 +644,7 @@ bundle Web.HTTP {
 								moved_url += moved_location;
 # IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 								
+								@response_headers->Empty();
 								return Get(moved_url, content_type);
 							};
 						};
@@ -861,6 +862,7 @@ bundle Web.HTTP {
 								moved_url += moved_location;
 # IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 
+								@response_headers->Empty();
 								return Get(moved_url, content_type);
 							};
 						};
@@ -1179,6 +1181,7 @@ bundle Web.HTTP {
 								moved_url += moved_location;
 # IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 
+								@response_headers->Empty();
 								return Post(moved_url, content_type);
 							};
 						};
@@ -1406,6 +1409,7 @@ bundle Web.HTTP {
 								moved_url += moved_location;
 # IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 
+								@response_headers->Empty();
 								return Get(moved_url, content_type);
 							};
 						};
