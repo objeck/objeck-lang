@@ -964,23 +964,23 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Gets the HTTP request headers
-		@return HTTP request headers
+		Gets the HTTPS request headers
+		@return HTTPS request headers
 		~#
 		method : public : GetRequestHeaders() ~ Hash<String, String> {
 			return @request_headers;
 		}
 
 		#~
-		Gets the HTTP response headers
-		@return HTTP response headers
+		Gets the HTTPS response headers
+		@return HTTPS response headers
 		~#
 		method : public : GetResponseHeaders() ~ Hash<String, String> {
 			return @response_headers;
 		}
 
 		#~
-		Adds a HTTP request header
+		Adds a HTTPS request header
 		@param name header name
 		@param value header value
 		~#
@@ -1013,7 +1013,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
 		@return read strings
@@ -1035,7 +1035,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
 		@param content_type content type
@@ -1067,7 +1067,7 @@ bundle Web.HTTP {
 		}	
 		
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
 		@return vector of read strings
@@ -1077,7 +1077,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param content_type content type
 		@param data data to post
@@ -1232,7 +1232,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP GET and returns results as a String
+		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@return output as one string
 		~#
@@ -1241,7 +1241,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs a HTTP GET and returns results as a String
+		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@param headers key/value headers
 		@return output as one string
@@ -1251,7 +1251,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs a HTTP GET and returns results as a String
+		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@param content_type content type
 		@param headers key/value headers
@@ -1284,7 +1284,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs a HTTP GET
+		Performs a HTTPS GET
 		@param url URL
 		@return vector of read strings
 		~#
@@ -1301,7 +1301,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP GET
+		Performs a HTTPS GET
 		@param url URL
 		@param content_type content type
 		@return vector of read strings
