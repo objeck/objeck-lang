@@ -6598,6 +6598,7 @@ bundle System.IO.File {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
+				writer->Close();				
 				return true;
 			};
 
