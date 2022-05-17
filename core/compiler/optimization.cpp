@@ -63,8 +63,6 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstrin
   }
 
   // primitive 'Float
-  can_inline.insert(L"System.Number:FloatToString:f,c*,");
-  can_inline.insert(L"System.$Float:ToString:f,");
   can_inline.insert(L"System.$Float:Size:f*,");
   can_inline.insert(L"System.$Float:Sin:f,");
   can_inline.insert(L"System.$Float:Cos:f,");
@@ -83,8 +81,6 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, wstrin
   can_inline.insert(L"System.$Float:Pi:");
   can_inline.insert(L"System.$Float:E:");
   // primitive 'Int'
-  can_inline.insert(L"System.Number:IntToString:i,i,c*,");
-  can_inline.insert(L"System.$Int:ToString:i,");
   can_inline.insert(L"System.$Int:Size:i*,");
   can_inline.insert(L"System.$Int:Max:i,i,");
   can_inline.insert(L"System.$Int:Min:i,i,");
@@ -571,7 +567,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
 
   // don't inline method calls for primitive objects
   const wstring cls_name_str = mthd_called->GetClass()->GetName();
-  if(cls_name_str.find(L'$') != wstring::npos || cls_name_str.find(L"System.Number") != wstring::npos) {
+  if(cls_name_str.find(L'$') != wstring::npos) {
     set<wstring>::iterator result = can_inline.find(mthd_called->GetName());
     if(result == can_inline.end()) {
       return false;
