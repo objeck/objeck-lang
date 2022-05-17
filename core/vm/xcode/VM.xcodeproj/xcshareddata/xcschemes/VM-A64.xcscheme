@@ -27,6 +27,12 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "fs_reporting_cves.obe"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
       <Testables>
       </Testables>
    </TestAction>
@@ -36,7 +42,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/randyhollines/Documents/Code/objeck-lang/programs/test"
+      customWorkingDirectory = "/Users/randyhollines/Downloads/reporting 2"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -53,7 +59,11 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "/Users/randyhollines/Documents/Code/objeck-lang/programs/deploy/calc_life_10"
+            argument = "ssl_server keys/cert.pem keys/cert.key 1234 60013"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "fs_reporting_cves.obe"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
