@@ -345,7 +345,12 @@ size_t* MemoryManager::GetMemory(size_t size) {
   }
 
   const size_t cache_size = GetAlignedSize(size + sizeof(size_t));
+#ifdef _OSX
+  size_t* raw_mem = (size_t*)calloc(cache_size, sizeof(short));
+#else
   size_t* raw_mem = (size_t*)calloc(cache_size, sizeof(char));
+#endif
+  
 #ifdef _DEBUG_GC
   wcout << L"*** Raw allocation: address=" << raw_mem << L" ***" << endl;
 #endif
