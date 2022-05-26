@@ -42,7 +42,8 @@ Start: GC tuning parameters
 // #define MEM_MAX 512
 
 // FOR PRODUCTION
-#define MEM_MAX 512 * 4096
+#define MEM_THRESHOLD 512 * 4096
+#define MEM_MAX 4294967296
 
 #define UNCOLLECTED_COUNT 13
 #define COLLECTED_COUNT 29

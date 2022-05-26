@@ -79,7 +79,7 @@ void MemoryManager::Initialize(StackProgram* p)
 {
   prgm = p;
   allocation_size = 0;
-  mem_max_size = MEM_MAX;
+  mem_max_size = MEM_THRESHOLD;
   uncollected_count = 0;
   free_memory_cache_size = 0;
 
@@ -487,13 +487,13 @@ size_t MemoryManager::GetAlignedSize(size_t size)
   else if(size > 1073741824 && size <= 2147483648) {
     cache_size = 2147483648;
   }
-  else if(size > 4294967296) {
+  else if(size > 3221225472) {
     wcerr << L">>> Unable to allocation: size=" << size << L" <<<" << endl;
     exit(-1);
   }
-  // 4 GB
+  // 3 GB
   else {
-    cache_size = 4294967296;
+    cache_size = 3221225472;
   }
 
   return cache_size;
@@ -806,19 +806,28 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count++;
     } 
     else {
-      mem_max_size <<= 3;
+      if(mem_max_size >= MEM_MAX) {
+        wcerr << ">>> VM is out of memory! <<<" << endl;
+        exit(1);
+      }
+
+      mem_max_size <<= 2;
+      // 4 GB
+      if(mem_max_size > MEM_MAX) {
+        mem_max_size = MEM_MAX;
+      }
       uncollected_count = 0;
     }
   }
   // collected memory; adjust constraints
-  else if(mem_max_size != MEM_MAX) {
+  else if(mem_max_size != MEM_THRESHOLD) {
     if(collected_count < COLLECTED_COUNT) {
       collected_count++;
     } 
     else {
       mem_max_size >>= 1;
       if(mem_max_size <= 0) {
-        mem_max_size = MEM_MAX << 3;
+        mem_max_size = MEM_THRESHOLD << 2;
       }
       collected_count = 0;
     }
