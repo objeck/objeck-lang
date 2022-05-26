@@ -39,8 +39,6 @@ unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
 set<size_t*> MemoryManager::allocated_memory;
 
-unordered_map<size_t, stack<size_t*>*> MemoryManager::free_memory_cache;
-size_t MemoryManager::free_memory_cache_size;
 unordered_map<cantor_tuple_key, StackMethod*, MemoryManager::cantor_tuple> MemoryManager::virtual_method_table;
 
 bool MemoryManager::initialized;
@@ -62,7 +60,6 @@ CRITICAL_SECTION MemoryManager::pda_monitor_lock;
 CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
-CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
 CRITICAL_SECTION MemoryManager::virtual_method_lock;
 #else
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -71,7 +68,6 @@ pthread_mutex_t MemoryManager::jit_frame_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::virtual_method_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
@@ -81,8 +77,7 @@ void MemoryManager::Initialize(StackProgram* p)
   allocation_size = 0;
   mem_max_size = MEM_THRESHOLD;
   uncollected_count = 0;
-  free_memory_cache_size = 0;
-
+  
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
   mem_logger << L"cycle,oper,type,addr,size" << endl;
@@ -95,7 +90,6 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&allocated_lock);
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
-  InitializeCriticalSection(&free_memory_cache_lock);
   InitializeCriticalSection(&virtual_method_lock);
 #endif
 
@@ -339,17 +333,15 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, siz
 }
 
 size_t* MemoryManager::GetMemory(size_t size) {
+  /*
   size_t* mem = GetFreeMemory(size);
   if(mem) {
     return mem;
   }
-
-  const size_t cache_size = GetAlignedSize(size + sizeof(size_t));
-#ifdef _OSX
-  size_t* raw_mem = (size_t*)calloc(cache_size, sizeof(short));
-#else
+  */
+  
+  const size_t cache_size = size + sizeof(size_t);
   size_t* raw_mem = (size_t*)calloc(cache_size, sizeof(char));
-#endif
   
 #ifdef _DEBUG_GC
   wcout << L"*** Raw allocation: address=" << raw_mem << L" ***" << endl;
@@ -359,92 +351,8 @@ size_t* MemoryManager::GetMemory(size_t size) {
 }
 
 void MemoryManager::AddFreeMemory(size_t* raw_mem) {
-  if(free_memory_cache_size > mem_max_size) {
-    ClearFreeMemory();
-  }
-  
-  const size_t size = raw_mem[0];
-  AddFreeCache(size, raw_mem);
-}
-
-void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&free_memory_cache_lock);
-#endif
-  const size_t mem_size = raw_mem[0];
-  free_memory_cache_size += mem_size;
-
-  unordered_map<size_t, stack<size_t*>*>::iterator result = free_memory_cache.find(pool);
-  if(result == free_memory_cache.end()) {
-    stack<size_t*>* pool_list = new stack<size_t*>;
-    pool_list->push(raw_mem);
-    free_memory_cache.insert(pair<size_t, stack<size_t*>*>(pool, pool_list));
-  }
-  else {
-    result->second->push(raw_mem);
-  }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
-}
-
-size_t* MemoryManager::GetFreeMemory(size_t cache_size) {
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&free_memory_cache_lock);
-#endif
-  unordered_map<size_t, stack<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
-  if(result != free_memory_cache.end() && !result->second->empty()) {
-    bool found = false;
-    stack<size_t*>* free_cache = result->second;
-
-    if(!free_cache->empty()) {
-      size_t* raw_mem = free_cache->top();
-      free_cache->pop();
-      const size_t mem_size = raw_mem[0];
-      free_memory_cache_size -= mem_size;
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
-      memset(raw_mem + 1, 0, mem_size);
-      return raw_mem + 1;
-    }
-  }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
-
-  return nullptr;
-}
-
-void MemoryManager::ClearFreeMemory(bool all) {
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&free_memory_cache_lock);
-#endif
-  unordered_map<size_t, stack<size_t*>*>::iterator iter = free_memory_cache.begin();
-  for(; iter != free_memory_cache.end(); ++iter) {
-    stack<size_t*>* free_cache = iter->second;
-
-    while(!free_cache->empty()) {
-      size_t* raw_mem = free_cache->top();
-      free_cache->pop();
-
-      const size_t size = raw_mem[0];
-      free_memory_cache_size -= size;
-
-      free(raw_mem);
-      raw_mem = nullptr;
-    }
-
-    if(all) {
-      delete free_cache;
-      free_cache = nullptr;
-
-      free_memory_cache.clear();
-    }
-  }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
+  free(raw_mem);
+  raw_mem = nullptr;
 }
 
 size_t MemoryManager::GetAlignedSize(size_t size)
@@ -804,30 +712,21 @@ void* MemoryManager::CollectMemory(void* arg)
   if(live_memory.size() >= allocated_memory.size() - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
-    } 
+    }
     else {
-      if(mem_max_size >= MEM_MAX) {
-        wcerr << ">>> VM is out of memory! <<<" << endl;
-        exit(1);
-      }
-
-      mem_max_size <<= 2;
-      // 4 GB
-      if(mem_max_size > MEM_MAX) {
-        mem_max_size = MEM_MAX;
-      }
+      mem_max_size <<= 1;
       uncollected_count = 0;
     }
   }
   // collected memory; adjust constraints
   else if(mem_max_size != MEM_THRESHOLD) {
-    if(collected_count < COLLECTED_COUNT) {
+    if(collected_count < UNCOLLECTED_COUNT) {
       collected_count++;
-    } 
+    }
     else {
-      mem_max_size >>= 1;
+      mem_max_size >>= 2;
       if(mem_max_size <= 0) {
-        mem_max_size = MEM_THRESHOLD << 2;
+        mem_max_size = MEM_THRESHOLD;
       }
       collected_count = 0;
     }
