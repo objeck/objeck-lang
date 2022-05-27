@@ -34,28 +34,21 @@
 
 #include "../common.h"
 
-/*
-Start: GC tuning parameters
+// basic VM tuning parameters
+
+/* FOR DEBUGGING ONLY
+#define MEM_MAX 4096 * 2
 */
 
-// FOR DEBUGGING ONLY
-// #define MEM_MAX 512
+#define MEM_MAX 4096 * 512
 
-// FOR PRODUCTION
-#define MEM_THRESHOLD 512 * 4096
-#define MEM_MAX 4294967296
-
-#define UNCOLLECTED_COUNT 13
+#define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
-
-/*
-End: GC tuning parameters
-*/
 
 struct StackOperMemory {
   size_t* op_stack;
@@ -91,6 +84,8 @@ class MemoryManager {
   static unordered_set<StackFrame**> pda_frames;
   static vector<StackFrame*> jit_frames; // deleted elsewhere
   static set<size_t*> allocated_memory;
+  static unordered_map<size_t, list<size_t*>*> free_memory_cache;
+  static size_t free_memory_cache_size;
   
   struct cantor_tuple {
       template <class T1, class T2, class T3>
@@ -113,6 +108,7 @@ class MemoryManager {
   static CRITICAL_SECTION allocated_lock;
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
+  static CRITICAL_SECTION free_memory_cache_lock;
   static CRITICAL_SECTION virtual_method_lock;
 #else
   static pthread_mutex_t pda_monitor_lock;
@@ -121,6 +117,7 @@ class MemoryManager {
   static pthread_mutex_t allocated_lock;
   static pthread_mutex_t marked_lock;
   static pthread_mutex_t marked_sweep_lock;
+	static pthread_mutex_t free_memory_cache_lock;
 	static pthread_mutex_t virtual_method_lock;
 #endif
     
@@ -183,10 +180,9 @@ class MemoryManager {
   }
 
   static size_t* GetMemory(size_t alloc_size);
-  static size_t GetAllocSize(size_t size);
-  void static inline AddFreeCache(size_t pool, size_t* raw_mem);
-  static size_t GetAlignedSize(size_t size);
   static void AddFreeMemory(size_t* raw_mem);
+  void static inline AddFreeCache(size_t pool, size_t* raw_mem);
+  static size_t* GetFreeMemory(size_t size);
   static void ClearFreeMemory(bool all = false);
   
  public:
@@ -213,6 +209,7 @@ class MemoryManager {
     DeleteCriticalSection(&allocated_lock);
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
+    DeleteCriticalSection(&free_memory_cache_lock);
     DeleteCriticalSection(&virtual_method_lock);
 #endif
       
