@@ -42,7 +42,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/randyhollines/Downloads/reporting 2"
+      customWorkingDirectory = "/Users/randyhollines/Documents/Code/objeck-web-server"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -60,11 +60,15 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "ssl_server keys/cert.pem keys/cert.key 1234 60013"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "binarytrees 16"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "fs_reporting_cves.obe"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
       <EnvironmentVariables>
