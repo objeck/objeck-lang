@@ -40,7 +40,7 @@
 #define MEM_MAX 4096 * 2
 */
 
-#define MEM_MAX 4096 * 512
+#define MEM_START_MAX 4096 * 512
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
@@ -183,6 +183,7 @@ class MemoryManager {
   static void AddFreeMemory(size_t* raw_mem);
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
+  static size_t AlignMemorySize(size_t size);
   static void ClearFreeMemory(bool all = false);
   
  public:
