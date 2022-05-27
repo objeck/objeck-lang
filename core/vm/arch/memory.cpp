@@ -633,6 +633,9 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
+  delete info;
+  info = nullptr;
+
 #ifdef _TIMING
   clock_t end = clock();
   wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
@@ -935,10 +938,6 @@ void* MemoryManager::CheckStack(void* arg)
       CheckObject(check_mem, false, 1);
     }
   }
-
-  
-  delete info;
-  info = nullptr;
 
 #ifndef _WIN32
 #ifndef _GC_SERIAL
