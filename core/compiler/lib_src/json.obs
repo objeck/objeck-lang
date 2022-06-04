@@ -832,7 +832,7 @@ bundle Data.JSON {
 		@return true if 'null', false otherwise
 		~#
 		method : public : IsNull() ~ Bool {
-			return @type = Token->Type->NULL;
+			return @type = JsonType->NULL;
 		}
 		
 		#~
