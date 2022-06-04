@@ -841,13 +841,13 @@ bundle Data.JSON {
 		@return true if 'null', false otherwise
 		~#
 		function : public : IsNull(elem : JsonElement) ~ Bool {
-			if(elem <> Nil & elem->GetType() = JsonType->NULL) {
+			if(elem <> Nil & elem->GetType() <> JsonType->NULL) {
 				return true;
 			};
 			
 			return false;
 		}
-		
+
 		#~
 		Gets the value
 		@return value
