@@ -826,6 +826,14 @@ bundle Data.JSON {
 		method : public : GetType() ~ JsonElement->JsonType {
 			return @type;
 		}
+
+		#~
+		Check for 'null' JSON value
+		@return true if 'null', false otherwise
+		~#
+		method : public : IsNull() ~ Bool {
+			return @type = Token->Type->NULL;
+		}
 		
 		#~
 		Gets the value
