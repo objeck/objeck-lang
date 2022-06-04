@@ -849,15 +849,59 @@ bundle Data.JSON {
 		}
 
 		#~
-		Gets the value
-		@return value
+		Gets the string value
+		@return string value
 		~#
 		method : public : GetValue() ~ String {
+			return GetString();
+		}
+
+		#~
+		Gets the string value
+		@return string value
+		~#
+		method : public : GetString() ~ String {
 			if(@value <> Nil) {
 				return @value;
 			};
 			
 			return "";
+		}
+
+		#~
+		Gets the integer value
+		@return integer value
+		~#
+		method : public : GetInt() ~ Int {
+			if(@value <> Nil) {
+				return @value->ToInt();
+			};
+			
+			return 0;
+		}
+
+		#~
+		Gets the float value
+		@return float value
+		~#
+		method : public : GetFloat() ~ Int {
+			if(@value <> Nil) {
+				return @value->ToFloat();
+			};
+			
+			return 0;
+		}
+
+		#~
+		Gets the float value
+		@return float value
+		~#
+		method : public : GetBool() ~ Int {
+			if(@value <> Nil) {
+				return @value->ToBool();
+			};
+			
+			return 0;
 		}
 		
 		#~
