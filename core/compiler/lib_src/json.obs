@@ -884,12 +884,12 @@ bundle Data.JSON {
 		Gets the float value
 		@return float value
 		~#
-		method : public : GetFloat() ~ Int {
+		method : public : GetFloat() ~ Float {
 			if(@value <> Nil) {
 				return @value->ToFloat();
 			};
 			
-			return 0;
+			return 0.0;
 		}
 
 		#~
