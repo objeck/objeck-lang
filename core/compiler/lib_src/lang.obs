@@ -3497,7 +3497,7 @@ bundle System {
 		method : public : ToBool() ~ Bool {
 			if(Get(0) = 't') {
 				check := ['r', 'u', 'e'];
-				for(i : check) {
+				each(i : check) {
 					if(Get(i + 1) <> check[i]) {
 						return false;
 					};
@@ -3507,7 +3507,7 @@ bundle System {
 			}
 			else if(Get(0) = 'T') {
 				check := ['R', 'U', 'E'];
-				for(i : check) {
+				each(i : check) {
 					if(Get(i + 1) <> check[i]) {
 						return false;
 					};
