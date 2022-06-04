@@ -828,7 +828,7 @@ bundle Data.JSON {
 		}
 
 		#~
-		Check for 'null' JSON value
+		Checks for 'null' JSON value
 		@return true if 'null', false otherwise
 		~#
 		method : public : IsNull() ~ Bool {
