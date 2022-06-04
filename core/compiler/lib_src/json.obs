@@ -1,6 +1,7 @@
 #~~
 # Json parsing library
-# Copyright (c) 2012,2021 Randy Hollines
+# Copyright (c) 2012,2021, 2022 Randy Hollines
+# Music: Hustler's Ambition
 ~~#
 
 use Collection.Generic;
