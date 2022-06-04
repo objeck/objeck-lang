@@ -3491,6 +3491,35 @@ bundle System {
 		}
 
 		#~
+		Parses the string into a boolean
+		@return boolean value
+		~#
+		method : public : ToBool() ~ Bool {
+			if(Get(0) = 't') {
+				check := ['r', 'u', 'e'];
+				for(i : check) {
+					if(Get(i + 1) <> check[i]) {
+						return false;
+					};
+				};
+				
+				return true;
+			}
+			else if(Get(0) = 'T') {
+				check := ['R', 'U', 'E'];
+				for(i : check) {
+					if(Get(i + 1) <> check[i]) {
+						return false;
+					};
+				};
+
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
 		Checks if the string starts with the given character
 		@param char character to compare
 		@return true if starts with character, false otherwise
