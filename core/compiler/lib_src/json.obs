@@ -896,12 +896,12 @@ bundle Data.JSON {
 		Gets the float value
 		@return float value
 		~#
-		method : public : GetBool() ~ Int {
+		method : public : GetBool() ~ Bool {
 			if(@value <> Nil) {
 				return @value->ToBool();
 			};
 			
-			return 0;
+			return false;
 		}
 		
 		#~
