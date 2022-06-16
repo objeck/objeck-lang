@@ -57,6 +57,8 @@ int main(int argc, char** argv)
 #else
   usage += L" (macOS x86_64)";
 #endif
+#elif _ARM64
+  usage += L" (Linux ARM64)";
 #elif _X64
   usage += L" (x86-64 Linux)";
 #elif _ARM32
