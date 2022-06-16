@@ -255,7 +255,7 @@ static bool BytesToCharacter(const string &in, wchar_t &out) {
   }
   
   if(buffer.size() != 1) {
-#ifdef _ARM64
+#ifdef _OSX
     std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cvt;
     buffer = cvt.from_bytes(in);
     if(buffer.size() != 1) {
