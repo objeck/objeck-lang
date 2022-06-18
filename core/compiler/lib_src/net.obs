@@ -1488,7 +1488,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return map of URLs and content
 		~#
-		function : Download(urls : Vector<String>, headers : Map<String, String>) ~ Map<String, String> {
+		function : Download(urls : Vector<String>, headers : Map<String, String>) ~ Vector<Pair<String, String>> {
 			group_size := 3;
 
 			downloaders := Downloader->New[urls->Size()];
@@ -1522,7 +1522,7 @@ bundle Web.HTTP {
 				results->Insert(downloader->GetUrl(), downloader->GetContent());
 			};
 
-			return results;
+			return results->GetKeyValues();
 		}
 	}
 
