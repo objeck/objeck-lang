@@ -1485,14 +1485,15 @@ bundle Web.HTTP {
 		#~
 		Downloads content for the given URLs
 		@param urls list of URLs to download content from
+		@param headers key/value headers
 		@return map of URLs and content
 		~#
-		function : Download(urls : Vector<String>) ~ Map<String, String> {
+		function : Download(urls : Vector<String>, headers : Map<String, String>) ~ Map<String, String> {
 			group_size := 3;
 
 			downloaders := Downloader->New[urls->Size()];
 			each(i : urls) {
-				downloaders[i] := Downloader->New(urls->Get(i));
+				downloaders[i] := Downloader->New(urls->Get(i), headers);
 			};
 
 			download_count := 0;
@@ -1505,13 +1506,14 @@ bundle Web.HTTP {
 				for(i := download_count; i < group_ending; i += 1;) {
 					downloader := downloaders[i];
 					downloader->Execute(Nil);
-					download_count += 1;
 				};
 
 				for(i := download_count; i < group_ending; i += 1;) {
 					downloader := downloaders[i];
 					downloader->Join();
 				};
+
+				download_count += group_ending;
 			};
 
 			results := Map->New()<String, String>;
@@ -1527,10 +1529,12 @@ bundle Web.HTTP {
 	class Downloader from System.Concurrency.Thread {
 		@url : String;
 		@content : String;
+		@headers : Map<String, String>;
 
-		New(url : String) {
+		New(url : String, headers : Map<String, String>) {
 			Parent();
 			@url := url;
+			@headers := headers;
 		}
 
 		method : public : GetUrl() ~ String {
@@ -1543,10 +1547,10 @@ bundle Web.HTTP {
 
 		method : public : Run(param : Base) ~ Nil {
 			if(@url->StartsWith("https://")) {
-				@content := HttpsClient->GetAll(@url);
+				@content := HttpsClient->GetAll(@url, @headers);
 			}
 			else if(@url->StartsWith("http://")) {
-				@content := HttpClient->GetAll(@url);		
+				@content := HttpClient->GetAll(@url, @headers);
 			};
 		}
 	}
