@@ -1,7 +1,7 @@
 #~
-Downloads web content
+Generic pair
 ~#
-class WebDownloader {
+class Pair<F : Compare, S> implements System.Compare  {
 	#~
 	Downloads content for the given URLs
 	@param urls list of URLs to download content from
