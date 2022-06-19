@@ -876,6 +876,7 @@ class ClassSnippet from Snippet {
 		start := ParseIdent();
 
 		if(MatchChar('<')) {
+"--- 0 ---"->PrintLine();			
 			start += "&lt;";
 			
 			mid := ParseIdent();
@@ -1238,9 +1239,11 @@ class FuncSnippet from Snippet {
 	method : ParseName() ~ String {
 		start := ParseIdent();
 
+		tick := 1;
 		if(MatchChar('<')) {
 			start += "&lt;";
 			mid := ParseIdent();
+						
 			while(mid->Size() > 0) {
 				start += mid;
 				if(MatchChar(':')) {
@@ -1249,6 +1252,14 @@ class FuncSnippet from Snippet {
 					if(mid->Size() > 0) {
 						start += mid;
 					};
+				}
+				else if(MatchChar('<')) {
+					start += "&lt;";
+ 					mid := ParseIdent();
+					if(mid->Size() > 0) {
+						start += mid;
+						tick += 1;
+					};
 				};
 				start += ',';
 				mid := ParseIdent();
@@ -1256,7 +1267,9 @@ class FuncSnippet from Snippet {
 			start->Pop();
 			NextChar();
 
-			start += "&gt;";
+			each(i : tick) {
+				start += "&gt;";
+			};
 		}
 		else if(MatchChar('>')) {
 			start += "&gt;";
