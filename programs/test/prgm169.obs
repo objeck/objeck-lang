@@ -1,1 +1,21 @@
-use;
+use Web.HTTP, Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		urls := Vector->New()<String>;
+		urls->AddBack("https://api.finitestate.io/v1/firmware/report?firmware_id=UHJvZHVjdEZpcm13YXJlTm9kZTpmN2E3ZGNjMC0yMTdhLTRmMmQtYjUzYi00YTc2M2Q4MzQxZGY%3D");
+		urls->AddBack("https://api.finitestate.io/v1/firmware/report?firmware_id=UHJvZHVjdEZpcm13YXJlTm9kZTo4MTc1MWY0Yi1jNmViLTRlZDUtOGNlOC0yNzQzM2Q2YWJjMTg%3D");
+		urls->AddBack("https://api.finitestate.io/v1/firmware/report?firmware_id=UHJvZHVjdEZpcm13YXJlTm9kZTpiMWRjOThkYy01MzNlLTRkZDMtODJlNS05YmQ3MTMyNDNlN2Y%3D");
+
+		headers := Map->New()<String, String>;
+		headers->Insert("Authorization", "Token abd345bb3684daa7ff7fde139859b1b3ab11fe14");
+		headers->Insert("accept", "application/json");
+		headers->Insert("Keep-Alive", "timeout=600");
+
+		download_data := WebDownloader->Download(urls, headers)<Pair<String, String>>;
+		each(i : download_data) {
+			download := download_data->Get(i);
+			System.IO.File.FileWriter->WriteFile("foo/foo_{$i}.json", download->GetSecond()->As(String));
+		};
+	}
+}

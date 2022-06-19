@@ -301,7 +301,8 @@ void Parser::ParseBundle(int depth)
   vector<wstring> uses;
   uses.push_back(L"System");
   uses.push_back(L"System.Introspection"); // always include the default system bundles
-  
+  const size_t initial_uses_size = uses.size();
+
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
 
@@ -315,6 +316,10 @@ void Parser::ParseBundle(int depth)
       if(Match(TOKEN_COMMA) && !Match(TOKEN_SEMI_COLON, SECOND_INDEX)) {
         NextToken();
       }
+    }
+
+    if(uses.size() == initial_uses_size) {
+      ProcessError(L"Expected 'use' arguments", TOKEN_SEMI_COLON);
     }
 
     if(!Match(TOKEN_SEMI_COLON)) {
