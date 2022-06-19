@@ -876,7 +876,6 @@ class ClassSnippet from Snippet {
 		start := ParseIdent();
 
 		if(MatchChar('<')) {
-"--- 0 ---"->PrintLine();			
 			start += "&lt;";
 			
 			mid := ParseIdent();
@@ -933,12 +932,8 @@ class ClassSnippet from Snippet {
 			if(@from_class->Size() = 0) {
 				return false;
 			};
-
-			if(MatchIdent("implements")) {
-				ParseInterfaces();
-			};
 		};
-
+		
 		if(ident->Equals("implements")) {
 			ParseInterfaces();
 		};
