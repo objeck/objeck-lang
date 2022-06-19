@@ -1,0 +1,14 @@
+#~
+Downloads web content
+~#
+class WebDownloader {
+	#~
+	Downloads content for the given URLs
+	@param urls list of URLs to download content from
+	@param headers key/value headers
+	@return map of URLs and content
+	~#
+	function : Download(urls : Vector<String>, headers : Map<String, Thread>) ~ Vector<Pair<String, Thread>> {
+		return Nil;
+	}
+}
