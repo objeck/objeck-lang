@@ -865,6 +865,7 @@ class ClassSnippet from Snippet {
 
 	method : ParseInterfaces() ~ Nil {
 		ident := ParseIdent();
+		
 		while(ident->Size() > 0) {
 			@implemented->AddBack(GetShortName(ident));
 			MatchChar(',');
@@ -934,6 +935,11 @@ class ClassSnippet from Snippet {
 			};
 		};
 		
+		if(@is_generic) {
+			NextChar();
+			ident := ParseIdent(); 
+		};
+
 		if(ident->Equals("implements")) {
 			ParseInterfaces();
 		};
