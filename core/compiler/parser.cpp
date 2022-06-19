@@ -301,17 +301,26 @@ void Parser::ParseBundle(int depth)
   vector<wstring> uses;
   uses.push_back(L"System");
   uses.push_back(L"System.Introspection"); // always include the default system bundles
+  
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
-    const wstring &ident = ParseBundleName();
-    uses.push_back(ident);
+
+    while(Match(TOKEN_IDENT)) {
+      const wstring ident = ParseBundleName();
+#ifdef _DEBUG
+      Debug(L"search: " + ident, depth);
+#endif
+      uses.push_back(ident);
+
+      if(Match(TOKEN_COMMA) && !Match(TOKEN_SEMI_COLON, SECOND_INDEX)) {
+        NextToken();
+      }
+    }
+
     if(!Match(TOKEN_SEMI_COLON)) {
       ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
     }
     NextToken();
-#ifdef _DEBUG
-    Debug(L"search: " + ident, depth);
-#endif
   }
 
   // parse file
