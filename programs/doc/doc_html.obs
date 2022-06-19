@@ -443,26 +443,61 @@ class HtmlMaker {
 		# procsss generics
 		generic_names := params_name->Split(",");
 		if(generic_names->Size() > 0) {
+			is_inner : Bool;
 			each(i : generic_names) {
 				name := generic_names[i];
-				GetLink(name, file_name);
-				file_name += ',';
+				inner_generic_names := name->Split("&lt;");
+				if(inner_generic_names->Size() > 0) {
+					is_inner := true;
+					each(j : inner_generic_names) {
+						inner_generic_name := inner_generic_names[j];
+						GetLink(inner_generic_name, file_name);
+						# TODO: fix for more nesting...
+						if(j = 0) {
+							file_name += "&lt;";
+						}
+						else {
+							file_name += ',';
+						};
+					};
+				}
+				else {
+					name := name->ReplaceAll("&gt;", "");
+					GetLink(name, file_name);
+					file_name += ',';
+				};
 			};
+
 			file_name->Pop();
+			if(is_inner) {
+				file_name += "&gt;";
+			};
 		}
 		else {
-			class_block := GetClassBlock(params_name);
-			if(class_block <> Nil) {
-				file_name += "<a href='";
-				file_name += class_block->GetBundleName()->ToLower();
-				file_name += '-';
-				file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
-				file_name += ".html' target='main'>";
-				file_name += params_name;
-				file_name += "</a>";				
+			# procsss generics
+			generic_names := params_name->Split("&lt;");
+			if(generic_names->Size() > 0) {
+				each(i : generic_names) {
+					name := generic_names[i];
+					GetLink(name, file_name);
+					file_name += ',';
+				};
+				file_name->Pop();
 			}
 			else {
-				file_name += params_name;
+				class_block := GetClassBlock(params_name);
+				if(class_block <> Nil) {
+					file_name += "<a href='";
+					file_name += class_block->GetBundleName()->ToLower();
+					file_name += '-';
+					file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+					file_name += ".html' target='main'>";
+					file_name += params_name;
+					file_name += "</a>";				
+				}
+				else {
+					file_name += params_name;
+				};
 			};
 		};
 	}
