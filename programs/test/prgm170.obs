@@ -1,14 +1,17 @@
-#~
-Generic pair
-~#
-class Pair<F : Compare, S> implements System.Compare  {
-	#~
-	Downloads content for the given URLs
-	@param urls list of URLs to download content from
-	@param headers key/value headers
-	@return map of URLs and content
-	~#
-	function : Download(urls : Vector<String>, headers : Map<String, Thread>) ~ Vector<Pair<String, Thread>> {
-		return Nil;
+use Data.JSON, System.IO.File;
+
+class JsonText  {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			doc := FileReader->ReadFile(args[0]);
+			parser := JsonParser->New(doc);
+			if(parser->Parse()) {
+				"Parsed."->PrintLine();
+				parser->GetRoot()->FindElements("productFirmware/id")->ToString()->PrintLine();
+			}
+			else {
+				"Unable to parse"->PrintLine();
+			};
+		};
 	}
 }
