@@ -5524,6 +5524,22 @@ bundle System.IO {
 		}
 
 		#~
+		Flushed the STDOUT buffer
+		@return I/O console instance
+		~#
+		function : Flush() ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Flush();
+		}
+		
+		#~
+		Flushed the STDERR buffer
+		@return I/O console instance
+		~#
+		function : FlushError() ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->FlushError();
+		}
+
+		#~
 		Writes an error value
 		@param b value
 		@return I/O console instance
