@@ -5372,7 +5372,7 @@ bundle System.IO {
 			STD_ERR_BYTE_ARY;
 		}
 
-        	function : ErrorFlush() ~ Nil {
+        function : ErrorFlush() ~ Nil {
 			STD_ERR_FLUSH;
 		}
 		
@@ -5822,6 +5822,11 @@ bundle System.IO {
 			"\r\n"->Print();
 			return @console;
 		}
+
+		method : public : Flush() ~ ConsoleIO {
+			System.IO.Standard->Flush();
+			return @console;
+		}
 		
 		method : public : Error(b : Bool) ~ ConsoleIO {
 			b->Error();
@@ -5894,7 +5899,12 @@ bundle System.IO {
 		}
 
 		method : public : ErrorLine() ~ ConsoleIO {
-			'\n'->ErrorLine();
+			"\r\n"->ErrorLine();
+			return @console;
+		}
+
+		method : public : ErrorFlush() ~ ConsoleIO {
+			System.IO.Standard->ErrorFlush();
 			return @console;
 		}
 	}

@@ -3,15 +3,40 @@ use Data.JSON, System.IO.File;
 class JsonText  {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			doc := FileReader->ReadFile(args[0]);
-			parser := JsonParser->New(doc);
-			if(parser->Parse()) {
-				"Parsed."->PrintLine();
-				parser->GetRoot()->FindElements("productFirmware/id")->ToString()->PrintLine();
-			}
-			else {
-				"Unable to parse"->PrintLine();
+			file_out := FileWriter->New("out.csv");
+			file_out->WriteString("cred_score,crypto_score,cves_score,product_name,create_date_str\r\n");
+
+			path := args[0];
+			file_names := Directory->List(args[0]);
+			each(i : file_names) {
+				file_path := String->New(path);
+				file_path += '/';
+				file_path += file_names[i];
+
+				if(file_path->EndsWith(".json")) {
+					doc := FileReader->ReadFile(file_path);
+					parser := JsonParser->New(doc);
+
+					System.IO.Standard->Print('.')->Flush();
+					
+					if(parser->Parse()) {
+						cred_score := parser->GetRoot()->FindElements("productFirmware/riskPercentilesV2/credentials");
+						crypto_score := parser->GetRoot()->FindElements("productFirmware/riskPercentilesV2/cryptoMaterials");
+						cves_score := parser->GetRoot()->FindElements("productFirmware/riskPercentilesV2/cves");
+
+						product_name := parser->GetRoot()->FindElements("productFirmware/product/name")->GetString();
+						create_date_str := parser->GetRoot()->FindElements("productFirmware/createdAt")->GetString();
+						create_date_str := create_date_str->SubString(create_date_str->Find('T'));
+
+						file_out->WriteString("{$cred_score},{$crypto_score},{$cves_score},{$product_name},{$create_date_str}\r\n");
+					}
+					else {
+						"Unable to parse"->PrintLine();
+					};
+				};
 			};
+
+			file_out->Close();
 		};
 	}
 }
