@@ -15,10 +15,10 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <!--[if gte mso 9]><xml>
  <w:WordDocument>
   <w:View>Print</w:View>
-  <w:DontDisplayPageBoundaries/>
+  <w:Zoom>150</w:Zoom>
   <w:SpellingState>Clean</w:SpellingState>
   <w:GrammarState>Clean</w:GrammarState>
-  <w:TrackMoves>false</w:TrackMoves>
+  <w:TrackMoves/>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
   <w:SaveIfXMLInvalid>false</w:SaveIfXMLInvalid>
@@ -635,10 +635,10 @@ xmlns="http://www.w3.org/TR/REC-html40">
  @font-face
 	{font-family:Wingdings;
 	panose-1:5 0 0 0 0 0 0 0 0 0;
-	mso-font-charset:2;
-	mso-generic-font-family:auto;
+	mso-font-charset:77;
+	mso-generic-font-family:decorative;
 	mso-font-pitch:variable;
-	mso-font-signature:0 268435456 0 0 -2147483648 0;}
+	mso-font-signature:3 0 0 0 -2147483647 0;}
 @font-face
 	{font-family:"Cambria Math";
 	panose-1:2 4 5 3 5 4 6 3 2 4;
@@ -652,7 +652,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
 	mso-font-charset:0;
 	mso-generic-font-family:swiss;
 	mso-font-pitch:variable;
-	mso-font-signature:-469750017 -1073732485 9 0 511 0;}
+	mso-font-signature:-536859905 -1073732485 9 0 511 0;}
 @font-face
 	{font-family:"Century Gothic";
 	panose-1:2 11 5 2 2 2 2 2 2 4;
@@ -1331,17 +1331,26 @@ minor-latin'>Highlights:<o:p></o:p></span></p>
 mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added the ‘<span class=SpellE>WebDownloader</span>’ class to simultaneous
-downloading<o:p></o:p></span></p>
+minor-latin'>JSON parsing is over 33% faster (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Added the ‘<span class=SpellE>WebDownloader</span>’ class to
+simultaneous downloading<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
+minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
+style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Extended the ‘use’ statement to support a list of arguments<o:p></o:p></span></p>
@@ -1440,10 +1449,11 @@ launcher<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>The Windows Launcher is a convenient way to run programs and
-access documentation. On Windows, configuration information is stored in the “%<span
-class=SpellE>ProgramData</span>%\Objeck” directory and built the first time the
-app runs. If you move the install location, delete the “%<span class=SpellE>programdata</span>%\Objeck”
+minor-latin'>The Windows Launcher is a convenient way to run programs and access
+documentation. On Windows, configuration information is stored in the “%<span
+class=SpellE>ProgramData</span>%\<span class=SpellE>Objeck</span>” directory
+and built the first time the app runs. If you move the install location, delete
+the “%<span class=SpellE>programdata</span>%\<span class=SpellE>Objeck</span>”
 directory and rerun the launcher.&nbsp;<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
@@ -1562,9 +1572,10 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&n
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>obc</span></span><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'> -<span class=SpellE>src</span> 'C:\Program Files\Objeck\<span
-class=SpellE>objeck</span>-lang\examples\<span class=SpellE>encrypt.obs</span>'
--lib encrypt -<span class=SpellE>dest</span> <span class=SpellE>myprgm.obe</span><o:p></o:p></span></p>
+minor-latin'> -<span class=SpellE>src</span> 'C:\Program Files\<span
+class=SpellE>Objeck</span>\<span class=SpellE>objeck</span>-lang\examples\<span
+class=SpellE>encrypt.obs</span>' -lib encrypt -<span class=SpellE>dest</span> <span
+class=SpellE>myprgm.obe</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
@@ -1658,7 +1669,7 @@ macOS:<o:p></o:p></span></p>
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Apple Silicon
 (arm64)<o:p></o:p></span></p>
@@ -1698,7 +1709,7 @@ Windows and Linux):<o:p></o:p></span></p>
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
@@ -1713,7 +1724,7 @@ class=SpellE>subjectAltName</span>=DNS:<span class=GramE>localhost,DNS</span>:ww
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
@@ -1725,7 +1736,7 @@ local.crt -out <span class=SpellE>cert.pem</span><o:p></o:p></span></p>
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>openssl</span></span><span
@@ -1738,7 +1749,7 @@ class=SpellE>local.encrypted.key</span><o:p></o:p></span></p>
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>mv <span class=SpellE>local.encrypted.key</span> <span
@@ -1748,7 +1759,7 @@ class=SpellE>cert.key</span><o:p></o:p></span></p>
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>rm local.crt <span class=SpellE>local.key</span><o:p></o:p></span></p>
@@ -1757,7 +1768,7 @@ minor-latin'>rm local.crt <span class=SpellE>local.key</span><o:p></o:p></span><
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span class=SpellE><span style='font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>chmod</span></span><span
@@ -1769,7 +1780,7 @@ class=SpellE>cert.key</span><o:p></o:p></span></p>
 mso-list:l6 level1 lfo4'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>7.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>7.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Import ‘<span class=SpellE>cert.pem</span>’ into the host OS<o:p></o:p></span></p>
@@ -1796,7 +1807,7 @@ and the source can be fetched using the following command GIT command:<o:p></o:p
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l1 level1 lfo5'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>git clone https://github.com/objeck/objeck-lang.git<o:p></o:p></span></p>
@@ -1812,12 +1823,12 @@ font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-fo
 <p class=MsoListParagraph style='margin-top:0in;margin-right:0in;margin-bottom:
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l5 level1 lfo6'><![if !supportLists]><span
 style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:
-Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>The software was developed under the <a
-href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>.
-Supporting software licenses can be found <a
+href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>. Supporting
+software licenses can be found <a
 href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">here</a>.<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:12.0pt;line-height:105%;
@@ -1833,13 +1844,13 @@ bugs and limitations<o:p></o:p></span></h2>
 0in;margin-left:.75in;text-indent:-.25in;mso-list:l2 level1 lfo7'><![if !supportLists]><span
 style='font-size:8.5pt;line-height:105%;font-family:Symbol;mso-fareast-font-family:
 Symbol;mso-bidi-font-family:Symbol;color:#212529'><span style='mso-list:Ignore'>·<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
+style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Apple Silicon
+SDL2 support is currently linked against homebrew libraries </span><span
+style='font-size:8.5pt;line-height:105%;font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Apple Silicon SDL2 support is currently linked against homebrew
-libraries </span><span style='font-size:8.5pt;line-height:105%;font-family:
-"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin;color:#212529;background:white'><o:p></o:p></span></p>
+minor-latin;color:#212529;background:white'><o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-size:8.5pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
