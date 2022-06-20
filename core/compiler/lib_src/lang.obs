@@ -5372,14 +5372,6 @@ bundle System.IO {
 			STD_ERR_BYTE_ARY;
 		}
 
-        function : ErrorFlush() ~ Nil {
-			STD_ERR_FLUSH;
-		}
-		
-		function : Flush() ~ Nil {
-			STD_FLUSH;
-		}
-
         #~
 		Reads a string from STDIN
 		@return string read
@@ -5524,15 +5516,15 @@ bundle System.IO {
 		}
 
 		#~
-		Flushed the STDOUT buffer
+		Flushes the STDOUT buffer
 		@return I/O console instance
 		~#
 		function : Flush() ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Flush();
 		}
-		
+
 		#~
-		Flushed the STDERR buffer
+		Flushes the STDERR buffer
 		@return I/O console instance
 		~#
 		function : FlushError() ~ ConsoleIO {
@@ -5840,7 +5832,7 @@ bundle System.IO {
 		}
 
 		method : public : Flush() ~ ConsoleIO {
-			System.IO.Standard->Flush();
+			STD_FLUSH;
 			return @console;
 		}
 		
@@ -5918,9 +5910,9 @@ bundle System.IO {
 			"\r\n"->ErrorLine();
 			return @console;
 		}
-
+		
 		method : public : ErrorFlush() ~ ConsoleIO {
-			System.IO.Standard->ErrorFlush();
+			STD_ERR_FLUSH;
 			return @console;
 		}
 	}
