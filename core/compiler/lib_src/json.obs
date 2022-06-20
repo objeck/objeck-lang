@@ -266,10 +266,15 @@ bundle Data.JSON {
 	Support for Json parsing
 	~#
 	class JsonParser {
-		@input : String;
-		@tokens : Vector<Token>;
-		@token_pos : Int;
+		@input : Char[];
+		@input_index : Int;
+
+		@tokens : Token[];
 		@cur_token : Token;
+		@token_read_pos : Int;
+		@token_write_pos : Int;
+		@tokens_max : Int;
+
 		@root : JsonElement;
 		@error_msg : String;
 		
@@ -278,21 +283,11 @@ bundle Data.JSON {
 		@param input Json input string
 		~#
 		New(input : String) {
-			@input := input;
-			@tokens : Nil;
-			@token_pos := 0;
-		}
+			@input := input->Trim()->ToCharArray();
+			@input_index := 0;
 
-		method : GetToken(pos : Int) ~ Token {
-			if(pos < @tokens->Size()) {
-				return @tokens->Get(pos)->As(Token);
-			};
-			
-			return Token->New(Token->Type->EOS);
-		}
-		
-		method : Match(token : Token->Type) ~ Bool {
-			return @cur_token->GetType() = token;
+			@tokens_max := 32;
+			@tokens := Token->New[@tokens_max];
 		}
 
 		#~
@@ -314,10 +309,9 @@ bundle Data.JSON {
 		@return true is successful, false otherwise
 		~#
 		method : public : Parse() ~ Bool {
-			@tokens := Scan();
-			if(@tokens->Size() > 0) {
+			NextToken();
+			if(@cur_token->GetType() <> Token->Type->OTHER) {
 # DumpTokens(@tokens);
-				NextToken();
 				@root := ParseValue();
 				return @root <> Nil;
 			};
@@ -339,16 +333,6 @@ bundle Data.JSON {
 		~#
 		method : public : GetRoot() ~ JsonElement {
 			return @root;
-		}
-		
-		method : NextToken() ~ Nil {
-			if(@token_pos < @tokens->Size()) {
-				@cur_token := @tokens->Get(@token_pos)->As(Token);
-				@token_pos += 1;
-			}
-			else {
-				@cur_token := Token->New(Token->Type->EOS);
-			};
 		}
 		
 		method : ParseValue() ~ JsonElement {
@@ -485,164 +469,185 @@ bundle Data.JSON {
 			return JsonElement->New(elements);
 		}
 
-		# scan Json tokens
-		method : native : Scan() ~ Vector<Token> {
-			tokens := Vector->New()<Token>;
-			
+		method : Match(token : Token->Type) ~ Bool {
+			return @cur_token->GetType() = token;
+		}
+
+		method : AddToken(token : Token) ~ Nil {
+	 		@tokens[@token_write_pos++] := token;
+	 	}
+
+	 	method : NextToken() ~ Nil {
+	 		if(@cur_token = Nil | @token_read_pos >= @tokens_max) {
+				Scan();
+	 		}
+	 		else {
+	 			@cur_token := @tokens[@token_read_pos++];
+	 		};
+		}
+
+		method : native : Scan() ~ Nil {			
 			if(@input <> Nil) {
-				input := @input->Trim()->ToCharArray();
-				index := 0;
+				
+
 				# TODO: add-in line numbers
-				while(index < input->Size()) {
-					# skip whitespace
-					if(index < input->Size()) {
-						char := input[index];
-						while(index < input->Size() & (char = '\r' | char = '\n' | char = '\t' | char = ' ' | char = '\f' | char = '\v')) {
-							char := input[++index];
-						};
-					};
-					# comment
-					if(index + 1 < input->Size() & input[index] = '/' & input[index + 1] = '/') {
-						index += 2;
-						while(index < input->Size() & (input[index] <> '\r' & input[index] <> '\n')) {
-							# update
-							index += 1;
-						};
-					}
-					# token
-					else {
-						# parse string
-						if(index < input->Size() & (input[index] = '"' | input[index]->IsChar())) {
-							len : Int; offset : Int;
-							if(input[index] = '"') {
-								index += 1;
-								offset := index;
-								end := false;
-								escape := false;
-								while(index < input->Size() & end = false) {
-									if(input[index] = '"' & escape = false) {
-										# done
-										end := true;
-									}
-									else if(input[index] = '\\') {
-										escape := true;
-										# update
-										index += 1;
-									}
-									else {
-										escape := false;
-										# update
-										index += 1;
-									};
-								};
-								len := index - offset;
-								# update
-								index += 1;
-							}
-							else {				
-								offset := index;
-								while(index < input->Size() & (input[index]->IsChar() | input[index] = '_')) {
-									# update
-									index += 1;
-								};
-								len := index - offset;
+				
+				@token_read_pos := @token_write_pos := 0;
+
+				while(@token_write_pos < @tokens_max) {
+					if(@input_index < @input->Size()) {
+						# skip whitespace
+						if(@input_index < @input->Size()) {
+							char := @input[@input_index];
+							while(@input_index < @input->Size() & (char = '\r' | char = '\n' | char = '\t' | char = ' ' | char = '\f' | char = '\v')) {
+								char := @input[++@input_index];
 							};
-							
-							if(len > 0) {
-								string := @input->SubString(offset, len);								
-								if(string->Equals("true")) {
-									tokens->AddBack(Token->New(Token->Type->TRUE));
-								}
-								else if(string->Equals("false")) {
-									tokens->AddBack(Token->New(Token->Type->FALSE));
-								}
-								else if(string->Equals("null")) {
-									tokens->AddBack(Token->New(Token->Type->NULL));
-								}
-								else {							
-									tokens->AddBack(Token->New(Token->Type->IDENT, string));
-								};
-							}
-							else {
-								tokens->AddBack(Token->New(Token->Type->IDENT, ""));
+						};
+						# comment
+						if(@input_index + 1 < @input->Size() & @input[@input_index] = '/' & @input[@input_index + 1] = '/') {
+							@input_index += 2;
+							while(@input_index < @input->Size() & (@input[@input_index] <> '\r' & @input[@input_index] <> '\n')) {
+								# update
+								@input_index += 1;
 							};
 						}
-						# parse number
-						else if(index < input->Size() & (input[index]->IsDigit() | input[index] = '-' | input[index] = '.')) {
-							offset := index;
-							minus_count := 0;
-							dot_count := 0;
-
-							# TODO: e digits
-							while(index < input->Size() & 
-								(input[index]->IsDigit() | input[index] = '-' | input[index] = '.' | input[index] = 'e' | input[index] = 'E')) {
-								if(input[index] = '-') {
-									minus_count += 1;
+						# token
+						else {
+							# parse string
+							if(@input_index < @input->Size() & (@input[@input_index] = '"' | @input[@input_index]->IsChar())) {
+								len : Int; offset : Int;
+								if(@input[@input_index] = '"') {
+									@input_index += 1;
+									offset := @input_index;
+									end := false;
+									escape := false;
+									while(@input_index < @input->Size() & end = false) {
+										if(@input[@input_index] = '"' & escape = false) {
+											# done
+											end := true;
+										}
+										else if(@input[@input_index] = '\\') {
+											escape := true;
+											# update
+											@input_index += 1;
+										}
+										else {
+											escape := false;
+											# update
+											@input_index += 1;
+										};
+									};
+									len := @input_index - offset;
+									# update
+									@input_index += 1;
 								}
-								else if(input[index] = '.') {
-									dot_count += 1;
+								else {				
+									offset := @input_index;
+									while(@input_index < @input->Size() & (@input[@input_index]->IsChar() | @input[@input_index] = '_')) {
+										# update
+										@input_index += 1;
+									};
+									len := @input_index - offset;
 								};
-								# update
-								index += 1;
-							};
-							len := index - offset;
-
-							if(len > 0) {
-								string := @input->SubString(offset, len);
-								if(dot_count = 1 & minus_count < 2) {
-									tokens->AddBack(Token->New(Token->Type->FLOAT_NUM, string));
-								}
-								else if(dot_count = 0 & minus_count < 2) {
-									tokens->AddBack(Token->New(Token->Type->INT_NUM, string));
+								
+								if(len > 0) {
+									string := String->New(@input, offset, len);								
+									if(string->Equals("true")) {
+										AddToken(Token->New(Token->Type->TRUE));
+									}
+									else if(string->Equals("false")) {
+										AddToken(Token->New(Token->Type->FALSE));
+									}
+									else if(string->Equals("null")) {
+										AddToken(Token->New(Token->Type->NULL));
+									}
+									else {							
+										AddToken(Token->New(Token->Type->IDENT, string));
+									};
 								}
 								else {
-									tokens->AddBack(Token->New(Token->Type->BAD_NUM, string));
+									AddToken(Token->New(Token->Type->IDENT, ""));
 								};
 							}
-							else {
-								tokens->AddBack(Token->New(Token->Type->BAD_NUM, ""));
-							};
-						}
-						# parse character
-						else if(index < input->Size()) {
-							select(input[index]) {
-								label '[': {
-									tokens->AddBack(Token->New(Token->Type->OBR));
-								}
-		
-								label ']': {
-									tokens->AddBack(Token->New(Token->Type->CBR));
-								}
+							# parse number
+							else if(@input_index < @input->Size() & (@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '.')) {
+								offset := @input_index;
+								minus_@token_count := 0;
+								dot_@token_count := 0;
 
-								label '{': {
-									tokens->AddBack(Token->New(Token->Type->OCBR));
-								}
-		
-								label '}': {
-									tokens->AddBack(Token->New(Token->Type->CCBR));
-								}
+								# TODO: e digits
+								while(@input_index < @input->Size() & 
+									(@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '.' | @input[@input_index] = 'e' | @input[@input_index] = 'E')) {
+									if(@input[@input_index] = '-') {
+										minus_@token_count += 1;
+									}
+									else if(@input[@input_index] = '.') {
+										dot_@token_count += 1;
+									};
+									# update
+									@input_index += 1;
+								};
+								len := @input_index - offset;
 
-								label ',': {
-									tokens->AddBack(Token->New(Token->Type->COMMA));
+								if(len > 0) {
+									string := String->New(@input, offset, len);
+									if(dot_@token_count = 1 & minus_@token_count < 2) {
+										AddToken(Token->New(Token->Type->FLOAT_NUM, string));
+									}
+									else if(dot_@token_count = 0 & minus_@token_count < 2) {
+										AddToken(Token->New(Token->Type->INT_NUM, string));
+									}
+									else {
+										AddToken(Token->New(Token->Type->BAD_NUM, string));
+									};
 								}
-
-								label ':': {
-									tokens->AddBack(Token->New(Token->Type->COLON));
-								}
-
-								other: {
-									tokens->AddBack(Token->New(Token->Type->OTHER));
-# IO.Standard->Print("other 1=")->PrintLine(input[index]->As(Int));
-								}
-							};
-							# update
-							index += 1;
-						};
-					};
-				};
-			};
+								else {
+									AddToken(Token->New(Token->Type->BAD_NUM, ""));
+								};
+							}
+							# parse character
+							else if(@input_index < @input->Size()) {
+								select(@input[@input_index]) {
+									label '[': {
+										AddToken(Token->New(Token->Type->OBR));
+									}
 			
-			return tokens;
+									label ']': {
+										AddToken(Token->New(Token->Type->CBR));
+									}
+
+									label '{': {
+										AddToken(Token->New(Token->Type->OCBR));
+									}
+			
+									label '}': {
+										AddToken(Token->New(Token->Type->CCBR));
+									}
+
+									label ',': {
+										AddToken(Token->New(Token->Type->COMMA));
+									}
+
+									label ':': {
+										AddToken(Token->New(Token->Type->COLON));
+									}
+
+									other: {
+										AddToken(Token->New(Token->Type->OTHER));
+									}
+								};
+								# update
+								@input_index += 1;
+							};
+						};	
+					}
+					else {
+						AddToken(Token->New(Token->Type->OTHER));
+					};				
+				};
+
+				@cur_token := @tokens[@token_read_pos++];
+			};
 	 	}
 
 		method : DumpTokens(tokens : Vector<Token>) ~ Nil {
