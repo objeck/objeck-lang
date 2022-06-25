@@ -4062,7 +4062,10 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   // get last expression for assignment
   Expression* expression = assignment->GetExpression();
   if(expression) {
-    AnalyzeExpression(expression, depth + 1);
+    if(!AnalyzeStringConcat(expression, depth + 1)) {
+      AnalyzeExpression(expression, depth + 1);
+    }
+    
     if(expression->GetExpressionType() == LAMBDA_EXPR) {
       expression = static_cast<Lambda*>(expression)->GetMethodCall();
       if(!expression) {
@@ -7091,6 +7094,38 @@ void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const wstring& ite
   else {
     ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
   }
+}
+
+bool ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int depth) {
+  if(expression->GetExpressionType() == ADD_EXPR) {
+    list<Expression*> concat_exprs;
+
+    Expression* calc_expr = expression;
+    concat_exprs.push_front(static_cast<CalculatedExpression*>(expression)->GetRight());
+    Expression* calc_left_expr = static_cast<CalculatedExpression*>(expression)->GetLeft();
+
+    while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR) {
+      calc_expr = calc_left_expr;
+      concat_exprs.push_front(static_cast<CalculatedExpression*>(calc_left_expr)->GetRight());
+      calc_left_expr = static_cast<CalculatedExpression*>(calc_left_expr)->GetLeft();
+    }
+
+    if(calc_left_expr) {
+      Type* calc_left_type = GetExpressionType(calc_left_expr, depth + 1);
+      if(calc_left_type && calc_left_type->GetName() == L"System.String") {
+        concat_exprs.push_front(calc_left_expr);
+
+        std::list<Expression*>::iterator iter;
+        for(iter = concat_exprs.begin(); iter != concat_exprs.end(); iter++) {
+          AnalyzeExpression(*iter, depth + 1);
+        }
+
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth)
