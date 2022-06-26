@@ -8562,7 +8562,6 @@ bool ContextAnalyzer::LocateExpression(Class* klass, const int line_num, const i
   return false;
 }
 
-
 #endif
 //
 // END: diagnostics operations
