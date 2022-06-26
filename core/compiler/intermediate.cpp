@@ -3219,7 +3219,120 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
  ****************************/
 void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
 {
+  // create 'System.String' instance
+  SymbolEntry* concat_entry = str_concat->GetConcat();
+  if(is_lib) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, L"System.String"));
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
+  }
+
+  // note: method ID is position dependent
+  if(is_lib) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, L"System.String", L"System.String:New:"));
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 0L, 0L));
+  }
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, concat_entry->GetId(), LOCL));
+
+  // append expression
   list<Expression*> concat_exprs = str_concat->GetExpressions();
+  std::list<Expression*>::iterator iter;
+  for(iter = concat_exprs.begin(); iter != concat_exprs.end(); iter++) {
+    Expression* concat_expr = *iter;
+    EmitExpression(concat_expr);
+
+    switch(concat_expr->GetEvalType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:l,"));
+      }
+      else {
+        LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
+#ifdef _DEBUG
+        assert(string_append_method);
+#endif
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+          (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
+      break;
+
+    case frontend::BYTE_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:b,"));
+      }
+      else {
+        LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
+#ifdef _DEBUG
+        assert(string_append_method);
+#endif
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+          (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
+      break;
+
+    case frontend::CHAR_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:c,"));
+      }
+      else {
+        LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
+#ifdef _DEBUG
+        assert(string_append_method);
+#endif
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+          (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
+      break;
+
+    case frontend::INT_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,
+        concat_entry->GetId(), LOCL));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0,
+          L"System.String", L"System.String:Append:i,"));
+      }
+      else {
+        LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
+#ifdef _DEBUG
+        assert(string_append_method);
+#endif
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
+          (INT_VALUE)string_cls->GetId(),
+          string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
+      break;
+
+    case frontend::CLASS_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:o.System.String,"));
+      }
+      else {
+        LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+#ifdef _DEBUG
+        assert(string_append_method);
+#endif
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
+          (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
+      break;
+
+      // TOOD: MORE
+    }
+  }
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
 }
 
 /****************************
