@@ -5835,6 +5835,11 @@ bundle System.IO {
 			STD_FLUSH;
 			return @console;
 		}
+
+		method : public : FlushError() ~ ConsoleIO {
+			STD_ERR_FLUSH;
+			return @console;
+		}
 		
 		method : public : Error(b : Bool) ~ ConsoleIO {
 			b->Error();
