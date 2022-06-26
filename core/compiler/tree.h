@@ -876,9 +876,12 @@ namespace frontend {
   class StringConcat : public Expression {
     friend class TreeFactory;
     list<Expression*> concat_exprs;
+    SymbolEntry* concat;
 
     StringConcat(list<Expression*> exprs) : Expression(L"", -1, -1) {
       concat_exprs = exprs;
+      concat = nullptr;
+
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String"), true);
     }
 
@@ -892,6 +895,14 @@ namespace frontend {
 
     list<Expression*> GetExpressions() {
       return concat_exprs;
+    }
+
+    void SetConcat(SymbolEntry* c) {
+      concat = c;
+    }
+
+    SymbolEntry* GetConcat() {
+      return concat;
     }
   };
   
