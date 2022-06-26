@@ -7103,12 +7103,11 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
   if(expression->GetExpressionType() == ADD_EXPR) {
     list<Expression*> concat_exprs;
 
-    Expression* calc_expr = expression;
     concat_exprs.push_front(static_cast<CalculatedExpression*>(expression)->GetRight());
     Expression* calc_left_expr = static_cast<CalculatedExpression*>(expression)->GetLeft();
 
     while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR) {
-      calc_expr = calc_left_expr;
+      Expression* calc_expr = calc_left_expr;
       concat_exprs.push_front(static_cast<CalculatedExpression*>(calc_left_expr)->GetRight());
       calc_left_expr = static_cast<CalculatedExpression*>(calc_left_expr)->GetLeft();
     }
