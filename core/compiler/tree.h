@@ -877,9 +877,13 @@ namespace frontend {
     friend class TreeFactory;
     list<Expression*> concat_exprs;
     SymbolEntry* concat;
-
-    StringConcat(list<Expression*> exprs) : Expression(L"", -1, -1) {
-      concat_exprs = exprs;
+    unordered_map<Expression*, Method*> method_to_string;
+    unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
+    
+    StringConcat(list<Expression*> e, unordered_map<Expression*, Method*> ms, unordered_map<Expression*, LibraryMethod*> ls) : Expression(L"", -1, -1) {
+      concat_exprs = e;
+      method_to_string = ms;
+      lib_method_to_string = ls;
       concat = nullptr;
 
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String"), true);
@@ -3152,8 +3156,8 @@ namespace frontend {
       return tmp;
     }
 
-    StringConcat* MakeStringConcat(list<Expression*> exprs) {
-      StringConcat* tmp = new StringConcat(exprs);
+    StringConcat* MakeStringConcat(list<Expression*> e, unordered_map<Expression*, Method*> ms, unordered_map<Expression*, LibraryMethod*> ls) {
+      StringConcat* tmp = new StringConcat(e, ms, ls);
       expressions.push_back(tmp);
       return tmp;
     }

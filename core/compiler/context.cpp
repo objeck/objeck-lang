@@ -7118,12 +7118,12 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
 
+        unordered_map<Expression*, Method*> method_to_string;
+        unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
+
         for(list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
           Expression* concat_expr = *iter;
           AnalyzeExpression(concat_expr, depth + 1);
-
-          unordered_map<Expression*, Method*> method_to_string;
-          unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
 
           if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
             const wstring cls_name = concat_expr->GetEvalType()->GetName();
@@ -7159,7 +7159,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
         }
 
         // create temporary variable for concat of strings and variables
-        StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs);
+        StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs, method_to_string, lib_method_to_string);
         Type * type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
         const wstring scope_name = current_method->GetName() + L":#_concat_#";
         SymbolEntry* entry = current_table->GetEntry(scope_name);
