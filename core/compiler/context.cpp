@@ -7188,9 +7188,7 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
     if(!entry->GetType() || entry->GetType()->GetDimension() > 0) {
       ProcessError(char_str, L"Invalid function variable type or dimension size");
     }
-    else if(entry->GetType()->GetType() == CLASS_TYPE &&
-            entry->GetType()->GetName() != L"System.String" &&
-            entry->GetType()->GetName() != L"String") {
+    else if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetName() != L"System.String" && entry->GetType()->GetName() != L"String") {
       const wstring cls_name = entry->GetType()->GetName();
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
