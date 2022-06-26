@@ -7119,8 +7119,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
 
-        std::list<Expression*>::iterator iter;
-        for(iter = concat_exprs.begin(); iter != concat_exprs.end(); iter++) {
+        for(list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
           AnalyzeExpression(*iter, depth + 1);
         }
 
