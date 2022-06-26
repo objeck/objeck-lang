@@ -4062,7 +4062,12 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   // get last expression for assignment
   Expression* expression = assignment->GetExpression();
   if(expression) {
-    if(!AnalyzeStringConcat(expression, depth + 1)) {
+    StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
+    if(str_concat) {
+      assignment->SetExpression(expression);
+      expression = str_concat;
+    }
+    else {
       AnalyzeExpression(expression, depth + 1);
     }
     
@@ -7096,7 +7101,7 @@ void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const wstring& ite
   }
 }
 
-bool ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int depth) {
+StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int depth) {
   if(expression->GetExpressionType() == ADD_EXPR) {
     list<Expression*> concat_exprs;
 
@@ -7120,12 +7125,12 @@ bool ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int depth) {
           AnalyzeExpression(*iter, depth + 1);
         }
 
-        return true;
+        return TreeFactory::Instance()->MakeStringConcat(concat_exprs);
       }
     }
   }
 
-  return false;
+  return nullptr;
 }
 
 void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth)
