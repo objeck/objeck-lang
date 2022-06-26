@@ -2675,55 +2675,45 @@ bundle System {
 		#~
 		Appends a boolean value
 		@param flag boolean value
-		@return this string
 		~#
-		method : public : Append(flag : Bool) ~ String {
+		method : public : Append(flag : Bool) ~ Nil {
 			if(flag) {
 				Append("true"->ToCharArray());
 			}
 			else {
 				Append("false"->ToCharArray());
 			};
-
-			return @self;
 		}
 
 		#~
 		Appends a integer value
 		@param i integer value
-		@return this string
 		~#
-		method : public : Append(i : Int) ~ String {
+		method : public : Append(i : Int) ~ Nil {
 			Append(i->ToString()->ToCharArray());
-			return @self;
 		}
 
 		#~
 		Appends a float value
 		@param f float value
-		@return this string
 		~#
-		method : public : Append(f : Float) ~ String {
+		method : public : Append(f : Float) ~ Nil {
 			Append(f->ToString()->ToCharArray());
-			return @self;
 		}
 
 		#~
 		Appends a string
 		@param str string object
-		@return this string
 		~#
-		method : public : Append(str : String) ~ String {
+		method : public : Append(str : String) ~ Nil {
 			Append(str->ToCharArray());
-			return @self;
 		}
 		
 		#~
 		Appends a character array
 		@param array character array
-		@return this string
 		~#
-		method : public : Append(array : Char[]) ~ String {
+		method : public : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				@max += @max << 1 + array->Size();
 				temp := Char->New[@max];
@@ -2743,8 +2733,6 @@ bundle System {
 					@pos += 1;
 				};
 			};
-
-			return @self;
 		}
 
 		#~
@@ -2752,11 +2740,10 @@ bundle System {
 		@param array array to be copied
 		@param offset offset array index offset
 		@param length number of characters to copy
-		@return this string
 		~#
-		method : public : native : Append(array : Char[], offset : Int, length : Int) ~ String {
+		method : public : native : Append(array : Char[], offset : Int, length : Int) ~ Nil {
 			if(offset < 0) {
-				return @self;
+				return;
 			};
 			
 			if(@pos + length >= @max) {
@@ -2771,16 +2758,13 @@ bundle System {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
-
-			return @self;
 		}
 		
 		#~
 		Appends a character array
 		@param array array to be copied
-		@return this string
 		~#
-		method : public : native : Append(array : Byte[]) ~ String {
+		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				@max += @max << 1 + array->Size();
 				temp := Char->New[@max];
@@ -2793,8 +2777,6 @@ bundle System {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
-
-			return @self;
 		}
 
 		#~
@@ -2802,11 +2784,10 @@ bundle System {
 		@param array array to be copied
 		@param offset offset array index offset
 		@param length number of bytes to copy
-		@return this string
 		~#
-		method : public : native : Append(array : Byte[], offset : Int, length : Int) ~ String {
+		method : public : native : Append(array : Byte[], offset : Int, length : Int) ~ Nil {
 			if(offset < 0) {
-				return @self;
+				return;
 			};
 			
 			if(@pos + length >= @max) {
@@ -2821,16 +2802,13 @@ bundle System {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};
-
-			return @self;
 		}
 
 		#~
 		Appends a character
 		@param c character to append
-		@return this string
 		~#
-		method : public : Append(c : Char) ~ String {
+		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
 				@max := @max << 1;
@@ -2842,16 +2820,13 @@ bundle System {
 
 			@string[@pos] := c;
 			@pos += 1;
-
-			return @self;
 		}
 		
 		#~
 		Appends a byte
 		@param c byte to append
-		@return this string
 		~#
-		method : public : Append(c : Byte) ~ String {
+		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
 				@max := @max << 1;
@@ -2863,8 +2838,6 @@ bundle System {
 
 			@string[@pos] := c;
 			@pos += 1;
-
-			return @self;
 		}
 		
 		#~
