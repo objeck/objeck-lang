@@ -1658,7 +1658,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   // create temporary variable for concat of strings and variables
   if(segments.size() > 1) {
     Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-    const wstring scope_name = current_method->GetName() + L":#__concat__#";
+    const wstring scope_name = current_method->GetName() + L":#_var_concat_#";
     SymbolEntry* entry = current_table->GetEntry(scope_name);
     if(!entry) {
       entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
@@ -7117,8 +7117,8 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
 
-        unordered_map<Expression*, Method*> method_to_string;
-        unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
+        unordered_map<Expression*, Method*> methods_to_string;
+        unordered_map<Expression*, LibraryMethod*> lib_methods_to_string;
 
         for(list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
           Expression* concat_expr = *iter;
@@ -7130,7 +7130,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
             if(klass) {
               Method* method = klass->GetMethod(cls_name + L":ToString:");
               if(method && method->GetMethodType() != PRIVATE_METHOD) {
-                method_to_string[concat_expr] = method;
+                methods_to_string[concat_expr] = method;
               }
               else {
                 ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
@@ -7141,7 +7141,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
               if(lib_klass) {
                 LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
                 if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-                  lib_method_to_string[concat_expr] = lib_method;
+                  lib_methods_to_string[concat_expr] = lib_method;
                 }
                 else {
                   ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
@@ -7158,9 +7158,9 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
         }
 
         // create temporary variable for concat of strings and variables
-        StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs, method_to_string, lib_method_to_string);
+        StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs, methods_to_string, lib_methods_to_string);
         Type * type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-        const wstring scope_name = current_method->GetName() + L":#_concat_#";
+        const wstring scope_name = current_method->GetName() + L":#_add_concat_#";
         SymbolEntry* entry = current_table->GetEntry(scope_name);
         if(!entry) {
           entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
@@ -7382,10 +7382,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
           const vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
-            
             vector<Type*> from_concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
-            // const vector<Type*> concrete_types = method_call->GetConcreteTypes();
-
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
