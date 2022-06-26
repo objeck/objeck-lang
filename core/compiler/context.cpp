@@ -7107,7 +7107,6 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
     Expression* calc_left_expr = static_cast<CalculatedExpression*>(expression)->GetLeft();
 
     while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR) {
-      Expression* calc_expr = calc_left_expr;
       concat_exprs.push_front(static_cast<CalculatedExpression*>(calc_left_expr)->GetRight());
       calc_left_expr = static_cast<CalculatedExpression*>(calc_left_expr)->GetLeft();
     }
