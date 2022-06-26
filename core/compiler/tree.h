@@ -908,6 +908,14 @@ namespace frontend {
     SymbolEntry* GetConcat() {
       return concat;
     }
+
+    Method* GetMethod(Expression* e) {
+      return method_to_string[e];
+    }
+
+    LibraryMethod* GetLibraryMethod(Expression* e) {
+      return lib_method_to_string[e];
+    }
   };
   
   /****************************
