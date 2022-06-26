@@ -3349,6 +3349,7 @@ void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
         LibraryMethod* inst_lib_mthd = str_concat->GetLibraryMethod(concat_expr);
         EmitConcatToString(concat_entry, inst_mthd, inst_lib_mthd);
       }
+      new_char_str_count = 0;
       break;
 
     default:
@@ -3655,6 +3656,11 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
         LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
         EmitConcatToString(concat_entry, inst_mthd, inst_lib_mthd);
       }
+      new_char_str_count = 0;
+      break;
+
+    default:
+      break;
     }
   }
 }
