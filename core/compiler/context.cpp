@@ -4181,7 +4181,6 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         // 'System.String' append operations
         //
         if(left_name == L"System.String") {
-
           Type* right_type = GetExpressionType(expression, depth + 1);
           if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
@@ -7120,7 +7119,43 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
         concat_exprs.push_front(calc_left_expr);
 
         for(list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
-          AnalyzeExpression(*iter, depth + 1);
+          Expression* concat_expr = *iter;
+          AnalyzeExpression(concat_expr, depth + 1);
+
+          unordered_map<Expression*, Method*> method_to_string;
+          unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
+
+          if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
+            const wstring cls_name = concat_expr->GetEvalType()->GetName();
+            Class* klass = SearchProgramClasses(cls_name);
+            if(klass) {
+              Method* method = klass->GetMethod(cls_name + L":ToString:");
+              if(method && method->GetMethodType() != PRIVATE_METHOD) {
+                method_to_string[concat_expr] = method;
+              }
+              else {
+                ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
+              }
+            }
+            else {
+              LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+              if(lib_klass) {
+                LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
+                if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
+                  lib_method_to_string[concat_expr] = lib_method;
+                }
+                else {
+                  ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
+                }
+              }
+              else {
+                ProcessError(concat_expr, L"Class/enum variable does not have a 'ToString' method");
+              }
+            }
+          }
+          else if(concat_expr->GetEvalType()->GetType() == FUNC_TYPE) {
+            ProcessError(concat_expr, L"Invalid function variable type");
+          }
         }
 
         // create temporary variable for concat of strings and variables
