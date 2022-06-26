@@ -7112,6 +7112,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
     }
 
     if(calc_left_expr) {
+      AnalyzeExpression(calc_left_expr, depth + 1);
       Type* calc_left_type = GetExpressionType(calc_left_expr, depth + 1);
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
