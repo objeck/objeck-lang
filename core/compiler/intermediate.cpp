@@ -3325,10 +3325,27 @@ void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
           (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
       }
+
+      // TOOD: Add 'ToString' check
+
       new_char_str_count = 0;
       break;
 
-      // TOOD: MORE
+    case frontend::FLOAT_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:f,"));
+      }
+      else {
+        LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
+#ifdef _DEBUG
+        assert(string_append_method);
+#endif
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
+          (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
+      break;
     }
   }
 
