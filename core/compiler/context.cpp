@@ -1658,7 +1658,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   // create temporary variable for concat of strings and variables
   if(segments.size() > 1) {
     Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-    const wstring scope_name = current_method->GetName() + L":#concat#";
+    const wstring scope_name = current_method->GetName() + L":#__concat__#";
     SymbolEntry* entry = current_table->GetEntry(scope_name);
     if(!entry) {
       entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
@@ -4064,17 +4064,16 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   if(expression) {
     StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
     if(str_concat) {
-      assignment->SetExpression(expression);
+      assignment->SetExpression(str_concat);
       expression = str_concat;
     }
     else {
       AnalyzeExpression(expression, depth + 1);
-    }
-    
-    if(expression->GetExpressionType() == LAMBDA_EXPR) {
-      expression = static_cast<Lambda*>(expression)->GetMethodCall();
-      if(!expression) {
-        return;
+      if(expression->GetExpressionType() == LAMBDA_EXPR) {
+        expression = static_cast<Lambda*>(expression)->GetMethodCall();
+        if(!expression) {
+          return;
+        }
       }
     }
 
@@ -7125,7 +7124,18 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
           AnalyzeExpression(*iter, depth + 1);
         }
 
-        return TreeFactory::Instance()->MakeStringConcat(concat_exprs);
+        // create temporary variable for concat of strings and variables
+        StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs);
+        Type * type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
+        const wstring scope_name = current_method->GetName() + L":#_concat_#";
+        SymbolEntry* entry = current_table->GetEntry(scope_name);
+        if(!entry) {
+          entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
+          current_table->AddEntry(entry, true);
+        }
+        str_concat->SetConcat(entry);
+        
+        return str_concat;
       }
     }
   }
