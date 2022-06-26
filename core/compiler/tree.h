@@ -434,6 +434,7 @@ namespace frontend {
     BIT_XOR_EXPR,
     CHAR_STR_EXPR,
     STAT_ARY_EXPR,
+    STR_CONCAT_EXPR,
     LAMBDA_EXPR
   };
 
@@ -869,6 +870,31 @@ namespace frontend {
     }
   };
 
+  /****************************
+   * Variable class
+   ****************************/
+  class StringConcat : public Expression {
+    friend class TreeFactory;
+    list<Expression*> concat_exprs;
+
+    StringConcat(list<Expression*> exprs) : Expression(L"", -1, -1) {
+      concat_exprs = exprs;
+      SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String"), true);
+    }
+
+    ~StringConcat() {
+    }
+
+  public:
+    const ExpressionType GetExpressionType() {
+      return STR_CONCAT_EXPR;
+    }
+
+    list<Expression*> GetExpressions() {
+      return concat_exprs;
+    }
+  };
+  
   /****************************
    * Variable class
    ****************************/
@@ -3090,7 +3116,7 @@ namespace frontend {
       expression_lists.push_back(tmp);
       return tmp;
     }
-
+    
     SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, instructions::InstructionType instr) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, line_pos, end_line_num, end_line_pos, instr);
       statements.push_back(tmp);
@@ -3112,6 +3138,12 @@ namespace frontend {
     EmptyStatement* MakeEmptyStatement(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos) {
       EmptyStatement*  tmp = new EmptyStatement(file_name, line_num, line_pos, end_line_num, end_line_pos);
       statements.push_back(tmp);
+      return tmp;
+    }
+
+    StringConcat* MakeStringConcat(list<Expression*> exprs) {
+      StringConcat* tmp = new StringConcat(exprs);
+      expressions.push_back(tmp);
       return tmp;
     }
     

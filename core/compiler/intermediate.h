@@ -94,6 +94,7 @@ class IntermediateEmitter {
   void EmitExpressions(ExpressionList* parameters);
   void EmitExpression(Expression* expression);
   void EmitStaticArray(StaticArray* array);
+  void EmitStringConcat(StringConcat* str_concat);
   void EmitCharacterString(CharacterString* char_str);
   void EmitCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitAppendCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);

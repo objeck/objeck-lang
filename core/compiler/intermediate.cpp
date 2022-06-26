@@ -2865,6 +2865,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case STAT_ARY_EXPR:
     EmitStaticArray(static_cast<StaticArray*>(expression));
     break;
+
+  case STR_CONCAT_EXPR:
+    EmitStringConcat(static_cast<StringConcat*>(expression));
+    break;
     
   case METHOD_CALL_EXPR:
     EmitMethodCallExpression(static_cast<MethodCall*>(expression));
@@ -3208,6 +3212,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     } 
     while(method_call);
   }
+}
+
+/****************************
+ * Translates string concatenation expressions
+ ****************************/
+void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
+{
+  list<Expression*> concat_exprs = str_concat->GetExpressions();
 }
 
 /****************************
