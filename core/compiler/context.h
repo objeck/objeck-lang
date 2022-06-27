@@ -339,7 +339,7 @@ class ContextAnalyzer {
   void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth);
 
   // checks for sting concatenation  
-  StringConcat* AnalyzeStringConcat(Expression* &expression, int depth);
+  StringConcat* AnalyzeStringConcat(Expression* expression, int depth);
 
   // validate variable cast
   void AnalyzeVariableCast(Type* to_type, Expression* expression);
