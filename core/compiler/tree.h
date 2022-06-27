@@ -580,6 +580,15 @@ namespace frontend {
       expressions = e;
     }
 
+    bool SetExpression(Expression* e, size_t i) {
+      if(i < expressions.size()) {
+        expressions[i] = e;
+        return true;
+      }
+      
+      return false;
+    }
+
     void AddExpression(Expression* e) {
       expressions.push_back(e);
     }
