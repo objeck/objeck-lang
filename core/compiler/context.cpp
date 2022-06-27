@@ -1440,92 +1440,98 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   if(expression) {
-    switch(expression->GetExpressionType()) {
-    case LAMBDA_EXPR:
-      AnalyzeLambda(static_cast<Lambda*>(expression), depth);
-      break;
+    StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
+    if(str_concat) {
+      expression->SetPreviousExpression(str_concat);
+    }
+    else {
+      switch(expression->GetExpressionType()) {
+      case LAMBDA_EXPR:
+        AnalyzeLambda(static_cast<Lambda*>(expression), depth);
+        break;
 
-    case STAT_ARY_EXPR:
-      AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
-      break;
+      case STAT_ARY_EXPR:
+        AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
+        break;
 
-    case CHAR_STR_EXPR:
-      AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
-      break;
+      case CHAR_STR_EXPR:
+        AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
+        break;
 
-    case COND_EXPR:
-      AnalyzeConditional(static_cast<Cond*>(expression), depth);
-      break;
+      case COND_EXPR:
+        AnalyzeConditional(static_cast<Cond*>(expression), depth);
+        break;
 
-    case METHOD_CALL_EXPR:
-      AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
+      case METHOD_CALL_EXPR:
+        AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
 #ifdef _DIAG_LIB
-      diagnostic_expressions.push_back(expression);
+        diagnostic_expressions.push_back(expression);
 #endif
-      break;
+        break;
 
-    case NIL_LIT_EXPR:
+      case NIL_LIT_EXPR:
 #ifdef _DEBUG
-      Debug(L"nil literal", expression->GetLineNumber(), depth);
+        Debug(L"nil literal", expression->GetLineNumber(), depth);
 #endif
-      break;
+        break;
 
-    case BOOLEAN_LIT_EXPR:
+      case BOOLEAN_LIT_EXPR:
 #ifdef _DEBUG
-      Debug(L"boolean literal", expression->GetLineNumber(), depth);
+        Debug(L"boolean literal", expression->GetLineNumber(), depth);
 #endif
-      break;
+        break;
 
-    case CHAR_LIT_EXPR:
+      case CHAR_LIT_EXPR:
 #ifdef _DEBUG
-      Debug(L"character literal", expression->GetLineNumber(), depth);
+        Debug(L"character literal", expression->GetLineNumber(), depth);
 #endif
-      break;
+        break;
 
-    case INT_LIT_EXPR:
+      case INT_LIT_EXPR:
 #ifdef _DEBUG
-      Debug(L"integer literal", expression->GetLineNumber(), depth);
+        Debug(L"integer literal", expression->GetLineNumber(), depth);
 #endif
-      break;
+        break;
 
-    case FLOAT_LIT_EXPR:
+      case FLOAT_LIT_EXPR:
 #ifdef _DEBUG
-      Debug(L"float literal", expression->GetLineNumber(), depth);
+        Debug(L"float literal", expression->GetLineNumber(), depth);
 #endif
-      break;
+        break;
 
-    case VAR_EXPR:
-      AnalyzeVariable(static_cast<Variable*>(expression), depth);
-      break;
+      case VAR_EXPR:
+        AnalyzeVariable(static_cast<Variable*>(expression), depth);
+        break;
 
-    case AND_EXPR:
-    case OR_EXPR:
-      current_method->SetAndOr(true);
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
-      break;
+      case AND_EXPR:
+      case OR_EXPR:
+        current_method->SetAndOr(true);
+        AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
+        break;
 
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
-      break;
+      case EQL_EXPR:
+      case NEQL_EXPR:
+      case LES_EXPR:
+      case GTR_EXPR:
+      case LES_EQL_EXPR:
+      case GTR_EQL_EXPR:
+      case ADD_EXPR:
+      case SUB_EXPR:
+      case MUL_EXPR:
+      case DIV_EXPR:
+      case MOD_EXPR:
+      case SHL_EXPR:
+      case SHR_EXPR:
+      case BIT_AND_EXPR:
+      case BIT_OR_EXPR:
+      case BIT_XOR_EXPR:
+        AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
+        break;
 
-    default:
-      ProcessError(expression, L"Undefined expression");
-      break;
+      default:
+        ProcessError(expression, L"Undefined expression");
+        break;
+      }
     }
 
     // check expression method call
@@ -4062,18 +4068,16 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   // get last expression for assignment
   Expression* expression = assignment->GetExpression();
   if(expression) {
-    StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
-    if(str_concat) {
-      assignment->SetExpression(str_concat);
-      expression = str_concat;
+    AnalyzeExpression(expression, depth + 1);
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
+      expression = expression->GetPreviousExpression();
+      assignment->SetExpression(expression);
     }
-    else {
-      AnalyzeExpression(expression, depth + 1);
-      if(expression->GetExpressionType() == LAMBDA_EXPR) {
-        expression = static_cast<Lambda*>(expression)->GetMethodCall();
-        if(!expression) {
-          return;
-        }
+
+    if(expression->GetExpressionType() == LAMBDA_EXPR) {
+      expression = static_cast<Lambda*>(expression)->GetMethodCall();
+      if(!expression) {
+        return;
       }
     }
 
@@ -6136,8 +6140,14 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
 void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int depth)
 {
   vector<Expression*> expressions = parameters->GetExpressions();
+  
   for(size_t i = 0; i < expressions.size(); ++i) {
-    AnalyzeExpression(expressions[i], depth);
+    Expression* expression = expressions[i];
+    
+    AnalyzeExpression(expression, depth);    
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
+      parameters->SetExpression(expression->GetPreviousExpression(), i);
+    }
   }
 }
 

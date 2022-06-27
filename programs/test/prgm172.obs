@@ -1,6 +1,11 @@
 class Test  {
 	function : Main(args : String[]) ~ Nil {
-		a := "1" + 2;
+		a := "a" + 1;
+		Bar(a, "b" + 2);
+	}
+
+	function : Bar(a : String, b : String) ~ Nil {
 		a->PrintLine();
+		b->PrintLine();
 	}
 }
