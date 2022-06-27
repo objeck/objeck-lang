@@ -6143,7 +6143,6 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int d
   
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
-    
     AnalyzeExpression(expression, depth);    
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       parameters->SetExpression(expression->GetPreviousExpression(), i);
@@ -7109,7 +7108,7 @@ void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const wstring& ite
   }
 }
 
-StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int depth) {
+StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int depth) {
   if(expression->GetExpressionType() == ADD_EXPR) {
     list<Expression*> concat_exprs;
 
@@ -7171,6 +7170,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* &expression, int 
         StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs, methods_to_string, lib_methods_to_string);
         Type * type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
         const wstring scope_name = current_method->GetName() + L":#_add_concat_#";
+        
         SymbolEntry* entry = current_table->GetEntry(scope_name);
         if(!entry) {
           entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
