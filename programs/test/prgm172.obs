@@ -1,7 +1,7 @@
 class Test  {
 	function : Main(args : String[]) ~ Nil {
 		a := "a" + 1;
-		Bar(a, "b" + 2);
+		Bar(a, "b" + 2 + 'd');
 	}
 
 	function : Bar(a : String, b : String) ~ Nil {
