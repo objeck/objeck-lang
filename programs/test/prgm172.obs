@@ -1,6 +1,7 @@
 class Test  {
 	function : Main(args : String[]) ~ Nil {
-		a := "a" + 1;
+		x := 9;
+		a := "a" + (x * 4) + 'g';
 		Bar(a, "b{$a}" + 2 + 'd');
 	}
 
