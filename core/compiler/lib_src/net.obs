@@ -640,11 +640,11 @@ bundle Web.HTTP {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url : String;
-								if(moved_location->StartsWith("https://")) {
+								if(moved_location->StartsWith("http://")) {
 									moved_url := moved_location;
 								}
 								else {
-									moved_url := "https://";
+									moved_url := "http://";
 									moved_url += address;
 									moved_url += moved_location;
 								};
@@ -858,11 +858,11 @@ bundle Web.HTTP {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url : String;
-								if(moved_location->StartsWith("https://")) {
+								if(moved_location->StartsWith("http://")) {
 									moved_url := moved_location;
 								}
 								else {
-									moved_url := "https://";
+									moved_url := "http://";
 									moved_url += address;
 									moved_url += moved_location;
 								};
@@ -1370,7 +1370,7 @@ bundle Web.HTTP {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-# IO.Standard->Print("cookie=")->PrintLine(value);									
+# IO.Standard->Print("cookie=")->PrintLine(value);
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
