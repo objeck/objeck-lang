@@ -1428,10 +1428,7 @@ IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|"
 					do {
 						total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
 						content->AddBack(String->New(buffer));
-
-						each(i : buffer) {
-							buffer[i] := 0;
-						};
+						buffer->Clear();
 					}
 					while(total_read < chunk_size);
 
@@ -1452,10 +1449,7 @@ IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|"
 			do {
 				total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
 				content->AddBack(String->New(buffer));
-
-				each(i : buffer) {
-					buffer[i] := 0;
-				};
+				buffer->Clear();
 			}
 			while(total_read < length);
 		}
