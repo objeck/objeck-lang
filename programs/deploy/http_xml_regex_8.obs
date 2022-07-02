@@ -34,18 +34,10 @@ class Program {
 	function : ProcessTask(task : String) ~ Set<String> {
 		langs := Set->New()<String>;
 
-"-- 0 --"->PrintLine();
-
 		header_regex := RegEx->New("==\\{\\{header\\|(\\w|/|-|_)+\\}\\}==");
 		lang_regex := RegEx->New("<(\\s)*lang(\\s)*>");
-"-- 1 --"->PrintLine();
 
 		url := "http://rosettacode.org/mw/index.php?action=raw&title={$task}";
-url->PrintLine();
-		
-HttpClient->New()->GetAll(url)->PrintLine();	
-"-- 2 --"->PrintLine();
-
 		lines := HttpClient->New()->GetAll(url)->Split("\n");
 
 		last_header : String;

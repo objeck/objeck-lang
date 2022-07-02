@@ -297,10 +297,11 @@ void Parser::ParseBundle(int depth)
     return;
   }
 
-  // uses
+  // default system uses
   vector<wstring> uses;
   uses.push_back(L"System");
-  uses.push_back(L"System.Introspection"); // always include the default system bundles
+  uses.push_back(L"System.IO");
+  uses.push_back(L"System.Introspection");
   const size_t initial_uses_size = uses.size();
 
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
