@@ -1509,6 +1509,12 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
         break;
 
+      case STR_CONCAT_EXPR:
+#ifdef _DEBUG
+        Debug(L"string concat", expression->GetLineNumber(), depth);
+#endif
+        break;
+
       case EQL_EXPR:
       case NEQL_EXPR:
       case LES_EXPR:
