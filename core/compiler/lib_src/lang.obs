@@ -294,6 +294,12 @@ bundle System {
 		function : Size(b : Byte[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
+
+		function : Clear(b : Byte[]) ~ Nil {
+			each(i : b) {
+				b[i] := 0;
+			};
+		}
 		
 		function : ToUnicode(b : Byte[]) ~ Char[] {
 			BYTES_TO_UNICODE;
@@ -665,6 +671,12 @@ bundle System {
 		function : Size(c : Char[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
+
+		function : Clear(c : Char[]) ~ Nil {
+			each(i : c) {
+				c[i] := 0;
+			};
+		}
 		
 		function : ToBytes(c : Char[]) ~ Byte[] {		
 			UNICODE_TO_BYTES;
@@ -913,6 +925,12 @@ bundle System {
 
 		function : Size(i : Int[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : Clear(i : Int[]) ~ Nil {
+			each(index : i) {
+				i[index] := 0;
+			};
 		}
 
 		function : Size(i : Int[,]) ~ Int[] {
@@ -1379,6 +1397,12 @@ bundle System {
 		
 		function : Size(f : Float[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : Clear(f : Float[]) ~ Nil {
+			each(i : f) {
+				f[i] := 0.0;
+			};
 		}
 
 		function : Size(f : Float[,]) ~ Int[] {
