@@ -6499,7 +6499,7 @@ bundle System.IO.File {
 	#~
 	Supports file read operations
 	~#
-	class FileReader from File implements InputStream {
+	class FileReader from File implements System.IO.InputStream {
 		#~
 		Default constructor.
 		@param name file name
@@ -6608,7 +6608,7 @@ bundle System.IO.File {
 	#~
 	Supports file write operations
 	~#
-	class FileWriter from File implements OutputStream {
+	class FileWriter from File implements System.IO.OutputStream {
 		#~
 		Opens a new file.
 		@param name file name
@@ -7036,7 +7036,7 @@ bundle System.IO.Net {
 	#~
 	TCP/IP socket
 	~#
-	class TCPSocket implements InputStream, OutputStream {
+	class TCPSocket implements System.IO.InputStream, System.IO.OutputStream {
 		@handle : Int;
 		@address : System.String;
 		@port : Int;
@@ -7228,7 +7228,7 @@ bundle System.IO.Net {
 	#~
 	Secure SSL TCP/IP socket
 	~#
-	class TCPSecureSocket implements InputStream, OutputStream {
+	class TCPSecureSocket implements System.IO.InputStream, System.IO.OutputStream {
 		@ctx : Int;
 		@bio : Int;
 		@cert : Int;
