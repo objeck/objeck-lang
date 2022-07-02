@@ -1448,7 +1448,7 @@ bundle Web.HTTP {
 				if(chunk_size > 0) {
 
 					total_read := 0;								
-					buffer := Byte->New[4096];
+					buffer := Byte->New[8192];
 					do {
 						total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
 						content->AddBack(String->New(buffer));
@@ -1469,7 +1469,7 @@ bundle Web.HTTP {
 
 		function : ReadLength(length : Int, content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
 			total_read := 0;								
-			buffer := Byte->New[4096];
+			buffer := Byte->New[8192];
 			do {
 				total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
 				content->AddBack(String->New(buffer));
