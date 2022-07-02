@@ -2,7 +2,8 @@ class Test  {
 	function : Main(args : String[]) ~ Nil {
 		x := 9;
 		a := "a" + (x * 4) + 'g';
-		Bar(a, "b{$a}" + 2 + 'd');
+		y := String->New[2];
+		Bar(a + y[0], "b{$a}" + 2 + 'd');
 	}
 
 	function : Bar(a : String, b : String) ~ Nil {
