@@ -1791,7 +1791,9 @@ bundle Web.HTTP {
 						content_length := request_headers->Find("Content-Length");
 						if(content_length <> Nil) {
 							buffer := Byte->New[content_length->ToInt()];
-							@client->ReadBuffer(0, buffer->Size(), buffer);
+							each(i : buffer) {
+								buffer[i] := @client->ReadByte();
+							};
 
 							# retrieve content
 							if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
@@ -1967,7 +1969,9 @@ bundle Web.HTTP {
 						content_length := request_headers->Find("Content-Length");
 						if(content_length <> Nil) {
 							buffer := Byte->New[content_length->ToInt()];
-							@client->ReadBuffer(0, buffer->Size(), buffer);
+							each(i : buffer) {
+								buffer[i] := @client->ReadByte();
+							};
 
 							# retrieve content
 							if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
