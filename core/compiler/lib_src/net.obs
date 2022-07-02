@@ -639,12 +639,18 @@ bundle Web.HTTP {
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
-								moved_url := "https://";
-								moved_url += address;
-								moved_url += moved_location;
-# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
-								
+								moved_url : String;
+								if(moved_location->StartsWith("https://")) {
+									moved_url := moved_location;
+								}
+								else {
+									moved_url := "https://";
+									moved_url += address;
+									moved_url += moved_location;
+								};
 								@response_headers->Empty();
+
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 								return Get(moved_url, content_type);
 							};
 						};
@@ -851,12 +857,18 @@ bundle Web.HTTP {
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
-								moved_url := "https://";
-								moved_url += address;
-								moved_url += moved_location;
-# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
-
+								moved_url : String;
+								if(moved_location->StartsWith("https://")) {
+									moved_url := moved_location;
+								}
+								else {
+									moved_url := "https://";
+									moved_url += address;
+									moved_url += moved_location;
+								};
 								@response_headers->Empty();
+
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 								return Get(moved_url, content_type);
 							};
 						};
@@ -1164,13 +1176,19 @@ bundle Web.HTTP {
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
-								moved_url := "https://";
-								moved_url += address;
-								moved_url += moved_location;
-# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
-
+								moved_url : String;
+								if(moved_location->StartsWith("https://")) {
+									moved_url := moved_location;
+								}
+								else {
+									moved_url := "https://";
+									moved_url += address;
+									moved_url += moved_location;
+								};
 								@response_headers->Empty();
-								return Post(moved_url, content_type);
+
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
+								return Get(moved_url, content_type);
 							};
 						};
 
@@ -1345,7 +1363,7 @@ bundle Web.HTTP {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
@@ -1366,12 +1384,18 @@ IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|"
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
-								moved_url := "https://";
-								moved_url += address;
-								moved_url += moved_location;
-# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
-
+								moved_url : String;
+								if(moved_location->StartsWith("https://")) {
+									moved_url := moved_location;
+								}
+								else {
+									moved_url := "https://";
+									moved_url += address;
+									moved_url += moved_location;
+								};
 								@response_headers->Empty();
+
+# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
 								return Get(moved_url, content_type);
 							};
 						};
