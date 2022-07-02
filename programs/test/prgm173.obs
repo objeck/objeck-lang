@@ -1,0 +1,8 @@
+use Web.HTTP;
+
+class HttpsTest {
+	function : Main(args : String[]) ~ Nil {
+		html := HttpsClient->New()->GetAll("https://" + "objeck.org");
+		html->PrintLine();
+	}
+}
