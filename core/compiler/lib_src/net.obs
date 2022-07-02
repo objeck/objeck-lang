@@ -674,13 +674,7 @@ bundle Web.HTTP {
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								length := length_header->ToInt();
-								buffer := Byte->New[length];
-								for(i := 0; i < length; i += 1;) {
-									buffer[i] := socket->ReadByte();
-								};
-								line := String->New(buffer);
-								content->AddBack(line);
+								SocketCommon->ReadLength(length_header->ToInt(), content, socket);
 							};						
 						};
 					};
@@ -903,13 +897,7 @@ bundle Web.HTTP {
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								length := length_header->ToInt();
-								buffer := Byte->New[length];
-								for(i := 0; i < length; i += 1;) {
-									buffer[i] := socket->ReadByte();
-								};
-								line := String->New(buffer);
-								content->AddBack(line);
+								SocketCommon->ReadLength(length_header->ToInt(), content, socket);
 							}
 							else {
 								count := 0;
@@ -1189,38 +1177,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							done := false;
-							do {
-								size_line := "0x";
-								size_line->Append(socket->ReadLine());
-								chunk_size := size_line->ToInt();
-								if(chunk_size > 0) {
-									buffer := Byte->New[chunk_size];
-									for(i := 0; i < chunk_size; i += 1;) {
-										buffer[i] := socket->ReadByte();
-									};
-									line := String->New(buffer);
-									content->AddBack(line);
-									# read CRLF
-									socket->ReadByte(); 
-									socket->ReadByte();
-								}
-								else {
-									done := true;
-								};
-							}
-							while(done <> true);
+							SocketCommon->ReadChunked(content, socket);
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								length := length_header->ToInt();
-								buffer := Byte->New[length];
-								for(i := 0; i < length; i += 1;) {
-									buffer[i] := socket->ReadByte();
-								};
-								line := String->New(buffer);
-								content->AddBack(line);
+								SocketCommon->ReadLength(length_header->ToInt(), content, socket);
 							};						
 						};
 					};
@@ -1383,7 +1345,7 @@ bundle Web.HTTP {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
@@ -1417,38 +1379,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							done := false;
-							do {
-								size_line := "0x";
-								size_line->Append(socket->ReadLine());
-								chunk_size := size_line->ToInt();
-								if(chunk_size > 0) {
-									buffer := Byte->New[chunk_size];
-									for(i := 0; i < chunk_size; i += 1;) {
-										buffer[i] := socket->ReadByte();
-									};
-									line := String->New(buffer);
-									content->AddBack(line);
-									# read CRLF
-									socket->ReadByte(); 
-									socket->ReadByte();
-								}
-								else {
-									done := true;
-								};
-							}
-							while(done <> true);
+							SocketCommon->ReadChunked(content, socket);
 						}
 						else {
-							length_header : String := @response_headers->Find("content-length")->As(String);
+							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								length := length_header->ToInt();
-								buffer := Byte->New[length];
-								for(i := 0; i < length; i += 1;) {
-									buffer[i] := socket->ReadByte();
-								};
-								line := String->New(buffer);
-								content->AddBack(line);
+								SocketCommon->ReadLength(length_header->ToInt(), content, socket);
 							}
 							else {
 								count := 0;
@@ -1475,6 +1411,53 @@ bundle Web.HTTP {
 			};	
 			
 			return content;
+		}
+	}
+
+	class : private : SocketCommon {
+		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
+			done := false;
+			do {
+				size_line := "0x";
+				size_line->Append(socket->ReadLine());
+				chunk_size := size_line->ToInt();
+				if(chunk_size > 0) {
+
+					total_read := 0;								
+					buffer := Byte->New[4096];
+					do {
+						total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
+						content->AddBack(String->New(buffer));
+
+						each(i : buffer) {
+							buffer[i] := 0;
+						};
+					}
+					while(total_read < chunk_size);
+
+					# read CRLF
+					socket->ReadByte(); 
+					socket->ReadByte();
+				}
+				else {
+					done := true;
+				};
+			}
+			while(done <> true);
+		}
+
+		function : ReadLength(length : Int, content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
+			total_read := 0;								
+			buffer := Byte->New[4096];
+			do {
+				total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
+				content->AddBack(String->New(buffer));
+
+				each(i : buffer) {
+					buffer[i] := 0;
+				};
+			}
+			while(total_read < length);
 		}
 	}
 	
