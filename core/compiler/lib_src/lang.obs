@@ -295,7 +295,7 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
-		function : Clear(b : Byte[]) ~ Nil {
+		function : native : Clear(b : Byte[]) ~ Nil {
 			each(i : b) {
 				b[i] := 0;
 			};
@@ -672,7 +672,7 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
-		function : Clear(c : Char[]) ~ Nil {
+		function : native : Clear(c : Char[]) ~ Nil {
 			each(i : c) {
 				c[i] := 0;
 			};
@@ -927,9 +927,9 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
-		function : Clear(i : Int[]) ~ Nil {
-			each(index : i) {
-				i[index] := 0;
+		function : native : Clear(a : Int[]) ~ Nil {
+			each(i : a) {
+				a[i] := 0;
 			};
 		}
 
@@ -1399,7 +1399,7 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
-		function : Clear(f : Float[]) ~ Nil {
+		function : native : Clear(f : Float[]) ~ Nil {
 			each(i : f) {
 				f[i] := 0.0;
 			};
