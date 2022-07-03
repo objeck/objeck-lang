@@ -8,10 +8,11 @@ The major components of the VM are the interpreter, JIT compiler and memory mana
 
 The VM supports the following targets:
 
-1. Windows (x64, AMD64)
-2. macOS (POSIX, AMD64)
-3. macOS (POSIX, ARM64)
-4. Linux (POSIX, AMD64)
+1. Windows (x64)
+2. Linux (x64)
+3. macOS (x64)
+4. Linux (ARM64)
+5. macOS (ARM64)
 
 ### Implementation
 C++ using STL with machine code generation
