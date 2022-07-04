@@ -63,7 +63,7 @@ Building on Linux and macOS:
 
 Building on Windows:
 *  With Visual Studio 2022 or later open <code>objeck-lang/care/release/objeck.sln</code>
-*  Ensure build completes successfully
+*  Ensure build completes successfully (in Release mode)
 *  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to set paths and find examples
