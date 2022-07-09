@@ -1378,7 +1378,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
       // update
-      mem++;
+      mem += 2;
     }
       break;
 
@@ -1398,7 +1398,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       wcout << L"\t" << i << L": FLOAT_PARM: value=" << value << endl;
 #endif
       // update
-      mem += 2;
+      mem++;
     }
       break;
 
