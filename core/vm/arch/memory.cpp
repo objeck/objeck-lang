@@ -1378,7 +1378,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
       // update
-      mem += 2;
+      mem++;
     }
       break;
 
