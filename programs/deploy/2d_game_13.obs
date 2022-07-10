@@ -118,8 +118,7 @@ class Game {
 		Mixer->Volume(-1, 12);
 		MixMusic->VolumeMusic(8);
 
-		@won_channel := -1;
-		@die_channel := -1;
+		@won_channel := @die_channel := -1;
 		@current_level := 1;
 	}
 
