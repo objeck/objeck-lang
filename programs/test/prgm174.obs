@@ -1,0 +1,7 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		""->ToFloat()->PrintLine();
+		""->ToInt()->PrintLine();
+		""->ToFloat()->PrintLine();
+	}
+}
