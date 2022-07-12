@@ -731,7 +731,8 @@ p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
 a:link, span.MsoHyperlink
-	{mso-style-priority:99;
+	{mso-style-noshow:yes;
+	mso-style-priority:99;
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
@@ -1299,7 +1300,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v6.5.2 (July 9, 2022)<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>v6.5.3 (July 12, 2022)<o:p></o:p></span></p>
 
 <p class=MsoSubtitle><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p>&nbsp;</o:p></span></p>
@@ -1328,6 +1329,15 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Added the ‘Runtime-&gt;<span class=SpellE>SetLocale</span>(..)’ function<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
+minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
+style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Improved the performance of the ‘<span class=SpellE>HttpsClient</span>’
 and ‘<span class=SpellE>HttpsClient</span>’ classes<o:p></o:p></span></p>
 
@@ -1335,7 +1345,7 @@ and ‘<span class=SpellE>HttpsClient</span>’ classes<o:p></o:p></span></p>
 mso-list:l4 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
-style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Fixed bugs <a
@@ -1441,9 +1451,9 @@ and executing programs<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>To compile programs outside of the “bin” directory, the “OBJECK_LIB_PATH”
-environment variable must be set. When this variable is set, all library files
-must be in the directory specified. <o:p></o:p></span></p>
+minor-latin'>To compile programs outside of the “bin” directory, the
+“OBJECK_LIB_PATH” environment variable must be set. When this variable is set,
+all library files must be in the directory specified. <o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1623,11 +1633,11 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&n
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>sudo</span></span><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'> apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
-libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
-libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
-libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
-libsdl-ttf2.0-dev<o:p></o:p></span></p>
+minor-latin'> apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev
+libsdl-gfx1.2-doc libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev
+libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2
+libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev
+libsdl-ttf2.0-0 libsdl-ttf2.0-dev<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;line-height:normal'><span style='font-family:"Calibri",sans-serif;
