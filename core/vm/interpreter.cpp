@@ -781,8 +781,16 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
-    const FLOAT_VALUE value = stod(str);
-    PushFloat(value, op_stack, stack_pos);
+    try {
+      const FLOAT_VALUE value = stod(str);
+      PushFloat(value, op_stack, stack_pos);
+    }
+    catch (std::invalid_argument& e) {
+#ifdef _WIN32    
+      UNREFERENCED_PARAMETER(e);
+#endif
+      PushFloat(0, op_stack, stack_pos);
+    }
   }
   else {
     wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
