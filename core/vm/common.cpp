@@ -3255,6 +3255,24 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     const wchar_t* key = (wchar_t*)(key_array + 3);
     const wchar_t* value = (wchar_t*)(value_array + 3);
 
+    if(!wcscmp(key, L"locale")) {
+      const string locale_value = UnicodeToBytes(value);
+#if defined(_X64)
+      char* locale = setlocale(LC_ALL, locale_value.c_str());
+      std::locale lollocale(locale);
+      setlocale(LC_ALL, locale);
+      wcout.imbue(lollocale);
+#elif defined(_ARM64)
+      char* locale = setlocale(LC_ALL, locale_value.c_str());
+      std::locale lollocale(locale);
+      setlocale(LC_ALL, locale);
+      wcout.imbue(lollocale);
+      setlocale(LC_ALL, "en_US.utf8");
+#else    
+      setlocale(LC_ALL, locale_value.c_str());
+#endif
+    }
+
     program->SetProperty(key, value);
   }
 

@@ -3925,6 +3925,14 @@ bundle System {
 		}
 
 		#~
+		Sets the runtime locale
+		@param locale <a href='https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170'>locale string</a>
+		~#
+		function : SetLocale(locale : String) ~ Nil {
+			Runtime->SetProperty("locale", locale);
+		}
+
+		#~
 		Sets a system signal	
 		@param type signal type
 		@param func function handler for signal
