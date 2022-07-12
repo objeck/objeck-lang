@@ -789,7 +789,7 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
 #ifdef _WIN32    
       UNREFERENCED_PARAMETER(e);
 #endif
-      PushFloat(0, op_stack, stack_pos);
+      PushFloat(0.0, op_stack, stack_pos);
     }
   }
   else {
