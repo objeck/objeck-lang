@@ -1,5 +1,5 @@
 /**
- * JIT compiler for ARMv8 architecture (Apple Silicon)
+ * JIT compiler for ARMv8 architecture (Apple Silicon and Linux ARM 64-bit)
  *
  * Copyright (c) 2020-2021, Randy Hollines
  * All rights reserved.
