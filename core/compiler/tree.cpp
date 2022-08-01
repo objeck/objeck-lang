@@ -986,10 +986,6 @@ const vector<wstring> ParsedProgram::GetUses() {
     tiered_use_names.insert(tiered_use_names.end(), top_level.begin(), top_level.end());
     tiered_use_names.insert(tiered_use_names.end(), mid_level.begin(), mid_level.end());
     tiered_use_names.insert(tiered_use_names.end(), bottom_level.begin(), bottom_level.end());
-
-#ifdef _DEBUG
-    assert(use_names.size() == tiered_use_names.size());
-#endif
   }
 
   return tiered_use_names;
