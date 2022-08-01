@@ -5180,10 +5180,9 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
 
   // class
   if(!current_method) {
-    SymbolTableManager* symbol_table = parsed_bundle->GetSymbolTableManager();
+    stack<Class*> parents;
 
     // setup dependency order
-    stack<Class*> parents;
     Class* parent = current_class->GetParent();
     LibraryClass* lib_parent = current_class->GetLibraryParent();
     while(parent || lib_parent) {
@@ -5225,7 +5224,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
       parent = parents.top();
       parents.pop();
 
-      SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
+      SymbolTable* table = parsed_bundle->GetSymbolTableManager()->GetSymbolTable(parent->GetName());
       // parent may be defined in another file
       if(!table) {
         Class* prgm_cls = SearchProgramClasses(parent->GetName());
