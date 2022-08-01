@@ -5194,7 +5194,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
         lib_parent = parent->GetLibraryParent();
         parent = parent->GetParent();
       }
-      else if (lib_parent) {
+      else if(lib_parent) {
         break;
       }
     }
