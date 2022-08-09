@@ -53,7 +53,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 * [JIT compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
-![alt text](images/toolchain.svg "Compiler & VM")
+![alt text](images/toolchain.svg "Objeck System Architecture")
 
 Building on Linux and macOS:
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
