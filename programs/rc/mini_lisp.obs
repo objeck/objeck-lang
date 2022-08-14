@@ -106,6 +106,7 @@ class Evaluator {
 				label Node->Type->LET_FUN_DEC: {
 					name := node->GetStringValue();
 
+					func := @functions->Find(name);
 "called: |{$name}|"->PrintLine();					
 #~					
 					fun := @functions->Find(fun_name);
