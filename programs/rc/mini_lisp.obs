@@ -104,13 +104,9 @@ class Evaluator {
 				}
 
 				label Node->Type->LET_FUN_DEC: {
-					name := node->GetStringValue();
-
-					func := @functions->Find(name);
-"called: |{$name}|"->PrintLine();					
-#~					
-					fun := @functions->Find(fun_name);
-					if(fun = Nil) {
+					fun_name := node->GetStringValue();				
+					func := @functions->Find(fun_name);
+					if(func = Nil) {
 						"*** Unidentied function '{$fun_name}'"->ErrorLine();
 						Runtime->Exit(1);
 					};
@@ -122,7 +118,7 @@ class Evaluator {
 						};
 					};
 
-					instrs := fun->GetChildren();
+					instrs := func->GetChildren();
 					if(instrs <> Nil) {
 						each(i : instrs) {
 							Evaluate(instrs->Get(i));
@@ -130,7 +126,6 @@ class Evaluator {
 					};
 
 					@symbol_tables->RemoveFront();
-~#					
 				}
 
 				label Node->Type->LET {
