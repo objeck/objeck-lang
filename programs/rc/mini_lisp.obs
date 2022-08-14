@@ -40,283 +40,317 @@ class Evaluator {
 	}
 
 	method : Evaluate(node : Node) ~ Nil {
-		select(node->GetType()) {
-			label Node->Type->FUN_CALL {
-				fun_name := node->GetStringValue();
-				fun := @functions->Find(fun_name);
-				if(fun = Nil) {
-					"*** Unidentied function '{$fun_name}'"->ErrorLine();
-					Runtime->Exit(1);
-				};
-
-				parms := node->GetChildren();
-				if(parms <> Nil) {
-					each(i : parms) {
-						Evaluate(parms->Get(i));
+		if(node <> Nil) {
+			select(node->GetType()) {
+				label Node->Type->RTRN {
+					if(@call_stack->IsEmpty()) {
+						Runtime->Exit(0);
+					}
+					else {
+						Evaluate(@call_stack->Pop());
 					};
-				};
-
-				instrs := fun->GetChildren();
-				each(i : instrs) {
-					Evaluate(instrs->Get(i));
-				};
-
-				@symbol_tables->RemoveFront();
-			}
-
-			label Node->Type->RTRN {
-				if(@call_stack->IsEmpty()) {
-					Runtime->Exit(0);
 				}
-				else {
-					Evaluate(@call_stack->Pop());
-				};
-			}
 
-			label Node->Type->EXPRS {
-				children := node->GetChildren();
-				each(i : children) {
-					Evaluate(children->Get(i));
-				};
-			}
+				label Node->Type->EXPRS {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+					};
+				}
 
-			label Node->Type->COND {
-				done := false;
-				children := node->GetChildren();
-				for(i := 0; i < children->Size() & <>done; i += 2;) {
-					Evaluate(children->Get(i));
-					cond := @exe_stack->Pop();
-					if(cond->GetType() <> Value->Type->BOOL_TYPE) {
-						"*** Runtime Error: Expected boolean type ***"->ErrorLine();
+				label Node->Type->COND {
+					done := false;
+					children := node->GetChildren();
+					if(children <> Nil) {
+						for(i := 0; i < children->Size() & <>done; i += 2;) {
+							Evaluate(children->Get(i));
+							cond := @exe_stack->Pop();
+							if(cond->GetType() <> Value->Type->BOOL_TYPE) {
+								"*** Runtime Error: Expected boolean type ***"->ErrorLine();
+								Runtime->Exit(1);
+							};
+
+							if(cond->GetBoolValue()) {
+								Evaluate(children->Get(i + 1));
+								done := true;
+							};
+						};
+					};
+				}
+
+				label Node->Type->VAR {
+					found := false;
+					name := node->GetStringValue();
+
+					@symbol_tables->Rewind();
+					while(@symbol_tables->More() & <>found) {
+						symbol_table := @symbol_tables->Get();
+						
+						value := symbol_table->Find(name);
+						if(value <> Nil) {
+							@exe_stack->Push(value);
+							found := true;
+						};
+
+						@symbol_tables->Next();
+					};
+
+					if(<>found) {
+						"Unable to find variable '{$name}'"->ErrorLine();
+						Runtime->Exit(1);
+					};
+				}
+
+				label Node->Type->LET_FUN_DEC: {
+					name := node->GetStringValue();
+
+"called: |{$name}|"->PrintLine();					
+#~					
+					fun := @functions->Find(fun_name);
+					if(fun = Nil) {
+						"*** Unidentied function '{$fun_name}'"->ErrorLine();
 						Runtime->Exit(1);
 					};
 
-					if(cond->GetBoolValue()) {
-						Evaluate(children->Get(i + 1));
-						done := true;
-					};
-				};
-			}
-
-			label Node->Type->VAR {
-				found := false;
-				name := node->GetStringValue();
-
-				@symbol_tables->Rewind();
-				while(@symbol_tables->More() & <>found) {
-					symbol_table := @symbol_tables->Get();
-					
-					value := symbol_table->Find(name);
-					if(value <> Nil) {
-						@exe_stack->Push(value);
-						found := true;
-					};
-
-					@symbol_tables->Next();
-				};
-
-				if(<>found) {
-					"Unable to find variable '{$name}'"->ErrorLine();
-					Runtime->Exit(1);
-				};
-			}
-
-			label Node->Type->LET {
-				table := Hash->New()<String, Value>;
-				@symbol_tables->AddFront(table);
-				
-				children := node->GetChildren()<Node>;
-				if(children <> Nil) {
-					each(i : children) {
-						child := children->Get(i);
-						if(child->GetType() = Node->Type->LET_DEC) {
-							name := child->GetStringValue();
-							sub_child := child->GetChildren();
-							Evaluate(sub_child->Get(0));
-							table->Insert(name, @exe_stack->Pop());
-						}
-						else {
-							Evaluate(child);
+					parms := node->GetChildren();
+					if(parms <> Nil) {
+						each(i : parms) {
+							Evaluate(parms->Get(i));
 						};
 					};
-				};
 
-				@symbol_tables->RemoveFront();
-			}
-
-			label Node->Type->BIND_VARS {
-				table := Hash->New()<String, Value>;
-				@symbol_tables->AddFront(table);
-
-				children := node->GetChildren()<Node>;
-				if(children <> Nil) {
-					each(i : children) {
-						name := children->Get(i)->GetStringValue();	
-						table->Insert(name, @exe_stack->Pop());
+					instrs := fun->GetChildren();
+					if(instrs <> Nil) {
+						each(i : instrs) {
+							Evaluate(instrs->Get(i));
+						};
 					};
-				};
-			}
 
-			label Node->Type->LIST {
-				children := node->GetChildren();
-				each(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				list := Value->New(Value->Type->LIST);
-				each(i : children) {
-					child := @exe_stack->Pop();
-					if(child->GetType() = Value->Type->LIST) {
-						list->AddList(child);
-					}
-					else {
-						list->AddElement(child);
-					};
-				};
-				@exe_stack->Push(list);
-			}
-
-			label Node->Type->CONS {
-				children := node->GetChildren();
-				each(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				list := Value->New(Value->Type->LIST);
-				each(i : children) {
-					list->AddElement(@exe_stack->Pop());
-				};
-				@exe_stack->Push(list);
-			}
-
-			label Node->Type->WRITE {
-				children := node->GetChildren();
-				each(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				@exe_stack->Pop()->ToString()->PrintLine();
-			}
-
-			label Node->Type->LENGTH {
-				children := node->GetChildren();
-				each(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				list := @exe_stack->Pop();
-				@exe_stack->Push(Value->New(list->GetListSize()));
-			}
-
-			label Node->Type->EMPTY_LIST {
-				@exe_stack->Push(Value->EmptyList());
-			}
-
-			label Node->Type->INT_LIT {
-				@exe_stack->Push(Value->New(node->GetIntValue()));
-			}
-
-			label Node->Type->ADD {
-				children := node->GetChildren();
-				reverse(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				left := @exe_stack->Pop();
-				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @exe_stack->Pop();
-					left->SetIntValue(left->GetIntValue() + right->GetIntValue());
-				};
-				@exe_stack->Push(left);
-			}
-
-			label Node->Type->MUL {
-				children := node->GetChildren();
-				reverse(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				left := @exe_stack->Pop();
-				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @exe_stack->Pop();
-					left->SetIntValue(left->GetIntValue() * right->GetIntValue());
-				};
-				@exe_stack->Push(left);
-			}
-
-			label Node->Type->SUB {
-				children := node->GetChildren();
-				reverse(i : children) {
-					Evaluate(children->Get(i));
-				};
-
-				left := @exe_stack->Pop();
-				if(children->Size() = 1) {
-					left->SetIntValue(left->GetIntValue() * -1);
+					@symbol_tables->RemoveFront();
+~#					
 				}
-				else {
-					for(i := 1;	 i < children->Size(); i += 1;) {
-						right := @exe_stack->Pop();
-						left->SetIntValue(left->GetIntValue() - right->GetIntValue());
+
+				label Node->Type->LET {
+					table := Hash->New()<String, Value>;
+					@symbol_tables->AddFront(table);
+					
+					children := node->GetChildren()<Node>;
+					if(children <> Nil) {
+						each(i : children) {
+							child := children->Get(i);
+							if(child->GetType() = Node->Type->LET_FUN_DEC) {
+								name := child->GetStringValue();
+								sub_child := child->GetChildren();
+								if(sub_child <> Nil) {
+									Evaluate(sub_child->Get(0));
+									table->Insert(name, @exe_stack->Pop());
+								};
+							}
+							else {
+								Evaluate(child);
+							};
+						};
 					};
-				};
-				@exe_stack->Push(left);
-			}
 
-			label Node->Type->DIV {
-				children := node->GetChildren();
-				for(i := children->Size() - 1; i >= 0; i -= 1;) {
-					Evaluate(children->Get(i));
-				};
-
-				left := @exe_stack->Pop();
-				if(children->Size() = 1) {
-					left->SetRealValue(1.0 / left->GetIntValue()->ToFloat());
+					@symbol_tables->RemoveFront();
 				}
-				else {
-					for(i := 1;	 i < children->Size(); i += 1;) {
-						right := @exe_stack->Pop();
-						left->SetIntValue(left->GetIntValue() - right->GetIntValue());
+
+				label Node->Type->BIND_VARS {
+					table := Hash->New()<String, Value>;
+					@symbol_tables->AddFront(table);
+
+					children := node->GetChildren()<Node>;
+					if(children <> Nil) {
+						each(i : children) {
+							name := children->Get(i)->GetStringValue();	
+							table->Insert(name, @exe_stack->Pop());
+						};
 					};
-				};
-				@exe_stack->Push(left);
-			}
+				}
 
-			label Node->Type->EQL {
-				children := node->GetChildren();
-				reverse(i : children) {
-					Evaluate(children->Get(i));
-				};
+				label Node->Type->LIST {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
 
-				left := @exe_stack->Pop();
-				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @exe_stack->Pop();
-					# TODO: type checking
-					left->SetBoolValue(left->GetIntValue() = right->GetIntValue());
-				};
-				@exe_stack->Push(left);
-			}
+						list := Value->New(Value->Type->LIST);
+						each(i : children) {
+							child := @exe_stack->Pop();
+							if(child->GetType() = Value->Type->LIST) {
+								list->AddList(child);
+							}
+							else {
+								list->AddElement(child);
+							};
+						};
+						@exe_stack->Push(list);
+					};
+				}
 
-			label Node->Type->NEQL {
-				children := node->GetChildren();
-				reverse(i : children) {
-					Evaluate(children->Get(i));
-				};
+				label Node->Type->CONS {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
 
-				left := @exe_stack->Pop();
-				for(i := 1;	 i < children->Size(); i += 1;) {
-					right := @exe_stack->Pop();
-					# TODO: type checking
-					left->SetBoolValue(left->GetIntValue() <> right->GetIntValue());
-				};
-				@exe_stack->Push(left);
-			}
+						list := Value->New(Value->Type->LIST);
+						each(i : children) {
+							list->AddElement(@exe_stack->Pop());
+						};
+						@exe_stack->Push(list);
+					};
+				}
 
-			other {
-				type := node->GetType()->As(Int);
-				"Unknown expression ({$type})"->ErrorLine();
-				Runtime->Exit(1);
-			}
+				label Node->Type->WRITE {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						@exe_stack->Pop()->ToString()->PrintLine();
+					};
+				}
+
+				label Node->Type->LENGTH {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						list := @exe_stack->Pop();
+						@exe_stack->Push(Value->New(list->GetListSize()));
+					};
+				}
+
+				label Node->Type->EMPTY_LIST {
+					@exe_stack->Push(Value->EmptyList());
+				}
+
+				label Node->Type->INT_LIT {
+					@exe_stack->Push(Value->New(node->GetIntValue()));
+				}
+
+				label Node->Type->ADD {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							left->SetIntValue(left->GetIntValue() + right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->MUL {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							left->SetIntValue(left->GetIntValue() * right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->SUB {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						if(children->Size() = 1) {
+							left->SetIntValue(left->GetIntValue() * -1);
+						}
+						else {
+							for(i := 1;	 i < children->Size(); i += 1;) {
+								right := @exe_stack->Pop();
+								left->SetIntValue(left->GetIntValue() - right->GetIntValue());
+							};
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->DIV {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						for(i := children->Size() - 1; i >= 0; i -= 1;) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						if(children->Size() = 1) {
+							left->SetRealValue(1.0 / left->GetIntValue()->ToFloat());
+						}
+						else {
+							for(i := 1;	 i < children->Size(); i += 1;) {
+								right := @exe_stack->Pop();
+								left->SetIntValue(left->GetIntValue() / right->GetIntValue());
+							};
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->EQL {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							# TODO: type checking
+							left->SetBoolValue(left->GetIntValue() = right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->NEQL {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							# TODO: type checking
+							left->SetBoolValue(left->GetIntValue() <> right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				other {
+					type := node->GetType()->As(Int);
+					"Unknown expression ({$type})"->ErrorLine();
+					Runtime->Exit(1);
+				}
+			};
 		};
 	}
 }
@@ -585,7 +619,6 @@ class Parser {
 		main := Expressions(0);
 		@functions->Insert("$Main", main);
 
-
 		if(@is_debug) {
 			if(main <> Nil) {
 				"\n--- Tree ---"->PrintLine();
@@ -749,6 +782,8 @@ class Parser {
 							return Nil;
 						};
 						NextToken();
+
+						@functions->Insert(value, expressions);
 					}
 
 					label Token->Type->WRITE_KEYWORD: {
@@ -825,7 +860,7 @@ class Parser {
 							"\tVAR; name={$value}"->PrintLine();
 						};
 
-						node := Node->New(Node->Type->LET_DEC, value);
+						node := Node->New(Node->Type->LET_FUN_DEC, value);
 						if(<>Operands(node, depth)) {
 							return Nil;
 						};
@@ -871,6 +906,14 @@ class Parser {
 
 				node := Node->New(Node->Type->EMPTY_LIST);
 				NextToken();
+			}
+			else if(Match(Token->Type->VAR)) {
+				value := @tokens->Get(@token_pos)->GetStringValue();						
+				node := Node->New(Node->Type->DEFUN, value);
+				NextToken();
+
+				Operands(node, depth);
+				node := Node->New(Node->Type->LET_FUN_DEC, value);
 			}
 			else {
 				@error := true;
@@ -951,10 +994,9 @@ class Node {
 		EXPRS,
 		LIST,
 		LET,
-		LET_DEC,
+		LET_FUN_DEC,
 		BIND_VARS,
 		BIND_DEC,
-		FUN_CALL,
 		DEFUN,
 		RTRN,
 		CONS,
@@ -1095,12 +1137,8 @@ class Node {
 				buffer += "cond";
 			}
 
-			label Node->Type->LET_DEC {
+			label Node->Type->LET_FUN_DEC {
 				buffer += "let_dec '{$@str_value}'";
-			}
-
-			label Node->Type->FUN_CALL {
-				buffer += "fun_call '{$@str_value}'";
 			}
 
 			label Node->Type->DEFUN {
