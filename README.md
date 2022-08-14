@@ -2,6 +2,7 @@
 
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Download Objeck](https://img.shields.io/sourceforge/dt/objeck-lang.svg)](https://sourceforge.net/projects/objeck-lang/)
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.com/channels/1008433395828805807/1008433396378251316)
 
 <!-- [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) -->
 
