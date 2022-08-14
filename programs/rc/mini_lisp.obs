@@ -124,7 +124,7 @@ class Evaluator {
 			label Node->Type->LET {
 				table := Hash->New()<String, Value>;
 				@symbol_tables->AddFront(table);
-
+				
 				children := node->GetChildren()<Node>;
 				if(children <> Nil) {
 					each(i : children) {
@@ -736,14 +736,7 @@ class Parser {
 							return Nil;
 						};
 						NextToken();
-
-						if(GetTokenType() <> Token->Type->OPRN) {
-							@error := true;
-							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
-							return Nil;
-						};
-						NextToken();
-
+						
 						expressions := Expressions(depth + 1);
 						if(expressions = Nil) {
 							return Nil;
@@ -832,7 +825,7 @@ class Parser {
 							"\tVAR; name={$value}"->PrintLine();
 						};
 
-						node := Node->New(Node->Type->FUN_CALL, value);
+						node := Node->New(Node->Type->LET_DEC, value);
 						if(<>Operands(node, depth)) {
 							return Nil;
 						};
@@ -1190,9 +1183,9 @@ class Scanner {
 					i += 1;
 				};
 				ident := input->SubString(start, i - start);
-
+				
 				found := keywords->Find(ident);
-				if(found <> 0) {
+				if(found <> Nil) {
 					tokens->AddBack(Token->New(found->Get()->As(Token->Type)));					
 				}
 				else {
