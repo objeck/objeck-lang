@@ -98,7 +98,7 @@ class Evaluator {
 					};
 
 					if(<>found) {
-						"Unable to find variable '{$name}'"->ErrorLine();
+						"Unable to find variable '{$name}' ***"->ErrorLine();
 						Runtime->Exit(1);
 					};
 				}
@@ -107,13 +107,12 @@ class Evaluator {
 					fun_name := node->GetStringValue();				
 					func := @functions->Find(fun_name);
 					if(func = Nil) {
-						"*** Unidentied function '{$fun_name}'"->ErrorLine();
+						"*** Unidentied function '{$fun_name}' ***"->ErrorLine();
 						Runtime->Exit(1);
 					};
 
 					parms := node->GetChildren();
 					if(parms <> Nil) {
-"--- 0: ??? ---"->PrintLine();
 						each(i : parms) {
 							Evaluate(parms->Get(i));
 						};
@@ -121,8 +120,22 @@ class Evaluator {
 
 					instrs := func->GetChildren();
 					if(instrs <> Nil) {
-foo := instrs->Size();
-"--- 1: ??? {$foo} ---"->PrintLine();
+						if(instrs->Size() > 1) {
+							bind_vars := instrs->Get(0)->GetChildren();
+							if(parms = Nil | bind_vars->Size() <> parms->Size()) {
+								"*** Function parameter size mismatch '{$fun_name}' ***"->ErrorLine();
+								Runtime->Exit(1);
+							};
+
+							each(i : bind_vars) {
+"..."->PrintLine();
+							};
+						}
+						else if(parms <> Nil) {
+							"*** Function parameter size mismatch '{$fun_name}' ***"->ErrorLine();
+							Runtime->Exit(1);
+						};
+
 						each(i : instrs) {
 							Evaluate(instrs->Get(i));
 						};
@@ -346,7 +359,7 @@ foo := instrs->Size();
 
 				other {
 					type := node->GetType()->As(Int);
-					"Unknown expression ({$type})"->ErrorLine();
+					"Unknown expression ({$type}) ***"->ErrorLine();
 					Runtime->Exit(1);
 				}
 			};
