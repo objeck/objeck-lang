@@ -127,9 +127,22 @@ class Evaluator {
 								Runtime->Exit(1);
 							};
 
+							table := Hash->New()<String, Value>;
+							@symbol_tables->AddFront(table);
+
 							each(i : bind_vars) {
-"..."->PrintLine();
+								bind_var := bind_vars->Get(i);
+								
+								var_name := bind_var->GetStringValue();
+								bind_parm := parms->Get(i);
+								if(bind_parm <> Nil) {
+									Evaluate(bind_parm);
+									table->Insert(var_name, @exe_stack->Pop());
+								};
 							};
+							
+							@symbol_tables->RemoveFront();
+
 						}
 						else if(parms <> Nil) {
 							"*** Function parameter size mismatch '{$fun_name}' ***"->ErrorLine();
@@ -770,7 +783,7 @@ class Parser {
 						parameters := Node->New(Node->Type->BIND_VARS);
 						while(GetTokenType() = Token->Type->VAR) {
 							value := @tokens->Get(@token_pos)->GetStringValue();
-							parameters->AddChild(Node->New(Node->Type->BIND_DEC, value));
+							parameters->AddChild(Node->New(Node->Type->BIND_VAR, value));
 							NextToken();
 						};
 						node->AddChild(parameters);
@@ -1015,7 +1028,7 @@ class Node {
 		LET,
 		LET_FUN_DEC,
 		BIND_VARS,
-		BIND_DEC,
+		BIND_VAR,
 		DEFUN,
 		RTRN,
 		CONS,
@@ -1204,8 +1217,8 @@ class Node {
 				buffer += "bind_vars";
 			}
 
-			label Node->Type->BIND_DEC {
-				buffer += "bind_dec '{$@str_value}'";
+			label Node->Type->BIND_VAR {
+				buffer += "bind_var '{$@str_value}'";
 			}
 
 			other {
