@@ -4,7 +4,7 @@ use Collection.Generic;
 Tests:
 - (write 13)
 - (write (+ 13 8))
-- (a 13)(defun a(b)(let ((c 7))(write (+ c b))))
+- (a 13)(defun a(b)(let ((c 8))(write (+ c b))))
 ~#
 class MiniLisp {
 	function : Main(args : String[]) ~ Nil {
