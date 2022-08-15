@@ -113,6 +113,7 @@ class Evaluator {
 
 					parms := node->GetChildren();
 					if(parms <> Nil) {
+"--- 0: ??? ---"->PrintLine();
 						each(i : parms) {
 							Evaluate(parms->Get(i));
 						};
@@ -120,6 +121,8 @@ class Evaluator {
 
 					instrs := func->GetChildren();
 					if(instrs <> Nil) {
+foo := instrs->Size();
+"--- 1: ??? {$foo} ---"->PrintLine();
 						each(i : instrs) {
 							Evaluate(instrs->Get(i));
 						};
@@ -860,6 +863,13 @@ class Parser {
 						if(<>Operands(node, depth)) {
 							return Nil;
 						};
+
+#~
+						if(GetTokenType() = Token->Type->OPRN) {
+"--- ? ---"->PrintLine();
+NextToken(); NextToken(); NextToken();
+						};
+~#
 					}
 
 					label Token->Type->LENGTH_KEYWORD: {
@@ -1175,6 +1185,19 @@ class Node {
 
 			label Node->Type->NEQL {
 				buffer += "/=";
+			}
+
+			label Node->Type->BIND_VARS {
+				buffer += "bind_vars";
+			}
+
+			label Node->Type->BIND_DEC {
+				buffer += "bind_dec '{$@str_value}'";
+			}
+
+			other {
+				id := @type->As(Int);
+				buffer += ">>({$id})<<";
 			}
 		};
 
