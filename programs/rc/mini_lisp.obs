@@ -1,5 +1,11 @@
 use Collection.Generic;
 
+#~
+Tests:
+- (write 13)
+- (write (+ 13 8))
+- (a 13)(defun a(b)(let ((c 7))(write (+ c b))))
+~#
 class MiniLisp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -132,7 +138,7 @@ class Evaluator {
 
 							each(i : bind_vars) {
 								bind_var := bind_vars->Get(i);
-								
+
 								var_name := bind_var->GetStringValue();
 								bind_parm := parms->Get(i);
 								if(bind_parm <> Nil) {
@@ -140,7 +146,7 @@ class Evaluator {
 									table->Insert(var_name, @exe_stack->Pop());
 								};
 							};
-							
+
 							@symbol_tables->RemoveFront();
 
 						}
