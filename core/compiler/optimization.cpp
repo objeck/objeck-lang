@@ -1130,8 +1130,8 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       break;
 
     case STOR_INT_VAR:
+      outputs->AddInstruction(instr);
       if(set_int) {
-        outputs->AddInstruction(instr);
         value_prop_map[instr->GetOperand()].int_value = int_value;
       }
       set_int = set_float = false;
@@ -1158,8 +1158,8 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       break;
 
     case STOR_FLOAT_VAR:
+      outputs->AddInstruction(instr);
       if(set_float) {
-        outputs->AddInstruction(instr);
         value_prop_map[instr->GetOperand()].float_value = float_value;
       }
       set_int = set_float = false;
