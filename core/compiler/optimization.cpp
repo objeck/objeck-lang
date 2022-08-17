@@ -1113,9 +1113,9 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
   int int_value;
 
   bool set_float = false; 
-  float float_value;
+  double float_value;
 
-  unordered_map<int, PropValue> int_prop_map;
+  unordered_map<int, PropValue> value_prop_map;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); ++i) {
@@ -1132,14 +1132,14 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
     case STOR_INT_VAR:
       if(set_int) {
         outputs->AddInstruction(instr);
-        int_prop_map[instr->GetOperand()].int_value = int_value;
+        value_prop_map[instr->GetOperand()].int_value = int_value;
       }
       set_int = set_float = false;
       break;
 
     case LOAD_INT_VAR: {
-      unordered_map<int, PropValue>::iterator result = int_prop_map.find(instr->GetOperand());
-      if(result != int_prop_map.end()) {
+      unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
+      if(result != value_prop_map.end()) {
         outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.int_value));
       }
       else {
@@ -1149,15 +1149,6 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       set_int = set_float = false;
     }
       break;
-
-
-
-
-
-
-
-
-
 
       // float propagation
     case LOAD_FLOAT_LIT:
@@ -1169,14 +1160,14 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
     case STOR_FLOAT_VAR:
       if(set_float) {
         outputs->AddInstruction(instr);
-        int_prop_map[instr->GetOperand()].float_value = float_value;
+        value_prop_map[instr->GetOperand()].float_value = float_value;
       }
       set_int = set_float = false;
       break;
 
     case LOAD_FLOAT_VAR: {
-      unordered_map<int, PropValue>::iterator result = int_prop_map.find(instr->GetOperand());
-      if(result != int_prop_map.end()) {
+      unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
+      if(result != value_prop_map.end()) {
         outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.float_value));
       }
       else {
@@ -1187,13 +1178,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
     }
       break;
 
-
-
-
-
-
-
-      // reset
+      // reset propagation map
     case MTHD_CALL:
     case DYN_MTHD_CALL:
     case JMP:
@@ -1201,7 +1186,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
     case RTRN:
       outputs->AddInstruction(instr);
       // reset
-      int_prop_map.clear();
+      value_prop_map.clear();
       set_int = set_float = false;
       break;
 
