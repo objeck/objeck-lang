@@ -44,10 +44,14 @@ using namespace backend;
  * intermediate code.
  *
  * Order of 4 optimizations:
- * 0 - clean up jumps and other unneeded instructions (always happens)
- * 1 - setter and getter inlining / advanced method inlining / constant folding
- * 2 - strength reduction
- * 3 - replace store/load with copy instruction
+ * 0   - clean up jumps and other unneeded instructions (always happens)
+ * 1.1 - setter and getter inlining
+ * 1.2 - advanced method inlining 
+ * 1.3 - constant propagation
+ * 1.4 - constant folding
+ * 2.1 - strength reduction
+ * 3.1 - replace store
+ * 3.2 - load with copy instruction
  ****************************/
 
 union PropValue {
