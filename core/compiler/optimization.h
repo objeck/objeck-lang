@@ -49,6 +49,12 @@ using namespace backend;
  * 2 - strength reduction
  * 3 - replace store/load with copy instruction
  ****************************/
+
+union PropValue {
+  int int_value;
+  double float_value;
+};
+
 class ItermediateOptimizer {
   IntermediateProgram* program;
   set<wstring> can_inline;
@@ -75,6 +81,9 @@ class ItermediateOptimizer {
 
   // jump to address
   IntermediateBlock* JumpToLocation(IntermediateBlock* inputs);
+
+  // constant propagation
+  IntermediateBlock* ConstantProp(IntermediateBlock* input);
 
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);

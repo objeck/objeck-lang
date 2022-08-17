@@ -235,17 +235,31 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-        
+    
+    // constant folding
+#ifdef _DEBUG
+    GetLogger() << L"  Constant folding..." << endl;
+#endif
+    vector<IntermediateBlock*> const_prop_blocks;
+    while(!getter_setter_blocks.empty()) {
+      IntermediateBlock* tmp = getter_setter_blocks.front();
+      const_prop_blocks.push_back(ConstantProp(tmp));
+      // delete old block
+      getter_setter_blocks.erase(getter_setter_blocks.begin());
+      delete tmp;
+      tmp = nullptr;
+    }
+
     // fold integers
 #ifdef _DEBUG
     GetLogger() << L"  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!getter_setter_blocks.empty()) {
-      IntermediateBlock* tmp = getter_setter_blocks.front();
+    while(!const_prop_blocks.empty()) {
+      IntermediateBlock* tmp = const_prop_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      getter_setter_blocks.erase(getter_setter_blocks.begin());
+      const_prop_blocks.erase(const_prop_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
@@ -1084,6 +1098,117 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
     default:
       outputs->AddInstruction(instr);
+      break;
+    }
+  }
+
+  return outputs;
+}
+
+IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+
+  bool set_int = false; 
+  int int_value;
+
+  bool set_float = false; 
+  float float_value;
+
+  unordered_map<int, PropValue> int_prop_map;
+
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+      // int propagation
+    case LOAD_INT_LIT:
+      outputs->AddInstruction(instr);
+      int_value = instr->GetOperand();
+      set_int = true;
+      break;
+
+    case STOR_INT_VAR:
+      if(set_int) {
+        outputs->AddInstruction(instr);
+        int_prop_map[instr->GetOperand()].int_value = int_value;
+      }
+      set_int = set_float = false;
+      break;
+
+    case LOAD_INT_VAR: {
+      unordered_map<int, PropValue>::iterator result = int_prop_map.find(instr->GetOperand());
+      if(result != int_prop_map.end()) {
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.int_value));
+      }
+      else {
+        outputs->AddInstruction(instr);
+      }
+      // reset
+      set_int = set_float = false;
+    }
+      break;
+
+
+
+
+
+
+
+
+
+
+      // float propagation
+    case LOAD_FLOAT_LIT:
+      outputs->AddInstruction(instr);
+      float_value = instr->GetOperand4();
+      set_float = true;
+      break;
+
+    case STOR_FLOAT_VAR:
+      if(set_float) {
+        outputs->AddInstruction(instr);
+        int_prop_map[instr->GetOperand()].float_value = float_value;
+      }
+      set_int = set_float = false;
+      break;
+
+    case LOAD_FLOAT_VAR: {
+      unordered_map<int, PropValue>::iterator result = int_prop_map.find(instr->GetOperand());
+      if(result != int_prop_map.end()) {
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.float_value));
+      }
+      else {
+        outputs->AddInstruction(instr);
+      }
+      // reset
+      set_int = set_float = false;
+    }
+      break;
+
+
+
+
+
+
+
+      // reset
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
+    case JMP:
+    case LBL:
+    case RTRN:
+      outputs->AddInstruction(instr);
+      // reset
+      int_prop_map.clear();
+      set_int = set_float = false;
+      break;
+
+    default:
+      outputs->AddInstruction(instr);
+      // reset
+      set_int = set_float = false;
       break;
     }
   }
