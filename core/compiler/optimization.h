@@ -44,7 +44,7 @@ using namespace backend;
  * intermediate code.
  *
  * Order of 4 optimizations:
- * 0   - clean up jumps and other unneeded instructions (always happens)
+ * 0.0 - clean up jumps and other unneeded instructions (always happens)
  * 1.1 - setter and getter inlining
  * 1.2 - advanced method inlining 
  * 1.3 - constant propagation
