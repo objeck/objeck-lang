@@ -236,9 +236,9 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = nullptr;
     }
     
-    // constant folding
+    // constant propagation
 #ifdef _DEBUG
-    GetLogger() << L"  Constant folding..." << endl;
+    GetLogger() << L"  Constant propagation..." << endl;
 #endif
     vector<IntermediateBlock*> const_prop_blocks;
     while(!getter_setter_blocks.empty()) {
@@ -250,16 +250,35 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = nullptr;
     }
 
+
+
+    // dead store removal 
+#ifdef _DEBUG
+    GetLogger() << L"  Folding integers..." << endl;
+#endif
+    vector<IntermediateBlock*> dead_store_blocks;
+    while(!const_prop_blocks.empty()) {
+      IntermediateBlock* tmp = const_prop_blocks.front();
+      dead_store_blocks.push_back(DeadStore(tmp));
+      // delete old block
+      const_prop_blocks.erase(const_prop_blocks.begin());
+      delete tmp;
+      tmp = nullptr;
+    }
+
+
+
+
     // fold integers
 #ifdef _DEBUG
     GetLogger() << L"  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!const_prop_blocks.empty()) {
-      IntermediateBlock* tmp = const_prop_blocks.front();
+    while(!dead_store_blocks.empty()) {
+      IntermediateBlock* tmp = dead_store_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      const_prop_blocks.erase(const_prop_blocks.begin());
+      dead_store_blocks.erase(dead_store_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
@@ -1100,6 +1119,20 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
       outputs->AddInstruction(instr);
       break;
     }
+  }
+
+  return outputs;
+}
+
+IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    outputs->AddInstruction(instr);
   }
 
   return outputs;
