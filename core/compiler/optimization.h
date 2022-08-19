@@ -50,8 +50,7 @@ using namespace backend;
  * 1.3 - constant propagation
  * 1.4 - constant folding
  * 2.1 - strength reduction
- * 3.1 - replace store
- * 3.2 - load with copy instruction
+ * 3.1 - replace store+load with copy
  ****************************/
 
 union PropValue {
@@ -89,6 +88,9 @@ class ItermediateOptimizer {
   // constant propagation
   IntermediateBlock* ConstantProp(IntermediateBlock* input);
 
+  // dead store
+  IntermediateBlock* DeadStore(IntermediateBlock* input);
+
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
   void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack,
@@ -96,31 +98,20 @@ class ItermediateOptimizer {
 
   // float constant folding
   IntermediateBlock* FoldFloatConstants(IntermediateBlock* input);
-  void CalculateFloatFold(IntermediateInstruction* instr,
-                          deque<IntermediateInstruction*> &calc_stack,
-                          IntermediateBlock* outputs);
+  void CalculateFloatFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
   // strength reduction
   IntermediateBlock* StrengthReduction(IntermediateBlock* inputs);
-  void CalculateReduction(IntermediateInstruction* instr,
-                          deque<IntermediateInstruction*> &calc_stack,
-                          IntermediateBlock* outputs);
+  void CalculateReduction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
-  void ApplyReduction(IntermediateInstruction* test,
-                      IntermediateInstruction* instr,
-                      IntermediateInstruction* top_instr,
-                      deque<IntermediateInstruction*> &calc_stack,
-                      IntermediateBlock* outputs);
+  void ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr,
+                      deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
-  void AddBackReduction(IntermediateInstruction* instr,
-                        IntermediateInstruction* top_instr,
-                        deque<IntermediateInstruction*> &calc_stack,
-                        IntermediateBlock* outputs);
+  void AddBackReduction(IntermediateInstruction* instr, IntermediateInstruction* top_instr, 
+                        deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
   
   // instruction replacement
   IntermediateBlock* InstructionReplacement(IntermediateBlock* inputs);
-  void ReplacementInstruction(IntermediateInstruction* instr,
-                              deque<IntermediateInstruction*> &calc_stack,
-                              IntermediateBlock* outputs);
+  void ReplacementInstruction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
   bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets);
   
