@@ -1144,6 +1144,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 
     default:
       done = true;
+      break;
     }
   }
   
@@ -1158,7 +1159,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
       break;
 
     default:
-      done = true;
+      break;
     }
   }
 
