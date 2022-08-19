@@ -1128,13 +1128,10 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
 
-
-
-  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  
-  int start = 0;
+  size_t start = 0;
   bool done = false;
 
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   while(!done && start < input_instrs.size()) {
     IntermediateInstruction* instr = input_instrs[start];
 
