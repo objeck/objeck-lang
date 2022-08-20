@@ -1137,7 +1137,23 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
   vector<pair<size_t, size_t>> deadstore_edits;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(size_t i = 0; i < input_instrs.size(); ++i) {
+  while(!done && start < input_instrs.size()) {
+    IntermediateInstruction* instr = input_instrs[start];
+
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
+      start++;
+      break;
+
+    default:
+      done = true;
+      break;
+    }
+  }
+  
+  for(size_t i = start; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
