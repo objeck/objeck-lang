@@ -277,6 +277,15 @@ namespace backend {
       instructions.push_back(i);
     }
 
+    void Remove(pair<size_t, size_t> &range) {
+      const size_t start_edit = range.first;
+      const size_t end_edit = range.second;
+
+      if(start_edit < end_edit && end_edit < instructions.size()) {
+        instructions.erase(instructions.begin() + start_edit, instructions.begin() + end_edit);
+      }
+    }
+
     vector<IntermediateInstruction*> GetInstructions() {
       return instructions;
     }

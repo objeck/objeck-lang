@@ -1136,6 +1136,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
   vector<pair<size_t, size_t>> deadstore_edits;
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
 
+  // skip parameter stores
   bool done = false;
   size_t start = 0;
   while(!done && start < input_instrs.size()) {
@@ -1152,16 +1153,20 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
       done = true;
       break;
     }
+
+    outputs->AddInstruction(instr);
   }
   
-  for(size_t i = start; i < input_instrs.size(); ++i) {
+  // search for dead stores
+  for(size_t i = start + 1; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
     case STOR_INT_VAR:
+      outputs->AddInstruction(instr);
       if(IsDeadStore(instr->GetOperand(), i + 1, input_instrs)) {
         size_t deadstore_start = GetDeadstoreStart(i - 1, input_instrs);
-        deadstore_edits.push_back(pair<size_t, size_t>(deadstore_start, i));
+        deadstore_edits.push_back(pair<size_t, size_t>(deadstore_start, i + 1));
       }
       break;
 
@@ -1171,6 +1176,12 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
+  // remove dead code
+  for(size_t i = 0; i < deadstore_edits.size(); ++i) {
+    pair<size_t, size_t> deadstore_edit = deadstore_edits[i];
+    outputs->Remove(deadstore_edit);
+  }
+  
   return outputs;
 }
 
@@ -1209,9 +1220,10 @@ size_t ItermediateOptimizer::GetDeadstoreStart(size_t search_index, vector<Inter
 {
   size_t count = 0;
 
-  for(size_t i = search_index; i >= 0; --i) {
-    IntermediateInstruction* instr = input_instrs[i];
-    
+  vector<IntermediateInstruction*>::iterator iter = input_instrs.begin() + search_index;
+  while(iter != input_instrs.begin()) {
+    IntermediateInstruction* instr = *iter;
+
     switch(instr->GetType()) {
     case LOAD_INT_LIT:
     case LOAD_INT_VAR:
@@ -1222,6 +1234,8 @@ size_t ItermediateOptimizer::GetDeadstoreStart(size_t search_index, vector<Inter
     default:
       return count;
     }
+
+    iter--;
   }
 
   return count;
