@@ -90,6 +90,8 @@ class ItermediateOptimizer {
 
   // dead store
   IntermediateBlock* DeadStore(IntermediateBlock* input);
+  bool IsDeadStore(int store_pos, size_t search_index, vector<IntermediateInstruction*> &input_instrs);
+  size_t GetDeadstoreStart(size_t search_index, vector<IntermediateInstruction*>& input_instrs);
 
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
