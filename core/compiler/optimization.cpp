@@ -1124,19 +1124,94 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   return outputs;
 }
 
+// ----------------------------
+
+// TODO:
+// Support for floats, function calls, new objects, function references etc.
+///
+
 IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
+
+  vector<pair<size_t, size_t>> deadstore_edits;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
-    outputs->AddInstruction(instr);
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+      if(IsDeadStore(instr->GetOperand(), i + 1, input_instrs)) {
+        size_t deadstore_start = GetDeadstoreStart(i - 1, input_instrs);
+        deadstore_edits.push_back(pair<size_t, size_t>(deadstore_start, i));
+      }
+      break;
+
+    default:
+      outputs->AddInstruction(instr);
+      break;
+    }
   }
 
   return outputs;
 }
+
+bool ItermediateOptimizer::IsDeadStore(int store_pos, size_t search_index, vector<IntermediateInstruction*> &input_instrs)
+{
+  for(size_t i = search_index; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+      if(instr->GetOperand() == store_pos) {
+        return true;
+      }
+      break;
+
+    case LOAD_INT_VAR:
+      if(instr->GetOperand() == store_pos) {
+        return false;
+      }
+      break;
+
+      // end of basic block
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
+    case JMP:
+    case RTRN:
+      return false;
+    }
+  }
+
+  // never saw a load
+  return true;
+}
+
+size_t ItermediateOptimizer::GetDeadstoreStart(size_t search_index, vector<IntermediateInstruction*>& input_instrs)
+{
+  size_t count = 0;
+
+  for(size_t i = search_index; i >= 0; --i) {
+    IntermediateInstruction* instr = input_instrs[i];
+    
+    switch(instr->GetType()) {
+    case LOAD_INT_LIT:
+    case LOAD_INT_VAR:
+    case ADD_INT:
+      count++;
+      break;
+
+    default:
+      return count;
+    }
+  }
+
+  return count;
+}
+
+// TODO:
+// test edge cases
 
 IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 {
@@ -1215,7 +1290,6 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
     case MTHD_CALL:
     case DYN_MTHD_CALL:
     case JMP:
-    case LBL:
     case RTRN:
       outputs->AddInstruction(instr);
       // reset
@@ -1233,6 +1307,8 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
   return outputs;
 }
+
+// ----------------------------
 
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)
 {
