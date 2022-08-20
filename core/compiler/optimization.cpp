@@ -1133,10 +1133,11 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-
   vector<pair<size_t, size_t>> deadstore_edits;
-
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
+  bool done = false;
+  size_t start = 0;
   while(!done && start < input_instrs.size()) {
     IntermediateInstruction* instr = input_instrs[start];
 
