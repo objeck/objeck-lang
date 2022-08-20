@@ -1,0 +1,16 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+#~		
+		a := 3;
+		a := 7;
+		a := 13;
+		a->PrintLine();
+~#
+
+		a := 7;
+		b := a + 3;
+		b := 13;
+		(b + 4)->PrintLine();
+		b->PrintLine();	
+	}
+}
