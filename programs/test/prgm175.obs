@@ -7,10 +7,15 @@ class Foo {
 		a->PrintLine();
 ~#
 
+		x := String->New();
+		x := String->New();
 		a := 7;
+#~		
 		b := a + 3;
 		b := 13;
 		(b + 4)->PrintLine();
 		b->PrintLine();	
+~#	
+		a->PrintLine();	
 	}
 }
