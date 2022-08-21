@@ -865,7 +865,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case LBL:
-    GetLogger()  << i << L":\tLBL: id=" << operand << endl;
+    GetLogger()  << i << L":\tLBL" << endl;
     break;
 
   case JMP:
@@ -873,8 +873,7 @@ void IntermediateInstruction::Debug(size_t i) {
       GetLogger()  << i << L":\tJMP: index=" << operand << endl;
     }
     else {
-      GetLogger()  << i << L":\tJMP: index=" << operand << L", conditional="
-        << (operand2 ? "true" : "false") << endl;
+      GetLogger()  << i << L":\tJMP: index=" << operand << L", conditional=" << (operand2 ? "true" : "false") << endl;
     }
     break;
 
