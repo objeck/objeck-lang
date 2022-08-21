@@ -425,60 +425,60 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   }
 }
 
-void IntermediateInstruction::Debug() {
+void IntermediateInstruction::Debug(size_t i) {
   switch(type) {
   case SWAP_INT:
-    GetLogger() << L"SWAP_INT" << endl;
+    GetLogger()  << i << L":\tSWAP_INT" << endl;
     break;
 
   case POP_INT:
-    GetLogger() << L"POP_INT" << endl;
+    GetLogger()  << i << L":\tPOP_INT" << endl;
     break;
 
   case POP_FLOAT:
-    GetLogger() << L"POP_FLOAT" << endl;
+    GetLogger()  << i << L":\tPOP_FLOAT" << endl;
     break;
 
   case LOAD_INT_LIT:
-    GetLogger() << L"LOAD_INT_LIT: value=" << operand << endl;
+    GetLogger()  << i << L":\tLOAD_INT_LIT: value=" << operand << endl;
     break;
 
   case LOAD_CHAR_LIT: {
     const bool is_print = iswprint((wchar_t)operand);
-    GetLogger() << L"LOAD_CHAR_LIT value='" << (is_print ? (wchar_t)operand : L'?') << L"'" << endl;
+    GetLogger()  << i << L":\tLOAD_CHAR_LIT value='" << (is_print ? (wchar_t)operand : L'?') << L"'" << endl;
   }
     break;
 
   case DYN_MTHD_CALL: {
-    GetLogger() << L"DYN_MTHD_CALL num_params=" << operand;
+    GetLogger()  << i << L":\tDYN_MTHD_CALL num_params=" << operand;
 
     switch(operand2) {
     case NIL_TYPE:
-      GetLogger() << L"; rtrn_type=Nil";
+      GetLogger()  << i << L":\t; rtrn_type=Nil";
       break;
 
     case BYTE_ARY_TYPE:
-      GetLogger() << L"; rtrn_type=Byte[]";
+      GetLogger()  << i << L":\t; rtrn_type=Byte[]";
       break;
 
     case CHAR_ARY_TYPE:
-      GetLogger() << L"; rtrn_type=Char[]";
+      GetLogger()  << i << L":\t; rtrn_type=Char[]";
       break;
 
     case INT_TYPE:
-      GetLogger() << L"; rtrn_type=Int";
+      GetLogger()  << i << L":\t; rtrn_type=Int";
       break;
 
     case FLOAT_TYPE:
-      GetLogger() << L"; rtrn_type=Float";
+      GetLogger()  << i << L":\t; rtrn_type=Float";
       break;
 
     case FUNC_TYPE:
-      GetLogger() << L"; rtrn_type=Func";
+      GetLogger()  << i << L":\t; rtrn_type=Func";
       break;
 
     default:
-      GetLogger() << L"; rtrn_type=Unknown";
+      GetLogger()  << i << L":\t; rtrn_type=Unknown";
       break;
     }
 
@@ -487,441 +487,441 @@ void IntermediateInstruction::Debug() {
     break;
 
   case SHL_INT:
-    GetLogger() << L"SHL_INT" << endl;
+    GetLogger()  << i << L":\tSHL_INT" << endl;
     break;
 
   case SHR_INT:
-    GetLogger() << L"SHR_INT" << endl;
+    GetLogger()  << i << L":\tSHR_INT" << endl;
     break;
 
   case LOAD_FLOAT_LIT:
-    GetLogger() << L"LOAD_FLOAT_LIT: value=" << operand4 << endl;
+    GetLogger()  << i << L":\tLOAD_FLOAT_LIT: value=" << operand4 << endl;
     break;
 
   case LOAD_FUNC_VAR:
-    GetLogger() << L"LOAD_FUNC_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tLOAD_FUNC_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_INT_VAR:
-    GetLogger() << L"LOAD_INT_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tLOAD_INT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_FLOAT_VAR:
-    GetLogger() << L"LOAD_FLOAT_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tLOAD_FLOAT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_BYTE_ARY_ELM:
-    GetLogger() << L"LOAD_BYTE_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tLOAD_BYTE_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_CHAR_ARY_ELM:
-    GetLogger() << L"LOAD_CHAR_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tLOAD_CHAR_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_INT_ARY_ELM:
-    GetLogger() << L"LOAD_INT_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tLOAD_INT_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_FLOAT_ARY_ELM:
-    GetLogger() << L"LOAD_FLOAT_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tLOAD_FLOAT_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case LOAD_CLS_MEM:
-    GetLogger() << L"LOAD_CLS_MEM" << endl;
+    GetLogger()  << i << L":\tLOAD_CLS_MEM" << endl;
     break;
 
   case LOAD_INST_MEM:
-    GetLogger() << L"LOAD_INST_MEM" << endl;
+    GetLogger()  << i << L":\tLOAD_INST_MEM" << endl;
     break;
 
   case STOR_FUNC_VAR:
-    GetLogger() << L"STOR_FUNC_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tSTOR_FUNC_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_INT_VAR:
-    GetLogger() << L"STOR_INT_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tSTOR_INT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_FLOAT_VAR:
-    GetLogger() << L"STOR_FLOAT_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tSTOR_FLOAT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_FUNC_VAR:
-    GetLogger() << L"COPY_FUNC_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tCOPY_FUNC_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_INT_VAR:
-    GetLogger() << L"COPY_INT_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tCOPY_INT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case COPY_FLOAT_VAR:
-    GetLogger() << L"COPY_FLOAT_VAR: id=" << operand << L"; local="
+    GetLogger()  << i << L":\tCOPY_FLOAT_VAR: id=" << operand << L"; local="
       << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_BYTE_ARY_ELM:
-    GetLogger() << L"STOR_BYTE_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tSTOR_BYTE_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_CHAR_ARY_ELM:
-    GetLogger() << L"STOR_CHAR_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tSTOR_CHAR_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_INT_ARY_ELM:
-    GetLogger() << L"STOR_INT_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tSTOR_INT_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case STOR_FLOAT_ARY_ELM:
-    GetLogger() << L"STOR_FLOAT_ARY_ELM: dimension=" << operand
+    GetLogger()  << i << L":\tSTOR_FLOAT_ARY_ELM: dimension=" << operand
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << endl;
     break;
 
   case instructions::ASYNC_MTHD_CALL: {
-//    IntermediateMethod* async_method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
-//    GetLogger() << L"ASYNC_MTHD_CALL: method='" << async_method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
+    IntermediateMethod* async_method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
+    GetLogger()  << i << L":\tASYNC_MTHD_CALL: method='" << async_method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
   }
     break;
 
   case instructions::DLL_LOAD:
-    GetLogger() << L"DLL_LOAD" << endl;
+    GetLogger()  << i << L":\tDLL_LOAD" << endl;
     break;
 
   case instructions::DLL_UNLOAD:
-    GetLogger() << L"DLL_UNLOAD" << endl;
+    GetLogger()  << i << L":\tDLL_UNLOAD" << endl;
     break;
 
   case instructions::DLL_FUNC_CALL:
-    GetLogger() << L"DLL_FUNC_CALL" << endl;
+    GetLogger()  << i << L":\tDLL_FUNC_CALL" << endl;
     break;
 
   case instructions::THREAD_JOIN:
-    GetLogger() << L"THREAD_JOIN" << endl;
+    GetLogger()  << i << L":\tTHREAD_JOIN" << endl;
     break;
 
   case instructions::THREAD_SLEEP:
-    GetLogger() << L"THREAD_SLEEP" << endl;
+    GetLogger()  << i << L":\tTHREAD_SLEEP" << endl;
     break;
 
   case instructions::THREAD_MUTEX:
-    GetLogger() << L"THREAD_MUTEX" << endl;
+    GetLogger()  << i << L":\tTHREAD_MUTEX" << endl;
     break;
 
   case CRITICAL_START:
-    GetLogger() << L"CRITICAL_START" << endl;
+    GetLogger()  << i << L":\tCRITICAL_START" << endl;
     break;
 
   case CRITICAL_END:
-    GetLogger() << L"CRITICAL_END" << endl;
+    GetLogger()  << i << L":\tCRITICAL_END" << endl;
     break;
 
   case AND_INT:
-    GetLogger() << L"AND_INT" << endl;
+    GetLogger()  << i << L":\tAND_INT" << endl;
     break;
 
   case OR_INT:
-    GetLogger() << L"OR_INT" << endl;
+    GetLogger()  << i << L":\tOR_INT" << endl;
     break;
 
   case ADD_INT:
-    GetLogger() << L"ADD_INT" << endl;
+    GetLogger()  << i << L":\tADD_INT" << endl;
     break;
 
   case SUB_INT:
-    GetLogger() << L"SUB_INT" << endl;
+    GetLogger()  << i << L":\tSUB_INT" << endl;
     break;
 
   case MUL_INT:
-    GetLogger() << L"MUL_INT" << endl;
+    GetLogger()  << i << L":\tMUL_INT" << endl;
     break;
 
   case DIV_INT:
-    GetLogger() << L"DIV_INT" << endl;
+    GetLogger()  << i << L":\tDIV_INT" << endl;
     break;
 
   case MOD_INT:
-    GetLogger() << L"MOD_INT" << endl;
+    GetLogger()  << i << L":\tMOD_INT" << endl;
     break;
 
   case BIT_AND_INT:
-    GetLogger() << L"BIT_AND_INT" << endl;
+    GetLogger()  << i << L":\tBIT_AND_INT" << endl;
     break;
 
   case BIT_OR_INT:
-    GetLogger() << L"BIT_OR_INT" << endl;
+    GetLogger()  << i << L":\tBIT_OR_INT" << endl;
     break;
 
   case BIT_XOR_INT:
-    GetLogger() << L"BIT_XOR_INT" << endl;
+    GetLogger()  << i << L":\tBIT_XOR_INT" << endl;
     break;
 
   case EQL_INT:
-    GetLogger() << L"EQL_INT" << endl;
+    GetLogger()  << i << L":\tEQL_INT" << endl;
     break;
 
   case NEQL_INT:
-    GetLogger() << L"NEQL_INT" << endl;
+    GetLogger()  << i << L":\tNEQL_INT" << endl;
     break;
 
   case LES_INT:
-    GetLogger() << L"LES_INT" << endl;
+    GetLogger()  << i << L":\tLES_INT" << endl;
     break;
 
   case GTR_INT:
-    GetLogger() << L"GTR_INT" << endl;
+    GetLogger()  << i << L":\tGTR_INT" << endl;
     break;
 
   case LES_EQL_INT:
-    GetLogger() << L"LES_EQL_INT" << endl;
+    GetLogger()  << i << L":\tLES_EQL_INT" << endl;
     break;
 
   case GTR_EQL_INT:
-    GetLogger() << L"GTR_EQL_INT" << endl;
+    GetLogger()  << i << L":\tGTR_EQL_INT" << endl;
     break;
 
   case ADD_FLOAT:
-    GetLogger() << L"ADD_FLOAT" << endl;
+    GetLogger()  << i << L":\tADD_FLOAT" << endl;
     break;
 
   case SUB_FLOAT:
-    GetLogger() << L"SUB_FLOAT" << endl;
+    GetLogger()  << i << L":\tSUB_FLOAT" << endl;
     break;
 
   case MUL_FLOAT:
-    GetLogger() << L"MUL_FLOAT" << endl;
+    GetLogger()  << i << L":\tMUL_FLOAT" << endl;
     break;
 
   case DIV_FLOAT:
-    GetLogger() << L"DIV_FLOAT" << endl;
+    GetLogger()  << i << L":\tDIV_FLOAT" << endl;
     break;
 
   case EQL_FLOAT:
-    GetLogger() << L"EQL_FLOAT" << endl;
+    GetLogger()  << i << L":\tEQL_FLOAT" << endl;
     break;
 
   case NEQL_FLOAT:
-    GetLogger() << L"NEQL_FLOAT" << endl;
+    GetLogger()  << i << L":\tNEQL_FLOAT" << endl;
     break;
 
   case LES_EQL_FLOAT:
-    GetLogger() << L"LES_EQL_FLOAT" << endl;
+    GetLogger()  << i << L":\tLES_EQL_FLOAT" << endl;
     break;
 
   case LES_FLOAT:
-    GetLogger() << L"LES_FLOAT" << endl;
+    GetLogger()  << i << L":\tLES_FLOAT" << endl;
     break;
 
   case GTR_FLOAT:
-    GetLogger() << L"GTR_FLOAT" << endl;
+    GetLogger()  << i << L":\tGTR_FLOAT" << endl;
     break;
 
   case GTR_EQL_FLOAT:
-    GetLogger() << L"LES_EQL_FLOAT" << endl;
+    GetLogger()  << i << L":\tLES_EQL_FLOAT" << endl;
     break;
 
   case instructions::FLOR_FLOAT:
-    GetLogger() << L"FLOR_FLOAT" << endl;
+    GetLogger()  << i << L":\tFLOR_FLOAT" << endl;
     break;
 
   case instructions::LOAD_ARY_SIZE:
-    GetLogger() << L"LOAD_ARY_SIZE" << endl;
+    GetLogger()  << i << L":\tLOAD_ARY_SIZE" << endl;
     break;
 
   case instructions::CPY_BYTE_ARY:
-    GetLogger() << L"CPY_BYTE_ARY" << endl;
+    GetLogger()  << i << L":\tCPY_BYTE_ARY" << endl;
     break;
 
   case instructions::CPY_CHAR_ARY:
-    GetLogger() << L"CPY_CHAR_ARY" << endl;
+    GetLogger()  << i << L":\tCPY_CHAR_ARY" << endl;
     break;
 
   case instructions::CPY_INT_ARY:
-    GetLogger() << L"CPY_INT_ARY" << endl;
+    GetLogger()  << i << L":\tCPY_INT_ARY" << endl;
     break;
 
   case instructions::CPY_FLOAT_ARY:
-    GetLogger() << L"CPY_FLOAT_ARY" << endl;
+    GetLogger()  << i << L":\tCPY_FLOAT_ARY" << endl;
     break;
 
   case instructions::CEIL_FLOAT:
-    GetLogger() << L"CEIL_FLOAT" << endl;
+    GetLogger()  << i << L":\tCEIL_FLOAT" << endl;
     break;
 
   case instructions::RAND_FLOAT:
-    GetLogger() << L"RAND_FLOAT" << endl;
+    GetLogger()  << i << L":\tRAND_FLOAT" << endl;
     break;
 
   case instructions::SIN_FLOAT:
-    GetLogger() << L"SIN_FLOAT" << endl;
+    GetLogger()  << i << L":\tSIN_FLOAT" << endl;
     break;
 
   case instructions::COS_FLOAT:
-    GetLogger() << L"COS_FLOAT" << endl;
+    GetLogger()  << i << L":\tCOS_FLOAT" << endl;
     break;
 
   case instructions::TAN_FLOAT:
-    GetLogger() << L"TAN_FLOAT" << endl;
+    GetLogger()  << i << L":\tTAN_FLOAT" << endl;
     break;
 
   case instructions::ASIN_FLOAT:
-    GetLogger() << L"ASIN_FLOAT" << endl;
+    GetLogger()  << i << L":\tASIN_FLOAT" << endl;
     break;
 
   case instructions::ACOS_FLOAT:
-    GetLogger() << L"ACOS_FLOAT" << endl;
+    GetLogger()  << i << L":\tACOS_FLOAT" << endl;
     break;
 
   case instructions::ATAN_FLOAT:
-    GetLogger() << L"ATAN_FLOAT" << endl;
+    GetLogger()  << i << L":\tATAN_FLOAT" << endl;
     break;
 
   case instructions::ATAN2_FLOAT:
-    GetLogger() << L"ATAN2_FLOAT" << endl;
+    GetLogger()  << i << L":\tATAN2_FLOAT" << endl;
     break;
 
   case instructions::MOD_FLOAT:
-    GetLogger() << L"MOD_FLOAT" << endl;
+    GetLogger()  << i << L":\tMOD_FLOAT" << endl;
     break;
 
   case instructions::LOG_FLOAT:
-    GetLogger() << L"LOG_FLOAT" << endl;
+    GetLogger()  << i << L":\tLOG_FLOAT" << endl;
     break;
 
   case instructions::POW_FLOAT:
-    GetLogger() << L"POW_FLOAT" << endl;
+    GetLogger()  << i << L":\tPOW_FLOAT" << endl;
     break;
 
   case instructions::SQRT_FLOAT:
-    GetLogger() << L"SQRT_FLOAT" << endl;
+    GetLogger()  << i << L":\tSQRT_FLOAT" << endl;
     break;
 
   case I2F:
-    GetLogger() << L"I2F" << endl;
+    GetLogger()  << i << L":\tI2F" << endl;
     break;
 
   case F2I:
-    GetLogger() << L"F2I" << endl;
+    GetLogger()  << i << L":\tF2I" << endl;
     break;
 
   case instructions::S2F:
-    GetLogger() << L"S2F" << endl;
+    GetLogger()  << i << L":\tS2F" << endl;
     break;
 
   case instructions::S2I:
-    GetLogger() << L"S2I" << endl;
+    GetLogger()  << i << L":\tS2I" << endl;
     break;
 
   case instructions::I2S:
-    GetLogger() << L"I2S" << endl;
+    GetLogger()  << i << L":\tI2S" << endl;
     break;
 
   case instructions::F2S:
-    GetLogger() << L"F2S" << endl;
+    GetLogger()  << i << L":\tF2S" << endl;
     break;
 
   case RTRN:
-    GetLogger() << L"RTRN" << endl;
+    GetLogger()  << i << L":\tRTRN" << endl;
     break;
 
   case MTHD_CALL: {
     IntermediateMethod* method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
-    GetLogger() << L"MTHD_CALL: method='" << method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
+    GetLogger()  << i << L":\tMTHD_CALL: method='" << method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << endl;
   }
     break;
 
   case LIB_NEW_OBJ_INST:
-    GetLogger() << L"LIB_NEW_OBJ_INST: class='" << operand5 << L"'" << endl;
+    GetLogger()  << i << L":\tLIB_NEW_OBJ_INST: class='" << operand5 << L"'" << endl;
     break;
 
   case LIB_OBJ_TYPE_OF:
-    GetLogger() << L"LIB_OBJ_TYPE_OF: class='" << operand5 << L"'" << endl;
+    GetLogger()  << i << L":\tLIB_OBJ_TYPE_OF: class='" << operand5 << L"'" << endl;
     break;
 
   case LIB_OBJ_INST_CAST:
-    GetLogger() << L"LIB_OBJ_INST_CAST: to_class='" << operand5 << L"'" << endl;
+    GetLogger()  << i << L":\tLIB_OBJ_INST_CAST: to_class='" << operand5 << L"'" << endl;
     break;
 
   case LIB_MTHD_CALL:
-    GetLogger() << L"LIB_MTHD_CALL: method='" << operand6 << L"'; native=" << (operand3 ? "true" : "false") << endl;
+    GetLogger()  << i << L":\tLIB_MTHD_CALL: method='" << operand6 << L"'; native=" << (operand3 ? "true" : "false") << endl;
     break;
 
   case LIB_FUNC_DEF:
-    GetLogger() << L"LIB_FUNC_DEF: class='" << operand5 << L"'; method='"
+    GetLogger()  << i << L":\tLIB_FUNC_DEF: class='" << operand5 << L"'; method='"
       << operand6 << L"'" << endl;
     break;
 
   case LBL:
-    GetLogger() << L"LBL: id=" << operand << endl;
+    GetLogger()  << i << L":\tLBL: id=" << operand << endl;
     break;
 
   case JMP:
     if(operand2 == -1) {
-      GetLogger() << L"JMP: id=" << operand << endl;
+      GetLogger()  << i << L":\tJMP: index=" << operand << endl;
     }
     else {
-      GetLogger() << L"JMP: id=" << operand << L" conditional="
+      GetLogger()  << i << L":\tJMP: index=" << operand << L", conditional="
         << (operand2 ? "true" : "false") << endl;
     }
     break;
 
   case OBJ_INST_CAST: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
-    GetLogger() << L"OBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << endl;
+    GetLogger()  << i << L":\tOBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << endl;
   }
     break;
 
   case OBJ_TYPE_OF: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
-    GetLogger() << L"OBJ_TYPE_OF: check='" << klass->GetName() << L"', id=" << operand << endl;
+    GetLogger()  << i << L":\tOBJ_TYPE_OF: check='" << klass->GetName() << L"', id=" << operand << endl;
   }
     break;
 
   case NEW_FLOAT_ARY:
-    GetLogger() << L"NEW_FLOAT_ARY: dimension=" << operand << endl;
+    GetLogger()  << i << L":\tNEW_FLOAT_ARY: dimension=" << operand << endl;
     break;
 
   case NEW_INT_ARY:
-    GetLogger() << L"NEW_INT_ARY: dimension=" << operand << endl;
+    GetLogger()  << i << L":\tNEW_INT_ARY: dimension=" << operand << endl;
     break;
 
   case NEW_BYTE_ARY:
-    GetLogger() << L"NEW_BYTE_ARY: dimension=" << operand << endl;
+    GetLogger()  << i << L":\tNEW_BYTE_ARY: dimension=" << operand << endl;
     break;
 
   case NEW_CHAR_ARY:
-    GetLogger() << L"NEW_CHAR_ARY: dimension=" << operand << endl;
+    GetLogger()  << i << L":\tNEW_CHAR_ARY: dimension=" << operand << endl;
     break;
 
   case NEW_OBJ_INST: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
-    GetLogger() << L"NEW_OBJ_INST: class='" << klass->GetName() << L"'" << endl;
+    GetLogger()  << i << L":\tNEW_OBJ_INST: class='" << klass->GetName() << L"'" << endl;
   }
     break;
 
   case NEW_FUNC_INST:
-    GetLogger() << L"NEW_FUNC_INST: mem_size=" << operand << endl;
+    GetLogger()  << i << L":\tNEW_FUNC_INST: mem_size=" << operand << endl;
     break;
 
   case TRAP:
-    GetLogger() << L"TRAP: args=" << operand << endl;
+    GetLogger()  << i << L":\tTRAP: args=" << operand << endl;
     break;
 
   case TRAP_RTRN:
-    GetLogger() << L"TRAP_RTRN: args=" << operand << endl;
+    GetLogger()  << i << L":\tTRAP_RTRN: args=" << operand << endl;
     break;
 
   default:

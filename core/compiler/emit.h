@@ -183,7 +183,7 @@ namespace backend {
       operand3 = o3;
     }
 
-    void Debug();
+    void Debug(size_t i);
 
     void Write(bool is_debug, OutputStream& out_stream);
   };
@@ -298,7 +298,7 @@ namespace backend {
     void Debug() {
       if(instructions.size() > 0) {
         for(size_t i = 0; i < instructions.size(); ++i) {
-          instructions[i]->Debug();
+          instructions[i]->Debug(i);
         }
         GetLogger() << L"--" << endl;
       }
