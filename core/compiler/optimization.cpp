@@ -1218,8 +1218,8 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
     case LBL:
     case RTRN:
       outputs->AddInstruction(instr);
-      // reset
       value_prop_map.clear();
+      // reset
       set_int = set_float = false;
       break;
 
