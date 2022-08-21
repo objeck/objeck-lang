@@ -1231,6 +1231,15 @@ size_t ItermediateOptimizer::GetDeadstoreStart(size_t search_index, vector<Inter
       count++;
       break;
 
+    case MTHD_CALL:
+      if(iter - 1 != input_instrs.begin()) {
+        IntermediateInstruction* prev_instr = *(iter - 1);
+        if(prev_instr->GetType() == NEW_OBJ_INST) {
+          count += 2;
+        }
+      }
+      break;
+
     default:
       return count;
     }
