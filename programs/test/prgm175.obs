@@ -5,7 +5,6 @@ class Foo {
 		if(a < 10) {
 			"< 10"->PrintLine();
 		};
-#		a := 7;
 		a->PrintLine();
 	}
 }
