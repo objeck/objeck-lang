@@ -1,11 +1,12 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		a := 13;
-		(a + 4)->PrintLine();
-		if(a < 10) {
-			"< 10"->PrintLine();
+		b := 4;
+		a := 7;
+		if(b > 4) {
+			"> 4"->PrintLine();
 		};
-#		a := 7;
+		a := a + b;
 		a->PrintLine();
 	}
 }
