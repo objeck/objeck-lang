@@ -1126,132 +1126,16 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
 // ------------------- Start: NEW OPTIMIZATIONS -------------------
 
-// TODO:
-// Support for floats, function calls, new objects, function references etc.
-///
-
-IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
-{
-  IntermediateBlock* outputs = new IntermediateBlock;
-  vector<pair<size_t, size_t>> deadstore_edits;
-  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-
-  // skip parameter stores
-  bool done = false;
-  size_t start = 0;
-  while(!done && start < input_instrs.size()) {
-    IntermediateInstruction* instr = input_instrs[start];
-
-    switch(instr->GetType()) {
-    case STOR_INT_VAR:
-    case STOR_FLOAT_VAR:
-    case STOR_FUNC_VAR:
-      start++;
-      break;
-
-    default:
-      done = true;
-      break;
-    }
-
-    outputs->AddInstruction(instr);
-  }
-  
-  // search for dead stores
-  for(size_t i = start + 1; i < input_instrs.size(); ++i) {
-    IntermediateInstruction* instr = input_instrs[i];
-
-    switch(instr->GetType()) {
-    case STOR_INT_VAR:
-      outputs->AddInstruction(instr);
-      if(IsDeadStore(instr->GetOperand(), i + 1, input_instrs)) {
-        size_t deadstore_start = GetDeadstoreStart(i - 1, input_instrs);
-        deadstore_edits.push_back(pair<size_t, size_t>(deadstore_start, i + 1));
-      }
-      break;
-
-    default:
-      outputs->AddInstruction(instr);
-      break;
-    }
-  }
-
-  // remove dead code
-  for(size_t i = 0; i < deadstore_edits.size(); ++i) {
-    pair<size_t, size_t> deadstore_edit = deadstore_edits[i];
-    outputs->Remove(deadstore_edit);
-  }
-  
-  return outputs;
-}
-
-bool ItermediateOptimizer::IsDeadStore(int store_pos, size_t search_index, vector<IntermediateInstruction*> &input_instrs)
-{
-  for(size_t i = search_index; i < input_instrs.size(); ++i) {
-    IntermediateInstruction* instr = input_instrs[i];
-
-    switch(instr->GetType()) {
-    case STOR_INT_VAR:
-      if(instr->GetOperand() == store_pos) {
-        return true;
-      }
-      break;
-
-    case LOAD_INT_VAR:
-      if(instr->GetOperand() == store_pos) {
-        return false;
-      }
-      break;
-
-      // end of basic block
-    case MTHD_CALL:
-    case DYN_MTHD_CALL:
-    case JMP:
-    case RTRN:
-      return false;
-    }
-  }
-
-  // never saw a load
-  return true;
-}
-
-size_t ItermediateOptimizer::GetDeadstoreStart(size_t search_index, vector<IntermediateInstruction*>& input_instrs)
-{
-  size_t count = 0;
-
-  vector<IntermediateInstruction*>::iterator iter = input_instrs.begin() + search_index;
-  while(iter != input_instrs.begin()) {
-    IntermediateInstruction* instr = *iter;
-
-    switch(instr->GetType()) {
-    case LOAD_INT_LIT:
-    case LOAD_INT_VAR:
-    case ADD_INT:
-      count++;
-      break;
-
-    default:
-      return count;
-    }
-
-    iter--;
-  }
-
-  return count;
-}
-
-// TODO:
-// test edge cases
+// TODO: support for floats, function calls/references, new objects, etc.
 
 IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
 
-  bool set_int = false; 
+  bool set_int = false;
   int int_value;
 
-  bool set_float = false; 
+  bool set_float = false;
   double float_value;
 
   unordered_map<int, PropValue> value_prop_map;
@@ -1270,16 +1154,21 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
     case STOR_INT_VAR:
       outputs->AddInstruction(instr);
-      if(set_int) {
+      if(set_int && instr->GetOperand2() == LOCL) {
         value_prop_map[instr->GetOperand()].int_value = int_value;
       }
       set_int = set_float = false;
       break;
 
     case LOAD_INT_VAR: {
-      unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
-      if(result != value_prop_map.end()) {
-        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.int_value));
+      if(instr->GetOperand2() == LOCL) {
+        unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
+        if(result != value_prop_map.end()) {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.int_value));
+        }
+        else {
+          outputs->AddInstruction(instr);
+        }
       }
       else {
         outputs->AddInstruction(instr);
@@ -1298,16 +1187,21 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
     case STOR_FLOAT_VAR:
       outputs->AddInstruction(instr);
-      if(set_float) {
+      if(set_float && instr->GetOperand2() == LOCL) {
         value_prop_map[instr->GetOperand()].float_value = float_value;
       }
       set_int = set_float = false;
       break;
 
     case LOAD_FLOAT_VAR: {
-      unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
-      if(result != value_prop_map.end()) {
-        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.float_value));
+      if(instr->GetOperand2() == LOCL) {
+        unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
+        if(result != value_prop_map.end()) {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, result->second.float_value));
+        }
+        else {
+          outputs->AddInstruction(instr);
+        }
       }
       else {
         outputs->AddInstruction(instr);
@@ -1315,12 +1209,13 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       // reset
       set_int = set_float = false;
     }
-      break;
+     break;
 
-      // reset propagation map
+     // reset propagation map
     case MTHD_CALL:
     case DYN_MTHD_CALL:
     case JMP:
+    case LBL:
     case RTRN:
       outputs->AddInstruction(instr);
       // reset
@@ -1334,6 +1229,21 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       set_int = set_float = false;
       break;
     }
+  }
+
+  return outputs;
+}
+
+
+IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+  
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(size_t i = 0 + 1; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    outputs->AddInstruction(instr);
   }
 
   return outputs;
