@@ -1265,7 +1265,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     switch(instr->GetType()) {
       // int propagation
     case STOR_INT_VAR:
-      if(IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
+      if(instr->GetOperand2() == LOCL && IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
 
       }
       else {
@@ -1289,7 +1289,7 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
 
     switch(instr->GetType()) {
     case STOR_INT_VAR:
-      if(instr->GetOperand() == index) {
+      if(instr->GetOperand() == index && instr->GetOperand2() == LOCL) {
         wcout << L"foo" << endl;
       }
       break;
