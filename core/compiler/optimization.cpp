@@ -1234,7 +1234,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
   return outputs;
 }
 
-
+// TODO: support for floats, functions, etc.
 IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
@@ -1266,7 +1266,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
       // int propagation
     case STOR_INT_VAR:
       if(instr->GetOperand2() == LOCL && IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
-
+        pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, input_instrs);
       }
       else {
         outputs->AddInstruction(instr);
@@ -1290,7 +1290,7 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
     switch(instr->GetType()) {
     case STOR_INT_VAR:
       if(instr->GetOperand() == index && instr->GetOperand2() == LOCL) {
-        wcout << L"foo" << endl;
+        return true;
       }
       break;
 
@@ -1309,9 +1309,30 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
   return false;
 }
 
-pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(size_t start, vector<IntermediateInstruction*>& input_instrs)
+pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, vector<IntermediateInstruction*>& input_instrs)
 {
-  return pair<size_t, size_t>();
+  bool done = false;
+  size_t start_pos = end_pos;
+
+  vector<IntermediateInstruction*>::iterator iter = input_instrs.begin() + end_pos - 1;
+  while(!done && iter != input_instrs.begin()) {
+    IntermediateInstruction* instr = *iter;
+
+    switch(instr->GetType()) {
+    case LOAD_INT_LIT:
+    case LOAD_INT_VAR:
+      start_pos--;
+      break;
+
+    default:
+      done = true;
+      break;
+    }
+
+    iter--;
+  }
+
+  return pair<size_t, size_t>(start_pos, end_pos);
 }
 
 // ------------------- End: NEW OPTIMIZATIONS -------------------
