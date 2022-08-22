@@ -1309,6 +1309,11 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
   return false;
 }
 
+pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(size_t start, vector<IntermediateInstruction*>& input_instrs)
+{
+  return pair<size_t, size_t>();
+}
+
 // ------------------- End: NEW OPTIMIZATIONS -------------------
 
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)

@@ -91,6 +91,7 @@ class ItermediateOptimizer {
   // dead store
   IntermediateBlock* DeadStore(IntermediateBlock* input);
   bool IsDeadStore(size_t start, int index, vector<IntermediateInstruction*>& input_instrs);
+  pair<size_t, size_t> MarkDeadStore(size_t start, vector<IntermediateInstruction*>& input_instrs);
 
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
@@ -99,6 +100,7 @@ class ItermediateOptimizer {
   // float constant folding
   IntermediateBlock* FoldFloatConstants(IntermediateBlock* input);
   void CalculateFloatFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+  
   // strength reduction
   IntermediateBlock* StrengthReduction(IntermediateBlock* inputs);
   void CalculateReduction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
