@@ -1309,7 +1309,7 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
   return false;
 }
 
-pair<size_t, size_t>& ItermediateOptimizer::MarkDeadStore(const size_t end_pos, vector<IntermediateInstruction*>& input_instrs)
+pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, vector<IntermediateInstruction*>& input_instrs)
 {
   bool done = false;
   size_t start_pos = end_pos;
