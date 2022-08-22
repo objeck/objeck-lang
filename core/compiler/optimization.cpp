@@ -1240,13 +1240,73 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
   IntermediateBlock* outputs = new IntermediateBlock;
   
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(size_t i = 0 + 1; i < input_instrs.size(); ++i) {
+
+  bool done = false;
+  size_t start = 0;
+  while(!done && start < input_instrs.size()) {
+    IntermediateInstruction* instr = input_instrs[start];
+
+    switch(instr->GetType()) {
+      // int propagation
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
+      start++;
+
+    default:
+      done = true;
+      break;
+    }
+  }
+
+  for(size_t i = start; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
-    outputs->AddInstruction(instr);
+    switch(instr->GetType()) {
+      // int propagation
+    case STOR_INT_VAR:
+      if(IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
+
+      }
+      else {
+        outputs->AddInstruction(instr);
+      }
+      break;
+
+    default:
+      outputs->AddInstruction(instr);
+      break;
+    }
   }
 
   return outputs;
+}
+
+bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<IntermediateInstruction*>& input_instrs)
+{
+  for(size_t i = start; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+      if(instr->GetOperand() == index) {
+        wcout << L"foo" << endl;
+      }
+      break;
+
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
+    case JMP:
+    case LBL:
+      return false;
+
+      // TOOD: end of function
+    case RTRN:
+      break;
+    }
+  }
+
+  return false;
 }
 
 // ------------------- End: NEW OPTIMIZATIONS -------------------
