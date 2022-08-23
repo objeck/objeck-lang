@@ -250,8 +250,6 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = nullptr;
     }
 
-
-
     // dead store removal 
 #ifdef _DEBUG
     GetLogger() << L"  Folding integers..." << endl;
@@ -265,9 +263,6 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = nullptr;
     }
-
-
-
 
     // fold integers
 #ifdef _DEBUG
@@ -1267,9 +1262,12 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-      if(instr->GetOperand2() == LOCL && IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
-        pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, input_instrs);
-        deadcode_markers.push_back(deadcode_marker);
+      if(instr->GetOperand2() == LOCL && 
+         (IsReStored(i + 1, instr->GetOperand(), input_instrs) || IsUnreferenced(start, instr->GetOperand(), input_instrs))) {
+        pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, instr->GetOperand(), input_instrs);
+        if(deadcode_marker.first != -1 && deadcode_marker.second != -1) {
+          deadcode_markers.push_back(deadcode_marker);
+        }
       }
       break;
 
@@ -1305,28 +1303,27 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
   return outputs;
 }
 
-bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<IntermediateInstruction*>& input_instrs)
+bool ItermediateOptimizer::IsReStored(size_t start_pos, int var_index, vector<IntermediateInstruction*>& input_instrs)
 {
   // look downward from store position
-  for(size_t i = start; i < input_instrs.size(); ++i) {
+  for(size_t i = start_pos; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-      if(instr->GetOperand() == index && instr->GetOperand2() == LOCL) {
+      if(instr->GetOperand() == var_index && instr->GetOperand2() == LOCL) {
         return true;
       }
       break;
-
-      // TOOD: was it loaded, in the basic block?
 
       // branches
     case MTHD_CALL:
     case DYN_MTHD_CALL:
     case JMP:
     case LBL:
+    case RTRN:
       // traps
     case TRAP:
     case TRAP_RTRN:
@@ -1345,9 +1342,25 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
     case CRITICAL_END:
       return false;
 
-      // TOOD: end of function
-    case RTRN:
-      if(i != input_instrs.size() - 1) {
+    default:
+      break;
+    }
+  }
+
+  return false;
+}
+
+bool ItermediateOptimizer::IsUnreferenced(size_t start_pos, int var_index, vector<IntermediateInstruction*>& input_instrs)
+{
+  // look downward from store position
+  for(size_t i = start_pos; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
+      if(instr->GetOperand() == var_index && instr->GetOperand2() == LOCL) {
         return false;
       }
       break;
@@ -1357,10 +1370,11 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
     }
   }
 
-  return false;
+  return true;
 }
 
-pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, vector<IntermediateInstruction*>& input_instrs)
+
+pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, int var_index, vector<IntermediateInstruction*>& input_instrs)
 {
   bool done = false;
   size_t start_pos = end_pos;
@@ -1371,6 +1385,16 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
     IntermediateInstruction* instr = *iter;
 
     switch(instr->GetType()) {
+      /*
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+      if(instr->GetOperand() == var_index && instr->GetOperand2() == LOCL) {
+        return pair<size_t, size_t>(-1L, -1L);
+      }
+
+      break;
+      */
+
       // method calls
     case MTHD_CALL:
     case DYN_MTHD_CALL:
