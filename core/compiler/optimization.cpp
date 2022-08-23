@@ -1276,7 +1276,9 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 
   IntermediateBlock* outputs = new IntermediateBlock;
   if(deadcode_markers.empty()) {
-    return inputs;
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      outputs->AddInstruction(input_instrs[i]);
+    }
   }
   else {
     for(size_t i = 0; i < input_instrs.size(); ++i) {
