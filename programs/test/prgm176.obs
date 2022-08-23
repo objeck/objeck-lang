@@ -1,6 +1,6 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		x := 7;
+#		x := 7;
 		b := 13 + args->Size();
 		b := 4 + b;
 		b->PrintLine();
