@@ -5,6 +5,13 @@ class Foo {
 		b := 4 + b;
 		b->PrintLine();
 #~		
+
+#~
+		b := 5;
+		b := b + 3;
+		b->PrintLine();
+~#
+
 #		x := 1;
 		a := 13 + args->Size();
 		b := 4;
