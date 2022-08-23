@@ -1237,12 +1237,10 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 // TODO: support for floats, functions, etc.
 IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 {
-  IntermediateBlock* outputs = new IntermediateBlock;
-  
-  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-
   bool done = false;
   size_t start = 0;
+  
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   while(!done && start < input_instrs.size()) {
     IntermediateInstruction* instr = input_instrs[start];
 
@@ -1252,6 +1250,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
       start++;
+      break;
 
     default:
       done = true;
@@ -1259,6 +1258,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
+  vector<pair<size_t, size_t>> deadcode_markers;
   for(size_t i = start; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
@@ -1267,15 +1267,36 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_INT_VAR:
       if(instr->GetOperand2() == LOCL && IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
         pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, input_instrs);
-      }
-      else {
-        outputs->AddInstruction(instr);
+        deadcode_markers.push_back(deadcode_marker);
       }
       break;
 
     default:
-      outputs->AddInstruction(instr);
       break;
+    }
+  }
+
+  IntermediateBlock* outputs = new IntermediateBlock;
+  if(deadcode_markers.empty()) {
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      outputs->AddInstruction(input_instrs[i]);
+    }
+  }
+  else {
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      IntermediateInstruction* instr = input_instrs[i];
+
+      bool found = false;
+      for(size_t j = 0; !found && j < deadcode_markers.size(); ++j) {
+        pair<size_t, size_t> deadcode_marker = deadcode_markers[j];
+        if(deadcode_marker.first >= i && i <= deadcode_marker.second) {
+          found = true;
+        }
+      }
+
+      if(!found) {
+        outputs->AddInstruction(instr);
+      }
     }
   }
 
