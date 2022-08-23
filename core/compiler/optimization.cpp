@@ -1320,6 +1320,8 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
       }
       break;
 
+      // TOOD: was it loaded?
+
       // branches
     case MTHD_CALL:
     case DYN_MTHD_CALL:
