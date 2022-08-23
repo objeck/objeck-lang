@@ -1247,8 +1247,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     switch(instr->GetType()) {
       // int propagation
     case STOR_INT_VAR:
-    case STOR_FLOAT_VAR: // TODO
-    case STOR_FUNC_VAR:  // TODO
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
       start++;
       break;
 
@@ -1265,6 +1265,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     switch(instr->GetType()) {
       // int propagation
     case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
       if(instr->GetOperand2() == LOCL && IsDeadStore(i + 1, instr->GetOperand(), input_instrs)) {
         pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, input_instrs);
         deadcode_markers.push_back(deadcode_marker);
@@ -1305,24 +1307,33 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 
 bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<IntermediateInstruction*>& input_instrs)
 {
+  // look downward from store position
   for(size_t i = start; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
     case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
       if(instr->GetOperand() == index && instr->GetOperand2() == LOCL) {
         return true;
       }
       break;
 
- //   case MTHD_CALL:
- //   case DYN_MTHD_CALL:
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
     case JMP:
     case LBL:
       return false;
 
       // TOOD: end of function
     case RTRN:
+      if(i != input_instrs.size() - 1) {
+        return false;
+      }
+      break;
+
+    default:
       break;
     }
   }
@@ -1365,6 +1376,32 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
     case BIT_XOR_INT:
     case SHL_INT:
     case SHR_INT:
+      //
+    case ADD_FLOAT:
+    case SUB_FLOAT:
+    case MUL_FLOAT:
+    case DIV_FLOAT:
+    case FLOR_FLOAT:
+    case CEIL_FLOAT:
+    case SIN_FLOAT:
+    case COS_FLOAT:
+    case TAN_FLOAT:
+    case ASIN_FLOAT:
+    case ACOS_FLOAT:
+    case ATAN_FLOAT:
+    case ATAN2_FLOAT:
+    case MOD_FLOAT:
+    case LOG_FLOAT:
+    case POW_FLOAT:
+    case SQRT_FLOAT:
+    case RAND_FLOAT:
+      //
+    case I2F:
+    case F2I:
+    case S2I:
+    case S2F:
+    case I2S:
+    case F2S:
       start_pos--;
       break;
 
