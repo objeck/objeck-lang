@@ -1247,8 +1247,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     switch(instr->GetType()) {
       // int propagation
     case STOR_INT_VAR:
-    case STOR_FLOAT_VAR:
-    case STOR_FUNC_VAR:
+    case STOR_FLOAT_VAR: // TODO
+    case STOR_FUNC_VAR:  // TODO
       start++;
       break;
 
