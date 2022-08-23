@@ -236,30 +236,30 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = nullptr;
     }
     
-    // constant propagation
+    // dead store removal
 #ifdef _DEBUG
-    GetLogger() << L"  Constant propagation..." << endl;
+    GetLogger() << L"  Dead store removal..." << endl;
 #endif
-    vector<IntermediateBlock*> const_prop_blocks;
+    vector<IntermediateBlock*> dead_store_blocks;
     while(!getter_setter_blocks.empty()) {
       IntermediateBlock* tmp = getter_setter_blocks.front();
-      const_prop_blocks.push_back(ConstantProp(tmp));
+      dead_store_blocks.push_back(DeadStore(tmp));
       // delete old block
       getter_setter_blocks.erase(getter_setter_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
 
-    // dead store removal 
+    // constant propagation
 #ifdef _DEBUG
-    GetLogger() << L"  Folding integers..." << endl;
+    GetLogger() << L"  Constant propagation..." << endl;
 #endif
-    vector<IntermediateBlock*> dead_store_blocks;
-    while(!const_prop_blocks.empty()) {
-      IntermediateBlock* tmp = const_prop_blocks.front();
-      dead_store_blocks.push_back(DeadStore(tmp));
+    vector<IntermediateBlock*> const_prop_blocks;
+    while(!dead_store_blocks.empty()) {
+      IntermediateBlock* tmp = dead_store_blocks.front();
+      const_prop_blocks.push_back(ConstantProp(tmp));
       // delete old block
-      const_prop_blocks.erase(const_prop_blocks.begin());
+      dead_store_blocks.erase(dead_store_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
@@ -269,11 +269,11 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     GetLogger() << L"  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!dead_store_blocks.empty()) {
-      IntermediateBlock* tmp = dead_store_blocks.front();
+    while(!const_prop_blocks.empty()) {
+      IntermediateBlock* tmp = const_prop_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      dead_store_blocks.erase(dead_store_blocks.begin());
+      const_prop_blocks.erase(const_prop_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
@@ -1264,10 +1264,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_FUNC_VAR:
       if(instr->GetOperand2() == LOCL && 
          (IsReStored(i + 1, instr->GetOperand(), input_instrs) || IsUnreferenced(start, instr->GetOperand(), input_instrs))) {
-        pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, instr->GetOperand(), input_instrs);
-        if(deadcode_marker.first != -1 && deadcode_marker.second != -1) {
-          deadcode_markers.push_back(deadcode_marker);
-        }
+        const pair<size_t, size_t> deadcode_marker = MarkDeadStore(i, instr->GetOperand(), input_instrs);
+        deadcode_markers.push_back(deadcode_marker);
       }
       break;
 
@@ -1315,6 +1313,14 @@ bool ItermediateOptimizer::IsReStored(size_t start_pos, int var_index, vector<In
     case STOR_FUNC_VAR:
       if(instr->GetOperand() == var_index && instr->GetOperand2() == LOCL) {
         return true;
+      }
+      break;
+
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
+      if(instr->GetOperand() == var_index && instr->GetOperand2() == LOCL) {
+        return false;
       }
       break;
 
@@ -1385,16 +1391,6 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, i
     IntermediateInstruction* instr = *iter;
 
     switch(instr->GetType()) {
-      /*
-    case LOAD_INT_VAR:
-    case LOAD_FLOAT_VAR:
-      if(instr->GetOperand() == var_index && instr->GetOperand2() == LOCL) {
-        return pair<size_t, size_t>(-1L, -1L);
-      }
-
-      break;
-      */
-
       // method calls
     case MTHD_CALL:
     case DYN_MTHD_CALL:
