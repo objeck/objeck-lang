@@ -1,9 +1,9 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		x := 7;
-		a := 13 + args->Size();
-		a := 4 + x;
-		a->PrintLine();
+		b := 13 + args->Size();
+		b := 4 + b;
+		b->PrintLine();
 #~		
 #		x := 1;
 		a := 13 + args->Size();

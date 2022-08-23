@@ -1320,10 +1320,27 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
       }
       break;
 
+      // branches
     case MTHD_CALL:
     case DYN_MTHD_CALL:
     case JMP:
     case LBL:
+      // traps
+    case TRAP:
+    case TRAP_RTRN:
+    case SET_SIGNAL:
+    case RAISE_SIGNAL:
+      // shared libraries
+    case DLL_LOAD:
+    case DLL_UNLOAD:
+    case DLL_FUNC_CALL:
+      // thread directives
+    case ASYNC_MTHD_CALL:
+    case THREAD_JOIN:
+    case THREAD_SLEEP:
+    case THREAD_MUTEX:
+    case CRITICAL_START:
+    case CRITICAL_END:
       return false;
 
       // TOOD: end of function
@@ -1346,15 +1363,16 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
   bool done = false;
   size_t start_pos = end_pos;
 
+  // search upwards and mark dead code
   vector<IntermediateInstruction*>::iterator iter = input_instrs.begin() + end_pos - 1;
   while(!done && iter != input_instrs.begin()) {
     IntermediateInstruction* instr = *iter;
 
     switch(instr->GetType()) {
-      //
+      // method calls
     case MTHD_CALL:
     case DYN_MTHD_CALL:
-      //
+      // literal and variable loads
     case LOAD_INT_LIT:
     case LOAD_CHAR_LIT:
     case LOAD_FLOAT_LIT:
@@ -1363,7 +1381,7 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
     case LOAD_FUNC_VAR:
     case LOAD_CLS_MEM:
     case LOAD_INST_MEM:
-      //
+      // int math operations
     case AND_INT:
     case OR_INT:
     case ADD_INT:
@@ -1376,7 +1394,7 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
     case BIT_XOR_INT:
     case SHL_INT:
     case SHR_INT:
-      //
+      // float math operations
     case ADD_FLOAT:
     case SUB_FLOAT:
     case MUL_FLOAT:
@@ -1395,13 +1413,20 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
     case POW_FLOAT:
     case SQRT_FLOAT:
     case RAND_FLOAT:
-      //
+      // type conversions
     case I2F:
     case F2I:
     case S2I:
     case S2F:
     case I2S:
     case F2S:
+      // casting & type check
+    case OBJ_INST_CAST:
+    case OBJ_TYPE_OF:
+      // clean up instructions
+    case SWAP_INT:
+    case POP_INT:
+    case POP_FLOAT:
       start_pos--;
       break;
 
