@@ -1258,7 +1258,6 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
-      // int propagation
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
