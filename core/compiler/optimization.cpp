@@ -1288,8 +1288,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 
       bool found = false;
       for(size_t j = 0; !found && j < deadcode_markers.size(); ++j) {
-        pair<size_t, size_t> deadcode_marker = deadcode_markers[j];
-        if(deadcode_marker.first >= i && i <= deadcode_marker.second) {
+        const pair<size_t, size_t> deadcode_marker = deadcode_markers[j];
+        if(i >= deadcode_marker.first && i <= deadcode_marker.second) {
           found = true;
         }
       }
@@ -1315,8 +1315,8 @@ bool ItermediateOptimizer::IsDeadStore(size_t start, int index, vector<Intermedi
       }
       break;
 
-    case MTHD_CALL:
-    case DYN_MTHD_CALL:
+ //   case MTHD_CALL:
+ //   case DYN_MTHD_CALL:
     case JMP:
     case LBL:
       return false;
@@ -1340,8 +1340,31 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, v
     IntermediateInstruction* instr = *iter;
 
     switch(instr->GetType()) {
+      //
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
+      //
     case LOAD_INT_LIT:
+    case LOAD_CHAR_LIT:
+    case LOAD_FLOAT_LIT:
     case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
+    case LOAD_CLS_MEM:
+    case LOAD_INST_MEM:
+      //
+    case AND_INT:
+    case OR_INT:
+    case ADD_INT:
+    case SUB_INT:
+    case MUL_INT:
+    case DIV_INT:
+    case MOD_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
+    case SHL_INT:
+    case SHR_INT:
       start_pos--;
       break;
 
