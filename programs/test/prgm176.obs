@@ -1,6 +1,11 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		a := 13;
+		a := 13 + args->Size();
+		a := 4;
+		a->PrintLine();
+#~		
+#		x := 1;
+		a := 13 + args->Size();
 		b := 4;
 		a := 7;
 		if(b > 4) {
@@ -8,5 +13,6 @@ class Foo {
 		};
 		a := a + b;
 		a->PrintLine();
+~#		
 	}
 }
