@@ -1143,8 +1143,20 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       // int propagation
     case LOAD_INT_LIT:
       outputs->AddInstruction(instr);
-      int_value = instr->GetOperand();
-      set_int = true;
+      if(i + 2 < input_instrs.size()) {
+        IntermediateInstruction* next_instr = input_instrs[i + 1];
+        IntermediateInstruction* next_next_instr = input_instrs[i + 2];
+        if(!(next_instr->GetType() == STOR_INT_VAR && next_next_instr->GetType() == LOAD_INT_VAR &&
+           next_instr->GetOperand() == next_next_instr->GetOperand() &&
+           next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
+          int_value = instr->GetOperand();
+          set_int = true;
+        }
+      }
+      else {
+        int_value = instr->GetOperand();
+        set_int = true;
+      }
       break;
 
     case STOR_INT_VAR:
@@ -1176,8 +1188,20 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       // float propagation
     case LOAD_FLOAT_LIT:
       outputs->AddInstruction(instr);
-      float_value = instr->GetOperand4();
-      set_float = true;
+      if(i + 2 < input_instrs.size()) {
+        IntermediateInstruction* next_instr = input_instrs[i + 1];
+        IntermediateInstruction* next_next_instr = input_instrs[i + 2];
+        if(!(next_instr->GetType() == STOR_FLOAT_VAR && next_next_instr->GetType() == LOAD_FLOAT_VAR &&
+           next_instr->GetOperand() == next_next_instr->GetOperand() &&
+           next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
+          float_value = instr->GetOperand4();
+          set_float = true;
+        }
+      }
+      else {
+        float_value = instr->GetOperand4();
+        set_float = true;
+      }
       break;
 
     case STOR_FLOAT_VAR:
