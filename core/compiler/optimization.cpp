@@ -1121,7 +1121,7 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
 // ------------------- Start: NEW OPTIMIZATIONS -------------------
 
-// TODO: support for floats, function calls/references, new objects, etc.
+// TODO: arrays, function references, new objects
 
 IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 {
