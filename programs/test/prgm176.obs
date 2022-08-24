@@ -1,10 +1,14 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+		x := String->New();
+		b := 4;
+		b->PrintLine();
+#~		
 		x := 7;
 		b := 13 + args->Size();
 		b := 4 + x;
 		b->PrintLine();
-
+~#
 
 #~
 		b := 13;
