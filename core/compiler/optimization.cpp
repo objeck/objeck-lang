@@ -1143,6 +1143,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       // int propagation
     case LOAD_INT_LIT:
       outputs->AddInstruction(instr);
+      // check for load/store/load pattern, if found it will be optimizing out later as a copy
       if(i + 2 < input_instrs.size()) {
         IntermediateInstruction* next_instr = input_instrs[i + 1];
         IntermediateInstruction* next_next_instr = input_instrs[i + 2];
@@ -1188,6 +1189,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       // float propagation
     case LOAD_FLOAT_LIT:
       outputs->AddInstruction(instr);
+      // check for load/store/load pattern, if found it will be optimizing out later as a copy
       if(i + 2 < input_instrs.size()) {
         IntermediateInstruction* next_instr = input_instrs[i + 1];
         IntermediateInstruction* next_next_instr = input_instrs[i + 2];
