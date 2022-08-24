@@ -1378,7 +1378,6 @@ bool ItermediateOptimizer::IsUnreferenced(size_t start_pos, int var_index, vecto
   return true;
 }
 
-
 pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, int var_index, vector<IntermediateInstruction*>& input_instrs)
 {
   bool done = false;
@@ -1393,6 +1392,16 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, i
       // method calls
     case MTHD_CALL:
     case DYN_MTHD_CALL:
+      if(iter - 1 != input_instrs.begin()) {
+        IntermediateInstruction* prev_instr = *(iter - 1);
+        if(prev_instr->GetType() == MTHD_CALL || prev_instr->GetType() == DYN_MTHD_CALL) {
+          done = true;
+          break;
+        }
+      }
+      start_pos--;
+      break;
+
       // literal and variable loads
     case LOAD_INT_LIT:
     case LOAD_CHAR_LIT:
