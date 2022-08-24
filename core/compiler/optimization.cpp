@@ -1448,6 +1448,13 @@ pair<size_t, size_t> ItermediateOptimizer::MarkDeadStore(const size_t end_pos, i
     case SWAP_INT:
     case POP_INT:
     case POP_FLOAT:
+      // object and array allocation
+    case NEW_BYTE_ARY:
+    case NEW_CHAR_ARY:
+    case NEW_INT_ARY:
+    case NEW_FLOAT_ARY:
+    case NEW_OBJ_INST:
+    case NEW_FUNC_INST:
       start_pos--;
       break;
 
