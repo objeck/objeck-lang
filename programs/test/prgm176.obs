@@ -1,32 +1,30 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+		y := Int->New[3];		
+		x := y[1];
+		x->PrintLine();
+		
+#~
 		x := String->New();
 		b := 4;
 		b->PrintLine();
-#~		
+
 		x := 7;
 		b := 13 + args->Size();
 		b := 4 + x;
 		b->PrintLine();
-~#
 
-#~
+
 		b := 13;
 		x := 4;
 
 		b := x + 4;
 		b->PrintLine();
-~#
 
-#~		
-
-#~
 		b := 5;
 		b := b + 3;
 		b->PrintLine();
-~#
 
-#~
 #		x := 1;
 		a := 13 + args->Size();
 		b := 4;
