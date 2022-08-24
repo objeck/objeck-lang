@@ -7,7 +7,7 @@
 
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes simplicity, portability and scalability. The programming environment consists of a compiler, virtual machine, command line debugger and plugins for various IDEs.
 
-__Note__: Have dropped support for 32-bit Intel and ARM targets. The first JIT compiler was written for IA-32 targets (OSX, Windows and Linux) however I was able to use that framework to retarget other ABIs to support our modern 64-bit computing world.
+__Note__: Have dropped support for 32-bit Intel and ARM targets. The first JIT compiler was written for IA-32 targets (OSX, Windows and Linux) however I was able to use that framework to [retarget](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit) other ABIs to support our modern 64-bit computing world.
 
 ```ruby
 class Hello {
