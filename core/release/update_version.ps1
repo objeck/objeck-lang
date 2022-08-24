@@ -1,5 +1,5 @@
 # version string
-$version = "6.5.5"
+$version = "6.6.0"
 
 # alternative strings
 $version_number = $version.Replace(".", "")
