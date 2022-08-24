@@ -865,7 +865,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case LBL:
-    GetLogger()  << i << L":\tLBL: id=" << operand << endl;
+    GetLogger()  << i << L":\tLBL" << endl;
     break;
 
   case JMP:
