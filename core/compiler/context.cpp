@@ -902,8 +902,25 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
       }
     }
 
+    // check for unreferenced and dead stores
     vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
-    wcout << entries.size() << endl;
+    for(size_t i = 0; i < entries.size(); ++i) {
+      SymbolEntry* entry = entries[i];
+
+      if(entry->IsLocal()) {
+        // check for unreferenced variables
+        if(!entry->IsParameter() && !entry->IsLoaded()) {
+          vector<Variable*> variables = entry->GetVariables();
+          for(size_t j = 0; j < variables.size(); ++j) {
+            Variable* variable = variables[j];
+            ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
+          }
+        }
+        else {
+          // TODO: dead stores
+        }
+      }
+    }
   }
 
 #ifdef _DIAG_LIB
