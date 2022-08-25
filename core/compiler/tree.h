@@ -960,6 +960,7 @@ namespace frontend {
     bool checked_post_operation;
     vector<Type*> concrete_types;
     bool is_stored;
+    bool is_loaded;
 
     Variable(const wstring& file_name, const int line_num, const int line_pos, const wstring& n) : Expression(file_name, line_num, line_pos) {
       name = n;
@@ -968,7 +969,7 @@ namespace frontend {
       id = -1;
       pre_operation = post_operation = nullptr;
       checked_pre_operation = checked_post_operation = true;
-      is_stored = false;
+      is_stored = is_loaded = false;
     }
 
     ~Variable() {
@@ -1001,6 +1002,14 @@ namespace frontend {
 
     bool IsStored() {
       return is_stored;
+    }
+
+    void SetLoaded() {
+      is_loaded = true;
+    }
+
+    bool IsLoaded() {
+      return is_loaded;
     }
 
     const ExpressionType GetExpressionType() {
