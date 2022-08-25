@@ -2,10 +2,10 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ dead-store+const-prop ]
 
   pull_request:
-    branches: [ master ]
+    branches: [ dead-store+const-prop ]
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@dead-store+const-prop
 
     - name: update-env
       run : sudo apt-get update
