@@ -908,16 +908,25 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
       SymbolEntry* entry = entries[i];
 
       if(entry->IsLocal()) {
+        vector<Variable*> variables = entry->GetVariables();
         // check for unreferenced variables
         if(!entry->IsParameter() && !entry->IsLoaded()) {
-          vector<Variable*> variables = entry->GetVariables();
           for(size_t j = 0; j < variables.size(); ++j) {
             Variable* variable = variables[j];
             ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
         }
-        else {
-          // TODO: dead stores
+        else if(variables.size() > 1) {
+          // check dead store
+          for(size_t j = 0; j < variables.size(); ++j) {
+            if(j > 0) {
+              Variable* prev_var = variables[j - 1];
+              Variable* cur_var = variables[j];
+              if(prev_var->IsStored() && cur_var->IsStored()) {
+                ProcessError(prev_var, L"Variable '" + prev_var->GetName() + L"' is assigned as dead code");
+              }
+            }
+          }
         }
       }
     }
