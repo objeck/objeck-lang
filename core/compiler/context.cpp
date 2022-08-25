@@ -916,6 +916,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
             ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
         }
+        /*
         else if(variables.size() > 1) {
           // check dead store
           for(size_t j = 0; j < variables.size(); ++j) {
@@ -930,6 +931,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
             }
           }
         }
+        */
       }
     }
   }
