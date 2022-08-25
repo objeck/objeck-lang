@@ -1810,7 +1810,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
 {
   // explicitly defined variable
   if(entry) {
-    entry->SetLoaded();
+    entry->WasLoaded();
 #ifdef _DEBUG
     wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" + (entry->IsLocal() ? L"true" : L"false") + L"' loaded=" + (entry->IsLoaded() ? L"true" : L"false");;
     Debug(msg, variable->GetLineNumber(), depth);
@@ -2055,7 +2055,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     const wstring variable_name = method_call->GetVariableName();
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry) {
-      entry->SetLoaded();
+      entry->WasLoaded();
     }
 
     if(entry && InvalidStatic(entry) && !capture_lambda) {
@@ -3391,7 +3391,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
-    entry->SetLoaded();
+    entry->WasLoaded();
 
     // generate parameter strings
     Type* type = entry->GetType();
@@ -6156,6 +6156,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
     }
 
     if(statement) {
+      entry->WasLoaded();
       AnalyzeStatement(statement, depth);
     }
   }

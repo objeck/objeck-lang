@@ -70,7 +70,6 @@ bundle System.Time {
 			values := parts->GetValues()<DatePart>;
 			each(i : values) {
 				part := values->Get(i);
-				index := part->GetIndex();
 				type := part->GetType();
 
 				select(type) {

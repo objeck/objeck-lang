@@ -146,7 +146,7 @@ namespace frontend {
       return is_param;
     }
 
-    void SetLoaded() {
+    void WasLoaded() {
       is_loaded = true;
     }
 
@@ -836,7 +836,7 @@ namespace frontend {
     void AddSegment(const wstring &orig);
 
     void AddSegment(SymbolEntry* e) {
-      e->SetLoaded();
+      e->WasLoaded();
       segments.push_back(new CharacterStringSegment(e)); 
     }
 
@@ -930,7 +930,7 @@ namespace frontend {
     }
 
     void SetConcat(SymbolEntry* c) {
-      c->SetLoaded();
+      c->WasLoaded();
       concat = c;
     }
 
