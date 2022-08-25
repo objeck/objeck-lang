@@ -2054,6 +2054,10 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     // static check
     const wstring variable_name = method_call->GetVariableName();
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
+    if(entry) {
+      entry->SetLoaded();
+    }
+
     if(entry && InvalidStatic(entry) && !capture_lambda) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance variable from this context");
     }
@@ -2098,7 +2102,6 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     }
 
     if(entry) {
-      entry->SetLoaded();
       if(method_call->GetVariable()) {
         bool is_enum_call = false;
         if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding,
@@ -3388,6 +3391,8 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
+    entry->SetLoaded();
+
     // generate parameter strings
     Type* type = entry->GetType();
     AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
