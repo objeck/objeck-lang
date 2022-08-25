@@ -920,10 +920,12 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
           // check dead store
           for(size_t j = 0; j < variables.size(); ++j) {
             if(j > 0) {
-              Variable* prev_var = variables[j - 1];
               Variable* cur_var = variables[j];
-              if(prev_var->IsStored() && cur_var->IsStored()) {
-                ProcessError(prev_var, L"Variable '" + prev_var->GetName() + L"' is assigned as dead code");
+              Variable* prev_var = variables[j - 1];
+
+              if(prev_var->IsStored() && !prev_var->IsLoaded()) {
+                ProcessError(prev_var, L"Variable '" + prev_var->GetName() + L"' is assigned to dead code");
+
               }
             }
           }
@@ -1383,14 +1385,24 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       break;
 
 
-    case ADD_ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+    case ADD_ASSIGN_STMT: {
+      Assignment* assignment = static_cast<Assignment*>(statement);
+      AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
+      if(assignment->GetVariable()) {
+        assignment->GetVariable()->SetLoaded();
+      }
+    }
       break;
 
     case SUB_ASSIGN_STMT:
     case MUL_ASSIGN_STMT:
-    case DIV_ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+    case DIV_ASSIGN_STMT: {
+      Assignment* assignment = static_cast<Assignment*>(statement);
+      AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
+      if(assignment->GetVariable()) {
+        assignment->GetVariable()->SetLoaded();
+      }
+    }
       break;
 
     case ASSIGN_STMT: {
@@ -1821,6 +1833,10 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, bool is_loaded, const 
 
 void ContextAnalyzer::AnalyzeVariable(Variable* variable, bool is_loaded, SymbolEntry* entry, const int depth)
 {
+  if(is_loaded) {
+    variable->SetLoaded();
+  }
+
   // explicitly defined variable
   if(entry) {
     entry->IsLoaded();
