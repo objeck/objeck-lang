@@ -250,6 +250,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = nullptr;
     }
 
+
     // fold integers
 #ifdef _DEBUG
     GetLogger() << L"  Folding integers..." << endl;
