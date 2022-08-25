@@ -26,7 +26,7 @@ class HtmlMaker {
 	~#
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 2) {
-			maker := HtmlMaker->New(args)->Make();
+			HtmlMaker->New(args)->Make();
 		};
 	}
 	
@@ -527,7 +527,6 @@ class HtmlMaker {
 				
 		index := type_name->FindLast('.');
 		if(index > -1) {
-			bundle_name := type_name->SubString(index);
 			index += 1;
 			type_name := type_name->SubString(index, type_name->Size() - index);
 		};
