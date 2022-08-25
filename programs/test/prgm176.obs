@@ -1,47 +1,12 @@
 class Foo {
-	function : Foo(x : Int) ~ Int {
-		return 13 + x;
+	function : Main(args : String[]) ~ Nil {
+		z := 13;
+		z := 9;
+		y := 7;
+		y->PrintLine();
 	}
 
-	function : Main(args : String[]) ~ Nil {
-		f := Foo(Int) ~ Int;
-		x := f(8);
-		x := 13;
-		x->PrintLine();
-#~
-		y := Int->New[3];		
-		x := y[1];
-		x->PrintLine();
-
-		x := String->New();
-		b := 4;
-		b->PrintLine();
-
-		x := 7;
-		b := 13 + args->Size();
-		b := 4 + x;
-		b->PrintLine();
-
-
-		b := 13;
-		x := 4;
-
-		b := x + 4;
-		b->PrintLine();
-
-		b := 5;
-		b := b + 3;
-		b->PrintLine();
-
-#		x := 1;
-		a := 13 + args->Size();
-		b := 4;
-		a := 7;
-		if(b > 4) {
-			"> 4"->PrintLine();
-		};
-		a := a + b;
-		a->PrintLine();
-~#		
+	function : Bar(a : Int) ~ Int {
+		return 13 + a;
 	}
 }

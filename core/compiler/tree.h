@@ -120,6 +120,8 @@ namespace frontend {
     bool is_static;
     bool is_local;
     bool is_self;
+    bool is_param;
+    bool is_loaded;
 
   SymbolEntry(const wstring &file_name, const int line_num, const int line_pos, const wstring &n, Type* t, 
         bool s, bool c, bool e = false) : ParseNode(file_name, line_num, line_pos) {
@@ -129,12 +131,28 @@ namespace frontend {
       is_static = s;
       is_local = c;
       is_self = e;
+      is_param = is_loaded = false;
     }
 
     ~SymbolEntry() {
     }
 
   public:
+    void SetParameter() {
+      is_param = true;
+    }
+
+    bool IsParameter() {
+      return is_param;
+    }
+
+    void SetLoaded() {
+      is_loaded = true;
+    }
+
+    bool IsLoaded() {
+      return is_loaded;
+    }
 
     void SetType(Type* t) {
       type =  t;
@@ -941,6 +959,7 @@ namespace frontend {
     OperationAssignment* post_operation;
     bool checked_post_operation;
     vector<Type*> concrete_types;
+    bool is_stored;
 
     Variable(const wstring& file_name, const int line_num, const int line_pos, const wstring& n) : Expression(file_name, line_num, line_pos) {
       name = n;
@@ -949,6 +968,7 @@ namespace frontend {
       id = -1;
       pre_operation = post_operation = nullptr;
       checked_pre_operation = checked_post_operation = true;
+      is_stored = false;
     }
 
     ~Variable() {
@@ -973,6 +993,14 @@ namespace frontend {
 
     SymbolEntry* GetEntry() {
       return entry;
+    }
+
+    void SetStored() {
+      is_stored = true;
+    }
+
+    bool IsStored() {
+      return is_stored;
     }
 
     const ExpressionType GetExpressionType() {
@@ -1867,6 +1895,12 @@ namespace frontend {
   public:
     SymbolEntry* GetEntry() {
       return entry;
+    }
+
+    void SetParameter() {
+      if(entry) {
+        entry->SetParameter();
+      }
     }
 
     Declaration* GetChild() {
