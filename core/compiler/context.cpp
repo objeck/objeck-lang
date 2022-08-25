@@ -906,7 +906,6 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-
       if(entry->IsLocal()) {
         vector<Variable*> variables = entry->GetVariables();
         // check for unreferenced variables
@@ -916,22 +915,6 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
             ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
         }
-        /*
-        else if(variables.size() > 1) {
-          // check dead store
-          for(size_t j = 0; j < variables.size(); ++j) {
-            if(j > 0) {
-              Variable* cur_var = variables[j];
-              Variable* prev_var = variables[j - 1];
-
-              if(prev_var->IsStored() && !prev_var->IsLoaded()) {
-                ProcessError(prev_var, L"Variable '" + prev_var->GetName() + L"' is assigned to dead code");
-
-              }
-            }
-          }
-        }
-        */
       }
     }
   }
@@ -1387,24 +1370,14 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       break;
 
 
-    case ADD_ASSIGN_STMT: {
-      Assignment* assignment = static_cast<Assignment*>(statement);
-      AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
-      if(assignment->GetVariable()) {
-        assignment->GetVariable()->SetLoaded();
-      }
-    }
+    case ADD_ASSIGN_STMT:
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
       break;
 
     case SUB_ASSIGN_STMT:
     case MUL_ASSIGN_STMT:
-    case DIV_ASSIGN_STMT: {
-      Assignment* assignment = static_cast<Assignment*>(statement);
-      AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
-      if(assignment->GetVariable()) {
-        assignment->GetVariable()->SetLoaded();
-      }
-    }
+    case DIV_ASSIGN_STMT:
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
       break;
 
     case ASSIGN_STMT: {
@@ -1545,7 +1518,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         break;
 
       case VAR_EXPR:
-        AnalyzeVariable(static_cast<Variable*>(expression), true, depth);
+        AnalyzeVariable(static_cast<Variable*>(expression), depth);
         break;
 
       case AND_EXPR:
@@ -1828,20 +1801,16 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 /****************************
  * Analyzes a variable
  ****************************/
-void ContextAnalyzer::AnalyzeVariable(Variable* variable, bool is_loaded, const int depth)
+void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth)
 {
-  AnalyzeVariable(variable, is_loaded, GetEntry(variable->GetName()), depth);
+  AnalyzeVariable(variable, GetEntry(variable->GetName()), depth);
 }
 
-void ContextAnalyzer::AnalyzeVariable(Variable* variable, bool is_loaded, SymbolEntry* entry, const int depth)
+void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth)
 {
-  if(is_loaded) {
-    variable->SetLoaded();
-  }
-
   // explicitly defined variable
   if(entry) {
-    entry->IsLoaded();
+    entry->SetLoaded();
 #ifdef _DEBUG
     wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" + (entry->IsLocal() ? L"true" : L"false") + L"' loaded=" + (entry->IsLoaded() ? L"true" : L"false");;
     Debug(msg, variable->GetLineNumber(), depth);
@@ -2089,7 +2058,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance variable from this context");
     }
     else if(method_call->GetVariable()) {
-      AnalyzeVariable(method_call->GetVariable(), true, depth + 1);
+      AnalyzeVariable(method_call->GetVariable(), depth + 1);
     }
     else if(capture_lambda) {
       const wstring full_class_name = GetProgramLibraryClassName(variable_name);
@@ -2098,7 +2067,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
                                                                    static_cast<Expression*>(method_call)->GetLineNumber(),
                                                                    static_cast<Expression*>(method_call)->GetLinePosition(),
                                                                    full_class_name);
-        AnalyzeVariable(variable, true, depth + 1);
+        AnalyzeVariable(variable, depth + 1);
         method_call->SetVariable(variable);
         entry = GetEntry(method_call, full_class_name, depth);
       }
@@ -3870,7 +3839,7 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 {
   Variable* variable = mutex->GetVariable();
   if(variable) {
-    AnalyzeVariable(variable, true, depth + 1);
+    AnalyzeVariable(variable, depth + 1);
     if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
       if(variable->GetEvalType()->GetName() != L"System.Concurrency.ThreadMutex") {
         ProcessError(mutex, L"Expected ThreadMutex type");
@@ -4119,7 +4088,6 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   Variable* variable = assignment->GetVariable();
   if(variable) {
     AnalyzeVariable(variable, false, depth + 1);
-    variable->SetStored();
   }
 
   // get last expression for assignment
@@ -6621,7 +6589,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& v
   SymbolEntry* entry;
   if(method_call->GetVariable()) {
     Variable* variable = method_call->GetVariable();
-    AnalyzeVariable(variable, true, depth);
+    AnalyzeVariable(variable, depth);
     entry = variable->GetEntry();
   }
   else {
