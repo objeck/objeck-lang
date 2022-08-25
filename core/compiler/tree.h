@@ -836,6 +836,7 @@ namespace frontend {
     void AddSegment(const wstring &orig);
 
     void AddSegment(SymbolEntry* e) {
+      e->SetLoaded();
       segments.push_back(new CharacterStringSegment(e)); 
     }
 
@@ -929,6 +930,7 @@ namespace frontend {
     }
 
     void SetConcat(SymbolEntry* c) {
+      c->SetLoaded();
       concat = c;
     }
 
