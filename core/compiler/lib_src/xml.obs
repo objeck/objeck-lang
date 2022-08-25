@@ -602,7 +602,6 @@ bundle Data.XML {
 					};
 					@buffer_pos += 1;
 
-					start_pos := @buffer_pos;
 					while(@buffer_pos < @buffer->Size() & Unmatch('>')) {
 						@buffer_pos += 1;
 					};

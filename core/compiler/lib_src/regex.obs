@@ -265,7 +265,6 @@ bundle Query.RegEx {
 							@input_pos := @backtrack_positions->RemoveBack() - 1;
 							NextInput();
 							
-							start := @input_pos;
 							check := @backtrack_cache->Find(@input_pos);
 							if(offset + 1 < expressions->Size() & check = expressions->Get(offset + 1)) {
 								return true; 
