@@ -825,7 +825,9 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
   // declarations
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   for(size_t i = 0; i < declarations.size(); ++i) {
-    AnalyzeDeclaration(declarations[i], current_class, depth + 1);
+    Declaration* declaration = declarations[i];
+    AnalyzeDeclaration(declaration, current_class, depth + 1);
+    declaration->SetParameter();
   }
 
   // process statements if function/method is not virtual
@@ -899,6 +901,9 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
         }
       }
     }
+
+    vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
+    wcout << entries.size() << endl;
   }
 
 #ifdef _DIAG_LIB
@@ -1500,7 +1505,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         break;
 
       case VAR_EXPR:
-        AnalyzeVariable(static_cast<Variable*>(expression), depth);
+        AnalyzeVariable(static_cast<Variable*>(expression), true, depth);
         break;
 
       case AND_EXPR:
@@ -1783,18 +1788,18 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 /****************************
  * Analyzes a variable
  ****************************/
-void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth)
+void ContextAnalyzer::AnalyzeVariable(Variable* variable, bool is_loaded, const int depth)
 {
-  AnalyzeVariable(variable, GetEntry(variable->GetName()), depth);
+  AnalyzeVariable(variable, is_loaded, GetEntry(variable->GetName()), depth);
 }
 
-void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth)
+void ContextAnalyzer::AnalyzeVariable(Variable* variable, bool is_loaded, SymbolEntry* entry, const int depth)
 {
   // explicitly defined variable
   if(entry) {
+    entry->IsLoaded();
 #ifdef _DEBUG
-    wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" +
-      (entry->IsLocal() ? L"true" : L"false");
+    wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" + (entry->IsLocal() ? L"true" : L"false") + L"' loaded=" + (entry->IsLoaded() ? L"true" : L"false");;
     Debug(msg, variable->GetLineNumber(), depth);
 #endif
 
@@ -2040,7 +2045,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance variable from this context");
     }
     else if(method_call->GetVariable()) {
-      AnalyzeVariable(method_call->GetVariable(), depth + 1);
+      AnalyzeVariable(method_call->GetVariable(), true, depth + 1);
     }
     else if(capture_lambda) {
       const wstring full_class_name = GetProgramLibraryClassName(variable_name);
@@ -2049,7 +2054,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
                                                                    static_cast<Expression*>(method_call)->GetLineNumber(),
                                                                    static_cast<Expression*>(method_call)->GetLinePosition(),
                                                                    full_class_name);
-        AnalyzeVariable(variable, depth + 1);
+        AnalyzeVariable(variable, true, depth + 1);
         method_call->SetVariable(variable);
         entry = GetEntry(method_call, full_class_name, depth);
       }
@@ -2080,6 +2085,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     }
 
     if(entry) {
+      entry->SetLoaded();
       if(method_call->GetVariable()) {
         bool is_enum_call = false;
         if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding,
@@ -3814,13 +3820,13 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 }
 
 /****************************
- * Analyzes a 'for' statement
+ * Analyzes a critical section
  ****************************/
 void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 {
   Variable* variable = mutex->GetVariable();
   if(variable) {
-    AnalyzeVariable(variable, depth + 1);
+    AnalyzeVariable(variable, true, depth + 1);
     if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
       if(variable->GetEvalType()->GetName() != L"System.Concurrency.ThreadMutex") {
         ProcessError(mutex, L"Expected ThreadMutex type");
@@ -4068,7 +4074,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
   Variable* variable = assignment->GetVariable();
   if(variable) {
-    AnalyzeVariable(variable, depth + 1);
+    AnalyzeVariable(variable, false, depth + 1);
+    variable->SetStored();
   }
 
   // get last expression for assignment
@@ -6570,7 +6577,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& v
   SymbolEntry* entry;
   if(method_call->GetVariable()) {
     Variable* variable = method_call->GetVariable();
-    AnalyzeVariable(variable, depth);
+    AnalyzeVariable(variable, true, depth);
     entry = variable->GetEntry();
   }
   else {
