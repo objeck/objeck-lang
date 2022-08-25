@@ -4087,7 +4087,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
   Variable* variable = assignment->GetVariable();
   if(variable) {
-    AnalyzeVariable(variable, false, depth + 1);
+    AnalyzeVariable(variable, depth + 1);
   }
 
   // get last expression for assignment
