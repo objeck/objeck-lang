@@ -88,12 +88,6 @@ class ItermediateOptimizer {
   // constant propagation
   IntermediateBlock* ConstantProp(IntermediateBlock* input);
 
-  // dead store
-  IntermediateBlock* DeadStore(IntermediateBlock* input);
-  bool IsReStored(size_t start_pos, int var_index, vector<IntermediateInstruction*>& input_instrs);
-  bool IsUnreferenced(size_t start_pos, int var_index, vector<IntermediateInstruction*>& input_instrs);
-  pair<size_t, size_t> MarkDeadStore(const size_t end_pos, int var_index, vector<IntermediateInstruction*>& input_instrs);
-
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
   void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
