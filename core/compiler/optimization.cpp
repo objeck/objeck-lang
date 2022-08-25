@@ -241,11 +241,11 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     GetLogger() << L"  Constant propagation..." << endl;
 #endif
     vector<IntermediateBlock*> const_prop_blocks;
-    while(!folded_float_blocks.empty()) {
-      IntermediateBlock* tmp = folded_float_blocks.front();
+    while(!getter_setter_blocks.empty()) {
+      IntermediateBlock* tmp = getter_setter_blocks.front();
       const_prop_blocks.push_back(ConstantProp(tmp));
       // delete old block
-      folded_float_blocks.erase(folded_float_blocks.begin());
+      getter_setter_blocks.erase(getter_setter_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
