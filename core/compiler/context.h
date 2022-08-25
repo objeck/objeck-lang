@@ -482,8 +482,8 @@ class ContextAnalyzer {
   void BuildLambdaFunction(Lambda* lambda, Type* lambda_type, const int depth);
   bool HasInferredLambdaTypes(const wstring lambda_name);
   void CheckLambdaInferredTypes(MethodCall* method_call, int depth);
-  void AnalyzeVariable(Variable* variable, bool is_loaded, SymbolEntry* entry, const int depth);
-  void AnalyzeVariable(Variable* variable, bool is_loaded, const int depth);
+  void AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth);
+  void AnalyzeVariable(Variable* variable, const int depth);
   void AnalyzeEnumCall(MethodCall* method_call, bool regress, const int depth);
   void AnalyzeCharacterString(CharacterString* char_str, const int depth);
   void AnalyzeConditional(Cond* conditional, const int depth);
