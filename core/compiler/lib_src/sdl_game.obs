@@ -1384,8 +1384,6 @@ bundle Game.Framework {
 		}
 		
 		method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
-			success := true;
-
 			@screen_width := screen_width;
 			@screen_height := screen_height;
 
@@ -1853,7 +1851,6 @@ bundle Game.Framework {
 																	
 									if(name_attrib <> Nil) {
 										name := name_attrib->GetValue();
-										font := font_attrib->GetValue()->Split(",");
 										
 										text_obj := AddTextSprite();
 										@text_sprites_dict->Insert(name, text_obj);
@@ -1883,83 +1880,6 @@ bundle Game.Framework {
 								};
 							};
 						};
-
-#~
-						# titled_sprites
-						titled_sprites := assets->Get("titled_sprites");
-						if(titled_sprites <> Nil & titled_sprites->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : titled_sprites) {
-								titled_sprite := titled_sprites->Get(i);
-								if(titled_sprite->GetType() = JsonElement->JsonType->OBJECT) {
-									name_attrib := titled_sprite->Get("name");
-									path_attrib := titled_sprite->Get("path");
-									size_attrib := titled_sprite->Get("size");
-									if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil) {
-										name := name_attrib->GetValue();
-										path := path_attrib->GetValue();
-										size := size_attrib->GetValue();
-									}
-									else {
-									# "### Missing titled_sprite: 'name' or 'path' attribute ###"->ErrorLine();
-										@is_ok := false;
-										return false;
-									};
-								}
-								else {
-								# "### Invalid type ###"->ErrorLine();
-									@is_ok := false;
-									return false;
-								};
-							};
-						};
-
-						# animated_sprites
-						animated_sprites := assets->Get("animated_sprites");
-						if(animated_sprites <> Nil & animated_sprites->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : animated_sprites) {
-								animated_sprite := animated_sprites->Get(i);
-								if(animated_sprite->GetType() = JsonElement->JsonType->OBJECT) {
-									name_attrib := animated_sprite->Get("name");
-									path_attrib := animated_sprite->Get("path");
-									size_attrib := animated_sprite->Get("size");
-									rects_attrib := animated_sprite->Get("rects");
-									if(name_attrib <> Nil & path_attrib <> Nil & size_attrib <> Nil & rects_attrib <> Nil) {
-										name := name_attrib->GetValue();
-										path := path_attrib->GetValue();
-										size := size_attrib->GetValue();
-									}
-									else {
-									# "### Missing animated_sprite: 'name' or 'path' attribute ###"->ErrorLine();
-										@is_ok := false;
-										return false;
-									};
-
-									# animated_sprites/rects
-									if(rects_attrib->GetType() = JsonElement->JsonType->ARRAY) {
-										each(j : rects_attrib) {
-											rect_obj := rects_attrib->Get(j);
-											if(rect_obj->GetType() = JsonElement->JsonType->OBJECT) {
-												rect_attrib := rect_obj->Get("rect");
-												if(rect_attrib <> Nil) {
-													rect := rect_attrib->GetValue();
-												};
-											}
-											else {
-											# "### Invalid type ###"->ErrorLine();
-												@is_ok := false;
-												return false;
-											};
-										};						
-									};
-								}
-								else {
-								# "### Invalid type ###"->ErrorLine();
-									@is_ok := false;
-									return false;
-								};
-							};
-						};
-~#
 					}
 					else {
 					# "### Missing 'assets' element ###"->ErrorLine();
