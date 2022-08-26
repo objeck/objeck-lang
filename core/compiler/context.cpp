@@ -810,7 +810,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
 void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')"; 
+  wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')";
   Debug(msg, method->GetLineNumber(), depth);
 #endif
 
@@ -901,17 +901,22 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
         }
       }
     }
+  }
 
-    // check for unreferenced and dead stores
-    vector<SymbolEntry*> entries = symbol_table->GetEntries(method->GetParsedName());
-    for(size_t i = 0; i < entries.size(); ++i) {
-      SymbolEntry* entry = entries[i];
-      if(entry->IsLocal()) {
-        vector<Variable*> variables = entry->GetVariables();
-        // check for unreferenced variables
-        if(!entry->IsParameter() && !entry->IsLoaded()) {
-          for(size_t j = 0; j < variables.size(); ++j) {
-            Variable* variable = variables[j];
+  // check for unreferenced and dead stores
+  vector<SymbolEntry*> entries = current_table->GetEntries();
+  for(size_t i = 0; i < entries.size(); ++i) {
+    SymbolEntry* entry = entries[i];
+    if(entry->IsLocal()) {
+      // check for unreferenced variables
+      vector<Variable*> variables = entry->GetVariables();
+      if(!entry->IsParameter() && !entry->IsLoaded()) {
+        const int start_line = method->GetLineNumber();
+        const int end_line = method->GetEndLineNumber();
+        for(size_t j = 0; j < variables.size(); ++j) {
+          Variable* variable = variables[j];
+          // range check required for method overloading
+          if(variable->GetLineNumber() >= start_line && variable->GetLineNumber() < end_line) {
             ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
         }
