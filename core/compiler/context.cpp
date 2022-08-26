@@ -916,7 +916,6 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
  ****************************/
 void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
 {
-  // check for unreferenced variables
   vector<SymbolEntry*> entries = current_table->GetEntries();
   for(size_t i = 0; i < entries.size(); ++i) {
     SymbolEntry* entry = entries[i];
