@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for 64-bit AMD64 architectures (Windows and Linux).
+ * JIT compiler for 64-bit AMD64 architectures (Windows, Linux and macOS).
  *
  * Copyright (c) 2008-2022 Randy Hollines
  * All rights reserved.
