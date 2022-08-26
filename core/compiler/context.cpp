@@ -903,7 +903,20 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
   }
 
-  // check for unreferenced and dead stores
+  // check for unreferenced variables
+  CheckUnreferencedVariables(method);
+
+#ifdef _DIAG_LIB
+  current_method->SetExpressions(diagnostic_expressions);
+#endif
+}
+
+/****************************
+ * Check for unreferenced variables
+ ****************************/
+void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
+{
+  // check for unreferenced variables
   vector<SymbolEntry*> entries = current_table->GetEntries();
   for(size_t i = 0; i < entries.size(); ++i) {
     SymbolEntry* entry = entries[i];
@@ -915,7 +928,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
         const int end_line = method->GetEndLineNumber();
         for(size_t j = 0; j < variables.size(); ++j) {
           Variable* variable = variables[j];
-          // range check required for method overloading
+          // range check required for method overloading (not ideals)
           if(variable->GetLineNumber() >= start_line && variable->GetLineNumber() < end_line) {
             ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
@@ -923,10 +936,6 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
       }
     }
   }
-
-#ifdef _DIAG_LIB
-  current_method->SetExpressions(diagnostic_expressions);
-#endif
 }
 
 /****************************
