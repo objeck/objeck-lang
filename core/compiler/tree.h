@@ -2231,9 +2231,9 @@ namespace frontend {
       diagnostic_method_calls.push_back(method_call);
     }
 
-		vector <MethodCall*> GetMethodCalls() {
-			return diagnostic_method_calls;
-		}
+    vector <MethodCall*> GetMethodCalls() {
+      return diagnostic_method_calls;
+    }
 #endif
   };
 
