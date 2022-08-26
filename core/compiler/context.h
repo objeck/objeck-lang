@@ -623,33 +623,6 @@ class ContextAnalyzer {
   bool LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
   bool LocateExpression(Class* klass, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
 
-  bool CheckUnreferencedVariables()
-  {
-    return void CheckUnreferencedVariables(Method * method)
-    {
-      // check for unreferenced variables
-      vector<SymbolEntry*> entries = current_table->GetEntries();
-      for(size_t i = 0; i < entries.size(); ++i) {
-        SymbolEntry* entry = entries[i];
-        if(entry->IsLocal()) {
-          // check for unreferenced variables
-          vector<Variable*> variables = entry->GetVariables();
-          if(!entry->IsParameter() && !entry->IsLoaded()) {
-            const int start_line = method->GetLineNumber();
-            const int end_line = method->GetEndLineNumber();
-            for(size_t j = 0; j < variables.size(); ++j) {
-              Variable* variable = variables[j];
-              // range check required for method overloading (not ideal)
-              if(variable->GetLineNumber() >= start_line && variable->GetLineNumber() < end_line) {
-                ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
-              }
-            }
-        }
-      }
-    }
-  };
-}
-
 #endif
   //
   // end: diagnostics operations
