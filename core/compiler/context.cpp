@@ -587,8 +587,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
         }
         else {
           error_msg += L"\n\tMissing: '";
-	  error_msg += virtual_method->GetUserName();
-	  error_msg += L'\'';
+    error_msg += virtual_method->GetUserName();
+    error_msg += L'\'';
         }
       }
     }
@@ -743,9 +743,9 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
         }
         else {
-	  error_msg += L"\n\t'Missing:";
-	  error_msg += virtual_method->GetUserName();
-	  error_msg += L'\'';
+    error_msg += L"\n\t'Missing:";
+    error_msg += virtual_method->GetUserName();
+    error_msg += L'\'';
         }
       }
     }
@@ -6284,15 +6284,15 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
       MethodCall* mthd_call = static_cast<MethodCall*>(expressions[i]);
 
       wstring klass_name = mthd_call->GetVariableName();
-			Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
-			if(GetProgramLibraryClass(klass_name, klass, lib_klass)) {
-				if(klass) {
+      Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+      if(GetProgramLibraryClass(klass_name, klass, lib_klass)) {
+        if(klass) {
           klass_name = klass->GetName();
-				}
-				else if(lib_klass) {
+        }
+        else if(lib_klass) {
           klass_name = lib_klass->GetName();
-				}
-			}
+        }
+      }
 
       encoded_name += L"o.";
       encoded_name += klass_name;
@@ -7843,7 +7843,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       if(short_var_pos != wstring::npos) {
         const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
 
-				if(!var_str.empty() && iswdigit(var_str.front())) {
+        if(!var_str.empty() && iswdigit(var_str.front())) {
           // float literal
           if(var_str.find(L'.') != wstring::npos) {
             FindSignatureClass(type_map[L"Float"], mthd_str, context_klass, found_methods, found_lib_methods, true);
@@ -7852,7 +7852,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
           else {
             FindSignatureClass(type_map[L"Int"], mthd_str, context_klass, found_methods, found_lib_methods, true);
           }
-			  }
+        }
         // character literal
         else if(!var_str.empty() && var_str.front() == L'\'') {
           FindSignatureClass(type_map[L"Char"], mthd_str, context_klass, found_methods, found_lib_methods, true);
@@ -7946,22 +7946,22 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
 
 void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const wstring mthd_str, set<wstring> unique_names, vector<pair<int, wstring> >& found_completion)
 {
-	while(mthd_call->GetMethodCall()) {
-		mthd_call = mthd_call->GetMethodCall();
-	}
+  while(mthd_call->GetMethodCall()) {
+    mthd_call = mthd_call->GetMethodCall();
+  }
 
-	// line position
-	// get the return type
-	Type* rtrn_type = NULL;
-	if(mthd_call->GetMethod()) {
-		rtrn_type = mthd_call->GetMethod()->GetReturn();
-	}
-	else if(mthd_call->GetLibraryMethod()) {
-		rtrn_type = mthd_call->GetLibraryMethod()->GetReturn();
-	}
+  // line position
+  // get the return type
+  Type* rtrn_type = NULL;
+  if(mthd_call->GetMethod()) {
+    rtrn_type = mthd_call->GetMethod()->GetReturn();
+  }
+  else if(mthd_call->GetLibraryMethod()) {
+    rtrn_type = mthd_call->GetLibraryMethod()->GetReturn();
+  }
 
-	if(rtrn_type) {
-		Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+  if(rtrn_type) {
+    Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
     if(GetProgramLibraryClass(rtrn_type, klass, lib_klass)) {
       const wstring check_mthd_str = rtrn_type->GetName() + L':' + mthd_str;
 
@@ -8000,7 +8000,7 @@ void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const wstring 
         }
       }
     }
-	}
+  }
 }
 
 bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*> &found_methods, vector<LibraryMethod*> & found_lib_methods)
@@ -8402,7 +8402,7 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
 
   // find method calls associated with methods
   if(matched_expressions.empty()) {
-		vector<ParsedBundle*> bundles = program->GetBundles();
+    vector<ParsedBundle*> bundles = program->GetBundles();
     for(size_t i = 0; i < bundles.size(); ++i) {
       vector<Class*> classes = bundles[i]->GetClasses();
       for(size_t j = 0; j < classes.size(); ++j) {
@@ -8421,7 +8421,7 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
                 is_var = false;
                 const vector<MethodCall*> method_calls = method->GetMethodCalls();
                 for(auto method_call : method_calls) {
-									matched_expressions.push_back(method_call);
+                  matched_expressions.push_back(method_call);
                 }
               }
             }

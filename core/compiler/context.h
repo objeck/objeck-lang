@@ -562,8 +562,8 @@ class ContextAnalyzer {
     type_map[L"Char"] = TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE, L"System.Char");
     type_map[L"Int"] = TypeFactory::Instance()->MakeType(frontend::INT_TYPE, L"System.Int");
     type_map[L"Float"] = TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE, L"System.Float");
-		type_map[L"Bool"] = TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE, L"System.Bool");
-		type_map[L"String"] = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
+    type_map[L"Bool"] = TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE, L"System.Bool");
+    type_map[L"String"] = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
 
     // type holders
     holder_types.insert(L"System.BoolHolder");
