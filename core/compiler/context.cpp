@@ -284,8 +284,7 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
 
   if(linker->SearchClassLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName())) ||
      linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
-    ProcessError(eenum, L"Enum '" + FormatTypeString(eenum->GetName()) +
-                 L"' defined in program and shared libraries");
+    ProcessError(eenum, L"Enum '" + FormatTypeString(eenum->GetName()) + L"' defined in program and shared libraries");
   }
 }
 
