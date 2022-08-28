@@ -37,8 +37,8 @@ class Program {
 		header_regex := RegEx->New("==\\{\\{header\\|(\\w|/|-|_)+\\}\\}==");
 		lang_regex := RegEx->New("<(\\s)*lang(\\s)*>");
 
-		url := "http://rosettacode.org/mw/index.php?action=raw&title={$task}";
-		lines := HttpClient->New()->GetAll(url)->Split("\n");
+		url := "https://rosettacode.org/wiki/{$task}?action=raw";
+		lines := HttpsClient->New()->GetAll(url)->Split("\n");
 
 		last_header : String;
 		each(i : lines) {
