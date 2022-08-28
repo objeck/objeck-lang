@@ -369,9 +369,6 @@ bundle Collection.Generic {
 							temp_buckets[hash] := list;
 						};
 						list->AddBack(pair);
-						temp_size += 1;
-
-
 						list->Next();
 					};
 				};
