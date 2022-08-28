@@ -5,7 +5,7 @@
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
 
-Objeck is an object-oriented programming language with functional features. Objeck emphasizes, [expression](https://www.youtube.com/watch?v=G-Tw0zl5_n0), simplicity, portability and scalability. The programming environment consists of a compiler, virtual machine, command line debugger and plugins for various IDEs.
+Objeck is an object-oriented programming language with functional features. Objeck emphasizes, [expression](https://www.youtube.com/watch?v=G-Tw0zl5_n0), simplicity, portability and scalability. The programming environment consists of a compiler, virtual machine, command line debugger with IDE [plugins](https://github.com/objeck/objeck-lsp).
 
 ```ruby
 class Hello {
