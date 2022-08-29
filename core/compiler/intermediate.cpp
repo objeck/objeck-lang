@@ -106,7 +106,7 @@ void SelectArrayTree::Emit()
   emitter->cur_line_num = select->GetLineNumber();
       
   emitter->EmitExpression(select->GetAssignment()->GetExpression());
-  emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, STOR_INT_VAR, 0, LOCL));
+  emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, STOR_INT_VAR, 0, LOCL));
 
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
@@ -114,25 +114,25 @@ void SelectArrayTree::Emit()
   map<int, StatementList*> label_statements = select->GetLabelStatements();
   map<int, StatementList*>::iterator iter;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
-    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, value_label_map[iter->first]));
+    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
     vector<Statement*> statements = statement_list->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       emitter->EmitStatement(statements[i]);
     }
-    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
+    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, JMP, end_label, -1));
   }
 
   if(select->GetOther()) {
-    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, other_label));
+    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, other_label));
     StatementList* statement_list = select->GetOther();
     vector<Statement*> statements = statement_list->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       emitter->EmitStatement(statements[i]);
     }
-    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
+    emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, JMP, end_label, -1));
   }
-  emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, end_label));
+  emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, end_label));
 }
 
 /****************************
