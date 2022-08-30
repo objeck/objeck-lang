@@ -3673,11 +3673,11 @@ void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* 
   if(is_lib) {
     // program class
     if(inst_mthd) {
-      imm_block->AddInstruction(IntermediateFactory::MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_mthd->GetClass()->GetName(), inst_mthd->GetEncodedName()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_mthd->GetClass()->GetName(), inst_mthd->GetEncodedName()));
     }
     // library class
     else {
-      imm_block->AddInstruction(IntermediateFactory::MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_lib_mthd->GetLibraryClass()->GetName(), inst_lib_mthd->GetName()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_lib_mthd->GetLibraryClass()->GetName(), inst_lib_mthd->GetName()));
     }
   }
   else {
@@ -3695,7 +3695,7 @@ void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* 
   // append string value
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,  concat_entry->GetId(), LOCL));
   if(is_lib) {
-    imm_block->AddInstruction(IntermediateFactory::MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:o.System.String,"));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:o.System.String,"));
   }
   else {
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
