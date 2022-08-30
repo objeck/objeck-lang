@@ -100,20 +100,20 @@ namespace backend {
     wstring operand6;
     int line_num;
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t) {
       line_num = l;
       node = n;
       type = t;
     }
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t, int o1) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t, int o1) {
       line_num = l;
       node = n;
       type = t;
       operand = o1;
     }
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t, int o1, int o2) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t, int o1, int o2) {
       line_num = l;
       node = n;
       type = t;
@@ -121,7 +121,7 @@ namespace backend {
       operand2 = o2;
     }
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t, int o1, int o2, int o3) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t, int o1, int o2, int o3) {
       line_num = l;
       node = n;
       type = t;
@@ -130,21 +130,21 @@ namespace backend {
       operand3 = o3;
     }
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t, FLOAT_VALUE o4) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t, FLOAT_VALUE o4) {
       line_num = l;
       node = n;
       type = t;
       operand4 = o4;
     }
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t, wstring o5) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t, wstring o5) {
       line_num = l;
       node = n;
       type = t;
       operand5 = o5;
     }
 
-    IntermediateInstruction(int l, frontend::ParseNode* n, InstructionType t, int o3, wstring o5, wstring o6) {
+    IntermediateInstruction(frontend::ParseNode* n, int l, InstructionType t, int o3, wstring o5, wstring o6) {
       line_num = l;
       node = n;
       type = t;
@@ -225,44 +225,75 @@ namespace backend {
       instance = nullptr;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t);
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t, int o1) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t, o1);
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t, int o1) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t, o1);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t, int o1, int o2) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t, o1, o2);
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t, int o1, int o2) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t, o1, o2);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t, int o1, int o2, int o3) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t, o1, o2, o3);
+
+
+
+
+
+
+
+    // TODO ------------
+    IntermediateInstruction* MakeInstruction(int l, InstructionType t) {
+      return nullptr;
+    }
+
+    IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o1) {
+      return nullptr;
+    }
+
+    IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o1, int o2) {
+      return nullptr;
+    }
+
+    IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o1, int o2, int o3) {
+      return nullptr;
+    }
+
+
+
+
+
+
+
+
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t, int o1, int o2, int o3) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t, o1, o2, o3);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t, FLOAT_VALUE o4) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t, o4);
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t, FLOAT_VALUE o4) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t, o4);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t, wstring o5) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t, o5);
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t, wstring o5) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t, o5);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, frontend::ParseNode* n, InstructionType t, int o3, wstring o5, wstring o6) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(l, n, t, o3, o5, o6);
+    IntermediateInstruction* MakeInstruction(frontend::ParseNode* n, int l, InstructionType t, int o3, wstring o5, wstring o6) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(n, l, t, o3, o5, o6);
       instructions.push_back(tmp);
       return tmp;
     }
