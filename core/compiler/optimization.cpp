@@ -236,16 +236,30 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = nullptr;
     }
 
+    // dead store
+#ifdef _DEBUG
+    GetLogger() << L"  Dead store..." << endl;
+#endif
+    vector<IntermediateBlock*> dead_store_blocks;
+    while(!getter_setter_blocks.empty()) {
+      IntermediateBlock* tmp = getter_setter_blocks.front();
+      dead_store_blocks.push_back(DeadStore(tmp));
+      // delete old block
+      getter_setter_blocks.erase(getter_setter_blocks.begin());
+      delete tmp;
+      tmp = nullptr;
+    }
+
     // constant propagation
 #ifdef _DEBUG
     GetLogger() << L"  Constant propagation..." << endl;
 #endif
     vector<IntermediateBlock*> const_prop_blocks;
-    while(!getter_setter_blocks.empty()) {
-      IntermediateBlock* tmp = getter_setter_blocks.front();
+    while(!dead_store_blocks.empty()) {
+      IntermediateBlock* tmp = dead_store_blocks.front();
       const_prop_blocks.push_back(ConstantProp(tmp));
       // delete old block
-      getter_setter_blocks.erase(getter_setter_blocks.begin());
+      dead_store_blocks.erase(dead_store_blocks.begin());
       delete tmp;
       tmp = nullptr;
     }
@@ -1107,7 +1121,77 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
 // ------------------- Start: NEW OPTIMIZATIONS -------------------
 
-// TODO: arrays, function references, new objects
+IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
+  bool done = false;
+  size_t start_pos = 0;
+  for(size_t i = 0; !done && i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
+      start_pos++;
+      break;
+
+    default:
+      done = true;
+      break;
+    }
+  }
+
+  for(size_t i = start_pos; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
+      if(IsDeadStore(instr, i + 1, input_instrs)) {
+
+      }
+      else {
+        outputs->AddInstruction(instr);
+      }
+      break;
+
+    default:
+      outputs->AddInstruction(instr);
+      break;
+    }
+  }
+
+  return outputs;
+}
+
+bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, vector<IntermediateInstruction*>& input_instrs)
+{
+  bool done = false;
+
+  while(!done && check_pos < input_instrs.size()) {
+    IntermediateInstruction* instr = input_instrs[check_pos++];
+
+    switch(instr->GetType()) {
+    case JMP:
+    case LBL:
+    case RTRN:
+      return false;
+
+    default:
+      if(instr->GetType() == check_instr->GetType() && instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
+        wcout << L"Foo bar" << endl;
+      }
+      break;
+    }
+  }
+
+  return false;
+}
 
 IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 {
