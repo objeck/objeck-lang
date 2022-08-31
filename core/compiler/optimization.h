@@ -88,6 +88,7 @@ class ItermediateOptimizer {
   // dead store
   IntermediateBlock* DeadStore(IntermediateBlock* input);
   bool IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, vector<IntermediateInstruction*>& input_instrs);
+  pair<size_t, size_t> DeadStoreEdit(size_t start_pos, vector<IntermediateInstruction*>& input_instrs);
 
   // constant propagation
   IntermediateBlock* ConstantProp(IntermediateBlock* input);
