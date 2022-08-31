@@ -1145,6 +1145,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
+  vector<pair<size_t, size_t>> dead_store_edits;
+
   for(size_t i = start_pos; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
@@ -1152,8 +1154,9 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-      if(IsDeadStore(instr, i, input_instrs)) {
-        pair<size_t, size_t> dead_store_edit = DeadStoreEdit(i, input_instrs);
+      if(instr->GetStatement() && IsDeadStore(instr, i, input_instrs)) {
+        const pair<size_t, size_t> dead_store_edit = DeadStoreEdit(i, input_instrs);
+        dead_store_edits.push_back(dead_store_edit);
       }
       else {
         outputs->AddInstruction(instr);
@@ -1166,12 +1169,31 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     }
   }
 
+  // TODO:
+  for(size_t i = 0; i < dead_store_edits.size(); ++i) {
+    const pair<size_t, size_t> dead_store_edit = dead_store_edits[i];
+  }
+
   return outputs;
 }
 
 pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, vector<IntermediateInstruction*>& input_instrs)
 {
-  return pair<size_t, size_t>();
+  size_t end_pos = start_pos;
+  IntermediateInstruction* dead_store_instr = input_instrs[start_pos];
+
+  bool done = false;
+  for(std::vector<IntermediateInstruction*>::iterator start_iter = input_instrs.begin() + start_pos - 1;
+      !done && start_iter != input_instrs.begin(); --start_iter) {
+    if((*start_iter)->GetStatement() == dead_store_instr->GetStatement()) {
+      --end_pos;
+    }
+    else {
+      done = true;
+    }
+  }
+
+  return pair<size_t, size_t>(end_pos, start_pos);
 }
 
 bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, vector<IntermediateInstruction*>& input_instrs)
@@ -1190,7 +1212,7 @@ bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, siz
 
     default:
       if(instr->GetType() == check_instr->GetType() && instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
-        wcout << L"Foo bar" << endl;
+        return true;
       }
       break;
     }
