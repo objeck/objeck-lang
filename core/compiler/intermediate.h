@@ -57,6 +57,7 @@ class IntermediateEmitter {
   Class* current_class;
   Method* current_method;
   SymbolTable* current_table;
+  Statement* current_statement;
   int conditional_label;
   int unconditional_label;
   bool is_lib;
