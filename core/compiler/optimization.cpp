@@ -1173,8 +1173,9 @@ bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, siz
 {
   bool done = false;
 
-  while(!done && check_pos < input_instrs.size()) {
-    IntermediateInstruction* instr = input_instrs[check_pos++];
+  size_t start_pos = check_pos;
+  while(!done && start_pos < input_instrs.size()) {
+    IntermediateInstruction* instr = input_instrs[start_pos++];
 
     switch(instr->GetType()) {
     case JMP:
