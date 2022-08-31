@@ -479,7 +479,7 @@ class Scanner {
   // start marker position
   size_t start_pos;
   // end marker position
-  size_t end_pos;
+  size_t foo_pos;
   // input characters
   wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
