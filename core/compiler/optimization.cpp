@@ -1152,8 +1152,8 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-      if(IsDeadStore(instr, i + 1, input_instrs)) {
-
+      if(IsDeadStore(instr, i, input_instrs)) {
+        pair<size_t, size_t> dead_store_edit = DeadStoreEdit(i, input_instrs);
       }
       else {
         outputs->AddInstruction(instr);
@@ -1169,11 +1169,16 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
   return outputs;
 }
 
+pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, vector<IntermediateInstruction*>& input_instrs)
+{
+  return pair<size_t, size_t>();
+}
+
 bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, vector<IntermediateInstruction*>& input_instrs)
 {
   bool done = false;
 
-  size_t start_pos = check_pos;
+  size_t start_pos = check_pos + 1;
   while(!done && start_pos < input_instrs.size()) {
     IntermediateInstruction* instr = input_instrs[start_pos++];
 
