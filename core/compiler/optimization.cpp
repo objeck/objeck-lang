@@ -1236,6 +1236,9 @@ bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, siz
         return true;
       }
       break;
+     
+    default:
+      break;
     }
   }
 
