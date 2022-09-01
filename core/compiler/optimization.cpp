@@ -1158,25 +1158,41 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
         const pair<size_t, size_t> dead_store_edit = DeadStoreEdit(i, input_instrs);
         dead_store_edits.push_back(dead_store_edit);
       }
-      else {
-        outputs->AddInstruction(instr);
-      }
       break;
 
     default:
-      outputs->AddInstruction(instr);
       break;
     }
   }
 
-  // TODO:
-  for(size_t i = 0; i < dead_store_edits.size(); ++i) {
-    const pair<size_t, size_t> dead_store_edit = dead_store_edits[i];
+  // copy instructions
+  if(input_instrs.empty()) {
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      outputs->AddInstruction(input_instrs[i]);
+    }
+  }
+  else {
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      if(!InDeadStoreRange(i, dead_store_edits)) {
+        outputs->AddInstruction(input_instrs[i]);
+      }
+    }
   }
 
   return outputs;
 }
 
+bool ItermediateOptimizer::InDeadStoreRange(size_t pos, vector<pair<size_t, size_t>> dead_store_edits)
+{
+  for(size_t i = 0; i < dead_store_edits.size(); ++i) {
+    const pair<size_t, size_t> dead_store_edit = dead_store_edits[i];
+    if(pos >= dead_store_edit.first && pos <= dead_store_edit.second) {
+      return true;
+    }
+  }
+
+  return false;
+}
 pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, vector<IntermediateInstruction*>& input_instrs)
 {
   size_t end_pos = start_pos;
