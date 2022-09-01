@@ -48,7 +48,8 @@ using namespace backend;
  * 1.1 - setter and getter inlining
  * 1.2 - advanced method inlining 
  * 1.3 - constant propagation
- * 1.4 - constant folding
+ * 1.4 - dead store removal
+ * 1.5 - constant folding
  * 2.1 - strength reduction
  * 3.1 - replace store+load with copy
  ****************************/
