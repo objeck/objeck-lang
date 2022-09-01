@@ -53,7 +53,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>obr</TargetName>
-    <LibraryPath>..\..\lib\openssl\win\x64;C:\Users\objec\Documents\Code\objeck-lang\core\lib\zlib\win\x64\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64\Release;$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
