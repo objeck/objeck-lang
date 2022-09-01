@@ -10,6 +10,7 @@ class Foo {
 		z := 20;
 		y := 13;
 		y := 7;
+		y := 3;
 		z := z * args->Size() + y;
 		z->PrintLine();
 	}
