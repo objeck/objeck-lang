@@ -1,7 +1,15 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+#~		
+		z := 20;
+		z := 66;
+		y := z + 13;
+		y->PrintLine();\
+~#		
+		z := 20;
 		y := 13;
-		z := args->Size();
+		y := 7;
+		z := z * args->Size() + y;
 		z->PrintLine();
 	}
 
