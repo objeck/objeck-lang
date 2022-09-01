@@ -388,6 +388,10 @@ namespace backend {
       instructions.push_back(i);
     }
 
+    void AddInstructions(vector<IntermediateInstruction*> &i) {
+      instructions = i;
+    }
+
     void Remove(pair<size_t, size_t> &range) {
       const size_t start_edit = range.first;
       const size_t end_edit = range.second;
