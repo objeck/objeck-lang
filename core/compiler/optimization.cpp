@@ -1167,9 +1167,7 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 
   // copy instructions
   if(input_instrs.empty()) {
-    for(size_t i = 0; i < input_instrs.size(); ++i) {
-      outputs->AddInstruction(input_instrs[i]);
-    }
+    outputs->AddInstructions(input_instrs);
   }
   else {
     for(size_t i = 0; i < input_instrs.size(); ++i) {
@@ -1214,11 +1212,8 @@ pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, vecto
 
 bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, vector<IntermediateInstruction*>& input_instrs)
 {
-  bool done = false;
-
-  size_t start_pos = check_pos + 1;
-  while(!done && start_pos < input_instrs.size()) {
-    IntermediateInstruction* instr = input_instrs[start_pos++];
+  for(size_t i = check_pos + 1; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
     case JMP:
@@ -1226,8 +1221,18 @@ bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, siz
     case RTRN:
       return false;
 
-    default:
-      if(instr->GetType() == check_instr->GetType() && instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
+      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
+        return false;
+      }
+      break;
+
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
+      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
         return true;
       }
       break;
