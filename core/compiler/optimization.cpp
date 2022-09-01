@@ -1119,7 +1119,9 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   return outputs;
 }
 
+//
 // ------------------- Start: NEW OPTIMIZATIONS -------------------
+//
 
 IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
 {
@@ -1377,7 +1379,9 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
   return outputs;
 }
 
+//
 // ------------------- End: NEW OPTIMIZATIONS -------------------
+//
 
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)
 {
