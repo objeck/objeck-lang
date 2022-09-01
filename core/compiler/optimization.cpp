@@ -1270,7 +1270,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
            next_instr->GetOperand() == next_next_instr->GetOperand() &&
            next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
           int_value = instr->GetOperand();
-          set_int = false;
+          set_int = true;
         }
       }
       else {
@@ -1316,7 +1316,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
            next_instr->GetOperand() == next_next_instr->GetOperand() &&
            next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
           float_value = instr->GetOperand4();
-          set_float = false;
+          set_float = true;
         }
       }
       else {
