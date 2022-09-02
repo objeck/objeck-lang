@@ -43,7 +43,7 @@ using namespace backend;
  * Performs optimizations on
  * intermediate code.
  *
- * Order of 4 optimizations:
+ * Order of optimizations:
  * 0.0 - clean up jumps and other unneeded instructions (always happens)
  * 1.1 - setter and getter inlining
  * 1.2 - advanced method inlining 
