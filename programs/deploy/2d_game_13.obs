@@ -144,7 +144,6 @@ class Game {
 		};
 
 		red_color := Color->New(255, 0, 0);
-		black_color := Color->New(255, 255, 255);
 		play_text := @framework->AddTextSprite();
 		play_text->SetFont(font);
 
