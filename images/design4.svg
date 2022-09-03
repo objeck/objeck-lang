@@ -33,7 +33,7 @@
 		.st15 {marker-end:url(#mrkr1-105);marker-start:url(#mrkr1-88);stroke:#404040;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.25}
 		.st16 {marker-end:url(#mrkr1-97);stroke:#cdcdcd;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:0.5;stroke-width:0.25}
 		.st17 {marker-end:url(#mrkr1-105);stroke:#404040;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.25}
-		.st18 {fill:#ffffff;stroke:none;stroke-linecap:butt;stroke-width:7.2}
+		.st18 {fill:#ffffff;stroke:none;stroke-linecap:butt}
 		.st19 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
 	]]>
 	</style>
@@ -701,18 +701,18 @@
 			<v:textRect cx="13.5" cy="273.6" width="40" height="17.6036"/>
 			<g id="shadow63-251" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
-				<path d="M0 273.6 L27 273.6" class="st10"/>
+				<path d="M0 273.6 L27 273.6" class="st14"/>
 			</g>
-			<path d="M0 273.6 L27 273.6" class="st12"/>
+			<path d="M0 273.6 L27 273.6" class="st15"/>
 			<rect v:rectContext="textBkgnd" x="8.80862" y="268.8" width="9.38287" height="9.59985" class="st18"/>
 			<text x="8.81" y="276" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>No</text>		</g>
-		<g id="shape68-263" v:mID="68" v:groupContext="shape" v:layerMember="1" transform="translate(365.4,-133.2)">
+		<g id="shape68-267" v:mID="68" v:groupContext="shape" v:layerMember="1" transform="translate(365.4,-133.2)">
 			<title>Dynamic connector.68</title>
 			<v:userDefs>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
 				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
 			</v:userDefs>
-			<g id="shadow68-264" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+			<g id="shadow68-268" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
 				<path d="M7.2 280.8 L7.2 307.8" class="st16"/>
 			</g>
