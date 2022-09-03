@@ -1,93 +1,401 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 425 350" width="425pt" height="350pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <metadata> Produced by OmniGraffle 7.2.2 
-    <dc:date>2017-02-25 20:05:58 +0000</dc:date>
-  </metadata>
-  <defs>
-    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
-      <font-face-src>
-        <font-face-name name="HelveticaNeue"/>
-      </font-face-src>
-    </font-face>
-    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
-      <g>
-        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
-      </g>
-    </marker>
-    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
-      <g>
-        <path d="M -8 0 L 0 3 L 0 -3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
-      </g>
-    </marker>
-  </defs>
-  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
-    <title>Canvas 2</title>
-    <g>
-      <title>Layer 1</title>
-      <rect x="19" y="145.5" width="73" height="116.5" fill="white"/>
-      <rect x="19" y="145.5" width="73" height="116.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(24 185.302)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" fill="black" x="11.052" y="15" textLength="45.344">Stack </tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" fill="black" x="8.828" y="33.448" textLength="45.344">Frame</tspan>
-      </text>
-      <rect x="19" y="101.5" width="73" height="44" fill="white"/>
-      <rect x="19" y="101.5" width="73" height="44" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(24 105.052)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="9.428" y="15" textLength="48.592">Active </tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="8.828" y="33.448" textLength="45.344">Frame</tspan>
-      </text>
-      <rect x="145" y="83" width="100" height="79" fill="white"/>
-      <rect x="145" y="83" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(150 113.276)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="7.96" y="15" textLength="46.816">Interpr</tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="54.488" y="15" textLength="27.552">eter</tspan>
-      </text>
-      <rect x="145" y="259" width="100" height="79" fill="white"/>
-      <rect x="145" y="259" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(150 280.052)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="14.472" y="15" textLength="65.504">Machine </tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="25.592" y="33.448" textLength="43.264">Code </tspan>
-      </text>
-      <line x1="92" y1="123.23835" x2="135.10025" y2="122.92939" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <rect x="299" y="259" width="100" height="79" fill="white"/>
-      <rect x="299" y="259" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(304 280.052)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="15.656" y="15" textLength="63.136">Memory </tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="13.44" y="33.448" textLength="63.12">Manager</tspan>
-      </text>
-      <rect x="299" y="84" width="100" height="79" fill="white"/>
-      <rect x="299" y="84" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(304 105.052)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="14.624" y="15" textLength="65.2">Host OS </tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="28.56" y="33.448" textLength="32.88">APIs</tspan>
-      </text>
-      <line x1="229.76" y1="259" x2="307.6998" y2="170.43206" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <line x1="245" y1="298.5" x2="289.1" y2="298.5" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <path d="M 229.5625 162 L 268.5976 206.61154 C 272.73677 202.98977 279.98032 211.2681 275.84115 214.88988 L 307.9183 251.5495" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <line x1="245" y1="122.82468" x2="289.1002" y2="123.11104" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <rect x="145" y="16" width="100" height="34" fill="white"/>
-      <rect x="145" y="16" width="100" height="34" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(150 23.776)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="14.328" y="15" textLength="15.696">Pr</tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="29.736" y="15" textLength="45.936">ogram</tspan>
-      </text>
-      <rect x="299" y="16" width="100" height="34" fill="white"/>
-      <rect x="299" y="16" width="100" height="34" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(304 23.776)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="9.296" y="15" textLength="71.408">Native I/O</tspan>
-      </text>
-      <line x1="195" y1="50" x2="195" y2="73.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <line x1="349" y1="59.9" x2="349" y2="74.1" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <rect x="145" y="188.5" width="100" height="44" fill="white"/>
-      <rect x="145" y="188.5" width="100" height="44" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <text transform="translate(150 192.052)" fill="black">
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="34.184" y="15" textLength="26.08">JIT </tspan>
-        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="12.552" y="33.448" textLength="64.896">Compiler</tspan>
-      </text>
-      <line x1="195" y1="162" x2="195" y2="178.6" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <line x1="195" y1="232.5" x2="195" y2="249.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-      <path d="M 138.34077 266.2451 C 114.11976 237.09896 103.18344 193.3907 137.7942 157.465" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-    </g>
-  </g>
+<!-- Generated by Microsoft Visio, SVG Export design3.svg Page-14 -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
+		xmlns:v="http://schemas.microsoft.com/visio/2003/SVGExtensions/" width="6in" height="3.25in" viewBox="0 0 432 234"
+		xml:space="preserve" color-interpolation-filters="sRGB" class="st16">
+	<v:documentProperties v:langID="1033">
+		<v:userDefs>
+			<v:ud v:nameU="DocShowPicture" v:prompt="" v:val="VT0(1):26"/>
+			<v:ud v:nameU="msvConvertTheme"/>
+		</v:userDefs>
+	</v:documentProperties>
+	<v:reviewers>
+		<v:reviewer v:name="Randy Hollines" v:initials="RH" color="#ff0000" v:reviewerId="1" v:currentIndex="2"/>
+	</v:reviewers>
+
+	<style type="text/css">
+	<![CDATA[
+		.st1 {visibility:visible}
+		.st2 {fill:#cdcdcd;fill-opacity:0.5;stroke:#cdcdcd;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:0.5}
+		.st3 {fill:url(#grad0-6);stroke:#404040;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.25}
+		.st4 {fill:#000000;font-family:Calibri;font-size:0.666664em}
+		.st5 {fill:#cdcdcd;fill-opacity:0.5}
+		.st6 {stroke:#cdcdcd;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:0.5;stroke-width:0.25}
+		.st7 {fill:url(#grad0-6)}
+		.st8 {stroke:#404040;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.25}
+		.st9 {font-size:1em}
+		.st10 {marker-end:url(#mrkr1-66);stroke:#cdcdcd;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:0.5;stroke-width:0.25}
+		.st11 {fill:#cdcdcd;fill-opacity:0.5;stroke:#cdcdcd;stroke-opacity:0.5;stroke-width:0.090252707581227}
+		.st12 {marker-end:url(#mrkr1-72);stroke:#404040;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.25}
+		.st13 {fill:#404040;fill-opacity:1;stroke:#404040;stroke-opacity:1;stroke-width:0.090252707581227}
+		.st14 {marker-end:url(#mrkr1-66);marker-start:url(#mrkr1-91);stroke:#cdcdcd;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:0.5;stroke-width:0.25}
+		.st15 {marker-end:url(#mrkr1-72);marker-start:url(#mrkr1-99);stroke:#404040;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.25}
+		.st16 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+	]]>
+	</style>
+
+	<defs id="Patterns_And_Gradients">
+		<linearGradient id="grad0-6" x1="0" y1="0" x2="1" y2="0" gradientTransform="rotate(270 0.5 0.5)">
+			<stop offset="0" stop-color="#f0f0f0" stop-opacity="1"/>
+			<stop offset="1" stop-color="#ffffff" stop-opacity="1"/>
+		</linearGradient>
+	</defs>
+	<defs id="Markers">
+		<g id="lend1">
+			<path d="M 1 -1 L 0 0 L 1 1 " style="stroke-linecap:round;stroke-linejoin:round;fill:none"/>
+		</g>
+		<marker id="mrkr1-66" class="st11" v:arrowType="1" v:arrowSize="2" orient="auto" markerUnits="strokeWidth"
+				overflow="visible">
+			<use xlink:href="#lend1" transform="scale(-11.08,-11.08) "/>
+		</marker>
+		<marker id="mrkr1-72" class="st13" v:arrowType="1" v:arrowSize="2" orient="auto" markerUnits="strokeWidth"
+				overflow="visible">
+			<use xlink:href="#lend1" transform="scale(-11.08,-11.08) "/>
+		</marker>
+		<marker id="mrkr1-91" class="st11" v:arrowType="1" v:arrowSize="2" orient="auto" markerUnits="strokeWidth"
+				overflow="visible">
+			<use xlink:href="#lend1" transform="scale(11.08) "/>
+		</marker>
+		<marker id="mrkr1-99" class="st13" v:arrowType="1" v:arrowSize="2" orient="auto" markerUnits="strokeWidth"
+				overflow="visible">
+			<use xlink:href="#lend1" transform="scale(11.08) "/>
+		</marker>
+	</defs>
+	<g v:mID="16" v:index="14" v:groupContext="foregroundPage">
+		<v:userDefs>
+			<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+			<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			<v:ud v:nameU="msvThemeOrder" v:val="VT0(1):26"/>
+		</v:userDefs>
+		<title>Page-14</title>
+		<v:pageProperties v:drawingScale="1" v:pageScale="1" v:drawingUnits="0" v:shadowOffsetX="9" v:shadowOffsetY="-9"/>
+		<v:layer v:name="Flowchart" v:index="0"/>
+		<v:layer v:name="Connector" v:index="1"/>
+		<g id="shape1-1" v:mID="1" v:groupContext="shape" v:layerMember="0" transform="translate(10.8,-90)">
+			<title>Document.62</title>
+			<desc>Program</desc>
+			<v:custProps>
+				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="ProcessNumber" v:lbl="Process Number" v:prompt="" v:type="2" v:format="" v:sortKey=""
+						v:invis="false" v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Owner" v:lbl="Owner" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Function" v:lbl="Function" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+				<v:cp v:nameU="StartDate" v:lbl="Start Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="EndDate" v:lbl="End Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Status" v:lbl="Status" v:prompt="" v:type="4"
+						v:format=";Not Started;In Progress;Completed;Deferred;Waiting on Input" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+			</v:custProps>
+			<v:userDefs>
+				<v:ud v:nameU="visVersion" v:prompt="" v:val="VT0(15):26"/>
+				<v:ud v:nameU="DefaultWidth" v:prompt="" v:val="VT0(1):0"/>
+				<v:ud v:nameU="DefaultHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="ResizeTxtHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<v:textBlock v:margins="rect(2,2,2,2)"/>
+			<v:textRect cx="36" cy="201" width="72" height="42"/>
+			<g id="shadow1-2" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 228 L0 180 L72 180 L72 228 A30 30 -180 0 0 36 228 A30 30 0 0 1 -0 228 Z" class="st2"/>
+			</g>
+			<path d="M0 228 L0 180 L72 180 L72 228 A30 30 -180 0 0 36 228 A30 30 0 0 1 -0 228 Z" class="st3"/>
+			<text x="22.04" y="203.4" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Program</text>		</g>
+		<g id="shape2-8" v:mID="2" v:groupContext="shape" v:layerMember="0" transform="translate(109.8,-90)">
+			<title>Subprocess.63</title>
+			<desc>Loader</desc>
+			<v:custProps>
+				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="ProcessNumber" v:lbl="Process Number" v:prompt="" v:type="2" v:format="" v:sortKey=""
+						v:invis="false" v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Owner" v:lbl="Owner" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Function" v:lbl="Function" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+				<v:cp v:nameU="StartDate" v:lbl="Start Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="EndDate" v:lbl="End Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Status" v:lbl="Status" v:prompt="" v:type="4"
+						v:format=";Not Started;In Progress;Completed;Deferred;Waiting on Input" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+			</v:custProps>
+			<v:userDefs>
+				<v:ud v:nameU="AntiScale" v:val="VT0(1):26"/>
+				<v:ud v:nameU="visVersion" v:prompt="" v:val="VT0(15):26"/>
+				<v:ud v:nameU="DefaultWidth" v:prompt="" v:val="VT0(1):0"/>
+				<v:ud v:nameU="DefaultHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="ResizeTxtHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<v:textBlock v:margins="rect(2,2,2,2)"/>
+			<v:textRect cx="36" cy="207" width="54" height="54"/>
+			<g id="shadow2-9" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 234 L72 234 L72 180 L0 180 L0 234 Z" class="st5"/>
+				<path d="M0 234 L72 234 L72 180 L0 180 L0 234" class="st6"/>
+				<path d="M9 234 L9 180" class="st6"/>
+				<path d="M63 234 L63 180" class="st6"/>
+			</g>
+			<path d="M0 234 L72 234 L72 180 L0 180 L0 234 Z" class="st7"/>
+			<path d="M0 234 L72 234 L72 180 L0 180 L0 234" class="st8"/>
+			<path d="M9 234 L9 180" class="st8"/>
+			<path d="M63 234 L63 180" class="st8"/>
+			<text x="24.81" y="209.4" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Loader</text>		</g>
+		<g id="shape3-20" v:mID="3" v:groupContext="shape" v:layerMember="0" transform="translate(208.8,-90)">
+			<title>Process.64</title>
+			<desc>Interpreter (PC, Call Stack)</desc>
+			<v:custProps>
+				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="ProcessNumber" v:lbl="Process Number" v:prompt="" v:type="2" v:format="" v:sortKey=""
+						v:invis="false" v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Owner" v:lbl="Owner" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Function" v:lbl="Function" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+				<v:cp v:nameU="StartDate" v:lbl="Start Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="EndDate" v:lbl="End Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Status" v:lbl="Status" v:prompt="" v:type="4"
+						v:format=";Not Started;In Progress;Completed;Deferred;Waiting on Input" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+			</v:custProps>
+			<v:userDefs>
+				<v:ud v:nameU="visVersion" v:prompt="" v:val="VT0(15):26"/>
+				<v:ud v:nameU="DefaultWidth" v:prompt="" v:val="VT0(1):0"/>
+				<v:ud v:nameU="DefaultHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="ResizeTxtHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<v:textBlock v:margins="rect(2,2,2,2)"/>
+			<v:textRect cx="36" cy="207" width="72" height="54"/>
+			<g id="shadow3-21" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<rect x="0" y="180" width="72" height="54" class="st2"/>
+			</g>
+			<rect x="0" y="180" width="72" height="54" class="st3"/>
+			<text x="17.96" y="204.6" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Interpreter<v:newlineChar/><tspan
+						x="12.08" dy="1.2em" class="st9">(PC, Call Stack)</tspan></text>		</g>
+		<g id="shape4-27" v:mID="4" v:groupContext="shape" v:layerMember="0" transform="translate(307.8,-9)">
+			<title>Subprocess.63.4</title>
+			<desc>JIT Compiler (AMM64, x64)</desc>
+			<v:custProps>
+				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="ProcessNumber" v:lbl="Process Number" v:prompt="" v:type="2" v:format="" v:sortKey=""
+						v:invis="false" v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Owner" v:lbl="Owner" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Function" v:lbl="Function" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+				<v:cp v:nameU="StartDate" v:lbl="Start Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="EndDate" v:lbl="End Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Status" v:lbl="Status" v:prompt="" v:type="4"
+						v:format=";Not Started;In Progress;Completed;Deferred;Waiting on Input" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+			</v:custProps>
+			<v:userDefs>
+				<v:ud v:nameU="AntiScale" v:val="VT0(1):26"/>
+				<v:ud v:nameU="visVersion" v:prompt="" v:val="VT0(15):26"/>
+				<v:ud v:nameU="DefaultWidth" v:prompt="" v:val="VT0(1):0"/>
+				<v:ud v:nameU="DefaultHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="ResizeTxtHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<v:textBlock v:margins="rect(2,2,2,2)"/>
+			<v:textRect cx="36" cy="207" width="54" height="54"/>
+			<g id="shadow4-28" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 234 L72 234 L72 180 L0 180 L0 234 Z" class="st5"/>
+				<path d="M0 234 L72 234 L72 180 L0 180 L0 234" class="st6"/>
+				<path d="M9 234 L9 180" class="st6"/>
+				<path d="M63 234 L63 180" class="st6"/>
+			</g>
+			<path d="M0 234 L72 234 L72 180 L0 180 L0 234 Z" class="st7"/>
+			<path d="M0 234 L72 234 L72 180 L0 180 L0 234" class="st8"/>
+			<path d="M9 234 L9 180" class="st8"/>
+			<path d="M63 234 L63 180" class="st8"/>
+			<text x="16.1" y="204.6" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>JIT Compiler<v:newlineChar/><tspan
+						x="12.68" dy="1.2em" class="st9">(AMM64, x64)</tspan></text>		</g>
+		<g id="shape5-40" v:mID="5" v:groupContext="shape" v:layerMember="0" transform="translate(307.8,-171)">
+			<title>Subprocess.63.5</title>
+			<desc>Memory Manager</desc>
+			<v:custProps>
+				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="ProcessNumber" v:lbl="Process Number" v:prompt="" v:type="2" v:format="" v:sortKey=""
+						v:invis="false" v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Owner" v:lbl="Owner" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Function" v:lbl="Function" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+				<v:cp v:nameU="StartDate" v:lbl="Start Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="EndDate" v:lbl="End Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Status" v:lbl="Status" v:prompt="" v:type="4"
+						v:format=";Not Started;In Progress;Completed;Deferred;Waiting on Input" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+			</v:custProps>
+			<v:userDefs>
+				<v:ud v:nameU="AntiScale" v:val="VT0(1):26"/>
+				<v:ud v:nameU="visVersion" v:prompt="" v:val="VT0(15):26"/>
+				<v:ud v:nameU="DefaultWidth" v:prompt="" v:val="VT0(1):0"/>
+				<v:ud v:nameU="DefaultHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="ResizeTxtHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<v:textBlock v:margins="rect(2,2,2,2)"/>
+			<v:textRect cx="36" cy="207" width="54" height="54"/>
+			<g id="shadow5-41" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 234 L72 234 L72 180 L0 180 L0 234 Z" class="st5"/>
+				<path d="M0 234 L72 234 L72 180 L0 180 L0 234" class="st6"/>
+				<path d="M9 234 L9 180" class="st6"/>
+				<path d="M63 234 L63 180" class="st6"/>
+			</g>
+			<path d="M0 234 L72 234 L72 180 L0 180 L0 234 Z" class="st7"/>
+			<path d="M0 234 L72 234 L72 180 L0 180 L0 234" class="st8"/>
+			<path d="M9 234 L9 180" class="st8"/>
+			<path d="M63 234 L63 180" class="st8"/>
+			<text x="22.08" y="204.6" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Memory <tspan
+						x="21.38" dy="1.2em" class="st9">Manager</tspan></text>		</g>
+		<g id="shape6-53" v:mID="6" v:groupContext="shape" v:layerMember="0" transform="translate(307.8,-90)">
+			<title>Process.64.6</title>
+			<desc>Host API (POSIX, win32)</desc>
+			<v:custProps>
+				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="ProcessNumber" v:lbl="Process Number" v:prompt="" v:type="2" v:format="" v:sortKey=""
+						v:invis="false" v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Owner" v:lbl="Owner" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false" v:ask="false"
+						v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Function" v:lbl="Function" v:prompt="" v:type="0" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+				<v:cp v:nameU="StartDate" v:lbl="Start Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="EndDate" v:lbl="End Date" v:prompt="" v:type="5" v:format="" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0"/>
+				<v:cp v:nameU="Status" v:lbl="Status" v:prompt="" v:type="4"
+						v:format=";Not Started;In Progress;Completed;Deferred;Waiting on Input" v:sortKey="" v:invis="false"
+						v:ask="false" v:langID="1033" v:cal="0" v:val="VT4()"/>
+			</v:custProps>
+			<v:userDefs>
+				<v:ud v:nameU="visVersion" v:prompt="" v:val="VT0(15):26"/>
+				<v:ud v:nameU="DefaultWidth" v:prompt="" v:val="VT0(1):0"/>
+				<v:ud v:nameU="DefaultHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="ResizeTxtHeight" v:prompt="" v:val="VT0(0.75):0"/>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<v:textBlock v:margins="rect(2,2,2,2)"/>
+			<v:textRect cx="36" cy="207" width="72" height="54"/>
+			<g id="shadow6-54" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<rect x="0" y="180" width="72" height="54" class="st2"/>
+			</g>
+			<rect x="0" y="180" width="72" height="54" class="st3"/>
+			<text x="22.2" y="204.6" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Host API<v:newlineChar/><tspan
+						x="12.1" dy="1.2em" class="st9">(POSIX, win32)</tspan></text>		</g>
+		<g id="shape7-60" v:mID="7" v:groupContext="shape" v:layerMember="1" transform="translate(82.8,-109.8)">
+			<title>Dynamic connector</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow7-61" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 226.8 L27 226.8" class="st10"/>
+			</g>
+			<path d="M0 226.8 L27 226.8" class="st12"/>
+		</g>
+		<g id="shape8-73" v:mID="8" v:groupContext="shape" v:layerMember="1" transform="translate(181.8,-109.8)">
+			<title>Dynamic connector.8</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow8-74" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 226.8 L27 226.8" class="st10"/>
+			</g>
+			<path d="M0 226.8 L27 226.8" class="st12"/>
+		</g>
+		<g id="shape9-84" v:mID="9" v:groupContext="shape" v:layerMember="1" transform="translate(244.8,-90)">
+			<title>Dynamic connector.9</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow9-85" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 234 C0 247.5 0 267.32 11.31 277.44 C23.12 288 47.25 288 63 288" class="st14"/>
+			</g>
+			<path d="M0 234 C0 247.5 0 267.32 11.31 277.44 C23.12 288 47.25 288 63 288" class="st15"/>
+		</g>
+		<g id="shape10-101" v:mID="10" v:groupContext="shape" v:layerMember="1" transform="translate(280.8,-109.8)">
+			<title>Dynamic connector.10</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow10-102" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 226.8 L27 226.8" class="st10"/>
+			</g>
+			<path d="M0 226.8 L27 226.8" class="st12"/>
+		</g>
+		<g id="shape11-112" v:mID="11" v:groupContext="shape" v:layerMember="1" transform="translate(244.8,-144)">
+			<title>Dynamic connector.11</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow11-113" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M0 234 C0 220.5 0 200.68 11.31 190.56 C23.12 180 47.25 180 63 180" class="st10"/>
+			</g>
+			<path d="M0 234 C0 220.5 0 200.68 11.31 190.56 C23.12 180 47.25 180 63 180" class="st12"/>
+		</g>
+		<g id="shape12-123" v:mID="12" v:groupContext="shape" v:layerMember="1" transform="translate(372.6,-36)">
+			<title>Dynamic connector.12</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow12-124" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M7.2 234 C20.7 234 30.6 214.65 30.6 194.4 C30.6 174.15 20.7 153 7.2 153" class="st10"/>
+			</g>
+			<path d="M7.2 234 C20.7 234 30.6 214.65 30.6 194.4 C30.6 174.15 20.7 153 7.2 153" class="st12"/>
+		</g>
+		<g id="shape13-134" v:mID="13" v:groupContext="shape" v:layerMember="1" transform="translate(372.6,-36)">
+			<title>Dynamic connector.13</title>
+			<v:userDefs>
+				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
+				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
+			</v:userDefs>
+			<g id="shadow13-135" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
+				<path d="M7.2 234 C20.7 234 52.2 191.7 52.2 151.2 C52.2 110.7 20.7 72 7.2 72" class="st10"/>
+			</g>
+			<path d="M7.2 234 C20.7 234 52.2 191.7 52.2 151.2 C52.2 110.7 20.7 72 7.2 72" class="st12"/>
+		</g>
+	</g>
 </svg>
