@@ -11,7 +11,7 @@ Compilers eliminate redundant move instructions and folds constant expressions. 
 JIT can callback to interpreted code as required.
 
 ### Code Layout
-![alt text](../../../../images/jit_design.png "JIT Code Layout")
+![alt text](../../../../images/jit_design.svg "JIT Code Layout")
 
 ### Implementation
 C++ using the STL.
