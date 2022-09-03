@@ -140,7 +140,7 @@
 		</g>
 		<g id="shape4-36" v:mID="4" v:groupContext="shape" transform="translate(428.4,-126)">
 			<title>Circle.4</title>
-			<desc>‘+’</desc>
+			<desc>+</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(12):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -153,7 +153,7 @@
 				<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st2"/>
 			</g>
 			<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st4"/>
-			<text x="10.9" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘+’</text>		</g>
+			<text x="14.51" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>+</text>		</g>
 		<g id="shape5-42" v:mID="5" v:groupContext="shape" transform="translate(698.4,79.2) rotate(90)">
 			<title>Double tree sloped.5</title>
 			<v:userDefs>
@@ -191,7 +191,7 @@
 			<text x="10.94" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘a’</text>		</g>
 		<g id="shape7-59" v:mID="7" v:groupContext="shape" transform="translate(385.2,-216)">
 			<title>Circle.7</title>
-			<desc>‘:=’</desc>
+			<desc>:=</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(12):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -204,7 +204,7 @@
 				<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st2"/>
 			</g>
 			<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st4"/>
-			<text x="8.97" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘:=’</text>		</g>
+			<text x="12.58" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>:=</text>		</g>
 		<g id="shape8-65" v:mID="8" v:groupContext="shape" transform="translate(663.4,-38.7)">
 			<title>Circle.8</title>
 			<desc>2</desc>
@@ -258,7 +258,7 @@
 		</g>
 		<g id="shape11-88" v:mID="11" v:groupContext="shape" transform="translate(706.6,-124.2)">
 			<title>Circle.11</title>
-			<desc>‘+’</desc>
+			<desc>+</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(12):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -271,7 +271,7 @@
 				<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st2"/>
 			</g>
 			<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st4"/>
-			<text x="10.9" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘+’</text>		</g>
+			<text x="14.51" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>+</text>		</g>
 		<g id="shape12-94" v:mID="12" v:groupContext="shape" transform="translate(976.6,81) rotate(90)">
 			<title>Double tree sloped.12</title>
 			<v:userDefs>
@@ -309,7 +309,7 @@
 			<text x="10.94" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘a’</text>		</g>
 		<g id="shape14-111" v:mID="14" v:groupContext="shape" transform="translate(663.4,-214.2)">
 			<title>Circle.14</title>
-			<desc>‘:=’</desc>
+			<desc>:=</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(12):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -322,7 +322,7 @@
 				<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st2"/>
 			</g>
 			<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st4"/>
-			<text x="8.97" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘:=’</text>		</g>
+			<text x="12.58" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>:=</text>		</g>
 		<g id="shape42-117" v:mID="42" v:groupContext="shape" transform="translate(21.6,-126)">
 			<title>Circle.42</title>
 			<desc>‘a’</desc>
@@ -341,7 +341,7 @@
 			<text x="10.94" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘a’</text>		</g>
 		<g id="shape43-123" v:mID="43" v:groupContext="shape" transform="translate(72,-126)">
 			<title>Circle.43</title>
-			<desc>‘:=’</desc>
+			<desc>:=</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(12):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -354,7 +354,7 @@
 				<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st2"/>
 			</g>
 			<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st4"/>
-			<text x="8.97" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘:=’</text>		</g>
+			<text x="12.58" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>:=</text>		</g>
 		<g id="shape44-129" v:mID="44" v:groupContext="shape" transform="translate(122.4,-126)">
 			<title>Circle.44</title>
 			<desc>2</desc>
@@ -373,7 +373,7 @@
 			<text x="14.45" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>2</text>		</g>
 		<g id="shape45-135" v:mID="45" v:groupContext="shape" transform="translate(169.2,-126)">
 			<title>Circle.45</title>
-			<desc>‘+’</desc>
+			<desc>+</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(12):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -386,7 +386,7 @@
 				<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st2"/>
 			</g>
 			<path d="M0 277.2 A18 18 0 0 1 36 277.2 A18 18 0 1 1 0 277.2 Z" class="st4"/>
-			<text x="10.9" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>‘+’</text>		</g>
+			<text x="14.51" y="281.4" class="st5" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>+</text>		</g>
 		<g id="shape46-141" v:mID="46" v:groupContext="shape" transform="translate(216,-126)">
 			<title>Circle.46</title>
 			<desc>3.14</desc>
