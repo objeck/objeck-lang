@@ -8,12 +8,14 @@ Both the scanner and the parser were handwritten. As such, the parser is impleme
 
 The lists of code blocks are passed to the optimizer which performs to following optimizations in list order:
 
-1. Removal of unneeded jumps and useless instructions
-2. Constant folding
-3. Inline setters and getters 
-4. Inline methods
-5. Strength reduction
-6. Replace load/store with copy instructions
+1. Jump optimizations
+1. Dead store removal
+1. Constant propagation
+1. Constant folding
+1. Getter/Setting inlining
+1. Method inlining
+1. Strength reduction
+1. Instruction optimization
 
 Code is organized and emitted as a single file and unneeded code and is pruned.
 
