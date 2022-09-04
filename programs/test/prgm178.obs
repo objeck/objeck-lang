@@ -1,0 +1,13 @@
+class Test {
+	enum Foo {
+		X,
+		Y,
+		Z
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		array := Int->New[3];
+		array[Test->Foo->X] := 13;
+		array[0]->PrintLine();
+	}
+}

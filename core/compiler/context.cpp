@@ -3686,7 +3686,10 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
         break;
 
       case CLASS_TYPE:
-        if(!IsEnumExpression(expression)) {
+        if(IsEnumExpression(expression)) {
+          unboxed_expressions.push_back(expression);
+        }
+        else {
           Expression* unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
           if(unboxed_expresion) {
             unboxed_expressions.push_back(unboxed_expresion);
