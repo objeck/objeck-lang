@@ -4,7 +4,7 @@ ARGS=-O3 -Wall -D_X64 -Wno-unused-function -std=c++11
 
 CC=g++
 AR=ar
-SRC= memory.o
+SRC=memory.o
 LIB=../memory.a
 
 $(LIB): $(SRC)
