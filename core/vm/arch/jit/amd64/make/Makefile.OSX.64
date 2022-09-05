@@ -1,17 +1,17 @@
 # ARGS=-g -D_DEBUG -D_X64 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-deprecated-declarations
-ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declarations
+ARGS=-O3 -D_OSX -D_X64 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-deprecated-declarations
 # ARGS=-O3 -D_TIMING -D_X64 -Wno-unused-function -Wno-deprecated-declarations
 
 CC=g++
 AR=ar
-SRC= jit_amd_lp64.o
+SRC=jit_amd_lp64.o
 LIB=../../../jit_amd_lp64.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CC) -m64 $(ARGS) -c $< -I../../../../lib/openssl/macos/include
 
 clean:
 	rm -f *.o *~ $(LIB)
