@@ -7251,6 +7251,7 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
         Method* method = klass->GetMethod(cls_name + L":ToString:");
         if(method && method->GetMethodType() != PRIVATE_METHOD) {
           char_str->AddSegment(entry, method);
+          entry->WasLoaded();
         }
         else {
           ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
@@ -7262,6 +7263,7 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
           LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
           if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
             char_str->AddSegment(entry, lib_method);
+            entry->WasLoaded();
           }
           else {
             ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
