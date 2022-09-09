@@ -1601,7 +1601,7 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
   // validate types
   if(if_type) {
     if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
+      AnalyzeClassCast(if_type, else_conditional, depth + 1);
     }
     else if(else_type && (if_type->GetType() != else_type->GetType() &&
             !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
@@ -5805,11 +5805,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const
     AnalyzeRightCast(expression->GetCastType(), expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
   }
 
-  Type* right = expression->GetCastType();
-  if(!right) {
-    right = expression->GetEvalType();
-  }
-
+  Type* right = GetExpressionType(expression, depth + 1);
   AnalyzeClassCast(left, right, expression, false, depth);
 }
 
