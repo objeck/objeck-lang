@@ -3619,7 +3619,21 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   // type cast
   if(expression->GetCastType()) {
     // get cast and root types
+    
+    // TODO: FOO BAR
+
+    // Type* cast_type = GetExpressionCastType(expression, depth + 1);
+
+
     Type* cast_type = expression->GetCastType();
+    if(expression->GetMethodCall()) {
+      while(expression->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(expression, depth + 1);
+        expression = expression->GetMethodCall();
+      }
+      cast_type = expression->GetEvalType();
+    }
+
     Type* root_type = expression->GetBaseType();
     if(!root_type) {
       root_type = expression->GetEvalType();
@@ -4452,12 +4466,33 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
 
     // check for valid operation cast
     if(left->GetCastType() && left->GetEvalType()) {
+      // TODO: FOO BAR
+      Type* cast_type = left->GetCastType();
+      if(left->GetMethodCall()) {
+        while(left->GetMethodCall()) {
+          AnalyzeExpressionMethodCall(left, depth + 1);
+          left = left->GetMethodCall();
+        }
+        cast_type = left->GetEvalType();
+      }
+
       AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
     }
 
     // check for valid operation cast
     if(right->GetCastType() && right->GetEvalType()) {
-      AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
+      // TODO: FOO BAR
+      Type* cast_type = right->GetCastType();
+      if(right->GetMethodCall()) {
+        while(right->GetMethodCall()) {
+          AnalyzeExpressionMethodCall(right, depth + 1);
+          right = right->GetMethodCall();
+        }
+        cast_type = right->GetEvalType();
+      }
+
+
+      AnalyzeRightCast(cast_type, right->GetEvalType(), right, IsScalar(right), depth);
     }
 
     switch(expression->GetExpressionType()) {
@@ -6640,7 +6675,11 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
       AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
       // favor casts
-      if(mthd_call->GetCastType()) {
+      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && 
+         !HasProgramLibraryEnum(mthd_call->GetEvalType()->GetName())) {
+        type = mthd_call->GetPreviousExpression()->GetCastType();
+      }
+      else if(mthd_call->GetCastType()) {
         type = mthd_call->GetCastType();
       }
       else {
