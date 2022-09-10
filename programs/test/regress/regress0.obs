@@ -1,0 +1,14 @@
+class Foo {
+	New() {}
+
+	method : public : ToString() ~ String {
+		return "Foo";
+	}
+}
+
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		f := Foo->New();
+		"{$f}"->PrintLine();
+	}
+}

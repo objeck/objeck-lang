@@ -6636,8 +6636,7 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
       AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
       // favor casts
-      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && 
-         !HasProgramLibraryEnum(mthd_call->GetEvalType()->GetName())) {
+      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && !SearchProgramEnums(mthd_call->GetEvalType()->GetName())) {
         type = mthd_call->GetPreviousExpression()->GetCastType();
       }
       else if(mthd_call->GetCastType()) {
