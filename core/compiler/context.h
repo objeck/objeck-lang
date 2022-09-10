@@ -334,6 +334,9 @@ class ContextAnalyzer {
   
   // resolve enum reference
   void ResolveEnumCall(LibraryEnum* lib_eenum, const wstring &item_name, MethodCall* method_call);
+
+  // get the enum for an expression
+  Enum* GetExpressionEnum(Type* type, Expression* expression, int depth);
   
   // validate character string
   void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth);
