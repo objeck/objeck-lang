@@ -5834,20 +5834,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // program enum
   //
-  Enum* left_enum = SearchProgramEnums(left->GetName());
-  if(!left_enum) {
-    left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetName());
-    if(!left_enum && expression->GetCastType() && expression->GetMethodCall()) {
-      Expression* temp = expression;
-      while(temp->GetMethodCall()) {
-        AnalyzeExpressionMethodCall(temp, depth + 1);
-        temp = expression->GetMethodCall();
-      }
-      ResolveClassEnumType(temp->GetEvalType());
-      left_enum = SearchProgramEnums(temp->GetEvalType()->GetName());
-    }
-  }
-
+  Enum* left_enum = GetExpressionEnum(left, expression, depth + 1);
   if(right && left_enum) {
     // program
     Enum* right_enum = SearchProgramEnums(right->GetName());
@@ -7162,6 +7149,27 @@ void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const wstring& ite
     ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
   }
 }
+
+Enum* ContextAnalyzer::GetExpressionEnum(Type* type, Expression* expression, int depth)
+{
+  Enum* type_enum = SearchProgramEnums(type->GetName());
+
+  if(!type_enum) {
+    type_enum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetName());
+    if(!type_enum && expression->GetCastType() && expression->GetMethodCall()) {
+      while(expression->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(expression, depth + 1);
+        expression = expression->GetMethodCall();
+      }
+
+      ResolveClassEnumType(expression->GetEvalType());
+      type_enum = SearchProgramEnums(expression->GetEvalType()->GetName());
+    }
+  }
+
+  return type_enum;
+}
+
 
 StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int depth) {
   if(expression->GetExpressionType() == ADD_EXPR) {
