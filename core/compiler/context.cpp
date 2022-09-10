@@ -3619,21 +3619,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   // type cast
   if(expression->GetCastType()) {
     // get cast and root types
-    
-    // TODO: FOO BAR
-
-    // Type* cast_type = GetExpressionCastType(expression, depth + 1);
-
-
     Type* cast_type = expression->GetCastType();
-    if(expression->GetMethodCall()) {
-      while(expression->GetMethodCall()) {
-        AnalyzeExpressionMethodCall(expression, depth + 1);
-        expression = expression->GetMethodCall();
-      }
-      cast_type = expression->GetEvalType();
-    }
-
     Type* root_type = expression->GetBaseType();
     if(!root_type) {
       root_type = expression->GetEvalType();
@@ -4466,33 +4452,12 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
 
     // check for valid operation cast
     if(left->GetCastType() && left->GetEvalType()) {
-      // TODO: FOO BAR
-      Type* cast_type = left->GetCastType();
-      if(left->GetMethodCall()) {
-        while(left->GetMethodCall()) {
-          AnalyzeExpressionMethodCall(left, depth + 1);
-          left = left->GetMethodCall();
-        }
-        cast_type = left->GetEvalType();
-      }
-
       AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
     }
 
     // check for valid operation cast
     if(right->GetCastType() && right->GetEvalType()) {
-      // TODO: FOO BAR
-      Type* cast_type = right->GetCastType();
-      if(right->GetMethodCall()) {
-        while(right->GetMethodCall()) {
-          AnalyzeExpressionMethodCall(right, depth + 1);
-          right = right->GetMethodCall();
-        }
-        cast_type = right->GetEvalType();
-      }
-
-
-      AnalyzeRightCast(cast_type, right->GetEvalType(), right, IsScalar(right), depth);
+      AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
     }
 
     switch(expression->GetExpressionType()) {
@@ -5872,6 +5837,15 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   Enum* left_enum = SearchProgramEnums(left->GetName());
   if(!left_enum) {
     left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetName());
+    if(!left_enum && expression->GetCastType() && expression->GetMethodCall()) {
+      Expression* temp = expression;
+      while(temp->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(temp, depth + 1);
+        temp = expression->GetMethodCall();
+      }
+      ResolveClassEnumType(temp->GetEvalType());
+      left_enum = SearchProgramEnums(temp->GetEvalType()->GetName());
+    }
   }
 
   if(right && left_enum) {
