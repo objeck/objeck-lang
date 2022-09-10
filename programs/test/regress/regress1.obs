@@ -1,0 +1,19 @@
+class Foo {
+	New() {}
+
+	method : public : ToString() ~ String {
+		return "Foo";
+	}
+}
+
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		f := Foo->New();
+		b := false ? f->ToString() : "Bar";
+		b->PrintLine();
+		
+		a := 10;
+		b := a > 4 ? f->ToString() : "Bar";
+		b->PrintLine();
+	}
+}
