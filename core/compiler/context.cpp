@@ -4587,8 +4587,8 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   }
 
   if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
-    if(right->GetType() != NIL_TYPE && expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
-      ProcessError(left_expr, L"Invalid array calculation");
+    if(!(right->GetType() == NIL_TYPE && (expression->GetExpressionType() == EQL_EXPR || expression->GetExpressionType() == NEQL_EXPR))) {
+      ProcessError(left_expr, L"Invalid array based calculation");
     }
   }
   else {
