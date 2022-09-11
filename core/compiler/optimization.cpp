@@ -1226,7 +1226,7 @@ bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, siz
     case LOAD_INT_VAR:
     case LOAD_FLOAT_VAR:
     case LOAD_FUNC_VAR:
-      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
+      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == LOCL && check_instr->GetOperand2() == LOCL) {
         return false;
       }
       break;
@@ -1234,7 +1234,7 @@ bool ItermediateOptimizer::IsDeadStore(IntermediateInstruction* check_instr, siz
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
-      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == check_instr->GetOperand2()) {
+      if(instr->GetOperand() == check_instr->GetOperand() && instr->GetOperand2() == LOCL && check_instr->GetOperand2() == LOCL) {
         return true;
       }
       break;
