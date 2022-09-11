@@ -4587,7 +4587,8 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   }
 
   if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
-    if(!(right->GetType() == NIL_TYPE && (expression->GetExpressionType() == EQL_EXPR || expression->GetExpressionType() == NEQL_EXPR))) {
+    // check for valid equal and not-equal checks, consider Nil and array based equal and not-equal checks
+    if(!(right->GetType() == NIL_TYPE && (expression->GetExpressionType() == EQL_EXPR || expression->GetExpressionType() == NEQL_EXPR)) && left->GetDimension() != right->GetDimension()) {
       ProcessError(left_expr, L"Invalid array based calculation");
     }
   }
