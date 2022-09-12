@@ -1603,9 +1603,9 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
     if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
       AnalyzeClassCast(if_type, else_conditional, depth + 1);
     }
-    else if(else_type && (if_type->GetType() != else_type->GetType() &&
+    else if(if_type->GetType() != else_type->GetType() &&
             !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
-            (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE)))) {
+            (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE))) {
       ProcessError(conditional, L"'?' invalid type mismatch");
     }
     // set eval type
