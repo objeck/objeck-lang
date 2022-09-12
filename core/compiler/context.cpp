@@ -1599,7 +1599,7 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
   Type* else_type = GetExpressionType(else_conditional, depth + 1);
 
   // validate types
-  if(if_type) {
+  if(if_type && else_type) {
     if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
       AnalyzeClassCast(if_type, else_conditional, depth + 1);
     }
