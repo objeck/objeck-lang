@@ -14,16 +14,16 @@ xmlns="http://www.w3.org/TR/REC-html40">
  <o:DocumentProperties>
   <o:Author>Randy Hollines</o:Author>
   <o:LastAuthor>Randy Hollines</o:LastAuthor>
-  <o:Revision>14</o:Revision>
-  <o:TotalTime>10</o:TotalTime>
+  <o:Revision>15</o:Revision>
+  <o:TotalTime>11</o:TotalTime>
   <o:Created>2022-09-01T22:16:00Z</o:Created>
-  <o:LastSaved>2022-09-13T14:09:00Z</o:LastSaved>
+  <o:LastSaved>2022-09-13T17:11:00Z</o:LastSaved>
   <o:Pages>3</o:Pages>
-  <o:Words>836</o:Words>
-  <o:Characters>4769</o:Characters>
-  <o:Lines>39</o:Lines>
+  <o:Words>846</o:Words>
+  <o:Characters>4825</o:Characters>
+  <o:Lines>40</o:Lines>
   <o:Paragraphs>11</o:Paragraphs>
-  <o:CharactersWithSpaces>5594</o:CharactersWithSpaces>
+  <o:CharactersWithSpaces>5660</o:CharactersWithSpaces>
   <o:Version>16.00</o:Version>
  </o:DocumentProperties>
 </xml><![endif]-->
@@ -1378,13 +1378,7 @@ minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><s
 style='mso-list:Ignore'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Fixed issues <a
-href="https://github.com/objeck/objeck-lang/issues/60">#60</a>, <a
-href="https://github.com/objeck/objeck-lang/issues/62">#62</a>, <a
-href="https://github.com/objeck/objeck-lang/issues/63">#63</a>, <a
-href="https://github.com/objeck/objeck-lang/issues/64">#64</a>, <a
-href="https://github.com/objeck/objeck-lang/issues/65">#65</a> and <a
-href="https://github.com/objeck/objeck-lang/issues/66">#66</a><o:p></o:p></span></p>
+minor-latin'>Unreferenced variables are reported as warnings instead of errors<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l1 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
@@ -1395,6 +1389,21 @@ style='mso-list:Ignore'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Resolved an edge case bug with bad code that would crash the
 compiler<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l1 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
+minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
+style='mso-list:Ignore'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Fixed issues <a
+href="https://github.com/objeck/objeck-lang/issues/60">#60</a>, <a
+href="https://github.com/objeck/objeck-lang/issues/62">#62</a>, <a
+href="https://github.com/objeck/objeck-lang/issues/63">#63</a>, <a
+href="https://github.com/objeck/objeck-lang/issues/64">#64</a>, <a
+href="https://github.com/objeck/objeck-lang/issues/65">#65</a> and <a
+href="https://github.com/objeck/objeck-lang/issues/66">#66</a><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1448,7 +1457,8 @@ minor-latin'>doc/<span class=SpellE>api</span>/ – class library documentation<o:
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>doc/syntax – files to enable syntax highlighting for supported editors<o:p></o:p></span></p>
+minor-latin'>doc/syntax – files to enable syntax highlighting for supported
+editors<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1481,8 +1491,8 @@ launcher<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>The Windows Launcher is a convenient way to run programs and access
-documentation. On Windows, configuration information is stored in the “%<span
+minor-latin'>The Windows Launcher is a convenient way to run programs and
+access documentation. On Windows, configuration information is stored in the “%<span
 class=SpellE>ProgramData</span>%\Objeck” directory and built the first time the
 app runs. If you move the install location, delete the “%<span class=SpellE>programdata</span>%\Objeck”
 directory and rerun the launcher.&nbsp;<o:p></o:p></span></p>
@@ -1849,8 +1859,8 @@ Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>The software was developed under the <a
-href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>. Supporting
-software licenses can be found <a
+href="https://opensource.org/licenses/BSD-2-Clause">FreeBSD License</a>.
+Supporting software licenses can be found <a
 href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">here</a>.<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;

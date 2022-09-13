@@ -245,6 +245,7 @@ class ContextAnalyzer {
   Lambda* capture_lambda;
   pair<Lambda*, MethodCall*> lambda_inferred;
   map<int, wstring> errors;
+  map<int, wstring> warnings;
   vector<wstring> alt_error_method_names;
   map<const wstring, Type*> type_map;
   unordered_set<wstring> holder_types;
@@ -444,7 +445,8 @@ class ContextAnalyzer {
   
   // error processing
   void ProcessError(const wstring& fn, int ln, int lp, const wstring& msg);
-  void ProcessError(ParseNode* n, const wstring &msg);
+  void ProcessError(ParseNode* n, const wstring& msg);
+  void ProcessWarning(ParseNode* n, const wstring& msg);
   void ProcessErrorAlternativeMethods(wstring &message);
   void ProcessError(const wstring &fn, const wstring &msg);
   bool CheckErrors();
