@@ -50,6 +50,20 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 /****************************
  * Emits an error
  ****************************/
+void ContextAnalyzer::ProcessWarning(ParseNode* node, const wstring& msg)
+{
+#ifdef _DEBUG
+  GetLogger() << L"\tWarning: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << endl;
+#endif
+
+  const wstring& str_line_num = ToString(node->GetLineNumber());
+  const wstring& str_line_pos = ToString(node->GetLinePosition());
+  warnings.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): Warning: " + msg));
+}
+
+/****************************
+ * Emits an error
+ ****************************/
 void ContextAnalyzer::ProcessError(const wstring& fn, int ln, int lp, const wstring& msg)
 {
 #ifdef _DEBUG
@@ -95,8 +109,10 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
  ****************************/
 bool ContextAnalyzer::CheckErrors()
 {
+  bool status = true;
+
   // check and process errors
-  if(errors.size()) {
+  if(!errors.empty()) {
     map<int, wstring>::iterator error;
     for(error = errors.begin(); error != errors.end(); ++error) {
 #ifdef _DIAG_LIB
@@ -110,10 +126,26 @@ bool ContextAnalyzer::CheckErrors()
     program->SetErrorStrings(error_strings);
 #endif
 
-    return false;
+    status = false;
   }
 
-  return true;
+  // check and process warnings
+  if(!warnings.empty()) {
+    map<int, wstring>::iterator error;
+    for(error = warnings.begin(); error != warnings.end(); ++error) {
+#ifdef _DIAG_LIB
+      error_strings.push_back(error->second);
+#else
+      wcerr << error->second << endl;
+#endif
+    }
+
+#ifdef _DIAG_LIB
+    program->SetErrorStrings(error_strings);
+#endif
+  }
+
+  return status;
 }
 
 /****************************
@@ -928,7 +960,7 @@ void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
           Variable* variable = variables[j];
           // range check required for method overloading (not ideals)
           if(variable->GetLineNumber() >= start_line && variable->GetLineNumber() < end_line) {
-            ProcessError(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
+            ProcessWarning(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
         }
       }
