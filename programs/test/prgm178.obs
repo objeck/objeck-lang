@@ -1,13 +1,14 @@
 class Test {
-	enum Foo {
-		X,
-		Y,
-		Z
-	}
-
 	function : Main(args : String[]) ~ Nil {
-		array := Int->New[3];
-		array[Test->Foo->X] := 13;
-		array[0]->PrintLine();
+		each(i : 100) {
+			a := "{$i} of 100";
+			s := a->Size();
+			a->Print();
+			each(j : s) {
+				'\b'->Print();
+				Standard->Flush();
+			};
+			System.Concurrency.Thread->Sleep(500);
+		};
 	}
 }
