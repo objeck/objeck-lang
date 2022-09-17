@@ -1649,6 +1649,23 @@ extern "C" {
     SDL_DisableScreenSaver();
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_show_simple_messagebox(VMContext& context) {    
+    const Uint32 flags = (Uint32)APITools_GetIntValue(context, 0);
+
+    const wstring w_title = APITools_GetStringValue(context, 1);
+    const string title = UnicodeToBytes(w_title);
+
+    const wstring w_message = APITools_GetStringValue(context, 2);
+    const string message = UnicodeToBytes(w_message);
+    
+    size_t* window_obj = APITools_GetObjectValue(context, 3);
+
+    APITools_SetIntValue(context, 0, SDL_ShowSimpleMessageBox(flags, title.c_str(), message.c_str(), window_obj ? (SDL_Window*)window_obj[0] : nullptr));
+  }
+
   //
   // Event
   //

@@ -20,7 +20,18 @@ bundle Game.SDL2 {
 			return @lib_proxy;
 		}
 	}
-
+	
+	#~
+ 	SDL_MessageBox flags. If supported will display warning icon, etc.
+	~#
+	consts MessageBoxFlags {
+	    SDL_MESSAGEBOX_ERROR := 0x00000010,
+	    SDL_MESSAGEBOX_WARNING := 0x00000020,
+	    SDL_MESSAGEBOX_INFORMATION := 0x00000040,
+	    SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT := 0x00000080,
+	    SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT := 0x00000100
+	}
+	
 	#~
 	SDL mouse wheel direction
 	~#
@@ -834,6 +845,25 @@ bundle Game.SDL2 {
 		~#
 		method : public : IsNull() ~ Bool {
 			return @window = 0;
+		}
+
+		#~
+		Create a modal message box
+		@parm messageboxdata the SDL_MessageBoxData structure with title, text and other options
+		@param buttonid the pointer to which user id of hit button should be copied
+		@return 0 on success or a negative error code on failure
+		~#
+		function : ShowSimpleMessageBox(flags : Int, title : String, message : String, window : Window) ~ Int {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New(flags);
+			array_args[1] := title;
+			array_args[2] := message;
+			array_args[3] := window;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_show_simple_messagebox", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 
 		#~
