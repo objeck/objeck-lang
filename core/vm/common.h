@@ -137,9 +137,11 @@ class StackInstr
 {
   InstructionType type;
   long operand;
-  long operand2;
+  union {
+    long operand2;
+    FLOAT_VALUE float_operand;
+  } second_operand;
   long operand3;
-  FLOAT_VALUE float_operand;
   long native_offset;
   int line_num;
 
@@ -160,7 +162,7 @@ class StackInstr
   StackInstr(int l, InstructionType t, FLOAT_VALUE fo) {
     line_num = l;
     type = t;
-    float_operand = fo;
+    second_operand.float_operand = fo;
     operand = operand3 = native_offset = 0;
   }
 
@@ -168,7 +170,7 @@ class StackInstr
     line_num = l;
     type = t;
     operand = o;
-    operand2 = o2;
+    second_operand.operand2 = o2;
     operand3 = native_offset = 0;
   }
 
@@ -176,7 +178,7 @@ class StackInstr
     line_num = l;
     type = t;
     operand = o;
-    operand2 = o2;
+    second_operand.operand2 = o2;
     operand3 = o3;
     native_offset = 0;
   }
@@ -201,7 +203,7 @@ class StackInstr
   }
 
   inline long GetOperand2() const {
-    return operand2;
+    return second_operand.operand2;
   }
 
   inline long GetOperand3() const {
@@ -213,7 +215,7 @@ class StackInstr
   }
 
   inline void SetOperand2(long o2) {
-    operand2 = o2;
+    second_operand.operand2 = o2;
   }
 
   inline void SetOperand3(long o3) {
@@ -221,7 +223,7 @@ class StackInstr
   }
 
   inline FLOAT_VALUE GetFloatOperand() const {
-    return float_operand;
+    return second_operand.float_operand;
   }
 
   inline long GetOffset() const {
