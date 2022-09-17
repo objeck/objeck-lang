@@ -3247,9 +3247,10 @@ bundle System {
 			if(index < 0) {
 				return @self;
 			};
-			
+		
 			begin := SubString(0, index);
-			new_string := String->New(begin);
+			new_string := begin = Nil ? String->New() : String->New(begin);
+
 			index += find->Size();
 			length := Size() - index;
 			
@@ -3268,6 +3269,24 @@ bundle System {
 			return new_string;
 		}
 		
+		#~
+		Removes all matching characters from a string
+		@param char character to remove
+		@return string with matching characters removed
+		~#
+		method : public : Remove(char : Char) ~ String {
+			new_string := String->New();
+			
+			for(i := 0; i < @pos; i += 1;) {
+				cur_char := @string[i];
+				if(cur_char <> char) {
+					new_string->Append(cur_char);
+				};
+			};
+
+			return new_string;
+		}
+
 		#~
 		Deletes the character at the given index
 		@param offset offset index
