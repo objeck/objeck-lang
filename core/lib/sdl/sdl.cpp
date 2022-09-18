@@ -2861,6 +2861,37 @@ extern "C" {
   void sdl_joystick_open(VMContext& context) {
     const int device_index = (int)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, (size_t)SDL_JoystickOpen(device_index));
+
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_current_power_level(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_JoystickCurrentPowerLevel(joystick));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_from_instance_id(VMContext& context) {
+    const int instance_id = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_JoystickFromInstanceID(instance_id));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_display_get_display_dpi(VMContext& context) {
+    const int displayIndex = (int)APITools_GetIntValue(context, 1);
+
+    float ddpi; float hdpi; float vdpi;
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetDisplayDPI(displayIndex, &ddpi, &hdpi, &vdpi));
+
+    APITools_SetFloatValue(context, 2, ddpi);
+    APITools_SetFloatValue(context, 3, hdpi);
+    APITools_SetFloatValue(context, 4, vdpi);
   }
 
 #ifdef _WIN32
