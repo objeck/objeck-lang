@@ -1927,7 +1927,7 @@ bundle Game.SDL2 {
 		~#
 		function : NameForIndex(joystick_index : Int) ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(joystick_index);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name_for_index", array_args);
@@ -1942,7 +1942,7 @@ bundle Game.SDL2 {
 		~#
 		function : PathForIndex(joystick_index : Int) ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(joystick_index);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path_for_index", array_args);
@@ -2007,7 +2007,7 @@ bundle Game.SDL2 {
  		~#
 		method : public : Name() ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(@gamecontroller);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name", array_args);
@@ -2022,7 +2022,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : Path() ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(@gamecontroller);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path", array_args);
@@ -2140,7 +2140,7 @@ bundle Game.SDL2 {
 		~#
 		method : public : GetSerial() ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(@gamecontroller);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_serial", array_args);
@@ -2226,7 +2226,7 @@ bundle Game.SDL2 {
 		~#
 		function : GetStringForAxis(axis : GameControllerAxis) ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(axis);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_axis", array_args);
@@ -2283,7 +2283,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-		
+
 		#~
 		Convert a string into an SDL_GameControllerButton enum
 		@param str string representing a SDL_GameController axis
@@ -2300,6 +2300,20 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Convert from an SDL_GameControllerButton enum to a string
+		@param button an enum value for a given GameControllerButton
+ 		@return a string for the given button
+		~#
+		function : GetStringForButton(button : GameControllerButton) ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(button);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_button", array_args);
+
+			return array_args[0];
+		}
 
 
 
