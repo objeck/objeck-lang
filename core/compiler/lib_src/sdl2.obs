@@ -171,6 +171,20 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	The list of axes available from a controller
+	~#
+	enum GameControllerAxis := -1 {
+	    SDL_CONTROLLER_AXIS_INVALID,
+	    SDL_CONTROLLER_AXIS_LEFTX,
+	    SDL_CONTROLLER_AXIS_LEFTY,
+	    SDL_CONTROLLER_AXIS_RIGHTX,
+	    SDL_CONTROLLER_AXIS_RIGHTY,
+	    SDL_CONTROLLER_AXIS_TRIGGERLEFT,
+	    SDL_CONTROLLER_AXIS_TRIGGERRIGHT,
+	    SDL_CONTROLLER_AXIS_MAX
+	}
+
+	#~
 	Pixel format values
 	~#
 	consts PixelValue {
@@ -1754,7 +1768,443 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 	}
+
+	#~
+	Handles inputs from joysticks
+	~#
+	class GameController {
+		@gamecontroller : Int;
+
+		#~
+		Open a game controller for use.
+		@param joystick_index the device_index
+		~#
+		New(joystick_index : Int) {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(joystick_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_open", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        @gamecontroller := value->Get();
+		}
+
+		#~
+		Add support for controllers that SDL is unaware of or to cause an existing controller to have a different binding
+		@param mapping_string the mapping string
+		@return 1 if a new mapping is added, 0 if an existing mapping is updated, -1 on error
+		~#
+		function : AddMapping(mapping_string : String) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := mapping_string;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_add_mapping", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the number of mappings installed
+		@return the number of mappings
+		~#
+		function : NumMappings() ~ Int {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_num_mappings", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		function : MappingForIndex(mapping_index : Int) ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(mapping_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping_for_index", array_args);
+
+			return array_args[0];
+		}
+
+		#~
+		Get the current mapping of a Game Controller
+		@return string that has the controller's mapping or NULL if no mapping is available
+		~#
+		method : public : Mapping() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping", array_args);
+
+			return array_args[0];
+		}
+
+		#~
+		Check if the given joystick is supported by the game controller interface
+		@param joystick_index the device_index of a device
+		@return joystick_index the device_index of a device
+		~#
+		function : IsController(joystick_index : Int) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(joystick_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_sdl_is_game_controller", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Get the implementation dependent name for the game controller
+		@param joystick_index the device_index of a device
+		@return joystick_index the device_index of a device
+		~#
+		function : NameForIndex(joystick_index : Int) ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(joystick_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name_for_index", array_args);
+
+			return array_args[0];
+		}
+
+		#~
+		This function can be called before any controllers are opened
+ 		@param joystick_index the device_index of a device
+		@return the implementation-dependent path for the game controller, or Nil
+		~#
+		function : PathForIndex(joystick_index : Int) ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(joystick_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path_for_index", array_args);
+
+			return array_args[0];
+		}
+
+
+		#~
+		Get the type of a game controller. This can be called before any controllers are opened.
+ 		@param joystick_index the device_index of a device
+ 		@return the controller type
+
+		function : TypeForIndex(joystick_index : Int) ~ GameControllerType {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(joystick_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_type_for_index", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(GameControllerType);
+		}
+ 		~#
+
+		#~
+		Get the SDL_GameController associated with an instance id
+ 		@param joyid the instance id to get the SDL_GameController for
+ 		@return an SDL_GameController on success or NULL on failure
+ 		~#
+		function : FromInstanceID(joyid : Int) ~ GameController {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(joyid);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_instanceid", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return GameController->New(value->Get());
+		}
+
+		#~
+		Get the SDL_GameController associated with an instance id
+ 		@param player_index the player index, which is not the device index or the instance id!
+ 		@return an SDL_GameController on success or NULL on failure
+ 		~#
+		method : public : FromPlayerIndex(player_index : Int) ~ GameController {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(player_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_player_index", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return GameController->New(value->Get());
+		}
+
+		#~
+		Get the SDL_GameController associated with an instance id
+ 		@param joyid the instance id to get the SDL_GameController for
+ 		@return an SDL_GameController on success or NULL on failure
+ 		~#
+		method : public : Name() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name", array_args);
+
+			return array_args[0];
+		}
+	
+		#~
+		Get the SDL_GameController associated with an instance id
+		@param joyid the instance id to get the SDL_GameController for
+		@return an SDL_GameController on success or NULL on failure
+		~#
+		method : public : Path() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path", array_args);
+
+			return array_args[0];
+		}
+
+		#~
+		Get the type of this currently opened controller
+		@return the controller type.
 		
+		method : public : GetType() ~ GameControllerType {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_type", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(GameControllerType);
+		}
+~#
+
+		#~
+		Get the player index of an opened game controller
+		@return the player index for controller, or -1 if it's not available
+		~#
+		method : public : GetPlayerIndex() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_player_index", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the player index of an opened game controller
+ 		@param player_index Player index to assign to this controller, or -1 to clear the player index and turn off player LEDs.
+		@return the player index for controller, or -1 if it's not available
+		~#
+		method : public : SetPlayerIndex(player_index : Int) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@gamecontroller);
+			array_args[1] := IntHolder->New(player_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_player_index", array_args);
+		}
+
+		#~
+		Get the USB vendor ID of an opened controller, if available
+		@return the USB vendor ID, or zero if unavailable
+		~#
+		method : public : GetVendor() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_vendor", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the USB product ID of an opened controller, if available
+		@return the USB product ID, or zero if unavailable
+		~#
+		method : public : GetProduct() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_product", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the product version of an opened controller, if available. 
+		If the product version isn't available this function returns 0.
+		@return the USB product version, or zero if unavailable
+		~#
+		method : public : GetProductVersion() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_product_version", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the firmware version of an opened controller, if available
+		@return the controller firmware version, or zero if unavailable
+		~#
+		method : public : GetFirmwareVersion() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_firmware_version", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the serial number of an opened controller, if available
+		@return the serial number, or NULL if unavailable
+		~#
+		method : public : GetSerial() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_serial", array_args);
+
+			return array_args[0];
+		}
+
+		#~
+		Check if a controller has been opened and is currently connected.
+		@return true if the controller has been opened and is currently connected, or false if not
+		~#
+		method : public : GetAttached() ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_attached", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		This function will give you a SDL_Joystick object, which allows you to use the SDL_Joystick functions with a SDL_GameController object
+		@return a Joystick object
+		~#
+		method : public : GetJoystick() ~ Joystick {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_joystick", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return Joystick->New(value->Get());
+		}
+
+
+		#~
+		Query or change current state of Game Controller events
+		@param state can be one of `SDL_QUERY`, `SDL_IGNORE`, or `SDL_ENABLE`
+		@return the same value passed to the function, with exception to -1, which will return the current state
+		~#
+		function : EventState(state : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(state);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_event_state", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Manually pump game controller updates if not using the loop.
+		~#
+		function : Update() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_update", array_args);
+		}
+
+		#~
+		Convert a string into SDL_GameControllerAxis enum
+		@param str string representing a SDL_GameController axis
+		@return the GameControllerAxis enum corresponding to the input string, or SDL_CONTROLLER_AXIS_INVALID if no match was found.
+		~#
+		function : GetAxisFromString(str : String) ~ GameControllerAxis {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := str;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontorller_get_axis_from_string", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Convert from an SDL_GameControllerAxis enum to a string
+		@param axis an enum value for a given GameControllerAxis
+		@return string for the given axis, or Nil if an invalid axis is specified
+		~#
+		function : GetStringForAxis(axis : GameControllerAxis) ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(axis);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_axis", array_args);
+
+			return array_args[0];
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	#~
 	Handles inputs from joysticks
 	~#
@@ -3059,6 +3509,24 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Get the boolean value of a hint variable
+		@param name the hint to query
+		@param value the value to return if the hint does not exist
+		@return the boolean value of a hint or the provided default value if the hint does not exist
+		~#
+		function : Get(name : String, value : Bool) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := name;
+			array_args[2] := IntHolder->New(value ? 1 : 0);
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_hints_get_hint_boolean", array_args);
+
+			rvalue := array_args[0]->As(IntHolder);
+			return rvalue->Get() = 0 ? false : true;
+		}
+
+		#~
 		Clear all hints
 		~#
 		function : Clear() ~ Nil {
@@ -3851,6 +4319,28 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			@surface := value->Get();
 		}
+
+		#~
+		Creates new RGB surface
+		@param flags the flags are unused and should be set to 0
+		@param width the width of the surface
+		@param height the height of the surface
+		@param depth the depth of the surface in bits; see Remarks for details
+		@param format the PixelFormatValue for the new surface's pixel format
+		~#
+		New(flags : Int, width : Int, height : Int, depth : Int, format : Int) {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(flags);
+			array_args[2] := IntHolder->New(width);
+			array_args[3] := IntHolder->New(height);
+			array_args[4] := IntHolder->New(depth);
+			array_args[5] := IntHolder->New(format);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_creatergb_with_format", array_args);
+			value := array_args[0]->As(IntHolder);
+			@surface := value->Get();
+		}
 		
 		#~
 		Determines if the underlying SDL C-struct is NULL
@@ -3871,6 +4361,27 @@ bundle Game.SDL2 {
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_free", array_args);
 				@surface := 0;
 			};
+		}
+
+		#~
+		Creates a new surface identical to the existing surface
+		@return a copy of the surface, or NULL on failure
+		~#
+		method : public : Duplicate() ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_duplicate", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() <> 0) {
+					return Surface->New(value->Get());
+				};
+			};
+
+			return Nil;
 		}
 		
 		#~
@@ -4738,6 +5249,23 @@ bundle Game.SDL2 {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_destroy", array_args);
 
+		}
+
+		#~
+		Set whether to force integer scales for resolution-independent rendering
+		@param enable enable or disable the integer scaling for rendering
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : SetIntegerScale(enable : Bool) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(enable ? 1 : 0);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_integer_scale", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 
 		#~
