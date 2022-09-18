@@ -904,6 +904,20 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Get the window that currently has an input grab enabled
+		@return window if input is grabbed or NULL otherwise
+		~#
+		function : GetGrabbedWindow() ~ Window {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_get_grabbed_window", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return Window->New(value->Get());
+		}
+
+		#~
 		Create a modal message box
 		@parm messageboxdata the SDL_MessageBoxData structure with title, text and other options
 		@param buttonid the pointer to which user id of hit button should be copied
@@ -4793,7 +4807,7 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_is_clip_enabled", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return return_value->Get() = 0 ? false : true;
+			return value->Get() = 0 ? false : true;
 		}
 
 		#~

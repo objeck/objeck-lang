@@ -1,0 +1,1237 @@
+Compiled 8 source classes.
+Linked 22 library classes.
+Wrote target file: 'code_gen.obe'
+---
+filename='D:\Code\objeck-lang\core\lib\sdl\include\SDL_gamecontroller.h'
+function='SDL_GameControllerAddMappingsFromRW'
+function='SDL_GameControllerAddMapping'
+function='SDL_GameControllerNumMappings'
+function='SDL_GameControllerMappingForIndex'
+function='SDL_GameControllerMappingForGUID'
+function='SDL_GameControllerMapping'
+function='SDL_IsGameController'
+function='SDL_GameControllerNameForIndex'
+function='SDL_GameControllerPathForIndex'
+function='SDL_GameControllerTypeForIndex'
+function='SDL_GameControllerMappingForDeviceIndex'
+function='SDL_GameControllerOpen'
+function='SDL_GameControllerFromInstanceID'
+function='SDL_GameControllerFromPlayerIndex'
+function='SDL_GameControllerName'
+function='SDL_GameControllerPath'
+function='SDL_GameControllerGetType'
+function='SDL_GameControllerGetPlayerIndex'
+function='SDL_GameControllerSetPlayerIndex'
+function='SDL_GameControllerGetVendor'
+function='SDL_GameControllerGetProduct'
+function='SDL_GameControllerGetProductVersion'
+function='SDL_GameControllerGetFirmwareVersion'
+function='SDL_GameControllerGetSerial'
+function='SDL_GameControllerGetAttached'
+function='SDL_GameControllerGetJoystick'
+function='SDL_GameControllerEventState'
+function='SDL_GameControllerUpdate'
+function='SDL_GameControllerGetAxisFromString'
+function='SDL_GameControllerGetStringForAxis'
+function='SDL_GameControllerGetBindForAxis'
+function='SDL_GameControllerHasAxis'
+function='SDL_GameControllerGetAxis'
+function='SDL_GameControllerGetButtonFromString'
+function='SDL_GameControllerGetStringForButton'
+function='SDL_GameControllerGetBindForButton'
+function='SDL_GameControllerHasButton'
+function='SDL_GameControllerGetButton'
+function='SDL_GameControllerGetNumTouchpads'
+function='SDL_GameControllerGetNumTouchpadFingers'
+function='SDL_GameControllerGetTouchpadFinger'
+function='SDL_GameControllerHasSensor'
+function='SDL_GameControllerSetSensorEnabled'
+function='SDL_GameControllerIsSensorEnabled'
+function='SDL_GameControllerGetSensorDataRate'
+function='SDL_GameControllerGetSensorData'
+function='SDL_GameControllerRumble'
+function='SDL_GameControllerRumbleTriggers'
+function='SDL_GameControllerHasLED'
+function='SDL_GameControllerHasRumble'
+function='SDL_GameControllerHasRumbleTriggers'
+function='SDL_GameControllerSetLED'
+function='SDL_GameControllerSendEffect'
+function='SDL_GameControllerClose'
+function='SDL_GameControllerGetAppleSFSymbolsNameForButton'
+function='SDL_GameControllerGetAppleSFSymbolsNameForAxis'
+
+----
+method : public : AddMapping(mappingString : String) ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(mappingString);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_add_mapping", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_add_mapping(VMContext& context) {
+		const wstring mappingString = APITools_GetStringValue(context, 1);
+		const int return_value = SDL_GameControllerAddMapping(mappingString);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : NumMappings() ~ Int {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_num_mappings", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_num_mappings(VMContext& context) {
+		const int return_value = SDL_GameControllerNumMappings();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+
+method : public : MappingForIndex(mapping_index : Int) ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(mapping_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping_for_index", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_mapping_for_index(VMContext& context) {
+		const int mapping_index = APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerMappingForIndex(mapping_index);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+
+---
+method : public : Mapping() ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_mapping(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerMapping(gamecontroller);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+
+method : public : Is(joystick_index : Int) ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joystick_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_sdl_is_game_controller", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_sdl_is_game_controller(VMContext& context) {
+		const int joystick_index = APITools_GetIntValue(context, 1);
+		const int return_value = SDL_IsGameController(joystick_index);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : NameForIndex(joystick_index : Int) ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joystick_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name_for_index", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_name_for_index(VMContext& context) {
+		const int joystick_index = APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerNameForIndex(joystick_index);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+
+method : public : PathForIndex(joystick_index : Int) ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joystick_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path_for_index", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_path_for_index(VMContext& context) {
+		const int joystick_index = APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerPathForIndex(joystick_index);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : TypeForIndex(joystick_index : Int) ~ GameControllerType {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joystick_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_type_for_index", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_type_for_index(VMContext& context) {
+		const int joystick_index = APITools_GetIntValue(context, 1);
+		const size* return_value = SDL_GameControllerTypeForIndex(joystick_index);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : MappingForDeviceIndex(joystick_index : Int) ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joystick_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping_for_device_index", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_mapping_for_device_index(VMContext& context) {
+		const int joystick_index = APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerMappingForDeviceIndex(joystick_index);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : Open(joystick_index : Int) ~ GameController {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joystick_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_open", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_open(VMContext& context) {
+		const int joystick_index = APITools_GetIntValue(context, 1);
+		const size* return_value = SDL_GameControllerOpen(joystick_index);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : FromInstanceID(joyid : JoystickID) ~ GameController {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(joyid);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_instanceid", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_from_instanceid(VMContext& context) {
+		const size* joyid = (size_t*)APITools_GetObjectValue(context, 1);
+		const size* return_value = SDL_GameControllerFromInstanceID(joyid);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+
+---
+method : public : FromPlayerIndex(player_index : Int) ~ GameController {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(player_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_player_index", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_from_player_index(VMContext& context) {
+		const int player_index = APITools_GetIntValue(context, 1);
+		const size* return_value = SDL_GameControllerFromPlayerIndex(player_index);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : Name() ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_name(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerName(gamecontroller);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : Path() ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_path(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerPath(gamecontroller);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : GetType() ~ GameControllerType {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_type", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_type(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* return_value = SDL_GameControllerGetType(gamecontroller);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+
+---
+method : public : GetPlayerIndex() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_player_index", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_player_index(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetPlayerIndex(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : SetPlayerIndex(player_index : Int) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@gamecontroller);
+	array_args[1] := IntHolder->New(player_index);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_player_index", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_set_player_index(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 0);
+		const int player_index = APITools_GetIntValue(context, 1);
+		SDL_GameControllerSetPlayerIndex(gamecontroller, player_index);
+	}
+
+
+---
+method : public : GetVendor() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_vendor", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_vendor(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetVendor(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+
+---
+method : public : GetProduct() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_product", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_product(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetProduct(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetProductVersion() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_product_version", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_product_version(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetProductVersion(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetFirmwareVersion() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_firmware_version", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_firmware_version(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetFirmwareVersion(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetSerial() ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_serial", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_serial(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const wstring return_value = SDL_GameControllerGetSerial(gamecontroller);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : GetAttached() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_attached", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_attached(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetAttached(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetJoystick() ~ Joystick {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_joystick", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_joystick(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* return_value = SDL_GameControllerGetJoystick(gamecontroller);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+
+---
+function : EventState(state : Int) ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(state);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_event_state", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_event_state(VMContext& context) {
+		const int state = APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerEventState(state);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+function : Update() ~ Nil {
+	array_args := Base->New[0];
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_update", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_update(VMContext& context) {
+		SDL_GameControllerUpdate();
+	}
+
+===== TODO ========
+
+---
+function : GetAxisFromString(str : String) ~ GameControllerAxis {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(str);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_axis_from_string", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_axis_from_string(VMContext& context) {
+		const wstring str = APITools_GetStringValue(context, 1);
+		const size* return_value = SDL_GameControllerGetAxisFromString(str);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+function : GetStringForAxis(axis : GameControllerAxis) ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(axis);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_axis", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_string_for_axis(VMContext& context) {
+		const size* axis = (size_t*)APITools_GetObjectValue(context, 1);
+		const wstring return_value = SDL_GameControllerGetStringForAxis(axis);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : GetBindForAxis(axis : GameControllerAxis) ~ GameControllerButtonBind {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := axis;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_bind_for_axis", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_bind_for_axis(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* axis = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* return_value = SDL_GameControllerGetBindForAxis(gamecontroller, axis);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : HasAxis(axis : GameControllerAxis) ~ Bool {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := axis;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_axis", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_has_axis(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* axis = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GameControllerHasAxis(gamecontroller, axis);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetAxis(axis : GameControllerAxis) ~ Int {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := axis;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_axis", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_axis(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* axis = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GameControllerGetAxis(gamecontroller, axis);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+function : GetButtonFromString(str : String) ~ GameControllerButton {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(str);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_button_from_string", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_button_from_string(VMContext& context) {
+		const wstring str = APITools_GetStringValue(context, 1);
+		const size* return_value = SDL_GameControllerGetButtonFromString(str);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+function : GetStringForButton(button : GameControllerButton) ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(button);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_button", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_string_for_button(VMContext& context) {
+		const size* button = (size_t*)APITools_GetObjectValue(context, 1);
+		const wstring return_value = SDL_GameControllerGetStringForButton(button);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : GetBindForButton(button : GameControllerButton) ~ GameControllerButtonBind {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := button;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_bind_for_button", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_bind_for_button(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* button = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* return_value = SDL_GameControllerGetBindForButton(gamecontroller, button);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : HasButton(button : GameControllerButton) ~ Bool {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := button;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_button", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_has_button(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* button = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GameControllerHasButton(gamecontroller, button);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetButton(button : GameControllerButton) ~ Int {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := button;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_button", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_button(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* button = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GameControllerGetButton(gamecontroller, button);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetNumTouchpads() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_num_touchpads", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_num_touchpads(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerGetNumTouchpads(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetNumTouchpadFingers(touchpad : Int) ~ Int {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := IntHolder->New(touchpad);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_num_touchpad_fingers", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_num_touchpad_fingers(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int touchpad = APITools_GetIntValue(context, 2);
+		const int return_value = SDL_GameControllerGetNumTouchpadFingers(gamecontroller, touchpad);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetTouchpadFinger(touchpad : Int, finger : Int, state : Int, x : float, y : float, pressure : float) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := IntHolder->New(touchpad);
+	array_args[3] := IntHolder->New(finger);
+	array_args[4] := IntHolder->New(state);
+	array_args[5] := x;
+	array_args[6] := y;
+	array_args[7] := pressure;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_touchpad_finger", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_touchpad_finger(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int touchpad = APITools_GetIntValue(context, 2);
+		const int finger = APITools_GetIntValue(context, 3);
+		const int state = APITools_GetIntValue(context, 4);
+		const size* x = (size_t*)APITools_GetObjectValue(context, 5);
+		const size* y = (size_t*)APITools_GetObjectValue(context, 6);
+		const size* pressure = (size_t*)APITools_GetObjectValue(context, 7);
+		const int return_value = SDL_GameControllerGetTouchpadFinger(gamecontroller, touchpad, finger, state, x, y, pressure);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasSensor(type : SensorType) ~ Bool {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := type;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_sensor", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_has_sensor(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* type = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GameControllerHasSensor(gamecontroller, type);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : SetSensorEnabled(type : SensorType, enabled : Bool) ~ Int {
+	array_args := Base->New[4];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := type;
+	array_args[3] := IntHolder->New(enabled ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_sensor_enabled", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_set_sensor_enabled(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* type = (size_t*)APITools_GetObjectValue(context, 2);
+		const int enabled = APITools_GetIntValue(context, 3);
+		const int return_value = SDL_GameControllerSetSensorEnabled(gamecontroller, type, enabled);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : IsSensorEnabled(type : SensorType) ~ Bool {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := type;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_is_sensor_enabled", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_is_sensor_enabled(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* type = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GameControllerIsSensorEnabled(gamecontroller, type);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetSensorDataRate(type : SensorType) ~ float {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := type;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_sensor_data_rate", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_sensor_data_rate(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* type = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* return_value = SDL_GameControllerGetSensorDataRate(gamecontroller, type);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : GetSensorData(type : SensorType, data : float, num_values : Int) ~ Int {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := type;
+	array_args[3] := data;
+	array_args[4] := IntHolder->New(num_values);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_sensor_data", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_sensor_data(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* type = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* data = (size_t*)APITools_GetObjectValue(context, 3);
+		const int num_values = APITools_GetIntValue(context, 4);
+		const int return_value = SDL_GameControllerGetSensorData(gamecontroller, type, data, num_values);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : Rumble(low_frequency_rumble : Int, high_frequency_rumble : Int, duration_ms : Int) ~ Int {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := IntHolder->New(low_frequency_rumble);
+	array_args[3] := IntHolder->New(high_frequency_rumble);
+	array_args[4] := IntHolder->New(duration_ms);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_rumble", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_rumble(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int low_frequency_rumble = APITools_GetIntValue(context, 2);
+		const int high_frequency_rumble = APITools_GetIntValue(context, 3);
+		const int duration_ms = APITools_GetIntValue(context, 4);
+		const int return_value = SDL_GameControllerRumble(gamecontroller, low_frequency_rumble, high_frequency_rumble, duration_ms);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : RumbleTriggers(left_rumble : Int, right_rumble : Int, duration_ms : Int) ~ Int {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := IntHolder->New(left_rumble);
+	array_args[3] := IntHolder->New(right_rumble);
+	array_args[4] := IntHolder->New(duration_ms);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_rumble_triggers", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_rumble_triggers(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int left_rumble = APITools_GetIntValue(context, 2);
+		const int right_rumble = APITools_GetIntValue(context, 3);
+		const int duration_ms = APITools_GetIntValue(context, 4);
+		const int return_value = SDL_GameControllerRumbleTriggers(gamecontroller, left_rumble, right_rumble, duration_ms);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasLED() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_hasled", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_hasled(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerHasLED(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasRumble() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_rumble", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_has_rumble(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerHasRumble(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasRumbleTriggers() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_rumble_triggers", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_has_rumble_triggers(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GameControllerHasRumbleTriggers(gamecontroller);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : SetLED(red : Int, green : Int, blue : Int) ~ Int {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := IntHolder->New(red);
+	array_args[3] := IntHolder->New(green);
+	array_args[4] := IntHolder->New(blue);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_setled", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_setled(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int red = APITools_GetIntValue(context, 2);
+		const int green = APITools_GetIntValue(context, 3);
+		const int blue = APITools_GetIntValue(context, 4);
+		const int return_value = SDL_GameControllerSetLED(gamecontroller, red, green, blue);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : SendEffect(data : Int, size : Int) ~ Int {
+	array_args := Base->New[4];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[3] := IntHolder->New(size);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_send_effect", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_send_effect(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const int size = APITools_GetIntValue(context, 3);
+		const int return_value = SDL_GameControllerSendEffect(gamecontroller, data, size);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : Close() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@gamecontroller);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_close", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_close(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 0);
+		SDL_GameControllerClose(gamecontroller);
+	}
+
+---
+method : public : GetAppleSFSymbolsNameForButton(button : GameControllerButton) ~ String {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := button;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_applesf_symbols_name_for_button", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_applesf_symbols_name_for_button(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* button = (size_t*)APITools_GetObjectValue(context, 2);
+		const wstring return_value = SDL_GameControllerGetAppleSFSymbolsNameForButton(gamecontroller, button);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
+method : public : GetAppleSFSymbolsNameForAxis(axis : GameControllerAxis) ~ String {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@gamecontroller);
+	array_args[2] := axis;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_applesf_symbols_name_for_axis", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_get_applesf_symbols_name_for_axis(VMContext& context) {
+		SDL_GameController* gamecontroller = (GameController*)APITools_GetIntValue(context, 1);
+		const size* axis = (size_t*)APITools_GetObjectValue(context, 2);
+		const wstring return_value = SDL_GameControllerGetAppleSFSymbolsNameForAxis(gamecontroller, axis);
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---
