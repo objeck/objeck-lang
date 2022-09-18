@@ -226,6 +226,8 @@ General:
 * Added SDL_SetWindowResizable() to change whether a window is resizable
 * Added SDL_SetWindowOpacity() and SDL_GetWindowOpacity() to affect the window transparency
 * Added SDL_SetWindowModalFor() to set a window as modal for another window
+--------- TODO ---------
+
 * Added support for AUDIO_U16LSB and AUDIO_U16MSB to SDL_MixAudioFormat()
 * Fixed flipped images when reading back from target textures when using the OpenGL renderer
 * Fixed texture color modulation with SDL_BLENDMODE_NONE when using the OpenGL renderer
@@ -285,7 +287,6 @@ General:
 * Added SDL_SetWindowHitTest() to let apps treat parts of their SDL window like traditional window decorations (drag areas, resize areas)
 * Added SDL_GetGrabbedWindow() to get the window that currently has input grab, if any
 * Added SDL_RenderIsClipEnabled() to tell whether clipping is currently enabled in a renderer
---------- TODO ---------
 * Added SDL_CaptureMouse() to capture the mouse to get events while the mouse is not in your window
 * Added SDL_WarpMouseGlobal() to warp the mouse cursor in global screen space
 * Added SDL_GetGlobalMouseState() to get the current mouse state outside of an SDL window

@@ -1217,6 +1217,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_window_get_grabbed_window(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetGrabbedWindow());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_window_gl_swap(VMContext& context) {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
     SDL_GL_SwapWindow(window);
