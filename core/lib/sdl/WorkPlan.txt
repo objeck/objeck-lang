@@ -300,6 +300,9 @@ General:
 * Improved support for WAV and BMP files with unusual chunks in them
 * Renamed SDL_assert_data to SDL_AssertData and SDL_assert_state to SDL_AssertState
 * Added a hint SDL_HINT_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN to prevent window interaction while cursor is hidden
+
+--------- TODO ---------
+
 * Added SDL_GetDisplayDPI() to get the DPI information for a display
 * Added SDL_JoystickCurrentPowerLevel() to get the battery level of a joystick
 * Added SDL_JoystickFromInstanceID(), as a helper function, to get the SDL_Joystick* that an event is referring to.
