@@ -2873,6 +2873,283 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GetModState());
   }
 
+
+
+
+
+
+
+
+  //
+  // Game Controller
+  //
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_add_mapping(VMContext& context) {
+    const wstring w_mappingString = APITools_GetStringValue(context, 1);
+    const string mappingString = UnicodeToBytes(w_mappingString);
+
+    APITools_SetIntValue(context, 0, SDL_GameControllerAddMapping(mappingString.c_str()));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_num_mappings(VMContext& context) {
+    APITools_SetIntValue(context, 0, SDL_GameControllerNumMappings());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_gamecontroller_mapping_for_index(VMContext& context) {
+    const int mapping_index = (int)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerMappingForIndex(mapping_index);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_mapping(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerMapping(gamecontroller);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_sdl_is_game_controller(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_IsGameController(joystick_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_gamecontroller_name_for_index(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerNameForIndex(joystick_index);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_path_for_index(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerPathForIndex(joystick_index);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_type_for_index(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerTypeForIndex(joystick_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_mapping_for_device_index(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerMappingForDeviceIndex(joystick_index);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_gamecontroller_from_instanceid(VMContext& context) {
+    const SDL_JoystickID joyid = (SDL_JoystickID)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerFromInstanceID(joyid));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_from_player_index(VMContext& context) {
+    const int player_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerFromPlayerIndex(player_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_name(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerName(gamecontroller);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_path(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerPath(gamecontroller);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_type(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetType(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_player_index(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetPlayerIndex(gamecontroller));
+  }
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_set_player_index(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 0);
+    const int player_index = (int)APITools_GetIntValue(context, 1);
+    SDL_GameControllerSetPlayerIndex(gamecontroller, player_index);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_vendor(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetVendor(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_product(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetProduct(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_product_version(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetProductVersion(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_firmware_version(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetFirmwareVersion(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_serial(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerGetSerial(gamecontroller);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_attached(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetAttached(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_gamecontroller_get_joystick(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerGetJoystick(gamecontroller));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_event_state(VMContext& context) {
+    const int state = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerEventState(state));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_update(VMContext& context) {
+    SDL_GameControllerUpdate();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontorller_get_axis_from_string(VMContext& context) {
+    const wstring w_str = APITools_GetStringValue(context, 1);
+    const string str = UnicodeToBytes(w_str);
+
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetAxisFromString(str.c_str()));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_string_for_axis(VMContext& context) {
+    const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_GameControllerGetStringForAxis(axis);
+
+    const wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+  /*
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_bind_for_axis(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
+
+    const size* return_value = SDL_GameControllerGetBindForAxis(gamecontroller, axis);
+    APITools_SetObjectValue(context, 0, (CAST*)return_value);
+  }
+  */
+
+
+
+
+
+
+
+
+
   //
   // Joystick
 #ifdef _WIN32
