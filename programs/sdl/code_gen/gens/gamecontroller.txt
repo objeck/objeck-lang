@@ -720,8 +720,6 @@ function : GetButtonFromString(str : String) ~ GameControllerButton {
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
 
-===== TODO ========
-
 ---
 function : GetStringForButton(button : GameControllerButton) ~ String {
 	array_args := Base->New[2];
@@ -741,6 +739,8 @@ function : GetStringForButton(button : GameControllerButton) ~ String {
 		const wstring return_value = SDL_GameControllerGetStringForButton(button);
 		APITools_SetStringValue(context, 0, return_value);
 	}
+
+===== TODO ========
 
 ---
 method : public : GetBindForButton(button : GameControllerButton) ~ GameControllerButtonBind {
