@@ -3154,7 +3154,14 @@ extern "C" {
     sdl_gamecontroller_button_bind_read(&return_value, button_bind_obj);
   }
 
-
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_gamecontroller_has_axis(VMContext& context) {
+		SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+		const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
+		APITools_SetIntValue(context, 0, SDL_GameControllerHasAxis(gamecontroller, axis));
+	}
 
 
 
