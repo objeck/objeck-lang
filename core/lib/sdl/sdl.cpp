@@ -3205,12 +3205,19 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void sdl_gamecontroller_get_button(VMContext& context) {
+  void sdl_gamecontroller_get_button(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     const SDL_GameControllerButton button = (SDL_GameControllerButton)APITools_GetIntValue(context, 2);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetButton(gamecontroller, button));
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_num_touchpads(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetNumTouchpads(gamecontroller));
+  }
 
 
 

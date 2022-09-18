@@ -2348,6 +2348,11 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Get the current state of a button on a game controller
+		@param button a button index (one of the SDL_GameControllerButton values)
+ 		@return 1 for pressed state or 0 for not pressed state or error
+ 		~#
 		method : public : GetButton(button : GameControllerButton) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2359,8 +2364,17 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+		
+		method : public : GetNumTouchpads() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
 
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_num_touchpads", array_args);
 
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 
 
 
