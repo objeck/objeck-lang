@@ -137,6 +137,40 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	Joystick types
+	~#
+	enum JoystickType {
+	    SDL_JOYSTICK_TYPE_UNKNOWN,
+	    SDL_JOYSTICK_TYPE_GAMECONTROLLER,
+	    SDL_JOYSTICK_TYPE_WHEEL,
+	    SDL_JOYSTICK_TYPE_ARCADE_STICK,
+	    SDL_JOYSTICK_TYPE_FLIGHT_STICK,
+	    SDL_JOYSTICK_TYPE_DANCE_PAD,
+	    SDL_JOYSTICK_TYPE_GUITAR,
+	    SDL_JOYSTICK_TYPE_DRUM_KIT,
+	    SDL_JOYSTICK_TYPE_ARCADE_PAD,
+	    SDL_JOYSTICK_TYPE_THROTTLE
+	}
+
+	#~
+	Joystick power level
+
+	SDL_JOYSTICK_POWER_EMPTY <= 5% 
+    SDL_JOYSTICK_POWER_LOW <= 20% 
+    SDL_JOYSTICK_POWER_MEDIUM <= 70% 
+    SDL_JOYSTICK_POWER_FULL <= 100% 
+	~#
+	enum JoystickPowerLevel := -1 {
+	    SDL_JOYSTICK_POWER_UNKNOWN,
+	    SDL_JOYSTICK_POWER_EMPTY,   # <= 5% 
+	    SDL_JOYSTICK_POWER_LOW,     # <= 20% 
+	    SDL_JOYSTICK_POWER_MEDIUM,  # <= 70% 
+	    SDL_JOYSTICK_POWER_FULL,    # <= 100% 
+	    SDL_JOYSTICK_POWER_WIRED,
+	    SDL_JOYSTICK_POWER_MAX
+	}
+
+	#~
 	Pixel format values
 	~#
 	consts PixelValue {
@@ -612,7 +646,7 @@ bundle Game.SDL2 {
 		
 		#~
 		Get the name of a built in video driver
-		@param index the index of a video driver
+		@index the index of a video driver
 		@return name of the video driver with the given index
 		~#
 		function : GetVideoDriver(index : Int) ~ String {
@@ -623,6 +657,28 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_display_get_video_driver", array_args);
 
 			return array_args[0]->As(String);
+		}
+
+		#~
+		Get the dots/pixels-per-inch for a display
+		@param index index of the display from which DPI information should be queried
+		@param ddpi pointer filled in with the diagonal DPI of the display; may be NULL
+		@param hdpi pointer filled in with the horizontal DPI of the display; may be NULL
+		@param vdpi pointer filled in with the vertical DPI of the display; may be NULL
+		@return 0 on success or a negative error code on failure
+		~#
+		function : GetDPI(index : Int, ddpi : FloatHolder, hdpi : FloatHolder, vdpi : FloatHolder) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(index);
+			array_args[2] := ddpi;
+			array_args[3] := hdpi;
+			array_args[4] := vdpi;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_dpi", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 		
 		#~
@@ -1704,6 +1760,40 @@ bundle Game.SDL2 {
 
 	        value := array_args[0]->As(IntHolder);
 	        @joystick := value->Get();
+		}
+
+		#~
+	    Get the Joystick associated with an instance id.
+	    @return instance_id the instance id to get the SDL_Joystick for
+	    ~#
+	    function : FromInstanceID(instance_id : Int) ~ Joystick {
+	        array_args := Base->New[2];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(instance_id);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_from_instance_id", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Joystick->New(value->Get());
+		}
+
+		#~
+	    Get the battery level of a joystick as JoystickPowerLevel
+	    @return current battery level as JoystickPowerLevel on success or SDL_JOYSTICK_POWER_UNKNOWN
+	    ~#
+	    method : public : CurrentPowerLevel() ~ JoystickPowerLevel {
+	    	if(@joystick <> 0) {
+		        array_args := Base->New[2];
+		        array_args[0] := IntHolder->New();
+		        array_args[1] := IntHolder->New(@joystick);
+
+		        Proxy->GetDllProxy()->CallFunction("sdl_joystick_current_power_level", array_args);
+
+		        value := array_args[0]->As(IntHolder);
+		       	return value->Get();
+		    };
+
+		    return JoystickPowerLevel->SDL_JOYSTICK_POWER_UNKNOWN;
 		}
 
 		#~
@@ -6879,8 +6969,6 @@ bundle Game.SDL2 {
 			return array_args[0]->As(String);
 		}
 	}
-
-#----- TODO -----
 	
 	#~
 	Operations for gathering information about the processor's features
