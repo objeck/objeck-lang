@@ -2739,31 +2739,44 @@ extern "C" {
   //
   // Cursor
   //
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_cursor_get_global_mouse_state(VMContext& context) {
     int x, y;
-    const int return_value = SDL_GetGlobalMouseState(&x, &y);
-
+    APITools_SetIntValue(context, 0, SDL_GetGlobalMouseState(&x, &y));
     APITools_SetIntValue(context, 1, x);
     APITools_SetIntValue(context, 2, y);
-    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_warp_mouse_global(VMContext& context) {
+    int x, y;
+    APITools_SetIntValue(context, 0, SDL_GetGlobalMouseState(&x, &y));
+    APITools_SetIntValue(context, 1, x);
+    APITools_SetIntValue(context, 2, y);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_cursor_get_mouse_state(VMContext& context) {
-    int x, y;
-    const int return_value = SDL_GetMouseState(&x, &y);
+    const int x = (int)APITools_GetIntValue(context, 1);
+    const int y = (int)APITools_GetIntValue(context, 2);
 
-    APITools_SetIntValue(context, 1, x);
-    APITools_SetIntValue(context, 2, y);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_WarpMouseGlobal(x, y));
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_capture_mouse(VMContext& context) {
+    const SDL_bool enabled = (SDL_bool)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_CaptureMouse(enabled));
+  }
+  
   //
   // Clipboard
   //
@@ -3287,6 +3300,14 @@ extern "C" {
 
     const int return_value = pixelRGBA(renderer, x, y, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_renderer_is_clip_enabled(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_RenderIsClipEnabled(renderer));
   }
 
 #ifdef _WIN32
