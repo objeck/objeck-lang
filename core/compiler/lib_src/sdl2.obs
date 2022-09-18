@@ -154,7 +154,6 @@ bundle Game.SDL2 {
 
 	#~
 	Joystick power level
-
 	SDL_JOYSTICK_POWER_EMPTY <= 5% 
     SDL_JOYSTICK_POWER_LOW <= 20% 
     SDL_JOYSTICK_POWER_MEDIUM <= 70% 
@@ -162,10 +161,10 @@ bundle Game.SDL2 {
 	~#
 	enum JoystickPowerLevel := -1 {
 	    SDL_JOYSTICK_POWER_UNKNOWN,
-	    SDL_JOYSTICK_POWER_EMPTY,   # <= 5% 
-	    SDL_JOYSTICK_POWER_LOW,     # <= 20% 
-	    SDL_JOYSTICK_POWER_MEDIUM,  # <= 70% 
-	    SDL_JOYSTICK_POWER_FULL,    # <= 100% 
+	    SDL_JOYSTICK_POWER_EMPTY,
+	    SDL_JOYSTICK_POWER_LOW,
+	    SDL_JOYSTICK_POWER_MEDIUM,
+	    SDL_JOYSTICK_POWER_FULL,
 	    SDL_JOYSTICK_POWER_WIRED,
 	    SDL_JOYSTICK_POWER_MAX
 	}
@@ -690,7 +689,7 @@ bundle Game.SDL2 {
 		
 		#~
 		Get the name of a built in video driver
-		@index the index of a video driver
+		@param index the index of a video driver
 		@return name of the video driver with the given index
 		~#
 		function : GetVideoDriver(index : Int) ~ String {
@@ -962,10 +961,12 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Create a modal message box
-		@parm messageboxdata the SDL_MessageBoxData structure with title, text and other options
-		@param buttonid the pointer to which user id of hit button should be copied
-		@return 0 on success or a negative error code on failure
+		Display a simple modal message box
+		@param flags an SDL_MessageBoxFlags value
+ 		@param title UTF-8 title text
+ 		@param message UTF-8 message text
+ 		@param window the parent window, or NULL for no parent
+ 		@return 0 on success or a negative error code on failure
 		~#
 		function : ShowSimpleMessageBox(flags : Int, title : String, message : String, window : Window) ~ Int {
 			array_args := Base->New[4];
@@ -2220,7 +2221,22 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
+		#~
+		Query whether a game controller has a given axis
+		@param axis an axis enum value (an SDL_GameControllerAxis value)
+ 		@return true if the controller has this axis, false otherwise
+ 		~#
+		method : public : HasAxis(axis : GameControllerAxis) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+			array_args[2] := IntHolder->New(axis);
 
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_axis", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
 
 
 
@@ -3871,7 +3887,7 @@ bundle Game.SDL2 {
 		method : public : GetAxis() ~ Int {
 			return @axis;
 		}
-		
+
 		#~
 		Get hat mask
 		@return hat mask
