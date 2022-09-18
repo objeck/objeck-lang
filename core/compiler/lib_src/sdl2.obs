@@ -185,6 +185,26 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	The gamecontroller structure used to identify an SDL game controller
+	~#
+	enum GameControllerType {
+	    SDL_CONTROLLER_TYPE_UNKNOWN,
+	    SDL_CONTROLLER_TYPE_XBOX360,
+	    SDL_CONTROLLER_TYPE_XBOXONE,
+	    SDL_CONTROLLER_TYPE_PS3,
+	    SDL_CONTROLLER_TYPE_PS4,
+	    SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO,
+	    SDL_CONTROLLER_TYPE_VIRTUAL,
+	    SDL_CONTROLLER_TYPE_PS5,
+	    SDL_CONTROLLER_TYPE_AMAZON_LUNA,
+	    SDL_CONTROLLER_TYPE_GOOGLE_STADIA,
+	    SDL_CONTROLLER_TYPE_NVIDIA_SHIELD,
+	    SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_LEFT,
+	    SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT,
+	    SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_PAIR
+	}
+
+	#~
 	Pixel format values
 	~#
 	consts PixelValue {
@@ -1895,7 +1915,7 @@ bundle Game.SDL2 {
 		Get the type of a game controller. This can be called before any controllers are opened.
  		@param joystick_index the device_index of a device
  		@return the controller type
-
+		~#
 		function : TypeForIndex(joystick_index : Int) ~ GameControllerType {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -1906,7 +1926,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get()->As(GameControllerType);
 		}
- 		~#
+ 		
 
 		#~
 		Get the SDL_GameController associated with an instance id
@@ -1970,7 +1990,7 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
-		#~
+#~ TODO
 		Get the type of this currently opened controller
 		@return the controller type.
 		
@@ -2228,6 +2248,7 @@ bundle Game.SDL2 {
 
 		#~
 	    Get the Joystick associated with an instance id.
+	    @param instance_id the instance id to get the SDL_Joystick for
 	    @return instance_id the instance id to get the SDL_Joystick for
 	    ~#
 	    function : FromInstanceID(instance_id : Int) ~ Joystick {
