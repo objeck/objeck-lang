@@ -2315,9 +2315,38 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
+		#~
+		Get the SDL joystick layer binding for a controller button mapping
+		@param button an button enum value (an SDL_GameControllerButton value)
+ 		@return SDL_GameControllerButtonBind describing the bind
+ 		~#
+		method : public : GetBindForButton(button : GameControllerButton) ~ GameControllerButtonBind {
+			array_args := Base->New[3];
+			array_args[0] := GameControllerButtonBind->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+			array_args[2] := IntHolder->New(button);
 
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_bind_for_button", array_args);
 
+			return array_args[0];
+		}
+		
+		#~
+		Query whether a game controller has a given button
+		@param button a button enum value (an SDL_GameControllerButton value)
+ 		@return true if the controller has this button, false otherwise
+ 		~#
+		method : public : HasButton(button : GameControllerButton) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+			array_args[2] := IntHolder->New(button);
 
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_button", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
 
 
 
