@@ -740,7 +740,7 @@ function : GetStringForButton(button : GameControllerButton) ~ String {
 		APITools_SetStringValue(context, 0, return_value);
 	}
 
-===== TODO ========
+
 
 ---
 method : public : GetBindForButton(button : GameControllerButton) ~ GameControllerButtonBind {
@@ -809,6 +809,8 @@ method : public : GetButton(button : GameControllerButton) ~ Int {
 		const int return_value = SDL_GameControllerGetButton(gamecontroller, button);
 		APITools_SetIntValue(context, 0, return_value);
 	}
+
+===== TODO ========
 
 ---
 method : public : GetNumTouchpads() ~ Int {

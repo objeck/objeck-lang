@@ -2330,7 +2330,7 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-		
+
 		#~
 		Query whether a game controller has a given button
 		@param button a button enum value (an SDL_GameControllerButton value)
@@ -2347,6 +2347,19 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;
 		}
+
+		method : public : GetButton(button : GameControllerButton) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+			array_args[2] := IntHolder->New(button);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_button", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
 
 
 
