@@ -2886,13 +2886,6 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GetModState());
   }
 
-
-
-
-
-
-
-
   //
   // Game Controller
   //
@@ -3162,6 +3155,35 @@ extern "C" {
 		const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
 		APITools_SetIntValue(context, 0, SDL_GameControllerHasAxis(gamecontroller, axis));
 	}
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_axis(VMContext& context) {
+    SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
+    const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetAxis(gamecontroller, axis));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_button_from_string(VMContext& context) {
+    const wstring w_str = APITools_GetStringValue(context, 1);
+    const string str = UnicodeToBytes(w_str);
+    APITools_SetIntValue(context, 0, SDL_GameControllerGetButtonFromString(str.c_str()));
+  }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

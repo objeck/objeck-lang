@@ -652,7 +652,7 @@ method : public : GetBindForAxis(axis : GameControllerAxis) ~ GameControllerButt
 		const size* return_value = SDL_GameControllerGetBindForAxis(gamecontroller, axis);
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
-	
+
 ---
 method : public : HasAxis(axis : GameControllerAxis) ~ Bool {
 	array_args := Base->New[3];
@@ -676,7 +676,6 @@ method : public : HasAxis(axis : GameControllerAxis) ~ Bool {
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
-===== TODO ========
 
 ---
 method : public : GetAxis(axis : GameControllerAxis) ~ Int {
@@ -720,6 +719,8 @@ function : GetButtonFromString(str : String) ~ GameControllerButton {
 		const size* return_value = SDL_GameControllerGetButtonFromString(str);
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
+
+===== TODO ========
 
 ---
 function : GetStringForButton(button : GameControllerButton) ~ String {
