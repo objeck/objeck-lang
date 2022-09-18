@@ -72,6 +72,9 @@ extern "C" {
   void sdl_display_mode_raw_read(SDL_DisplayMode* mode, size_t* display_mode_obj);
   void sdl_display_mode_raw_write(SDL_DisplayMode* mode, size_t* display_mode_obj);
 
+  void sdl_gamecontroller_button_bind_read(struct SDL_GameControllerButtonBind* button_bind, size_t* button_bind_obj);
+
+
   //
   // initialize library
   //
@@ -1193,6 +1196,16 @@ extern "C" {
       mode->w = (int)display_mode_obj[1];
       mode->h = (int)display_mode_obj[2];
       mode->refresh_rate = (int)display_mode_obj[3];
+    }
+  }
+
+  void sdl_gamecontroller_button_bind_read(struct SDL_GameControllerButtonBind* button_bind, size_t* button_bind_obj) {
+    if(button_bind) {
+      button_bind_obj[0] = button_bind->bindType;
+      button_bind_obj[1] = button_bind->value.button;
+      button_bind_obj[2] = button_bind->value.axis;
+      button_bind_obj[3] = button_bind->value.hat.hat;
+      button_bind_obj[4] = button_bind->value.hat.hat_mask;
     }
   }
 
@@ -3129,18 +3142,17 @@ extern "C" {
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
-  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_gamecontroller_get_bind_for_axis(VMContext& context) {
+    size_t* button_bind_obj = APITools_GetObjectValue(context, 0);
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
-
-    const size* return_value = SDL_GameControllerGetBindForAxis(gamecontroller, axis);
-    APITools_SetObjectValue(context, 0, (CAST*)return_value);
+    
+    SDL_GameControllerButtonBind return_value = SDL_GameControllerGetBindForAxis(gamecontroller, axis);
+    sdl_gamecontroller_button_bind_read(&return_value, button_bind_obj);
   }
-  */
 
 
 
