@@ -205,6 +205,16 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	The gamecontroller bind type
+	~#
+	enum GameControllerBindType {
+	    SDL_CONTROLLER_BINDTYPE_NONE,
+	    SDL_CONTROLLER_BINDTYPE_BUTTON,
+	    SDL_CONTROLLER_BINDTYPE_AXIS,
+	    SDL_CONTROLLER_BINDTYPE_HAT
+	}
+
+	#~
 	Pixel format values
 	~#
 	consts PixelValue {
@@ -1990,10 +2000,10 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
-#~ TODO
+		#~
 		Get the type of this currently opened controller
 		@return the controller type.
-		
+		~#
 		method : public : GetType() ~ GameControllerType {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2004,7 +2014,6 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get()->As(GameControllerType);
 		}
-~#
 
 		#~
 		Get the player index of an opened game controller
@@ -2195,12 +2204,21 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
+		#~
+		Get the SDL joystick layer binding for a controller axis mapping
+		@param axis an axis enum value (one of the SDL_GameControllerAxis values)
+		@return SDL_GameControllerButtonBind describing the bind
+		~#
+		method : public : GetBindForAxis(axis : GameControllerAxis) ~ GameControllerButtonBind {
+			array_args := Base->New[3];
+			array_args[0] := GameControllerButtonBind->New();
+			array_args[1] := IntHolder->New(@gamecontroller);
+			array_args[2] := IntHolder->New(axis);
 
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_bind_for_axis", array_args);
 
-
-
-
-
+			return array_args[0];
+		}
 
 
 
@@ -2209,21 +2227,6 @@ bundle Game.SDL2 {
 
 
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	#~
 	Handles inputs from joysticks
@@ -3830,6 +3833,59 @@ bundle Game.SDL2 {
 		~#
 		method : public : ToString() ~ String {
 			return "[{$@x}, {$@y}]";
+		}
+	}
+
+	#~
+	SDL joystick layer binding for this controller button/axis mapping
+	~#
+	class GameControllerButtonBind {
+		@bind_type : GameControllerBindType;
+		@button : Int;
+        @axis : Int;
+        @hat : Int;
+        @hat_mask : Int;
+
+        New() {}
+
+        #~
+		Get bind type
+		@return bind type
+		~#
+		method : public : GetBindType() ~ Int {
+			return @bind_type;
+		}
+
+		#~
+		Get button
+		@return button
+		~#
+		method : public : GetButton() ~ Int {
+			return @button;
+		}
+
+		#~
+		Get axis
+		@return axis
+		~#
+		method : public : GetAxis() ~ Int {
+			return @axis;
+		}
+		
+		#~
+		Get hat mask
+		@return hat mask
+		~#
+		method : public : GetHatMast() ~ Int {
+			return @hat_mask;
+		}
+
+		#~
+		Get hat
+		@return hat
+		~#
+		method : public : GetHat() ~ Int {
+			return @hat;
 		}
 	}
 
