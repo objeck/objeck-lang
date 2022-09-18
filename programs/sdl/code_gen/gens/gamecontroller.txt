@@ -61,7 +61,7 @@ function='SDL_GameControllerGetAppleSFSymbolsNameForButton'
 function='SDL_GameControllerGetAppleSFSymbolsNameForAxis'
 
 ----
-method : public : AddMapping(mappingString : String) ~ Int {
+function : AddMapping(mappingString : String) ~ Int {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(mappingString);
@@ -82,7 +82,7 @@ method : public : AddMapping(mappingString : String) ~ Int {
 	}
 
 ---
-method : public : NumMappings() ~ Int {
+function : NumMappings() ~ Int {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
@@ -102,7 +102,7 @@ method : public : NumMappings() ~ Int {
 
 ---
 
-method : public : MappingForIndex(mapping_index : Int) ~ String {
+function : MappingForIndex(mapping_index : Int) ~ String {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(mapping_index);
@@ -144,7 +144,7 @@ method : public : Mapping() ~ String {
 
 ---
 
-method : public : Is(joystick_index : Int) ~ Bool {
+function : Is(joystick_index : Int) ~ Bool {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joystick_index);
@@ -165,7 +165,7 @@ method : public : Is(joystick_index : Int) ~ Bool {
 	}
 
 ---
-method : public : NameForIndex(joystick_index : Int) ~ String {
+function : NameForIndex(joystick_index : Int) ~ String {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joystick_index);
@@ -186,7 +186,7 @@ method : public : NameForIndex(joystick_index : Int) ~ String {
 
 ---
 
-method : public : PathForIndex(joystick_index : Int) ~ String {
+function : PathForIndex(joystick_index : Int) ~ String {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joystick_index);
@@ -206,7 +206,7 @@ method : public : PathForIndex(joystick_index : Int) ~ String {
 	}
 
 ---
-method : public : TypeForIndex(joystick_index : Int) ~ GameControllerType {
+function : TypeForIndex(joystick_index : Int) ~ GameControllerType {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joystick_index);
@@ -226,7 +226,7 @@ method : public : TypeForIndex(joystick_index : Int) ~ GameControllerType {
 	}
 
 ---
-method : public : MappingForDeviceIndex(joystick_index : Int) ~ String {
+function : MappingForDeviceIndex(joystick_index : Int) ~ String {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joystick_index);
@@ -246,7 +246,7 @@ method : public : MappingForDeviceIndex(joystick_index : Int) ~ String {
 	}
 
 ---
-method : public : Open(joystick_index : Int) ~ GameController {
+function : Open(joystick_index : Int) ~ GameController {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joystick_index);
@@ -266,7 +266,7 @@ method : public : Open(joystick_index : Int) ~ GameController {
 	}
 
 ---
-method : public : FromInstanceID(joyid : JoystickID) ~ GameController {
+function : FromInstanceID(joyid : JoystickID) ~ GameController {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(joyid);
@@ -287,7 +287,7 @@ method : public : FromInstanceID(joyid : JoystickID) ~ GameController {
 
 
 ---
-method : public : FromPlayerIndex(player_index : Int) ~ GameController {
+function : FromPlayerIndex(player_index : Int) ~ GameController {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(player_index);
