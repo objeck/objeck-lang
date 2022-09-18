@@ -285,6 +285,7 @@ General:
 * Added SDL_SetWindowHitTest() to let apps treat parts of their SDL window like traditional window decorations (drag areas, resize areas)
 * Added SDL_GetGrabbedWindow() to get the window that currently has input grab, if any
 * Added SDL_RenderIsClipEnabled() to tell whether clipping is currently enabled in a renderer
+--------- TODO ---------
 * Added SDL_CaptureMouse() to capture the mouse to get events while the mouse is not in your window
 * Added SDL_WarpMouseGlobal() to warp the mouse cursor in global screen space
 * Added SDL_GetGlobalMouseState() to get the current mouse state outside of an SDL window
@@ -300,9 +301,6 @@ General:
 * Improved support for WAV and BMP files with unusual chunks in them
 * Renamed SDL_assert_data to SDL_AssertData and SDL_assert_state to SDL_AssertState
 * Added a hint SDL_HINT_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN to prevent window interaction while cursor is hidden
-
---------- TODO ---------
-
 * Added SDL_GetDisplayDPI() to get the DPI information for a display
 * Added SDL_JoystickCurrentPowerLevel() to get the battery level of a joystick
 * Added SDL_JoystickFromInstanceID(), as a helper function, to get the SDL_Joystick* that an event is referring to.

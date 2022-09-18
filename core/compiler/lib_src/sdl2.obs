@@ -4782,6 +4782,21 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Get whether clipping is enabled on the given renderer
+		@return Returns true if clipping is enabled or false if not
+		~#
+		method : public : IsClipEnabled() ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_is_clip_enabled", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return return_value->Get() = 0 ? false : true;
+		}
+
+		#~
 		Fill a rectangle on the current rendering target with the drawing color
 		@param rect Rect representing the rectangle to fill, or NULL for the 
 		entire rendering target
@@ -6513,6 +6528,41 @@ bundle Game.SDL2 {
 			array_args[2] := y;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_global_mouse_state", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+
+		#~
+		Capture the mouse and to track input outside an SDL window
+		@param enabled true to enable capturing, false to disable.
+		@return 0 on success or -1 if not supported
+		~#
+		function : CaptureMouse(enabled : Bool) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(enabled ? 1 : 0);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_cursor_capture_mouse", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Move the mouse to the given position in global screen space
+		@param x x coordinate
+		@param y y coordinate
+		@return 0 on success or a negative error code on failure
+		~#
+		function : WarpMouseGlobal(x : Int, y : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(x);
+			array_args[2] := IntHolder->New(y);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_cursor_warp_mouse_global", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
