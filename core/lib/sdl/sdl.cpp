@@ -3174,6 +3174,14 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GameControllerGetButtonFromString(str.c_str()));
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_get_string_for_button(VMContext& context) {
+    const SDL_GameControllerButton button = (SDL_GameControllerButton)APITools_GetIntValue(context, 1);
+    const wstring w_return_value = BytesToUnicode(SDL_GameControllerGetStringForButton(button));
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
 
 
 
