@@ -1126,7 +1126,6 @@ method : public : HasRumbleTriggers() ~ Bool {
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
-===== TODO ========
 
 ---
 method : public : SetLED(red : Int, green : Int, blue : Int) ~ Int {
@@ -1178,6 +1177,8 @@ method : public : SendEffect(data : Int, size : Int) ~ Int {
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
+===== TODO ========
+
 ---
 method : public : Close() ~ Nil {
 	array_args := Base->New[1];
@@ -1216,6 +1217,8 @@ method : public : GetAppleSFSymbolsNameForButton(button : GameControllerButton) 
 		const wstring return_value = SDL_GameControllerGetAppleSFSymbolsNameForButton(gamecontroller, button);
 		APITools_SetStringValue(context, 0, return_value);
 	}
+
+===== TODO ========
 
 ---
 method : public : GetAppleSFSymbolsNameForAxis(axis : GameControllerAxis) ~ String {
