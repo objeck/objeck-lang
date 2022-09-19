@@ -1,15 +1,15 @@
-use Collection;
+use Collection.Generic;
 
 bundle CodeGen {
 	#~
 	Source code parser
 	~#
 	class Parser {
-		@tokens : Vector;
+		@tokens : Vector<Token>;
 		@pos : Int;
 		@this_name : String;
 		
-		New(tokens : Vector, this_name : String) {
+		New(tokens : Vector<Token>, this_name : String) {
 			@tokens := tokens;
 			@pos := 0;
 			@this_name := this_name;
@@ -22,7 +22,7 @@ bundle CodeGen {
 		method : Match(type : Token->Type, offset : Int) ~ Bool {
 			pos := @pos + offset;
 			if(pos < @tokens->Size()) {
-				return @tokens->Get(pos)->As(Token)->GetType() = type;
+				return @tokens->Get(pos)->GetType() = type;
 			};
 			
 			return false;
@@ -42,8 +42,8 @@ bundle CodeGen {
 			return @tokens->Get(@tokens->Size() - 1);
 		}
 		
-		method : public : Parse() ~ Vector {
-			functions := Vector->New();
+		method : public : Parse() ~ Vector<ParsedFunction> {
+			functions := Vector->New()<ParsedFunction>;
 			
 			while(<>Match(Token->Type->EOS)) {
 				parsed_function := ParseFunction();
@@ -64,7 +64,7 @@ bundle CodeGen {
 			};
 			Next();
 
-			parameters := Vector->New();
+			parameters := Vector->New()<ParseParameter>;
 			
 			if(Match(Token->Type->VOID_ID) & Match(Token->Type->CPRN, 1)) {
 				Next();
@@ -243,8 +243,8 @@ bundle CodeGen {
 		method : public : GetObjeckName() ~ String {
 			if(@objk_name = Nil & (@func_name->StartsWith("SDL_") | @func_name->StartsWith("SDL2_") | @func_name->StartsWith("TTF_") | @func_name->StartsWith("Mix_"))) {
 				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
-				@objk_name := @objk_name->Replace(@this_name, "");
-				@objk_name := @objk_name->Replace("_", "");
+				@objk_name := @objk_name->ReplaceAll(@this_name, "");
+				@objk_name := @objk_name->ReplaceAll("_", "");
 			}
 			else {
 				@objk_name := String->New(@func_name);
@@ -314,10 +314,10 @@ bundle CodeGen {
 	Parsed function parameters
 	~#
 	class ParsedParameters {
-		@parameters : Vector;
+		@parameters : Vector<ParseParameter>;
 		
-		New(parameters : Vector) {
-			@parameters := parameters;
+		New(parameters : Vector<ParseParameter>) {
+			@parameters := parameters<ParseParameter>;
 		}
 		
 		method : public : Size() ~ Int {
@@ -325,7 +325,7 @@ bundle CodeGen {
 		}
 		
 		method : public : Get(i : Int) ~ ParseParameter {
-			return @parameters->Get(i)->As(ParseParameter);
+			return @parameters->Get(i);
 		}
 		
 		method : public : ToString() ~ String {
@@ -334,7 +334,7 @@ bundle CodeGen {
 			if(@parameters->Size() > 0) {
 				buffer->Append("parameters:\n");
 				each(i : @parameters) {
-					parameter := @parameters->Get(i)->As(ParseParameter);
+					parameter := @parameters->Get(i);
 					buffer->Append(parameter->ToString());
 					if(i + 1 < @parameters->Size()) {
 						buffer->Append("\n\t---\n");

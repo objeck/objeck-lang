@@ -1,5 +1,5 @@
 use System.IO.File;
-use Collection;
+use Collection.Generic;
 
 bundle CodeGen {
 	#~
@@ -7,15 +7,15 @@ bundle CodeGen {
 	~#
 	class Scanner {
 		@filename : String;
-		@tokens : Vector;
+		@tokens : Vector<Token>;
 
 		New(filename : String) {
 			@filename := filename;
-			@tokens := Vector->New();
+			@tokens := Vector->New()<Token>;
 		}
 		
-		method : public : Scan() ~ Vector {
-			reserved := StringMap->New();
+		method : public : Scan() ~ Vector<Token> {
+			reserved := Map->New()<String, Token>;
 			# c keywords
 			reserved->Insert("extern", Token->New(Token->Type->EXTERN_ID, "extern"));
 			reserved->Insert("DECLSPEC", Token->New(Token->Type->DECLSPEC_ID, "DECLSPEC"));
@@ -38,7 +38,7 @@ bundle CodeGen {
 			reader := FileReader->New(@filename);
 			line_num := 0;
 			while(reader->IsEOF() <> true) {
-				line := reader->ReadString();
+				line := reader->ReadLine();
 				line_num := line_num + 1;
 
 				i := 0;
@@ -62,7 +62,7 @@ bundle CodeGen {
 								c := line->Get(i);
 							};
 							
-							result := reserved->Find(ident)->As(Token);
+							result := reserved->Find(ident);
 							if(result <> Nil) {
 								@tokens->AddBack(result);
 							}

@@ -2700,6 +2700,165 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Get the type of an opened joystick
+		@return the JoystickType of the selected joystick
+		~#
+		method : public : GetType() ~ JoystickType {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@joystick);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_type", array_args);
+
+			value := array_args[0]->As(IntHolder);
+	        return value->Get()->As(JoystickType);
+		}
+
+		#~
+		Get the USB product ID of an opened joystick, if available
+		@return the product version of the selected joystick, or 0 if unavailable.
+		~#
+		method : public : GetProduct() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@joystick);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_product", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the USB vendor ID of an opened joystick, if available
+		@return the USB vendor ID of the selected joystick, or 0 if unavailable
+		~#
+		method : public : GetVendor() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@joystick);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_vendor", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the type of a joystick, if available
+		@param device_index the index of the joystick to query (the N'th joystick on the system
+		@return the SDL_JoystickType of the selected joystick. If called on an invalid index
+		~#
+		method : public : GetDeviceType(device_index : Int) ~ JoystickType {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(device_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_type", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(JoystickType);
+		}
+
+		#~
+		Get the product version of a joystick, if available
+		@param device_index the index of the joystick to query (the N'th joystick on the system
+		@return the product version of the selected joystick. If called on an invalid index, this function returns zero
+		~#
+		function : GetDeviceProductVersion(device_index : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(device_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_product_version", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the USB product ID of a joystick, if available
+		@param device_index the index of the joystick to query (the N'th joystick on the system
+		@return the USB product ID of the selected joystick. If called on an invalid index, this function returns zero
+		~#
+		function : GetDeviceProduct(device_index : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(device_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_product", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the USB vendor ID of a joystick, if available
+		@param device_index the index of the joystick to query (the N'th joystick on the system
+		@return the USB vendor ID of the selected joystick. If called on an invalid index, this function returns zero
+		~#
+		method : public : GetDeviceVendor(device_index : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(device_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_vendor", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the instance ID of a joystick
+		@param device_index the index of the joystick to query (the N'th joystick on the system
+		@return the instance id of the selected joystick. If called on an invalid index, this function returns zero
+		~#
+		function : GetDeviceInstanceID(device_index : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(device_index);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_instanceid", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the product version of an opened joystick, if available
+		@return the firmware version of the selected joystick, or 0 if unavailable
+		~#
+		method : public : GetProductVersion() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@joystick);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_product_version", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the initial state of an axis control on a joystick
+		@param axis the axis to query; the axis indices start at index 0
+		@param state Upon return, the initial value is supplied here
+		@return true if this axis has any initial value, or false if not
+		~#
+		method : public : GetAxisInitialState(axis : Int, state : IntHolder) ~ Bool {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@joystick);
+			array_args[2] := IntHolder->New(axis);
+			array_args[3] := state;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_axis_initial_state", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
 	    Get the Joystick associated with an instance id.
 	    @param instance_id the instance id to get the SDL_Joystick for
 	    @return instance_id the instance id to get the SDL_Joystick for
