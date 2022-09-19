@@ -8554,6 +8554,29 @@
         }
         "FileType"
         {
+            "{5EB83D71-FA18-4901-BE56-DE22E13CC478}:_0011421FB2BD49EE937D8103C806D429"
+            {
+            "Name" = "8:Objeck Executable"
+            "Description" = "8:"
+            "Extensions" = "8:obe"
+            "MIME" = "8:"
+            "Icon" = "8:_EE9EBBBBB7604C578E65FCFA4DE6EDA1"
+            "IconIndex" = "3:0"
+                "Command"
+                {
+                "Command" = "8:_E31153F2C88A4B29B532BD7E880B9F75"
+                }
+                "Verbs"
+                {
+                    "{95C0C507-CBF0-42B8-B119-07219E384A4A}:_1D1741598B0A431FAB3A0CDB9B4229A2"
+                    {
+                    "Command" = "8:&Open"
+                    "Verb" = "8:open"
+                    "Arguments" = "8:\"%1\""
+                    "Order" = "3:0"
+                    }
+                }
+            }
         }
         "Folder"
         {
@@ -8838,15 +8861,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{D7201D66-71B2-41BB-BC69-8FF031DCDDB3}"
-        "PackageCode" = "8:{18426B32-17BF-418D-AA42-1582E5FDFE52}"
+        "ProductCode" = "8:{A74A934A-F588-4AFD-B617-0612C1B0558A}"
+        "PackageCode" = "8:{6D5093F4-F6E7-40C3-B0A8-41037016660C}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:6.7.0"
+        "ProductVersion" = "8:6.7.1"
         "Manufacturer" = "8:Randy Hollines"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
