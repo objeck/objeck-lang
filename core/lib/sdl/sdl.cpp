@@ -3294,7 +3294,7 @@ extern "C" {
     const SDL_SensorType type = (SDL_SensorType)APITools_GetIntValue(context, 2);
     APITools_SetFloatValue(context, 0, SDL_GameControllerGetSensorDataRate(gamecontroller, type));
   }
-*/
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3308,6 +3308,7 @@ extern "C" {
     APITools_SetFloatValue(context, 3, data);
 
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
