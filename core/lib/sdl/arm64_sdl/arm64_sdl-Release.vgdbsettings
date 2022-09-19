@@ -9,7 +9,7 @@
     </CustomSourceDirectories>
     <AutoProgramSPIFFSPartition>true</AutoProgramSPIFFSPartition>
     <DeploymentHost>
-      <HostName>192.168.5.18</HostName>
+      <HostName>192.168.5.12</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </DeploymentHost>
@@ -33,6 +33,7 @@
     <ProjectFile>arm64_sdl.vcxproj</ProjectFile>
     <RemoteBuildEnvironment>
       <Records />
+      <EnvironmentSetupFiles />
     </RemoteBuildEnvironment>
     <ParallelJobCount>1</ParallelJobCount>
     <SuppressDirectoryChangeMessages>true</SuppressDirectoryChangeMessages>
