@@ -8839,7 +8839,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{D7201D66-71B2-41BB-BC69-8FF031DCDDB3}"
-        "PackageCode" = "8:{8A51C270-61FE-4536-8371-0FD8C126CCC4}"
+        "PackageCode" = "8:{18426B32-17BF-418D-AA42-1582E5FDFE52}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -8984,7 +8984,7 @@
             "Target" = "8:_4486948390624CC983BE6032A05E3363"
             "Folder" = "8:_5A9EBD748DA546DBB2FF6CCF939DD67C"
             "WorkingFolder" = "8:_828C651A7F424756B28137A9427D2E5B"
-            "Icon" = "8:"
+            "Icon" = "8:_EE9EBBBBB7604C578E65FCFA4DE6EDA1"
             "Feature" = "8:"
             }
         }
