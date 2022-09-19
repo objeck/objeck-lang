@@ -2504,15 +2504,13 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(FloatHolder);
 			return value->Get();
 		}
-		~#
-
-		#~
+		
 		Get the current state of a game controller sensor
 		@param type The type of sensor to query
 		@param data A pointer filled with the current sensor state
 		@param num_values The number of values to write to data
 		@return 0 or -1 if an error occurred
-		~#
+		
 		method : public : GetSensorData(type : SensorType, data : FloatHolder, num_values : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -2526,6 +2524,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+		~#
 
 		#~
 		Start a rumble effect on a game controller
