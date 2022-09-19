@@ -2866,12 +2866,6 @@ extern "C" {
     Uint8* byte_array = (Uint8*)(array + 3);
     memcpy(byte_array, states, numkeys);
 
-    /*
-    for(int i = 0; i < numkeys; ++i) {
-      byte_array[i] = state[i];
-    }
-    */
-
     // create 'ByteArrayHolder' holder
     size_t* byte_obj = context.alloc_obj(L"System.ByteArrayHolder", context.op_stack, *context.stack_pos, false);
     byte_obj[0] = (size_t)array;
@@ -2948,6 +2942,7 @@ extern "C" {
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -2966,6 +2961,7 @@ extern "C" {
     const int joystick_index = (int)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerTypeForIndex(joystick_index));
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -2986,6 +2982,7 @@ extern "C" {
     APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerFromInstanceID(joyid));
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -2993,6 +2990,7 @@ extern "C" {
     const int player_index = (int)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerFromPlayerIndex(player_index));
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3005,6 +3003,7 @@ extern "C" {
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3015,6 +3014,7 @@ extern "C" {
     const wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
+  
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3023,6 +3023,7 @@ extern "C" {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetType(gamecontroller));
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3031,6 +3032,8 @@ extern "C" {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetPlayerIndex(gamecontroller));
   }
+
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3039,6 +3042,7 @@ extern "C" {
     const int player_index = (int)APITools_GetIntValue(context, 1);
     SDL_GameControllerSetPlayerIndex(gamecontroller, player_index);
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3064,6 +3068,7 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GameControllerGetProductVersion(gamecontroller));
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3071,6 +3076,7 @@ extern "C" {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetFirmwareVersion(gamecontroller));
   }
+  
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3082,6 +3088,7 @@ extern "C" {
     const wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3147,6 +3154,7 @@ extern "C" {
     sdl_gamecontroller_button_bind_read(&return_value, button_bind_obj);
   }
 
+  /*
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
@@ -3155,6 +3163,7 @@ extern "C" {
 		const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
 		APITools_SetIntValue(context, 0, SDL_GameControllerHasAxis(gamecontroller, axis));
 	}
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3193,6 +3202,7 @@ extern "C" {
     sdl_gamecontroller_button_bind_read(&return_value, button_bind_obj);
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3201,6 +3211,7 @@ extern "C" {
     const SDL_GameControllerButton button = (SDL_GameControllerButton)APITools_GetIntValue(context, 2);
     APITools_SetIntValue(context, 0, SDL_GameControllerHasButton(gamecontroller, button));
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3211,6 +3222,7 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GameControllerGetButton(gamecontroller, button));
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3218,6 +3230,7 @@ extern "C" {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetNumTouchpads(gamecontroller));
   }
+  
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3253,7 +3266,7 @@ extern "C" {
     const SDL_SensorType type = (SDL_SensorType)APITools_GetIntValue(context, 2);
     APITools_SetIntValue(context, 0, SDL_GameControllerHasSensor(gamecontroller, type));
   }
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3263,7 +3276,7 @@ extern "C" {
     const SDL_bool enabled = (SDL_bool)APITools_GetIntValue(context, 3);
     APITools_SetIntValue(context, 0, SDL_GameControllerSetSensorEnabled(gamecontroller, type, enabled));
   }
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3281,7 +3294,7 @@ extern "C" {
     const SDL_SensorType type = (SDL_SensorType)APITools_GetIntValue(context, 2);
     APITools_SetFloatValue(context, 0, SDL_GameControllerGetSensorDataRate(gamecontroller, type));
   }
-
+*/
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3307,6 +3320,7 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GameControllerRumble(gamecontroller, low_frequency_rumble, high_frequency_rumble, duration_ms));
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3317,7 +3331,7 @@ extern "C" {
     const int duration_ms = (int)APITools_GetIntValue(context, 4);
     APITools_SetIntValue(context, 0, SDL_GameControllerRumbleTriggers(gamecontroller, left_rumble, right_rumble, duration_ms));
   }
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3325,7 +3339,7 @@ extern "C" {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerHasLED(gamecontroller));
   }
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3341,6 +3355,7 @@ extern "C" {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerHasRumbleTriggers(gamecontroller));
   }
+  
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3352,7 +3367,7 @@ extern "C" {
     const int blue = (int)APITools_GetIntValue(context, 4);
     APITools_SetIntValue(context, 0, SDL_GameControllerSetLED(gamecontroller, red, green, blue));
   }
-
+*/
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3361,6 +3376,7 @@ extern "C" {
     SDL_GameControllerClose(gamecontroller);
   }
 
+  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3370,6 +3386,7 @@ extern "C" {
     const string return_value = SDL_GameControllerGetAppleSFSymbolsNameForButton(gamecontroller, button);
     APITools_SetStringValue(context, 0, BytesToUnicode(return_value));
   }
+  
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3380,6 +3397,7 @@ extern "C" {
     const string return_value = SDL_GameControllerGetAppleSFSymbolsNameForAxis(gamecontroller, axis);
     APITools_SetStringValue(context, 0, BytesToUnicode(return_value));
   }
+  */
 
   //
   // Joystick
@@ -3397,6 +3415,7 @@ extern "C" {
 #endif
   void sdl_joystick_current_power_level(VMContext& context) {
     SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_JoystickCurrentPowerLevel(joystick));
     APITools_SetIntValue(context, 0, (size_t)SDL_JoystickCurrentPowerLevel(joystick));
   }
 
