@@ -3402,6 +3402,7 @@ extern "C" {
 
   //
   // Joystick
+  // 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3409,6 +3410,90 @@ extern "C" {
     const int device_index = (int)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, (size_t)SDL_JoystickOpen(device_index));
 
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_type(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetType(joystick));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_device_type(VMContext& context) {
+    const int device_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetDeviceType(device_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_device_product_version(VMContext& context) {
+    const int device_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetDeviceProductVersion(device_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_device_product(VMContext& context) {
+    const int device_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetDeviceProduct(device_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_product_version(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetProductVersion(joystick));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_joystick_sdl_joystick_get_device_instanceid(VMContext& context) {
+    const int device_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetDeviceInstanceID(device_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_device_vendor(VMContext& context) {
+    const int device_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetDeviceVendor(device_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_product(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetProduct(joystick));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_vendor(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_JoystickGetVendor(joystick));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_sdl_joystick_get_axis_initial_state(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    const int axis = (int)APITools_GetIntValue(context, 2);
+
+    Sint16 state;
+    APITools_SetIntValue(context, 0, SDL_JoystickGetAxisInitialState(joystick, axis, &state));
+    APITools_SetIntValue(context, 3, state);
   }
 
 #ifdef _WIN32
