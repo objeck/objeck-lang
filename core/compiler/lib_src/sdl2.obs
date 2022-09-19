@@ -1949,7 +1949,7 @@ bundle Game.SDL2 {
 		This function can be called before any controllers are opened
  		@param joystick_index the device_index of a device
 		@return the implementation-dependent path for the game controller, or Nil
-		~#
+		
 		function : PathForIndex(joystick_index : Int) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -1959,13 +1959,11 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-
-
-		#~
+		
 		Get the type of a game controller. This can be called before any controllers are opened.
  		@param joystick_index the device_index of a device
  		@return the controller type
-		~#
+		
 		function : TypeForIndex(joystick_index : Int) ~ GameControllerType {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -1976,7 +1974,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get()->As(GameControllerType);
 		}
- 		
+ 		~#
 
 		#~
 		Get the SDL_GameController associated with an instance id
@@ -1998,7 +1996,7 @@ bundle Game.SDL2 {
 		Get the SDL_GameController associated with an instance id
  		@param player_index the player index, which is not the device index or the instance id!
  		@return an SDL_GameController on success or NULL on failure
- 		~#
+ 		
 		method : public : FromPlayerIndex(player_index : Int) ~ GameController {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2009,6 +2007,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return GameController->New(value->Get());
 		}
+		~#
 
 		#~
 		Get the SDL_GameController associated with an instance id
@@ -2029,7 +2028,7 @@ bundle Game.SDL2 {
 		Get the SDL_GameController associated with an instance id
 		@param joyid the instance id to get the SDL_GameController for
 		@return an SDL_GameController on success or NULL on failure
-		~#
+		
 		method : public : Path() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -2039,11 +2038,10 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
-
-		#~
+		
 		Get the type of this currently opened controller
 		@return the controller type.
-		~#
+
 		method : public : GetType() ~ GameControllerType {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2054,7 +2052,8 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get()->As(GameControllerType);
 		}
-
+		~#
+	
 		#~
 		Get the player index of an opened game controller
 		@return the player index for controller, or -1 if it's not available
@@ -2074,7 +2073,7 @@ bundle Game.SDL2 {
 		Get the player index of an opened game controller
  		@param player_index Player index to assign to this controller, or -1 to clear the player index and turn off player LEDs.
 		@return the player index for controller, or -1 if it's not available
-		~#
+		
 		method : public : SetPlayerIndex(player_index : Int) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@gamecontroller);
@@ -2082,6 +2081,7 @@ bundle Game.SDL2 {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_player_index", array_args);
 		}
+		~#
 
 		#~
 		Get the USB vendor ID of an opened controller, if available
@@ -2132,7 +2132,7 @@ bundle Game.SDL2 {
 		#~
 		Get the firmware version of an opened controller, if available
 		@return the controller firmware version, or zero if unavailable
-		~#
+		
 		method : public : GetFirmwareVersion() ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2144,10 +2144,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		#~
+
 		Get the serial number of an opened controller, if available
 		@return the serial number, or NULL if unavailable
-		~#
+
 		method : public : GetSerial() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -2157,6 +2157,7 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
+		~#
 
 		#~
 		Check if a controller has been opened and is currently connected.
@@ -2264,7 +2265,7 @@ bundle Game.SDL2 {
 		Query whether a game controller has a given axis
 		@param axis an axis enum value (an SDL_GameControllerAxis value)
  		@return true if the controller has this axis, false otherwise
- 		~#
+ 		
 		method : public : HasAxis(axis : GameControllerAxis) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2276,6 +2277,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;
 		}
+		~#
 
 		#~
 		Get the current state of an axis control on a game controller
@@ -2345,7 +2347,7 @@ bundle Game.SDL2 {
 		Query whether a game controller has a given button
 		@param button a button enum value (an SDL_GameControllerButton value)
  		@return true if the controller has this button, false otherwise
- 		~#
+ 		
 		method : public : HasButton(button : GameControllerButton) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2357,6 +2359,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;
 		}
+		~#
 
 		#~
 		Get the current state of a button on a game controller
@@ -2392,7 +2395,7 @@ bundle Game.SDL2 {
 		#~
 		Get the number of supported simultaneous fingers on a touchpad on a game controller.
 		@param touchpad touchpad
-		~#
+		
 		method : public : GetNumTouchpadFingers(touchpad : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2405,7 +2408,7 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		#~
+		
 		Get the current state of a finger on a touchpad on a game controller.
 		@param touchpad touchpad
 		@param finger finger 
@@ -2414,7 +2417,7 @@ bundle Game.SDL2 {
 		@param y y
 		@param pressure pressure
 		@return 0 on success or a negative error code on failure
-		~#
+		
 		method : public : GetTouchpadFinger(touchpad : Int, finger : Int, state : IntHolder, x : FloatHolder, y : FloatHolder, pressure : FloatHolder) ~ Int {
 			array_args := Base->New[8];
 			array_args[0] := IntHolder->New();
@@ -2432,11 +2435,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		#~
+		
 		Return whether a game controller has a particular sensor.
 		@param type The type of sensor to query
  		@return true if the sensor exists, false otherwise
- 		~#
+ 		
 		method : public : HasSensor(type : SensorType) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2449,12 +2452,12 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		#~
+		
 		Set whether data reporting for a game controller sensor is enabled
 		@param type The type of sensor to enable/disable
  		@param enabled Whether data reporting should be enabled
  		@return 0 or -1 if an error occurred
-		~#
+		
 		method : public : SetSensorEnabled(type : SensorType, enabled : Bool) ~ Int {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
@@ -2468,11 +2471,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
-		#~
+		
 		Query whether sensor data reporting is enabled for a game controller.
 		@param type The type of sensor to query
  		@return true if the sensor is enabled, false otherwise
- 		~#
+ 		
 		method : public : IsSensorEnabled(type : SensorType) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2485,11 +2488,11 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		#~
+		
 		Get the data rate (number of events per second) of a game controller sensor
 		@param type The type of sensor to query
  		@return the data rate, or 0.0f if the data rate is not available
-		~#
+		
 		method : public : GetSensorDataRate(type : SensorType) ~ Float {
 			array_args := Base->New[3];
 			array_args[0] := FloatHolder->New();
@@ -2501,6 +2504,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(FloatHolder);
 			return value->Get();
 		}
+		~#
 
 		#~
 		Get the current state of a game controller sensor
@@ -2550,7 +2554,7 @@ bundle Game.SDL2 {
 		@param right_rumble The intensity of the right trigger rumble motor, from 0 to 0xFFFF
 		@param duration_ms The duration of the rumble effect, in milliseconds
 		@return 0, or -1 if trigger rumble isn't supported on this controller
-		~#
+		
 		method : public : RumbleTriggers(left_rumble : Int, right_rumble : Int, duration_ms : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -2564,11 +2568,12 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+		
 
-		#~
+		
 		Query whether a game controller has an LED
 		@return true, or false if this controller does not have a modifiable LED
-		~#
+		
 		method : public : HasLED() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2580,10 +2585,9 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		#~
 		Query whether a game controller has rumble support
 		@return true, or false if this controller does not have rumble support
-		~#
+		
 		method : public : HasRumble() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2595,10 +2599,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		#~
+		
 		Query whether a game controller has rumble support on triggers
 		@return true, or false if this controller does not have trigger rumble support
-		~#
+		
 		method : public : HasRumbleTriggers() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2610,13 +2614,13 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		#~
+		
 		Update a game controller's LED color
 		@param red The intensity of the red LED
 		@param green The intensity of the green LED
 		@param blue The intensity of the blue LED
 		@return 0, or -1 if this controller does not have a modifiable LED
-		~#
+		
 		method : public : SetLED(red : Int, green : Int, blue : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -2630,6 +2634,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+		~#
 
 		#~
 		Close a game controller previously opened
@@ -2644,7 +2649,7 @@ bundle Game.SDL2 {
 		Return the sfSymbolsName for a given button on a game controller on Apple platforms
 		@param button a button on the game controller
 		@return the sfSymbolsName or NULL if the name can't be found
-		~#
+		
 		method : public : GetAppleSFSymbolsNameForButton(button : GameControllerButton) ~ String {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
@@ -2656,11 +2661,11 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 
-		#~
+		
 		Return the sfSymbolsName for a given axis on a game controller on Apple platforms
 		@param axis an axis on the game controller
 		@return the sfSymbolsName or NULL if the name can't be found
-		~#
+		
 		method : public : GetAppleSFSymbolsNameForAxis(axis : GameControllerAxis) ~ String {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
@@ -2671,6 +2676,7 @@ bundle Game.SDL2 {
 
 			return array_args[0];
 		}
+		~#
 	}
 
 	#~
