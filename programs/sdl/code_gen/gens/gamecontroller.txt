@@ -810,8 +810,6 @@ method : public : GetButton(button : GameControllerButton) ~ Int {
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
-===== TODO ========
-
 ---
 method : public : GetNumTouchpads() ~ Int {
 	array_args := Base->New[2];
@@ -960,6 +958,7 @@ method : public : IsSensorEnabled(type : SensorType) ~ Bool {
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
+
 ---
 method : public : GetSensorDataRate(type : SensorType) ~ float {
 	array_args := Base->New[3];
@@ -1008,6 +1007,7 @@ method : public : GetSensorData(type : SensorType, data : float, num_values : In
 		const int return_value = SDL_GameControllerGetSensorData(gamecontroller, type, data, num_values);
 		APITools_SetIntValue(context, 0, return_value);
 	}
+
 
 ---
 method : public : Rumble(low_frequency_rumble : Int, high_frequency_rumble : Int, duration_ms : Int) ~ Int {
@@ -1125,6 +1125,8 @@ method : public : HasRumbleTriggers() ~ Bool {
 		const int return_value = SDL_GameControllerHasRumbleTriggers(gamecontroller);
 		APITools_SetIntValue(context, 0, return_value);
 	}
+
+===== TODO ========
 
 ---
 method : public : SetLED(red : Int, green : Int, blue : Int) ~ Int {
