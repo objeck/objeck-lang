@@ -2,8 +2,8 @@
 
 rm -f *.tar *.gz *.tgz
 rm -rf native 
-
 mkdir native 
+
 pushd ../openssl
 ./build_linux.sh openssl 
 mv openssl.so libobjk_openssl.so
@@ -17,6 +17,10 @@ cd ../diags
 mv diags.so libobjk_diags.so
 cp *.so ../linux_arm64/native
 popd
+
 tar -cvf linux_arm64_native.tar native
 gzip linux_arm64_native.tar
 mv linux_arm64_native.tar.gz linux_arm64_native.tgz
+
+git commit -m "updated rpi4 libs" .
+git push
