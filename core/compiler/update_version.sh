@@ -14,8 +14,8 @@ make -f make/Makefile.64
 ./obc -src lib_src/encrypt.obs -tar lib -opt s3 -dest ../lib/encrypt.obl
 ./obc -src lib_src/odbc.obs -lib collect -tar lib -opt s3 -dest ../lib/odbc.obl
 ./obc -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex.obl
-./obc -src lib_src/fcgi.obs -lib gen_collect,net,misc -tar lib -opt s3 -dest ../lib/fcgi.obl
-./obc -src lib_src/fcgi_web.obs -lib fcgi,gen_collect,net,misc -tar lib -opt s3 -dest ../lib/fcgi_web.obl
+# ./obc -src lib_src/fcgi.obs -lib gen_collect,net,misc -tar lib -opt s3 -dest ../lib/fcgi.obl
+#./obc -src lib_src/fcgi_web.obs -lib fcgi,gen_collect,net,misc -tar lib -opt s3 -dest ../lib/fcgi_web.obl
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 ./obc -src lib_src/query.obs -tar lib -lib csv,xml,misc,regex,gen_collect -opt s3 -dest ../lib/query.obl
 ./obc -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
