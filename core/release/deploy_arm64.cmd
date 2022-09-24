@@ -26,26 +26,13 @@ copy ..\vm\misc\*.pem deploy_arm64\lib
 
 mkdir deploy_arm64\lib\native
 
-REM openssl support
-cd ..\lib\openssl
-devenv arm_openssl64\arm_openssl64.sln /rebuild "Release|VisualGDB"
-copy arm_openssl64\VisualGDB\Release\arm_openssl64.so ..\..\release\deploy_arm64\lib\native\libobjk_openssl.so
-
-REM odbc support
-cd ..\odbc
-devenv arm64_odbc\arm64_odbc.sln /rebuild "Release|VisualGDB"
-copy arm64_odbc\VisualGDB\Release\arm64_odbc.so ..\..\release\deploy_arm64\lib\native\libobjk_odbc.so
-
-REM sdl support
-cd ..\sdl
-devenv arm64_sdl\arm64_sdl.sln /rebuild "Release|VisualGDB"
-copy arm64_sdl\VisualGDB\Release\arm64_sdl.so ..\..\release\deploy_arm64\lib\native\libobjk_sdl.so
-copy lib\fonts\*.ttf ..\..\Release\deploy_arm64\lib\sdl\fonts
-
-REM diags support
-cd ..\diags
-devenv arm64_diags\arm64_diags.sln /rebuild "Release|VisualGDB"
-copy arm64_diags\VisualGDB\Release\arm64_diags.so ..\..\release\deploy_arm64\lib\native\libobjk_diags.so
+REM native libraries
+cd ..\lib\linux_arm64
+%ZIP_BIN%\7z.exe x linux_arm64_native.tgz
+%ZIP_BIN%\7z.exe x linux_arm64_native.tar
+copy native\*.so ..\..\release\deploy_arm64\lib\native
+rmdir /s /q native
+del /q *.tar
 
 cd ..\..\release
 
