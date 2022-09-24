@@ -121,17 +121,17 @@ static const string GetWorkingDirectory() {
   GetModuleFileName(nullptr, exe_full_path, MAX_PATH);
   const string dir_full_path = UnicodeToBytes(exe_full_path);
   size_t dir_full_path_index = dir_full_path.find_last_of('\\');
-#else
-  char dir_full_path[MAX_PATH];
-  getcwd(&dir_full_path, MAX_PATH);
-  size_t dir_full_path_index = dir_full_path.find_last_of('\\');
-#endif
 
   if(dir_full_path_index != string::npos) {
     return dir_full_path.substr(0, dir_full_path_index);
   }
 
   return "";
+#else
+  char exe_full_path[MAX_PATH];
+  getcwd(exe_full_path, MAX_PATH);
+  return string(exe_full_path);
+#endif
 }
 
 static const string GetEnviromentPath(const string& working_dir) {
