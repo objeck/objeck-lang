@@ -38,6 +38,8 @@
 #ifdef _WIN32
 #include "process.h"
 #include "windows.h"
+#else
+#include <unistd.h>
 #endif
 
 #ifndef MAX_PATH
