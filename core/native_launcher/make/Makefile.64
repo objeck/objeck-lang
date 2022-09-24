@@ -1,11 +1,9 @@
 CC=g++
 # ARGS=-g -D_DEBUG -Wall -Wno-unused-function
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++11
+ARGS=-O3 -Wall -Wno-unused-function -std=c++11
 # ARGS=-g -Wall -Wno-unused-function -D_X64 -std=c++11
-SRC=../shared/logger.o types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
-OBJ_LIBS=logger.a
-LOGGER_PATH=../shared
-EXE=obc
+SRC=native_launcher.o
+EXE=obn
 
 $(EXE): $(OBJ_LIBS) $(SRC) 
 	$(CC) -m64 -o $(EXE) $(SRC) -lz
@@ -13,9 +11,6 @@ $(EXE): $(OBJ_LIBS) $(SRC)
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
-logger.a:
-	cd $(LOGGER_PATH); make -f Makefile.64
 
 clean:
-	cd $(LOGGER_PATH); make clean -f Makefile.64
 	rm -f $(EXE) *.o *~

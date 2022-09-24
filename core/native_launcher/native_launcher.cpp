@@ -33,15 +33,13 @@
 
 int main(int argc, char* argv[])
 {
-  const char* spawn_path = ".\\runtime\\bin\\obr.exe";
-  const char* spawn_args[] = { spawn_path, ".\\app\\app.obe" , nullptr };
-
   const string working_dir = GetWorkingDirectory();
   if(working_dir.empty()) {
     cerr << ">>> Unable to find the working directory <<<" << endl;
     return 1;
   }
 
+cout << "--- |" << working_dir << "| ---" << endl;
   const string path_env = GetEnviromentPath(working_dir);
   const string lib_env = GetLibraryPath(working_dir);
   if(path_env.empty() || lib_env.empty()) {
