@@ -49,6 +49,8 @@ int main(int argc, char* argv[])
   }
   
   const string path_env = GetEnviromentPath(working_dir);
+cout << path_env << endl;
+
   const string lib_env = GetLibraryPath(working_dir);
   if(path_env.empty() || lib_env.empty()) {
     cout << ">>> Unable to determine the current working directory <<<" << endl;
