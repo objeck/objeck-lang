@@ -111,7 +111,7 @@ static string UnicodeToBytes(const wstring& in) {
   return "";
 }
 
-static const string GetExecPath(const string& working_dir) {
+static const string GetExecPath(const string working_dir) {
 #ifdef _WIN32
   return working_dir + "\\runtime\\bin\\obr.exe";
 #else
@@ -124,7 +124,7 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
     return nullptr;
   }
 
-  char** spawn_args = (char**)calloc(argc + 2, sizeof(char));
+  char** spawn_args = (char**)malloc(argc * MAX_PATH);
   if(!spawn_args) {
     return nullptr;
   }
@@ -189,7 +189,6 @@ static const string GetEnviromentPath(const string& working_dir) {
     return "PATH=" + cur_env + ';' + working_dir + "\\runtime\\bin" + ';' + working_dir + "\\runtime\\lib\\native";
   }
 #else
-cout << "--- 0 ---" << endl;
   cur_env_ptr = getenv("PATH");
   if(cur_env_ptr) {
     return "PATH=" + string(cur_env_ptr) + ';' + working_dir + "/runtime/bin" + ';' + working_dir + "/runtime/lib/native";
@@ -210,6 +209,10 @@ static const string GetLibraryPath(const string& working_dir) {
 #endif
 
 const int Spawn(const char* spawn_path, char** spawn_args, const char** spawn_env) {
-  // _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
-  return 0;
+  intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+
+  free(spawn_args);
+  spawn_args = nullptr;
+
+  return result == 0 ? 0 : 1;
 }
