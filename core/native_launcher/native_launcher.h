@@ -157,7 +157,7 @@ static const string GetWorkingDirectory() {
 #ifdef _WIN32
   TCHAR exe_full_path[MAX_PATH] = {0};
   GetModuleFileName(nullptr, exe_full_path, MAX_PATH);
-  const string dir_full_path = UnicodeToBytes(exe_full_path);
+  const string dir_full_path = exe_full_path;
   size_t dir_full_path_index = dir_full_path.find_last_of('\\');
 
   if(dir_full_path_index != string::npos) {
@@ -178,24 +178,31 @@ static const string GetWorkingDirectory() {
  * Get the environment PATH value
  */
 static const string GetEnviromentPath(const string& working_dir) {
-  char* cur_env_ptr = nullptr;
+  char* cur_path_ptr = nullptr;
 
 #ifdef _WIN32
   size_t cur_env_len;
-  _dupenv_s(&cur_env_ptr, &cur_env_len, "PATH");
+  _dupenv_s(&cur_path_ptr, &cur_env_len, "PATH");
   
-  if(cur_env_ptr) {
-    string cur_env(cur_env_ptr);
+  if(cur_path_ptr) {
+    string cur_path(cur_path_ptr);
     
-    free(cur_env_ptr);
-    cur_env_ptr = nullptr;
+    free(cur_path_ptr);
+    cur_path_ptr = nullptr;
 
-    return "PATH=" + cur_env + ';' + working_dir + "\\runtime\\bin" + ';' + working_dir + "\\runtime\\lib\\native";
+    const string objk_bin_path = working_dir + "\\runtime\\bin";
+    const string objk_native_path = working_dir + "\\runtime\\lib\\native";
+    const string objk_sdl_path = working_dir + "\\runtime\\lib\\sdl";
+
+    return "PATH=" + cur_path + ';' + objk_sdl_path + ';' + objk_native_path + ';' + objk_bin_path;
   }
 #else
-  cur_env_ptr = getenv("PATH");
-  if(cur_env_ptr) {
-    return "PATH=" + string(cur_env_ptr) + ':' + working_dir + "/runtime/bin" + ':' + working_dir + "/runtime/lib/native";
+  cur_path_ptr = getenv("PATH");
+  if(cur_path_ptr) {
+    const string objk_bin_path = working_dir + "/runtime/bin";
+    const string objk_native_path = working_dir + "/runtime/lib/native";
+
+    return "PATH=" + string(cur_path_ptr) + ':' + objk_bin_path + ':' + objk_native_path;
   }
 #endif
 
