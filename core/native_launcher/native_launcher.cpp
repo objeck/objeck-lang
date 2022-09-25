@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
 #endif
   char* spawn_env[] = { path_env_ptr, lib_env_ptr, nullptr };
 
-  // cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
   const int status = Spawn(spawn_path.c_str(), spawn_args, spawn_env);
 
   free(path_env_ptr);
