@@ -173,6 +173,9 @@ static const string GetWorkingDirectory() {
 #endif
 }
 
+/**
+ * Get the environment PATH value
+ */
 static const string GetEnviromentPath(const string& working_dir) {
   char* cur_env_ptr = nullptr;
 
@@ -198,6 +201,9 @@ static const string GetEnviromentPath(const string& working_dir) {
   return "";
 }
 
+/**
+ * Get the environment OBJECK_LIB_PATH value
+ */
 static const string GetLibraryPath(const string& working_dir) {
 #ifdef _WIN32
   return "OBJECK_LIB_PATH=" + working_dir + "\\runtime\\lib";
@@ -208,8 +214,15 @@ static const string GetLibraryPath(const string& working_dir) {
 
 #endif
 
+/**
+ * Execute
+ */
 const int Spawn(const char* spawn_path, char** spawn_args, const char** spawn_env) {
+#ifdef _WIN32
   intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+#else
+  int result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+#endif
 
   free(spawn_args);
   spawn_args = nullptr;
