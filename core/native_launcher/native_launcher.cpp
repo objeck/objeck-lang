@@ -40,15 +40,15 @@ int main(int argc, char* argv[])
   }
 
   const string spawn_path = GetExecPath(working_dir);
-//  const char* spawn_args[] = { spawn_path.c_str(), ".\\app\\app.obe" , nullptr };
   char** spawn_args = GetArgsPath(spawn_path, argc, argv);
   if(!spawn_args) {
     cout << ">>> Unable to initialize environment <<<" << endl;
     return 1;
   }
-
   const string path_env = GetEnviromentPath(working_dir);
+cout << "--- 2 ---" << endl;
   const string lib_env = GetLibraryPath(working_dir);
+cout << "--- 3 ---" << endl;
   if(path_env.empty() || lib_env.empty()) {
     cout << ">>> Unable to determine the current working directory <<<" << endl;
     return 1;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 
   const char* spawn_env[] = { path_env.c_str(), lib_env.c_str(), nullptr };
 
-  // cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
   Spawn(spawn_path.c_str(), spawn_args, spawn_env);
   
   // FreeSpawn(spawn_args, spawn_env);
