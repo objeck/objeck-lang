@@ -18,6 +18,7 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOTre
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
  * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
@@ -44,14 +45,14 @@ int main(int argc, char* argv[])
   
   
   if(!spawn_args) {
-    cout << ">>> Unable to initialize environment <<<" << endl;
+    cerr << ">>> Unable to initialize environment <<<" << endl;
     return 1;
   }
   
   const string path_env = GetEnviromentPath(working_dir);
   const string lib_env = GetLibraryPath(working_dir);
   if(path_env.empty() || lib_env.empty()) {
-    cout << ">>> Unable to determine the current working directory <<<" << endl;
+    cerr << ">>> Unable to determine the current working directory <<<" << endl;
     return 1;
   }
 
