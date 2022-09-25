@@ -306,7 +306,7 @@ void StackProgram::InitializeProprieties()
   // read configuration properties
   const int line_max = 80;
   char buffer[line_max + 1];
-  fstream config("config.prop", fstream::in);
+  ifstream config("config.prop");
   if(config.good()) {
     config.getline(buffer, line_max);
     while(strlen(buffer) > 0) {
@@ -315,8 +315,8 @@ void StackProgram::InitializeProprieties()
       if(line.size() > 0 && line[0] != L'#') {
         size_t offset = line.find_first_of(L'=');
         // set name/value pairs
-        wstring name = line.substr(0, offset);
-        wstring value = line.substr(offset + 1);
+        const wstring name = line.substr(0, offset);
+        const wstring value = line.substr(offset + 1);
         if(name.size() > 0 && value.size() > 0) {
           properties_map.insert(pair<wstring, wstring>(name, value));
         }

@@ -4051,6 +4051,16 @@ bundle System {
 		function : GetProperty(key : String) ~ String {
 			GET_SYS_PROP;
 		}
+
+		#~
+		Checks if a property exists
+		@param key property key
+		@return true if it exists, false otherwise
+		~#
+		function : HasProperty(key : String) ~ Bool {
+			value := GetProperty(key);
+			return value <> Nil & <>value->IsEmpty();
+		}
 		
 		#~
 		Sets a runtime property 
