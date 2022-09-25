@@ -50,68 +50,6 @@
 
 using namespace std;
 
-/**
- * Converts a native string to UTF-8 bytes
- */
-static bool UnicodeToBytes(const wstring& in, string& out) {
-#ifdef _WIN32
-  // allocate space
-  const int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, nullptr, 0, nullptr, nullptr);
-  if(size == 0) {
-    return false;
-  }
-  char* buffer = new char[size];
-
-  // convert string
-  const int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, nullptr, nullptr);
-  if(check == 0) {
-    delete[] buffer;
-    buffer = nullptr;
-    return false;
-  }
-
-  // append output
-  out.append(buffer, size - 1);
-
-  // clean up
-  delete[] buffer;
-  buffer = nullptr;
-#else
-  // convert string
-  size_t size = wcstombs(nullptr, in.c_str(), in.size());
-  if(size == (size_t)-1) {
-    return false;
-  }
-  char* buffer = new char[size + 1];
-
-  wcstombs(buffer, in.c_str(), size);
-  if(size == (size_t)-1) {
-    delete[] buffer;
-    buffer = nullptr;
-    return false;
-  }
-  buffer[size] = '\0';
-
-  // create string      
-  out.append(buffer, size);
-
-  // clean up
-  delete[] buffer;
-  buffer = nullptr;
-#endif
-
-  return true;
-}
-
-static string UnicodeToBytes(const wstring& in) {
-  string out;
-  if(UnicodeToBytes(in, out)) {
-    return out;
-  }
-
-  return "";
-}
-
 static const string GetExecPath(const string working_dir) {
 #ifdef _WIN32
   return working_dir + "\\runtime\\bin\\obr.exe";
