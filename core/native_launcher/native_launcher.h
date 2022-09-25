@@ -40,6 +40,7 @@
 #include "windows.h"
 #else
 #include <unistd.h>
+#include <string.h>
 #endif
 
 #ifndef MAX_PATH
@@ -127,11 +128,12 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
   if(!spawn_args) {
     return nullptr;
   }
-  spawn_args[0] = _strdup(spawn_path.c_str());
 #ifdef _WIN32
+  spawn_args[0] = _strdup(spawn_path.c_str());
   spawn_args[1] = _strdup(".\\app\\app.obe");
 #else
-  spawn_args[i + 1] = strdup("./app/app.obe");
+  spawn_args[0] = strdup(spawn_path.c_str());
+  spawn_args[1] = strdup("./app/app.obe");
 #endif
 
   for(int i = 1; i < argc; ++i) {
@@ -187,14 +189,10 @@ static const string GetEnviromentPath(const string& working_dir) {
     return "PATH=" + cur_env + ';' + working_dir + "\\runtime\\bin" + ';' + working_dir + "\\runtime\\lib\\native";
   }
 #else
+cout << "--- 0 ---" << endl;
   cur_env_ptr = getenv("PATH");
   if(cur_env_ptr) {
-    string cur_env(cur_env_ptr);
-
-    free(cur_env_ptr);
-    cur_env_ptr = nullptr;
-
-    return "PATH=" + string(cur_env) + ';' + working_dir + "/runtime/bin" + ';' + working_dir + "/runtime/lib/native";
+    return "PATH=" + string(cur_env_ptr) + ';' + working_dir + "/runtime/bin" + ';' + working_dir + "/runtime/lib/native";
   }
 #endif
 
@@ -212,6 +210,6 @@ static const string GetLibraryPath(const string& working_dir) {
 #endif
 
 const int Spawn(const char* spawn_path, char** spawn_args, const char** spawn_env) {
-  _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+  // _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
   return 0;
 }
