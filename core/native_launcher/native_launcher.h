@@ -202,7 +202,7 @@ static const string GetEnviromentPath(const string& working_dir) {
     const string objk_bin_path = working_dir + "/runtime/bin";
     const string objk_native_path = working_dir + "/runtime/lib/native";
 
-    return "PATH=" + string(cur_path_ptr) + ':' + objk_bin_path + ':' + objk_native_path;
+    return "PATH=" + string(cur_path_ptr) + ':' + objk_native_path + ':' + objk_bin_path;
   }
 #endif
 
