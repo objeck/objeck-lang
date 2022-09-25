@@ -116,7 +116,7 @@ static const string GetExecPath(const string working_dir) {
 #ifdef _WIN32
   return working_dir + "\\runtime\\bin\\obr.exe";
 #else
-  return working_dir + "/runtime/bin/obr.exe";
+  return working_dir + "/runtime/bin/obr";
 #endif
 }
 
@@ -195,7 +195,7 @@ static const string GetEnviromentPath(const string& working_dir) {
 #else
   cur_env_ptr = getenv("PATH");
   if(cur_env_ptr) {
-    return "PATH=" + string(cur_env_ptr) + ';' + working_dir + "/runtime/bin" + ';' + working_dir + "/runtime/lib/native";
+    return "PATH=" + string(cur_env_ptr) + ':' + working_dir + "/runtime/bin" + ':' + working_dir + "/runtime/lib/native";
   }
 #endif
 
