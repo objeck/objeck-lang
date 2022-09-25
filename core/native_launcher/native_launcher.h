@@ -32,12 +32,13 @@
 #ifndef __NATIVE_LAUNCHER__
 #define __NATIVE_LAUNCHER__
 
+
 #include <string>
 #include <iostream>
 
 #ifdef _WIN32
-#include "process.h"
 #include "windows.h"
+#include "process.h"
 #else
 #include <unistd.h>
 #include <string.h>
@@ -153,10 +154,8 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
  * Get the current working directory
  */
 static const string GetWorkingDirectory() {
-  string working_dir;
-
 #ifdef _WIN32
-  TCHAR exe_full_path[MAX_PATH] = { 0 };
+  TCHAR exe_full_path[MAX_PATH] = {0};
   GetModuleFileName(nullptr, exe_full_path, MAX_PATH);
   const string dir_full_path = UnicodeToBytes(exe_full_path);
   size_t dir_full_path_index = dir_full_path.find_last_of('\\');
@@ -167,8 +166,10 @@ static const string GetWorkingDirectory() {
 
   return "";
 #else
-  char exe_full_path[MAX_PATH];
-  getcwd(exe_full_path, MAX_PATH);
+  char exe_full_path[MAX_PATH] = {0};
+  if(!getcwd(exe_full_path, MAX_PATH)) {
+    return "";
+  }	
   return string(exe_full_path);
 #endif
 }
@@ -217,11 +218,11 @@ static const string GetLibraryPath(const string& working_dir) {
 /**
  * Execute
  */
-const int Spawn(const char* spawn_path, char** spawn_args, const char** spawn_env) {
+const int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env) {
 #ifdef _WIN32
   intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
 #else
-  int result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+  int result = execvpe(spawn_path, spawn_args, spawn_env);
 #endif
 
   free(spawn_args);
