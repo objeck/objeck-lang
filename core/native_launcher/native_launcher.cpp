@@ -13,7 +13,7 @@
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
  * - Neither the name of the Objeck team nor the names of its
- * contributors may be used to endorse or promote products derived
+ * contributors may be used to endorse or promote prod*ucts derived
  * from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -38,9 +38,7 @@ int main(int argc, char* argv[])
     cerr << ">>> Unable to find the working directory <<<" << endl;
     return 1;
   }
-
   const string spawn_path = GetExecPath(working_dir);
-
   
   char** spawn_args = GetArgsPath(spawn_path, argc, argv);
   
@@ -57,7 +55,7 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  const char* spawn_env[] = { path_env.c_str(), lib_env.c_str(), nullptr };
+  char* spawn_env[] = { strdup(path_env.c_str()), strdup(lib_env.c_str()), nullptr };
 
   cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
 
