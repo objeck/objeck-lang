@@ -110,6 +110,43 @@ static string UnicodeToBytes(const wstring& in) {
   return "";
 }
 
+static const string GetExecPath(const string& working_dir) {
+#ifdef _WIN32
+  return working_dir + "\\runtime\\bin\\obr.exe";
+#else
+  return working_dir + "/runtime/bin/obr.exe";
+#endif
+}
+
+static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
+  if(argc < 1) {
+    return nullptr;
+  }
+
+  char** spawn_args = (char**)calloc(argc + 2, sizeof(char));
+  if(!spawn_args) {
+    return nullptr;
+  }
+  spawn_args[0] = _strdup(spawn_path.c_str());
+#ifdef _WIN32
+  spawn_args[1] = _strdup(".\\app\\app.obe");
+#else
+  spawn_args[i + 1] = strdup("./app/app.obe");
+#endif
+
+  for(int i = 1; i < argc; ++i) {
+#ifdef _WIN32
+    spawn_args[i + 1] = _strdup(argv[i]);
+#else
+    spawn_args[i + 1] = strdup(argv[i]);
+#endif
+  }
+  spawn_args[argc + 1] = nullptr;
+
+  return spawn_args;
+}
+
+
 /**
  * Get the current working directory
  */
@@ -135,17 +172,28 @@ static const string GetWorkingDirectory() {
 }
 
 static const string GetEnviromentPath(const string& working_dir) {
-  char* cur_env = nullptr;
+  char* cur_env_ptr = nullptr;
 
 #ifdef _WIN32
   size_t cur_env_len;
-  _dupenv_s(&cur_env, &cur_env_len, "PATH");
-  if(cur_env) {
-    return "PATH=" + string(cur_env) + ';' + working_dir + "\\runtime\\bin" + ';' + working_dir + "\\runtime\\lib\\native";
+  _dupenv_s(&cur_env_ptr, &cur_env_len, "PATH");
+  
+  if(cur_env_ptr) {
+    string cur_env(cur_env_ptr);
+    
+    free(cur_env_ptr);
+    cur_env_ptr = nullptr;
+
+    return "PATH=" + cur_env + ';' + working_dir + "\\runtime\\bin" + ';' + working_dir + "\\runtime\\lib\\native";
   }
 #else
-  cur_env = getenv("PATH");
-  if(cur_env) {
+  cur_env_ptr = getenv("PATH");
+  if(cur_env_ptr) {
+    string cur_env(cur_env_ptr);
+
+    free(cur_env_ptr);
+    cur_env_ptr = nullptr;
+
     return "PATH=" + string(cur_env) + ';' + working_dir + "/runtime/bin" + ';' + working_dir + "/runtime/lib/native";
   }
 #endif
@@ -162,3 +210,8 @@ static const string GetLibraryPath(const string& working_dir) {
 }
 
 #endif
+
+const int Spawn(const char* spawn_path, char** spawn_args, const char** spawn_env) {
+  _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+  return 0;
+}
