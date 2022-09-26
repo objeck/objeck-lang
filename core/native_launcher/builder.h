@@ -153,7 +153,7 @@ static wstring GetUsage() {
   usage += L"  -to_dir:   [output] output file directory\n";
   usage += L"  -to_name:  [output] output app name\n";
   usage += L"  -install:  [input] root Objeck directory to copy the runtime from\n";
-  usage += L"\nExample: \"obb -install objeck-lang -dest /tmp/ -src /tmp/hello.obe\"\n\nVersion: ";
+  usage += L"\nExample: \"obb -src /tmp/hello.obe -to_dir /tmp -to_name hello -install /opt/objeck-lang\"\n\nVersion: ";
   usage += VERSION_STRING;
 
   return usage;
