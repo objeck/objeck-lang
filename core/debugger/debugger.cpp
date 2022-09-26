@@ -36,7 +36,7 @@
  /********************************
   * Debugger main
   ********************************/
-int main(int argc, char** argv)
+int main(int argc, char* argv[])
 {
   wstring usage;
   usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
@@ -85,20 +85,10 @@ int main(int argc, char** argv)
       cerr << L"Unable to load Winsock 2.2!" << endl;
       exit(1);
     }
-#else
-    // enable UTF-8 environment
-//    setlocale(LC_ALL, "");
- //   setlocale(LC_CTYPE, "UTF-8");
 #endif
 
-    // reconstruct path
-    string buffer;
-    for(int i = 1; i < argc; i++) {
-      buffer += " ";
-      buffer += argv[i];
-    }
-    const wstring path_string(buffer.begin(), buffer.end());
-    map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
+    wstring cmd_line;
+    map<const wstring, wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
     // start debugger
     map<const wstring, wstring>::iterator result = arguments.find(L"bin");
@@ -118,8 +108,8 @@ int main(int argc, char** argv)
     const wstring args_str = L"args";
     result = arguments.find(args_str);
     if(result != arguments.end()) {
-      const size_t start = path_string.find(args_str) + args_str.size();
-      args_param = path_string.substr(start, path_string.size() - start);
+      const size_t start = cmd_line.find(args_str) + args_str.size();
+      args_param = cmd_line.substr(start, cmd_line.size() - start);
     }
 
 #ifdef _WIN32
