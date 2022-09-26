@@ -34,5 +34,48 @@
 
 int main(int argc, char* argv[])
 {
-    return 0;
+  if(argc == 3) {
+    const wstring from_base_dir = BytesToUnicode(argv[1]);
+    const wstring to_base_dir = BytesToUnicode(argv[2]) + fs::path::preferred_separator + L"app";
+
+    try {
+      if(!fs::exists(to_base_dir)) {
+        fs::create_directory(to_base_dir);
+
+        // copy 'bin'
+        fs::path from_bin_path(from_base_dir + fs::path::preferred_separator + L"bin");
+
+        const wstring to_bin_str = to_base_dir + fs::path::preferred_separator + L"bin";
+        fs::path to_bin_path(to_bin_str);
+
+        fs::copy(from_bin_path, to_bin_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+
+#ifdef _WIN32
+        fs::remove(to_bin_str + fs::path::preferred_separator + L"obc.exe");
+        fs::remove(to_bin_str + fs::path::preferred_separator + L"obd.exe");
+#else
+        fs::path renove(to_bin_str + fs::path::preferred_separator + L"obc");
+        fs::path renove(to_bin_str + fs::path::preferred_separator + L"obd");
+#endif
+
+        // copy 'lib'
+        fs::path from_lib_path(from_base_dir + fs::path::preferred_separator + L"lib");
+        fs::path to_lib_path(to_base_dir + fs::path::preferred_separator + L"lib");
+        fs::copy(from_lib_path, to_lib_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+        remove_all_file_types(to_lib_path, L".obl");
+
+        // TOOD: copy app launcher and prop files from 'lib/native/misc'
+        // ...
+      }
+      else {
+        cerr << ">>> File or directory already exists <<<" << endl;
+        exit(1);
+      }
+    }
+    catch(std::exception& e) {
+      cerr << e.what() << endl;
+    }
+  }
+
+  return 0;
 }
