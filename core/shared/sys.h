@@ -81,70 +81,6 @@ namespace instructions {
   };
 }
 
-static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) {    
-  map<const wstring, wstring> arguments;
-  
-  size_t pos = 0;
-  size_t end = path_string.size();  
-  while(pos < end) {
-    // ignore leading white space
-    while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
-      pos++;
-    }
-    if(path_string[pos] == L'-' && pos > 0 && path_string[pos - 1] == L' ') {
-      // parse key
-      size_t start =  ++pos;
-      while(pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
-        pos++;
-      }
-      const wstring key = path_string.substr(start, pos - start);
-      // parse value
-      while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
-        pos++;
-      }
-      start = pos;
-      bool is_string = false;
-      if(pos < end && path_string[pos] == L'\'') {
-        is_string = true;
-        start++;
-        pos++;
-      }
-      bool not_end = true;
-      while(pos < end && not_end) {
-        // check for end
-        if(is_string) {
-          not_end = path_string[pos] != L'\'';
-        }
-        else {
-          not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t');
-        }
-        // update position
-        if(not_end) {
-          pos++;
-        }
-      }
-      wstring value = path_string.substr(start, pos - start);
-      
-      // close string and add
-      if(path_string[pos] == L'\'') {
-        pos++;
-      }
-      
-      map<const wstring, wstring>::iterator found = arguments.find(key);
-      if(found != arguments.end()) {
-        value += L',';
-        value += found->second;
-      }
-      arguments[key] = value;
-    }
-    else {
-      pos++;
-    }
-  }
-
-  return arguments;
-}
-
 static wstring GetLibraryPath() {
   wstring path;
 
@@ -506,5 +442,87 @@ public:
     return nullptr;
   }
 };
+
+static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[], wstring &path_string) {
+  map<const wstring, wstring> arguments;
+
+  // reconstruct command line
+  string path;
+  for(int i = 1; i < 1024 && i < argc; ++i) {
+    path += ' ';
+    char* cmd_param = argv[i];
+    if(strlen(cmd_param) > 0 && cmd_param[0] != L'\'' && (strrchr(cmd_param, L' ') || strrchr(cmd_param, L'\t'))) {
+      path += '\'';
+      path += cmd_param;
+      path += '\'';
+    }
+    else {
+      path += cmd_param;
+    }
+  }
+
+  // get command line parameters
+  path_string = BytesToUnicode(path);
+
+  size_t pos = 0;
+  size_t end = path_string.size();
+  while(pos < end) {
+    // ignore leading white space
+    while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
+      pos++;
+    }
+    if(path_string[pos] == L'-' && pos > 0 && path_string[pos - 1] == L' ') {
+      // parse key
+      size_t start = ++pos;
+      while(pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
+        pos++;
+      }
+      const wstring key = path_string.substr(start, pos - start);
+      // parse value
+      while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
+        pos++;
+      }
+      start = pos;
+      bool is_string = false;
+      if(pos < end && path_string[pos] == L'\'') {
+        is_string = true;
+        start++;
+        pos++;
+      }
+      bool not_end = true;
+      while(pos < end && not_end) {
+        // check for end
+        if(is_string) {
+          not_end = path_string[pos] != L'\'';
+        }
+        else {
+          not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t');
+        }
+        // update position
+        if(not_end) {
+          pos++;
+        }
+      }
+      wstring value = path_string.substr(start, pos - start);
+
+      // close string and add
+      if(path_string[pos] == L'\'') {
+        pos++;
+      }
+
+      map<const wstring, wstring>::iterator found = arguments.find(key);
+      if(found != arguments.end()) {
+        value += L',';
+        value += found->second;
+      }
+      arguments[key] = value;
+    }
+    else {
+      pos++;
+    }
+  }
+
+  return arguments;
+}
 
 #endif

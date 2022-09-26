@@ -89,31 +89,16 @@ int main(int argc, char* argv[])
 
   int status;
   if(argc > 0) {
-    // reconstruct command line
-    string path;
-    for(int i = 1; i < 1024 && i < argc; ++i) {
-      path += ' ';
-      char* cmd_param = argv[i];
-      if(strlen(cmd_param) > 0 && cmd_param[0]  != L'\'' && (strrchr(cmd_param, L' ') || strrchr(cmd_param, L'\t'))) {
-          path += '\'';
-          path += cmd_param;
-          path += '\'';
-      }
-      else {
-        path += cmd_param;
-      }
-    }
-
-    // get command line parameters
-    wstring path_string(path.begin(), path.end());
-    list<wstring> argument_options;
-    map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
+    // parse command line
+    wstring cmd_line;    
+    map<const wstring, wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
     // single command line option is the source file
     if(argc == 2 && arguments.empty()) {
-      arguments[L"src"] = path_string.erase(0, 1);
+      arguments[L"src"] = cmd_line.erase(0, 1);
     }
     
+    list<wstring> argument_options;
     for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
       argument_options.push_back(intr->first);
     }

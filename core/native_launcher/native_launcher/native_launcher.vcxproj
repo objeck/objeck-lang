@@ -22,6 +22,7 @@
     <ClCompile Include="..\launcher.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\version.h" />
     <ClInclude Include="..\launcher.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
