@@ -41,11 +41,13 @@ int main(int argc, char* argv[])
     try {
       if(!fs::exists(to_base_dir)) {
         fs::create_directory(to_base_dir);
+        fs::create_directory(to_base_dir + fs::path::preferred_separator + L"app");
+        fs::create_directory(to_base_dir + fs::path::preferred_separator + L"runtime");
 
         // copy 'bin'
         fs::path from_bin_path(from_base_dir + fs::path::preferred_separator + L"bin");
 
-        const wstring to_bin_str = to_base_dir + fs::path::preferred_separator + L"bin";
+        const wstring to_bin_str = to_base_dir + fs::path::preferred_separator + L"runtime" + fs::path::preferred_separator + L"bin";
         fs::path to_bin_path(to_bin_str);
 
         fs::copy(from_bin_path, to_bin_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
@@ -60,7 +62,7 @@ int main(int argc, char* argv[])
 
         // copy 'lib'
         fs::path from_lib_path(from_base_dir + fs::path::preferred_separator + L"lib");
-        fs::path to_lib_path(to_base_dir + fs::path::preferred_separator + L"lib");
+        fs::path to_lib_path(to_base_dir + fs::path::preferred_separator + L"runtime" + fs::path::preferred_separator + L"lib");
         fs::copy(from_lib_path, to_lib_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
         remove_all_file_types(to_lib_path, L".obl");
 
