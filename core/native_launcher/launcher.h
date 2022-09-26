@@ -44,9 +44,7 @@
 #include <string.h>
 #endif
 
-#ifndef MAX_PATH
-#define MAX_PATH 260
-#endif
+#define MAX_ENV_PATH 1024 * 32
 
 using namespace std;
 
@@ -63,7 +61,7 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
     return nullptr;
   }
 
-  char** spawn_args = (char**)malloc(argc * MAX_PATH);
+  char** spawn_args = (char**)malloc(argc * MAX_ENV_PATH);
   if(!spawn_args) {
     return nullptr;
   }
@@ -93,8 +91,8 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
  */
 static const string GetWorkingDirectory() {
 #ifdef _WIN32
-  TCHAR exe_full_path[MAX_PATH] = {0};
-  GetModuleFileName(nullptr, exe_full_path, MAX_PATH);
+  TCHAR exe_full_path[MAX_ENV_PATH] = {0};
+  GetModuleFileName(nullptr, exe_full_path, MAX_ENV_PATH);
   const string dir_full_path = exe_full_path;
   size_t dir_full_path_index = dir_full_path.find_last_of('\\');
 
@@ -104,8 +102,8 @@ static const string GetWorkingDirectory() {
 
   return "";
 #else
-  char exe_full_path[MAX_PATH] = {0};
-  if(!getcwd(exe_full_path, MAX_PATH)) {
+  char exe_full_path[MAX_ENV_PATH] = {0};
+  if(!getcwd(exe_full_path, MAX_ENV_PATH)) {
     return "";
   }	
   return string(exe_full_path);
