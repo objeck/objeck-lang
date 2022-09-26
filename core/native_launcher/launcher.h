@@ -1,5 +1,5 @@
 /***************************************************************************
- * Native executable launcher for
+ * Native executable launcher
  *
  * Copyright (c) 2022, Randy Hollines
  * All rights reserved.
