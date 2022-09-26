@@ -73,7 +73,11 @@ int main(int argc, char* argv[])
         fs::path from_lib_misc_path_obn(from_base_dir + fs::path::preferred_separator + L"lib" + 
                                         fs::path::preferred_separator + L"native" + 
                                         fs::path::preferred_separator + L"misc" +
+#ifdef _WIN32
                                         fs::path::preferred_separator + L"obn.exe");
+#else
+                                        fs::path::preferred_separator + L"obn");
+#endif
         fs::copy(from_lib_misc_path_obn, to_base_dir);
 
         fs::path from_lib_misc_path_prop(from_base_dir + fs::path::preferred_separator + L"lib" +
