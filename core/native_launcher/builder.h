@@ -40,7 +40,7 @@
 namespace fs = std::filesystem;
 using namespace std;
 
-void remove_all_file_types(fs::path& from_dir, fs::path ext_type) {
+void remove_all_file_types(const fs::path& from_dir, const fs::path ext_type) {
   try {
     for(const auto& inter : fs::directory_iterator(from_dir)) {
       if(inter.path().extension() == ext_type) {
@@ -53,7 +53,7 @@ void remove_all_file_types(fs::path& from_dir, fs::path ext_type) {
   }
 }
 
-static bool EndsWith(wstring const& str, wstring const& ending)
+static bool EndsWith(const wstring &str, const wstring &ending)
 {
   if(str.length() >= ending.length()) {
     return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
@@ -157,6 +157,66 @@ static wstring GetUsage() {
   usage += VERSION_STRING;
 
   return usage;
+}
+
+static wstring GetInstallDirectory() {
+  wstring install_dir;
+
+#ifdef _WIN32  
+  char install_path[MAX_PATH];
+  DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
+  if(status > 0) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('\\');
+    if(install_index != string::npos) {
+      exe_path = exe_path.substr(0, install_index);
+      install_index = exe_path.find_last_of('\\');
+      if(install_index != string::npos) {
+        install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+      }
+    }
+  }
+#else
+  ssize_t status = 0;
+  char install_path[SMALL_BUFFER_MAX] = { 0 };
+#ifdef _OSX
+  uint32_t size = SMALL_BUFFER_MAX;
+  if(_NSGetExecutablePath(install_path, &size) != 0) {
+    status = -1;
+  }
+#else
+  status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+  if(status != -1) {
+    install_path[status] = '\0';
+  }
+#endif
+  if(status != -1) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('/');
+    if(install_index != string::npos) {
+      exe_path = exe_path.substr(0, install_index);
+      install_index = exe_path.find_last_of('/');
+      if(install_index != string::npos) {
+        install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+      }
+    }
+  }
+#endif
+
+  return install_dir;
+}
+
+static bool CheckInstallDir(const wstring &install_dir) {
+  // sanity check
+  fs::path readme_path(install_dir);
+  readme_path += fs::path::preferred_separator;
+  readme_path += L"readme.html";
+
+  fs::path license_path(install_dir);
+  license_path += fs::path::preferred_separator;
+  license_path += L"LICENSE";
+
+  return fs::exists(readme_path) && fs::exists(license_path);
 }
 
 #endif
