@@ -48,6 +48,10 @@ int main(int argc, char* argv[])
     runtime_base_dir = result->second;
     argument_options.remove(L"install");
   }
+  else {
+    runtime_base_dir = GetInstallDirectory();
+    argument_options.remove(L"install");
+  }
 
   wstring to_base_dir;
   result = cmd_params.find(L"to_dir");
@@ -74,7 +78,7 @@ int main(int argc, char* argv[])
     argument_options.remove(L"src");
   }
 
-  if(argument_options.empty() && cmd_params.size() == 4) {
+  if(argument_options.empty()) {
     to_base_dir += fs::path::preferred_separator;
     to_base_dir += to_name;
 
@@ -83,11 +87,16 @@ int main(int argc, char* argv[])
 
       if(!fs::exists(src_obe_file)) {
         is_ok = false;
-        cerr << ">>> Unable to find soruce *.obe file <<<" << endl;
+        wcerr << ">>> Unable to find source file '" << src_obe_file << L"' <<<" << endl;
       }
 
       if(fs::exists(to_base_dir)) {
-        cerr << ">>> Target directory already exists <<<" << endl;
+        wcerr << ">>> Target directory '" << to_base_dir << L"' already exists <<<" << endl;
+        is_ok = false;
+      }
+
+      if(!CheckInstallDir(runtime_base_dir)) {
+        wcerr << ">>> Invalid Objeck install directory: '" << runtime_base_dir << L"' <<<" << endl;
         is_ok = false;
       }
 
