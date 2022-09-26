@@ -15,12 +15,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\native_launcher.cpp">
+    <ClCompile Include="..\launcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\native_launcher.h">
+    <ClInclude Include="..\launcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

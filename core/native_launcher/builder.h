@@ -1,5 +1,5 @@
 /***************************************************************************
- * Native executable launcher for 
+ * Native executable builder
  *
  * Copyright (c) 2022, Randy Hollines
  * All rights reserved.
@@ -13,12 +13,11 @@
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
  * - Neither the name of the Objeck team nor the names of its
- * contributors may be used to endorse or promote prod*ucts derived
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOTre
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
  * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
@@ -30,50 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "native_launcher.h"
+#ifndef __NATIVE_BUILDER__
+#define __NATIVE_BUILDER__
 
-int main(int argc, char* argv[])
-{
-  const string working_dir = GetWorkingDirectory();
-  if(working_dir.empty()) {
-    cerr << ">>> Unable to find the working directory <<<" << endl;
-    return 1;
-  }
-  const string spawn_path = GetExecPath(working_dir);
-  
-  char** spawn_args = GetArgsPath(spawn_path, argc, argv);
-  
-  
-  if(!spawn_args) {
-    cerr << ">>> Unable to initialize environment <<<" << endl;
-    return 1;
-  }
-  
-  const string path_env = GetEnviromentPath(working_dir);
-  const string lib_env = GetLibraryPath(working_dir);
-  if(path_env.empty() || lib_env.empty()) {
-    cerr << ">>> Unable to determine the current working directory <<<" << endl;
-    return 1;
-  }
-
-#ifdef _WIN32
-  char* path_env_ptr = _strdup(path_env.c_str());
-  char* lib_env_ptr = _strdup(lib_env.c_str());
-#else 
-  char* path_env_ptr = strdup(path_env.c_str());
-  char* lib_env_ptr = strdup(lib_env.c_str());
 #endif
-  char* spawn_env[] = { path_env_ptr, lib_env_ptr, nullptr };
-
-  // cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
-
-  const int status = Spawn(spawn_path.c_str(), spawn_args, spawn_env);
-
-  free(path_env_ptr);
-  path_env_ptr = nullptr;
-
-  free(lib_env_ptr);
-  lib_env_ptr = nullptr;
-
-  return status;
-}
