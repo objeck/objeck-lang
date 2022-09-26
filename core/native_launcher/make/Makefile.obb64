@@ -2,7 +2,7 @@ CC=g++
 # ARGS=-g -D_DEBUG -Wall -Wno-unused-function
 ARGS=-O3 -Wall -Wno-unused-function -std=c++11
 # ARGS=-g -Wall -Wno-unused-function -D_X64 -std=c++11
-SRC=native_launcher.o
+SRC=builder.o
 EXE=obn
 
 $(EXE): $(OBJ_LIBS) $(SRC) 
