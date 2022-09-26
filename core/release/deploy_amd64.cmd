@@ -1,6 +1,7 @@
 REM clean up
 rmdir /s /q deploy64
 mkdir deploy64
+mkdir deploy64\app
 
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
@@ -17,12 +18,13 @@ REM libraries
 mkdir deploy64\lib
 mkdir deploy64\lib\sdl
 mkdir deploy64\lib\sdl\fonts
+mkdir deploy64\lib\native
+mkdir deploy64\lib\native\misc
 copy ..\lib\*.obl deploy64\lib
 del /q deploy64\bin\a.*
 copy ..\vm\misc\*.pem deploy64\lib
 
 REM openssl support
-mkdir deploy64\lib\native
 cd ..\lib\openssl
 devenv openssl.sln /rebuild "Release|x64"
 copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
@@ -46,10 +48,17 @@ REM diags
 cd ..\lib\diags
 devenv diag.sln /rebuild "Release|x64"
 copy vs\Release\x64\*.dll ..\..\Release\deploy64\lib\native
-cd ..\..\release
+cd ..\..
+
+REM native launcher
+cd native_launcher
+devenv native_launcher.sln /rebuild "Release|x64"
+copy x64\Release\obn.exe ..\Release\deploy64\lib\native\misc
+copy x64\Release\obb.exe ..\Release\deploy64\bin
+copy ..\vm\misc\config.prop ..\Release\deploy64\lib\native\misc
+cd ..\release
 
 REM app
-mkdir deploy64\app
 cd WindowsLauncher
 devenv AppLauncher.sln /rebuild "Release|x64"
 copy x64\Release\*.exe ..\deploy64\app
