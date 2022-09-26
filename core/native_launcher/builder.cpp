@@ -41,6 +41,7 @@ int main(int argc, char* argv[])
     try {
       if(!fs::exists(to_base_dir)) {
         fs::create_directory(to_base_dir);
+
         fs::create_directory(to_base_dir + fs::path::preferred_separator + L"app");
         fs::create_directory(to_base_dir + fs::path::preferred_separator + L"runtime");
 
@@ -55,9 +56,11 @@ int main(int argc, char* argv[])
 #ifdef _WIN32
         fs::remove(to_bin_str + fs::path::preferred_separator + L"obc.exe");
         fs::remove(to_bin_str + fs::path::preferred_separator + L"obd.exe");
+        fs::remove(to_bin_str + fs::path::preferred_separator + L"obb.exe");
 #else
         fs::path renove(to_bin_str + fs::path::preferred_separator + L"obc");
         fs::path renove(to_bin_str + fs::path::preferred_separator + L"obd");
+        fs::path renove(to_bin_str + fs::path::preferred_separator + L"obb");
 #endif
 
         // copy 'lib'
@@ -66,8 +69,18 @@ int main(int argc, char* argv[])
         fs::copy(from_lib_path, to_lib_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
         remove_all_file_types(to_lib_path, L".obl");
 
-        // TOOD: copy app launcher and prop files from 'lib/native/misc'
-        // ...
+        // copy executable and configuration
+        fs::path from_lib_misc_path_obn(from_base_dir + fs::path::preferred_separator + L"lib" + 
+                                        fs::path::preferred_separator + L"native" + 
+                                        fs::path::preferred_separator + L"misc" +
+                                        fs::path::preferred_separator + L"obn.exe");
+        fs::copy(from_lib_misc_path_obn, to_base_dir);
+
+        fs::path from_lib_misc_path_prop(from_base_dir + fs::path::preferred_separator + L"lib" +
+                                        fs::path::preferred_separator + L"native" +
+                                        fs::path::preferred_separator + L"misc" +
+                                        fs::path::preferred_separator + L"config.prop");
+        fs::copy(from_lib_misc_path_prop, to_base_dir);
       }
       else {
         cerr << ">>> File or directory already exists <<<" << endl;
