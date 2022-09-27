@@ -97,7 +97,11 @@ int main(int argc, char* argv[])
   language_str += getenv("LANGUAGE");
   char* language_ptr = strdup(language_str.c_str());
 
-  char* spawn_env[] = { path_env_ptr, lib_env_ptr, lang_ptr, gdm_ptr, language_ptr, nullptr };
+  string xdg_str("XDG_RUNTIME_DIR=");
+  xdg_str += getenv("XDG_RUNTIME_DIR");
+  char* xdg_ptr = strdup(xdg_str.c_str());
+
+  char* spawn_env[] = { path_env_ptr, lib_env_ptr, lang_ptr, gdm_ptr, language_ptr, xdg_ptr, nullptr };
 #ifdef _DEBUG
   cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
   cout << "lang_str=|" << lang_str << "|\ngdm_str=|" << gdm_str << "|\nlanguage_ptr=|" << language_ptr << '|' << endl;
