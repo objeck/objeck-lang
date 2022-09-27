@@ -42,6 +42,9 @@
 namespace fs = std::filesystem;
 using namespace std;
 
+/**
+ * Delete all files with a given extension
+ */
 void remove_all_file_types(const fs::path& from_dir, const fs::path ext_type) {
   try {
     for(const auto& inter : fs::directory_iterator(from_dir)) {
@@ -55,6 +58,9 @@ void remove_all_file_types(const fs::path& from_dir, const fs::path ext_type) {
   }
 }
 
+/**
+ * Checks the ending of a string
+ */
 static bool EndsWith(const wstring &str, const wstring &ending)
 {
   if(str.length() >= ending.length()) {
@@ -64,6 +70,9 @@ static bool EndsWith(const wstring &str, const wstring &ending)
   return false;
 }
 
+/**
+ * Parses the command line
+ */
 static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[]) {
   map<const wstring, wstring> arguments;
 
@@ -146,6 +155,36 @@ static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[]) {
   return arguments;
 }
 
+/**
+ * Removed unneeded directory slashed
+ */
+static void TrimFilename(wstring& filename) {
+  if(!filename.empty() && filename.back() == fs::path::preferred_separator) {
+    filename.pop_back();
+  }
+}
+
+/**
+ * Gets a command line parameter
+ */
+static wstring GetCommandParameter(const wstring& key, map<const wstring, wstring> &cmd_params, list<wstring> &argument_options, bool optional = false) {
+  wstring value;
+  map<const wstring, wstring>::iterator result = cmd_params.find(key);
+  if(result != cmd_params.end()) {
+    value = result->second;
+    argument_options.remove(key);
+  }
+  else if(false) {
+    argument_options.remove(key);
+  }
+
+  TrimFilename(value);
+  return value;
+}
+
+/**
+ * Gets the program usage
+ */
 static wstring GetUsage() {
   wstring usage;
 
@@ -162,12 +201,9 @@ static wstring GetUsage() {
   return usage;
 }
 
-static void TrimFilename(wstring & filename) {
-  if(!filename.empty() && filename.back() == fs::path::preferred_separator) {
-    filename.pop_back();
-  }
-}
-
+/**
+ * Get runtime install directory 
+ */
 static wstring GetInstallDirectory() {
   wstring install_dir;
 
@@ -211,6 +247,9 @@ static wstring GetInstallDirectory() {
   return install_dir;
 }
 
+/**
+ * Validate the runtime directory structure
+ */
 static bool CheckInstallDir(const wstring &install_dir) {
   // sanity check
   fs::path readme_path(install_dir);
