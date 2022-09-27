@@ -134,11 +134,15 @@ int main(int argc, char* argv[])
       fs::copy(from_bin_path, to_bin_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 
 #ifdef _WIN32
-      fs::remove(to_bin_str + fs::path::preferred_separator + L"obc.exe");
+      fs::path to_obc_path(to_bin_str + fs::path::preferred_separator + L"obc.exe");
+      fs::remove(to_obc_path);
 
       fs::remove(to_bin_str + fs::path::preferred_separator + L"obd.exe");
       fs::remove(to_bin_str + fs::path::preferred_separator + L"obb.exe");
 #else
+      fs::path to_obc_path(to_bin_path + fs::path::preferred_separator + L"obc");
+      fs::remove(to_obc_path);
+      
       fs::path renove(to_bin_str + fs::path::preferred_separator + L"obc");
       fs::path renove(to_bin_str + fs::path::preferred_separator + L"obd");
       fs::path renove(to_bin_str + fs::path::preferred_separator + L"obb");
