@@ -40,15 +40,13 @@ int main(int argc, char* argv[])
     return 1;
   }
   const string spawn_path = GetExecPath(working_dir);
-  
+
   char** spawn_args = GetArgsPath(spawn_path, argc, argv);
-  
-  
   if(!spawn_args) {
     cerr << ">>> Unable to initialize environment <<<" << endl;
     return 1;
   }
-  
+
   const string path_env = GetEnviromentPath(working_dir);
   const string lib_env = GetLibraryPath(working_dir);
   if(path_env.empty() || lib_env.empty()) {
@@ -65,7 +63,9 @@ int main(int argc, char* argv[])
 #endif
   char* spawn_env[] = { path_env_ptr, lib_env_ptr, nullptr };
 
-  // cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+#ifdef _DEBUG
+  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+#endif
 
   const int status = Spawn(spawn_path.c_str(), spawn_args, spawn_env);
 
