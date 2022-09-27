@@ -24,7 +24,7 @@ elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 else
 	cp make/Makefile.64 Makefile
 fi
-make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
+make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
@@ -97,8 +97,18 @@ else
 	cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 fi
 
+cd ../../native_launcher
+make -f make/Makefile.obb64 clean; make -f make/Makefile.obb64
+cp obb ../release/deploy/bin
+
+make -f make/Makefile.obn64 clean; make -f make/Makefile.obn64
+cp obn ../release/deploy/bin
+
+cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
+cd ../release
+
 # copy docs
-cd ../../..
+cd ../..
 cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
 cp LICENSE core/release/deploy
