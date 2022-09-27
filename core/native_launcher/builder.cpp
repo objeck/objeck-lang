@@ -135,6 +135,7 @@ int main(int argc, char* argv[])
 
 #ifdef _WIN32
       fs::remove(to_bin_str + fs::path::preferred_separator + L"obc.exe");
+
       fs::remove(to_bin_str + fs::path::preferred_separator + L"obd.exe");
       fs::remove(to_bin_str + fs::path::preferred_separator + L"obb.exe");
 #else
