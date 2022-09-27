@@ -72,8 +72,15 @@ class Game {
 
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Secret Platform");
 		@framework->SetClearColor(Color->New(255, 255, 255));
-		@base_path := Runtime->GetInstallDir();
-		@base_path += "/examples";
+
+		if(Runtime->HasProperty("native_launcher")) {
+			@base_path := "/resources/";
+			@base_path += Runtime->GetProperty("native_launcher");
+		}
+		else {
+			@base_path := Runtime->GetInstallDir();
+			@base_path += "/examples";
+		};
 
 		music_path := String->New(@base_path);
 		music_path += "/media/music.wav";
