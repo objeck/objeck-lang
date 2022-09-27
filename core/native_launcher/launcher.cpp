@@ -57,6 +57,10 @@ int main(int argc, char* argv[])
 #ifdef _WIN32
   char* path_env_ptr = _strdup(path_env.c_str());
   char* lib_env_ptr = _strdup(lib_env.c_str());
+
+#ifdef _DEBUG
+  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+#endif
 #else 
   char* path_env_ptr = strdup(path_env.c_str());
   char* lib_env_ptr = strdup(lib_env.c_str());
@@ -72,12 +76,15 @@ int main(int argc, char* argv[])
   string language_str("LANGUAGE=");
   language_str += getenv("LANGUAGE");
   char* language_ptr = strdup(language_str.c_str());
+
+  #ifdef _DEBUG
+  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+  cout << "lang_str=|" << lang_str << "|\ngdm_str=|" << gdm_str << "|\nlanguage_ptr=|" << language_ptr << '|' << endl;
+#endif
 #endif
   char* spawn_env[] = { path_env_ptr, lib_env_ptr, lang_ptr, gdm_ptr, language_ptr, nullptr };
 
-#ifdef _DEBUG
-  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
-#endif
+
 
   const int status = Spawn(spawn_path.c_str(), spawn_args, spawn_env);
 
