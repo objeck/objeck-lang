@@ -106,18 +106,31 @@ int main(int argc, char* argv[])
 
       fs::create_directory(to_base_dir);
 
-      fs::create_directory(to_base_dir + fs::path::preferred_separator);
-      fs::create_directory(to_base_dir + fs::path::preferred_separator + L"runtime");
+      fs::create_directory(to_base_dir);
       
-      fs::path to_app_path(to_base_dir + fs::path::preferred_separator + L"app");
+      fs::path to_runtime_path(to_base_dir);
+      to_runtime_path += fs::path::preferred_separator;
+      to_runtime_path += L"runtime";
+      fs::create_directory(to_runtime_path);
+
+      fs::path to_app_path(to_base_dir);
+      to_app_path += fs::path::preferred_separator;
+      to_app_path += L"app";      
       fs::create_directory(to_app_path);
 
       // copy 'bin'
-      fs::path from_bin_path(runtime_base_dir + fs::path::preferred_separator + L"bin");
 
-      const wstring to_bin_str = to_base_dir + fs::path::preferred_separator + L"runtime" + fs::path::preferred_separator + L"bin";
-      fs::path to_bin_path(to_bin_str);
+      fs::path runtime_bin_path(runtime_base_dir);
+      runtime_bin_path += fs::path::preferred_separator;
+      runtime_bin_path += L"bin";      
+      fs::path from_bin_path(runtime_bin_path);
 
+      fs::path to_bin_path(to_base_dir);
+      to_bin_path += fs::path::preferred_separator;
+      to_bin_path += L"runtime";    
+      to_bin_path += fs::path::preferred_separator;
+      to_bin_path += L"bin";      
+      
       fs::copy(from_bin_path, to_bin_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 
 #ifdef _WIN32
