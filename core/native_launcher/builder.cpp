@@ -50,13 +50,12 @@ int main(int argc, char* argv[])
   map<const wstring, wstring>::iterator result = cmd_params.find(L"install");
   if(result != cmd_params.end()) {
     runtime_base_dir = result->second;
-    argument_options.remove(L"install");
   }
   else {
     runtime_base_dir = GetInstallDirectory();
-    argument_options.remove(L"install");
   }
-  
+  argument_options.remove(L"install");
+
   wstring to_base_dir;
   result = cmd_params.find(L"to_dir");
   if(result != cmd_params.end()) {
@@ -72,21 +71,29 @@ int main(int argc, char* argv[])
   }
 
   wstring src_obe_file;
-  result = cmd_params.find(L"src");
+  result = cmd_params.find(L"src_file");
   if(result != cmd_params.end()) {
     src_obe_file = result->second;
     if(!EndsWith(src_obe_file, L".obe")) {
       wcout << GetUsage() << endl;
       exit(1);
     }
-    argument_options.remove(L"src");
+    argument_options.remove(L"src_file");
   }
+
+  wstring src_dir;
+  result = cmd_params.find(L"src_dir");
+  if(result != cmd_params.end()) {
+    src_dir = result->second;
+  }
+  argument_options.remove(L"src_dir");
 
   TrimFilename(runtime_base_dir);
   TrimFilename(to_base_dir);
   TrimFilename(to_name);
   TrimFilename(src_obe_file);
-  
+  TrimFilename(src_dir);
+
   // if parameters look good...
   if(argument_options.empty()) {
     to_base_dir += fs::path::preferred_separator;
@@ -99,6 +106,12 @@ int main(int argc, char* argv[])
       if(!fs::exists(src_obe_path)) {
         is_ok = false;
         wcerr << ">>> Unable to find source file '" << src_obe_path << L"' <<<" << endl;
+      }
+
+      fs::path src_dir_path(src_dir);
+      if(!src_dir_path.empty() && !fs::exists(src_dir_path)) {
+        is_ok = false;
+        wcerr << ">>> Unable to find source directory '" << src_dir_path << L"' <<<" << endl;
       }
 
       if(fs::exists(to_base_dir)) {
@@ -222,6 +235,9 @@ int main(int argc, char* argv[])
       to_obe_file += fs::path::preferred_separator;
       to_obe_file += L"app.obe";
       fs::copy(src_obe_path, to_obe_file);
+
+      // TODO: copy source directory
+      // src_dir_path
 
       // rename binary
       fs::path from_exe_file(to_base_dir);
