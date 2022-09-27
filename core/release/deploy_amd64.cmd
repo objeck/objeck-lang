@@ -27,35 +27,35 @@ copy ..\vm\misc\*.pem deploy64\lib
 REM openssl support
 cd ..\lib\openssl
 devenv openssl.sln /rebuild "Release|x64"
-copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
+copy Release\win64\*.dll ..\..\release\deploy64\lib\native
 cd ..\..\release
 
 REM odbc support
 cd ..\lib\odbc
 devenv odbc.sln /rebuild "Release|x64"
-copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
+copy Release\win64\*.dll ..\..\release\deploy64\lib\native
 cd ..\..\release
 
 REM sdl
 cd ..\lib\sdl
 devenv sdl\sdl.sln /rebuild "Release|x64"
-copy sdl\Release\x64\*.dll ..\..\Release\deploy64\lib\native
-copy lib\fonts\*.ttf ..\..\Release\deploy64\lib\sdl\fonts
-copy lib\x64\*.dll ..\..\Release\deploy64\lib\sdl
+copy sdl\Release\x64\*.dll ..\..\release\deploy64\lib\native
+copy lib\fonts\*.ttf ..\..\release\deploy64\lib\sdl\fonts
+copy lib\x64\*.dll ..\..\release\deploy64\lib\sdl
 cd ..\..\release
 
 REM diags
 cd ..\lib\diags
 devenv diag.sln /rebuild "Release|x64"
-copy vs\Release\x64\*.dll ..\..\Release\deploy64\lib\native
+copy vs\Release\x64\*.dll ..\..\release\deploy64\lib\native
 cd ..\..
 
 REM native launcher
 cd native_launcher
 devenv native_launcher.sln /rebuild "Release|x64"
-copy x64\Release\obn.exe ..\Release\deploy64\lib\native\misc
-copy x64\Release\obb.exe ..\Release\deploy64\bin
-copy ..\vm\misc\config.prop ..\Release\deploy64\lib\native\misc
+copy x64\Release\obn.exe ..\release\deploy64\lib\native\misc
+copy x64\Release\obb.exe ..\release\deploy64\bin
+copy ..\vm\misc\config.prop ..\release\deploy64\lib\native\misc
 cd ..\release
 
 REM app
