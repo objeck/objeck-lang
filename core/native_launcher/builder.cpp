@@ -85,9 +85,10 @@ int main(int argc, char* argv[])
     try {
       bool is_ok = true;
 
-      if(!fs::exists(src_obe_file)) {
+      fs::path src_obe_path(src_obe_file);
+      if(!fs::exists(src_obe_path)) {
         is_ok = false;
-        wcerr << ">>> Unable to find source file '" << src_obe_file << L"' <<<" << endl;
+        wcerr << ">>> Unable to find source file '" << src_obe_path << L"' <<<" << endl;
       }
 
       if(fs::exists(to_base_dir)) {
@@ -119,7 +120,6 @@ int main(int argc, char* argv[])
       fs::create_directory(to_app_path);
 
       // copy 'bin'
-
       fs::path runtime_bin_path(runtime_base_dir);
       runtime_bin_path += fs::path::preferred_separator;
       runtime_bin_path += L"bin";      
@@ -130,52 +130,89 @@ int main(int argc, char* argv[])
       to_bin_path += L"runtime";    
       to_bin_path += fs::path::preferred_separator;
       to_bin_path += L"bin";      
-      
+      fs::create_directory(to_bin_path);
+
       fs::copy(from_bin_path, to_bin_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 
 #ifdef _WIN32
-      fs::path to_obc_path(to_bin_str + fs::path::preferred_separator + L"obc.exe");
+      fs::path to_obc_path(to_bin_path);
+      to_obc_path += fs::path::preferred_separator;
+      to_obc_path += L"obc.exe";
       fs::remove(to_obc_path);
 
-      fs::remove(to_bin_str + fs::path::preferred_separator + L"obd.exe");
-      fs::remove(to_bin_str + fs::path::preferred_separator + L"obb.exe");
+      fs::path to_obd_path(to_bin_path);
+      to_obd_path += fs::path::preferred_separator;
+      to_obd_path += L"obd.exe";
+      fs::remove(to_obd_path);
+
+      fs::path to_obb_path(to_bin_path);
+      to_obb_path += fs::path::preferred_separator;
+      to_obb_path += L"obb.exe";
+      fs::remove(to_obb_path);
 #else
-      fs::path to_obc_path(to_bin_path + fs::path::preferred_separator + L"obc");
+      fs::path to_obc_path(to_bin_path);
+      to_obc_path += fs::path::preferred_separator;
+      to_obc_path += L"obc";
       fs::remove(to_obc_path);
-      
-      fs::path renove(to_bin_str + fs::path::preferred_separator + L"obc");
-      fs::path renove(to_bin_str + fs::path::preferred_separator + L"obd");
-      fs::path renove(to_bin_str + fs::path::preferred_separator + L"obb");
+
+      fs::path to_obd_path(to_bin_path);
+      to_obd_path += fs::path::preferred_separator;
+      to_obd_path += L"obd";
+      fs::remove(to_obd_path);
+
+      fs::path to_obb_path(to_bin_path);
+      to_obb_path += fs::path::preferred_separator;
+      to_obb_path += L"obb";
+      fs::remove(to_obb_path);
 #endif
 
       // copy 'lib'
-      fs::path from_lib_path(runtime_base_dir + fs::path::preferred_separator + L"lib");
-      fs::path to_lib_path(to_base_dir + fs::path::preferred_separator + L"runtime" + fs::path::preferred_separator + L"lib");
+      fs::path from_lib_path(runtime_base_dir);
+      from_lib_path += fs::path::preferred_separator;
+      from_lib_path += L"lib";
+
+      fs::path to_lib_path(to_base_dir);      
+      to_lib_path += fs::path::preferred_separator;
+      to_lib_path += L"runtime";
+      to_lib_path += fs::path::preferred_separator;
+      to_lib_path += L"lib";
+      fs::create_directory(to_lib_path);
+
       fs::copy(from_lib_path, to_lib_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
       remove_all_file_types(to_lib_path, L".obl");
 
       // copy executable and configuration
-      fs::path from_lib_misc_path_obn(runtime_base_dir + fs::path::preferred_separator + L"lib" +
-                                      fs::path::preferred_separator + L"native" +
-                                      fs::path::preferred_separator + L"misc" +
+      fs::path from_lib_misc_path_obn(runtime_base_dir);
+      from_lib_misc_path_obn += fs::path::preferred_separator;
+      from_lib_misc_path_obn += L"lib";
+      from_lib_misc_path_obn += fs::path::preferred_separator;
+      from_lib_misc_path_obn += L"native";
+      from_lib_misc_path_obn += fs::path::preferred_separator;
+      from_lib_misc_path_obn += L"misc";
+      from_lib_misc_path_obn += fs::path::preferred_separator;
 #ifdef _WIN32
-                                      fs::path::preferred_separator + L"obn.exe");
+      from_lib_misc_path_obn += L"obn.exe";
 #else
-        fs::path::preferred_separator + L"obn");
+      from_lib_misc_path_obn += L"obn";
 #endif
       fs::copy(from_lib_misc_path_obn, to_base_dir);
 
-      fs::path from_lib_misc_path_prop(runtime_base_dir + fs::path::preferred_separator + L"lib" +
-                                       fs::path::preferred_separator + L"native" +
-                                       fs::path::preferred_separator + L"misc" +
-                                       fs::path::preferred_separator + L"config.prop");
+      fs::path from_lib_misc_path_prop(runtime_base_dir);
+      from_lib_misc_path_prop += fs::path::preferred_separator;
+      from_lib_misc_path_prop += L"lib";
+      from_lib_misc_path_prop += fs::path::preferred_separator;
+      from_lib_misc_path_prop += L"native";
+      from_lib_misc_path_prop += fs::path::preferred_separator;
+      from_lib_misc_path_prop += L"misc";
+      from_lib_misc_path_prop += fs::path::preferred_separator;
+      from_lib_misc_path_prop += L"config.prop";
       fs::copy(from_lib_misc_path_prop, to_base_dir);
 
       // copy app
       fs::path to_obe_file(to_app_path);
       to_obe_file += fs::path::preferred_separator;
       to_obe_file += L"app.obe";
-      fs::copy(src_obe_file, to_obe_file);
+      fs::copy(src_obe_path, to_obe_file);
 
       // rename binary
       fs::path from_exe_file(to_base_dir);
@@ -192,6 +229,7 @@ int main(int argc, char* argv[])
     }
     catch(std::exception& e) {
       cerr << e.what() << endl;
+      exit(1);
     }
   }
   else {
