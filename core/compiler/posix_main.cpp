@@ -49,7 +49,7 @@ using namespace std;
 int main(int argc, char* argv[])
 {
   wstring usage;
-  usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
+  usage += L"Usage: obc -src <source files> <optionals> -dest <output file>\n\n";
   usage += L"Options:\n";
   usage += L"  -src:    [input] source files (separated by commas)\n";
   usage += L"  -in:     [input] inline source code statements instead of specifying files\n";
@@ -58,9 +58,9 @@ int main(int argc, char* argv[])
   usage += L"  -tar:    [output] target type 'lib' for linkable library or 'exe' for executable (the default)\n";
   usage += L"  -dest:   [output] output file name\n";
   usage += L"  -asm:    [output][end-flag] emits a human readable debug byte assembly file\n";
-  usage += L"  -opt:    [option] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
-  usage += L"  -alt:    [option][end-flag] use alternative C like syntax\n";
-  usage += L"  -debug:  [option][end-flag] compile with debug symbols\n";
+  usage += L"  -opt:    [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
+  usage += L"  -alt:    [optional][end-flag] use alternative C like syntax\n";
+  usage += L"  -debug:  [optional][end-flag] compile with debug symbols\n";
   usage += L"  -strict: [input][end-flag] exclude default system libraries and specify them manually\n";
   usage += L"\nExample: \"obc -src hello.obs\"\n\nVersion: ";
   usage += VERSION_STRING;
@@ -93,22 +93,22 @@ int main(int argc, char* argv[])
     wstring cmd_line;    
     map<const wstring, wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
-    // single command line option is the source file
+    // single command line optional is the source file
     if(argc == 2 && arguments.empty()) {
       arguments[L"src"] = cmd_line.erase(0, 1);
     }
     
-    list<wstring> argument_options;
+    list<wstring> argument_optionals;
     for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
-      argument_options.push_back(intr->first);
+      argument_optionals.push_back(intr->first);
     }
     
 #ifdef _DEBUG
     OpenLogger("debug.log");
 #endif
 
-    // compile source with options
-    status = OptionsCompile(arguments, argument_options, usage);
+    // compile source with optionals
+    status = OptionsCompile(arguments, argument_optionals, usage);
 
 #ifdef _DEBUG
     CloseLogger();
