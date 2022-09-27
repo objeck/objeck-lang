@@ -237,7 +237,14 @@ int main(int argc, char* argv[])
       fs::copy(src_obe_path, to_obe_file);
 
       // TODO: copy source directory
-      // src_dir_path
+      if(!src_dir_path.empty()) {
+        fs::path to_obe_dir(to_app_path);
+        to_obe_dir += fs::path::preferred_separator;
+        to_obe_dir += "resources";
+        fs::create_directory(to_obe_dir);
+
+        fs::copy(src_dir_path, to_obe_dir);
+      }
 
       // rename binary
       fs::path from_exe_file(to_base_dir);
