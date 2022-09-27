@@ -33,9 +33,11 @@
 #define __NATIVE_BUILDER__
 
 #include "common.h"
-#include "../shared/version.h"
 
+#include "../shared/version.h"
 #include <iostream>
+
+#define MAX_PATH 160
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -178,9 +180,9 @@ static wstring GetInstallDirectory() {
   }
 #else
   ssize_t status = 0;
-  char install_path[SMALL_BUFFER_MAX] = { 0 };
+  char install_path[MAX_PATH] = { 0 };
 #ifdef _OSX
-  uint32_t size = SMALL_BUFFER_MAX;
+  uint32_t size = MAX_PATH;
   if(_NSGetExecutablePath(install_path, &size) != 0) {
     status = -1;
   }

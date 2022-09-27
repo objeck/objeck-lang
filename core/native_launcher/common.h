@@ -32,11 +32,12 @@
 #ifndef __NATIVE_COMMON__
 #define __NATIVE_COMMON__
 
-#if defined(_WIN32)
+#ifdef WIN32
 #include <windows.h>
 #include <stdint.h>
-#elif defined(_ARM64)
+#else
 #include <codecvt>
+#include <unistd.h>
 #endif
 
 #include <string.h>
@@ -44,6 +45,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <list>
 #include <filesystem>
 
 using namespace std;
