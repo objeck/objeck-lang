@@ -46,53 +46,16 @@ int main(int argc, char* argv[])
     argument_options.push_back(intr->first);
   }
 
-  wstring runtime_base_dir;
-  map<const wstring, wstring>::iterator result = cmd_params.find(L"install");
-  if(result != cmd_params.end()) {
-    runtime_base_dir = result->second;
-  }
-  else {
-    runtime_base_dir = GetInstallDirectory();
-  }
-  argument_options.remove(L"install");
+  const wstring runtime_base_dir = GetCommandParameter(L"install", cmd_params, argument_options, true);
+  wstring to_base_dir = GetCommandParameter(L"to_dir", cmd_params, argument_options);
+  const wstring to_name = GetCommandParameter(L"to_name", cmd_params, argument_options);
+  const wstring src_obe_file = GetCommandParameter(L"src_file", cmd_params, argument_options);
+  const wstring src_dir = GetCommandParameter(L"src_dir", cmd_params, argument_options, true);
 
-  wstring to_base_dir;
-  result = cmd_params.find(L"to_dir");
-  if(result != cmd_params.end()) {
-    to_base_dir = result->second;
-    argument_options.remove(L"to_dir");
+  if(!EndsWith(src_obe_file, L".obe")) {
+    wcout << GetUsage() << endl;
+    exit(1);
   }
-
-  wstring to_name;
-  result = cmd_params.find(L"to_name");
-  if(result != cmd_params.end()) {
-    to_name = result->second;
-    argument_options.remove(L"to_name");
-  }
-
-  wstring src_obe_file;
-  result = cmd_params.find(L"src_file");
-  if(result != cmd_params.end()) {
-    src_obe_file = result->second;
-    if(!EndsWith(src_obe_file, L".obe")) {
-      wcout << GetUsage() << endl;
-      exit(1);
-    }
-    argument_options.remove(L"src_file");
-  }
-
-  wstring src_dir;
-  result = cmd_params.find(L"src_dir");
-  if(result != cmd_params.end()) {
-    src_dir = result->second;
-  }
-  argument_options.remove(L"src_dir");
-
-  TrimFilename(runtime_base_dir);
-  TrimFilename(to_base_dir);
-  TrimFilename(to_name);
-  TrimFilename(src_obe_file);
-  TrimFilename(src_dir);
 
   // if parameters look good...
   if(argument_options.empty()) {
