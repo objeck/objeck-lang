@@ -1,0 +1,7 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Runtime->GetInstallDir()->PrintLine();
+		Runtime->GetUserDir()->PrintLine();
+		Runtime->GetTempDir()->PrintLine();
+	}
+}

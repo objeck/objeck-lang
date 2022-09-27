@@ -161,6 +161,12 @@ static wstring GetUsage() {
   return usage;
 }
 
+static void TrimFilename(wstring & filename) {
+  if(!filename.empty() && filename.back() == fs::path::preferred_separator) {
+    filename.pop_back();
+  }
+}
+
 static wstring GetInstallDirectory() {
   wstring install_dir;
 
