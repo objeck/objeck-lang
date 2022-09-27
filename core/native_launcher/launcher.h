@@ -70,7 +70,7 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
   spawn_args[1] = _strdup(".\\app\\app.obe");
 #else
   spawn_args[0] = strdup(spawn_path.c_str());
-  spawn_args[1] = strdup("./app/app.obe");
+  spawn_args[0] = spawn_args[1] = strdup("./app/app.obe");
 #endif
 
   for(int i = 1; i < argc; ++i) {
