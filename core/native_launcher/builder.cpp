@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     argument_options.push_back(intr->first);
   }
 
-  const wstring runtime_base_dir = GetCommandParameter(L"install", cmd_params, argument_options, true);
+  wstring runtime_base_dir = GetCommandParameter(L"install", cmd_params, argument_options, true);
   wstring to_base_dir = GetCommandParameter(L"to_dir", cmd_params, argument_options);
   const wstring to_name = GetCommandParameter(L"to_name", cmd_params, argument_options);
   const wstring src_obe_file = GetCommandParameter(L"src_file", cmd_params, argument_options);
@@ -55,6 +55,10 @@ int main(int argc, char* argv[])
   if(!EndsWith(src_obe_file, L".obe")) {
     wcout << GetUsage() << endl;
     exit(1);
+  }
+
+  if(runtime_base_dir.empty()) {
+    runtime_base_dir = GetInstallDirectory();
   }
 
   // if parameters look good...
