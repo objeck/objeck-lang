@@ -151,10 +151,11 @@ static wstring GetUsage() {
 
   usage += L"Usage: obb -src <input *.obe file> -to_dir <output directory> -to_name <name of target exe> -install <root Objeck directory>\n\n";
   usage += L"Options:\n";
-  usage += L"  -src:      [input] source *.obe file\n";
+  usage += L"  -src_file: [input] source .obe file\n";
+  usage += L"  -src_dir:  [optional] directory of content to copy to app/resources\n";
   usage += L"  -to_dir:   [output] output file directory\n";
   usage += L"  -to_name:  [output] output app name\n";
-  usage += L"  -install:  [input] root Objeck directory to copy the runtime from\n";
+  usage += L"  -install:  [optional] root Objeck directory to copy the runtime from\n";
   usage += L"\nExample: \"obb -src /tmp/hello.obe -to_dir /tmp -to_name hello -install /opt/objeck-lang\"\n\nVersion: ";
   usage += VERSION_STRING;
 
