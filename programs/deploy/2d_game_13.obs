@@ -74,16 +74,18 @@ class Game {
 		@framework->SetClearColor(Color->New(255, 255, 255));
 
 		if(Runtime->HasProperty("native_launcher")) {
-			@base_path := "/resources/";
+			@base_path := Runtime->GetInstallDir();
+			@base_path += '/';
 			@base_path += Runtime->GetProperty("native_launcher");
+			@base_path += "/resources";
 		}
 		else {
 			@base_path := Runtime->GetInstallDir();
-			@base_path += "/examples";
+			@base_path += "/examples/media";
 		};
 
 		music_path := String->New(@base_path);
-		music_path += "/media/music.wav";
+		music_path += "/music.wav";
 		@music := MixMusic->New(music_path);
 		if(@music->IsNull()) {
 			"--- Cannot load music: '{$music_path}'! ---"->ErrorLine();
@@ -91,7 +93,7 @@ class Game {
 		};
 
 		gem_path := String->New(@base_path);
-		gem_path += "/media/gem.wav";
+		gem_path += "/gem.wav";
 		@gem_chunk := MixChunk->New(gem_path);
 		if(@gem_chunk->IsNull()) {
 			"--- Cannot load music: '{$gem_path}'! ---"->ErrorLine();
@@ -99,7 +101,7 @@ class Game {
 		};
 
 		start_path := String->New(@base_path);
-		start_path += "/media/start.wav";
+		start_path += "/start.wav";
 		@start_chunk := MixChunk->New(start_path);
 		if(@start_chunk->IsNull()) {
 			"--- Cannot load music: '{$start_path}'! ---"->ErrorLine();
@@ -107,7 +109,7 @@ class Game {
 		};
 
 		won_path := String->New(@base_path);
-		won_path += "/media/luck.wav";
+		won_path += "/luck.wav";
 		@won_chunk := MixChunk->New(won_path);
 		if(@won_chunk->IsNull()) {
 			"--- Cannot load music: '{$won_path}'! ---"->ErrorLine();
@@ -115,7 +117,7 @@ class Game {
 		};
 
 		die_path := String->New(@base_path);
-		die_path += "/media/die.wav";
+		die_path += "/die.wav";
 		@die_chunk := MixChunk->New(die_path);
 		if(@die_chunk->IsNull()) {
 			"--- Cannot load music: '{$die_path}'! ---"->ErrorLine();
@@ -142,7 +144,11 @@ class Game {
 			"Failed to load font!"->ErrorLine();
 			return false;
 		};
-		font_path += "/../lib/sdl/fonts/lazy.ttf";
+
+		if(Runtime->HasProperty("native_launcher")) {
+			font_path := Runtime->GetInstallDir();
+		};
+		font_path += "/lib/sdl/fonts/lazy.ttf";
 
 		font := Font->New(font_path, 36);
 		if(font->IsNull()) {
@@ -282,11 +288,11 @@ class Game {
 			};
 
 			background_path := String->New(@base_path);
-			background_path += "/media/background.png";
+			background_path += "/background.png";
 			@background := @framework->AddImageSprite(background_path);
 
 			fire_path := String->New(@base_path);
-			fire_path += "/media/fire.png";
+			fire_path += "/fire.png";
 			@lava := @framework->AddImageSprite(fire_path);
 			@lava_clip1 := Rect->New(0, 0, 800,	64);
 			@lava_clip2 := Rect->New(10, 0, 800, 64);
@@ -606,7 +612,7 @@ class Player {
 		clips->AddBack(Rect->New(224, 0, 32, 52));
 
 		player_path := String->New(base_path);
-		player_path += "/media/player.png";
+		player_path += "/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
 		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2.0);
@@ -1011,7 +1017,7 @@ class Level {
 		platforms->AddBack(last_plat);
 
 		sign_path := String->New(base_path);
-		sign_path += "/media/sign.png";
+		sign_path += "/sign.png";
 		@end_post := SignPost->New(1990, 462, framework->AddAnimatedImageSprite(sign_path));
 
 		return platforms;
@@ -1033,10 +1039,10 @@ class Level {
 		logs := Vector->New()<HangingPlatform>;
 
 		log_path := String->New(base_path);
-		log_path += "/media/log.png";
+		log_path += "/log.png";
 
 		ring_path := String->New(base_path);
-		ring_path += "/media/ring.png";
+		ring_path += "/ring.png";
 
 		x_offset := 100;
 		y_offset := Int->Random(225, 275);
@@ -1054,7 +1060,7 @@ class Level {
 		gems := Vector->New()<Gem>;
 
 		gems_path := String->New(base_path);
-		gems_path += "/media/gems.png";
+		gems_path += "/gems.png";
 
 		clips := Vector->New()<Rect>;
 		clips->AddBack(Rect->New(0, 0, 32, 32));
@@ -1092,7 +1098,7 @@ class Level {
 		spiders := Vector->New()<Spider>;
 
 		spider_path := String->New(base_path);
-		spider_path += "/media/spider.png";
+		spider_path += "/spider.png";
 
 		total := 0;
 		for(i := 1; i < @platforms->Size() - 1; i+= 1;) {
