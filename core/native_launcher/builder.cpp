@@ -35,7 +35,11 @@
 int main(int argc, char* argv[])
 {
   map<const wstring, wstring> cmd_params = ParseCommnadLine(argc, argv);
-
+  if(cmd_params.size() < 3) {
+    wcout << GetUsage() << endl;
+    exit(1);
+  }
+  
   list<wstring> argument_options;
   for(map<const wstring, wstring>::iterator intr = cmd_params.begin(); intr != cmd_params.end(); ++intr) {
     argument_options.push_back(intr->first);
@@ -77,7 +81,7 @@ int main(int argc, char* argv[])
     }
     argument_options.remove(L"src");
   }
-
+  
   if(argument_options.empty()) {
     to_base_dir += fs::path::preferred_separator;
     to_base_dir += to_name;
@@ -104,9 +108,8 @@ int main(int argc, char* argv[])
       if(!is_ok) {
         exit(1);
       }
-
+      
       fs::create_directory(to_base_dir);
-
       fs::create_directory(to_base_dir);
       
       fs::path to_runtime_path(to_base_dir);
@@ -217,12 +220,17 @@ int main(int argc, char* argv[])
       // rename binary
       fs::path from_exe_file(to_base_dir);
       from_exe_file += fs::path::preferred_separator;
-      from_exe_file += L"obn.exe";
-
+      from_exe_file += L"obn";
+#ifdef _WIN32
+      from_exe_file += L".exe";
+#endif
+      
       fs::path to_exe_file(to_base_dir);
       to_exe_file += fs::path::preferred_separator;
-      to_exe_file += to_name + L".exe";
-
+      to_exe_file += to_name;
+#ifdef _WIN32
+      to_exe_file += L".exe";
+#endif
       fs::rename(from_exe_file, to_exe_file);
 
       wcout << L"Successfully created native runtime for: '" + src_obe_file + L"' in '" + to_base_dir + L"'\n---" << endl;

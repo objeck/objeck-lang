@@ -13,6 +13,7 @@ mkdir deploy/lib
 mkdir deploy/lib/sdl
 mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
+mkdir deploy/lib/native/misc
 mkdir deploy/doc
 
 # build compiler
@@ -102,7 +103,7 @@ make -f make/Makefile.obb64 clean; make -f make/Makefile.obb64
 cp obb ../release/deploy/bin
 
 make -f make/Makefile.obn64 clean; make -f make/Makefile.obn64
-cp obn ../release/deploy/bin
+cp obn ../release/deploy/lib/native/misc/
 
 cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
 cd ../release
