@@ -34,6 +34,7 @@
 
 int main(int argc, char* argv[])
 {
+  // get command line parameters
   map<const wstring, wstring> cmd_params = ParseCommnadLine(argc, argv);
   if(cmd_params.size() < 3) {
     wcout << GetUsage() << endl;
@@ -45,7 +46,6 @@ int main(int argc, char* argv[])
     argument_options.push_back(intr->first);
   }
 
-  // check program target
   wstring runtime_base_dir;
   map<const wstring, wstring>::iterator result = cmd_params.find(L"install");
   if(result != cmd_params.end()) {
@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     runtime_base_dir = GetInstallDirectory();
     argument_options.remove(L"install");
   }
-
+  
   wstring to_base_dir;
   result = cmd_params.find(L"to_dir");
   if(result != cmd_params.end()) {
@@ -81,7 +81,13 @@ int main(int argc, char* argv[])
     }
     argument_options.remove(L"src");
   }
+
+  TrimFilename(runtime_base_dir);
+  TrimFilename(to_base_dir);
+  TrimFilename(to_name);
+  TrimFilename(src_obe_file);
   
+  // if parameters look good...
   if(argument_options.empty()) {
     to_base_dir += fs::path::preferred_separator;
     to_base_dir += to_name;
