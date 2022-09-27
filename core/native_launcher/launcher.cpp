@@ -60,8 +60,20 @@ int main(int argc, char* argv[])
 #else 
   char* path_env_ptr = strdup(path_env.c_str());
   char* lib_env_ptr = strdup(lib_env.c_str());
+  
+  string lang_str("LANG=");
+  lang_str += getenv("LANG");
+  char* lang_ptr = strdup(lang_str.c_str());
+
+  string gdm_str("GDM_LANG=");
+  gdm_str += getenv("GDM_LANG");
+  char* gdm_ptr = strdup(gdm_str.c_str());
+  
+  string language_str("LANGUAGE=");
+  language_str += getenv("LANGUAGE");
+  char* language_ptr = strdup(language_str.c_str());
 #endif
-  char* spawn_env[] = { path_env_ptr, lib_env_ptr, nullptr };
+  char* spawn_env[] = { path_env_ptr, lib_env_ptr, lang_ptr, gdm_ptr, language_ptr, nullptr };
 
 #ifdef _DEBUG
   cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
