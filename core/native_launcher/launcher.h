@@ -48,6 +48,9 @@
 
 using namespace std;
 
+/**
+ * Get the obr exection path
+ */
 static const string GetExecPath(const string working_dir) {
 #ifdef _WIN32
   return working_dir + "\\runtime\\bin\\obr.exe";
@@ -56,6 +59,9 @@ static const string GetExecPath(const string working_dir) {
 #endif
 }
 
+/**
+ * Get environment arguments
+ */
 static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
   if(argc < 1) {
     return nullptr;
