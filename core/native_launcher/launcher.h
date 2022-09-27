@@ -85,7 +85,6 @@ static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
   return spawn_args;
 }
 
-
 /**
  * Get the current working directory
  */

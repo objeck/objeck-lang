@@ -58,9 +58,27 @@ int main(int argc, char* argv[])
   char* path_env_ptr = _strdup(path_env.c_str());
   char* lib_env_ptr = _strdup(lib_env.c_str());
 
-  char* spawn_env[] = { path_env_ptr, lib_env_ptr, nullptr };
+  size_t env_len;
+  char* temp_ptr = nullptr;
+  _dupenv_s(&temp_ptr, &env_len, "TEMP");
+  string temp_str("TEMP=");
+  if(env_len) {
+    temp_str += temp_ptr;
+    temp_ptr = _strdup(temp_str.c_str());
+  }
+
+  char* tmp_ptr = nullptr;
+  _dupenv_s(&tmp_ptr, &env_len, "TMP");
+  string tmp_str("TMP=");
+  if(env_len) {
+    tmp_str += tmp_ptr;
+    tmp_ptr = _strdup(tmp_str.c_str());
+  }
+
+  char* spawn_env[] = { path_env_ptr, lib_env_ptr, temp_ptr, tmp_ptr, nullptr };
 #ifdef _DEBUG
-  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
+  std::cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << std::endl;
+  std::cout << "temp_ptr=|" << temp_ptr << "|\tmp_ptr=|" << tmp_ptr << '|' << std::endl;
 #endif
   
 #else 
