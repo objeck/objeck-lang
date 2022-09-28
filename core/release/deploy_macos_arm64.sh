@@ -8,6 +8,7 @@ mkdir deploy/lib
 mkdir deploy/lib/sdl
 mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
+mkdir deploy/lib/native/misc
 mkdir deploy/doc
 
 # build compiler
@@ -27,6 +28,15 @@ cp xcode/build/Release/obr ../release/deploy/bin
 cd ../debugger
 xcodebuild -project xcode/Debugger.xcodeproj clean build
 cp xcode/build/Release/obd ../release/deploy/bin
+
+# build native launcher
+cd ../native_launcher
+xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build
+cp xcode/build/Release/obb ../release/deploy/bin
+
+xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build
+cp xcode/build/Release/obn ../release/deploy/lib/native/misc
+cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
 
 # build libraries
 cd ../lib/openssl
