@@ -270,7 +270,7 @@ wstring GetInstallDirectory()
     status = -1;
   }
 #else
-  status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+  status = readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
   if(status != -1) {
     install_path[status] = '\0';
   }
@@ -400,7 +400,7 @@ wstring GetCommandParameter(const wstring& key, map<const wstring, wstring>& cmd
     value = result->second;
     argument_options.remove(key);
   }
-  else if(false) {
+  else if(optional) {
     argument_options.remove(key);
   }
 
@@ -436,6 +436,68 @@ void TrimFileEnding(wstring& filename)
   if(!filename.empty() && filename.back() == fs::path::preferred_separator) {
     filename.pop_back();
   }
+}
+
+static bool BytesToUnicode(const string& in, wstring& out)
+{
+#ifdef _WIN32
+  // allocate space
+  const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, nullptr, 0);
+  if(wsize == 0) {
+    return false;
+  }
+  wchar_t* buffer = new wchar_t[wsize];
+
+  // convert
+  const int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
+  if(check == 0) {
+    delete[] buffer;
+    buffer = nullptr;
+    return false;
+  }
+
+  // create string
+  out.append(buffer, wsize - 1);
+
+  // clean up
+  delete[] buffer;
+  buffer = nullptr;
+#else
+  // allocate space
+  size_t size = mbstowcs(nullptr, in.c_str(), in.size());
+  if(size == (size_t)-1) {
+    return false;
+  }
+  wchar_t* buffer = new wchar_t[size + 1];
+
+  // convert
+  size_t check = mbstowcs(buffer, in.c_str(), in.size());
+  if(check == (size_t)-1) {
+    delete[] buffer;
+    buffer = nullptr;
+    return false;
+  }
+  buffer[size] = L'\0';
+
+  // create string
+  out.append(buffer, size);
+
+  // clean up
+  delete[] buffer;
+  buffer = nullptr;
+#endif
+
+  return true;
+}
+
+wstring BytesToUnicode(const string& in)
+{
+  wstring out;
+  if(BytesToUnicode(in, out)) {
+    return out;
+  }
+
+  return L"";
 }
 
 wstring GetUsage()

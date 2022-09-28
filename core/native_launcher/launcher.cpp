@@ -217,7 +217,7 @@ int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env)
 #ifdef _WIN32
   intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
 #else
-  int result = execvpe(spawn_path, spawn_args, spawn_env);
+  int result = execve(spawn_path, spawn_args, spawn_env);
 #endif
 
   free(spawn_args);
