@@ -32,16 +32,16 @@
 #ifndef __NATIVE_LAUNCHER__
 #define __NATIVE_LAUNCHER__
 
-
-#include <string>
 #include <iostream>
+#include <string.h>
+#include <string>
+#include <vector>
 
 #ifdef _WIN32
 #include "windows.h"
 #include "process.h"
 #else
 #include <unistd.h>
-#include <string.h>
 #endif
 
 #define MAX_ENV_PATH 1024 * 32
@@ -49,132 +49,50 @@
 using namespace std;
 
 /**
- * Get the obr exection path
+ * Build the environment variables
  */
-static const string GetExecPath(const string working_dir) {
-#ifdef _WIN32
-  return working_dir + "\\runtime\\bin\\obr.exe";
-#else
-  return working_dir + "/runtime/bin/obr";
-#endif
-}
+static char** BuildEnviromentParameters(const string &path_env_str, const string &lib_env_str, char** env_ptrs);
+
+/**
+ * Free the built environment variables
+ */
+static void FreeEnviromentVariables(char** envp);
+
+/**
+ * Get the obr execution path
+ */
+static const string GetExecutablePath(const string working_dir);
 
 /**
  * Get environment arguments
  */
-static char** GetArgsPath(const string& spawn_path, int argc, char* argv[]) {
-  if(argc < 1) {
-    return nullptr;
-  }
-
-  char** spawn_args = (char**)malloc(argc * MAX_ENV_PATH);
-  if(!spawn_args) {
-    return nullptr;
-  }
-#ifdef _WIN32
-  spawn_args[0] = _strdup(spawn_path.c_str());
-  spawn_args[1] = _strdup(".\\app\\app.obe");
-#else
-  spawn_args[0] = strdup(spawn_path.c_str());
-  spawn_args[0] = spawn_args[1] = strdup("./app/app.obe");
-#endif
-
-  for(int i = 1; i < argc; ++i) {
-#ifdef _WIN32
-    spawn_args[i + 1] = _strdup(argv[i]);
-#else
-    spawn_args[i + 1] = strdup(argv[i]);
-#endif
-  }
-  spawn_args[argc + 1] = nullptr;
-
-  return spawn_args;
-}
+static char** BuildArguments(const string& spawn_path, int argc, char* argv[]);
 
 /**
  * Get the current working directory
  */
-static const string GetWorkingDirectory() {
-#ifdef _WIN32
-  TCHAR exe_full_path[MAX_ENV_PATH] = {0};
-  GetModuleFileName(nullptr, exe_full_path, MAX_ENV_PATH);
-  const string dir_full_path = exe_full_path;
-  size_t dir_full_path_index = dir_full_path.find_last_of('\\');
-
-  if(dir_full_path_index != string::npos) {
-    return dir_full_path.substr(0, dir_full_path_index);
-  }
-
-  return "";
-#else
-  char exe_full_path[MAX_ENV_PATH] = {0};
-  if(!getcwd(exe_full_path, MAX_ENV_PATH)) {
-    return "";
-  }	
-  return string(exe_full_path);
-#endif
-}
+static const string GetWorkingDirectory();
 
 /**
  * Get the environment PATH value
  */
-static const string GetEnviromentPath(const string& working_dir) {
-  char* cur_path_ptr = nullptr;
-
-#ifdef _WIN32
-  size_t cur_env_len;
-  _dupenv_s(&cur_path_ptr, &cur_env_len, "PATH");
-  
-  if(cur_path_ptr) {
-    string cur_path(cur_path_ptr);
-    
-    free(cur_path_ptr);
-    cur_path_ptr = nullptr;
-
-    const string objk_bin_path = working_dir + "\\runtime\\bin";
-    const string objk_native_path = working_dir + "\\runtime\\lib\\native";
-    const string objk_sdl_path = working_dir + "\\runtime\\lib\\sdl";
-
-    return "PATH=" + cur_path + ';' + objk_sdl_path + ';' + objk_native_path + ';' + objk_bin_path;
-  }
-#else
-  cur_path_ptr = getenv("PATH");
-  if(cur_path_ptr) {
-    const string objk_bin_path = working_dir + "/runtime/bin";
-    const string objk_native_path = working_dir + "/runtime/lib/native";
-
-    return "PATH=" + string(cur_path_ptr) + ':' + objk_native_path + ':' + objk_bin_path;
-  }
-#endif
-
-  return "";
-}
+static const string BuildPathVariable(const string& working_dir);
 
 /**
  * Get the environment OBJECK_LIB_PATH value
  */
-static const string GetLibraryPath(const string& working_dir) {
-#ifdef _WIN32
-  return "OBJECK_LIB_PATH=" + working_dir + "\\runtime\\lib";
-#else
-  return "OBJECK_LIB_PATH=" + working_dir + "/runtime/lib";
-#endif
-}
+static const string BuildObjeckLibVariable(const string& working_dir);
 
-#endif
+/**
+ * Checks to start of a string
+ */
+bool StartWith(const char* str_ptr, const char* check_ptr) {
+  return strncmp(check_ptr, str_ptr, strlen(check_ptr)) == 0;
+}
 
 /**
  * Execute
  */
-const int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env) {
-#ifdef _WIN32
-  intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
-#else
-  int result = execvpe(spawn_path, spawn_args, spawn_env);
+static int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env);
+
 #endif
-
-  free(spawn_args);
-  spawn_args = nullptr;
-
-  return result == 0 ? 0 : 1;
-}
