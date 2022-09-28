@@ -32,91 +32,196 @@
 
 #include "launcher.h"
 
-int main(int argc, char* argv[])
+int main(int argc, char* argv[], char** envp)
 {
   const string working_dir = GetWorkingDirectory();
   if(working_dir.empty()) {
     cerr << ">>> Unable to find the working directory <<<" << endl;
     return 1;
   }
-  const string spawn_path = GetExecPath(working_dir);
+  const string spawn_path = GetExecutablePath(working_dir);
 
-  char** spawn_args = GetArgsPath(spawn_path, argc, argv);
+  char** spawn_args = BuildArguments(spawn_path, argc, argv);
   if(!spawn_args) {
     cerr << ">>> Unable to initialize environment <<<" << endl;
     return 1;
   }
 
-  const string path_env = GetEnviromentPath(working_dir);
-  const string lib_env = GetLibraryPath(working_dir);
-  if(path_env.empty() || lib_env.empty()) {
+  const string path_env_str = BuildPathVariable(working_dir);
+  const string lib_env_str = BuildObjeckLibVariable(working_dir);
+  if(path_env_str.empty() || lib_env_str.empty()) {
     cerr << ">>> Unable to determine the current working directory <<<" << endl;
     return 1;
   }
 
-#ifdef _WIN32
-  char* path_env_ptr = _strdup(path_env.c_str());
-  char* lib_env_ptr = _strdup(lib_env.c_str());
-
-  size_t env_len;
-  char* temp_ptr = nullptr;
-  _dupenv_s(&temp_ptr, &env_len, "TEMP");
-  string temp_str("TEMP=");
-  if(env_len) {
-    temp_str += temp_ptr;
-    temp_ptr = _strdup(temp_str.c_str());
+  int status = 1;
+  char** spawn_env = BuildEnviromentParameters(path_env_str, lib_env_str, envp);
+  if(spawn_env) {
+    status = Spawn(spawn_path.c_str(), spawn_args, spawn_env);
   }
-
-  char* tmp_ptr = nullptr;
-  _dupenv_s(&tmp_ptr, &env_len, "TMP");
-  string tmp_str("TMP=");
-  if(env_len) {
-    tmp_str += tmp_ptr;
-    tmp_ptr = _strdup(tmp_str.c_str());
-  }
-
-  char* spawn_env[] = { path_env_ptr, lib_env_ptr, temp_ptr, tmp_ptr, nullptr };
-#ifdef _DEBUG
-  std::cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << std::endl;
-  std::cout << "temp_ptr=|" << temp_ptr << "|\tmp_ptr=|" << tmp_ptr << '|' << std::endl;
-#endif
-  
-#else 
-  char* path_env_ptr = strdup(path_env.c_str());
-  char* lib_env_ptr = strdup(lib_env.c_str());
-  
-  string lang_str("LANG=");
-  lang_str += getenv("LANG");
-  char* lang_ptr = strdup(lang_str.c_str());
-
-  string gdm_str("GDM_LANG=");
-  gdm_str += getenv("GDM_LANG");
-  char* gdm_ptr = strdup(gdm_str.c_str());
-  
-  string language_str("LANGUAGE=");
-  language_str += getenv("LANGUAGE");
-  char* language_ptr = strdup(language_str.c_str());
-
-  string xdg_str("XDG_RUNTIME_DIR=");
-  xdg_str += getenv("XDG_RUNTIME_DIR");
-  char* xdg_ptr = strdup(xdg_str.c_str());
-
-  char* spawn_env[] = { path_env_ptr, lib_env_ptr, lang_ptr, gdm_ptr, language_ptr, xdg_ptr, nullptr };
-#ifdef _DEBUG
-  cout << "spawn_path=|" << spawn_path << "|\nenv_path=|" << path_env << "|\nlib_env=|" << lib_env << '|' << endl;
-  cout << "lang_str=|" << lang_str << "|\ngdm_str=|" << gdm_str << "|\nlanguage_ptr=|" << language_ptr << '|' << endl;
-#endif
-#endif
-
-
-
-  const int status = Spawn(spawn_path.c_str(), spawn_args, spawn_env);
-
-  free(path_env_ptr);
-  path_env_ptr = nullptr;
-
-  free(lib_env_ptr);
-  lib_env_ptr = nullptr;
+  FreeEnviromentVariables(spawn_env);
 
   return status;
+}
+
+char** BuildEnviromentParameters(const string& path_env_str, const string& lib_env_str, char** env_ptrs)
+{
+  vector<string> parameters;
+
+  parameters.push_back(path_env_str);
+  parameters.push_back(lib_env_str);
+
+  int index = 0;
+  char* env_ptr = env_ptrs[index];
+  while(env_ptr) {
+    if(!StartWith(env_ptr, "PATH") && !StartWith(env_ptr, "OBJECK_LIB_PATH")) {
+      parameters.push_back(env_ptr);
+    }
+    env_ptr = env_ptrs[++index];
+  }
+
+  char** new_env_ptrs = new char*[parameters.size() + 1];
+  for(size_t i = 0; i < parameters.size(); ++i) {
+#ifdef _WIN32
+    new_env_ptrs[i] = _strdup(parameters[i].c_str());
+#else
+    new_env_ptrs[i] = strdup(parameters[i].c_str());
+#endif
+  }
+  new_env_ptrs[parameters.size()] = nullptr;
+
+  return new_env_ptrs;
+}
+
+void FreeEnviromentVariables(char** env_ptrs)
+{
+  int index = 0;
+  char* env_ptr = env_ptrs[index];
+  while(env_ptr) {
+    delete[] env_ptr;
+    env_ptr = env_ptrs[++index];
+  }
+
+  delete[] env_ptrs;
+  env_ptrs = nullptr;
+}
+
+const string BuildObjeckLibVariable(const string& working_dir) 
+{
+#ifdef _WIN32
+  return "OBJECK_LIB_PATH=" + working_dir + "\\runtime\\lib";
+#else
+  return "OBJECK_LIB_PATH=" + working_dir + "/runtime/lib";
+#endif
+}
+
+/**
+ * Get the environment PATH value
+ */
+const string BuildPathVariable(const string& working_dir) {
+  char* path_ptr = nullptr;
+
+#ifdef _WIN32
+  size_t path_len;
+  _dupenv_s(&path_ptr, &path_len, "PATH");
+
+  if(path_ptr) {
+    string path_str(path_ptr);
+
+    free(path_ptr);
+    path_ptr = nullptr;
+
+    const string objk_bin_str = working_dir + "\\runtime\\bin";
+    const string objk_native_str = working_dir + "\\runtime\\lib\\native";
+    const string objk_sdl_str = working_dir + "\\runtime\\lib\\sdl";
+
+    return "PATH=" + path_str + ';' + objk_sdl_str + ';' + objk_native_str + ';' + objk_bin_str;
+  }
+#else
+  path_ptr = getenv("PATH");
+  if(path_ptr) {
+    const string objk_bin_str = working_dir + "/runtime/bin";
+    const string objk_native_str = working_dir + "/runtime/lib/native";
+
+    return "PATH=" + string(path_ptr) + ':' + objk_native_str + ':' + objk_bin_str;
+  }
+#endif
+
+  return "";
+}
+
+const string GetExecutablePath(const string working_dir) 
+{
+#ifdef _WIN32
+  return working_dir + "\\runtime\\bin\\obr.exe";
+#else
+  return working_dir + "/runtime/bin/obr";
+#endif
+}
+
+char** BuildArguments(const string& spawn_str, int argc, char* argv[]) 
+{
+  if(argc < 1) {
+    return nullptr;
+  }
+
+  // adding parameter for obr call to 'app.obe' and required null-terminated pointer
+  char** spawn_args = new char*[argc + 2];
+  if(!spawn_args) {
+    return nullptr;
+  }
+#ifdef _WIN32
+  spawn_args[0] = _strdup(spawn_str.c_str());
+  spawn_args[1] = _strdup(".\\app\\app.obe");
+#else
+  spawn_args[0] = strdup(spawn_str.c_str());
+  spawn_args[0] = spawn_args[1] = strdup("./app/app.obe");
+#endif
+
+  for(int i = 1; i < argc; ++i) {
+#ifdef _WIN32
+    spawn_args[i + 1] = _strdup(argv[i]);
+#else
+    spawn_args[i + 1] = strdup(argv[i]);
+#endif
+  }
+  spawn_args[argc + 1] = nullptr;
+
+  return spawn_args;
+}
+
+const string GetWorkingDirectory() 
+{
+#ifdef _WIN32
+  TCHAR exe_full_path[MAX_ENV_PATH] = { 0 };
+  GetModuleFileName(nullptr, exe_full_path, MAX_ENV_PATH);
+  const string dir_full_path = exe_full_path;
+  size_t dir_full_path_index = dir_full_path.find_last_of('\\');
+
+  if(dir_full_path_index != string::npos) {
+    return dir_full_path.substr(0, dir_full_path_index);
+  }
+
+  return "";
+#else
+  char exe_full_path[MAX_ENV_PATH] = { 0 };
+  if(!getcwd(exe_full_path, MAX_ENV_PATH)) {
+    return "";
+  }
+  return string(exe_full_path);
+#endif
+}
+
+int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env) 
+{
+#ifdef _WIN32
+  intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+#else
+  int result = execvpe(spawn_path, spawn_args, spawn_env);
+#endif
+
+  free(spawn_args);
+  spawn_args = nullptr;
+
+  return result == 0 ? 0 : 1;
 }
