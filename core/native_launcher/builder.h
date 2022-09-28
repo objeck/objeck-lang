@@ -42,6 +42,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#elif _OSX
+#include <mach-o/dyld.h>
 #else
 #include <unistd.h>
 #endif
