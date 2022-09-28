@@ -32,10 +32,17 @@
 #ifndef __NATIVE_BUILDER__
 #define __NATIVE_BUILDER__
 
-#include "common.h"
-
-#include "../shared/version.h"
 #include <iostream>
+#include <string>
+#include <map>
+#include <list>
+#include <vector>
+#include <filesystem>
+#include "../shared/version.h"
+
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #define MAX_FILE_PATH 256
 
@@ -81,5 +88,12 @@ static wstring GetInstallDirectory();
  * Validate the runtime directory structure
  */
 static bool CheckInstallDir(const wstring& install_dir);
+
+/**
+ * Converts UTF-8 bytes to a
+ * native Unicode string
+ */
+static bool BytesToUnicode(const string& in, wstring& out);
+static wstring BytesToUnicode(const string& in);
 
 #endif
