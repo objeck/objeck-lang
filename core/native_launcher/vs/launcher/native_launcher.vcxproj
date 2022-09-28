@@ -19,11 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\launcher.cpp" />
+    <ClCompile Include="..\..\launcher.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\shared\version.h" />
-    <ClInclude Include="..\launcher.h" />
+    <ClInclude Include="..\..\..\shared\version.h" />
+    <ClInclude Include="..\..\launcher.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
