@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
       fs::rename(from_exe_file, to_exe_file);
 
       // we are done...
-      wcout << L"Created native runtime environment for: '" + src_obe_file + L"' in directory '" + to_base_dir + L"'\n---" << endl;
+      wcout << L"Created portable runtime for: '" + src_obe_file + L"' in directory '" + to_base_dir + L"'\n---" << endl;
     }
     catch(std::exception& e) {
       cerr << ">>> Error encounented build native runtime environment <<<" << endl;
