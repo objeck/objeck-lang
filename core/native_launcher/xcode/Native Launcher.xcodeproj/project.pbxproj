@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ED8E50E428E40BDD006D63C9 /* launcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED8E50E328E40BDD006D63C9 /* launcher.cpp */; };
-		EDEE2CE728E40D30001690DF /* builder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDEE2CE528E40D30001690DF /* builder.cpp */; };
+		EDF20A4228E4914D004F9AD0 /* builder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDF20A4128E4914D004F9AD0 /* builder.cpp */; };
+		EDF20A4628E49162004F9AD0 /* launcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDF20A4528E49162004F9AD0 /* launcher.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -34,11 +34,11 @@
 
 /* Begin PBXFileReference section */
 		ED8E50DB28E40BBF006D63C9 /* obn */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obn; sourceTree = BUILT_PRODUCTS_DIR; };
-		ED8E50E228E40BDD006D63C9 /* launcher.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = launcher.h; path = ../../launcher.h; sourceTree = "<group>"; };
-		ED8E50E328E40BDD006D63C9 /* launcher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.cpp; name = launcher.cpp; path = ../../launcher.cpp; sourceTree = "<group>"; tabWidth = 2; usesTabs = 0; };
 		EDEE2CDE28E40D24001690DF /* obb */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obb; sourceTree = BUILT_PRODUCTS_DIR; };
-		EDEE2CE528E40D30001690DF /* builder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = builder.cpp; path = ../../builder.cpp; sourceTree = "<group>"; };
-		EDEE2CE628E40D30001690DF /* builder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = builder.h; path = ../../builder.h; sourceTree = "<group>"; };
+		EDF20A4028E4914D004F9AD0 /* builder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = builder.h; path = ../../builder.h; sourceTree = "<group>"; };
+		EDF20A4128E4914D004F9AD0 /* builder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = builder.cpp; path = ../../builder.cpp; sourceTree = "<group>"; };
+		EDF20A4428E49162004F9AD0 /* launcher.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = launcher.h; path = ../../launcher.h; sourceTree = "<group>"; };
+		EDF20A4528E49162004F9AD0 /* launcher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = launcher.cpp; path = ../../launcher.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,29 +59,29 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		ED8E50DC28E40BBF006D63C9 /* Launcher */ = {
+		EDF20A3F28E49137004F9AD0 /* obb */ = {
 			isa = PBXGroup;
 			children = (
-				ED8E50E328E40BDD006D63C9 /* launcher.cpp */,
-				ED8E50E228E40BDD006D63C9 /* launcher.h */,
+				EDF20A4128E4914D004F9AD0 /* builder.cpp */,
+				EDF20A4028E4914D004F9AD0 /* builder.h */,
 			);
-			path = Launcher;
+			path = obb;
 			sourceTree = "<group>";
 		};
-		EDEE2CDF28E40D24001690DF /* Builder */ = {
+		EDF20A4328E49156004F9AD0 /* obn */ = {
 			isa = PBXGroup;
 			children = (
-				EDEE2CE528E40D30001690DF /* builder.cpp */,
-				EDEE2CE628E40D30001690DF /* builder.h */,
+				EDF20A4528E49162004F9AD0 /* launcher.cpp */,
+				EDF20A4428E49162004F9AD0 /* launcher.h */,
 			);
-			path = Builder;
+			path = obn;
 			sourceTree = "<group>";
 		};
 		EDF9DAC328E40A8F0065036D = {
 			isa = PBXGroup;
 			children = (
-				ED8E50DC28E40BBF006D63C9 /* Launcher */,
-				EDEE2CDF28E40D24001690DF /* Builder */,
+				EDF20A4328E49156004F9AD0 /* obn */,
+				EDF20A3F28E49137004F9AD0 /* obb */,
 				EDF9DACD28E40A8F0065036D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -173,7 +173,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED8E50E428E40BDD006D63C9 /* launcher.cpp in Sources */,
+				EDF20A4628E49162004F9AD0 /* launcher.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,7 +181,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EDEE2CE728E40D30001690DF /* builder.cpp in Sources */,
+				EDF20A4228E4914D004F9AD0 /* builder.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -194,6 +194,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				EXCLUDED_ARCHS = x86_64;
+				GCC_PREPROCESSOR_DEFINITIONS = _OSX;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -205,6 +206,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				EXCLUDED_ARCHS = x86_64;
+				GCC_PREPROCESSOR_DEFINITIONS = _OSX;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -217,6 +219,7 @@
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				EXCLUDED_ARCHS = x86_64;
 				"EXCLUDED_ARCHS[sdk=*]" = x86_64;
+				GCC_PREPROCESSOR_DEFINITIONS = _OSX;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -229,6 +232,7 @@
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				EXCLUDED_ARCHS = x86_64;
 				"EXCLUDED_ARCHS[sdk=*]" = x86_64;
+				GCC_PREPROCESSOR_DEFINITIONS = _OSX;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
