@@ -29,10 +29,12 @@
     <GNUConfigurationType>Debug</GNUConfigurationType>
     <ToolchainID>com.visualgdb.raspberry_pi.arm64</ToolchainID>
     <ToolchainVersion>10.2.1/10.1/r1</ToolchainVersion>
+    <TargetName>obn</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|VisualGDB'">
     <ToolchainID>com.visualgdb.raspberry_pi.arm64</ToolchainID>
     <ToolchainVersion>10.2.1/10.1/r1</ToolchainVersion>
+    <TargetName>obn</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|VisualGDB'">
     <ClCompile>
