@@ -2,6 +2,12 @@ REM clean up
 rmdir /s /q deploy64
 mkdir deploy64
 mkdir deploy64\app
+mkdir deploy64\lib
+mkdir deploy64\lib\sdl
+mkdir deploy64\lib\sdl\fonts
+mkdir deploy64\lib\native
+mkdir deploy64\lib\native\misc
+copy ..\lib\*.obl deploy64\lib
 
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
@@ -14,13 +20,15 @@ mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\Release\win64\obr.e
 copy ..\vm\Release\win64\*.exe deploy64\bin
 copy ..\debugger\Release\win64\*.exe deploy64\bin
 
+REM native launcher
+cd ..\native_launcher
+devenv native_launcher.sln /rebuild "Release|x64"
+copy x64\Release\obn.exe ..\release\deploy64\lib\native\misc
+copy x64\Release\obb.exe ..\release\deploy64\bin
+copy ..\vm\misc\config.prop ..\release\deploy64\lib\native\misc
+cd ..\release
+
 REM libraries
-mkdir deploy64\lib
-mkdir deploy64\lib\sdl
-mkdir deploy64\lib\sdl\fonts
-mkdir deploy64\lib\native
-mkdir deploy64\lib\native\misc
-copy ..\lib\*.obl deploy64\lib
 del /q deploy64\bin\a.*
 copy ..\vm\misc\*.pem deploy64\lib
 
@@ -48,15 +56,7 @@ REM diags
 cd ..\lib\diags
 devenv diag.sln /rebuild "Release|x64"
 copy vs\Release\x64\*.dll ..\..\release\deploy64\lib\native
-cd ..\..
-
-REM native launcher
-cd native_launcher
-devenv native_launcher.sln /rebuild "Release|x64"
-copy x64\Release\obn.exe ..\release\deploy64\lib\native\misc
-copy x64\Release\obb.exe ..\release\deploy64\bin
-copy ..\vm\misc\config.prop ..\release\deploy64\lib\native\misc
-cd ..\release
+cd ..\..\release
 
 REM app
 cd WindowsLauncher
