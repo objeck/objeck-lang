@@ -18,6 +18,12 @@ REM build debugger
 devenv ..\debugger\arm64_debugger\arm64_debugger.sln /rebuild "Release|VisualGDB"
 copy ..\debugger\arm64_debugger\VisualGDB\Release\arm64_debugger deploy_arm64\bin\obd
 
+REM portable runtime
+devenv ..\native_launcher\arm_native_launcher\arm_native_launcher.sln /rebuild "Release|VisualGDB"
+copy ..\native_launcher\arm_native_launcher\VisualGDB\Release\obb deploy_arm64\bin\obb
+copy ..\native_launcher\arm_native_launcher\VisualGDB\Release\obn deploy_arm64\lib\native\misc\obn
+copy ..\vm\misc\config.prop deploy_arm64\lib\native\misc
+
 REM libraries
 mkdir deploy_arm64\lib\sdl
 mkdir deploy_arm64\lib\sdl\fonts
