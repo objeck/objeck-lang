@@ -2,6 +2,9 @@ REM clean up
 rmdir /s /q deploy_arm64
 mkdir deploy_arm64
 mkdir deploy_arm64\bin
+mkdir deploy_arm64\lib
+mkdir deploy_arm64\lib\native
+mkdir deploy_arm64\lib\native\misc
 
 REM build compiler
 devenv ..\compiler\arm64_compiler\arm64_compiler.sln /rebuild "Release|VisualGDB"
@@ -16,15 +19,12 @@ devenv ..\debugger\arm64_debugger\arm64_debugger.sln /rebuild "Release|VisualGDB
 copy ..\debugger\arm64_debugger\VisualGDB\Release\arm64_debugger deploy_arm64\bin\obd
 
 REM libraries
-mkdir deploy_arm64\lib
 mkdir deploy_arm64\lib\sdl
 mkdir deploy_arm64\lib\sdl\fonts
 copy ..\lib\*.obl deploy_arm64\lib
 del deploy_arm64\lib\gtk2.obl
 del /q deploy_arm64\bin\a.*
 copy ..\vm\misc\*.pem deploy_arm64\lib
-
-mkdir deploy_arm64\lib\native
 
 REM native libraries
 cd ..\lib\linux_arm64

@@ -33,6 +33,7 @@
 #define __NATIVE_BUILDER__
 
 #include <iostream>
+#include <string.h>
 #include <string>
 #include <map>
 #include <list>
