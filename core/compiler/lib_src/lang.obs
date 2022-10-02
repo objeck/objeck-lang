@@ -7028,7 +7028,7 @@ bundle System.IO.File {
 		Get the native directory slash
 		@return native directory slash
 		~#
-		function : GetSlash() ~ CHar {
+		function : GetSlash() ~ Char {
 			DIR_SLASH;
 		}
 		
