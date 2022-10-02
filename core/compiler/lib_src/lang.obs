@@ -7023,6 +7023,14 @@ bundle System.IO.File {
 		function : Create(n : System.String) ~ Bool {
 			DIR_CREATE;
 		}
+
+		#~
+		Get the native directory slash
+		@return native directory slash
+		~#
+		function : GetSlash() ~ CHar {
+			DIR_SLASH;
+		}
 		
 		#~
 		Creates a directory path
