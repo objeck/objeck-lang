@@ -2603,9 +2603,25 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       }
       else {
         if(expression->GetEvalType()) {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-                       expression->GetEvalType()->GetName() +
-                       L"'\n\tIf external reference to generic ensure it has been typed");
+          wstring error_msg;
+
+          if(!expression->GetEvalType()->GetName().empty()) {
+            error_msg = L" +Undefined class reference: '" + expression->GetEvalType()->GetName();
+          }
+          else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+            MethodCall* cls_method = static_cast<MethodCall*>(expression);
+
+            wstring cls_name;
+            if(cls_method->GetMethod()) {
+              cls_name = cls_method->GetMethod()->GetClass()->GetName() + L"->";
+            }
+            else if(cls_method->GetLibraryMethod()) {
+              cls_name = cls_method->GetLibraryMethod()->GetLibraryClass()->GetName() + L"->";
+            }
+
+            error_msg = L"Undefined function/method call: '" + cls_name + cls_method->GetMethodName() + L"(..)'";
+          }
+          ProcessError(static_cast<Expression*>(method_call), error_msg + L"\n\tIf external reference to generic ensure it has been typed");
         }
         else {
           ProcessError(static_cast<Expression*>(method_call),
