@@ -2359,6 +2359,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case DIR_CREATE:
       return DirCreate(program, inst, op_stack, stack_pos, frame);
 
+    case DIR_SLASH:
+      return DirSlash(program, inst, op_stack, stack_pos, frame);
+
     case DIR_EXISTS:
       return DirExists(program, inst, op_stack, stack_pos, frame);
 
@@ -5097,6 +5100,17 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t
   else {
     return false;
   }
+
+  return true;
+}
+
+bool TrapProcessor::DirSlash(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+#ifdef _WIN32  
+  PushInt('\\', op_stack, stack_pos);
+#else
+  PushInt('/', op_stack, stack_pos);
+#endif
 
   return true;
 }

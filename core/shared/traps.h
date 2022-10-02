@@ -129,6 +129,7 @@ namespace instructions {
     FILE_RENAME,
     // directory operations
     DIR_CREATE,
+    DIR_SLASH,
     DIR_EXISTS,
     DIR_LIST,
     // socket i/o
