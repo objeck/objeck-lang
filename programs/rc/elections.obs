@@ -4,7 +4,7 @@ use Data.CSV;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			input := System.IO.File.FileReader->ReadFile(args[0]);
+			input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 			table := CsvTable->New(input, "\n");
 
 			sorter := Sorter->New();

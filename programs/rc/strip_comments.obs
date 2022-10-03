@@ -3,7 +3,7 @@ use Collection;
 class StripComments {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			input := System.IO.File.FileReader->ReadFile(args[0]);
+			input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 			if(input <> Nil) {
 				comments := FindComments("/*", "*/", input);
 				StripComments(comments, input)->PrintLine();

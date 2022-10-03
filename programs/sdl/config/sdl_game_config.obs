@@ -3,7 +3,7 @@ use Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			parser := JsonParser->New(System.IO.File.FileReader->ReadFile(args[0]));
+			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
 			if(parser->Parse()) {
 				root := parser->GetRoot();
 

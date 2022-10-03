@@ -1,5 +1,5 @@
 use Collection.Generic;
-use System.IO.File;
+use System.IO.Filesystem;
 
 class Emitter {
 	@statements : Vector<ParseNode>;

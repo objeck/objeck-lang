@@ -15,7 +15,7 @@ class Test {
 		download_data := WebDownloader->Download(urls, headers)<Pair<String, String>>;
 		each(i : download_data) {
 			download := download_data->Get(i);
-			System.IO.File.FileWriter->WriteFile("foo/foo_{$i}.json", download->GetSecond()->As(String));
+			System.IO.Filesystem.FileWriter->WriteFile("foo/foo_{$i}.json", download->GetSecond()->As(String));
 		};
 	}
 }

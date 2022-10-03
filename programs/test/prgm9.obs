@@ -1,4 +1,4 @@
-use System.IO.File;
+use System.IO.Filesystem;
 
 class Test {
 	function : Main(args : System.String[]) ~ Nil {
