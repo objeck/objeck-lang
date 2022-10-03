@@ -3249,7 +3249,7 @@ bundle System {
 			index += find->Size();
 			length := Size() - index;
 			
-			if(length = 0) {
+			if(length = 0 & replace = Nil) {
 				new_string->Append(replace);
 			}
 			else {
@@ -3257,11 +3257,33 @@ bundle System {
 				if(end = Nil) {
 					return @self;
 				};
-				new_string->Append(replace);
+
+				replace <> Nil) {
+					new_string->Append(replace);
+				};
+				
 				new_string->Append(end);
 			};
 			
 			return new_string;
+		}
+
+		#~
+		Removes all occurrences the search string
+		@param find character to search for
+		@return new string instance
+		~#
+		method : public : RemoveAll(find : Char) ~ String {
+			return ReplaceAll(find, Nil);
+		}
+
+		#~
+		Removed the first occurrence the search string
+		@param find string to search for
+		@return new string instance
+		~#
+		method : public : Replace(find : String) ~ String {
+			return Replace(find, Nil);
 		}
 		
 		#~
