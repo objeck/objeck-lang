@@ -2725,9 +2725,7 @@ bundle System {
 		@param str string object
 		~#
 		method : public : Append(str : String) ~ Nil {
-			if(str) {
-				Append(str->ToCharArray());
-			};
+			Append(str->ToCharArray());
 		}
 		
 		#~
@@ -3264,24 +3262,6 @@ bundle System {
 			};
 			
 			return new_string;
-		}
-
-		#~
-		Removes all occurrences the search string
-		@param find string to search for
-		@return new string instance
-		~#
-		method : public : RemoveAll(find : String) ~ String {
-			return ReplaceAll(find, Nil->As(String));
-		}
-
-		#~
-		Removes the first occurrence the search string
-		@param find string to search for
-		@return new string instance
-		~#
-		method : public : Remove(find : String) ~ String {
-			return Replace(find, Nil->As(String));
 		}
 		
 		#~
