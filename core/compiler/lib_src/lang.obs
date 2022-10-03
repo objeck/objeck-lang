@@ -3214,7 +3214,7 @@ bundle System {
 		@param find string to search for
 		@return new string instance
 		~#
-		method : public : RemoveAll(find : String, replace : String) ~ String {
+		method : public : RemoveAll(find : String) ~ String {
 			return ReplaceAll(find, Nil);
 		}
 
