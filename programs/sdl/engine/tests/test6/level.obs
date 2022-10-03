@@ -63,7 +63,7 @@ class Level {
     	block_map := IntMap->New();
     	block_attribs := Attribs->New(attrib_path);
 
-    	table := CsvTable->New(System.IO.File.FileReader->ReadFile(map_path));
+    	table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(map_path));
     	if(table->IsParsed()) {
     		each(i : table) {
     			row := table->Get(i);
@@ -157,7 +157,7 @@ class Attribs {
 	@tiles : JsonElement;
 
 	New(name : String) {		
-		doc := System.IO.File.FileReader->ReadFile(name);
+		doc := System.IO.Filesystem.FileReader->ReadFile(name);
 		if(doc <> Nil) {
 			@root := JsonParser->New(doc)->Parse();
 			@tiles := GetTiles();			

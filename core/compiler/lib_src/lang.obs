@@ -6203,9 +6203,9 @@ bundle System.IO {
 }
 
 #~
-Supports file I/O operations
+Supports filesystem operations
 ~#
-bundle System.IO.File {	
+bundle System.IO.Filesystemsystem {	
 	#~
 	Provides file operations
 	~#
@@ -6698,7 +6698,7 @@ bundle System.IO.File {
 		Creates a temporary file
 		~#
 		function : Temp() ~ FileWriter {
-			return System.IO.File.FileWriter->New(GetTempName());
+			return System.IO.Filesystemsystem.FileWriter->New(GetTempName());
 		}
 
 		#~
@@ -7022,6 +7022,30 @@ bundle System.IO.File {
 		~#
 		function : Create(n : System.String) ~ Bool {
 			DIR_CREATE;
+		}
+
+		#~
+		Returns the system's temporary directory
+		@return system's temporary directory
+		~#
+		function : GetTemp() ~ String {
+			return Runtime->GetProperty("tmp_dir");
+		}
+
+		#~
+		Returns the current user's working directory
+		@return current user's working directory
+		~#
+		function : GetUser() ~ String {
+			return Runtime->GetProperty("user_dir");
+		}
+		
+		#~
+		Returns the installation directory
+		@return installation directory
+		~#
+		function : GetInstall() ~ String {
+			return Runtime->GetProperty("install_dir");
 		}
 
 		#~

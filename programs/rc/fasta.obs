@@ -2,7 +2,7 @@ class Fasta {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			is_line := false;
-			tokens := System.Utility.Parser->Tokenize(System.IO.File.FileReader->ReadFile(args[0]))<String>;
+			tokens := System.Utility.Parser->Tokenize(System.IO.Filesystem.FileReader->ReadFile(args[0]))<String>;
 			each(i : tokens) {
 				token := tokens->Get(i);
 				if(token->Get(0) = '>') {

@@ -1,7 +1,7 @@
 class Thes {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			reader := System.IO.File.FileReader->New(args[0]);
+			reader := System.IO.Filesystem.FileReader->New(args[0]);
 			words := Collection.Generic.Vector->New()<String>;
 			line := reader->ReadLine();
 			while(line <> Nil) {

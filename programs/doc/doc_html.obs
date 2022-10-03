@@ -3,7 +3,7 @@ Objeck HTML code documentation system
 Copyright (c) 2014, 2019 Randy Hollines
 ~#
 
-use System.IO.File;
+use System.IO.Filesystem;
 use Collection.Generic;
 
 class HtmlMaker {

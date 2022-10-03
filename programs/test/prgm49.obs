@@ -2,7 +2,7 @@
 # R. Hollines
 
 use System.IO;
-use System.IO.File;
+use System.IO.Filesystem;
 use Collection;
 
 bundle Default {  

@@ -1,4 +1,4 @@
-use Data.JSON, System.IO.File;
+use Data.JSON, System.IO.Filesystem;
 
 class JsonText  {
 	function : Main(args : String[]) ~ Nil {

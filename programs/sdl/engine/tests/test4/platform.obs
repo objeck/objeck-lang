@@ -491,7 +491,7 @@ class Platform {
 	}
 
 	method : native : CreateMap() ~ Int[,] {
-		reader := System.IO.File.FileReader->New("../../../../programs/sdl/engine/tests/test4/map.dat");
+		reader := System.IO.Filesystem.FileReader->New("../../../../programs/sdl/engine/tests/test4/map.dat");
 		leaving {
 			reader->Close();
 		};
