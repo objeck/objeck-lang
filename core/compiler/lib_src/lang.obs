@@ -3257,8 +3257,8 @@ bundle System {
 				if(end = Nil) {
 					return @self;
 				};
-
-				replace <> Nil) {
+				
+				if(replace <> Nil) {
 					new_string->Append(replace);
 				};
 				
