@@ -3260,8 +3260,8 @@ bundle System {
 
 				if(replace <> Nil) {
 					new_string->Append(replace);
+					new_string->Append(end);
 				};
-				new_string->Append(end);
 			};
 			
 			return new_string;
