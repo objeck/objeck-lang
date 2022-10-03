@@ -3257,11 +3257,10 @@ bundle System {
 				if(end = Nil) {
 					return @self;
 				};
-				
+
 				if(replace <> Nil) {
 					new_string->Append(replace);
 				};
-				
 				new_string->Append(end);
 			};
 			
@@ -3274,7 +3273,7 @@ bundle System {
 		@return new string instance
 		~#
 		method : public : RemoveAll(find : Char) ~ String {
-			return ReplaceAll(find, Nil);
+			return ReplaceAll(find, Nil->As(String));
 		}
 
 		#~
@@ -3283,7 +3282,7 @@ bundle System {
 		@return new string instance
 		~#
 		method : public : Replace(find : String) ~ String {
-			return Replace(find, Nil);
+			return Replace(find, Nil->As(String));
 		}
 		
 		#~
