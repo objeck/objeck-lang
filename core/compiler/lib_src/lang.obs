@@ -3269,10 +3269,10 @@ bundle System {
 
 		#~
 		Removes all occurrences the search string
-		@param find character to search for
+		@param find string to search for
 		@return new string instance
 		~#
-		method : public : native : ReplaceAll(find : Char) ~ String {
+		method : public : ReplaceAll(find : String) ~ String {
 			return ReplaceAll(find, Nil->As(String));
 		}
 
