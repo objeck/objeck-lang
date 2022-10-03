@@ -3249,7 +3249,7 @@ bundle System {
 			index += find->Size();
 			length := Size() - index;
 			
-			if(length = 0 & replace <> Nil) {
+			if(length = 0 & replace <> Nil & <>replace->IsEmpty()) {
 				new_string->Append(replace);
 			}
 			else {
@@ -3258,10 +3258,10 @@ bundle System {
 					return @self;
 				};
 
-				if(replace <> Nil) {
+				if(replace <> Nil & <>replace->IsEmpty()) {
 					new_string->Append(replace);
-					new_string->Append(end);
 				};
+				new_string->Append(end);
 			};
 			
 			return new_string;
