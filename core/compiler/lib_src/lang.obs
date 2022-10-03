@@ -3249,7 +3249,7 @@ bundle System {
 			index += find->Size();
 			length := Size() - index;
 			
-			if(length = 0 & replace = Nil) {
+			if(length = 0 & replace <> Nil) {
 				new_string->Append(replace);
 			}
 			else {
