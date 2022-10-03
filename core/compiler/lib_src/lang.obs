@@ -3272,7 +3272,7 @@ bundle System {
 		@param find string to search for
 		@return new string instance
 		~#
-		method : public : ReplaceAll(find : String) ~ String {
+		method : public : RemoveAll(find : String) ~ String {
 			return ReplaceAll(find, Nil->As(String));
 		}
 
@@ -3281,7 +3281,7 @@ bundle System {
 		@param find string to search for
 		@return new string instance
 		~#
-		method : public : Replace(find : String) ~ String {
+		method : public : Remove(find : String) ~ String {
 			return Replace(find, Nil->As(String));
 		}
 		
