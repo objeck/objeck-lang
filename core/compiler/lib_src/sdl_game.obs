@@ -1624,7 +1624,7 @@ bundle Game.Framework {
 		~# 
 		method : public : BuildFromFile(file : String) ~ Bool {
 			if(@is_ok) {
-				parser := JsonParser->New(System.IO.File.FileReader->ReadFile(file));
+				parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(file));
 				if(parser->Parse()) {
 					root := parser->GetRoot();
 

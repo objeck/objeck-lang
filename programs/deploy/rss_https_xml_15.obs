@@ -6,7 +6,7 @@
 use Web.HTTP;
 use Web.RSS;
 use Collection.Generic;
-use System.IO.File;
+use System.IO.Filesystem;
 
 class RSS {
 	function : Main(args : String[]) ~ Nil {

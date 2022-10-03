@@ -4,7 +4,7 @@ http:# lazyfoo.net/tutorials/SDL/39_tiling/index.php
 ~#
 
 use Game.SDL2;
-use System.IO.File;
+use System.IO.Filesystem;
 
 class LTexture {
 	@renderer : Renderer;

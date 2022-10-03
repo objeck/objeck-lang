@@ -1,4 +1,4 @@
-use System.IO.File;
+use System.IO.Filesystem;
 use Collection;
 
 #~
@@ -73,7 +73,7 @@ class PageParser  {
 		
 			output += "use FastCgi;\n";
 			output += "use Collection;\n";
-			output += "use System.IO.File;\n";
+			output += "use System.IO.Filesystem;\n";
 			output += "\nclass {$class_name} implements FastCgi.Handler {";
 			output += "\n\tfunction : Forward(req : Request, res : Response) ~ Nil {}\n";
 			output += "\n\tfunction : Request({$req_name} : Request, {$res_name} : Response) ~ Nil {";

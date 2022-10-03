@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		file := System.IO.File.FileWriter->Temp();
+		file := System.IO.Filesystem.FileWriter->Temp();
 		file->GetName()->PrintLine();
 		file->Delete()->PrintLine();
 		file->Close();
