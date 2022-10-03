@@ -3210,6 +3210,15 @@ bundle System {
 		}
 
 		#~
+		Removes all occurrences the search string
+		@param find string to search for
+		@return new string instance
+		~#
+		method : public : RemoveAll(find : String, replace : String) ~ String {
+			return ReplaceAll(find, Nil);
+		}
+
+		#~
 		Replaces all occurrences the search string
 		@param find character to search for
 		@param replace character to replace with
@@ -3263,7 +3272,16 @@ bundle System {
 			
 			return new_string;
 		}
-		
+
+		#~
+		Removes the first occurrence the search string
+		@param find string to search for
+		@return new string instance
+		~#
+		method : public : Remove(find : String) ~ String {
+			return Replace(find, Nil);
+		}
+
 		#~
 		Removes all matching characters from a string
 		@param char character to remove
