@@ -3259,14 +3259,19 @@ bundle System {
 			length := Size() - index;
 			
 			if(length = 0) {
-				new_string->Append(replace);
+				if(replace <> Nil) {
+					new_string->Append(replace);
+				};
 			}
 			else {
 				end := SubString(index, length);
 				if(end = Nil) {
 					return @self;
 				};
-				new_string->Append(replace);
+
+				if(replace <> Nil) {
+					new_string->Append(replace);
+				};
 				new_string->Append(end);
 			};
 			
