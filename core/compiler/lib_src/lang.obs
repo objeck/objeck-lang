@@ -2725,7 +2725,9 @@ bundle System {
 		@param str string object
 		~#
 		method : public : Append(str : String) ~ Nil {
-			Append(str->ToCharArray());
+			if(str) {
+				Append(str->ToCharArray());
+			};
 		}
 		
 		#~
@@ -3249,7 +3251,7 @@ bundle System {
 			index += find->Size();
 			length := Size() - index;
 			
-			if(length = 0 & replace <> Nil & <>replace->IsEmpty()) {
+			if(length = 0) {
 				new_string->Append(replace);
 			}
 			else {
@@ -3257,10 +3259,7 @@ bundle System {
 				if(end = Nil) {
 					return @self;
 				};
-
-				if(replace <> Nil & <>replace->IsEmpty()) {
-					new_string->Append(replace);
-				};
+				new_string->Append(replace);
 				new_string->Append(end);
 			};
 			
