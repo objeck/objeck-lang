@@ -3272,12 +3272,12 @@ bundle System {
 		@param find character to search for
 		@return new string instance
 		~#
-		method : public : RemoveAll(find : Char) ~ String {
+		method : public : native : ReplaceAll(find : Char) ~ String {
 			return ReplaceAll(find, Nil->As(String));
 		}
 
 		#~
-		Removed the first occurrence the search string
+		Removes the first occurrence the search string
 		@param find string to search for
 		@return new string instance
 		~#
