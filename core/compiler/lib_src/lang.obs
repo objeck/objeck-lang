@@ -1,6 +1,6 @@
 #~
 Objeck system classes.
-Copyright (c) 2008-2021 Randy Hollines
+Copyright (c) 2008-2022 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
 ~#	
 
@@ -72,16 +72,11 @@ bundle System {
 		@return string value
 		~#
 		function : native : ToString(b : Bool) ~ String {
-			string : String;
-
-			if(b = true) {
-				string := "true";
-			}
-			else {
-			 	string := "false";
+			if(b) {
+				return "true";
 			};
-
-			return string;			
+			
+			return "false";
 		}
 	}
 	
