@@ -6205,7 +6205,7 @@ bundle System.IO {
 #~
 Supports filesystem operations
 ~#
-bundle System.IO.Filesystemsystem {	
+bundle System.IO.Filesystem {	
 	#~
 	Provides file operations
 	~#
@@ -6698,7 +6698,7 @@ bundle System.IO.Filesystemsystem {
 		Creates a temporary file
 		~#
 		function : Temp() ~ FileWriter {
-			return System.IO.Filesystemsystem.FileWriter->New(GetTempName());
+			return System.IO.Filesystem.FileWriter->New(GetTempName());
 		}
 
 		#~
