@@ -72,7 +72,9 @@ REM finished
 if [%1] NEQ [deploy] goto end
 	rmdir /s /q "%USERPROFILE%\Desktop\ReleaseARM64"
 	mkdir "%USERPROFILE%\Desktop\ReleaseARM64"
-	%ZIP_BIN%\7z.exe a -r -ttar "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar" ".\deploy_arm64\*"
+	mkdir "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang"
+	xcopy /e "deploy_arm64\" "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang\"
+	%ZIP_BIN%\7z.exe a -r -ttar "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar" "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang"
 	%ZIP_BIN%\7z.exe a -tgzip "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tgz" "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar"
 	del "%USERPROFILE%\Desktop\ReleaseARM64\objeck-lang-arm64.tar"
 :end
