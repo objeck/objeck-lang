@@ -79,6 +79,7 @@ cd core/release
 if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
 	rm -rf ~/Desktop/objeck-lang
 	cp -rf ../release/deploy ~/Desktop/objeck-lang
+	rm ~/Desktop/objeck-lang/.*
 	cd ~/Desktop
 	
 	rm -f objeck.tar objeck.tgz
