@@ -14,16 +14,16 @@ xmlns="http://www.w3.org/TR/REC-html40">
  <o:DocumentProperties>
   <o:Author>Randy Hollines</o:Author>
   <o:LastAuthor>Randy Hollines</o:LastAuthor>
-  <o:Revision>47</o:Revision>
-  <o:TotalTime>58</o:TotalTime>
+  <o:Revision>49</o:Revision>
+  <o:TotalTime>59</o:TotalTime>
   <o:Created>2022-09-01T22:16:00Z</o:Created>
-  <o:LastSaved>2022-10-03T13:16:00Z</o:LastSaved>
+  <o:LastSaved>2022-10-03T21:20:00Z</o:LastSaved>
   <o:Pages>4</o:Pages>
-  <o:Words>881</o:Words>
-  <o:Characters>5026</o:Characters>
-  <o:Lines>41</o:Lines>
+  <o:Words>892</o:Words>
+  <o:Characters>5091</o:Characters>
+  <o:Lines>42</o:Lines>
   <o:Paragraphs>11</o:Paragraphs>
-  <o:CharactersWithSpaces>5896</o:CharactersWithSpaces>
+  <o:CharactersWithSpaces>5972</o:CharactersWithSpaces>
   <o:Version>16.00</o:Version>
  </o:DocumentProperties>
 </xml><![endif]-->
@@ -1406,7 +1406,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v6.8.1 (October 3, 2022)<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>v6.8.1 (October 5, 2022)<o:p></o:p></span></p>
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
@@ -1446,6 +1446,16 @@ style='mso-list:Ignore'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
 minor-latin'>Renamed the ‘System.IO.File’ bundle to ‘System.IO.Filesystem’
+(new)<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l0 level1 lfo1'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-fareast-font-family:Calibri;mso-fareast-theme-font:
+minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><span
+style='mso-list:Ignore'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Added ‘String-&gt;Remove(..)’ and ‘String-&gt;RemoveAll(..)’ for substrings
 (new)<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
@@ -1664,8 +1674,8 @@ mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme
 minor-latin'>The Windows Launcher is a convenient way to run programs and
 access documentation. On Windows, configuration information is stored in the
 “%ProgramData%\Objeck” directory and built the first time the app runs. If you
-move the install location, delete the “%programdata%\Objeck” directory and
-rerun the launcher.&nbsp;<o:p></o:p></span></p>
+move the install location, delete the “%programdata%\Objeck” directory and rerun
+the launcher.&nbsp;<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
 font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-fareast-font-family:
@@ -1753,8 +1763,8 @@ minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
 7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src
-..\examples\hello.obs <o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src ..\examples\hello.obs
+<o:p></o:p></span></p>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1768,8 +1778,9 @@ minor-latin;mso-bidi-theme-font:minor-latin'>1.</span><span style='font-size:
 7.0pt;font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
 mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src 'C:\Program
-Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt -dest myprgm.obe<o:p></o:p></span></p>
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>obc -src
+'C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt -dest
+myprgm.obe<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family:
@@ -1889,8 +1900,8 @@ Support<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='line-height:normal'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>The following to generate a self-signed SSL certificate for the ‘TCPSecureSocketServer’
-class using OpenSSL commands (for Windows and Linux):<o:p></o:p></span></p>
+minor-latin'>The following to generate a self-signed SSL certificate for the
+‘TCPSecureSocketServer’ class using OpenSSL commands (for Windows and Linux):<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l8 level1 lfo6'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
