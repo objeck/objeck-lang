@@ -57,7 +57,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
-* [Just-In-Time (JIT) compilers](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
+* [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
 ![alt text](images/toolchain.svg "Objeck System Architecture")
 
