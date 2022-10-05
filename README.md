@@ -17,7 +17,7 @@ class Hello {
 }
 ```
 
-| Visual Studio Code | Debugger | Dungeon Game | Platform Game | Windows Utility |
+| Visual Studio Code | Debugger | Dungeon Crawler | Platformer | Windows Utility |
 | :---: | :----: | :---: | :---: | :---: | 
 ![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
 
