@@ -9,10 +9,10 @@ Both the scanner and the parser were handwritten. As such, the parser is impleme
 The lists of code blocks are passed to the optimizer which performs to following optimizations in list order:
 
 1. Jump optimizations
-1. Dead store removal
-1. Constant propagation
 1. Constant folding
 1. Getter/Setting inlining
+1. Dead store removal
+1. Constant propagation
 1. Method inlining
 1. Strength reduction
 1. Instruction optimization
