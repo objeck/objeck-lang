@@ -41,8 +41,8 @@ __Notable features__
 * Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
 * JIT support for all targets
-  * arm64: Linux, macOS
-  * x64: Linux, macOS and Windows
+  * arm64: Linux, macOS (Apple silicon)
+  * x64: Linux, macOS (x86-64) and Windows
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
