@@ -1,6 +1,7 @@
-// header.h : include file for standard system include files,
-// or project specific include files
-//
+/***************************************************************************
+ * Copyright (c) 2020-2022, Randy Hollines
+ * All rights reserved.
+***************************************************************************/
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \

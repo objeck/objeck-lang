@@ -1,3 +1,8 @@
+/***************************************************************************
+ * Copyright (c) 2020-2022, Randy Hollines
+ * All rights reserved.
+ ***************************************************************************/
+
 #include "framework.h"
 #include "AppLauncher.h"
 
@@ -252,19 +257,6 @@ INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
       EndDialog(hDlg, LOWORD(wParam));
       return (INT_PTR)TRUE;
     }
-/*
-    else if(LOWORD(wParam) == IDC_CHECK1) {
-      if(HIWORD(wParam) == BN_CLICKED) {
-        if(SendDlgItemMessage(hDlg, IDC_CHECK1, BM_GETCHECK, 0, 0)) {
-          MessageBox(NULL, L"Checkbox Selected", L"Success", MB_OK | MB_ICONINFORMATION);
-        }
-        else {
-          MessageBox(NULL, L"Checkbox Unselected", L"Success", MB_OK | MB_ICONINFORMATION);
-        }
-      }
-      return (INT_PTR)TRUE;
-    }
-*/
     break;
   }
 
