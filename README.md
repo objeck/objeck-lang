@@ -17,7 +17,7 @@ class Hello {
 }
 ```
 
-| Visual Studio Code | Debugger | 2D Gaming | Windows Launcher |
+| VS Code | Debugger | 2D Gaming | Windows Utility |
 | :---: | :----: | :---: | :---: | 
 ![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/launch.png "Windows Launcher") |
 
