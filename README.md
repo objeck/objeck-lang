@@ -45,10 +45,9 @@ Notable features:
   * arm64: Linux, macOS
 
 
-| Syntax      | Description | Test Text     |
-| :---        |    :----:   |          ---: |
-| Header      | Title       | Here's this   |
-| Paragraph   | Text        | And more      |
+| 2d Gaming | Visual Studio Code | Windows Launcher |
+| :--- | :----: | ---: |
+| ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/launch.png "Windows Launcher") |
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
