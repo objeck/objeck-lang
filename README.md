@@ -17,6 +17,10 @@ class Hello {
 }
 ```
 
+| Visual Studio Code | Debugger | Windows Launcher | 2d Gaming | 
+| :--- | :----: | ---: |
+|![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.png "Command line debugger") | ![alt text](images/web/launch.png "Windows Launcher") | ![alt text](images/web/crawler.png "Web Crawler") 
+
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 Notable features:
@@ -43,11 +47,6 @@ Notable features:
 * JIT support for all targets
   * x64: Linux, macOS and Windows
   * arm64: Linux, macOS
-
-
-| 2d Gaming | Visual Studio Code | Windows Launcher |
-| :--- | :----: | ---: |
-| ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/launch.png "Windows Launcher") |
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
