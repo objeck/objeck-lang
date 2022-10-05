@@ -17,10 +17,6 @@ class Hello {
 }
 ```
 
-| [Visual Studio Code](https://github.com/objeck/objeck-lsp) | [Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger) | [Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler) | [Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs) | [Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher) |
-| :---: | :----: | :---: | :---: | :---: | 
-![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
-
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 __Notable features__
@@ -72,3 +68,9 @@ __Building on Windows__
 *  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to set paths and find examples
+
+---
+
+| [Visual Studio Code](https://github.com/objeck/objeck-lsp) | [Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger) | [Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler) | [Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs) | [Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher) |
+| :---: | :----: | :---: | :---: | :---: | 
+![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
