@@ -19,7 +19,7 @@ class Hello {
 
 | Visual Studio Code | Debugger | Dungeon Game | Platform Game | Windows Utility |
 | :---: | :----: | :---: | :---: | :---: | 
-![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.png "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
+![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
