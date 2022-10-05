@@ -1392,7 +1392,7 @@
 			<path d="M4.5 698.4 L0 698.4 L0 734.4 L4.5 734.4" class="st13"/>
 			<text x="20.65" y="713.4" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>ARM64<v:newlineChar/><tspan
 						x="20.8" dy="1.2em" class="st9">x86_64</tspan></text>		</g>
-		<g id="shape38-556" v:mID="38" v:groupContext="shape" v:layerMember="2" transform="translate(345.6,-547.2)">
+		<g id="shape38-556" v:mID="38" v:groupContext="shape" v:layerMember="2" transform="translate(345.6,-540.45)">
 			<title>Orthogonal.65</title>
 			<desc>Jump reduction Constant folding Method inlining Dead Store re...</desc>
 			<v:userDefs>
@@ -1416,27 +1416,27 @@
 				<v:ud v:nameU="visMasterStencil" v:prompt="" v:val="VT4(SDCALL_U.vssx)"/>
 				<v:ud v:nameU="BackFillColor" v:prompt="" v:val="VT5(#96afcf)"/>
 				<v:ud v:nameU="BackLineColor" v:prompt="" v:val="VT5(#1f477d)"/>
-				<v:ud v:nameU="msvSDTargetIntersection" v:prompt="" v:val="VT7(PNT(0.897176174689,-0.31921631423618)):40"/>
-				<v:ud v:nameU="LeaderEnd" v:prompt="" v:val="VT7(PNT(0.897176174689,-0.31921631423618)):40"/>
-				<v:ud v:nameU="WHBoxIntersection" v:prompt="" v:val="VT7(PNT(0.89819851157136,0)):40"/>
+				<v:ud v:nameU="msvSDTargetIntersection" v:prompt="" v:val="VT7(PNT(0.897176174689,-0.22546631423618)):40"/>
+				<v:ud v:nameU="LeaderEnd" v:prompt="" v:val="VT7(PNT(0.897176174689,-0.22546631423618)):40"/>
+				<v:ud v:nameU="WHBoxIntersection" v:prompt="" v:val="VT7(PNT(0.89789826349992,0)):40"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
 				<v:ud v:nameU="msvThemeEffects" v:val="VT0(16):26"/>
 			</v:userDefs>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
-			<v:textRect cx="64.8" cy="693.9" width="129.6" height="80.0038"/>
+			<v:textRect cx="64.8" cy="687.15" width="129.6" height="92.0039"/>
 			<g id="shadow38-557" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
-				<path d="M64.67 734.4 L64.6 757.38" class="st11"/>
+				<path d="M64.65 734.4 L64.6 750.63" class="st11"/>
 				<path d="M0 729.9 L0 734.4 L129.6 734.4 L129.6 729.9" class="st11"/>
 			</g>
-			<path d="M64.67 734.4 L64.6 757.38" class="st13"/>
+			<path d="M64.65 734.4 L64.6 750.63" class="st13"/>
 			<path d="M0 729.9 L0 734.4 L129.6 734.4 L129.6 729.9" class="st13"/>
-			<text x="33.14" y="666.9" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Jump reduction <v:newlineChar/><tspan
+			<text x="33.14" y="654.15" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Jump reduction <v:newlineChar/><tspan
 						x="31.35" dy="1.2em" class="st9">Constant folding<v:newlineChar/></tspan><tspan x="32.52" dy="1.2em"
 						class="st9">Method inlining<v:newlineChar/></tspan><tspan x="24.45" dy="1.2em" class="st9">Dead Store removal<v:newlineChar/></tspan><tspan
-						x="26.5" dy="1.2em" class="st9">Strength reduction<v:newlineChar/></tspan><tspan x="13.94" dy="1.2em"
-						class="st9">Instruction optimizations</tspan></text>		</g>
-		<g id="shape59-571" v:mID="59" v:groupContext="shape" v:layerMember="2" transform="translate(-9.67702,-95.4134)">
+						x="20.59" dy="1.2em" class="st9">Constant Propagation <v:newlineChar/></tspan><tspan x="26.5" dy="1.2em"
+						class="st9">Strength reduction<v:newlineChar/></tspan><tspan x="13.94" dy="1.2em" class="st9">Instruction optimizations</tspan></text>		</g>
+		<g id="shape59-572" v:mID="59" v:groupContext="shape" v:layerMember="2" transform="translate(-9.67702,-95.4134)">
 			<title>Orthogonal.59</title>
 			<desc>Posix Win64</desc>
 			<v:userDefs>
@@ -1469,7 +1469,7 @@
 			</v:userDefs>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="35.597" cy="716.4" width="71.2" height="32.0037"/>
-			<g id="shadow59-572" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
+			<g id="shadow59-573" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
 				<path d="M71.19 716.4 L86.42 716.4" class="st11"/>
 				<path d="M66.69 698.4 L71.19 698.4 L71.19 734.4 L66.69 734.4" class="st11"/>
