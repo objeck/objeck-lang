@@ -60,13 +60,13 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 
 ![alt text](images/toolchain.svg "Objeck System Architecture")
 
-Building on Linux and macOS:
+__Building on Linux and macOS__
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
 *  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>osx</code> representing the bit version of Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
 
-Building on Windows:
+__Building on Windows__
 *  With Visual Studio 2022 or later open <code>objeck-lang/care/release/objeck.sln</code>
 *  Ensure build completes successfully (in Release mode)
 *  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
