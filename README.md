@@ -17,9 +17,9 @@ class Hello {
 }
 ```
 
-| Visual Studio Code | Debugger | Windows Launcher | 2D Gaming | 
+| Visual Studio Code | Debugger | 2D Gaming | Windows Launcher |
 | :---: | :----: | :---: | :---: | 
-![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/launch.png "Windows Launcher") | ![alt text](images/web/crawler.png "Web Crawler") |
+![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/launch.png "Windows Launcher") |
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
