@@ -47,7 +47,12 @@ __Notable features__
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
-## Architecture
+## Screen Shots
+| <sub>[Visual Studio Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
+| :---: | :----: | :---: | :---: | :---: |
+![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
+
+## Platform Architecture
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
@@ -68,8 +73,3 @@ __Building on Windows__
 *  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to set paths and find examples
-
-## Screen Shots
-| <sub>[Visual Studio Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
