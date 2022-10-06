@@ -10,39 +10,26 @@ class Test {
 			char := GetChar(i, tape);
 			next_char := GetChar(i + 1, tape);
 			
+			value : Int;
+			do_oper := false;
 			if(char = '-' & (i = 0 | <>next_char->IsDigit())) {
 				value := -1 * (next_char - '0')->ToInt();
 				if(i = 0) {
 					acum := value;
 				};
 				i += 1;
-
-				select(oper) {
-					label '+' {
-						acum += value;
-					}
-
-					label '-' {
-						acum -= value;
-					}
-
-					label '*' {
-						acum *= value;
-					}
-
-					label '/' {
-						acum /= value;
-					}
-				};
-
-				oper := '\0';
+				do_oper := true;
+				
 			}
 			else if(char->IsDigit()) {
 				value := (char - '0')->ToInt();
 				if(i = 0) {
 					acum := value;
 				};
+				do_oper := true;			
+			};
 
+			if(do_oper) {
 				select(oper) {
 					label '+' {
 						acum += value;
