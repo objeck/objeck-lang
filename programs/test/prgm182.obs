@@ -59,9 +59,9 @@ class Test {
 		acum->PrintLine();
 	}
 
-	function : GetChar(i : Int, tape : String) ~ Char {
-		if(i < tape->Size()) {
-			return tape->Get(i);
+	function : GetChar(index : Int, tape : String) ~ Char {
+		if(index < tape->Size()) {
+			return tape->Get(index);
 		};
 
 		return '\0';
