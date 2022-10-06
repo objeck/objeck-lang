@@ -1,8 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		tape := "-3+2+-1";
-		
-		lhs := 0; oper := '\0';	is_neg := false;
+		if(args->Size() = 1) {
+			tape := args[0];
+		};
+
+		acum := 0; 
+		oper := '\0';
+		negate := false;
 		each(i : tape) {
 			char := tape->Get(i);
 			
@@ -12,26 +17,26 @@ class Test {
 			};
 
 			if(char->IsDigit()) {
-				rhs := (char - '0')->As(Int);
+				value := (char - '0')->As(Int);
 				select(oper) {
 					label '+': {
-						lhs += rhs;
+						acum += value;
 					}
 
 					label '-': {
-						lhs -= rhs;
+						acum -= value;
 					}
 
 					label '*': {
-						lhs *= rhs;
+						acum *= value;
 					}
 
 					label '/': {
-						lhs /= rhs;
+						acum /= value;
 					}
 
 					other  {
-						lhs := is_neg ? -rhs : rhs;
+						acum := negate ? -value : value;
 					}
 				};
 				oper := '\0';
@@ -43,17 +48,17 @@ class Test {
 					label '*':
 					label '/': {
 						if((char = '-' & i = 0) | next_char = '-') {
-							is_neg := true;
+							negate := true;
 						}
 						else {
 							oper := char;
-							is_neg := false;
+							negate := false;
 						};
 					}
 				};
 			};
 		};
 
-		lhs->PrintLine();
+		acum->PrintLine();
 	}
 }
