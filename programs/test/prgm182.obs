@@ -28,7 +28,6 @@ class Test {
 				do_oper := true;			
 			};
 
-
 			if(do_oper) {
 				select(oper) {
 					label '+' {
