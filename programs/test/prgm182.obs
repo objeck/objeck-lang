@@ -52,8 +52,6 @@ class Test {
 			else {
 				oper := char;
 			};
-
-			
 		};
 
 		"result={$acum}"->PrintLine();
