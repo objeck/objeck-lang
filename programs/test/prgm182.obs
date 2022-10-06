@@ -46,6 +46,11 @@ class Test {
 					label '/' {
 						acum /= value;
 					}
+
+					other {
+						"error"->ErrorLine();
+						Runtime->Exit(1);
+					}
 				};
 
 				oper := '\0';
