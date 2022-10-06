@@ -33,15 +33,10 @@ class Test {
 					}
 
 					other  {
-						if(is_neg) {
-							lhs := -rhs;
-						}
-						else {
-							lhs := rhs;
-						};
+						lhs := is_neg ? -rhs : rhs;
 					}
 				};
-
+				
 				oper := '\0';
 			}
 			else {
