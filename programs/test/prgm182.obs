@@ -1,6 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		tape := "-9/3+8+2+-3+1*2+8+-5";
+#		tape := "-1--1";
 		if(args->Size() = 1) {
 			tape := args[0];
 		};
