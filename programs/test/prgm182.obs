@@ -2,9 +2,10 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		input := "-3+2+-1";
 
+		lhs := 0;
 		oper := '\0';
 		is_neg := false;
-		lhs := 0;
+		
 		each(i : input) {
 			char := input->Get(i);
 			next_char := '\0';
@@ -36,7 +37,6 @@ class Test {
 						lhs := is_neg ? -rhs : rhs;
 					}
 				};
-				
 				oper := '\0';
 			}
 			else {
@@ -46,7 +46,6 @@ class Test {
 					label '*':
 					label '/': {
 						if((char = '-' & i = 0) | (next_char = '-')) {
-							oper := '\0';
 							is_neg := true;
 						}
 						else {
