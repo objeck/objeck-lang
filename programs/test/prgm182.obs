@@ -4,7 +4,7 @@ class Test {
 
 		oper := '\0';
 		is_neg := false;
-		
+
 		calc := Collection.Generic.Stack->New()<IntHolder>;
 		each(i : input) {
 			char := input->Get(i);
@@ -46,11 +46,7 @@ class Test {
 				oper := '\0';
 			}
 			else if(char = '+' | char = '-' | char = '*' | char = '/') {
-				if(char = '-' & i = 0) {
-					oper := '\0';
-					is_neg := true;
-				}
-				else if(next_char = '-') {
+				if((char = '-' & i = 0) | (next_char = '-')) {
 					oper := '\0';
 					is_neg := true;
 				}
