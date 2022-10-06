@@ -13,7 +13,7 @@ class Test {
 			next_char := GetChar(i + 1, tape);
 
 			if(char->IsDigit()) {
-				value := (char - '0')->As(Int);
+				value := (char - '0')->ToInt();
 				select(oper) {
 					label '+': {
 						acum += value;
