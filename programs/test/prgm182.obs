@@ -4,9 +4,8 @@ class Test {
 		if(args->Size() = 1) {
 			tape := args[0];
 		};
-
-		acum := 0;
-		oper : Char;
+		
+		acum := 0; oper : Char;
 		each(i : tape) {
 			char := GetChar(i, tape);
 			next_char := GetChar(i + 1, tape);
