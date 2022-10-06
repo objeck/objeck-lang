@@ -1,16 +1,14 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		input := "-3+2+-1";
-
-		lhs := 0;
-		oper := '\0';
-		is_neg := false;
-
-		each(i : input) {
-			char := input->Get(i);
+		tape := "-3+2+-1";
+		
+		lhs := 0; oper := '\0';	is_neg := false;
+		each(i : tape) {
+			char := tape->Get(i);
+			
 			next_char := '\0';
-			if(i + 1 < input->Size()) {
-				next_char := input->Get(i + 1);
+			if(i + 1 < tape->Size()) {
+				next_char := tape->Get(i + 1);
 			};
 
 			if(char->IsDigit()) {
