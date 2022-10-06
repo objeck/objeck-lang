@@ -1,12 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		tape := "-3+2+-1";
+		tape := "-9/3+8+2+-3+1*2+8+-5";
 		if(args->Size() = 1) {
 			tape := args[0];
 		};
 
-		oper : Char;
 		acum := 0;
+		oper : Char;
 		each(i : tape) {
 			char := GetChar(i, tape);
 			next_char := GetChar(i + 1, tape);
