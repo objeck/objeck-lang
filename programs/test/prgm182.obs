@@ -5,58 +5,74 @@ class Test {
 			tape := args[0];
 		};
 
-		acum := 0; 
-		oper := '\0';
-		negate := false;
+		oper : Char;
+		acum := 0;
 		each(i : tape) {
-			char := GetChar(i, tape);			
+			char := GetChar(i, tape);
 			next_char := GetChar(i + 1, tape);
+			
+			value : Int;
+			if(char = '-' & (i = 0 | <>next_char->IsDigit())) {
+				value := -1 * (next_char - '0')->ToInt();
+				if(i = 0) {
+					acum := value;
+				};
+				i += 1;
 
-			if(char->IsDigit()) {
-				value := (char - '0')->ToInt();
 				select(oper) {
-					label '+': {
+					label '+' {
 						acum += value;
 					}
 
-					label '-': {
+					label '-' {
 						acum -= value;
 					}
 
-					label '*': {
+					label '*' {
 						acum *= value;
 					}
 
-					label '/': {
+					label '/' {
 						acum /= value;
 					}
-
-					other  {
-						acum += negate ? -value : value;
-						negate := false;
-					}
 				};
+
 				oper := '\0';
 			}
-			else if(<>negate) {
-				select(char) {
-					label '+':
-					label '-':
-					label '*':
-					label '/': {
-						if((char = '-' & i = 0) | next_char = '-') {
-							negate := true;
-						}
-						else {
-							oper := char;
-							negate := false;
-						};
+			else if(char->IsDigit()) {
+				value := (char - '0')->ToInt();
+				if(i = 0) {
+					acum := value;
+				};
+
+				select(oper) {
+					label '+' {
+						acum += value;
+					}
+
+					label '-' {
+						acum -= value;
+					}
+
+					label '*' {
+						acum *= value;
+					}
+
+					label '/' {
+						acum /= value;
 					}
 				};
+
+				oper := '\0';
+			}
+			else {
+				oper := char;
 			};
+
+			
 		};
 
-		acum->PrintLine();
+		"result={$acum}"->PrintLine();
 	}
 
 	function : GetChar(index : Int, tape : String) ~ Char {
