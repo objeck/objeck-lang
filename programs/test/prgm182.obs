@@ -12,14 +12,13 @@ class Test {
 			
 			value : Int;
 			do_oper := false;
-			if(char = '-' & (i = 0 | <>next_char->IsDigit())) {
+			if(char = '-' & (i = 0 | next_char->IsDigit())) {
 				value := -1 * (next_char - '0')->ToInt();
 				if(i = 0) {
 					acum := value;
 				};
 				i += 1;
-				do_oper := true;
-				
+				do_oper := true;				
 			}
 			else if(char->IsDigit()) {
 				value := (char - '0')->ToInt();
@@ -28,6 +27,7 @@ class Test {
 				};
 				do_oper := true;			
 			};
+
 
 			if(do_oper) {
 				select(oper) {
@@ -45,11 +45,6 @@ class Test {
 
 					label '/' {
 						acum /= value;
-					}
-
-					other {
-						"error"->ErrorLine();
-						Runtime->Exit(1);
 					}
 				};
 
