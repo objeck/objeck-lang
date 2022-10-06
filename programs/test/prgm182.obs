@@ -15,7 +15,6 @@ class Test {
 
 			if(char->IsDigit()) {
 				rhs := (char - '0')->As(Int);
-				
 				select(oper) {
 					label '+': {
 						lhs += rhs;
