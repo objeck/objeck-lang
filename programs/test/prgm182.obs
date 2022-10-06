@@ -1,0 +1,66 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		input := "3+2+-1";
+
+		oper := '\0';
+		is_neg := false;
+		
+		calc := Collection.Generic.Stack->New()<IntHolder>;
+		each(i : input) {
+			char := input->Get(i);
+			next_char := '\0';
+			if(i + 1 < input->Size()) {
+				next_char := input->Get(i + 1);
+			};
+
+			if(char->IsDigit()) {
+				value := (char - '0')->As(Int);
+				
+				select(oper) {
+					label '+': {
+						calc->Push(calc->Pop() + value);
+					}
+
+					label '-': {
+						calc->Push(calc->Pop() - value);
+					}
+
+					label '*': {
+						calc->Push(calc->Pop() * value);
+					}
+
+					label '/': {
+						calc->Push(calc->Pop() / value);
+					}
+
+					other  {
+						if(is_neg) {
+							calc->Push(-value);
+						}
+						else {
+							calc->Push(value);
+						};
+					}
+				};
+
+				oper := '\0';
+			}
+			else if(char = '+' | char = '-' | char = '*' | char = '/') {
+				if(char = '-' & i = 0) {
+					oper := '\0';
+					is_neg := true;
+				}
+				else if(next_char = '-') {
+					oper := '\0';
+					is_neg := true;
+				}
+				else {
+					oper := char;
+					is_neg := false;
+				};
+			};
+		};
+
+		calc->Pop()->PrintLine();
+	}
+}
