@@ -32,12 +32,13 @@ class Test {
 					}
 
 					other  {
-						acum := negate ? -value : value;
+						acum += negate ? -value : value;
+						negate := false;
 					}
 				};
 				oper := '\0';
 			}
-			else {
+			else if(<>negate) {
 				select(char) {
 					label '+':
 					label '-':
