@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		input := "3+2+-1";
+		input := "-3+2+-1";
 
 		oper := '\0';
 		is_neg := false;
@@ -44,14 +44,21 @@ class Test {
 
 				oper := '\0';
 			}
-			else if(char = '+' | char = '-' | char = '*' | char = '/') {
-				if((char = '-' & i = 0) | (next_char = '-')) {
-					oper := '\0';
-					is_neg := true;
-				}
-				else {
-					oper := char;
-					is_neg := false;
+			else {
+				select(char) {
+					label '+':
+					label '-':
+					label '*':
+					label '/': {
+						if((char = '-' & i = 0) | (next_char = '-')) {
+							oper := '\0';
+							is_neg := true;
+						}
+						else {
+							oper := char;
+							is_neg := false;
+						};
+					}
 				};
 			};
 		};
