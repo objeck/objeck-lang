@@ -4,8 +4,7 @@ class Test {
 
 		oper := '\0';
 		is_neg := false;
-
-		calc := Collection.Generic.Stack->New()<IntHolder>;
+		lhs := 0;
 		each(i : input) {
 			char := input->Get(i);
 			next_char := '\0';
@@ -14,31 +13,31 @@ class Test {
 			};
 
 			if(char->IsDigit()) {
-				value := (char - '0')->As(Int);
+				rhs := (char - '0')->As(Int);
 				
 				select(oper) {
 					label '+': {
-						calc->Push(calc->Pop() + value);
+						lhs += rhs;
 					}
 
 					label '-': {
-						calc->Push(calc->Pop() - value);
+						lhs -= rhs;
 					}
 
 					label '*': {
-						calc->Push(calc->Pop() * value);
+						lhs *= rhs;
 					}
 
 					label '/': {
-						calc->Push(calc->Pop() / value);
+						lhs /= rhs;
 					}
 
 					other  {
 						if(is_neg) {
-							calc->Push(-value);
+							lhs := -rhs;
 						}
 						else {
-							calc->Push(value);
+							lhs := rhs;
 						};
 					}
 				};
@@ -57,6 +56,6 @@ class Test {
 			};
 		};
 
-		calc->Pop()->PrintLine();
+		lhs->PrintLine();
 	}
 }
