@@ -9,12 +9,8 @@ class Test {
 		oper := '\0';
 		negate := false;
 		each(i : tape) {
-			char := tape->Get(i);
-			
-			next_char := '\0';
-			if(i + 1 < tape->Size()) {
-				next_char := tape->Get(i + 1);
-			};
+			char := GetChar(i, tape);			
+			next_char := GetChar(i + 1, tape);
 
 			if(char->IsDigit()) {
 				value := (char - '0')->As(Int);
@@ -60,5 +56,13 @@ class Test {
 		};
 
 		acum->PrintLine();
+	}
+
+	function : GetChar(i : Int, tape : String) ~ Char {
+		if(i < tape->Size()) {
+			return tape->Get(i);
+		};
+
+		return '\0';
 	}
 }
