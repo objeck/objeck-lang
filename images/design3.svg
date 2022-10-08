@@ -190,7 +190,7 @@
 						x="12.08" dy="1.2em" class="st9">(PC, Call Stack)</tspan></text>		</g>
 		<g id="shape4-27" v:mID="4" v:groupContext="shape" v:layerMember="0" transform="translate(307.8,-9)">
 			<title>Subprocess.63.4</title>
-			<desc>JIT Compiler (AMM64, x64)</desc>
+			<desc>JIT Compiler (ARM64, x64)</desc>
 			<v:custProps>
 				<v:cp v:nameU="Cost" v:lbl="Cost" v:prompt="" v:type="7" v:format="@" v:sortKey="" v:invis="false" v:ask="false"
 						v:langID="1033" v:cal="0"/>
@@ -231,7 +231,7 @@
 			<path d="M9 234 L9 180" class="st8"/>
 			<path d="M63 234 L63 180" class="st8"/>
 			<text x="16.1" y="204.6" class="st4" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>JIT Compiler<v:newlineChar/><tspan
-						x="12.68" dy="1.2em" class="st9">(AMM64, x64)</tspan></text>		</g>
+						x="13.92" dy="1.2em" class="st9">(ARM64, x64)</tspan></text>		</g>
 		<g id="shape5-40" v:mID="5" v:groupContext="shape" v:layerMember="0" transform="translate(307.8,-171)">
 			<title>Subprocess.63.5</title>
 			<desc>Memory Manager</desc>
