@@ -211,7 +211,7 @@ bundle Data.XML {
 		}
 
 		#~
-                Parses a Json text
+                Parses an XmlElement text
                 @param text JSON text
                 @return root document element
                 ~#
@@ -233,7 +233,7 @@ bundle Data.XML {
 				return false;
 			};
 			
-			# parser first tag
+			# parse first tag
 			tag := ParseElement();
 			if(@error_msg <> Nil) {
 				return false;
