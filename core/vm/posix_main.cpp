@@ -83,7 +83,7 @@ int main(const int argc, const char* argv[])
     usage += L" (Linux x86)";
 #endif
     
-    usage += L"\nWeb: www.objeck.org";
+    usage += L"\nWeb: https://www.objeck.org";
     wcerr << usage << endl;
 
     return 1;
