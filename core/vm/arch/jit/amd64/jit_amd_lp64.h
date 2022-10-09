@@ -1,4 +1,4 @@
-/*********************************************
+/************************************************************************
  * JIT compiler for x86-64 architectures (Windows, macOS and Linux).
  *
  * Copyright (c) 2008-2022 Randy Hollines
@@ -27,7 +27,8 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ********************************************/
+ *************************************************************************/
+
 #ifndef __JIT_COMPILER__
 #define __JIT_COMPILER__
 
@@ -397,8 +398,7 @@ namespace Runtime {
     }
 
     /**
-     * Encodes and writes out 32-bit
-     * integer values; note sizeof(int)
+     * Encodes and writes out 32-bit integer values; note sizeof(int)
      */
     inline void AddImm(int imm) {
       unsigned char buffer[sizeof(int)];
@@ -409,8 +409,7 @@ namespace Runtime {
     }
 
     /**
-    * Encodes and writes out a 16-bit 
-    * integer value
+    * Encodes and writes out a 16-bit integer value
     */
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
@@ -421,8 +420,7 @@ namespace Runtime {
     }
 
     /**
-     * Encodes and writes out 64-bit
-     * integer values
+     * Encodes and writes out 64-bit integer values
      */
 #ifdef _WIN64   
     inline void AddImm64(size_t imm) {
@@ -524,8 +522,7 @@ namespace Runtime {
     }
 
     /**
-     * Calculates the AMD64 MOD R/M
-     * offset
+     * Calculates the AMD64 MOD R/M offset
      */
     unsigned char ModRM(Register eff_adr, Register mod_rm);
 
@@ -535,24 +532,21 @@ namespace Runtime {
     wstring GetRegisterName(Register reg);
 
     /**
-     * Encodes a byte array with a
-     * 32-bit value
+     * Encodes a byte array with a 32-bit value
      */
     inline void ByteEncode32(unsigned char buffer[], int value) {
       memcpy(buffer, &value, sizeof(int));
     }
 
     /**
-    * Encodes a byte array with a 
-    * 16-bit value
+    * Encodes a byte array with a 16-bit value
     */
     inline void ByteEncode16(unsigned char buffer[], int16_t value) {
       memcpy(buffer, &value, sizeof(int16_t));
     }
 
     /**
-     * Encodes a byte array with a
-     * 64-bit value
+     * Encodes a byte array with a 64-bit value
      */
 #ifdef _WIN64
     inline void ByteEncode64(unsigned char buffer[], size_t value) {
@@ -565,14 +559,13 @@ namespace Runtime {
 #endif      
 
     /**
-     * Encodes an array with the
-     * binary ID of a register
+     * Encodes an array with the binary ID of a register
      */
     void RegisterEncode3(unsigned char& code, long offset, Register reg);
 
-    /*****
+    /**
      * Check for 'Nil' dereferencing
-     ***/
+     */
     inline void CheckNilDereference(Register reg) {
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG_JIT
@@ -586,9 +579,9 @@ namespace Runtime {
       // jump to exit
     }
 
-    /*****
+    /**
      * Check for divide by 0
-     ***/
+     */
     inline void CheckDivideByZero(Register reg) {
       if(reg < XMM0) {
         cmp_imm_reg(0, reg);
@@ -607,9 +600,9 @@ namespace Runtime {
       // jump to exit
     }
 
-    /*****
+    /**
      * Check for divide by 0
-     ***/
+     */
     inline void CheckDivideByZero(int32_t offset, Register src) {
       cmp_imm_mem(offset, src, 0);
 #ifdef _DEBUG_JIT
@@ -623,9 +616,9 @@ namespace Runtime {
       // jump to exit
     }
   
-    /*****
+    /**
      * Checks array bounds
-     ***/
+     */
     inline void CheckArrayBounds(Register reg, Register max_reg) {
 
       // less than zero
@@ -653,8 +646,7 @@ namespace Runtime {
       // jump to exit
     }
 
-    // Gets an available register from
-    // the pool of registers
+    // Gets an available register from the pool of registers
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
@@ -708,8 +700,7 @@ namespace Runtime {
       }
     }
 
-    // Gets an avaiable register from
-    // the pool of registers
+    // Gets an available register from the pool of registers
     RegisterHolder* GetXmmRegister() {
       RegisterHolder* holder;
       if(aval_xregs.empty()) {
@@ -894,9 +885,7 @@ namespace Runtime {
     void loop(long offset);
 
     // Calculates array element offset. 
-    // Note: this code must match up 
-    // with the interpreter's 'ArrayIndex'
-    // method.
+    // Note: this code must match up with the interpreter's 'ArrayIndex' method.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type);
 
     // Calculates the indices for
@@ -976,8 +965,8 @@ namespace Runtime {
   };
 
   /**
- * Prototype for JIT function
- */
+   * Prototype for JIT function
+   */
   typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long* stack_pos, 
                              StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
 
