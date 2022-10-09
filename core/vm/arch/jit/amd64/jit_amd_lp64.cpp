@@ -4300,10 +4300,10 @@ void JitCompilerIA64::fsqrt() {
   AddMachineCode(0xfa);
 }
 
-/********************************
+/**
  * Calculates the AMD64 MOD R/M
  * offset
- ********************************/
+ */
 unsigned char Runtime::JitCompilerIA64::ModRM(Register eff_adr, Register mod_rm)
 {
   unsigned char byte;
@@ -4441,9 +4441,9 @@ unsigned char Runtime::JitCompilerIA64::ModRM(Register eff_adr, Register mod_rm)
   return byte;
 }
 
-/********************************
+/**
  * Returns the name of a register
- ********************************/
+ */
 wstring Runtime::JitCompilerIA64::GetRegisterName(Register reg)
 {
   switch(reg) {
@@ -4547,10 +4547,10 @@ wstring Runtime::JitCompilerIA64::GetRegisterName(Register reg)
   return L"?";
 }
 
-/********************************
+/**
  * Encodes an array with the
  * binary ID of a register
- ********************************/
+ */
 void Runtime::JitCompilerIA64::RegisterEncode3(unsigned char& code, long offset, Register reg)
 {
 #ifdef _DEBUG_JIT
@@ -5039,9 +5039,9 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
   return compile_success;
 }
 
-/********************************
+/**
  * JitExecutor class
- ********************************/
+ */
 StackProgram* JitExecutor::program;
 
 void JitExecutor::Initialize(StackProgram* p) 
@@ -5078,9 +5078,9 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
   return status;
 }
 
-/********************************
+/**
  * RegInstr class
- ********************************/
+ */
 Runtime::RegInstr::RegInstr(StackInstr* si)
 {
   switch(si->GetType()) {
@@ -5129,9 +5129,9 @@ Runtime::RegInstr::RegInstr(StackInstr* si)
   holder = nullptr;
 }
 
-/********************************
+/**
  * Manage executable buffers of memory
- ********************************/
+ */
 Runtime::PageHolder::PageHolder()
 {
   index = 0;
