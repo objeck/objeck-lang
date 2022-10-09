@@ -1,4 +1,4 @@
-/***************************************************************************
+/*********************************************
  * JIT compiler for x86-64 architectures (Windows, macOS and Linux).
  *
  * Copyright (c) 2008-2022 Randy Hollines
@@ -27,19 +27,11 @@
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ***************************************************************************/
+ ********************************************/
 #ifndef __JIT_COMPILER__
 #define __JIT_COMPILER__
 
-#ifdef _WIN64
-#include "../../../arch/win32/win32.h"
-#else
-#include "../../posix/posix.h"
-#include <sys/mman.h>
-#include <errno.h>
-#endif
-#include "../../../common.h"
-#include "../../../interpreter.h"
+#include "../jit_common.h"
 
 using namespace std;
 
@@ -147,9 +139,9 @@ namespace Runtime {
     XMM15,
   } Register;
 
-  /********************************
+  /**
    * RegisterHolder class
-   ********************************/
+   */
   class RegisterHolder {
     Register reg;
 
@@ -166,9 +158,9 @@ namespace Runtime {
     }
   };
 
-  /********************************
+  /**
    * RegInstr class
-   ********************************/
+   */
   class RegInstr {
     RegType type;
     long operand;
@@ -246,9 +238,9 @@ namespace Runtime {
 #endif  
   };
 
-  /********************************
+  /**
    * Manage executable buffers of memory
-   ********************************/
+   */
   class PageHolder {
     unsigned char* buffer;
     int32_t available, index;
@@ -309,9 +301,9 @@ namespace Runtime {
     }
   };
 
-  /********************************
+  /**
    * Manage executable buffers of memory
-   ********************************/
+   */
   class PageManager {
     vector<PageHolder*> holders;
 
@@ -323,11 +315,10 @@ namespace Runtime {
     unsigned char* GetPage(unsigned char* code, int32_t size);
   };
   
-  /********************************
-   * JitCompilerIA64 class
-   ********************************/
-  class JitCompilerIA64 {
-    static StackProgram* program;
+  /**
+   * JIT compiler class for AMD64
+   */
+  class JitCompilerIA64 : public JitCompiler {
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -389,9 +380,9 @@ namespace Runtime {
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
 
-    /********************************
+    /**
      * Add byte code to buffer
-     ********************************/
+     */
     void AddMachineCode(unsigned char b) {
       if(code_index == code_buf_max) {
         code = (unsigned char*)realloc(code, code_buf_max * 2);
@@ -405,10 +396,10 @@ namespace Runtime {
       code[code_index++] = b;
     }
 
-    /********************************
+    /**
      * Encodes and writes out 32-bit
      * integer values; note sizeof(int)
-     ********************************/
+     */
     inline void AddImm(int imm) {
       unsigned char buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
@@ -417,10 +408,10 @@ namespace Runtime {
       }
     }
 
-    /********************************
+    /**
     * Encodes and writes out a 16-bit 
     * integer value
-    ********************************/
+    */
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
       ByteEncode16(buffer, imm);
@@ -429,10 +420,10 @@ namespace Runtime {
       }
     }
 
-    /********************************
+    /**
      * Encodes and writes out 64-bit
      * integer values
-     ********************************/
+     */
 #ifdef _WIN64   
     inline void AddImm64(size_t imm) {
       unsigned char buffer[sizeof(size_t)];
@@ -451,9 +442,9 @@ namespace Runtime {
     }
 #endif
 
-    /********************************
+    /**
      * Encoding for AMD64 "B" bits
-     ********************************/
+     */
     inline unsigned char B(Register b) {
       if((b > RSP && b < XMM0) || b > XMM7) {
         return 0x49;
@@ -462,9 +453,9 @@ namespace Runtime {
       return 0x48;
     }
 
-    /********************************
+    /**
      * Encoding for AMD64 "XB" bits
-     ********************************/
+     */
     inline unsigned char XB(Register b) {
       if((b > RSP && b < XMM0) || b > XMM7) {
         return 0x4b;
@@ -473,9 +464,9 @@ namespace Runtime {
       return 0x4a;
     }
 
-    /********************************
+    /**
      * Encoding for AMD64 "XB" bits
-     ********************************/
+     */
     inline unsigned char XB32(Register b) {
       if((b > RSP && b < XMM0) || b > XMM7) {
         return 0x66;
@@ -484,9 +475,9 @@ namespace Runtime {
       return 0x67;
     }
 
-    /********************************
+    /**
      * Encoding for AMD64 "RXB" bits
-     ********************************/
+     */
     inline unsigned char RXB(Register r, Register b) {
       unsigned char value = 0x4a;
       if((r > RSP && r < XMM0) || r > XMM7) {
@@ -500,9 +491,9 @@ namespace Runtime {
       return value;
     }
 
-    /********************************
+    /**
      * Encoding for AMD64 "RXB" bits
-     ********************************/
+     */
     inline unsigned char RXB32(Register r, Register b) {
       unsigned char value = 0x42;
       if((r > RSP && r < XMM0) || r > XMM7) {
@@ -516,9 +507,9 @@ namespace Runtime {
       return value;
     }
 
-    /********************************
+    /**
      * Encoding for AMD64 "ROB" bits
-     ********************************/
+     */
     inline unsigned char ROB(Register r, Register b) {
       unsigned char value = 0x48;
       if((r > RSP && r < XMM0) || r > XMM7) {
@@ -532,37 +523,37 @@ namespace Runtime {
       return value;
     }
 
-    /********************************
+    /**
      * Calculates the AMD64 MOD R/M
      * offset
-     ********************************/
+     */
     unsigned char ModRM(Register eff_adr, Register mod_rm);
 
-    /********************************
+    /**
      * Returns the name of a register
-     ********************************/
+     */
     wstring GetRegisterName(Register reg);
 
-    /********************************
+    /**
      * Encodes a byte array with a
      * 32-bit value
-     ********************************/
+     */
     inline void ByteEncode32(unsigned char buffer[], int value) {
       memcpy(buffer, &value, sizeof(int));
     }
 
-    /********************************
+    /**
     * Encodes a byte array with a 
     * 16-bit value
-    ********************************/
+    */
     inline void ByteEncode16(unsigned char buffer[], int16_t value) {
       memcpy(buffer, &value, sizeof(int16_t));
     }
 
-    /********************************
+    /**
      * Encodes a byte array with a
      * 64-bit value
-     ********************************/
+     */
 #ifdef _WIN64
     inline void ByteEncode64(unsigned char buffer[], size_t value) {
       memcpy(buffer, &value, sizeof(size_t));
@@ -573,15 +564,15 @@ namespace Runtime {
     }
 #endif      
 
-    /********************************
+    /**
      * Encodes an array with the
      * binary ID of a register
-     ********************************/
+     */
     void RegisterEncode3(unsigned char& code, long offset, Register reg);
 
-    /***********************************
+    /*****
      * Check for 'Nil' dereferencing
-     **********************************/
+     ***/
     inline void CheckNilDereference(Register reg) {
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG_JIT
@@ -595,9 +586,9 @@ namespace Runtime {
       // jump to exit
     }
 
-    /***********************************
+    /*****
      * Check for divide by 0
-     **********************************/
+     ***/
     inline void CheckDivideByZero(Register reg) {
       if(reg < XMM0) {
         cmp_imm_reg(0, reg);
@@ -616,9 +607,9 @@ namespace Runtime {
       // jump to exit
     }
 
-    /***********************************
+    /*****
      * Check for divide by 0
-     **********************************/
+     ***/
     inline void CheckDivideByZero(int32_t offset, Register src) {
       cmp_imm_mem(offset, src, 0);
 #ifdef _DEBUG_JIT
@@ -632,9 +623,9 @@ namespace Runtime {
       // jump to exit
     }
   
-    /***********************************
+    /*****
      * Checks array bounds
-     **********************************/
+     ***/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
 
       // less than zero
@@ -662,7 +653,7 @@ namespace Runtime {
       // jump to exit
     }
 
-    // Gets an avaiable register from
+    // Gets an available register from
     // the pool of registers
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
@@ -902,50 +893,6 @@ namespace Runtime {
     bool cond_jmp(InstructionType type);
     void loop(long offset);
 
-    static size_t PopInt(size_t* op_stack, long *stack_pos) {
-      const size_t value = op_stack[--(*stack_pos)];
-#ifdef _DEBUG_JIT
-      wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
-#endif
-
-      return value;
-    }
-
-    static void PushInt(size_t* op_stack, long *stack_pos, size_t value) {
-      op_stack[(*stack_pos)++] = value;
-#ifdef _DEBUG_JIT
-      wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
-#endif
-    }
-
-    inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
-      (*stack_pos)--;
-      
-#ifdef _DEBUG_JIT
-      FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
-      wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << endl;
-      return v;
-#endif
-      
-      return *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
-    }
-
-    inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
-#ifdef _DEBUG_JIT
-      wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; call_pos=" << (*stack_pos) << endl;
-#endif
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-      (*stack_pos)++;
-    }
-
-    //
-    // Callback
-    //
-    static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-                              const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos, 
-                              StackFrame** call_stack, long* call_stack_pos, const long ip);
-
     // Calculates array element offset. 
     // Note: this code must match up 
     // with the interpreter's 'ArrayIndex'
@@ -1028,15 +975,15 @@ namespace Runtime {
     bool Compile(StackMethod* cm);
   };
 
-  /********************************
+  /**
  * Prototype for JIT function
- ********************************/
+ */
   typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long* stack_pos, 
                              StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
 
-  /********************************
+  /**
    * JitExecutor class
-   ********************************/
+   */
   class JitExecutor {
     static StackProgram* program;
     

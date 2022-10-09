@@ -32,13 +32,7 @@
 #ifndef __JIT_COMPILER__
 #define __JIT_COMPILER__
 
-#include "../../memory.h"
-#include "../../../arch/posix/posix.h"
-#include <sys/mman.h>
-#include <errno.h>
-
-#include "../../../common.h"
-#include "../../../interpreter.h"
+#include "../jit_common.h"
 
 using namespace std;
 
@@ -318,8 +312,7 @@ namespace Runtime {
   /**
    * JitCompilerA64 class
    */
-  class JitCompilerA64 {
-    static StackProgram* program;
+  class JitCompilerA64 : public JitCompiler {
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -453,7 +446,6 @@ namespace Runtime {
       // jump to exit
       // ...
     }
-
     
     /**
      * Checks array bounds
@@ -688,49 +680,7 @@ namespace Runtime {
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
     void loop(long offset);
-    
-    static size_t PopInt(size_t* op_stack, long *stack_pos) {
-      const size_t value = op_stack[--(*stack_pos)];
-#ifdef _DEBUG_JIT_JIT
-      wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
-#endif
-
-      return value;
-    }
-
-    static void PushInt(size_t* op_stack, long *stack_pos, size_t value) {
-      op_stack[(*stack_pos)++] = value;
-#ifdef _DEBUG_JIT_JIT
-      wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
-#endif
-    }
-
-    inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
-      (*stack_pos)--;
-      
-#ifdef _DEBUG_JIT_JIT
-      FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
-      wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << endl;
-      return v;
-#endif
-      
-      return *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
-    }
-
-    inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
-#ifdef _DEBUG_JIT_JIT
-      wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; call_pos=" << (*stack_pos) << endl;
-#endif
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-      (*stack_pos)++;
-    }
-    
-    // Process call backs from ASM code
-    static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-                                 const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos,
-                                 StackFrame** call_stack, long* call_stack_pos, const long ip);
-
+     
     // Calculates array element offset.
     // Note: this code must match up
     // with the interpreter's 'ArrayIndex'
