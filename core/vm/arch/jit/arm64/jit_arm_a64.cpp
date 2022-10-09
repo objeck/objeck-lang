@@ -4307,7 +4307,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
 }
 
 /**
- * PageManager class
+ * Manage executable buffers of memory
  */
 PageManager::PageManager()
 {
