@@ -8,9 +8,11 @@ LIB=amd64/jit_common.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
+	cp $(LIB) ../..
 
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< -I../../../lib/openssl/macos/include 
 
 clean:
 	rm -f *.o *~ $(LIB)
+	rm ../../$(LIB)
