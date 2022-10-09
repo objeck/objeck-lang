@@ -7,7 +7,7 @@ SRC=jit_common.o
 LIB=amd64/jit_common.a
 
 $(LIB): $(SRC)
-	$(AR) -cvq $(LIB) $(SRC)
+	$(AR) -cvq $(LIB) $(SRC) -L../lib/openssl/macos/x64 $(OBJ_LIBS) -lssl -lcrypto -ldl -lz
 
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
