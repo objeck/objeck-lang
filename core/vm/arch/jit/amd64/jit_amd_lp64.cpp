@@ -34,14 +34,14 @@
 
 using namespace Runtime;
 
-PageManager* JitCompilerIA64::page_manager;
+PageManager* JitAmd64::page_manager;
 
-void JitCompilerIA64::Initialize(StackProgram* p) {
+void JitAmd64::Initialize(StackProgram* p) {
   JitCompiler::Initialize(p);
   page_manager = new PageManager;
 }
 
-void JitCompilerIA64::Prolog() {
+void JitAmd64::Prolog() {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
@@ -85,7 +85,7 @@ void JitCompilerIA64::Prolog() {
   }
 }
 
-void JitCompilerIA64::Epilog() 
+void JitAmd64::Epilog() 
 {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
@@ -148,7 +148,7 @@ void JitCompilerIA64::Epilog()
   }
 }
 
-void JitCompilerIA64::RegisterRoot() {
+void JitAmd64::RegisterRoot() {
   // calculate root address
   // note: the offset required to 
   // get to the first local variable
@@ -185,7 +185,7 @@ void JitCompilerIA64::RegisterRoot() {
   ReleaseRegister(holder);
 }
 
-void JitCompilerIA64::ProcessParameters(long params) {
+void JitAmd64::ProcessParameters(long params) {
 #ifdef _DEBUG_JIT
   wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -261,7 +261,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
   }
 }
 
-void JitCompilerIA64::ProcessIntCallParameter() {
+void JitAmd64::ProcessIntCallParameter() {
 #ifdef _DEBUG_JIT
   wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -286,7 +286,7 @@ void JitCompilerIA64::ProcessIntCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerIA64::ProcessFunctionCallParameter() {
+void JitAmd64::ProcessFunctionCallParameter() {
 #ifdef _DEBUG_JIT
   wcout << L"FUNC_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -318,7 +318,7 @@ void JitCompilerIA64::ProcessFunctionCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerIA64::ProcessFloatCallParameter() {
+void JitAmd64::ProcessFloatCallParameter() {
 #ifdef _DEBUG_JIT
   wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -345,7 +345,7 @@ void JitCompilerIA64::ProcessFloatCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerIA64::ProcessInstructions() {
+void JitAmd64::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
@@ -872,7 +872,7 @@ void JitCompilerIA64::ProcessInstructions() {
   }
 }
 
-void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
+void JitAmd64::ProcessLoad(StackInstr* instr) {
   // method/function memory
   if(instr->GetOperand2() == LOCL) {
     if(instr->GetType() == LOAD_FUNC_VAR) {
@@ -931,7 +931,7 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA64::ProcessJump(StackInstr* instr) {
+void JitAmd64::ProcessJump(StackInstr* instr) {
   if(!skip_jump) {
 #ifdef _DEBUG_JIT
     wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size() 
@@ -1004,7 +1004,7 @@ void JitCompilerIA64::ProcessJump(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA64::ProcessReturnParameters(MemoryType type) {
+void JitAmd64::ProcessReturnParameters(MemoryType type) {
   switch(type) {
   case INT_TYPE:
     ProcessIntCallParameter();
@@ -1023,7 +1023,7 @@ void JitCompilerIA64::ProcessReturnParameters(MemoryType type) {
   }
 }
 
-void JitCompilerIA64::ProcessLoadByteElement(StackInstr* instr) {
+void JitAmd64::ProcessLoadByteElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
   RegisterHolder* holder = GetRegister();
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
@@ -1032,7 +1032,7 @@ void JitCompilerIA64::ProcessLoadByteElement(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 }
 
-void JitCompilerIA64::ProcessLoadCharElement(StackInstr* instr) {
+void JitAmd64::ProcessLoadCharElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister(false);
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
@@ -1045,13 +1045,13 @@ void JitCompilerIA64::ProcessLoadCharElement(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 }
 
-void JitCompilerIA64::ProcessLoadIntElement(StackInstr* instr) {
+void JitAmd64::ProcessLoadIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
   move_mem_reg(0, elem_holder->GetRegister(), elem_holder->GetRegister());
   working_stack.push_front(new RegInstr(elem_holder));
 }
 
-void JitCompilerIA64::ProcessLoadFloatElement(StackInstr* instr) {
+void JitAmd64::ProcessLoadFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(0, elem_holder->GetRegister(), holder->GetRegister());
@@ -1059,7 +1059,7 @@ void JitCompilerIA64::ProcessLoadFloatElement(StackInstr* instr) {
   ReleaseRegister(elem_holder);
 }
 
-void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
+void JitAmd64::ProcessStoreByteElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1105,7 +1105,7 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
+void JitAmd64::ProcessStoreCharElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1180,7 +1180,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
+void JitAmd64::ProcessStoreIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1214,7 +1214,7 @@ void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
+void JitAmd64::ProcessStoreFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1250,7 +1250,7 @@ void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
+void JitAmd64::ProcessFloor(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1285,7 +1285,7 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
+void JitAmd64::ProcessCeiling(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1320,7 +1320,7 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
+void JitAmd64::ProcessFloatToInt(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1350,7 +1350,7 @@ void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
+void JitAmd64::ProcessIntToFloat(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1379,7 +1379,7 @@ void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessStore(StackInstr* instr) {
+void JitAmd64::ProcessStore(StackInstr* instr) {
   Register dest;
   RegisterHolder* addr_holder = nullptr;
 
@@ -1498,7 +1498,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
+void JitAmd64::ProcessCopy(StackInstr* instr) {
   Register dest;
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
@@ -1587,7 +1587,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
+void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
   long non_params;
   if(params < 0) {
     non_params = 0;
@@ -1714,7 +1714,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   }
 }
 
-void JitCompilerIA64::ProcessReturn(long params) {
+void JitAmd64::ProcessReturn(long params) {
   if(!working_stack.empty()) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
@@ -1828,7 +1828,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
   }
 }
 
-RegInstr* JitCompilerIA64::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
+RegInstr* JitAmd64::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
     return new RegInstr(IMM_INT, left_imm && right_imm);
@@ -1889,7 +1889,7 @@ RegInstr* JitCompilerIA64::ProcessIntFold(long left_imm, long right_imm, Instruc
   }
 }
 
-void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
+void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
@@ -2014,7 +2014,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
   right = nullptr;
 }
 
-void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
+void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -2225,7 +2225,7 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
   right = nullptr;
 }
 
-void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
+void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
@@ -2300,7 +2300,7 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
 
 /////////////////// OPERATIONS ///////////////////
 
-void JitCompilerIA64::move_reg_reg(Register src, Register dest) {
+void JitAmd64::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT
     wcout << L"  " << (++instr_count) << L": [movq %" << GetRegisterName(src) 
@@ -2317,7 +2317,7 @@ void JitCompilerIA64::move_reg_reg(Register src, Register dest) {
   }
 }
 
-void JitCompilerIA64::move_reg_mem8(Register src, long offset, Register dest) { 
+void JitAmd64::move_reg_mem8(Register src, long offset, Register dest) { 
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2331,7 +2331,7 @@ void JitCompilerIA64::move_reg_mem8(Register src, long offset, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_reg_mem16(Register src, int32_t offset, Register dest) {
+void JitAmd64::move_reg_mem16(Register src, int32_t offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src)
     << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]"
@@ -2345,7 +2345,7 @@ void JitCompilerIA64::move_reg_mem16(Register src, int32_t offset, Register dest
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_reg_mem32(Register src, long offset, Register dest) { 
+void JitAmd64::move_reg_mem32(Register src, long offset, Register dest) { 
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2359,7 +2359,7 @@ void JitCompilerIA64::move_reg_mem32(Register src, long offset, Register dest) {
   AddImm(offset);
 }
     
-void JitCompilerIA64::move_reg_mem(Register src, long offset, Register dest) { 
+void JitAmd64::move_reg_mem(Register src, long offset, Register dest) { 
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2373,7 +2373,7 @@ void JitCompilerIA64::move_reg_mem(Register src, long offset, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_mem8_reg(long offset, Register src, Register dest) {
+void JitAmd64::move_mem8_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2388,7 +2388,7 @@ void JitCompilerIA64::move_mem8_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_mem16_reg(int32_t offset, Register src, Register dest) {
+void JitAmd64::move_mem16_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw " << offset << L"(%"
     << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2402,7 +2402,7 @@ void JitCompilerIA64::move_mem16_reg(int32_t offset, Register src, Register dest
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_mem32_reg(long offset, Register src, Register dest) {
+void JitAmd64::move_mem32_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2416,7 +2416,7 @@ void JitCompilerIA64::move_mem32_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::move_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2430,7 +2430,7 @@ void JitCompilerIA64::move_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::move_mem_reg32(long offset, Register src, Register dest) {
+void JitAmd64::move_mem_reg32(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movl " << offset << L"(%"
     << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2444,14 +2444,14 @@ void JitCompilerIA64::move_mem_reg32(long offset, Register src, Register dest) {
   AddImm(offset);
 }
  
-void JitCompilerIA64::move_imm_memx(RegInstr* instr, long offset, Register dest) {
+void JitAmd64::move_imm_memx(RegInstr* instr, long offset, Register dest) {
   RegisterHolder* tmp_holder = GetXmmRegister();
   move_imm_xreg(instr, tmp_holder->GetRegister());
   move_xreg_mem(tmp_holder->GetRegister(), offset, dest);
   ReleaseXmmRegister(tmp_holder);
 }
 
-void JitCompilerIA64::move_imm_mem8(int8_t imm, long offset, Register dest) {
+void JitAmd64::move_imm_mem8(int8_t imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movb $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2467,7 +2467,7 @@ void JitCompilerIA64::move_imm_mem8(int8_t imm, long offset, Register dest) {
   AddMachineCode((unsigned char)imm);
 }
 
-void JitCompilerIA64::move_imm_mem16(int16_t imm, int32_t offset, Register dest) {
+void JitAmd64::move_imm_mem16(int16_t imm, int32_t offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset
     << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2483,11 +2483,11 @@ void JitCompilerIA64::move_imm_mem16(int16_t imm, int32_t offset, Register dest)
   AddImm16(imm);
 }
 
-void JitCompilerIA64::move_imm_mem32(int32_t imm, long offset, Register dest) {
+void JitAmd64::move_imm_mem32(int32_t imm, long offset, Register dest) {
   move_imm_mem(imm, offset, dest);
 }
 
-void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
+void JitAmd64::move_imm_mem(long imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2504,7 +2504,7 @@ void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
 }
 
 #ifdef _WIN64
-void JitCompilerIA64::move_imm_reg(size_t imm, Register reg) {
+void JitAmd64::move_imm_reg(size_t imm, Register reg) {
 #else
 void JitCompilerIA64::move_imm_reg(long imm, Register reg) {
 #endif
@@ -2521,7 +2521,7 @@ void JitCompilerIA64::move_imm_reg(long imm, Register reg) {
   AddImm64(imm);
 }
 
-void JitCompilerIA64::move_imm_xreg(RegInstr* instr, Register reg) {
+void JitAmd64::move_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64  
@@ -2533,7 +2533,7 @@ void JitCompilerIA64::move_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
     
-void JitCompilerIA64::move_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::move_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movsd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -2548,7 +2548,7 @@ void JitCompilerIA64::move_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
     
-void JitCompilerIA64::move_xreg_mem(Register src, long offset, Register dest) {
+void JitAmd64::move_xreg_mem(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2564,7 +2564,7 @@ void JitCompilerIA64::move_xreg_mem(Register src, long offset, Register dest) {
   AddImm(offset);
 }
     
-void JitCompilerIA64::move_xreg_xreg(Register src, Register dest) {
+void JitAmd64::move_xreg_xreg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT
     wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
@@ -2583,7 +2583,7 @@ void JitCompilerIA64::move_xreg_xreg(Register src, Register dest) {
   }
 }
 
-bool JitCompilerIA64::cond_jmp(InstructionType type) {
+bool JitAmd64::cond_jmp(InstructionType type) {
   if(instr_index >= method->GetInstructionCount()) {
     return false;
   }
@@ -2760,13 +2760,13 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
   return false;
 }
 
-void JitCompilerIA64::loop(long offset)
+void JitAmd64::loop(long offset)
 {
   AddMachineCode(0xe2);
   AddMachineCode((unsigned char)offset);
 }
 
-RegisterHolder* JitCompilerIA64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
+RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
 {
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   move_mem_xreg(left->GetOperand(), RBP, XMM0);
@@ -2785,7 +2785,7 @@ RegisterHolder* JitCompilerIA64::call_xfunc(double(*func_ptr)(double), RegInstr*
   return result_holder;
 }
 
-RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), RegInstr* left)
+RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInstr* left)
 {
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
@@ -2818,7 +2818,7 @@ RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), 
   return result_holder;
 }
 
-void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type) 
+void JitAmd64::math_imm_reg(long imm, Register reg, InstructionType type) 
 {
   switch(type) {
   case AND_INT:
@@ -2886,7 +2886,7 @@ void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
   }
 }
 
-void JitCompilerIA64::math_reg_reg(Register src, Register dest, InstructionType type) {
+void JitAmd64::math_reg_reg(Register src, Register dest, InstructionType type) {
   switch(type) {
   case SHL_INT:
     shl_reg_reg(src, dest);
@@ -2952,7 +2952,7 @@ void JitCompilerIA64::math_reg_reg(Register src, Register dest, InstructionType 
   }
 }
 
-void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType type) {
+void JitAmd64::math_mem_reg(long offset, Register reg, InstructionType type) {
   switch(type) {
   case SHL_INT:
     shl_mem_reg(offset, RBP, reg);
@@ -3019,7 +3019,7 @@ void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType ty
   }
 }
 
-void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type) {
+void JitAmd64::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
     add_imm_xreg(instr, reg);
@@ -3058,14 +3058,14 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   }
 }
 
-void JitCompilerIA64::math_mem_xreg(long offset, Register dest, InstructionType type) {
+void JitAmd64::math_mem_xreg(long offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, RBP, holder->GetRegister());
   math_xreg_xreg(holder->GetRegister(), dest, type);
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerIA64::math_xreg_xreg(Register src, Register dest, InstructionType type) {
+void JitAmd64::math_xreg_xreg(Register src, Register dest, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
     add_xreg_xreg(src, dest);
@@ -3100,7 +3100,7 @@ void JitCompilerIA64::math_xreg_xreg(Register src, Register dest, InstructionTyp
   }
 }    
 
-void JitCompilerIA64::cmp_reg_reg(Register src, Register dest) {
+void JitAmd64::cmp_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpq %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3117,7 +3117,7 @@ void JitCompilerIA64::cmp_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::cmp_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3133,7 +3133,7 @@ void JitCompilerIA64::cmp_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
     
-void JitCompilerIA64::cmp_imm_reg(long imm, Register reg) {
+void JitAmd64::cmp_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
@@ -3148,7 +3148,7 @@ void JitCompilerIA64::cmp_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::cmp_imm_mem(int32_t offset, Register src, int32_t imm) {
+void JitAmd64::cmp_imm_mem(int32_t offset, Register src, int32_t imm) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(src) << L")]" << endl;
@@ -3162,7 +3162,7 @@ void JitCompilerIA64::cmp_imm_mem(int32_t offset, Register src, int32_t imm) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
+void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
   // set register to 0; if eflag than set to 1
   move_imm_reg(0, reg);
   RegisterHolder* true_holder = GetRegister();
@@ -3232,7 +3232,7 @@ void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
   ReleaseRegister(true_holder);
 }
 
-void JitCompilerIA64::add_imm_mem(long imm, long offset, Register dest) {
+void JitAmd64::add_imm_mem(long imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(dest) << L")]" << endl;
@@ -3246,7 +3246,7 @@ void JitCompilerIA64::add_imm_mem(long imm, long offset, Register dest) {
   AddImm(imm);
 }
     
-void JitCompilerIA64::add_imm_reg(long imm, Register reg) {
+void JitAmd64::add_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
@@ -3261,7 +3261,7 @@ void JitCompilerIA64::add_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
     
-void JitCompilerIA64::add_imm_xreg(RegInstr* instr, Register reg) {
+void JitAmd64::add_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
@@ -3273,7 +3273,7 @@ void JitCompilerIA64::add_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::sub_imm_xreg(RegInstr* instr, Register reg) {
+void JitAmd64::sub_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
@@ -3285,7 +3285,7 @@ void JitCompilerIA64::sub_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::div_imm_xreg(RegInstr* instr, Register reg) {
+void JitAmd64::div_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
@@ -3297,7 +3297,7 @@ void JitCompilerIA64::div_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::mul_imm_xreg(RegInstr* instr, Register reg) {
+void JitAmd64::mul_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
@@ -3309,7 +3309,7 @@ void JitCompilerIA64::mul_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::add_reg_reg(Register src, Register dest) {
+void JitAmd64::add_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addq %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3324,7 +3324,7 @@ void JitCompilerIA64::add_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::sub_xreg_xreg(Register src, Register dest) {
+void JitAmd64::sub_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3341,7 +3341,7 @@ void JitCompilerIA64::sub_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);       
 }
 
-void JitCompilerIA64::mul_xreg_xreg(Register src, Register dest) {
+void JitAmd64::mul_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [mulsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3358,7 +3358,7 @@ void JitCompilerIA64::mul_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::div_xreg_xreg(Register src, Register dest) {
+void JitAmd64::div_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [divsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3377,7 +3377,7 @@ void JitCompilerIA64::div_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::add_xreg_xreg(Register src, Register dest) {
+void JitAmd64::add_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addsd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3394,7 +3394,7 @@ void JitCompilerIA64::add_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
     
-void JitCompilerIA64::add_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::add_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3408,7 +3408,7 @@ void JitCompilerIA64::add_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::add_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::add_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [addsd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3424,7 +3424,7 @@ void JitCompilerIA64::add_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);  
 }
 
-void JitCompilerIA64::sub_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::sub_mem_xreg(long offset, Register src, Register dest) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, src, holder->GetRegister());
   sub_xreg_xreg(dest, holder->GetRegister());
@@ -3432,7 +3432,7 @@ void JitCompilerIA64::sub_mem_xreg(long offset, Register src, Register dest) {
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerIA64::mul_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::mul_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [mulsd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3447,7 +3447,7 @@ void JitCompilerIA64::mul_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::div_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::div_mem_xreg(long offset, Register src, Register dest) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, src, holder->GetRegister());
   div_xreg_xreg(dest, holder->GetRegister());
@@ -3455,7 +3455,7 @@ void JitCompilerIA64::div_mem_xreg(long offset, Register src, Register dest) {
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerIA64::sub_imm_reg(long imm, Register reg) {
+void JitAmd64::sub_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
@@ -3469,7 +3469,7 @@ void JitCompilerIA64::sub_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::sub_imm_mem(long imm, long offset, Register dest) {
+void JitAmd64::sub_imm_mem(long imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(dest) << L")]" << endl;
@@ -3483,7 +3483,7 @@ void JitCompilerIA64::sub_imm_mem(long imm, long offset, Register dest) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::sub_reg_reg(Register src, Register dest) {
+void JitAmd64::sub_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subq %" << GetRegisterName(src)
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3498,7 +3498,7 @@ void JitCompilerIA64::sub_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::sub_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [subq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3513,7 +3513,7 @@ void JitCompilerIA64::sub_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
+void JitAmd64::mul_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [imuq $" << imm 
         << L", %"<< GetRegisterName(reg) << L"]" << endl;
@@ -3530,7 +3530,7 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::mul_reg_reg(Register src, Register dest) {
+void JitAmd64::mul_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [imuq %" << GetRegisterName(src) << L", %"<< GetRegisterName(dest) << L"]" << endl;
 #endif
@@ -3545,7 +3545,7 @@ void JitCompilerIA64::mul_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::mul_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::mul_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [imuq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3560,14 +3560,14 @@ void JitCompilerIA64::mul_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::div_imm_reg(long imm, Register reg, bool is_mod) {
+void JitAmd64::div_imm_reg(long imm, Register reg, bool is_mod) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
+void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
   CheckDivideByZero(offset, src);
   
   if(is_mod) {
@@ -3629,7 +3629,7 @@ void JitCompilerIA64::div_mem_reg(long offset, Register src, Register dest, bool
   }
 }
 
-void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
+void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod) {
   CheckDivideByZero(src);
 
   if(is_mod) {
@@ -3718,7 +3718,7 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   }
 }
 
-void JitCompilerIA64::dec_reg(Register dest) {
+void JitAmd64::dec_reg(Register dest) {
   AddMachineCode(B(dest));
   unsigned char code = 0x48;
   RegisterEncode3(code, 5, dest);
@@ -3729,7 +3729,7 @@ void JitCompilerIA64::dec_reg(Register dest) {
 #endif
 }
 
-void JitCompilerIA64::dec_mem(long offset, Register dest) {
+void JitAmd64::dec_mem(long offset, Register dest) {
   AddMachineCode(XB(dest));
   AddMachineCode(0xff);
   unsigned char code = 0x88;
@@ -3742,7 +3742,7 @@ void JitCompilerIA64::dec_mem(long offset, Register dest) {
 #endif
 }
 
-void JitCompilerIA64::inc_mem(long offset, Register dest) {
+void JitAmd64::inc_mem(long offset, Register dest) {
   AddMachineCode(XB(dest));
   AddMachineCode(0xff);
   unsigned char code = 0x80;
@@ -3755,7 +3755,7 @@ void JitCompilerIA64::inc_mem(long offset, Register dest) {
 #endif
 }
 
-void JitCompilerIA64::shl_imm_reg(long value, Register dest) {
+void JitAmd64::shl_imm_reg(long value, Register dest) {
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe0;
@@ -3768,7 +3768,7 @@ void JitCompilerIA64::shl_imm_reg(long value, Register dest) {
 #endif
 }
 
-void JitCompilerIA64::shl_reg_reg(Register src, Register dest)
+void JitAmd64::shl_reg_reg(Register src, Register dest)
 {
   Register old_dest;
   RegisterHolder* reg_holder = nullptr;
@@ -3811,7 +3811,7 @@ void JitCompilerIA64::shl_reg_reg(Register src, Register dest)
   }
 }
 
-void JitCompilerIA64::shl_mem_reg(long offset, Register src, Register dest) 
+void JitAmd64::shl_mem_reg(long offset, Register src, Register dest) 
 {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -3819,7 +3819,7 @@ void JitCompilerIA64::shl_mem_reg(long offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerIA64::shr_imm_reg(long value, Register dest) {
+void JitAmd64::shr_imm_reg(long value, Register dest) {
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe8;
@@ -3832,7 +3832,7 @@ void JitCompilerIA64::shr_imm_reg(long value, Register dest) {
 #endif
 }
 
-void JitCompilerIA64::shr_reg_reg(Register src, Register dest)
+void JitAmd64::shr_reg_reg(Register src, Register dest)
 {
   Register old_dest;
   RegisterHolder* reg_holder = nullptr;
@@ -3875,7 +3875,7 @@ void JitCompilerIA64::shr_reg_reg(Register src, Register dest)
   }
 }
 
-void JitCompilerIA64::shr_mem_reg(long offset, Register src, Register dest) 
+void JitAmd64::shr_mem_reg(long offset, Register src, Register dest) 
 {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -3883,7 +3883,7 @@ void JitCompilerIA64::shr_mem_reg(long offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerIA64::push_mem(long offset, Register dest) {
+void JitAmd64::push_mem(long offset, Register dest) {
   AddMachineCode(B(dest));
   AddMachineCode(0xff);
   unsigned char code = 0xb0;
@@ -3896,7 +3896,7 @@ void JitCompilerIA64::push_mem(long offset, Register dest) {
 #endif
 }
 
-void JitCompilerIA64::push_reg(Register reg) {
+void JitAmd64::push_reg(Register reg) {
   AddMachineCode(B(reg));
   unsigned char code = 0x50;
   RegisterEncode3(code, 5, reg);
@@ -3907,7 +3907,7 @@ void JitCompilerIA64::push_reg(Register reg) {
 #endif
 }
 
-void JitCompilerIA64::push_imm(long value) {
+void JitAmd64::push_imm(long value) {
   AddMachineCode(0x68);
   AddImm(value);
 #ifdef _DEBUG_JIT
@@ -3915,7 +3915,7 @@ void JitCompilerIA64::push_imm(long value) {
 #endif
 }
 
-void JitCompilerIA64::pop_reg(Register reg) {
+void JitAmd64::pop_reg(Register reg) {
   AddMachineCode(B(reg));  
   unsigned char code = 0x58;
   RegisterEncode3(code, 5, reg);
@@ -3926,7 +3926,7 @@ void JitCompilerIA64::pop_reg(Register reg) {
 #endif
 }
 
-void JitCompilerIA64::call_reg(Register reg) {
+void JitAmd64::call_reg(Register reg) {
   AddMachineCode(B(reg));  
   AddMachineCode(0xff);
   unsigned char code = 0xd0;
@@ -3938,7 +3938,7 @@ void JitCompilerIA64::call_reg(Register reg) {
 #endif
 }
 
-void JitCompilerIA64::cmp_xreg_xreg(Register src, Register dest) {
+void JitAmd64::cmp_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [ucomisd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3955,7 +3955,7 @@ void JitCompilerIA64::cmp_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::cmp_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [ucomisd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3971,7 +3971,7 @@ void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::cmp_imm_xreg(size_t addr, Register reg) {
+void JitAmd64::cmp_imm_xreg(size_t addr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(addr, imm_holder->GetRegister());
@@ -3979,7 +3979,7 @@ void JitCompilerIA64::cmp_imm_xreg(size_t addr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::cvt_xreg_reg(Register src, Register dest) {
+void JitAmd64::cvt_xreg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsd2si %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3996,7 +3996,7 @@ void JitCompilerIA64::cvt_xreg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
+void JitAmd64::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
@@ -4008,7 +4008,7 @@ void JitCompilerIA64::round_imm_xreg(RegInstr* instr, Register reg, bool is_floo
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::round_mem_xreg(long offset, Register src, Register dest, bool is_floor) {
+void JitAmd64::round_mem_xreg(long offset, Register src, Register dest, bool is_floor) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
         << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -4032,7 +4032,7 @@ void JitCompilerIA64::round_mem_xreg(long offset, Register src, Register dest, b
   }
 }
 
-void JitCompilerIA64::round_xreg_xreg(Register src, Register dest, bool is_floor) {
+void JitAmd64::round_xreg_xreg(Register src, Register dest, bool is_floor) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
         << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -4057,7 +4057,7 @@ void JitCompilerIA64::round_xreg_xreg(Register src, Register dest, bool is_floor
   }
 }
 
-void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
+void JitAmd64::cvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
 #ifdef _WIN64
@@ -4069,7 +4069,7 @@ void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::cvt_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsd2si " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -4084,7 +4084,7 @@ void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::cvt_reg_xreg(Register src, Register dest) {
+void JitAmd64::cvt_reg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -4101,14 +4101,14 @@ void JitCompilerIA64::cvt_reg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::cvt_imm_xreg(RegInstr* instr, Register reg) {
+void JitAmd64::cvt_imm_xreg(RegInstr* instr, Register reg) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cvt_reg_xreg(imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA64::cvt_mem_xreg(long offset, Register src, Register dest) {
+void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -4123,7 +4123,7 @@ void JitCompilerIA64::cvt_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::and_imm_reg(long imm, Register reg) {
+void JitAmd64::and_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
@@ -4138,7 +4138,7 @@ void JitCompilerIA64::and_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::and_reg_reg(Register src, Register dest) {
+void JitAmd64::and_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [andq %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -4153,7 +4153,7 @@ void JitCompilerIA64::and_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::and_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [andq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -4166,7 +4166,7 @@ void JitCompilerIA64::and_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::or_imm_reg(long imm, Register reg) {
+void JitAmd64::or_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
@@ -4181,7 +4181,7 @@ void JitCompilerIA64::or_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::or_reg_reg(Register src, Register dest) {
+void JitAmd64::or_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [orq %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -4196,7 +4196,7 @@ void JitCompilerIA64::or_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::or_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [orq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -4209,7 +4209,7 @@ void JitCompilerIA64::or_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::xor_imm_reg(long imm, Register reg) {
+void JitAmd64::xor_imm_reg(long imm, Register reg) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << endl;
@@ -4224,7 +4224,7 @@ void JitCompilerIA64::xor_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::xor_reg_reg(Register src, Register dest) {
+void JitAmd64::xor_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [xorq %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -4239,7 +4239,7 @@ void JitCompilerIA64::xor_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA64::xor_mem_reg(long offset, Register src, Register dest) {
+void JitAmd64::xor_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [xorq " << offset << L"(%" 
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
@@ -4254,7 +4254,7 @@ void JitCompilerIA64::xor_mem_reg(long offset, Register src, Register dest) {
 
 // --- x87 ---
 
-void JitCompilerIA64::fld_mem(int32_t offset, Register src) {
+void JitAmd64::fld_mem(int32_t offset, Register src) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%"
     << GetRegisterName(src) << L")]" << endl;
@@ -4266,7 +4266,7 @@ void JitCompilerIA64::fld_mem(int32_t offset, Register src) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::fstp_mem(int32_t offset, Register src) {
+void JitAmd64::fstp_mem(int32_t offset, Register src) {
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%"
     << GetRegisterName(src) << L")]" << endl;
@@ -4278,24 +4278,24 @@ void JitCompilerIA64::fstp_mem(int32_t offset, Register src) {
   AddImm(offset);
 }
 
-void JitCompilerIA64::fsin() {
+void JitAmd64::fsin() {
   AddMachineCode(0xd9);
   AddMachineCode(0xfe);
 }
 
-void JitCompilerIA64::fcos() {
+void JitAmd64::fcos() {
   AddMachineCode(0xd9);
   AddMachineCode(0xff);
 }
 
-void JitCompilerIA64::ftan() {
+void JitAmd64::ftan() {
   AddMachineCode(0xd9);
   AddMachineCode(0xf2);
   AddMachineCode(0xdd);
   AddMachineCode(0xd8);
 }
 
-void JitCompilerIA64::fsqrt() {
+void JitAmd64::fsqrt() {
   AddMachineCode(0xd9);
   AddMachineCode(0xfa);
 }
@@ -4304,7 +4304,7 @@ void JitCompilerIA64::fsqrt() {
  * Calculates the AMD64 MOD R/M
  * offset
  */
-unsigned char Runtime::JitCompilerIA64::ModRM(Register eff_adr, Register mod_rm)
+unsigned char JitAmd64::ModRM(Register eff_adr, Register mod_rm)
 {
   unsigned char byte;
 
@@ -4444,7 +4444,7 @@ unsigned char Runtime::JitCompilerIA64::ModRM(Register eff_adr, Register mod_rm)
 /**
  * Returns the name of a register
  */
-wstring Runtime::JitCompilerIA64::GetRegisterName(Register reg)
+wstring JitAmd64::GetRegisterName(Register reg)
 {
   switch(reg) {
   case RAX:
@@ -4551,7 +4551,7 @@ wstring Runtime::JitCompilerIA64::GetRegisterName(Register reg)
  * Encodes an array with the
  * binary ID of a register
  */
-void Runtime::JitCompilerIA64::RegisterEncode3(unsigned char& code, long offset, Register reg)
+void JitAmd64::RegisterEncode3(unsigned char& code, long offset, Register reg)
 {
 #ifdef _DEBUG_JIT
   assert(offset == 2 || offset == 5);
@@ -4627,7 +4627,7 @@ void Runtime::JitCompilerIA64::RegisterEncode3(unsigned char& code, long offset,
   code = code | reg_id;
 }
 
-Runtime::RegisterHolder* Runtime::JitCompilerIA64::ArrayIndex(StackInstr* instr, MemoryType type)
+RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 {
   RegInstr* holder = working_stack.front();
   working_stack.pop_front();
@@ -4770,7 +4770,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerIA64::ArrayIndex(StackInstr* instr,
   return array_holder;
 }
 
-void Runtime::JitCompilerIA64::ProcessIndices()
+void JitAmd64::ProcessIndices()
 {
 #ifdef _DEBUG_JIT
   wcout << L"Calculating indices for variables..." << endl;
@@ -4854,7 +4854,7 @@ void Runtime::JitCompilerIA64::ProcessIndices()
 #endif
 }
 
-bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
+bool JitAmd64::Compile(StackMethod* cm)
 {
   compile_success = true;
 
@@ -5042,15 +5042,15 @@ bool Runtime::JitCompilerIA64::Compile(StackMethod* cm)
 /**
  * JitExecutor class
  */
-StackProgram* JitExecutor::program;
+StackProgram* JitRuntime::program;
 
-void JitExecutor::Initialize(StackProgram* p) 
+void JitRuntime::Initialize(StackProgram* p) 
 {
   program = p;
 }
 
 // Executes machine code
-long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
+long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
 {
   const long cls_id = method->GetClass()->GetId();
   const long mthd_id = method->GetId();
@@ -5081,7 +5081,7 @@ long JitExecutor::Execute(StackMethod* method, size_t* inst, size_t* op_stack, l
 /**
  * RegInstr class
  */
-Runtime::RegInstr::RegInstr(StackInstr* si)
+RegInstr::RegInstr(StackInstr* si)
 {
   switch(si->GetType()) {
   case LOAD_CHAR_LIT:
@@ -5132,7 +5132,7 @@ Runtime::RegInstr::RegInstr(StackInstr* si)
 /**
  * Manage executable buffers of memory
  */
-Runtime::PageHolder::PageHolder()
+PageHolder::PageHolder()
 {
   index = 0;
   available = PAGE_SIZE;
@@ -5156,14 +5156,14 @@ Runtime::PageHolder::PageHolder()
 #endif
 }
 
-Runtime::PageManager::PageManager()
+PageManager::PageManager()
 {
   for(int i = 0; i < 4; ++i) {
     holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
   }
 }
 
-Runtime::PageManager::~PageManager()
+PageManager::~PageManager()
 {
   while(!holders.empty()) {
     PageHolder* tmp = holders.front();
@@ -5174,7 +5174,7 @@ Runtime::PageManager::~PageManager()
   }
 }
 
-unsigned char* Runtime::PageManager::GetPage(unsigned char* code, int32_t size)
+unsigned char* PageManager::GetPage(unsigned char* code, int32_t size)
 {
   bool placed = false;
 

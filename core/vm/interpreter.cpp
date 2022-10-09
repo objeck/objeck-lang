@@ -90,7 +90,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 
 #ifndef _NO_JIT
 #if defined(_WIN64) || defined(_X64)
-  JitCompilerIA64::Initialize(program);
+  JitAmd64::Initialize(program);
 #else
   JitCompilerA64::Initialize(program);
 #endif
@@ -2176,7 +2176,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   // compile, if needed
   if(!called->GetNativeCode()) {    
 #if defined(_WIN64) || defined(_X64)
-    JitCompilerIA64 jit_compiler;
+    JitAmd64 jit_compiler;
 #else
     JitCompilerA64 jit_compiler;
 #endif
@@ -2192,7 +2192,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   
   // execute
   (*frame) = GetStackFrame(called, instance);
-  JitExecutor jit_executor;
+  JitRuntime jit_executor;
   const long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *frame);
   if(status < 0) {
     switch(status) {
