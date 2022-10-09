@@ -310,9 +310,9 @@ namespace Runtime {
   };
   
   /**
-   * JitCompilerA64 class
+   * JitArm64 class
    */
-  class JitCompilerA64 : public JitCompiler {
+  class JitArm64 : public JitCompiler {
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -695,10 +695,10 @@ namespace Runtime {
   public:
     static void Initialize(StackProgram* p);
 
-    JitCompilerA64() {
+    JitArm64() {
     }
 
-    ~JitCompilerA64() {
+    ~JitArm64() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
@@ -764,9 +764,9 @@ namespace Runtime {
   
   
   /**
-   * JitExecutor class
+   * JIT runtime wrapper class
    */
-  class JitExecutor {
+  class JitRuntime {
     static StackProgram* program;
 
   public:
