@@ -319,7 +319,7 @@ namespace Runtime {
   /**
    * JIT compiler class for AMD64
    */
-  class JitCompilerIA64 : public JitCompiler {
+  class JitAmd64 : public JitCompiler {
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -346,7 +346,7 @@ namespace Runtime {
     bool compile_success;
     bool skip_jump;
 
-    // setup and teardown
+    // setup and tear down
     void Prolog();
     void Epilog();
 
@@ -895,10 +895,10 @@ namespace Runtime {
   public:
     static void Initialize(StackProgram* p);
 
-    JitCompilerIA64() {
+    JitAmd64() {
     }
 
-    ~JitCompilerIA64() {
+    ~JitAmd64() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
@@ -971,9 +971,9 @@ namespace Runtime {
                              StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
 
   /**
-   * JitExecutor class
+   * JIT runtime wrapper class
    */
-  class JitExecutor {
+  class JitRuntime {
     static StackProgram* program;
     
   public:
