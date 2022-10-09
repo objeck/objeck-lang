@@ -2506,7 +2506,7 @@ void JitAmd64::move_imm_mem(long imm, long offset, Register dest) {
 #ifdef _WIN64
 void JitAmd64::move_imm_reg(size_t imm, Register reg) {
 #else
-void JitCompilerIA64::move_imm_reg(long imm, Register reg) {
+void JitAmd64::move_imm_reg(long imm, Register reg) {
 #endif
 #ifdef _DEBUG_JIT
   wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", %" 
