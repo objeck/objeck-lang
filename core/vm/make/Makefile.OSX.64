@@ -4,7 +4,7 @@ ARGS=-O3 -Wall -pthread -std=c++17 -D_OSX -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-
 
 CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS=jit_amd_lp64.a memory.a
+OBJ_LIBS=jit_common.a jit_amd_lp64.a memory.a
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
 EXE= obr
