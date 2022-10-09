@@ -51,6 +51,9 @@
     <ClInclude Include="..\..\shared\sys.h">
       <Filter>Header files</Filter>
     </ClInclude>
+    <ClInclude Include="..\arch\jit\jit_common.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\arch\jit\arm64\jit_arm_a64.cpp">
@@ -72,6 +75,9 @@
       <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="..\vm.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\arch\jit\jit_common.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
   </ItemGroup>

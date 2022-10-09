@@ -69,6 +69,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\arch\jit\arm64\jit_arm_a64.h" />
+    <ClInclude Include="..\arch\jit\jit_common.h" />
     <ClInclude Include="..\arch\memory.h" />
     <ClInclude Include="..\common.h" />
     <ClInclude Include="..\interpreter.h" />
@@ -78,6 +79,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\arch\jit\arm64\jit_arm_a64.cpp" />
+    <ClCompile Include="..\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\arch\memory.cpp" />
     <ClCompile Include="..\common.cpp" />
     <ClCompile Include="..\interpreter.cpp" />

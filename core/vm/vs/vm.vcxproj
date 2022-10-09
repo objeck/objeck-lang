@@ -114,6 +114,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
+    <ClCompile Include="..\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\arch\memory.cpp" />
     <ClCompile Include="..\arch\win32\win32.cpp" />
     <ClCompile Include="..\common.cpp" />
@@ -125,6 +126,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
+    <ClInclude Include="..\arch\jit\jit_common.h" />
     <ClInclude Include="..\arch\memory.h" />
     <ClInclude Include="..\arch\win32\win32.h" />
     <ClInclude Include="..\common.h" />
