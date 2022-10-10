@@ -1,0 +1,28 @@
+ARGS=-O3 -Wall -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -pthread -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER
+
+CC=g++
+SRC=tree.o scanner.o parser.o debugger.o
+OBJ_LIBS=../vm/compiler.a ../vm/jit_arm_a64.a ../vm/memory.a
+VM_PATH=../vm
+MEM_PATH=../vm/arch
+JIT_PATH=../vm/arch/jit/arm64
+EXE=obd
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -ldl -lcrypto -lreadline -lssl -lz 
+
+../vm/compiler.a:
+	cd $(VM_PATH); make -f make/Makefile.arm64.obd
+
+../vm/memory.a:
+	cd $(MEM_PATH); make -f make/Makefile.arm64
+
+../vm/jit_arm_a64.a:
+	cd $(JIT_PATH); make -f make/Makefile.arm64
+	
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< 
+
+clean:
+	cd $(VM_PATH); make -f make/Makefile.arm64.obd clean
+	rm -f $(EXE) *.o *~
