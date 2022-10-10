@@ -1,6 +1,6 @@
 REM build targets
 call deploy_amd64.cmd %1 %2
-call deploy_arm64.cmd %1 %2
+REM call deploy_arm64.cmd %1 %2
 
 REM build LSP
 if [%1] NEQ [deploy] goto end
