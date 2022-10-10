@@ -1,6 +1,4 @@
 ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -pthread -Wall -D_DEBUGGER  -D_OBJECK_NATIVE_LIB_PATH  -D_NO_JIT
-# ARGS=-pthread -g -Wall -D_X64 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH
-# ARGS=-pthread -g -Wall -D_X64 -D_DEBUG -D_DEBUGGER D_OBJECK_NATIVE_LIB_PATH
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
@@ -13,15 +11,15 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
 
 memory.a:
-	cd $(MEM_PATH); make -f make/Makefile.64
+	cd $(MEM_PATH); make -f make/Makefile.amd64
 	
 jit_amd_lp64.a:
-	cd $(JIT_PATH); make -f make/Makefile.64
+	cd $(JIT_PATH); make -f make/Makefile.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
-	cd $(MEM_PATH); make clean -f make/Makefile.64
-	cd $(JIT_PATH); make clean -f make/Makefile.64
+	cd $(MEM_PATH); make clean -f make/Makefile.amd64
+	cd $(JIT_PATH); make clean -f make/Makefile.amd64
 	rm -f $(LIB) *.o *~
