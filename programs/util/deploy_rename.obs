@@ -21,7 +21,7 @@ class Test {
 						end_index := search_index + search->Size();
 						filename_end := org_filename->SubString(end_index, org_filename->Size() - end_index);
 						new_filename := filename_start + '_' + version + '.' + filename_end;
-						
+
 						if(System.IO.Filesystem.File->Rename(path + org_filename, path + new_filename)) {
 							"Renamed: '{$org_filename}' to '{$new_filename}'"->PrintLine();
 							count += 1;
@@ -31,7 +31,6 @@ class Test {
 						};
 					};
 				};
-
 				"---\n{$count} qualifying file renamed"->PrintLine();
 			}
 			else {
