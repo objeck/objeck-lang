@@ -1,14 +1,13 @@
 CC=g++
-# ARGS=-g -D_DEBUG -Wall -Wno-unused-function -std=c++17
 ARGS=-O3 -Wall -Wno-unused-function -std=c++17
 SRC=builder.o
 EXE=obb
 
 $(EXE): $(OBJ_LIBS) $(SRC) 
-	$(CC) -m64 -o $(EXE) $(SRC) -lz
+	$(CC) -o $(EXE) $(SRC) -lz
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CC) $(ARGS) -c $< 
 
 
 clean:
