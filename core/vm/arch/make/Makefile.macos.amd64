@@ -1,8 +1,6 @@
-# ARGS=-g -Wall -D_X64 -D_DEBUG -D_OSX -Wno-unused-function
-# ARGS=-g -Wall -D_X64 -D_DEBUG -D_OSX -D_GC_SERIAL -Wno-unused-function
 ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OSX -Wno-unused-function
 
-CC=g++
+CC=clang++
 AR=ar
 SRC= memory.o
 LIB=../memory.a
