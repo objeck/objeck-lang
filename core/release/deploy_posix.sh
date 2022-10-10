@@ -18,12 +18,12 @@ mkdir deploy/doc
 
 # build compiler
 cd ../compiler
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	cp make/Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp make/Makefile.OSX.64 Makefile
+elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
+	cp make/Makefile.macos.amd64 Makefile
 else
-	cp make/Makefile.64 Makefile
+	cp make/Makefile.amd64 Makefile
 fi
 make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy/bin
@@ -33,12 +33,12 @@ rm ../release/deploy/lib/gtk2.obl
 
 # build VM
 cd ../vm
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	cp make/Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp make/Makefile.OSX.64 Makefile
+elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
+	cp make/Makefile.macos.amd64 Makefile
 else 
-	cp make/Makefile.64 Makefile
+	cp make/Makefile.amd64 Makefile
 fi
 make clean; make -j3
 cp obr ../release/deploy/bin
@@ -47,19 +47,19 @@ make clean; make -j3
 
 # build debugger
 cd ../debugger
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	cp make/Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp make/Makefile.OSX.64 Makefile
+elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
+	cp make/Makefile.macos.amd64 Makefile
 else
-	cp make/Makefile.64 Makefile
+	cp make/Makefile.amd64 Makefile
 fi
 make clean; make -j3
 cp obd ../release/deploy/bin
 
 # build libraries
 cd ../lib/odbc
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	./build_osx_x64.sh odbc
 	cp odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 else
@@ -69,7 +69,7 @@ fi
 
 cd ../openssl
 
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	./build_osx_x64.sh openssl
 	cp openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 else
@@ -79,7 +79,7 @@ fi
 
 cd ../sdl
 
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	./build_osx_x64.sh sdl
 	cp sdl.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 else
@@ -90,7 +90,7 @@ cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
 cd ../diags
 
-if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	./build_osx_x64.sh diags
 	cp diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
 else
