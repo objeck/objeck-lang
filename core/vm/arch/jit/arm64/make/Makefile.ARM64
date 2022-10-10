@@ -1,0 +1,21 @@
+ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declarations
+
+CC=g++
+AR=ar
+COMMON_LIBS=jit_common.a
+COMMON_PATH=..
+SRC=../jit_common.o jit_arm_a64.o
+LIB=../../../jit_arm_a64.a
+
+$(LIB): $(COMMON_LIBS) $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+jit_common.a:
+	cd $(COMMON_PATH); make -f make/Makefile.ARM64
+
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< 
+
+clean:
+	cd $(COMMON_PATH); make -f make/Makefile.ARM64 clean
+	rm -f *.o *~ $(LIB)

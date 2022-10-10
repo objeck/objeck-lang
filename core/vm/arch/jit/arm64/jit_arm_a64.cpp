@@ -4364,7 +4364,8 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
 #endif
   
   memcpy(temp, code, byte_size);
-  __clear_cache(temp, temp + byte_size);
+  // __clear_cache(temp, temp + byte_size);
+  __builtin___clear_cache(temp, temp + byte_size);
   
 #ifdef _OSX
   pthread_jit_write_protect_np(true);

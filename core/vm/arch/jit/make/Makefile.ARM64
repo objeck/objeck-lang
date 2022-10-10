@@ -1,0 +1,16 @@
+# ARGS=-g -D_DEBUG  -Wunused -Wall -std=c++11 -Wno-unused-function
+ARGS=-O3 -Wall -Wno-unused-function -std=c++11
+
+CC=g++
+AR=ar
+SRC=jit_common.o
+LIB=amd64/jit_common.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)
