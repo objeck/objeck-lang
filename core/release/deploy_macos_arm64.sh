@@ -85,5 +85,5 @@ if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
 	rm -f objeck.tar objeck.tgz
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar
-	mv objeck.tar.gz objeck.tgz	
+	mv objeck.tar.gz objeck-macos-arm64_0.0.0.tgz	
 fi;
