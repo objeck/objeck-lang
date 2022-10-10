@@ -1,6 +1,4 @@
-# ARGS=-pthread -O3 -Wall -D_X64 -D_DEBUGGER
-ARGS=-pthread -g -Wall -Wno-deprecated-declarations -D_OSX -D_X64 -D_DEBUGGER
-# ARGS=-pthread -O3 -Wall -D_X64 -D_DEBUG -D_DEBUGGER
+ARGS=-pthread -O3 -Wall -Wno-deprecated-declarations -D_OSX -D_X64 -D_DEBUGGER
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 

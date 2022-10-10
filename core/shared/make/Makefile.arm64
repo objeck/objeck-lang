@@ -1,0 +1,15 @@
+ARGS=-O3 -Wall -Wno-unused-function -std=c++11
+
+CC=g++
+AR=ar
+SRC=logger.o
+LIB=../compiler/logger.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)
