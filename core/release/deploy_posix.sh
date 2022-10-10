@@ -19,7 +19,7 @@ mkdir deploy/doc
 # build compiler
 cd ../compiler
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
-	cp make/Makefile.32 Makefile
+	cp make/Makefile.arm64 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	cp make/Makefile.macos.amd64 Makefile
 else
@@ -34,7 +34,7 @@ rm ../release/deploy/lib/gtk2.obl
 # build VM
 cd ../vm
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
-	cp make/Makefile.32 Makefile
+	cp make/Makefile.arm64 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	cp make/Makefile.macos.amd64 Makefile
 else 
@@ -48,7 +48,7 @@ make clean; make -j3
 # build debugger
 cd ../debugger
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
-	cp make/Makefile.32 Makefile
+	cp make/Makefile.arm64 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	cp make/Makefile.macos.amd64 Makefile
 else
