@@ -92,7 +92,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 #if defined(_WIN64) || defined(_X64)
   JitAmd64::Initialize(program);
 #else
-  JitCompilerA64::Initialize(program);
+  JitArm64::Initialize(program);
 #endif
 #endif
   MemoryManager::Initialize(program);
@@ -2178,7 +2178,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #if defined(_WIN64) || defined(_X64)
     JitAmd64 jit_compiler;
 #else
-    JitCompilerA64 jit_compiler;
+    JitArm64 jit_compiler;
 #endif
 
     if(!jit_compiler.Compile(called)) {
