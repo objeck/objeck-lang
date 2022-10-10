@@ -1,6 +1,6 @@
 ARGS=-O3 -Wall -std=c++17 -Wno-deprecated-declarations -Wno-unused-function -pthread -D_X64 -D_OSX -D_DEBUGGER
 
-CC=g++
+CC=clang++
 SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=../vm/compiler.a ../vm/jit_amd_lp64.a ../vm/memory.a
 VM_PATH=../vm
@@ -9,20 +9,20 @@ JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) -L../lib/openssl/macos/x64 $(OBJ_LIBS) -lssl -lreadline -lcrypto -ldl -lz
+	$(CC) -m64 -o $(EXE) $(SRC) -L../lib/openssl/macos/x64 $(OBJ_LIBS) $(OBJ_LIBS) -lssl -lreadline -lcrypto -ldl -lz
 
 ../vm/compiler.a:
-	cd $(VM_PATH); make -f make/Makefile.OSX.obd64
+	cd $(VM_PATH); make -f make/Makefile.macos.amd64.obd
 
 ../vm/memory.a:
-	cd $(MEM_PATH); make -f Makefile.OSX.64
+	cd $(MEM_PATH); make -f make/Makefile.macos.amd64
 
 ../vm/jit_amd_lp64.a:
-	cd $(JIT_PATH); make -f Makefile.OSX.64
+	cd $(JIT_PATH); make -f make/Makefile.macos.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< -I../lib/openssl/macos/include
 
 clean:
-	cd $(VM_PATH); make -f make/Makefile.OSX.obd64 clean
+	cd $(VM_PATH); make -f make/Makefile.macos.amd64.obd clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
