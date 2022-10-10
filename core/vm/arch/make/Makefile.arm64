@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_ARM64 -Wno-unused-function -std=c++11
+ARGS=-O3 -Wall -D_ARM64 -Wno-unused-function -std=c++17
 
 CC=g++
 AR=ar

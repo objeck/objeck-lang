@@ -1,14 +1,14 @@
-ARGS=-O3 -Wall -pthread -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -std=c++17
+ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -Wno-strict-overflow -pthread -Wall -D_DEBUGGER  -D_OBJECK_NATIVE_LIB_PATH  -D_NO_JIT
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS= jit_arm_a64.a memory.a
-MEM_PATH= arch
-JIT_PATH= arch/jit/arm64
-EXE= obr
+OBJ_LIBS=jit_arm_a64.a memory.a
+MEM_PATH=arch
+JIT_PATH=arch/jit/arm64
+LIB=compiler.a
 
-$(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
+$(LIB): $(SRC) $(OBJ_LIBS)
+	$(AR) -cvq $(LIB) $(SRC)
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.arm64
@@ -22,4 +22,4 @@ jit_arm_a64.a:
 clean:
 	cd $(MEM_PATH); make clean -f make/Makefile.arm64
 	cd $(JIT_PATH); make clean -f make/Makefile.arm64
-	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	rm -f $(LIB) *.o *~
