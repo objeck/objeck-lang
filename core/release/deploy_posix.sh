@@ -99,10 +99,18 @@ else
 fi
 
 cd ../../native_launcher
-make -f make/Makefile.obb64 clean; make -f make/Makefile.obb64
+if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
+	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64
+else
+	make -f make/Makefile.obb.amd64 clean; make -f make/Makefile.obb.amd64
+fi
 cp obb ../release/deploy/bin
 
-make -f make/Makefile.obn64 clean; make -f make/Makefile.obn64
+if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
+	make -f make/Makefile.obn.arm6 clean; make -f make/Makefile.obn.arm64
+else
+	make -f make/Makefile.obn.amd6 clean; make -f make/Makefile.obn.amd64
+fi
 cp obn ../release/deploy/lib/native/misc/
 
 cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
