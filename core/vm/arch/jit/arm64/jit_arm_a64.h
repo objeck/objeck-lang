@@ -750,7 +750,7 @@ namespace Runtime {
     }
 
     //
-    // Compiles stack code into IA-32 machine code
+    // Compiles stack code into AMD64 machine code
     //
     bool Compile(StackMethod* cm);
   };
