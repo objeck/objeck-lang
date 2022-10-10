@@ -12,8 +12,8 @@ $(EXE): $(OBJ_LIBS) $(SRC)
 	$(CC) -m64 $(ARGS) -c $< 
 
 logger.a:
-	cd $(LOGGER_PATH); make -f Makefile.64
+	cd $(LOGGER_PATH); make -f Makefile.amd64
 
 clean:
-	cd $(LOGGER_PATH); make clean -f Makefile.64
+	cd $(LOGGER_PATH); make clean -f Makefile.amd64
 	rm -f $(EXE) *.o *~
