@@ -15,11 +15,11 @@ class DeployUtil {
 				each(i : dir_files) {
 					dir_filename := dir_files[i];
 					
-					search := "_0.0.0.";
-					search_index := dir_filename->Find(search);
+					match_str := "_0.0.0.";
+					search_index := dir_filename->Find(match_str);
 					if(<>search_index->IsNeg()) {
 						filename_start := dir_filename->SubString(search_index);
-						end_index := search_index + search->Size();
+						end_index := search_index + match_str->Size();
 						filename_end := dir_filename->SubString(end_index, dir_filename->Size() - end_index);
 						new_filename := filename_start + '_' + version + '.' + filename_end;
 
