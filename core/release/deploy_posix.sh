@@ -143,5 +143,12 @@ if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 	rm -f objeck.tar objeck.tgz
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar
-	mv objeck.tar.gz objeck.tgz	
-fi;
+
+	if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
+		mv objeck.tar.gz objeck-linux-arm64_0.0.0.tgz
+	elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
+		mv objeck.tar.gz objeck-macos-x64_0.0.0.tgz
+	else
+		mv objeck.tar.gz objeck-linux-x64_0.0.0.tgz
+	fi
+fi

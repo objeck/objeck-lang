@@ -102,11 +102,11 @@ if [%1] NEQ [deploy] goto end
 	copy /y ..\win_installers\setup64 .
 	devenv setup.sln /rebuild "Release"
 	signtool sign /f "d:\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
-	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win64.msi"
+	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
 	mkdir "%USERPROFILE%\Desktop\Release64"
 	move "%USERPROFILE%\Desktop\objeck-lang-win64" "%USERPROFILE%\Desktop\Release64\objeck-lang"
-	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-lang-win64.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang"
-	move "%USERPROFILE%\Desktop\objeck-lang-win64.msi" "%USERPROFILE%\Desktop\Release64"
+	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang"
+	move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\Release64"
 :end
