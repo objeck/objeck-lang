@@ -22,4 +22,4 @@ Objeck release process
 		i.	LSP
 		ii.	Objeck
 	b. Sourceforge
-	c. freshcode
+	c. freshcode (?)
