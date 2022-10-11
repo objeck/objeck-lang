@@ -9,7 +9,7 @@ Objeck release process
 2. Trial build on Windows; push code
 3. Update system libraries on Linux x64; push code
 4. Full build on Windows with LSP binaries; push code; copy binaries to network directory
-5. Build other OSs and copy binaries to network directory
+5. Build other OSs and copy binaries to network directory (9 items, with 'old' in total)
 	a. Linux x64
 	b. Linux arm64
 	c. macOS x64
