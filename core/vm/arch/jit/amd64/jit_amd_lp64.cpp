@@ -4699,10 +4699,8 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
   for(int i = 1; i < dim; ++i) {
     // index *= array[i];
     mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());
-    if(holder) {
-      delete holder;
-      holder = nullptr;
-    }
+    delete holder;
+    holder = nullptr;
 
     holder = working_stack.front();
     working_stack.pop_front();
