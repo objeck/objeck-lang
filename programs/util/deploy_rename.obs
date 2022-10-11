@@ -39,7 +39,7 @@ class DeployUtil {
 			};
 		}
 		else {
-			">>> Error: Missing parameters <<<"->ErrorLine();
+			">>> Error: Missing parameters: dir, version <<<"->ErrorLine();
 		};
 	}
 }
