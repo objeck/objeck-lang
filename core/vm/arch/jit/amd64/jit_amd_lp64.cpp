@@ -4665,10 +4665,8 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
    }
   */
 
-  if(holder) {
-    delete holder;
-    holder = nullptr;
-  }
+  delete holder;
+  holder = nullptr;
 
   // get initial index
   RegisterHolder* index_holder;
