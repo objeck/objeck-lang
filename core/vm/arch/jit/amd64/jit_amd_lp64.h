@@ -539,8 +539,8 @@ namespace Runtime {
     }
 
     /**
-    * Encodes a byte array with a 16-bit value
-    */
+     * Encodes a byte array with a 16-bit value
+     */
     inline void ByteEncode16(unsigned char buffer[], int16_t value) {
       memcpy(buffer, &value, sizeof(int16_t));
     }
@@ -888,8 +888,7 @@ namespace Runtime {
     // Note: this code must match up with the interpreter's 'ArrayIndex' method.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type);
 
-    // Calculates the indices for
-    // memory references.
+    // Calculates the indices for memory references.
     void ProcessIndices();
 
   public:
@@ -958,9 +957,9 @@ namespace Runtime {
       }
     }
 
-    //
-    // Compiles stack code into AMD64 machine code
-    //
+    /**
+     * Compiles stack code into AMD64 machine code
+     */
     bool Compile(StackMethod* cm);
   };
 
