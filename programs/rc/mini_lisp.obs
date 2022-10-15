@@ -642,7 +642,7 @@ class Parser {
 			"\n--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
-				"{$i}: {$value}"->PrintLine();
+				"{$i}:\t{$value}"->PrintLine();
 			};
 			"\n--- Expressions ---"->PrintLine();
 		};
@@ -896,7 +896,7 @@ class Parser {
 							return Nil;
 						};
 					}
-					
+
 					label Token->Type->LENGTH_KEYWORD: {
 						if(@is_debug) {
 							"\tLength"->PrintLine();
