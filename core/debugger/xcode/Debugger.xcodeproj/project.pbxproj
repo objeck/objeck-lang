@@ -18,6 +18,7 @@
 		ED53945E26136B480085A5F8 /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53945A26136B480085A5F8 /* interpreter.cpp */; };
 		ED53945F26136B480085A5F8 /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53945B26136B480085A5F8 /* vm.cpp */; };
 		ED53946326136B600085A5F8 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53946126136B600085A5F8 /* jit_arm_a64.cpp */; };
+		EDE14A6828FB4E41004D4C25 /* jit_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDE14A6728FB4E41004D4C25 /* jit_common.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -61,6 +62,8 @@
 		ED53945B26136B480085A5F8 /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../../vm/vm.cpp; sourceTree = "<group>"; };
 		ED53946126136B600085A5F8 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../vm/arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
 		ED53946226136B600085A5F8 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../vm/arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
+		EDE14A6628FB4E41004D4C25 /* jit_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_common.h; path = ../../vm/arch/jit/jit_common.h; sourceTree = "<group>"; };
+		EDE14A6728FB4E41004D4C25 /* jit_common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_common.cpp; path = ../../vm/arch/jit/jit_common.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +116,8 @@
 				ED53944A26136AFD0085A5F8 /* logger.h */,
 				ED53944B26136AFD0085A5F8 /* sys.h */,
 				ED53944D26136AFD0085A5F8 /* traps.h */,
+				EDE14A6728FB4E41004D4C25 /* jit_common.cpp */,
+				EDE14A6628FB4E41004D4C25 /* jit_common.h */,
 				ED53944C26136AFD0085A5F8 /* version.h */,
 				ED53944026136AEB0085A5F8 /* debugger.cpp */,
 				ED53943F26136AEB0085A5F8 /* debugger.h */,
@@ -188,6 +193,7 @@
 				ED53944426136AEB0085A5F8 /* debugger.cpp in Sources */,
 				ED53944626136AEB0085A5F8 /* tree.cpp in Sources */,
 				ED53945226136B0D0085A5F8 /* memory.cpp in Sources */,
+				EDE14A6828FB4E41004D4C25 /* jit_common.cpp in Sources */,
 				ED53945D26136B480085A5F8 /* common.cpp in Sources */,
 				ED53945E26136B480085A5F8 /* interpreter.cpp in Sources */,
 				ED53944E26136AFD0085A5F8 /* logger.cpp in Sources */,
