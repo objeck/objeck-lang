@@ -895,15 +895,8 @@ class Parser {
 						if(<>Operands(node, depth)) {
 							return Nil;
 						};
-
-#~
-						if(GetTokenType() = Token->Type->OPRN) {
-"--- ? ---"->PrintLine();
-NextToken(); NextToken(); NextToken();
-						};
-~#
 					}
-
+					
 					label Token->Type->LENGTH_KEYWORD: {
 						if(@is_debug) {
 							"\tLength"->PrintLine();
