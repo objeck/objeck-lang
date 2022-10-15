@@ -642,7 +642,7 @@ class Parser {
 			"\n--- Tokens ---"->PrintLine();
 			each(i : @tokens) {
 				value := @tokens->Get(i);
-				"{$i}:\t{$value}"->PrintLine();
+				"{$i}:\t'{$value}'"->PrintLine();
 			};
 			"\n--- Expressions ---"->PrintLine();
 		};
