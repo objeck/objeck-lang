@@ -153,9 +153,9 @@ extern "C" {
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(!analyzer.Analyze()) {
         vector<wstring> error_strings = program->GetErrorStrings();
-        // vector<wstring> warning_strings = program->GetWarningStrings();
+        vector<wstring> warning_strings = program->GetWarningStrings();
         
-        size_t* diagnostics_array = FormatErrors(context, error_strings);
+        size_t* diagnostics_array = FormatErrors(context, error_strings, warning_strings);
         prgm_obj[3] = (size_t)diagnostics_array;
       }
     }
@@ -998,13 +998,15 @@ void diag_hover(VMContext& context)
   // Supporting functions
   //
   
-  size_t* FormatErrors(VMContext& context, vector<wstring> error_strings)
+  size_t* FormatErrors(VMContext& context, const vector<wstring> &error_strings, const vector<wstring> &warning_strings)
   {
     const size_t throttle = 10;
     size_t max_results = error_strings.size();
     if(max_results > throttle) {
       max_results = throttle;
     }
+    
+    // TODO: report warnings
 
     size_t* diagnostics_array = APITools_MakeIntArray(context, (int)max_results);
     size_t* diagnostics_array_ptr = diagnostics_array + 3;
