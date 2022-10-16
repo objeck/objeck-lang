@@ -153,6 +153,8 @@ extern "C" {
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(!analyzer.Analyze()) {
         vector<wstring> error_strings = program->GetErrorStrings();
+        // vector<wstring> warning_strings = program->GetWarningStrings();
+        
         size_t* diagnostics_array = FormatErrors(context, error_strings);
         prgm_obj[3] = (size_t)diagnostics_array;
       }
