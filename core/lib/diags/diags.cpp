@@ -105,10 +105,10 @@ extern "C" {
   void diag_parse_text(VMContext& context)
   {
     size_t* names_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
-    const int names_array_size = APITools_GetArraySize(names_array);
+    const size_t names_array_size = APITools_GetArraySize(names_array);
 
     size_t* texts_array = APITools_GetArray(APITools_GetObjectValue(context, 3));
-    const int texts_array_size = APITools_GetArraySize(texts_array);
+    const size_t texts_array_size = APITools_GetArraySize(texts_array);
     
     if(names_array_size > 0 && names_array_size == texts_array_size) {
       vector<pair<wstring,wstring>> texts;
