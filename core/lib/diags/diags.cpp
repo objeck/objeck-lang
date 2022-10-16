@@ -1001,7 +1001,7 @@ void diag_hover(VMContext& context)
   size_t* FormatErrors(VMContext& context, const vector<wstring> &error_strings, const vector<wstring> &warning_strings)
   {
     const size_t throttle = 10;
-    size_t max_results = error_strings.size();
+    size_t max_results = error_strings.size() + warning_strings.size();
     if(max_results > throttle) {
       max_results = throttle;
     }
@@ -1010,9 +1010,11 @@ void diag_hover(VMContext& context)
 
     size_t* diagnostics_array = APITools_MakeIntArray(context, (int)max_results);
     size_t* diagnostics_array_ptr = diagnostics_array + 3;
-
-    for(size_t i = 0; i < max_results; ++i) {
-      const wstring error_string = error_strings[i];
+    
+    // process errors
+    size_t count;
+    for(count = 0; count < max_results; ++count) {
+      const wstring error_string = error_strings[count];
 
       // parse error string
       const size_t file_mid = error_string.find(L":(");
@@ -1038,7 +1040,38 @@ void diag_hover(VMContext& context)
       diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
       diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
       diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
-      diagnostics_array_ptr[i] = (size_t)diag_obj;
+      diagnostics_array_ptr[count] = (size_t)diag_obj;
+    }
+    
+    // process warnings
+    for(size_t i = 0; i < max_results; ++i) {
+      const wstring warning_string = warning_strings[i];
+     
+      // parse warning string
+      const size_t file_mid = warning_string.find(L":(");
+      const wstring file_str = warning_string.substr(0, file_mid);
+
+      const size_t msg_mid = warning_string.find(L"):");
+      const wstring msg_str = warning_string.substr(msg_mid + 3, warning_string.size() - msg_mid - 3);
+
+      const wstring line_pos_str = warning_string.substr(file_mid + 2, msg_mid - file_mid - 2);
+      const size_t line_pos_mid = line_pos_str.find(L',');
+      const wstring line_str = line_pos_str.substr(0, line_pos_mid);
+      const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
+      
+      wchar_t* end;
+      const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
+      const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
+      
+      // create objects
+      size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+      diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
+      diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_WARN; // warning type
+      diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
+      diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
+      diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
+      diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
+      diagnostics_array_ptr[count] = (size_t)diag_obj;
     }
 
     return diagnostics_array;
