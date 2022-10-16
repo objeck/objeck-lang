@@ -3571,6 +3571,7 @@ namespace frontend {
     Linker* linker; // deleted elsewhere
 #ifdef _DIAG_LIB
     vector<wstring> error_strings;
+    vector<wstring> warning_strings;
 #endif
 
   public:
@@ -3602,6 +3603,10 @@ namespace frontend {
 
     const void SetErrorStrings(vector<wstring> msgs) {
       error_strings = msgs;
+    }
+      
+    const void SetWarningStrings(vector<wstring> msgs) {
+      warning_strings = msgs;
     }
 
     bool FindMethodOrClass(const wstring uri, const int line_num, Class* &found_klass, Method* &found_method, SymbolTable*& table);

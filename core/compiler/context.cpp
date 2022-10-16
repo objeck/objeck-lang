@@ -129,23 +129,19 @@ bool ContextAnalyzer::CheckErrors()
     status = false;
   }
 
-  //
-  // TOOD: set warning strings...
-  //
-  
   // check and process warnings
   if(!warnings.empty()) {
     map<int, wstring>::iterator warning;
     for(warning = warnings.begin(); warning != warnings.end(); ++warning) {
 #ifdef _DIAG_LIB
-      error_strings.push_back(warning->second);
+      warning_strings.push_back(warning->second);
 #else
       wcerr << warning->second << endl;
 #endif
     }
 
 #ifdef _DIAG_LIB
-    program->SetErrorStrings(error_strings);
+    program->SetWarningStrings(warning_strings);
 #endif
   }
 
