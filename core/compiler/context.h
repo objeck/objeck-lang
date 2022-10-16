@@ -260,6 +260,7 @@ class ContextAnalyzer {
   vector<Class*> anonymous_classes;
 #ifdef _DIAG_LIB
   vector<wstring> error_strings;
+  vector<wstring> warning_strings;
   vector<Expression*> diagnostic_expressions;
 #endif
 
