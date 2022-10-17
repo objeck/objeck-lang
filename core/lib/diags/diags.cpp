@@ -112,7 +112,7 @@ extern "C" {
     
     if(names_array_size > 0 && names_array_size == texts_array_size) {
       vector<pair<wstring,wstring>> texts;
-      for(int i = 0; i < texts_array_size; ++i) {
+      for(long i = 0; i < texts_array_size; ++i) {
         const wchar_t* file_name = APITools_GetStringValue(names_array, i);
         const wchar_t* file_text = APITools_GetStringValue(texts_array, i);
 
