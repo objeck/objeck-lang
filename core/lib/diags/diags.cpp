@@ -141,8 +141,8 @@ extern "C" {
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const wstring uri = APITools_GetStringValue(context, 1);
-    
     const wstring lib_path = APITools_GetStringValue(context, 2);
+
     wstring full_lib_path = L"lang.obl";
     if(!lib_path.empty()) {
       full_lib_path += L',' + lib_path;
