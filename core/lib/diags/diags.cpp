@@ -1044,7 +1044,7 @@ void diag_hover(VMContext& context)
     }
     
     // process warnings
-    for(size_t i = 0; i < max_results; ++i) {
+    for(size_t i = 0; i < warning_strings.size() && count < max_results; ++i, ++count) {
       const wstring warning_string = warning_strings[i];
      
       // parse warning string

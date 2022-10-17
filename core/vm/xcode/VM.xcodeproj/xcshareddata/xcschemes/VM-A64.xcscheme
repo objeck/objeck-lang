@@ -42,7 +42,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/randyhollines/Documents/Code/objeck-web-server"
+      customWorkingDirectory = "/Users/randyhollines/Documents/Code/objeck-lsp/server"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -59,7 +59,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "ssl_server keys/cert.pem keys/cert.key 1234 60013"
+            argument = "objeck_lsp.obe objk_apis.json 6013 debug"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
