@@ -3606,7 +3606,7 @@ namespace frontend {
     }
     
     const vector<wstring> GetWarningStrings() {
-      return error_strings;
+      return warning_strings;
     }
     
     const void SetWarningStrings(vector<wstring> msgs) {
