@@ -151,10 +151,10 @@ extern "C" {
     // if parsed
     if(prgm_obj[1]) {
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(!analyzer.Analyze()) {
+      const bool analyze_success = analyzer.Analyze();
+      const vector<wstring> warning_strings = program->GetWarningStrings();
+      if(!analyze_success || !warning_strings.empty()) {
         vector<wstring> error_strings = program->GetErrorStrings();
-        vector<wstring> warning_strings = program->GetWarningStrings();
-        
         size_t* diagnostics_array = FormatErrors(context, error_strings, warning_strings);
         prgm_obj[3] = (size_t)diagnostics_array;
       }
@@ -1013,7 +1013,7 @@ void diag_hover(VMContext& context)
     
     // process errors
     size_t count;
-    for(count = 0; count < max_results; ++count) {
+    for(count = 0; count < error_strings.size() && count < max_results; ++count) {
       const wstring error_string = error_strings[count];
 
       // parse error string
