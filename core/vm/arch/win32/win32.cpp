@@ -38,13 +38,12 @@ SOCKET IPSocket::Open(const char* address, const int port) {
   SOCKET sock = INVALID_SOCKET;
   struct addrinfo* result = nullptr, *ptr = nullptr, hints;
 
-	string port_str = to_string(port);
-
   ZeroMemory(&hints, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
+  string port_str = to_string(port);
   if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
     WSACleanup();
     return -1;
