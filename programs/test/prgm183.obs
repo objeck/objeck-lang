@@ -1,0 +1,14 @@
+class Test {
+	@aa : static : Int[];
+	@bb : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@aa := Int->New[2];
+		@aa[0] := 7;
+		@aa[1] := 7;
+		(@aa[0] + @aa[1])->PrintLine();
+
+		@bb := 201;
+		@bb->PrintLine();
+	}
+}
