@@ -34,6 +34,7 @@
 #define __POSIX_H__
 
 #include "../../common.h"
+#include <stdlib.h>
 #include <sys/utsname.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -229,33 +230,35 @@ class IPSocket {
   }
   
   static SOCKET Open(const char* address, int port) {
-		addrinfo* addr;
-		if(getaddrinfo(address, nullptr, nullptr, &addr)) {
-			freeaddrinfo(addr);
-			return -1;
-		}
+    SOCKET sock = -1;
+    struct addrinfo* result = nullptr, *ptr = nullptr, hints;
+    
+    bzero(&hints, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
 
-		SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-		if(sock < 0) {
-			freeaddrinfo(addr);
-			// close(sock);
-			return -1;
-		}
+    string port_str = to_string(port);
+    if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
+      return -1;
+    }
 
-		sockaddr_in pin;
-		memset(&pin, 0, sizeof(pin));
-		pin.sin_family = addr->ai_family;
-		pin.sin_addr.s_addr = *((uint32_t*)&(((sockaddr_in*)addr->ai_addr)->sin_addr));
-		pin.sin_port = htons(port);
+    for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+      sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+      if(sock == -1) {
+	return -1;
+      }
 
-		if(connect(sock, (struct sockaddr*)&pin, sizeof(pin)) < 0) {
-			freeaddrinfo(addr);
-			close(sock);
-			return -1;
-		}
-		freeaddrinfo(addr);
-
-		return sock;
+      if(connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == -1) {
+	close(sock);
+	sock = -1;
+	continue;
+      }
+      break;
+    }
+    freeaddrinfo(result);
+    
+    return sock;
   }
   
   static SOCKET Bind(int port) {
