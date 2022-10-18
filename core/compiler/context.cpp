@@ -8444,9 +8444,6 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
         Variable* variable = static_cast<Variable*>(expression);
         if(variable->GetName() == found_name) {
           matched_expressions.push_back(expression);
-          if(variable->GetIndices()) {
-            variable->SetLinePosition(variable->GetLinePosition() + 1);
-          }
         }
       }
         break;
