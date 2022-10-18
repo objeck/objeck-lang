@@ -11,8 +11,7 @@ class Client {
 
 		if(client->IsOpen()) {
 			tag := MakeSubtract(1, 51, 35);
-			line := tag->ToString();
-			line += "\r\n\r\n";
+			line := tag->ToString() + "\r\n";
 			client->WriteString(line);
 			GetResult(1, client->ReadLine())->PrintLine();
 		};
