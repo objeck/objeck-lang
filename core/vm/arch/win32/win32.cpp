@@ -34,34 +34,40 @@
 
 #include "win32.h"
 
-SOCKET IPSocket::Open(const char* address, int port) {
-	addrinfo* addr;
-	if(getaddrinfo(address, nullptr, nullptr, &addr)) {
-		freeaddrinfo(addr);
-		return -1;
-	}
+SOCKET IPSocket::Open(const char* address, const int port) {
+  SOCKET sock = INVALID_SOCKET;
+  struct addrinfo* result = nullptr, *ptr = nullptr, hints;
 
-	SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-	if(sock < 0) {
-		freeaddrinfo(addr);
-		closesocket(sock);
-		return -1;
-	}
+  char port_str[8];
+	_itoa_s(port, port_str, sizeof(port_str), 10);
 
-	sockaddr_in pin;
-	memset(&pin, 0, sizeof(pin));
-	pin.sin_family = addr->ai_family;
-	pin.sin_addr.s_addr = *((uint32_t*)&(((sockaddr_in*)addr->ai_addr)->sin_addr));
-	pin.sin_port = htons(port);
+  ZeroMemory(&hints, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
 
-	if(connect(sock, (struct sockaddr*)&pin, sizeof(pin)) < 0) {
-		freeaddrinfo(addr);
-		closesocket(sock);
-		return -1;
-	}
+  if(getaddrinfo(address, port_str, &hints, &result) != 0) {
+    WSACleanup();
+    return -1;
+  }
 
-	freeaddrinfo(addr);
-	return sock;
+  for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+		sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    if(sock == INVALID_SOCKET) {
+      WSACleanup();
+      return -1;
+    }
+
+    if(connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
+      closesocket(sock);
+      sock = INVALID_SOCKET;
+      continue;
+    }
+    break;
+  }
+  freeaddrinfo(result);
+
+	return sock == INVALID_SOCKET ? -1 : sock;
 }
 
 vector<string> IPSocket::Resolve(const char* address) {

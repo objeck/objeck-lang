@@ -3363,7 +3363,7 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
       << (long)sock << L") #" << endl;
 #endif
-    instance[0] = (long)sock;
+    instance[0] = sock;
   }
 
   return true;
