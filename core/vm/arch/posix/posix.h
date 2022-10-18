@@ -245,11 +245,11 @@ class IPSocket {
 
     for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
       sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-      if(sock == -1) {
+      if(sock < 0) {
 	return -1;
       }
 
-      if(connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == -1) {
+      if(connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) < 0) {
 	close(sock);
 	sock = -1;
 	continue;
