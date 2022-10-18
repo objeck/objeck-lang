@@ -291,7 +291,7 @@ class IPSocket {
  public:
    static vector<string> Resolve(const char* address);
 
-   static SOCKET Open(const char* address, int port);
+   static SOCKET Open(const char* address, const int port);
   
   static int WriteByte(char value, SOCKET sock) {
     int status = send(sock, &value, 1, 0);
