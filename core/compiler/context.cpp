@@ -8522,10 +8522,12 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
     
     // add declaration
     const wstring full_entry_name = class_entry->GetName();
-    size_t bar_index = full_entry_name.find_last_of(L':');
-    const wstring entry_name = full_entry_name.substr(bar_index + 1, full_entry_name.size() - bar_index + 1);
-    all_expressions.push_back(TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), 
-                              class_entry->GetLineNumber(), class_entry->GetLinePosition(), entry_name));
+    const size_t full_entry_index = full_entry_name.find_last_of(L':');
+    if(full_entry_index != wstring::npos) {
+      const wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
+      all_expressions.push_back(TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(),
+                                class_entry->GetLineNumber(), class_entry->GetLinePosition(), entry_name));
+    }
     
     // add variable references
     const vector<Variable*> variables = class_entry->GetVariables();
