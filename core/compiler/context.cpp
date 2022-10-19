@@ -8515,10 +8515,20 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
     }
   }
 
-  // class entries
+  // instance and class entries
   vector<SymbolEntry*> class_entries = symbol_table->GetEntries(method->GetClass()->GetName());
   for(size_t i = 0; i < class_entries.size(); ++i) {
-    const vector<Variable*> variables = class_entries[i]->GetVariables();
+    SymbolEntry* class_entry = class_entries[i];
+    
+    // add declaration
+    const wstring full_entry_name = class_entry->GetName();
+    size_t bar_index = full_entry_name.find_last_of(L':');
+    const wstring entry_name = full_entry_name.substr(bar_index + 1, full_entry_name.size() - bar_index + 1);
+    all_expressions.push_back(TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), 
+                              class_entry->GetLineNumber(), class_entry->GetLinePosition(), entry_name));
+    
+    // add variable references
+    const vector<Variable*> variables = class_entry->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
       all_expressions.push_back(variables[j]);
     }
