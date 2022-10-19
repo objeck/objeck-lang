@@ -614,7 +614,7 @@ class ContextAnalyzer {
   void FindSignatureClass(Type* type, const wstring mthd_str, Class* context_klass, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion);
   void FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods);
 
-  vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos, bool& is_var);
+  vector<Expression*> FindExpressions(Method* method, const int line_num, const int line_pos, bool& is_var, bool& is_cls);
   Declaration* FindDeclaration(Class* klass, const int line_num, const int line_pos);
 
   bool GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos);
