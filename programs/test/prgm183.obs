@@ -1,5 +1,5 @@
 class Test {
-	@tt : static : Int[];
+	@tt : static : Int[]; # bug rename from here
 	@gg : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
