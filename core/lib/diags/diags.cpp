@@ -835,13 +835,12 @@ void diag_hover(VMContext& context)
 
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
-          bool is_var = true;
-          vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
+          bool is_var, is_cls;
+          vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
+          if(klass && is_cls) {
+            expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
+          }
           
-          // TODO: is instance variable
-          // vector<Expression*> expressions = FooBar(line_num, line_pos, klass, analyzer); 
-
-
           // method/function
           if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
             Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
@@ -970,7 +969,7 @@ void diag_hover(VMContext& context)
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
           // get matching expressions
-          vector<Expression*> expressions = FooBar(line_num, line_pos, klass, analyzer);;
+          vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
 
           // build results array
           if(!expressions.empty()) {
@@ -1023,15 +1022,15 @@ void diag_hover(VMContext& context)
     return nullptr;
   }
   
-  vector<frontend::Expression*> FooBar(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer)
+  vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer)
   {
     // get matching expressions
     vector<Expression*> expressions;
     vector<Method*> methods = klass->GetMethods();
 
     for(size_t i = 0; i < methods.size(); ++i) {
-      bool is_var = true;
-      vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var);
+      bool is_var, is_cls;
+      vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
       if(is_var) {
         expressions.insert(expressions.end(), method_expressions.begin(), method_expressions.end());
       }

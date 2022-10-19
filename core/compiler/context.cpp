@@ -8426,9 +8426,11 @@ Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, 
   return nullptr;
 }
 
-vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos, bool &is_var)
+vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos, bool &is_var, bool& is_cls)
 {
   vector<Expression*> matched_expressions;
+  is_var = true;
+  is_cls = false;
 
   // find matching expressions
   vector<Expression*> all_expressions;
@@ -8443,6 +8445,9 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
       case VAR_EXPR: {
         Variable* variable = static_cast<Variable*>(expression);
         if(variable->GetName() == found_name) {
+          if(variable->GetEntry() && !variable->GetEntry()->IsLocal()) {
+            is_cls = true;
+          }
           matched_expressions.push_back(expression);
         }
       }
@@ -8525,8 +8530,10 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
     const size_t full_entry_index = full_entry_name.find_last_of(L':');
     if(full_entry_index != wstring::npos) {
       const wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
-      all_expressions.push_back(TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(),
-                                class_entry->GetLineNumber(), class_entry->GetLinePosition(), entry_name));
+      Variable* variable = TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), class_entry->GetLineNumber(), 
+                                                                 class_entry->GetLinePosition(), entry_name);
+      variable->SetEntry(class_entry);
+      all_expressions.push_back(variable);
     }
     
     // add variable references
