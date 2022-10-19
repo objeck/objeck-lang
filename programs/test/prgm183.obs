@@ -11,4 +11,9 @@ class Test {
 		@bb := 201;
 		@bb->PrintLine();
 	}
+	
+	function : Bar() ~ Nil {
+		@bb := 302;
+		@bb->PrintLine();
+	}
 }
