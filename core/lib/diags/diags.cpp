@@ -837,6 +837,10 @@ void diag_hover(VMContext& context)
         if(analyzer.Analyze()) {
           bool is_var = true;
           vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var);
+          
+          // TODO: is instance variable
+          // vector<Expression*> expressions = FooBar(line_num, line_pos, klass, analyzer); 
+
 
           // method/function
           if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
