@@ -1,14 +1,14 @@
 class Test {
-	@tt : static : Int[]; # bug rename from here
-	@gg : static : Int;
+	@aa : static : Int[]; # bug rename from here
+	@bb : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
-		@tt := Int->New[2];
-		@tt[0] := 7;
-		@tt[1] := 13;
-		(@tt[0] + @tt[1])->PrintLine();
+		@aa := Int->New[2];
+		@aa[0] := 7;
+		@aa[1] := 13;
+		(@aa[0] + @aa[1])->PrintLine();
 
-		@gg := 201;
-		@gg->PrintLine();
+		@bb := 201;
+		@bb->PrintLine();
 	}
 }
