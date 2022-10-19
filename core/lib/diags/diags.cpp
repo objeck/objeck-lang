@@ -888,9 +888,6 @@ void diag_hover(VMContext& context)
               case VAR_EXPR: {
                 Variable* variable = static_cast<Variable*>(expression);
                 const wstring variable_name = variable->GetName();
-                if(!variable_name.empty() && variable_name[0] == L'@') {
-                  --start_pos;
-                }
                 end_pos += (int)variable_name.size();
 
                 reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
