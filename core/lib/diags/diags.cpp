@@ -838,7 +838,7 @@ void diag_hover(VMContext& context)
           bool is_var, is_cls;
           vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
           if(is_cls) {
-            expressions = FindAllExpressions(line_num, line_pos, method->GetClass(), analyzer);
+            expressions = FindAllExpressions(line_num, line_pos, method->GetClass(), analyzer, false);
           }
           
           // method/function
@@ -969,7 +969,7 @@ void diag_hover(VMContext& context)
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
           // get matching expressions
-          vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
+          vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer, true);
 
           // build results array
           if(!expressions.empty()) {
@@ -1022,7 +1022,7 @@ void diag_hover(VMContext& context)
     return nullptr;
   }
   
-  vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer)
+  vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer, bool only_vars)
   {
     // get matching expressions
     vector<Expression*> expressions;
@@ -1031,7 +1031,7 @@ void diag_hover(VMContext& context)
     for(size_t i = 0; i < methods.size(); ++i) {
       bool is_var, is_cls;
       vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
-      if(is_var) {
+      if(is_var || !only_vars) {
         expressions.insert(expressions.end(), method_expressions.begin(), method_expressions.end());
       }
     }
