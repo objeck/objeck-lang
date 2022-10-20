@@ -838,7 +838,7 @@ void diag_hover(VMContext& context)
           bool is_var, is_cls;
           vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
           if(is_cls) {
-            // get ALL expressions for all OTHER methods
+            // get ALL expressions for all OTHER methods; do name compare
             expressions = FindAllExpressions(line_num, line_pos, method->GetClass(), analyzer, false);
           }
           
