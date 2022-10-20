@@ -837,9 +837,44 @@ void diag_hover(VMContext& context)
         if(analyzer.Analyze()) {
           bool is_var, is_cls;
           vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
-          if(is_cls) {
+          if(is_cls && !expressions.empty()) {
+            wstring found_name;
+            // get found name
+            if(expressions[0]->GetExpressionType() == VAR_EXPR) {
+              Variable* variable = static_cast<Variable*>(expressions[0]);
+              found_name = variable->GetName();
+            }
+            else if(expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+              MethodCall* method_call = static_cast<MethodCall*>(expressions[0]);
+              if(method_call->GetEntry()) {
+                found_name = method_call->GetVariableName();
+              }
+              else if(method_call->GetMethod()) {
+                found_name = method_call->GetMethodName();
+              }
+              else if(method_call->GetCallType() == ENUM_CALL) {
+                found_name = method_call->GetVariableName();
+              }
+            }
+
+            // search for matching and unique expressions
+            vector<Method*> methods = method->GetClass()->GetMethods();
+            for(size_t i = 0; i < methods.size(); ++i) {
+              vector<Expression*> method_expressions = methods[i]->GetExpressions();
+              for(size_t j = 0; j < method_expressions.size(); ++j) {
+                Expression* expression = method_expressions[j];
+                // add missing expression
+                if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
+                   find(expressions.begin(), expressions.end(), expression) == expressions.end()) {
+                  MethodCall* method_call = static_cast<MethodCall*>(expression);
+                  if(method_call->GetVariableName() == found_name) {
+                    expressions.push_back(expression);
+                  }
+                }
+              }
+            }
             // get ALL expressions for all OTHER methods; do name compare
-            expressions = FindAllExpressions(line_num, line_pos, method->GetClass(), analyzer, false);
+            // expressions = FindAllExpressions(line_num, line_pos, method->GetClass(), analyzer, false);
           }
           
           // method/function
