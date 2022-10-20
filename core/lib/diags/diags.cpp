@@ -873,8 +873,6 @@ void diag_hover(VMContext& context)
                 }
               }
             }
-            // get ALL expressions for all OTHER methods; do name compare
-            // expressions = FindAllExpressions(line_num, line_pos, method->GetClass(), analyzer, false);
           }
           
           // method/function
