@@ -45,7 +45,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void load_lib()
+    void load_lib()
   {
 #ifdef _DEBUG
     OpenLogger("debug.log");
@@ -58,7 +58,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void unload_lib()
+    void unload_lib()
   {
 #ifdef _DEBUG
     CloseLogger();
@@ -68,7 +68,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_tree_release(VMContext& context)
+    void diag_tree_release(VMContext& context)
   {
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
@@ -83,7 +83,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_parse_file(VMContext& context)
+    void diag_parse_file(VMContext& context)
   {
     const wstring src_file(APITools_GetStringValue(context, 2));
 
@@ -102,16 +102,16 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_parse_text(VMContext& context)
+    void diag_parse_text(VMContext& context)
   {
     size_t* names_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
     const long names_array_size = APITools_GetArraySize(names_array);
 
     size_t* texts_array = APITools_GetArray(APITools_GetObjectValue(context, 3));
     const long texts_array_size = APITools_GetArraySize(texts_array);
-    
+
     if(names_array_size > 0 && names_array_size == texts_array_size) {
-      vector<pair<wstring,wstring>> texts;
+      vector<pair<wstring, wstring>> texts;
       for(long i = 0; i < texts_array_size; ++i) {
         const wchar_t* file_name = APITools_GetStringValue(names_array, i);
         const wchar_t* file_text = APITools_GetStringValue(texts_array, i);
@@ -135,7 +135,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_diagnosis(VMContext& context)
+    void diag_get_diagnosis(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -172,13 +172,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_symbols(VMContext& context)
+    void diag_get_symbols(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const wstring uri = APITools_GetStringValue(context, 1);
-    
+
     const wstring lib_path = APITools_GetStringValue(context, 2);
     wstring full_lib_path = L"lang.obl";
     if(!lib_path.empty()) {
@@ -202,7 +202,7 @@ extern "C" {
 
     for(size_t i = 0; i < bundles.size(); ++i) {
       ParsedBundle* bundle = bundles[i];
-      
+
       if(file_uri.empty()) {
         file_uri = bundle->GetFileName();
       }
@@ -279,7 +279,7 @@ extern "C" {
               break;
             }
           }
-          
+
           mthd_symb_obj[ResultPosition::POS_START_LINE] = (size_t)mthd->GetLineNumber() - 1;
           mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
           mthd_symb_obj[ResultPosition::POS_END_LINE] = (size_t)mthd->GetEndLineNumber() - 2;
@@ -333,7 +333,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_definition(VMContext& context)
+    void diag_find_definition(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -359,7 +359,7 @@ extern "C" {
 
         ContextAnalyzer analyzer(program, full_lib_path, false, false);
         if(analyzer.Analyze()) {
-          wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr; 
+          wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr;
           Enum* eenum = nullptr; ; EnumItem* eenum_item = nullptr;
           if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum, eenum_item)) {
             ParseNode* node = nullptr;
@@ -372,12 +372,12 @@ extern "C" {
             else if(eenum) {
               node = eenum_item;
             }
-	    /*
-            // enum
-            else if(eenum) {
-              node = eenum;
-            }
-	    */
+            /*
+                  // enum
+                  else if(eenum) {
+                    node = eenum;
+                  }
+            */
             // method
             else {
               node = method;
@@ -425,7 +425,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_declaration(VMContext& context)
+    void diag_find_declaration(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -476,7 +476,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_completion_help(VMContext& context)
+    void diag_completion_help(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -534,99 +534,99 @@ extern "C" {
   // hover support
   //
 #ifdef _WIN32
-__declspec(dllexport)
+  __declspec(dllexport)
 #endif
-void diag_hover(VMContext& context)
-{
-  size_t* prgm_obj = APITools_GetObjectValue(context, 1);
-  ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+    void diag_hover(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-  const wstring uri = APITools_GetStringValue(context, 2);
-  const int line_num = (int)APITools_GetIntValue(context, 3);
-  const int line_pos = (int)APITools_GetIntValue(context, 4);
+    const wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
 
-  const wstring var_str = APITools_GetStringValue(context, 5);
-  const wstring mthd_str = APITools_GetStringValue(context, 6);
-  wstring lib_path = APITools_GetStringValue(context, 7);
+    const wstring var_str = APITools_GetStringValue(context, 5);
+    const wstring mthd_str = APITools_GetStringValue(context, 6);
+    wstring lib_path = APITools_GetStringValue(context, 7);
 
-  Class* klass = nullptr;
-  Method* method = nullptr;
-  SymbolTable* table = nullptr;
+    Class* klass = nullptr;
+    Method* method = nullptr;
+    SymbolTable* table = nullptr;
 
-  if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
-    if(method) {
-      wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      if(method) {
+        wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
-      if(analyzer.Analyze()) {
-        wstring found_name; int found_line; int found_start_pos; int found_end_pos; Expression* found_expression;  SymbolEntry* found_entry;
+        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        if(analyzer.Analyze()) {
+          wstring found_name; int found_line; int found_start_pos; int found_end_pos; Expression* found_expression;  SymbolEntry* found_entry;
 
-        size_t* hover_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
-          if(found_expression) {
-            if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
-              MethodCall* called_method = static_cast<MethodCall*>(found_expression);
+          size_t* hover_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
+            if(found_expression) {
+              if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+                MethodCall* called_method = static_cast<MethodCall*>(found_expression);
 
-              // variable type
-              SymbolEntry* called_method_entry = called_method->GetEntry();
-              if(called_method_entry) {
-                hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
-                hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
+                // variable type
+                SymbolEntry* called_method_entry = called_method->GetEntry();
+                if(called_method_entry) {
+                  hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
+                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
+                }
+                else if(called_method->GetVariable() && called_method->GetVariable()->GetEntry()) {
+                  called_method_entry = called_method->GetVariable()->GetEntry();
+                  hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
+                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
+                }
+
+                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
               }
-              else if(called_method->GetVariable() && called_method->GetVariable()->GetEntry()) {
-								called_method_entry = called_method->GetVariable()->GetEntry();
-								hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
-								hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
+              else if(found_expression->GetExpressionType() == VAR_EXPR) {
+                Variable* called_variable = static_cast<Variable*>(found_expression);
+                found_entry = called_variable->GetEntry();
               }
-
-              hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
-            }
-            else if(found_expression->GetExpressionType() == VAR_EXPR) {
-              Variable* called_variable = static_cast<Variable*>(found_expression);
-              found_entry = called_variable->GetEntry();
             }
           }
-        }
-        
-        if(found_entry && found_entry->GetType()) {
-          Type* found_type = found_entry->GetType();
-          hover_obj[ResultPosition::POS_TYPE] = found_type->GetType();
-          
-          switch(found_type->GetType()) {
-          case frontend::BYTE_TYPE:
-            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Byte");
-            break;
 
-          case frontend::CHAR_TYPE:
-            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Char");
-            break;
+          if(found_entry && found_entry->GetType()) {
+            Type* found_type = found_entry->GetType();
+            hover_obj[ResultPosition::POS_TYPE] = found_type->GetType();
 
-          case frontend::INT_TYPE:
-            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Int");
-            break;
+            switch(found_type->GetType()) {
+            case frontend::BYTE_TYPE:
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Byte");
+              break;
 
-          case frontend::FLOAT_TYPE:
-            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Float");
-            break;
+            case frontend::CHAR_TYPE:
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Char");
+              break;
 
-          case frontend::BOOLEAN_TYPE:
-            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Bool");
-            break;
+            case frontend::INT_TYPE:
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Int");
+              break;
 
-          default:
-            hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_type->GetName());
-            break;
+            case frontend::FLOAT_TYPE:
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Float");
+              break;
+
+            case frontend::BOOLEAN_TYPE:
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Bool");
+              break;
+
+            default:
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_type->GetName());
+              break;
+            }
           }
+
+          APITools_SetObjectValue(context, 0, hover_obj);
         }
-          
-        APITools_SetObjectValue(context, 0, hover_obj);
       }
     }
   }
-}
 
   //
   // help signature
@@ -634,7 +634,7 @@ void diag_hover(VMContext& context)
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_signature_help(VMContext& context)
+    void diag_signature_help(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -643,7 +643,7 @@ void diag_hover(VMContext& context)
 
     const int line_num = (int)APITools_GetIntValue(context, 3);
     const int line_pos = (int)APITools_GetIntValue(context, 4);
-    
+
     const wstring var_str = APITools_GetStringValue(context, 5);
     const wstring mthd_str = APITools_GetStringValue(context, 6);
     const wstring lib_path = APITools_GetStringValue(context, 7);
@@ -740,7 +740,7 @@ void diag_hover(VMContext& context)
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_code_rename(VMContext& context)
+    void diag_code_rename(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -758,27 +758,27 @@ void diag_hover(VMContext& context)
   // find references
   //
 #ifdef _WIN32
-    __declspec(dllexport)
+  __declspec(dllexport)
 #endif
-  void diag_find_references(VMContext& context)
+    void diag_find_references(VMContext& context)
   {
-      size_t* prgm_obj = APITools_GetObjectValue(context, 0);
-      ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
-      const wstring uri = APITools_GetStringValue(context, 1);
+    const wstring uri = APITools_GetStringValue(context, 1);
 
-      const int line_num = (int)APITools_GetIntValue(context, 2);
-      const int line_pos = (int)APITools_GetIntValue(context, 3);
-      const wstring lib_path = APITools_GetStringValue(context, 4);
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    const int line_pos = (int)APITools_GetIntValue(context, 3);
+    const wstring lib_path = APITools_GetStringValue(context, 4);
 
-      prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
+    prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
   }
-    
-  }
-  //
-  // Supporting functions
-  //
-  
+}
+
+//
+// Supporting functions
+//
+
 size_t* FormatErrors(VMContext& context, const vector<wstring> &error_strings, const vector<wstring> &warning_strings)
   {
     const size_t throttle = 10;
