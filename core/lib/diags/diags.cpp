@@ -907,6 +907,11 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
+        bool is_var;
+        vector<Expression*> expressions = Foo(method, analyzer, line_num, line_pos, is_var);
+
+        
+        /*
         bool is_var, is_cls;
         vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
         if(is_cls && !expressions.empty()) {
@@ -946,7 +951,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
             }
           }
         }
-
+*/
         // method/function
         if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
           Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
@@ -1075,10 +1080,11 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         // get matching expressions
-        vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
+        // vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
 
-        // build results array
+        vector<Expression*> expressions = Foo(klass, analyzer, line_num, line_pos);
         if(!expressions.empty()) {
+          // build results array
           size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
           size_t* refs_array_ptr = refs_array + 3;
 
@@ -1170,4 +1176,61 @@ void GetTypeName(frontend::Type* type, wstring& output)
   default:
     output = L"Unknown";
   }
+}
+
+vector<frontend::Expression*> Foo(frontend::Method* method, ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var)
+{
+  bool is_cls;
+  vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
+
+  if(is_cls && !expressions.empty()) {
+    wstring found_name;
+    // get found name
+    if(expressions[0]->GetExpressionType() == VAR_EXPR) {
+      Variable* variable = static_cast<Variable*>(expressions[0]);
+      found_name = variable->GetName();
+    }
+    else if(expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+      MethodCall* method_call = static_cast<MethodCall*>(expressions[0]);
+      if(method_call->GetEntry()) {
+        found_name = method_call->GetVariableName();
+      }
+      else if(method_call->GetMethod()) {
+        found_name = method_call->GetMethodName();
+      }
+      else if(method_call->GetCallType() == ENUM_CALL) {
+        found_name = method_call->GetVariableName();
+      }
+    }
+
+    // search for matching and unique expressions
+    vector<Method*> methods = method->GetClass()->GetMethods();
+    for(size_t i = 0; i < methods.size(); ++i) {
+      vector<Expression*> method_expressions = methods[i]->GetExpressions();
+      for(size_t j = 0; j < method_expressions.size(); ++j) {
+        Expression* expression = method_expressions[j];
+        // add missing expression
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+           find(expressions.begin(), expressions.end(), expression) == expressions.end()) {
+          MethodCall* method_call = static_cast<MethodCall*>(expression);
+          if(method_call->GetVariableName() == found_name) {
+            expressions.push_back(expression);
+          }
+        }
+      }
+    }
+  }
+  
+  return expressions;
+}
+
+vector<frontend::Expression*> Foo(frontend::Class* klass, ContextAnalyzer &analyzer, const int line_num, const int line_pos)
+{
+  vector<Method*> methods = klass->GetMethods();
+  if(!methods.empty()) {
+    bool is_var;
+    return Foo(methods[0], analyzer, line_num, line_pos, is_var);
+  }
+
+  return vector<Expression*>();
 }
