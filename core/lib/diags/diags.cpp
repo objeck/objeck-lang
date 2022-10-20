@@ -858,17 +858,32 @@ size_t* FormatErrors(VMContext& context, const vector<wstring> &error_strings, c
     return diagnostics_array;
   }
 
-vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer, bool only_vars)
+vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer)
 {
   // get matching expressions
   vector<Expression*> expressions;
-  vector<Method*> methods = klass->GetMethods();
 
-  for(size_t i = 0; i < methods.size(); ++i) {
-    bool is_var, is_cls;
-    vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
-    if(is_var || !only_vars) {
-      expressions.insert(expressions.end(), method_expressions.begin(), method_expressions.end());
+  bool is_var, is_cls;
+  vector<Method*> methods = klass->GetMethods();
+  if(!methods.empty()) {
+    expressions = analyzer.FindExpressions(methods[0], line_num, line_pos, is_var, is_cls);
+    for(size_t i = 1; i < methods.size(); ++i) {
+      vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
+      for(size_t j = 0; j < method_expressions.size(); ++j) {
+        Expression* method_expression = method_expressions[j];
+        
+        bool can_add = true;
+        for(size_t k = 0; k < expressions.size(); ++k) {
+          Expression* expression = expressions[k];
+          if(expression->GetLineNumber() == method_expression->GetLineNumber() && expression->GetLinePosition() == method_expression->GetLinePosition()) {
+            can_add = false;
+          }
+        }
+
+        if(can_add) {
+          expressions.push_back(method_expression);
+        }
+      }
     }
   }
 
@@ -1059,7 +1074,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         // get matching expressions
-        vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer, true);
+        vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
 
         // build results array
         if(!expressions.empty()) {
