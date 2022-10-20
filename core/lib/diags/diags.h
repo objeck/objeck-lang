@@ -72,10 +72,10 @@ enum ResultPosition {
   POS_END_POS = 8
 };
 
-size_t* FormatErrors(VMContext& context, const vector<wstring>& error_strings, const vector<wstring>& warning_strings = vector<wstring>());
-void GetTypeName(frontend::Type* type, wstring &output);
+vector<frontend::Expression*> GetMatchedExpressions(frontend::Class* klass, class ContextAnalyzer &analyzer, const int line_num, const int line_pos);
+vector<frontend::Expression*> GetMatchedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
 size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const wstring uri, const int line_num, const int line_pos, const wstring lib_path);
-vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer &analyzer, const int line_num, const int line_pos);
-vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
+size_t* FormatErrors(VMContext& context, const vector<wstring>& error_strings, const vector<wstring>& warning_strings = vector<wstring>());
+void GetTypeName(frontend::Type* type, wstring& output);
 
 #endif
