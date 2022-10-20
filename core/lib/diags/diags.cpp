@@ -1022,23 +1022,6 @@ void diag_hover(VMContext& context)
     return nullptr;
   }
   
-  vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer, bool only_vars)
-  {
-    // get matching expressions
-    vector<Expression*> expressions;
-    vector<Method*> methods = klass->GetMethods();
-
-    for(size_t i = 0; i < methods.size(); ++i) {
-      bool is_var, is_cls;
-      vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
-      if(is_var || !only_vars) {
-        expressions.insert(expressions.end(), method_expressions.begin(), method_expressions.end());
-      }
-    }
-
-    return expressions;
-  }
-
   //
   // Supporting functions
   //
@@ -1121,4 +1104,21 @@ void diag_hover(VMContext& context)
 
     return diagnostics_array;
   }
+}
+
+vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer, bool only_vars)
+{
+  // get matching expressions
+  vector<Expression*> expressions;
+  vector<Method*> methods = klass->GetMethods();
+
+  for(size_t i = 0; i < methods.size(); ++i) {
+    bool is_var, is_cls;
+    vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
+    if(is_var || !only_vars) {
+      expressions.insert(expressions.end(), method_expressions.begin(), method_expressions.end());
+    }
+  }
+
+  return expressions;
 }
