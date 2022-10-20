@@ -779,116 +779,83 @@ extern "C" {
 // Supporting functions
 //
 
-size_t* FormatErrors(VMContext& context, const vector<wstring> &error_strings, const vector<wstring> &warning_strings)
-  {
-    const size_t throttle = 10;
-    size_t max_results = error_strings.size() + warning_strings.size();
-    if(max_results > throttle) {
-      max_results = throttle;
-    }
-    
-    // TODO: report warnings
-
-    size_t* diagnostics_array = APITools_MakeIntArray(context, (int)max_results);
-    size_t* diagnostics_array_ptr = diagnostics_array + 3;
-    
-    // process errors
-    size_t count;
-    for(count = 0; count < error_strings.size() && count < max_results; ++count) {
-      const wstring error_string = error_strings[count];
-
-      // parse error string
-      const size_t file_mid = error_string.find(L":(");
-      const wstring file_str = error_string.substr(0, file_mid);
-
-      const size_t msg_mid = error_string.find(L"):");
-      const wstring msg_str = error_string.substr(msg_mid + 3, error_string.size() - msg_mid - 3);
-
-      const wstring line_pos_str = error_string.substr(file_mid + 2, msg_mid - file_mid - 2);
-      const size_t line_pos_mid = line_pos_str.find(L',');
-      const wstring line_str = line_pos_str.substr(0, line_pos_mid);
-      const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
-      
-      wchar_t* end;      
-      const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
-      const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
-      
-      // create objects
-      size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-      diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
-      diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
-      diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
-      diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
-      diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
-      diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
-      diagnostics_array_ptr[count] = (size_t)diag_obj;
-    }
-    
-    // process warnings
-    for(size_t i = 0; i < warning_strings.size() && count < max_results; ++i, ++count) {
-      const wstring warning_string = warning_strings[i];
-     
-      // parse warning string
-      const size_t file_mid = warning_string.find(L":(");
-      const wstring file_str = warning_string.substr(0, file_mid);
-
-      const size_t msg_mid = warning_string.find(L"):");
-      const wstring msg_str = warning_string.substr(msg_mid + 3, warning_string.size() - msg_mid - 3);
-
-      const wstring line_pos_str = warning_string.substr(file_mid + 2, msg_mid - file_mid - 2);
-      const size_t line_pos_mid = line_pos_str.find(L',');
-      const wstring line_str = line_pos_str.substr(0, line_pos_mid);
-      const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
-      
-      wchar_t* end;
-      const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
-      const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
-      
-      // create objects
-      size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-      diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
-      diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_WARN; // warning type
-      diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
-      diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
-      diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
-      diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
-      diagnostics_array_ptr[count] = (size_t)diag_obj;
-    }
-
-    return diagnostics_array;
-  }
-
-vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer)
+size_t* FormatErrors(VMContext& context, const vector<wstring>& error_strings, const vector<wstring>& warning_strings)
 {
-  // get matching expressions
-  vector<Expression*> expressions;
-
-  bool is_var, is_cls;
-  vector<Method*> methods = klass->GetMethods();
-  if(!methods.empty()) {
-    // get expressions
-    expressions = analyzer.FindExpressions(methods[0], line_num, line_pos, is_var, is_cls);
-    for(size_t i = 1; i < methods.size(); ++i) {
-      vector<Expression*> method_expressions = analyzer.FindExpressions(methods[i], line_num, line_pos, is_var, is_cls);
-      for(size_t j = 0; j < method_expressions.size(); ++j) {
-        Expression* method_expression = method_expressions[j];
-        // find a unique expression to add
-        bool can_add = true;
-        for(size_t k = 0; k < expressions.size(); ++k) {
-          Expression* expression = expressions[k];
-          if(expression->GetLineNumber() == method_expression->GetLineNumber() && expression->GetLinePosition() == method_expression->GetLinePosition()) {
-            can_add = false;
-          }
-        }
-
-        if(can_add) {
-          expressions.push_back(method_expression);
-        }
-      }
-    }
+  const size_t throttle = 10;
+  size_t max_results = error_strings.size() + warning_strings.size();
+  if(max_results > throttle) {
+    max_results = throttle;
   }
 
-  return expressions;
+  // TODO: report warnings
+
+  size_t* diagnostics_array = APITools_MakeIntArray(context, (int)max_results);
+  size_t* diagnostics_array_ptr = diagnostics_array + 3;
+
+  // process errors
+  size_t count;
+  for(count = 0; count < error_strings.size() && count < max_results; ++count) {
+    const wstring error_string = error_strings[count];
+
+    // parse error string
+    const size_t file_mid = error_string.find(L":(");
+    const wstring file_str = error_string.substr(0, file_mid);
+
+    const size_t msg_mid = error_string.find(L"):");
+    const wstring msg_str = error_string.substr(msg_mid + 3, error_string.size() - msg_mid - 3);
+
+    const wstring line_pos_str = error_string.substr(file_mid + 2, msg_mid - file_mid - 2);
+    const size_t line_pos_mid = line_pos_str.find(L',');
+    const wstring line_str = line_pos_str.substr(0, line_pos_mid);
+    const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
+
+    wchar_t* end;
+    const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
+    const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
+
+    // create objects
+    size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
+    diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
+    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
+    diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
+    diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
+    diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
+    diagnostics_array_ptr[count] = (size_t)diag_obj;
+  }
+
+  // process warnings
+  for(size_t i = 0; i < warning_strings.size() && count < max_results; ++i, ++count) {
+    const wstring warning_string = warning_strings[i];
+
+    // parse warning string
+    const size_t file_mid = warning_string.find(L":(");
+    const wstring file_str = warning_string.substr(0, file_mid);
+
+    const size_t msg_mid = warning_string.find(L"):");
+    const wstring msg_str = warning_string.substr(msg_mid + 3, warning_string.size() - msg_mid - 3);
+
+    const wstring line_pos_str = warning_string.substr(file_mid + 2, msg_mid - file_mid - 2);
+    const size_t line_pos_mid = line_pos_str.find(L',');
+    const wstring line_str = line_pos_str.substr(0, line_pos_mid);
+    const wstring pos_str = line_pos_str.substr(line_pos_mid + 1, line_pos_str.size() - line_pos_mid - 1);
+
+    wchar_t* end;
+    const int line_index = (int)wcstol(line_str.c_str(), &end, 10);
+    const int pos_index = (int)wcstol(pos_str.c_str(), &end, 10);
+
+    // create objects
+    size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
+    diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_WARN; // warning type
+    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
+    diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
+    diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
+    diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
+    diagnostics_array_ptr[count] = (size_t)diag_obj;
+  }
+
+  return diagnostics_array;
 }
 
 size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const wstring uri, const int line_num, const int line_pos, const wstring lib_path)
@@ -907,51 +874,10 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
+        // fetch renamed expressions
         bool is_var;
-        vector<Expression*> expressions = Foo(method, analyzer, line_num, line_pos, is_var);
+        vector<Expression*> expressions = FetchRenamedExpressions(method, analyzer, line_num, line_pos, is_var);
 
-        
-        /*
-        bool is_var, is_cls;
-        vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
-        if(is_cls && !expressions.empty()) {
-          wstring found_name;
-          // get found name
-          if(expressions[0]->GetExpressionType() == VAR_EXPR) {
-            Variable* variable = static_cast<Variable*>(expressions[0]);
-            found_name = variable->GetName();
-          }
-          else if(expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
-            MethodCall* method_call = static_cast<MethodCall*>(expressions[0]);
-            if(method_call->GetEntry()) {
-              found_name = method_call->GetVariableName();
-            }
-            else if(method_call->GetMethod()) {
-              found_name = method_call->GetMethodName();
-            }
-            else if(method_call->GetCallType() == ENUM_CALL) {
-              found_name = method_call->GetVariableName();
-            }
-          }
-
-          // search for matching and unique expressions
-          vector<Method*> methods = method->GetClass()->GetMethods();
-          for(size_t i = 0; i < methods.size(); ++i) {
-            vector<Expression*> method_expressions = methods[i]->GetExpressions();
-            for(size_t j = 0; j < method_expressions.size(); ++j) {
-              Expression* expression = method_expressions[j];
-              // add missing expression
-              if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-                 find(expressions.begin(), expressions.end(), expression) == expressions.end()) {
-                MethodCall* method_call = static_cast<MethodCall*>(expression);
-                if(method_call->GetVariableName() == found_name) {
-                  expressions.push_back(expression);
-                }
-              }
-            }
-          }
-        }
-*/
         // method/function
         if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
           Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
@@ -1079,10 +1005,8 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
-        // get matching expressions
-        // vector<Expression*> expressions = FindAllExpressions(line_num, line_pos, klass, analyzer);
-
-        vector<Expression*> expressions = Foo(klass, analyzer, line_num, line_pos);
+        // fetch renamed expressions
+        vector<Expression*> expressions = FetchRenamedExpressions(klass, analyzer, line_num, line_pos);
         if(!expressions.empty()) {
           // build results array
           size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
@@ -1178,7 +1102,18 @@ void GetTypeName(frontend::Type* type, wstring& output)
   }
 }
 
-vector<frontend::Expression*> Foo(frontend::Method* method, ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var)
+vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer& analyzer, const int line_num, const int line_pos)
+{
+  vector<Method*> methods = klass->GetMethods();
+  if(!methods.empty()) {
+    bool is_var;
+    return FetchRenamedExpressions(methods[0], analyzer, line_num, line_pos, is_var);
+  }
+
+  return vector<Expression*>();
+}
+
+vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var)
 {
   bool is_cls;
   vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
@@ -1222,15 +1157,4 @@ vector<frontend::Expression*> Foo(frontend::Method* method, ContextAnalyzer& ana
   }
   
   return expressions;
-}
-
-vector<frontend::Expression*> Foo(frontend::Class* klass, ContextAnalyzer &analyzer, const int line_num, const int line_pos)
-{
-  vector<Method*> methods = klass->GetMethods();
-  if(!methods.empty()) {
-    bool is_var;
-    return Foo(methods[0], analyzer, line_num, line_pos, is_var);
-  }
-
-  return vector<Expression*>();
 }
