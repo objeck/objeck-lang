@@ -77,4 +77,7 @@ void GetTypeName(frontend::Type* type, wstring &output);
 size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const wstring uri, const int line_num, const int line_pos, const wstring lib_path);
 vector<frontend::Expression*> FindAllExpressions(const int line_num, const int line_pos, frontend::Class* klass, class ContextAnalyzer& analyzer);
 
+vector<frontend::Expression*> Foo(frontend::Class* klass, ContextAnalyzer &analyzer, const int line_num, const int line_pos);
+vector<frontend::Expression*> Foo(frontend::Method* method, ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
+
 #endif
