@@ -876,7 +876,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
       if(analyzer.Analyze()) {
         // fetch renamed expressions
         bool is_var;
-        vector<Expression*> expressions = FetchRenamedExpressions(method, analyzer, line_num, line_pos, is_var);
+        vector<Expression*> expressions = GetMatchedExpressions(method, analyzer, line_num, line_pos, is_var);
 
         // method/function
         if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -934,7 +934,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
               reference_obj[ResultPosition::POS_TYPE] = 100;
             }
-                         break;
+              break;
 
             case METHOD_CALL_EXPR: {
               MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -956,7 +956,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_TYPE] = 200;
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
             }
-                                 break;
+              break;
 
             default:
               break;
@@ -1006,7 +1006,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
       ContextAnalyzer analyzer(program, full_lib_path, false, false);
       if(analyzer.Analyze()) {
         // fetch renamed expressions
-        vector<Expression*> expressions = FetchRenamedExpressions(klass, analyzer, line_num, line_pos);
+        vector<Expression*> expressions = GetMatchedExpressions(klass, analyzer, line_num, line_pos);
         if(!expressions.empty()) {
           // build results array
           size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());
@@ -1028,7 +1028,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
               reference_obj[ResultPosition::POS_TYPE] = 100;
             }
-                         break;
+              break;
 
             case METHOD_CALL_EXPR: {
               MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -1036,7 +1036,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_TYPE] = 200;
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
             }
-                                 break;
+              break;
 
             default:
               break;
@@ -1102,18 +1102,18 @@ void GetTypeName(frontend::Type* type, wstring& output)
   }
 }
 
-vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer& analyzer, const int line_num, const int line_pos)
+vector<frontend::Expression*> GetMatchedExpressions(frontend::Class* klass, class ContextAnalyzer& analyzer, const int line_num, const int line_pos)
 {
   vector<Method*> methods = klass->GetMethods();
   if(!methods.empty()) {
     bool is_var;
-    return FetchRenamedExpressions(methods[0], analyzer, line_num, line_pos, is_var);
+    return GetMatchedExpressions(methods[0], analyzer, line_num, line_pos, is_var);
   }
 
   return vector<Expression*>();
 }
 
-vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var)
+vector<frontend::Expression*> GetMatchedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var)
 {
   bool is_cls;
   vector<Expression*> expressions = analyzer.FindExpressions(method, line_num, line_pos, is_var, is_cls);
