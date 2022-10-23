@@ -461,12 +461,6 @@ extern "C" {
           }
         }
       }
-      /*
-      // TODO: class support
-      else {
-
-      }
-      */
     }
   }
 
