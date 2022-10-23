@@ -902,17 +902,25 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
         // format
         if(!expressions.empty()) {
+          const bool skip_expr = expressions.size() == 1 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR && 
+            static_cast<MethodCall*>(expressions[0])->GetVariableName() == L"#";
+
+          Method* mthd_dclr = nullptr;
+
           size_t* refs_array = nullptr;
-          if(is_var) {
+          if(skip_expr) {
+            mthd_dclr = static_cast<MethodCall*>(expressions[0])->GetMethod();
             refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+          }
+          else if(is_var) {
+              refs_array = APITools_MakeIntArray(context, (int)expressions.size());
           }
           else {
             refs_array = APITools_MakeIntArray(context, (int)expressions.size() + 1);
           }
           size_t* refs_array_ptr = refs_array + 3;
 
-          Method* mthd_dclr = nullptr;
-          for(size_t i = 0; i < expressions.size(); ++i) {
+          for(size_t i = 0; !skip_expr && i < expressions.size(); ++i) {
             Expression* expression = expressions[i];
 
             size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
@@ -964,7 +972,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
           }
 
           // update declaration name
-          if(!is_var && mthd_dclr) {
+          if(skip_expr || (!is_var && mthd_dclr)) {
             size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
 
             int start_pos = mthd_dclr->GetMidLinePosition();
