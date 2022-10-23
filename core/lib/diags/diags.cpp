@@ -934,7 +934,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
               reference_obj[ResultPosition::POS_TYPE] = 100;
             }
-                         break;
+              break;
 
             case METHOD_CALL_EXPR: {
               MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -956,7 +956,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_TYPE] = 200;
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
             }
-                                 break;
+              break;
 
             default:
               break;
@@ -1028,7 +1028,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
               reference_obj[ResultPosition::POS_TYPE] = 100;
             }
-                         break;
+              break;
 
             case METHOD_CALL_EXPR: {
               MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -1036,7 +1036,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_TYPE] = 200;
               reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
             }
-                                 break;
+              break;
 
             default:
               break;
