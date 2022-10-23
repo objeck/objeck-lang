@@ -990,7 +990,12 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
               reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
 
-              refs_array_ptr[(int)expressions.size()] = (size_t)reference_obj;
+              if(skip_expr) {
+                refs_array_ptr[0] = (size_t)reference_obj;
+              }
+              else {
+                refs_array_ptr[(int)expressions.size()] = (size_t)reference_obj;
+              }
             }
           }
 
