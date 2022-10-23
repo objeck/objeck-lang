@@ -902,12 +902,12 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
         // format
         if(!expressions.empty()) {
-          const bool skip_expr = expressions.size() == 1 && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR && 
-            static_cast<MethodCall*>(expressions[0])->GetVariableName() == L"#";
-
           Method* mthd_dclr = nullptr;
-
           size_t* refs_array = nullptr;
+
+          const bool skip_expr = expressions.size() == 1 && 
+            expressions[0]->GetExpressionType() == METHOD_CALL_EXPR && 
+            static_cast<MethodCall*>(expressions[0])->GetVariableName() == L"#";
           if(skip_expr) {
             mthd_dclr = static_cast<MethodCall*>(expressions[0])->GetMethod();
             refs_array = APITools_MakeIntArray(context, (int)expressions.size());
