@@ -372,12 +372,7 @@ extern "C" {
             else if(eenum) {
               node = eenum_item;
             }
-            /*
-                  // enum
-                  else if(eenum) {
-                    node = eenum;
-                  }
-            */
+            
             // method
             else {
               node = method;
