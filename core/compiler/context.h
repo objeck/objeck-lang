@@ -620,7 +620,7 @@ class ContextAnalyzer {
   bool LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
   bool LocateExpression(Class* klass, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
 
-  bool GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions);
+  void GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions);
 
 #endif
   //
