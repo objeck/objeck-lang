@@ -8473,20 +8473,14 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
 
   // find method calls associated with methods
   if(matched_expressions.empty()) {
-    const bool found = GetMethodCallExpressions(line_num, line_pos, is_var, matched_expressions);
-    // found method but no calls
-    if(found && matched_expressions.empty()) {
-
-    }
+    GetMethodCallExpressions(line_num, line_pos, is_var, matched_expressions);
   }
 
   return matched_expressions;
 }
 
-bool ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions)
+void ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions)
 {
-  bool found = false;
-
   vector<ParsedBundle*> bundles = program->GetBundles();
   for(auto bundle : bundles) {
     vector<Class*> classes = bundle->GetClasses();
@@ -8503,10 +8497,17 @@ bool ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int lin
             const int end_pos = start_pos + (int)mthd_name.size();
             if(start_pos < line_pos && end_pos > line_pos) {
               is_var = false;
-              found = true;
               const vector<MethodCall*> method_calls = method->GetMethodCalls();
-              for(auto method_call : method_calls) {
+              if(method_calls.empty()) {
+                MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+                                                                                  method->GetEndLineNumber(), method->GetEndLinePosition(), L"#", method->GetName());
+                method_call->SetMethod(method);
                 matched_expressions.push_back(method_call);
+              }
+              else {
+                for(auto method_call : method_calls) {
+                  matched_expressions.push_back(method_call);
+                }
               }
             }
           }
@@ -8514,8 +8515,6 @@ bool ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int lin
       }
     }
   }
-
-  return found;
 }
 
 

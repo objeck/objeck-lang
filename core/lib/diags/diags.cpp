@@ -869,10 +869,11 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
         // method/function
         if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
-          Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
+          MethodCall* method_call = static_cast<MethodCall*>(expressions[0]);
+          Method* local_method = method_call->GetMethod();
           expressions.clear();
 
-          if(search_method) {
+          if(local_method) {
             vector<ParsedBundle*> bundles = program->GetBundles();
             for(size_t i = 0; i < bundles.size(); ++i) {
               vector<Class*> classes = bundles[i]->GetClasses();
@@ -884,13 +885,17 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
                   for(size_t l = 0; l < method_expressions.size(); ++l) {
                     if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
                       MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
-                      if(local_method_call->GetMethod() == search_method) {
+                      if(local_method_call->GetMethod() == local_method) {
                         expressions.push_back(local_method_call);
                       }
                     }
                   }
                 }
               }
+            }
+
+            if(expressions.empty()) {
+              expressions.push_back(method_call);
             }
           }
         }
