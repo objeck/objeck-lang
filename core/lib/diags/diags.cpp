@@ -372,12 +372,7 @@ extern "C" {
             else if(eenum) {
               node = eenum_item;
             }
-            /*
-                  // enum
-                  else if(eenum) {
-                    node = eenum;
-                  }
-            */
+            
             // method
             else {
               node = method;
@@ -461,12 +456,6 @@ extern "C" {
           }
         }
       }
-      /*
-      // TODO: class support
-      else {
-
-      }
-      */
     }
   }
 
@@ -880,10 +869,11 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 
         // method/function
         if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
-          Method* search_method = static_cast<MethodCall*>(expressions[0])->GetMethod();
+          MethodCall* method_call = static_cast<MethodCall*>(expressions[0]);
+          Method* local_method = method_call->GetMethod();
           expressions.clear();
 
-          if(search_method) {
+          if(local_method) {
             vector<ParsedBundle*> bundles = program->GetBundles();
             for(size_t i = 0; i < bundles.size(); ++i) {
               vector<Class*> classes = bundles[i]->GetClasses();
@@ -895,7 +885,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
                   for(size_t l = 0; l < method_expressions.size(); ++l) {
                     if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
                       MethodCall* local_method_call = static_cast<MethodCall*>(method_expressions[l]);
-                      if(local_method_call->GetMethod() == search_method) {
+                      if(local_method_call->GetMethod() == local_method) {
                         expressions.push_back(local_method_call);
                       }
                     }
@@ -903,22 +893,34 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
                 }
               }
             }
+
+            if(expressions.empty()) {
+              expressions.push_back(method_call);
+            }
           }
         }
 
         // format
         if(!expressions.empty()) {
+          Method* mthd_dclr = nullptr;
           size_t* refs_array = nullptr;
-          if(is_var) {
+
+          const bool skip_expr = expressions.size() == 1 && 
+            expressions[0]->GetExpressionType() == METHOD_CALL_EXPR && 
+            static_cast<MethodCall*>(expressions[0])->GetVariableName() == L"#";
+          if(skip_expr) {
+            mthd_dclr = static_cast<MethodCall*>(expressions[0])->GetMethod();
             refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+          }
+          else if(is_var) {
+              refs_array = APITools_MakeIntArray(context, (int)expressions.size());
           }
           else {
             refs_array = APITools_MakeIntArray(context, (int)expressions.size() + 1);
           }
           size_t* refs_array_ptr = refs_array + 3;
 
-          Method* mthd_dclr = nullptr;
-          for(size_t i = 0; i < expressions.size(); ++i) {
+          for(size_t i = 0; !skip_expr && i < expressions.size(); ++i) {
             Expression* expression = expressions[i];
 
             size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
@@ -970,7 +972,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
           }
 
           // update declaration name
-          if(!is_var && mthd_dclr) {
+          if(skip_expr || (!is_var && mthd_dclr)) {
             size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
 
             int start_pos = mthd_dclr->GetMidLinePosition();
@@ -988,7 +990,12 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
               reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
 
-              refs_array_ptr[(int)expressions.size()] = (size_t)reference_obj;
+              if(skip_expr) {
+                refs_array_ptr[0] = (size_t)reference_obj;
+              }
+              else {
+                refs_array_ptr[(int)expressions.size()] = (size_t)reference_obj;
+              }
             }
           }
 
