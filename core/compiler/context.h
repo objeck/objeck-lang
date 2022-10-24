@@ -521,35 +521,26 @@ class ContextAnalyzer {
   void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
-  bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass);
-  bool AnalyzeExpressionMethodCall(Expression* expression, wstring &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
-  bool AnalyzeExpressionMethodCall(Type* type, const int dimension, wstring &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
+  bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding, Class* &klass, LibraryClass* &lib_klass);
+  bool AnalyzeExpressionMethodCall(Expression* expression, wstring &encoding, Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
+  bool AnalyzeExpressionMethodCall(Type* type, const int dimension, wstring &encoding, Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   void AnalyzeMethodCall(MethodCall* method_call, const int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, const int depth);
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
-  void AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-                         bool is_expr, wstring &encoding, const int depth);
-  void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-                         bool is_expr, wstring &encoding, bool is_parent, const int depth);
-  void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
-                         bool is_virtual, bool is_expr, const int depth);
+  void AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, wstring &encoding, const int depth);
+  void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, wstring &encoding, bool is_parent, const int depth);
+  void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call, bool is_virtual, bool is_expr, const int depth);
   wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
-  int MatchCallingParameter(Expression* calling_param, Type* method_type,
-                            Class* klass, LibraryClass* lib_klass, const int depth);
+  int MatchCallingParameter(Expression* calling_param, Type* method_type, Class* klass, LibraryClass* lib_klass, const int depth);
   wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   wstring EncodeFunctionReference(ExpressionList* calling_params, const int depth);
   void AnalyzeVariableFunctionCall(MethodCall* method_call, const int depth);
-  void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
-                                wstring &encoding, const int depth);
-  void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
-                                wstring &encoding, const int depth);
+  void AnalyzeFunctionReference(Class* klass, MethodCall* method_call, wstring &encoding, const int depth);
+  void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call, wstring &encoding, const int depth);
   
  public:
   ContextAnalyzer(ParsedProgram* p, wstring lib_path, bool l, bool w) {
@@ -628,6 +619,8 @@ class ContextAnalyzer {
 
   bool LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
   bool LocateExpression(Class* klass, const int line_num, const int line_pos, Expression*& found_expression, wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions);
+
+  void GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions);
 
 #endif
   //

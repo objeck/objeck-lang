@@ -8473,24 +8473,38 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
 
   // find method calls associated with methods
   if(matched_expressions.empty()) {
-    vector<ParsedBundle*> bundles = program->GetBundles();
-    for(size_t i = 0; i < bundles.size(); ++i) {
-      vector<Class*> classes = bundles[i]->GetClasses();
-      for(size_t j = 0; j < classes.size(); ++j) {
-        vector<Method*> methods = classes[j]->GetMethods();
-        for(size_t k = 0; k < methods.size(); ++k) {
-          Method* method = methods[k];
-          const int mthd_line_num = method->GetLineNumber() - 1;
-          if(mthd_line_num == line_num) {
-            const wstring mthd_long_name = method->GetName();
-            const size_t mthd_long_name_index = mthd_long_name.find(':');
-            if(mthd_long_name_index != wstring::npos) {
-              const wstring mthd_name = mthd_long_name.substr(mthd_long_name_index + 1);
-              const int start_pos = method->GetMidLinePosition();
-              const int end_pos = start_pos + (int)mthd_name.size();
-              if(start_pos < line_pos && end_pos > line_pos) {
-                is_var = false;
-                const vector<MethodCall*> method_calls = method->GetMethodCalls();
+    GetMethodCallExpressions(line_num, line_pos, is_var, matched_expressions);
+  }
+
+  return matched_expressions;
+}
+
+void ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions)
+{
+  vector<ParsedBundle*> bundles = program->GetBundles();
+  for(auto bundle : bundles) {
+    vector<Class*> classes = bundle->GetClasses();
+    for(auto klass : classes) {
+      vector<Method*> methods = klass->GetMethods();
+      for(auto method : methods) {
+        const int mthd_line_num = method->GetLineNumber() - 1;
+        if(mthd_line_num == line_num) {
+          const wstring mthd_long_name = method->GetName();
+          const size_t mthd_long_name_index = mthd_long_name.find(':');
+          if(mthd_long_name_index != wstring::npos) {
+            const wstring mthd_name = mthd_long_name.substr(mthd_long_name_index + 1);
+            const int start_pos = method->GetMidLinePosition();
+            const int end_pos = start_pos + (int)mthd_name.size();
+            if(start_pos < line_pos && end_pos > line_pos) {
+              is_var = false;
+              const vector<MethodCall*> method_calls = method->GetMethodCalls();
+              if(method_calls.empty()) {
+                MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+                                                                                  method->GetEndLineNumber(), method->GetEndLinePosition(), L"#", method->GetName());
+                method_call->SetMethod(method);
+                matched_expressions.push_back(method_call);
+              }
+              else {
                 for(auto method_call : method_calls) {
                   matched_expressions.push_back(method_call);
                 }
@@ -8501,9 +8515,8 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
       }
     }
   }
-
-  return matched_expressions;
 }
+
 
 bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, 
                                        wstring& found_name, bool &is_alt, vector<Expression*>& all_expressions)
