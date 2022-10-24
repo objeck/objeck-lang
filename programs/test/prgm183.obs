@@ -10,6 +10,8 @@ class Test {
 
 		@bb := 201;
 		@bb->PrintLine();
+
+#		Bar();
 	}
 	
 	function : Bar() ~ Nil {
