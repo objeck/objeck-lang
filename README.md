@@ -68,8 +68,9 @@ __Building on Linux and macOS__
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
 
 __Building on Windows__
-*  With Visual Studio 2022 or later open <code>objeck-lang/care/release/objeck.sln</code>
-*  Ensure build completes successfully (in Release mode)
-*  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
+*  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/x64</code>
+*  Using Visual Studio 2022 or later open <code>objeck-lang/care/release/objeck.sln</code>
+*  Ensure the core build completes successfully (in Release mode)
+*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_amd64.cmd deploy</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
-*  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to set paths and find examples
+*  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
