@@ -4,7 +4,6 @@ Objeck release process
 	a. GitHub 
 		i.	LSP
 		ii.	Objeck
-	b. Sourceforge
 
 2. Trial build on Windows; push code
 	a. Update Windows installer version
