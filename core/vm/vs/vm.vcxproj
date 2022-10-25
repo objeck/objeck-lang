@@ -46,7 +46,7 @@
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>obr</TargetName>
     <OutDir>..\$(Configuration)\win64\</OutDir>
-    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64\$(Configuration);$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
@@ -102,7 +102,7 @@
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libcrypto_static.lib;libssl_static.lib;crypt32.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
