@@ -16,7 +16,7 @@ Objeck release process
 	b. Linux arm64
 	c. macOS x64
 	d. macOS arm64
-	
+
 6. Run binary renaming tool
 7. Upload binaries to Sourceforge and GitHub
 8. Upload API documentation to objeck.org
@@ -26,3 +26,6 @@ Objeck release process
 		ii.	Objeck
 	b. Sourceforge
 	c. freshcode (?)
+
+	----
+	perl Configure VC-WIN64A no-shared no-idea
