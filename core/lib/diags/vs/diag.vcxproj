@@ -79,7 +79,7 @@
     <TargetName>libobjk_diags</TargetName>
     <OutDir>$(ProjectDir)$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
-    <LibraryPath>..\..\zlib\win\x64\Release;..\..\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\x64;..\..\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
