@@ -1,7 +1,7 @@
 #!/bin/sh
 rm -rf /tmp/cov-int
 rm -f objeck-int.tgz
-/home/objeck/Documents/Code/coverity/bin/cov-build --dir /tmp/cov-int ./deploy_posix.sh 64
+/home/randy/Documents/Code/coverity/bin/cov-build --dir /tmp/cov-int ./deploy_posix.sh 64
 tar -czf objeck-int.tgz -C /tmp/ cov-int/
 curl --form token=ZmtAZyNCX5XLFzQLR9QMXg \
   --form email=objeck@gmail.com \
