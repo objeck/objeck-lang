@@ -94,26 +94,32 @@ extern "C" {
 #endif
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
-    int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
-    
-    // hash 
-    unsigned char output[RIPEMD160_DIGEST_LENGTH];
-    RIPEMD160_CTX sha256;
-    RIPEMD160_Init(&sha256);
-    RIPEMD160_Update(&sha256, input, input_size);
-    RIPEMD160_Final(output, &sha256);
-
-    // copy output
-    size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    output_holder[0] = (size_t)output_byte_array;
+    long result = APITools_GetIntAddress(context, 1)[0];    
+    if(result > -1) {
+      size_t* input_array = (size_t*)result;
+
+      int input_size =  APITools_GetArraySize(input_array) - 1;
+      const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
+      
+      // hash 
+      unsigned char output[RIPEMD160_DIGEST_LENGTH];
+      RIPEMD160_CTX sha256;
+      RIPEMD160_Init(&sha256);
+      RIPEMD160_Update(&sha256, input, input_size);
+      RIPEMD160_Final(output, &sha256);
+
+      // copy output
+      size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
+      unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+      for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
+        output_byte_array_buffer[i] = output[i];
+      }
+      output_holder[0] = (size_t)output_byte_array;
+    }
+    else {
+      output_holder[0] = 0;
+    }
   }
   
 #ifdef _WIN32

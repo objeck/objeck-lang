@@ -52,6 +52,7 @@ SOCKET IPSocket::Open(const char* address, const int port) {
   for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
 		sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
     if(sock == INVALID_SOCKET) {
+      freeaddrinfo(result);
       WSACleanup();
       return -1;
     }
