@@ -5897,7 +5897,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     // library
     else if(right && linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
       LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
-      if(left_enum->GetName() != right_lib_enum->GetName()) {
+      if(right_lib_enum && (left_enum->GetName() != right_lib_enum->GetName())) {
         const wstring left_str = FormatTypeString(left->GetName());
         const wstring right_str = FormatTypeString(right->GetName());
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
