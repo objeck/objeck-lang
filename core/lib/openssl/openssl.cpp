@@ -95,33 +95,31 @@ extern "C" {
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    size_t result = APITools_GetIntAddress(context, 1)[0];    
-    if (result > -1) {
-      size_t* input_array = (size_t*)result;
+    long result = (long)APITools_GetIntAddress(context, 1)[0];
+    if(result > -1) {
+      size_t* input_array = (size_t*)((size_t)result);
 
-      int input_size = APITools_GetArraySize(input_array) - 1;
-      if (input_size > -1) {
-        const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
+      int input_size =  APITools_GetArraySize(input_array) - 1;
+      const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
+      
+      // hash 
+      unsigned char output[RIPEMD160_DIGEST_LENGTH];
+      RIPEMD160_CTX sha256;
+      RIPEMD160_Init(&sha256);
+      RIPEMD160_Update(&sha256, input, input_size);
+      RIPEMD160_Final(output, &sha256);
 
-        // hash 
-        unsigned char output[RIPEMD160_DIGEST_LENGTH];
-        RIPEMD160_CTX sha256;
-        RIPEMD160_Init(&sha256);
-        RIPEMD160_Update(&sha256, input, input_size);
-        RIPEMD160_Final(output, &sha256);
-
-        // copy output
-        size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
-        unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-        for (int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
-          output_byte_array_buffer[i] = output[i];
-        }
-        output_holder[0] = (size_t)output_byte_array;
-        return;
+      // copy output
+      size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
+      unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+      for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
+        output_byte_array_buffer[i] = output[i];
       }
+      output_holder[0] = (size_t)output_byte_array;
     }
-
-    output_holder[0] = 0;
+    else {
+      output_holder[0] = 0;
+    }
   }
   
 #ifdef _WIN32
@@ -335,7 +333,7 @@ extern "C" {
     const wstring w_input = APITools_GetStringValue(context, 1);
     const string input = UnicodeToBytes(w_input);
 
-    const int decode_size = (int)calcDecodeLength(input.c_str());
+    const size_t decode_size = calcDecodeLength(input.c_str());
     char* buffer = new char[decode_size + 1];
     buffer[decode_size] = '\0';
 
@@ -344,7 +342,7 @@ extern "C" {
     bio = BIO_push(b64, bio);
 
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
-    int length = (int)BIO_read(bio, buffer, decode_size);
+    BIO_read(bio, buffer, (int)decode_size);
     BIO_free_all(bio);
 
     APITools_SetStringValue(context, 0, BytesToUnicode(buffer));
