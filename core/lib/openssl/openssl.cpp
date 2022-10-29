@@ -341,7 +341,7 @@ extern "C" {
     BIO* b64 = BIO_new(BIO_f_base64());
     bio = BIO_push(b64, bio);
 
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
     BIO_read(bio, buffer, (int)decode_size);
     BIO_free_all(bio);
 
