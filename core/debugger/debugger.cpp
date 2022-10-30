@@ -482,7 +482,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"cannot reference scalar variable" << endl;
           }
           else {
-            const int32_t value = (int32_t)reference->GetIntValue();
+            const int32_t value = (long)reference->GetIntValue();
             ios_base::fmtflags flags(wcout.flags());
             wcout << L"print: type=Int/Byte/Bool, value=" << value << L"/" << hex << value << endl;
             wcout.flags(flags);
@@ -527,7 +527,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
-            int32_t value = (int32_t)reference->GetIntValue();
+            int32_t value = (long)reference->GetIntValue();
             ios_base::fmtflags flags(wcout.flags());
             wcout << L"print: type=Int, value=" << value << L"/" << hex << value << endl;
             wcout.flags(flags);
@@ -569,7 +569,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"System.IntHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              wcout << L"print: type=System.IntHolder, value=" << (int32_t)instance[0] << endl;
+              wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << endl;
             }
             else {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
@@ -620,7 +620,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
                   wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
                 }
                 else if(klass->GetName() == L"System.IntHolder") {
-                  wcout << L"print: type=System.IntHolder, value=" << (int32_t)instance[0] << endl;
+                  wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << endl;
                 }
                 else if(klass->GetName() == L"System.ByteHolder") {
                   wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
