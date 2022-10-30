@@ -677,7 +677,7 @@ class StackClass {
   }
 
   // TODO: might have 1 or more variables with the same name
-  bool GetDeclaration (const wstring& name, StackDclr& found) {
+  bool GetDeclaration(const wstring& name, StackDclr& found, MemoryContext &context) {
     vector<int> results;
     if(name.size () > 0) {
       // search for instance name
@@ -689,6 +689,7 @@ class StackClass {
           found.name = dclr->name;
           found.type = dclr->type;
           found.id = index;
+          context = INST;
           return true;
         }
 
@@ -706,6 +707,7 @@ class StackClass {
           found.name = dclr->name;
           found.type = dclr->type;
           found.id = index;
+          context = CLS;
           return true;
         }
 
