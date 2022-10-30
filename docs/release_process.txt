@@ -26,6 +26,3 @@ Objeck release process
 		ii.	Objeck
 	b. Sourceforge
 	c. freshcode (?)
-
-	----
-	perl Configure VC-WIN64A no-shared no-idea
