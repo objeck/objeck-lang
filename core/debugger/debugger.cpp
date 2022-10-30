@@ -1836,8 +1836,8 @@ void Runtime::Debugger::ClearBreaks() {
   }
 }
 
-void Runtime::Debugger::ClearProgram() {
-  if(loader) {
+void Runtime::Debugger::ClearProgram(bool foo) {
+  if(foo && loader) {
     delete loader;
     loader = nullptr;
   }
