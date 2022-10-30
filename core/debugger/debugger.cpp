@@ -362,9 +362,13 @@ void Runtime::Debugger::ProcessRun() {
 
 void Runtime::Debugger::DoLoad()
 {
+  bool do_mem_init = false;
   if(loader) {
     delete loader;
     loader = nullptr;
+  }
+  else {
+    do_mem_init = true;
   }
 
   // process program parameters
@@ -381,6 +385,10 @@ void Runtime::Debugger::DoLoad()
   // invoke loader
   loader = new Loader(argc, argv);
   loader->Load();
+
+  if(do_mem_init) {
+    MemoryManager::Initialize(loader->GetProgram());
+  }
 
   // clear old program
   for(int i = 0; i < argc; i++) {
@@ -1007,7 +1015,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 
         case FUNC_PARM:
           reference->SetIntValue((long)ref_mem[dclr_value.id]);
-          reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
+          reference->SetIntValue2(ref_mem[dclr_value.id]);
           break;
 
         case FLOAT_PARM: {
@@ -1070,7 +1078,13 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
       // process method reference
       else {
         // check reference name
-        bool found = method->GetLocalDeclaration(reference->GetVariableName(), dclr_value);
+        int offset = 1;
+        bool found = method->GetDeclaration(reference->GetVariableName(), dclr_value);
+        if(!found) {
+          found = method->GetClass()->GetDeclaration(reference->GetVariableName (), dclr_value);
+          offset = 0;
+        }
+
         reference->SetDeclaration(dclr_value);
         if(found) {
           if(method->HasAndOr()) {
@@ -1080,43 +1094,43 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
           switch(dclr_value.type) {
           case CHAR_PARM:
           case INT_PARM:
-            reference->SetIntValue(ref_mem[dclr_value.id + 1]);
+            reference->SetIntValue(ref_mem[dclr_value.id + offset]);
             break;
 
           case FUNC_PARM:
-            reference->SetIntValue((long)ref_mem[dclr_value.id + 1]);
+            reference->SetIntValue((long)ref_mem[dclr_value.id + offset]);
             reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
             break;
 
           case FLOAT_PARM: {
             FLOAT_VALUE value;
-            memcpy(&value, &ref_mem[dclr_value.id + 1], sizeof(FLOAT_VALUE));
+            memcpy(&value, &ref_mem[dclr_value.id + offset], sizeof(FLOAT_VALUE));
             reference->SetFloatValue(value);
           }
             break;
 
           case OBJ_PARM:
-            EvaluateInstanceReference(reference, dclr_value.id + 1);
+            EvaluateInstanceReference(reference, dclr_value.id + offset);
             break;
 
           case BYTE_ARY_PARM:
-            EvaluateByteReference(reference, dclr_value.id + 1);
+            EvaluateByteReference(reference, dclr_value.id + offset);
             break;
 
           case CHAR_ARY_PARM:
-            EvaluateCharReference(reference, dclr_value.id + 1);
+            EvaluateCharReference(reference, dclr_value.id + offset);
             break;
 
           case INT_ARY_PARM:
-            EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
+            EvaluateIntFloatReference(reference, dclr_value.id + offset, false);
             break;
 
           case OBJ_ARY_PARM:
-            EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
+            EvaluateIntFloatReference(reference, dclr_value.id + offset, false);
             break;
 
           case FLOAT_ARY_PARM:
-            EvaluateIntFloatReference(reference, dclr_value.id + 1, true);
+            EvaluateIntFloatReference(reference, dclr_value.id + offset, true);
             break;
           }
         }
@@ -1835,8 +1849,10 @@ void Runtime::Debugger::ClearProgram() {
     stack_pos = nullptr;
   }
 
-  MemoryManager::Clear();
-  
+  if(loader) {
+    MemoryManager::Clear();
+  }
+
   is_step_into = is_next_line = is_step_out = false;
   continue_state = 0;
   cur_line_num = -1;
