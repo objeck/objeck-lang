@@ -417,7 +417,7 @@ ExpressionList* Parser::ParseIndices(int depth)
         NextToken();
       }
       else if(!Match(TOKEN_CLOSED_BRACKET)) {
-        ProcessError(L"Expected comma or semi-colon");
+        ProcessError(L"Expected comma or ']'");
         NextToken();
       }
     }
