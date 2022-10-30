@@ -156,7 +156,7 @@ namespace Runtime {
     // prints declarations
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num);
   
-    void ClearProgram(bool foo = true);
+    void ClearProgram(bool clear_loader = true);
     void DoLoad();
     void ClearReload() {
       ClearProgram(false);

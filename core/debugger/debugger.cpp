@@ -574,6 +574,46 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
             }
           }
+          //
+          // start: Generic collections
+          //
+          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Vector") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance && !reference->GetIndices()) {
+              size_t* vector_instance = (size_t*)instance[0];
+              const long vector_size = (long)vector_instance[1];
+              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << vector_size << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.List") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance && !reference->GetIndices()) {
+              size_t* list_instance = (size_t*)instance[0];
+              const long list_size = (long)list_instance[1];
+              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << list_size << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Hash") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance && !reference->GetIndices()) {
+              size_t* hash_instance = (size_t*)instance[0];
+              const long hash_size = (long)hash_instance[1];
+              const long hash_capacity = (long)hash_instance[2];
+              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          //
+          // end: Generic collections
+          //
           else if(ref_klass && ref_klass->GetName() == L"System.IntHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
@@ -1836,8 +1876,8 @@ void Runtime::Debugger::ClearBreaks() {
   }
 }
 
-void Runtime::Debugger::ClearProgram(bool foo) {
-  if(foo && loader) {
+void Runtime::Debugger::ClearProgram(bool clear_loader) {
+  if(clear_loader && loader) {
     delete loader;
     loader = nullptr;
   }
