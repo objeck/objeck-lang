@@ -5,8 +5,6 @@ VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vm", "vs\vm.vcxproj", "{321339EE-4392-4BFE-9B15-A852CD25714D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libz-static", "..\lib\zlib\win\vs\libz-static\libz-static.vcxproj", "{B56D17BC-072B-42F3-844A-870A07AFBAAA}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "diag", "..\lib\diags\vs\diag.vcxproj", "{02A51378-6430-4B82-B596-ABA250DCA15B}"
 EndProject
 Global
@@ -19,10 +17,6 @@ Global
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Debug|x64.Build.0 = Debug|x64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x64.ActiveCfg = Release|x64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x64.Build.0 = Release|x64
-		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Debug|x64.ActiveCfg = Debug|x64
-		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Debug|x64.Build.0 = Debug|x64
-		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Release|x64.ActiveCfg = Release|x64
-		{B56D17BC-072B-42F3-844A-870A07AFBAAA}.Release|x64.Build.0 = Release|x64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Debug|x64.ActiveCfg = Debug|x64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Debug|x64.Build.0 = Debug|x64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Release|x64.ActiveCfg = Release|x64
