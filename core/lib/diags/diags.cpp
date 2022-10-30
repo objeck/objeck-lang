@@ -281,7 +281,7 @@ extern "C" {
           }
 
           mthd_symb_obj[ResultPosition::POS_START_LINE] = (size_t)mthd->GetLineNumber() - 1;
-          mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition();
+          mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition() - 1;
           mthd_symb_obj[ResultPosition::POS_END_LINE] = (size_t)mthd->GetEndLineNumber() - 2;
           mthd_symb_obj[ResultPosition::POS_END_POS] = mthd->GetEndLinePosition();
           mthds_array_ptr[k] = (size_t)mthd_symb_obj;
