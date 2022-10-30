@@ -490,9 +490,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"cannot reference scalar variable" << endl;
           }
           else {
-            const int32_t value = (long)reference->GetIntValue();
+            const long value = (long)reference->GetIntValue();
             ios_base::fmtflags flags(wcout.flags());
-            wcout << L"print: type=Int/Byte/Bool, value=" << value << L"/" << hex << value << endl;
+            wcout << L"print: type=Int/Byte/Bool, value=" << value << L"(" << hex << value << L')' << endl;
             wcout.flags(flags);
           }
           break;
@@ -535,9 +535,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
-            int32_t value = (long)reference->GetIntValue();
+            const long value = (long)reference->GetIntValue();
             ios_base::fmtflags flags(wcout.flags());
-            wcout << L"print: type=Int, value=" << value << L"/" << hex << value << endl;
+            wcout << L"print: type=Int, value=" << value << L"(" << hex << value << L')' << endl;
             wcout.flags(flags);
           }
           else {
@@ -1079,16 +1079,24 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
       else {
         // check reference name
         int offset = 1;
+        MemoryContext context = LOCL;
+
         bool found = method->GetDeclaration(reference->GetVariableName(), dclr_value);
         if(!found) {
-          found = method->GetClass()->GetDeclaration(reference->GetVariableName (), dclr_value);
+          found = method->GetClass()->GetDeclaration(reference->GetVariableName(), dclr_value, context);
           offset = 0;
         }
 
         reference->SetDeclaration(dclr_value);
         if(found) {
-          if(method->HasAndOr()) {
+          if(context == LOCL && method->HasAndOr()) {
             dclr_value.id++;
+          }
+          else if(context == INST) {
+            ref_mem = (size_t*)cur_frame->mem[0];
+          }
+          else if(context == CLS) {
+            ref_mem = cur_frame->method->GetClass()->GetClassMemory();
           }
 
           switch(dclr_value.type) {
