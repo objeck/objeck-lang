@@ -1077,17 +1077,17 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
       }
       // process method reference
       else {
-        // check reference name
+        // check reference name locally
         int offset = 1;
         MemoryContext context = LOCL;
-
         bool found = method->GetDeclaration(reference->GetVariableName(), dclr_value);
         if(!found) {
+          // check reference name at instance and class levels
           found = method->GetClass()->GetDeclaration(reference->GetVariableName(), dclr_value, context);
           offset = 0;
         }
-
         reference->SetDeclaration(dclr_value);
+
         if(found) {
           if(context == LOCL && method->HasAndOr()) {
             dclr_value.id++;
