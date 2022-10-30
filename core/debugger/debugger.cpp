@@ -577,7 +577,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           //
           // start: Generic collections
           //
-          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Vector") {
+          else if(ref_klass && (ref_klass->GetName() == L"Collection.Generic.Vector" || ref_klass->GetName() == L"Collection.Generic.CompareVector")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               size_t* vector_instance = (size_t*)instance[0];
@@ -588,7 +588,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
             }
           }
-          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.List") {
+          else if(ref_klass && (ref_klass->GetName() == L"Collection.Generic.List" || ref_klass->GetName() == L"Collection.Generic.CompareList")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               size_t* list_instance = (size_t*)instance[0];
@@ -606,6 +606,17 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               const long hash_size = (long)hash_instance[1];
               const long hash_capacity = (long)hash_instance[2];
               wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Map") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance && !reference->GetIndices()) {
+              size_t* map_instance = (size_t*)instance[0];
+              const long map_size = (long)map_instance[2];
+              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << map_size << endl;
             }
             else {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
