@@ -2650,7 +2650,7 @@ bool TrapProcessor::StdOutInt(StackProgram* program, size_t* inst, size_t* &op_s
 #ifdef _DEBUG
   wcout << L"  STD_OUT_INT" << endl;
 #endif
-  wcout << (int32_t)PopInt(op_stack, stack_pos);
+  wcout << (long)PopInt(op_stack, stack_pos);
 
   return true;
 }
