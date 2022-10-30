@@ -407,7 +407,7 @@ class StackMethod {
 
 #ifdef _DEBUGGER
   // TODO: might have 1 or more variables with the same name
-  bool GetLocalDeclaration(const wstring& name, StackDclr& found) {
+  bool GetDeclaration(const wstring& name, StackDclr& found) {
     vector<int> results;
     if(name.size() > 0) {
       // search for name
@@ -675,6 +675,49 @@ class StackClass {
 
     return found;
   }
+
+  // TODO: might have 1 or more variables with the same name
+  bool GetDeclaration (const wstring& name, StackDclr& found) {
+    vector<int> results;
+    if(name.size () > 0) {
+      // search for instance name
+      int index = 0;
+      for(int i = 0; i < inst_num_dclrs; i++, index++) {
+        StackDclr* dclr = inst_dclrs[i];
+        const wstring& dclr_name = dclr->name.substr (dclr->name.find_last_of (L':') + 1);
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;
+          return true;
+        }
+
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
+      }
+
+      // search for class name
+      index = 0;
+      for(int i = 0; i < cls_num_dclrs; i++, index++) {
+        StackDclr* dclr = cls_dclrs[i];
+        const wstring& dclr_name = dclr->name.substr (dclr->name.find_last_of (L':') + 1);
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;
+          return true;
+        }
+
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
+      }
+    }
+
+    return false;
+  }
+
 #endif
 
   inline StackMethod* GetMethod(const wstring &n) {
