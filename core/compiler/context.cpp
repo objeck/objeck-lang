@@ -7244,36 +7244,38 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
           Expression* concat_expr = *iter;
           AnalyzeExpression(concat_expr, depth + 1);
 
-          if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
-            const wstring cls_name = concat_expr->GetEvalType()->GetName();
-            Class* klass = SearchProgramClasses(cls_name);
-            if(klass) {
-              Method* method = klass->GetMethod(cls_name + L":ToString:");
-              if(method && method->GetMethodType() != PRIVATE_METHOD) {
-                methods_to_string[concat_expr] = method;
-              }
-              else {
-                ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
-              }
-            }
-            else {
-              LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
-              if(lib_klass) {
-                LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
-                if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-                  lib_methods_to_string[concat_expr] = lib_method;
+          if(concat_expr->GetEvalType()) {
+            if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
+              const wstring cls_name = concat_expr->GetEvalType()->GetName();
+              Class* klass = SearchProgramClasses(cls_name);
+              if(klass) {
+                Method* method = klass->GetMethod(cls_name + L":ToString:");
+                if(method && method->GetMethodType() != PRIVATE_METHOD) {
+                  methods_to_string[concat_expr] = method;
                 }
                 else {
                   ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
                 }
               }
               else {
-                ProcessError(concat_expr, L"Class/enum variable does not have a 'ToString' method");
+                LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+                if(lib_klass) {
+                  LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
+                  if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
+                    lib_methods_to_string[concat_expr] = lib_method;
+                  }
+                  else {
+                    ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
+                  }
+                }
+                else {
+                  ProcessError(concat_expr, L"Class/enum variable does not have a 'ToString' method");
+                }
               }
             }
-          }
-          else if(concat_expr->GetEvalType()->GetType() == FUNC_TYPE) {
-            ProcessError(concat_expr, L"Invalid function variable type");
+            else if(concat_expr->GetEvalType()->GetType() == FUNC_TYPE) {
+              ProcessError(concat_expr, L"Invalid function variable type");
+            }
           }
         }
 
