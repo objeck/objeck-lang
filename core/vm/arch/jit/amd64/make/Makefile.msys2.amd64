@@ -1,0 +1,23 @@
+# ARGS=-g -D_DEBUG -D_X64 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-deprecated-declarations
+ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declarations
+# ARGS=-O3 -D_TIMING -D_X64 -Wno-unused-function -Wno-deprecated-declarations
+
+CC=g++
+AR=ar
+COMMON_LIBS=jit_common.a
+COMMON_PATH=..
+SRC=../jit_common.o jit_amd_lp64.o
+LIB=../../../jit_amd_lp64.a
+
+$(LIB): $(COMMON_LIBS) $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+jit_common.a:
+	cd $(COMMON_PATH); make -f make/Makefile.msys2.amd64
+
+%.o: %.cpp
+	$(CC) -m64 -I/usr/include $(ARGS) -c $< 
+
+clean:
+	cd $(COMMON_PATH); make -f make/Makefile.amd64 clean
+	rm -f *.o *~ $(LIB)
