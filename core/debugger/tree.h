@@ -34,8 +34,6 @@
 
 #include "../vm/common.h"
 
-using namespace std;
-
 namespace frontend {
   class TreeFactory;
   class Reference;
@@ -148,7 +146,7 @@ namespace frontend {
   ****************************/
   class ExpressionList {
     friend class TreeFactory;
-    vector<Expression*> expressions;
+    std::vector<Expression*> expressions;
 
     ExpressionList() {
     }
@@ -157,7 +155,7 @@ namespace frontend {
     }
 
   public:
-    vector<Expression*> GetExpressions() {
+    std::vector<Expression*> GetExpressions() {
       return expressions;
     }
 
@@ -230,17 +228,17 @@ namespace frontend {
   * Load class
   ****************************/
   class Load : public BasicCommand {
-    wstring file_name;
+    std::wstring file_name;
 
   public:
-    Load(CommandType t, const wstring &fn) : BasicCommand(t) {
+    Load(CommandType t, const std::wstring &fn) : BasicCommand(t) {
       file_name = fn;
     }
 
     ~Load() {
     }
 
-    const wstring& GetFileName() {
+    const std::wstring& GetFileName() {
       return file_name;
     }
   };
@@ -249,11 +247,11 @@ namespace frontend {
   * FilePostion class
   ****************************/
   class FilePostion : public BasicCommand {
-    wstring file_name;
+    std::wstring file_name;
     int line_num;
 
   public:
-    FilePostion(CommandType t, const wstring &fn, int ln) : BasicCommand(t) {
+    FilePostion(CommandType t, const std::wstring &fn, int ln) : BasicCommand(t) {
       file_name = fn;
       line_num = ln;
     }
@@ -261,7 +259,7 @@ namespace frontend {
     ~FilePostion() {
     }
 
-    const wstring& GetFileName() {
+    const std::wstring& GetFileName() {
       return file_name;
     }
 
@@ -274,11 +272,11 @@ namespace frontend {
   * Info class
   ****************************/
   class Info : public Command {
-    wstring cls_name;
-    wstring mthd_name;
+    std::wstring cls_name;
+    std::wstring mthd_name;
 
   public:
-    Info(const wstring &c, const wstring &m) {
+    Info(const std::wstring &c, const std::wstring &m) {
       cls_name = c;
       mthd_name = m;
     }
@@ -286,11 +284,11 @@ namespace frontend {
     ~Info() {
     }
 
-    const wstring& GetClassName() {
+    const std::wstring& GetClassName() {
       return cls_name;
     }
 
-    const wstring& GetMethodName() {
+    const std::wstring& GetMethodName() {
       return mthd_name;
     }
 
@@ -344,9 +342,9 @@ namespace frontend {
   class CharacterString : public Expression {
     friend class TreeFactory;
     int id;
-    wstring char_string;
+    std::wstring char_string;
 
-    CharacterString(const wstring &orig) : Expression() {
+    CharacterString(const std::wstring &orig) : Expression() {
       int skip = 2;
       for(size_t i = 0; i < orig.size(); i++) {
         wchar_t c = orig[i];
@@ -418,7 +416,7 @@ namespace frontend {
       return id;
     }
 
-    const wstring& GetString() const {
+    const std::wstring& GetString() const {
       return char_string;
     }
   };
@@ -493,7 +491,7 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const wstring &f, const int l) : Expression() {
+    NilLiteral(const std::wstring &f, const int l) : Expression() {
     }
 
     ~NilLiteral() {
@@ -582,7 +580,7 @@ namespace frontend {
   ****************************/
   class Reference : public Expression {
     friend class TreeFactory;
-    wstring variable_name;
+    std::wstring variable_name;
     ExpressionList* indices;
     Reference* reference;
     StackDclr dclr;
@@ -599,7 +597,7 @@ namespace frontend {
       indices = nullptr;
     }
 
-    Reference(const wstring &v) : Expression() {
+    Reference(const std::wstring &v) : Expression() {
       variable_name = v;
       is_self = false;
       reference  = nullptr;
@@ -610,7 +608,7 @@ namespace frontend {
     }
 
   public:
-    const wstring& GetVariableName() const {
+    const std::wstring& GetVariableName() const {
       return variable_name;
     }
 
@@ -669,10 +667,10 @@ namespace frontend {
   class TreeFactory {
     static TreeFactory* instance;
 
-    vector<ParseNode*> nodes;
-    vector<Expression*> expressions;
-    vector<Reference*> calls;
-    vector<ExpressionList*> expression_lists;
+    std::vector<ParseNode*> nodes;
+    std::vector<Expression*> expressions;
+    std::vector<Reference*> calls;
+    std::vector<ExpressionList*> expression_lists;
 
     TreeFactory() {
     }
@@ -732,19 +730,19 @@ namespace frontend {
       return tmp;
     }
 
-    FilePostion* MakeFilePostion(CommandType t, const wstring &file_name, int line_num) {
+    FilePostion* MakeFilePostion(CommandType t, const std::wstring &file_name, int line_num) {
       FilePostion* tmp = new FilePostion(t, file_name, line_num);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Info* MakeInfo(const wstring &cls_name, const wstring &mthd_name) {
+    Info* MakeInfo(const std::wstring &cls_name, const std::wstring &mthd_name) {
       Info* tmp = new Info(cls_name, mthd_name);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Load* MakeLoad(CommandType type, const wstring &file_name) {
+    Load* MakeLoad(CommandType type, const std::wstring &file_name) {
       Load* tmp = new Load(type, file_name);
       nodes.push_back(tmp);
       return tmp;
@@ -780,13 +778,13 @@ namespace frontend {
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const wstring &char_string) {
+    CharacterString* MakeCharacterString(const std::wstring &char_string) {
       CharacterString* tmp = new CharacterString(char_string);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    NilLiteral* MakeNilLiteral(const wstring &file_name, const int line_num) {
+    NilLiteral* MakeNilLiteral(const std::wstring &file_name, const int line_num) {
       NilLiteral* tmp = new NilLiteral(file_name, line_num);
       expressions.push_back(tmp);
       return tmp;
@@ -804,7 +802,7 @@ namespace frontend {
       return tmp;
     }
 
-    Reference* MakeReference(const wstring &v) {
+    Reference* MakeReference(const std::wstring &v) {
       Reference* tmp = new Reference(v);
       calls.push_back(tmp);
       return tmp;

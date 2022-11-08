@@ -38,7 +38,7 @@
   ********************************/
 int main(int argc, char* argv[])
 {
-  wstring usage;
+  std::wstring usage;
   usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
   usage += L"Parameters:\n";
   usage += L"  -bin: [input] binary executable file\n";
@@ -82,30 +82,30 @@ int main(int argc, char* argv[])
 
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
-      cerr << L"Unable to load Winsock 2.2!" << endl;
+      std::cerr << L"Unable to load Winsock 2.2!" << std::endl;
       exit(1);
     }
 #endif
 
-    wstring cmd_line;
-    map<const wstring, wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
+    std::wstring cmd_line;
+    std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
     // start debugger
-    map<const wstring, wstring>::iterator result = arguments.find(L"bin");
+    std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"bin");
     if(result == arguments.end()) {
-      wcerr << usage << endl;
+      std::wcerr << usage << std::endl;
       return 1;
     }
-    const wstring& file_name_param = arguments[L"bin"];
+    const std::wstring& file_name_param = arguments[L"bin"];
 
-    wstring base_path_param = L".";
+    std::wstring base_path_param = L".";
     result = arguments.find(L"src_dir");
     if(result != arguments.end()) {
       base_path_param = arguments[L"src_dir"];
     }
 
-    wstring args_param;
-    const wstring args_str = L"args";
+    std::wstring args_param;
+    const std::wstring args_str = L"args";
     result = arguments.find(args_str);
     if(result != arguments.end()) {
       const size_t start = cmd_line.find(args_str) + args_str.size();
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 #ifdef _WIN32
     WSACleanup();
 #endif
-    wcerr << usage << endl;
+    std::wcerr << usage << std::endl;
     return 1;
   }
 
@@ -150,39 +150,39 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 {
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
-    const wstring file_name = frame->method->GetClass()->GetFileName();
+    const std::wstring file_name = frame->method->GetClass()->GetFileName();
 
     if(line_num > -1) {
       // continue to next line
       if(continue_state == 1 && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method) {
-        // wcout << L"--- CONTINE_STATE " << is_continue_state << L" --" << endl;
+        // std::wcout << L"--- CONTINE_STATE " << is_continue_state << L" --" << std::endl;
         continue_state++;
       }
 
       const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
       /*
       if(step_out) {
-        wcout << L"--- STEP_OUT --" << endl;
+        std::wcout << L"--- STEP_OUT --" << std::endl;
       }
       */
 
       const bool step_into = is_step_into && cur_frame && (frame->method != cur_frame->method || line_num != cur_line_num);
       /*
       if(step_into) {
-        wcout << L"--- STEP_INTO --" << endl;
+        std::wcout << L"--- STEP_INTO --" << std::endl;
       }
       */
 
       const bool found_next_line = is_next_line && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method;
       /*
       if(found_next_line) {
-        wcout << L"--- NEXT_LINE --" << endl;
+        std::wcout << L"--- NEXT_LINE --" << std::endl;
       }
       */
 
       const bool found_break = (continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name);
       if(found_break) {
-        // wcout << L"--- BREAK_POINT --" << endl;
+        // std::wcout << L"--- BREAK_POINT --" << std::endl;
         continue_state = 0;
       }
       
@@ -198,20 +198,20 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         is_step_into = is_step_out = is_next_line = false;
 
         // prompt for input
-        const wstring& long_name = cur_frame->method->GetName();
+        const std::wstring& long_name = cur_frame->method->GetName();
         const size_t end_index = long_name.find_last_of(':');
-        const wstring& cls_mthd_name = long_name.substr(0, end_index);
+        const std::wstring& cls_mthd_name = long_name.substr(0, end_index);
 
         // show break info
         const size_t mid_index = cls_mthd_name.find_last_of(':');
-        const wstring& cls_name = cls_mthd_name.substr(0, mid_index);
-        const wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
-        wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << endl;
+        const std::wstring& cls_name = cls_mthd_name.substr(0, mid_index);
+        const std::wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
+        std::wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << std::endl;
 
         // prompt for break command
         Command* command;
         do {
-          wstring line;
+          std::wstring line;
           ReadLine(line);
           if(line.size() > 0) {
             command = ProcessCommand(line);
@@ -230,7 +230,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 void Runtime::Debugger::ProcessSrc(Load* load) 
 {
   if(interpreter) {
-    wcout << L"unable to modify source path while program is running." << endl;
+    std::wcout << L"unable to modify source path while program is running." << std::endl;
     return;
   }
 
@@ -247,10 +247,10 @@ void Runtime::Debugger::ProcessSrc(Load* load)
       base_path_param += '/';
     }
 #endif
-    wcout << L"source file path: '" << base_path_param << L"'" << endl << endl;
+    std::wcout << L"source file path: '" << base_path_param << L"'" << std::endl << std::endl;
   }
   else {
-    wcout << L"unable to locate base path." << endl;
+    std::wcout << L"unable to locate base path." << std::endl;
     is_error = true;
   }
 }
@@ -260,7 +260,7 @@ void Runtime::Debugger::ProcessArgs(Load* load)
   ProcessArgs(load->GetFileName());
 }
 
-void Runtime::Debugger::ProcessArgs(const wstring& temp)
+void Runtime::Debugger::ProcessArgs(const std::wstring& temp)
 {
   // clear
   arguments.clear();
@@ -282,7 +282,7 @@ void Runtime::Debugger::ProcessArgs(const wstring& temp)
   wchar_t* token = wcstok(buffer, L"'", &state);
 #endif
   while(token) {
-    wstring str_token = Trim(token);
+    std::wstring str_token = Trim(token);
     if(!str_token.empty()) {
       arguments.push_back(str_token);
     }
@@ -292,7 +292,7 @@ void Runtime::Debugger::ProcessArgs(const wstring& temp)
     token = wcstok(nullptr, L"'", &state);
 #endif
   }
-  wcout << L"program arguments sets." << endl;
+  std::wcout << L"program arguments sets." << std::endl;
 
   // clean up
   free(buffer);
@@ -301,11 +301,11 @@ void Runtime::Debugger::ProcessArgs(const wstring& temp)
 
 void Runtime::Debugger::ProcessBin(Load* load) {
   if(interpreter) {
-    wcout << L"unable to load executable while program is running." << endl;
+    std::wcout << L"unable to load executable while program is running." << std::endl;
     return;
   }
 
-  wstring file_param = load->GetFileName();
+  std::wstring file_param = load->GetFileName();
   if(!EndsWith(file_param, L".obe")) {
     file_param += L".obe";
   }
@@ -319,10 +319,10 @@ void Runtime::Debugger::ProcessBin(Load* load) {
     arguments.clear();
     arguments.push_back(L"obr");
     arguments.push_back(program_file_param);
-    wcout << L"loaded binary: '" << program_file_param << L"'" << endl;
+    std::wcout << L"loaded binary: '" << program_file_param << L"'" << std::endl;
   }
   else {
-    wcerr << L"unable to load executable='" << program_file_param << "' at locate base path='" << base_path_param << L"'" << endl;
+    std::wcerr << L"unable to load executable='" << program_file_param << "' at locate base path='" << base_path_param << L"'" << std::endl;
     is_error = true;
   }
 }
@@ -343,20 +343,20 @@ void Runtime::Debugger::ProcessRun() {
     interpreter = new Runtime::StackInterpreter(cur_program, this);
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
 #ifdef _TIMING
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
-    wcout << L"---------------------------" << endl;
-    wcout << L"Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
-          << L" second(s)." << endl;
+    std::wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << std::endl;
+    std::wcout << L"---------------------------" << std::endl;
+    std::wcout << L"Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
+          << L" second(s)." << std::endl;
 #endif
 
 #ifdef _DEBUG
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    std::wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << std::endl;
 #endif
 
     ClearReload();
   }
   else {
-    wcout << L"program file not specified." << endl;
+    std::wcout << L"program file not specified." << std::endl;
   }
 }
 
@@ -406,22 +406,22 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
     line_num = cur_line_num;
   }
 
-  wstring file_name = break_command->GetFileName();
+  std::wstring file_name = break_command->GetFileName();
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
 
-  const wstring &path = base_path_param + file_name;
+  const std::wstring &path = base_path_param + file_name;
   if(file_name.size() != 0 && FileExists(path)) {
     if(AddBreak(line_num, file_name)) {
-      wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
+      std::wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << std::endl;
     }
     else {
-      wcout << L"breakpoint already exist or is invalid" << endl;
+      std::wcout << L"breakpoint already exist or is invalid" << std::endl;
     }
   }
   else {
-    wcout << L"file doesn't exist or isn't loaded." << endl;
+    std::wcout << L"file doesn't exist or isn't loaded." << std::endl;
     is_error = true;
   }
 }
@@ -431,7 +431,7 @@ void Runtime::Debugger::ProcessBreaks() {
     ListBreaks();
   }
   else {
-    wcout << L"no breakpoints defined." << endl;
+    std::wcout << L"no breakpoints defined." << std::endl;
   }
 }
 
@@ -441,22 +441,22 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
     line_num = cur_line_num;
   }
 
-  wstring file_name = delete_command->GetFileName();
+  std::wstring file_name = delete_command->GetFileName();
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
 
-  const wstring &path = base_path_param + file_name;
+  const std::wstring &path = base_path_param + file_name;
   if(file_name.size() != 0 && FileExists(path)) {
     if(DeleteBreak(line_num, file_name)) {
-      wcout << L"removed breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
+      std::wcout << L"removed breakpoint: file='" << file_name << L":" << line_num << L"'" << std::endl;
     }
     else {
-      wcout << L"breakpoint doesn't exist." << endl;
+      std::wcout << L"breakpoint doesn't exist." << std::endl;
     }
   }
   else {
-    wcout << L"file doesn't exist or isn't loaded." << endl;
+    std::wcout << L"file doesn't exist or isn't loaded." << std::endl;
     is_error = true;
   }
 }
@@ -478,87 +478,87 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
         switch(dclr_value.type) {
         case CHAR_PARM:
           if(reference->GetIndices()) {
-            wcout << L"cannot reference scalar variable" << endl;
+            std::wcout << L"cannot reference scalar variable" << std::endl;
           }
           else {
-            wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
+            std::wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << std::endl;
           }
           break;
 
         case INT_PARM:
           if(reference->GetIndices()) {
-            wcout << L"cannot reference scalar variable" << endl;
+            std::wcout << L"cannot reference scalar variable" << std::endl;
           }
           else {
             const long value = (long)reference->GetIntValue();
-            ios_base::fmtflags flags(wcout.flags());
-            wcout << L"print: type=Int/Byte/Bool, value=" << value << L"(" << hex << value << L')' << endl;
-            wcout.flags(flags);
+            std::ios_base::fmtflags flags(std::wcout.flags());
+            std::wcout << L"print: type=Int/Byte/Bool, value=" << value << L"(" << std::hex << value << L')' << std::endl;
+            std::wcout.flags(flags);
           }
           break;
 
 
         case FLOAT_PARM:
           if(reference->GetIndices()) {
-            wcout << L"cannot reference scalar variable" << endl;
+            std::wcout << L"cannot reference scalar variable" << std::endl;
           }
           else {
-            wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
+            std::wcout << L"print: type=Float, value=" << reference->GetFloatValue() << std::endl;
           }
           break;
 
         case BYTE_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Byte, value=" << (void*)((unsigned char)reference->GetIntValue()) << endl;
+            std::wcout << L"print: type=Byte, value=" << (void*)((unsigned char)reference->GetIntValue()) << std::endl;
           }
           else {
-            wcout << L"print: type=Byte[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
+            std::wcout << L"print: type=Byte[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
+              std::wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
-            wcout << endl;
+            std::wcout << std::endl;
           }
           break;
 
         case CHAR_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
+            std::wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << std::endl;
           }
           else {
-            wcout << L"print: type=Char[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
+            std::wcout << L"print: type=Char[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
+              std::wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
-            wcout << endl;
+            std::wcout << std::endl;
           }
           break;
 
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
             const long value = (long)reference->GetIntValue();
-            ios_base::fmtflags flags(wcout.flags());
-            wcout << L"print: type=Int, value=" << value << L"(" << hex << value << L')' << endl;
-            wcout.flags(flags);
+            std::ios_base::fmtflags flags(std::wcout.flags());
+            std::wcout << L"print: type=Int, value=" << value << L"(" << std::hex << value << L')' << std::endl;
+            std::wcout.flags(flags);
           }
           else {
-            wcout << L"print: type=Int[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
+            std::wcout << L"print: type=Int[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
+              std::wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
-            wcout << endl;
+            std::wcout << std::endl;
           }
           break;
 
         case FLOAT_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
+            std::wcout << L"print: type=Float, value=" << reference->GetFloatValue() << std::endl;
           }
           else {
-            wcout << L"print: type=Float[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
+            std::wcout << L"print: type=Float[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
+              std::wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
-            wcout << endl;
+            std::wcout << std::endl;
           }
           break;
 
@@ -568,10 +568,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             if(instance) {
               size_t* string_instance = (size_t*)instance[0];
               const wchar_t* char_string = (wchar_t*)(string_instance + 3);
-              wcout << L"print: type=" << ref_klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", value=\"" << char_string << L"\"" << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           //
@@ -582,10 +582,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             if(instance && !reference->GetIndices()) {
               size_t* vector_instance = (size_t*)instance[0];
               const long vector_size = (long)vector_instance[1];
-              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << vector_size << endl;
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << vector_size << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else if(ref_klass && (ref_klass->GetName() == L"Collection.Generic.List" || ref_klass->GetName() == L"Collection.Generic.CompareList")) {
@@ -593,10 +593,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             if(instance && !reference->GetIndices()) {
               size_t* list_instance = (size_t*)instance[0];
               const long list_size = (long)list_instance[1];
-              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << list_size << endl;
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << list_size << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Hash") {
@@ -605,10 +605,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               size_t* hash_instance = (size_t*)instance[0];
               const long hash_size = (long)hash_instance[1];
               const long hash_capacity = (long)hash_instance[2];
-              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << endl;
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Map") {
@@ -616,10 +616,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             if(instance && !reference->GetIndices()) {
               size_t* map_instance = (size_t*)instance[0];
               const long map_size = (long)map_instance[2];
-              wcout << L"print: type=" << ref_klass->GetName() << L", size=" << map_size << endl;
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << map_size << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           //
@@ -628,42 +628,42 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"System.IntHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << endl;
+              std::wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else if(ref_klass && ref_klass->GetName() == L"System.ByteHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              wcout << L"print: type=System.ByteHolder, value=" << (void*)((unsigned char)instance[0]) << endl;
+              std::wcout << L"print: type=System.ByteHolder, value=" << (void*)((unsigned char)instance[0]) << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else if(ref_klass && ref_klass->GetName() == L"System.CharHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
+              std::wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else if(ref_klass && ref_klass->GetName() == L"System.FloatHolder") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
               FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
-              wcout << L"print: type=System.FloatHolder, value=" << value << endl;
+              std::wcout << L"print: type=System.FloatHolder, value=" << value << std::endl;
             }
             else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else {
-            wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << endl;
+            std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
           }
           break;
 
@@ -676,39 +676,39 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
                 if(klass->GetName() == L"System.String") {
                   size_t* value_instance = (size_t*)instance[0];
                   const wchar_t* char_string = (wchar_t*)(value_instance + 3);
-                  wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << endl;
+                  std::wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << std::endl;
                 }
                 else if(klass->GetName() == L"System.IntHolder") {
-                  wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << endl;
+                  std::wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << std::endl;
                 }
                 else if(klass->GetName() == L"System.ByteHolder") {
-                  wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << endl;
+                  std::wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << std::endl;
                 }
                 else if(klass->GetName() == L"System.CharHolder") {
-                  wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << endl;
+                  std::wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << std::endl;
                 }
                 else if(klass->GetName() == L"System.FloatHolder") {
                   FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
-                  wcout << L"print: type=System.FloatHolder, value=" << value << endl;
+                  std::wcout << L"print: type=System.FloatHolder, value=" << value << std::endl;
                 }
                 else {
-                  wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
+                  std::wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << std::endl;
                 }
               }
               else {
-                wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
+                std::wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << std::endl;
               }
             }
             else {
-              wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
+              std::wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
           else {
-            wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
+            std::wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
             if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
+              std::wcout << L", dimension=" << reference->GetArrayDimension() << L", size=" << reference->GetArraySize();
             }
-            wcout << endl;
+            std::wcout << std::endl;
           }
           break;
 
@@ -719,40 +719,40 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
             StackClass* klass = cur_program->GetClass(cls_id);
             if(klass) {
-              wcout << L"print: type=Function, class='" << klass->GetName() << L"', method='" << PrintMethod(klass->GetMethod(mthd_id)) << L"'" << endl;
+              std::wcout << L"print: type=Function, class='" << klass->GetName() << L"', method='" << PrintMethod(klass->GetMethod(mthd_id)) << L"'" << std::endl;
             }
           }
           else {
-            wcout << L"print: type=Function, class=<unknown>, method=<unknown>" << endl;
+            std::wcout << L"print: type=Function, class=<unknown>, method=<unknown>" << std::endl;
           }
         }
           break;
         }
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
         is_error = true;
       }
       break;
 
     case NIL_LIT_EXPR:
-      wcout << L"print: type=Nil, value=Nil" << endl;
+      std::wcout << L"print: type=Nil, value=Nil" << std::endl;
       break;
 
     case CHAR_LIT_EXPR:
-      wcout << L"print: type=Char, value=" << (wchar_t)expression->GetIntValue() << endl;
+      std::wcout << L"print: type=Char, value=" << (wchar_t)expression->GetIntValue() << std::endl;
       break;
 
     case INT_LIT_EXPR:
-      wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << endl;
+      std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << std::endl;
       break;
 
     case FLOAT_LIT_EXPR:
-      wcout << L"print: type=Float, value=" << expression->GetFloatValue() << endl;
+      std::wcout << L"print: type=Float, value=" << expression->GetFloatValue() << std::endl;
       break;
 
     case BOOLEAN_LIT_EXPR:
-      wcout << L"print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      std::wcout << L"print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << std::endl;
       break;
 
     case AND_EXPR:
@@ -763,7 +763,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case GTR_EQL_EXPR:
     case LES_EQL_EXPR:
     case GTR_EXPR:
-      wcout << L"print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      std::wcout << L"print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << std::endl;
       break;
 
     case ADD_EXPR:
@@ -772,10 +772,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case DIV_EXPR:
     case MOD_EXPR:
       if(expression->GetFloatEval()) {
-        wcout << L"print: type=Float, value=" << expression->GetFloatValue() << endl;
+        std::wcout << L"print: type=Float, value=" << expression->GetFloatValue() << std::endl;
       }
       else {
-        wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << endl;
+        std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << std::endl;
       }
       break;
 
@@ -1028,7 +1028,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
     }
     else {
-      wcout << L"modulus operation requires integer values." << endl;
+      std::wcout << L"modulus operation requires integer values." << std::endl;
       is_error = true;
     }
     break;
@@ -1102,12 +1102,12 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
         }
       }
       else {
-        wcout << L"unknown variable (or no debug information available)." << endl;
+        std::wcout << L"unknown variable (or no debug information available)." << std::endl;
         is_error = true;
       }
     }
     else {
-      wcout << L"unable to find reference." << endl;
+      std::wcout << L"unable to find reference." << std::endl;
       is_error = true;
     }
   }
@@ -1217,7 +1217,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
       }
     }
     else {
-      wcout << L"unable to de-reference empty frame." << endl;
+      std::wcout << L"unable to de-reference empty frame." << std::endl;
       is_error = true;
     }
   }
@@ -1234,7 +1234,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
     }
   }
   else {
-    wcout << L"current object reference is Nil" << endl;
+    std::wcout << L"current object reference is Nil" << std::endl;
     is_error = true;
   }
 }
@@ -1260,8 +1260,8 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     ExpressionList* indices = reference->GetIndices();
     if(indices) {
       // calculate indices values
-      vector<Expression*> expressions = indices->GetExpressions();
-      vector<long> values;
+      std::vector<Expression*> expressions = indices->GetExpressions();
+      std::vector<long> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -1287,12 +1287,12 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
           reference->SetIntValue(((char*)array)[array_index]);
         }
         else {
-          wcout << L"array index out of bounds." << endl;
+          std::wcout << L"array index out of bounds." << std::endl;
           is_error = true;
         }
       }
       else {
-        wcout << L"array dimension mismatch." << endl;
+        std::wcout << L"array dimension mismatch." << std::endl;
         is_error = true;
       }
     }
@@ -1304,7 +1304,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     }
   }
   else {
-    wcout << L"current array value is Nil" << endl;
+    std::wcout << L"current array value is Nil" << std::endl;
     is_error = true;
   }
 }
@@ -1319,8 +1319,8 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
     ExpressionList* indices = reference->GetIndices();
     if(indices) {
       // calculate indices values
-      vector<Expression*> expressions = indices->GetExpressions();
-      vector<int> values;
+      std::vector<Expression*> expressions = indices->GetExpressions();
+      std::vector<int> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -1346,12 +1346,12 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
           reference->SetIntValue(((wchar_t*)array)[array_index]);
         }
         else {
-          wcout << L"array index out of bounds." << endl;
+          std::wcout << L"array index out of bounds." << std::endl;
           is_error = true;
         }
       }
       else {
-        wcout << L"array dimension mismatch." << endl;
+        std::wcout << L"array dimension mismatch." << std::endl;
         is_error = true;
       }
     }
@@ -1363,7 +1363,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
     }
   }
   else {
-    wcout << L"current array value is Nil" << endl;
+    std::wcout << L"current array value is Nil" << std::endl;
     is_error = true;
   }
 }
@@ -1378,8 +1378,8 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
     ExpressionList* indices = reference->GetIndices();
     if(indices) {
       // calculate indices values
-      vector<Expression*> expressions = indices->GetExpressions();
-      vector<int> values;
+      std::vector<Expression*> expressions = indices->GetExpressions();
+      std::vector<int> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -1410,7 +1410,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
             reference->SetFloatValue(value);
           }
           else {
-            wcout << L"array index out of bounds." << endl;
+            std::wcout << L"array index out of bounds." << std::endl;
             is_error = true;
           }
         }
@@ -1420,13 +1420,13 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
             reference->SetIntValue(array[array_index]);
           }
           else {
-            wcout << L"array index out of bounds." << endl;
+            std::wcout << L"array index out of bounds." << std::endl;
             is_error = true;
           }
         }
       }
       else {
-        wcout << L"array dimension mismatch." << endl;
+        std::wcout << L"array dimension mismatch." << std::endl;
         is_error = true;
       }
     }
@@ -1438,25 +1438,25 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
     }
   }
   else {
-    wcout << L"current array value is Nil" << endl;
+    std::wcout << L"current array value is Nil" << std::endl;
     is_error = true;
   }
 }
 
-wstring Runtime::Debugger::PrintMethod(StackMethod* method)
+std::wstring Runtime::Debugger::PrintMethod(StackMethod* method)
 {
   return MethodFormatter::Format(method->GetName());
 }
 
-bool Runtime::Debugger::FileExists(const wstring&file_name, bool is_exe /*= false*/)
+bool Runtime::Debugger::FileExists(const std::wstring&file_name, bool is_exe /*= false*/)
 {
-  const string name = UnicodeToBytes(file_name);
-  const string ending = ".obl";
+  const std::string name = UnicodeToBytes(file_name);
+  const std::string ending = ".obl";
   if(ending.size() > name.size() && !equal(ending.rbegin(), ending.rend(), name.rbegin())) {
     return false;
   }
 
-  ifstream touch(name.c_str(), ios::binary);
+  std::ifstream touch(name.c_str(), std::ios::binary);
   if(touch.is_open()) {
     touch.close();
     return true;
@@ -1465,9 +1465,9 @@ bool Runtime::Debugger::FileExists(const wstring&file_name, bool is_exe /*= fals
   return false;
 }
 
-bool Runtime::Debugger::DirectoryExists(const wstring& wdir_name)
+bool Runtime::Debugger::DirectoryExists(const std::wstring& wdir_name)
 {
-  const string dir_name = UnicodeToBytes(wdir_name);
+  const std::string dir_name = UnicodeToBytes(wdir_name);
 #ifdef _WIN32
   HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
                            FILE_SHARE_READ, nullptr, OPEN_EXISTING,
@@ -1490,7 +1490,7 @@ bool Runtime::Debugger::DirectoryExists(const wstring& wdir_name)
 #endif
 }
 
-bool Runtime::Debugger::DeleteBreak(int line_num, const wstring& file_name)
+bool Runtime::Debugger::DeleteBreak(int line_num, const std::wstring& file_name)
 {
   UserBreak* user_break = FindBreak(line_num, file_name);
   if(user_break) {
@@ -1506,9 +1506,9 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num)
   return FindBreak(line_num, cur_file_name);
 }
 
-Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& file_name)
+Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstring& file_name)
 {
-  for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
     if(user_break->line_num == line_num && user_break->file_name == file_name) {
       return *iter;
@@ -1518,7 +1518,7 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& fi
   return nullptr;
 }
 
-bool Runtime::Debugger::AddBreak(int line_num, const wstring& file_name)
+bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name)
 {
   if(line_num > 0 && !FindBreak(line_num, file_name)) {
     UserBreak* user_break = new UserBreak;
@@ -1533,10 +1533,10 @@ bool Runtime::Debugger::AddBreak(int line_num, const wstring& file_name)
 
 void Runtime::Debugger::ListBreaks()
 {
-  wcout << L"breaks:" << endl;
-  list<UserBreak*>::iterator iter;
+  std::wcout << L"breaks:" << std::endl;
+  std::list<UserBreak*>::iterator iter;
   for(iter = breaks.begin(); iter != breaks.end(); iter++) {
-    wcout << L"  break: file='" << (*iter)->file_name << L":" << (*iter)->line_num << L"'" << endl;
+    std::wcout << L"  break: file='" << (*iter)->file_name << L":" << (*iter)->line_num << L"'" << std::endl;
   }
 }
 
@@ -1547,57 +1547,57 @@ void Runtime::Debugger::PrintDeclarations(StackDclr** dclrs, int dclrs_num)
 
     // parse name
     size_t param_name_index = dclrs[i]->name.find_last_of(':');
-    const wstring& param_name = dclrs[i]->name.substr(param_name_index + 1);
-    wcout << L"    parameter: name='" << param_name << L"', ";
+    const std::wstring& param_name = dclrs[i]->name.substr(param_name_index + 1);
+    std::wcout << L"    parameter: name='" << param_name << L"', ";
 
     // parse type
     switch(dclr->type) {
     case INT_PARM:
-      wcout << L"type=Int" << endl;
+      std::wcout << L"type=Int" << std::endl;
       break;
 
     case CHAR_PARM:
-      wcout << L"type=Char" << endl;
+      std::wcout << L"type=Char" << std::endl;
       break;
 
     case FLOAT_PARM:
-      wcout << L"type=Float" << endl;
+      std::wcout << L"type=Float" << std::endl;
       break;
 
     case BYTE_ARY_PARM:
-      wcout << L"type=Byte[]" << endl;
+      std::wcout << L"type=Byte[]" << std::endl;
       break;
 
     case CHAR_ARY_PARM:
-      wcout << L"type=Char[]" << endl;
+      std::wcout << L"type=Char[]" << std::endl;
       break;
 
     case INT_ARY_PARM:
-      wcout << L"type=Int[]" << endl;
+      std::wcout << L"type=Int[]" << std::endl;
       break;
 
     case FLOAT_ARY_PARM:
-      wcout << L"type=Float[]" << endl;
+      std::wcout << L"type=Float[]" << std::endl;
       break;
 
     case OBJ_PARM:
-      wcout << L"type=Object" << endl;
+      std::wcout << L"type=Object" << std::endl;
       break;
 
     case OBJ_ARY_PARM:
-      wcout << L"type=Object[]" << endl;
+      std::wcout << L"type=Object[]" << std::endl;
       break;
 
     case FUNC_PARM:
-      wcout << L"type=Function" << endl;
+      std::wcout << L"type=Function" << std::endl;
       break;
     }
   }
 }
 
-Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
+Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
 #ifdef _DEBUG
-  wcout << L"input: |" << line << L"|" << endl;
+  std::wcout << L"input: |" << line << L"|" << std::endl;
 #endif
 
   // parser input
@@ -1620,14 +1620,14 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     case QUIT_COMMAND:
       ClearBreaks();
       ClearProgram();
-      wcout << L"\nGoodbye..." << endl;
+      std::wcout << L"\nGoodbye..." << std::endl;
       exit(0);
       break;
 
     case LIST_COMMAND: {
       FilePostion* file_pos = static_cast<FilePostion*>(command);
 
-      wstring file_name;
+      std::wstring file_name;
       if(file_pos->GetFileName().size() > 0) {
         file_name = file_pos->GetFileName();
       }
@@ -1643,16 +1643,16 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         line_num = cur_line_num;
       }
 
-      const wstring &path = base_path_param + file_name;
+      const std::wstring &path = base_path_param + file_name;
       if(FileExists(path) && line_num > 0) {
         SourceFile src_file(path, cur_line_num, this);
         if(!src_file.Print(line_num)) {
-          wcout << L"invalid line number." << endl;
+          std::wcout << L"invalid line number." << std::endl;
           is_error = true;
         }
       }
       else {
-        wcout << L"source file or line number doesn't exist, ensure the program is running." << endl;
+        std::wcout << L"source file or line number doesn't exist, ensure the program is running." << std::endl;
         is_error = true;
       }
     }
@@ -1675,14 +1675,14 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         ProcessRun();
       }
       else {
-        wcout << L"instance already running." << endl;
+        std::wcout << L"instance already running." << std::endl;
         is_error = true;
       }
       break;
 
     case CLEAR_COMMAND: {
-      wcout << L"  are sure you want to clear all breakpoints? [y/n]" << endl << L"  ";
-      wstring line;
+      std::wcout << L"  are sure you want to clear all breakpoints? [y/n]" << std::endl << L"  ";
+      std::wstring line;
       ReadLine(line);
       if(line == L"y" || line == L"yes") {
         ClearBreaks();
@@ -1699,7 +1699,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         is_step_into = true;
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
       }
       break;
 
@@ -1708,7 +1708,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         is_next_line = true;
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
       }
       break;
 
@@ -1718,7 +1718,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         jump_stack_pos = cur_call_stack_pos;
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
       }
       break;
 
@@ -1727,7 +1727,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         continue_state = 1;
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
       }
       break;
 
@@ -1735,10 +1735,10 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(interpreter) {
         const size_t alloc_mem = MemoryManager::GetAllocationSize();
         const size_t max_mem = MemoryManager::GetMaxMemory();
-        wcout << L"memory: allocated=" << ToFloat(alloc_mem) << L", collection=" << ToFloat(max_mem) << endl;
+        std::wcout << L"memory: allocated=" << ToFloat(alloc_mem) << L", collection=" << ToFloat(max_mem) << std::endl;
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
       }
       break;
 
@@ -1748,30 +1748,30 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
     case STACK_COMMAND:
       if(interpreter) {
-        wcout << L"stack:" << endl;
+        std::wcout << L"stack:" << std::endl;
         StackMethod* method = cur_frame->method;
-        wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << L"'";
+        std::wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << L"'";
         const long ip = cur_frame->ip;
         if(ip > -1) {
           StackInstr* instr = cur_frame->method->GetInstruction(ip);
-          wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
+          std::wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << std::endl;
         }
         else {
-          wcerr << endl;
+          std::wcerr << std::endl;
         }
 
         long pos = cur_call_stack_pos;
         while(pos--) {
           StackMethod* method = cur_call_stack[pos]->method;
           if(method->GetClass()) {
-            wcerr << L"  frame: pos=" << pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << "'";
+            std::wcerr << L"  frame: pos=" << pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << "'";
             const long ip = cur_call_stack[pos]->ip;
             if(ip > -1) {
               StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
-              wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
+              std::wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << std::endl;
             }
             else {
-              wcerr << endl;
+              std::wcerr << std::endl;
             }
           }
         }
@@ -1779,7 +1779,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
       }
       else {
-        wcout << L"program is not running." << endl;
+        std::wcout << L"program is not running." << std::endl;
       }
       break;
 
@@ -1792,7 +1792,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     return command;
   }
   else {
-    wcout << L"-- Unable to process command --" << endl;
+    std::wcout << L"-- Unable to process command --" << std::endl;
   }
 
   is_error = false;
@@ -1801,11 +1801,11 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 }
 
 void Runtime::Debugger::ProcessInfo(Info* info) {
-  const wstring &cls_name = info->GetClassName();
-  const wstring &mthd_name = info->GetMethodName();
+  const std::wstring &cls_name = info->GetClassName();
+  const std::wstring &mthd_name = info->GetMethodName();
 
 #ifdef _DEBUG
-  wcout << L"--- info class='" << cls_name << L"', method='" << mthd_name << L"' ---" << endl;
+  std::wcout << L"--- info class='" << cls_name << L"', method='" << mthd_name << L"' ---" << std::endl;
 #endif
 
   if(interpreter) {
@@ -1813,25 +1813,25 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     if(cls_name.size() > 0 && mthd_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
       if(klass && klass->IsDebug()) {
-        vector<StackMethod*> methods = klass->GetMethods(mthd_name);
+        std::vector<StackMethod*> methods = klass->GetMethods(mthd_name);
         if(methods.size() > 0) {
           for(size_t i = 0; i < methods.size(); i++) {
             StackMethod* method = methods[i];
-            wcout << L"  class: type=" << klass->GetName() << L", method="
-                  << PrintMethod(method) << endl;
+            std::wcout << L"  class: type=" << klass->GetName() << L", method="
+                  << PrintMethod(method) << std::endl;
             if(method->GetNumberDeclarations() > 0) {
-              wcout << L"  parameters:" << endl;
+              std::wcout << L"  parameters:" << std::endl;
               PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
             }
           }
         }
         else {
-          wcout << L"unable to find method." << endl;
+          std::wcout << L"unable to find method." << std::endl;
           is_error = true;
         }
       }
       else {
-        wcout << L"unable to find class." << endl;
+        std::wcout << L"unable to find class." << std::endl;
         is_error = true;
       }
     }
@@ -1839,45 +1839,45 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     else if(cls_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
       if(klass && klass->IsDebug()) {
-        wcout << L"  class: type=" << klass->GetName() << endl;
+        std::wcout << L"  class: type=" << klass->GetName() << std::endl;
         // print
-        wcout << L"  parameters:" << endl;
+        std::wcout << L"  parameters:" << std::endl;
         if(klass->GetNumberInstanceDeclarations() > 0) {
           PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
           PrintDeclarations(klass->GetClassDeclarations(), klass->GetNumberClassDeclarations());
         }
       }
       else {
-        wcout << L"unable to find class." << endl;
+        std::wcout << L"unable to find class." << std::endl;
         is_error = true;
       }
     }
     // general info
     else {
-      wcout << L"general info:" << endl;
-      wcout << L"  program executable: file='" << program_file_param << L"'" << endl;
+      std::wcout << L"general info:" << std::endl;
+      std::wcout << L"  program executable: file='" << program_file_param << L"'" << std::endl;
 
       // parse method and class names
-      const wstring &long_name = cur_frame->method->GetName();
+      const std::wstring &long_name = cur_frame->method->GetName();
       size_t end_index = long_name.find_last_of(':');
-      const wstring &cls_mthd_name = long_name.substr(0, end_index);
+      const std::wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       size_t mid_index = cls_mthd_name.find_last_of(':');
-      const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
-      const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
+      const std::wstring &cls_name = cls_mthd_name.substr(0, mid_index);
+      const std::wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
 
       // print
-      wcout << L"  current file='" << cur_file_name << L":" << cur_line_num << L"', method='"
-            << cls_name << L"->" << mthd_name << L"(..)'" << endl;
+      std::wcout << L"  current file='" << cur_file_name << L":" << cur_line_num << L"', method='"
+            << cls_name << L"->" << mthd_name << L"(..)'" << std::endl;
     }
   }
   else {
-    wcout << L"program is not running." << endl;
+    std::wcout << L"program is not running." << std::endl;
   }
 }
 
 void Runtime::Debugger::ClearBreaks() {
-  wcout << L"breakpoints cleared." << endl;
+  std::wcout << L"breakpoints cleared." << std::endl;
   while(!breaks.empty()) {
     UserBreak* tmp = breaks.front();
     breaks.erase(breaks.begin());
@@ -1924,24 +1924,24 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
 }
 
 void Runtime::Debugger::Debug() {
-  wcout << L"-------------------------------------" << endl;
-  wcout << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << endl;
-  wcout << L"-------------------------------------" << endl << endl;
+  std::wcout << L"-------------------------------------" << std::endl;
+  std::wcout << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << std::endl;
+  std::wcout << L"-------------------------------------" << std::endl << std::endl;
 
   if(!EndsWith(program_file_param, L".obe")) {
     program_file_param += L".obe";
   }
 
   if(FileExists(program_file_param, true) && DirectoryExists(base_path_param)) {
-    wcout << L"loaded binary: '" << program_file_param << L"'" << endl;
-    wcout << L"source file path: '" << base_path_param << L"'" << endl << endl;
+    std::wcout << L"loaded binary: '" << program_file_param << L"'" << std::endl;
+    std::wcout << L"source file path: '" << base_path_param << L"'" << std::endl << std::endl;
     // clear arguments
     arguments.clear();
     arguments.push_back(L"obr");
     arguments.push_back(program_file_param);
   }
   else {
-    wcerr << L"unable to load executable='" << program_file_param << "' at locate base path='" << base_path_param << L"'" << endl;
+    std::wcerr << L"unable to load executable='" << program_file_param << "' at locate base path='" << base_path_param << L"'" << std::endl;
     exit(1);
   }
 
@@ -1958,7 +1958,7 @@ void Runtime::Debugger::Debug() {
 
   // enter feedback loop
   while(true) {
-    wstring line;
+    std::wstring line;
     ReadLine(line);
     if(line.size() > 0) {
       ProcessCommand(line);
@@ -1988,7 +1988,7 @@ bool Runtime::SourceFile::Print(int start)
   // find leading whitespace
   int leading = 160;
   for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
-    const wstring line = lines[i];
+    const std::wstring line = lines[i];
     int j = 0;
     while(j < (int)line.size() && (line[j] == L' ' || line[j] == L'\t')) {
       j++;
@@ -2001,7 +2001,7 @@ bool Runtime::SourceFile::Print(int start)
 
   for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
     // trim leading whitespace
-    wstring line = lines[i];
+    std::wstring line = lines[i];
     const int line_size = (int)line.size();
     if(line_size > 0 && (line[0] == L' ' || line[0] == L'\t') && line_size > leading) {
       line = line.substr(leading);
@@ -2010,16 +2010,16 @@ bool Runtime::SourceFile::Print(int start)
     const bool is_cur_line_num = i + 1 == cur_line_num;
     const bool is_break_point = debugger->FindBreak(i + 1);
     if(is_cur_line_num && is_break_point) {
-      wcout << right << L"#>" << setw(window) << (i + 1) << L": " << line << endl;
+      std::wcout << std::right << L"#>" << std::setw(window) << (i + 1) << L": " << line << std::endl;
     }
     else if(is_cur_line_num) {
-      wcout << right << L"=>" << setw(window) << (i + 1) << L": " << line << endl;
+      std::wcout << std::right << L"=>" << std::setw(window) << (i + 1) << L": " << line << std::endl;
     }
     else if(is_break_point) {
-      wcout << right << L"# " << setw(window) << (i + 1) << L": " << line << endl;
+      std::wcout << std::right << L"# " << std::setw(window) << (i + 1) << L": " << line << std::endl;
     }
     else {
-      wcout << right << setw(window + 2) << (i + 1) << L": " << line << endl;
+      std::wcout << std::right << std::setw(window + 2) << (i + 1) << L": " << line << std::endl;
     }
   }
 

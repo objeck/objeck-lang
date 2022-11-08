@@ -55,10 +55,10 @@ void Parser::LoadErrorCodes()
  ****************************/
 void Parser::ProcessError(enum TokenType type)
 {
-  wstring msg = error_msgs[type];
+  std::wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  wcout << L"\tError: "
-    << msg << endl;
+  std::wcout << L"\tError: "
+    << msg << std::endl;
 #endif
 
   errors.push_back(msg);
@@ -67,10 +67,10 @@ void Parser::ProcessError(enum TokenType type)
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring &msg)
+void Parser::ProcessError(const std::wstring &msg)
 {
 #ifdef _DEBUG
-  wcout << L"\tError: " << msg << endl;
+  std::wcout << L"\tError: " << msg << std::endl;
 #endif
 
   errors.push_back(msg);
@@ -84,7 +84,7 @@ bool Parser::CheckErrors()
   // check and process errors
   if(errors.size()) {
     for(size_t i = 0; i < errors.size(); i++) {
-      wcerr << errors[i] << endl;
+      std::wcerr << errors[i] << std::endl;
     }
     // clean up
     return false;
@@ -96,10 +96,10 @@ bool Parser::CheckErrors()
 /****************************
  * Starts the parsing process.
  ****************************/
-Command* Parser::Parse(const wstring &line)
+Command* Parser::Parse(const std::wstring &line)
 {
 #ifdef _DEBUG
-  wcout << L"\n---------- Scanning/Parsing ---------" << endl;
+  std::wcout << L"\n---------- Scanning/Parsing ---------" << std::endl;
 #endif
   scanner = new Scanner(line);
   NextToken();
@@ -116,7 +116,7 @@ Command* Parser::Parse(const wstring &line)
 /****************************
  * Parses a file.
  ****************************/
-Command* Parser::ParseLine(const wstring &line)
+Command* Parser::ParseLine(const std::wstring &line)
 {
   Command* command = ParseStatement(0);
   if(!Match(TOKEN_END_OF_STREAM)) {
@@ -237,7 +237,7 @@ Command* Parser::ParseList(int depth) {
 #endif
   NextToken();
 
-  wstring file_name;
+  std::wstring file_name;
   int line_num = -1;
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
@@ -284,7 +284,7 @@ Command* Parser::ParseLoad(CommandType type, int depth) {
 #endif
   NextToken();
 
-  wstring file_name;
+  std::wstring file_name;
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
   }
@@ -308,7 +308,7 @@ Command* Parser::ParseBreakDelete(bool is_break, int depth) {
   NextToken();
 
   // file name
-  wstring file_name;
+  std::wstring file_name;
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
     NextToken();
@@ -342,8 +342,8 @@ Command* Parser::ParsePrint(int depth) {
 }
 
 Command* Parser::ParseInfo(int depth) {
-  wstring cls_name;
-  wstring mthd_name;
+  std::wstring cls_name;
+  std::wstring mthd_name;
 
   NextToken();
 
@@ -680,7 +680,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   Expression* expression = nullptr;
 
   if(Match(TOKEN_IDENT)) {
-    const wstring &ident = scanner->GetToken()->GetIdentifier();
+    const std::wstring &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
     expression = ParseReference(ident, depth + 1);
   }
@@ -735,7 +735,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
       case TOKEN_CHAR_STRING_LIT:
       {
-        const wstring &ident = scanner->GetToken()->GetIdentifier();
+        const std::wstring &ident = scanner->GetToken()->GetIdentifier();
         expression = TreeFactory::Instance()->MakeCharacterString(ident);
         NextToken();
       }
@@ -785,7 +785,7 @@ Reference* Parser::ParseReference(int depth)
 /****************************
  * Parses a instance reference.
  ****************************/
-Reference* Parser::ParseReference(const wstring &ident, int depth)
+Reference* Parser::ParseReference(const std::wstring &ident, int depth)
 {
 #ifdef _DEBUG
   Show(L"Instance reference", depth);
@@ -818,7 +818,7 @@ void Parser::ParseReference(Reference* reference, int depth)
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const wstring &ident = scanner->GetToken()->GetIdentifier();
+  const std::wstring &ident = scanner->GetToken()->GetIdentifier();
   NextToken();
 
   if(reference) {
