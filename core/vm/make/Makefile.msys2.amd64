@@ -2,19 +2,23 @@ ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -W
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS= jit_amd_lp64.a memory.a
+OBJ_LIBS=jit_amd_lp64.a memory.a win32.a
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
+WIN32_PATH=arch/win32
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) win32.o -L/usr/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/usr/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.msys2.amd64
 	
 jit_amd_lp64.a:
 	cd $(JIT_PATH); make -f make/Makefile.msys2.amd64
+
+win32.a:
+	cd $(WIN32_PATH); make -f make/Makefile.msys2.amd64	
 	
 %.o: %.cpp
 	$(CC) -m64 -I/usr/include $(ARGS) -c $< 
