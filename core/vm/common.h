@@ -1754,7 +1754,7 @@ class TrapProcessor {
            size_t* &op_stack, long* &stack_pos);
 
   //
-  // creates a wstring object instance
+  // creates a string object instance
   //
   static inline size_t* CreateStringObject(const std::wstring &value_str, StackProgram* program, size_t* &op_stack, long* &stack_pos);
 
