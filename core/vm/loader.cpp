@@ -215,7 +215,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
       exit(1);
     }
 #ifdef _DEBUG
-    std::wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::std::endl;
+    std::wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
 #endif
 
     free(buffer);

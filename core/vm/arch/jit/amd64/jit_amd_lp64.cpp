@@ -973,7 +973,7 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
       }
 
 #ifdef _DEBUG_JIT
-        std::wcout << L"  " << (++instr_count) << L": [je]" << std::std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
       // compare with register
       AddMachineCode(0x0f);

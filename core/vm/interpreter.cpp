@@ -2859,7 +2859,7 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const std::wstring& value_
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
-  // copy wstring
+  // copy string
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
 #ifdef _WIN32
   wcsncpy_s(char_array_ptr, char_array_size + 1, value_str.c_str(), char_array_size);
