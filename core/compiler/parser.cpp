@@ -48,9 +48,9 @@ bool Parser::IsBasicType(ScannerTokenType type)
   return false;
 }
 
-const wstring Parser::GetScopeName(const wstring& ident)
+const std::wstring Parser::GetScopeName(const std::wstring& ident)
 {
-  wstring scope_name;
+  std::wstring scope_name;
   if(current_method) {
     scope_name = current_method->GetName() + L':' + ident;
   }
@@ -64,9 +64,9 @@ const wstring Parser::GetScopeName(const wstring& ident)
   return scope_name;
 }
 
-const wstring Parser::GetEnumScopeName(const wstring& ident)
+const std::wstring Parser::GetEnumScopeName(const std::wstring& ident)
 {
-  wstring scope_name;
+  std::wstring scope_name;
   if(current_class) {
     scope_name = current_class->GetName() + L"#" + ident;
   }
@@ -77,9 +77,9 @@ const wstring Parser::GetEnumScopeName(const wstring& ident)
   return scope_name;
 }
 
-wstring Parser::ParseBundleName()
+std::wstring Parser::ParseBundleName()
 {
-  wstring name;
+  std::wstring name;
   if(Match(TOKEN_IDENT)) {
     while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
       name += scanner->GetToken()->GetIdentifier();
@@ -128,43 +128,43 @@ void Parser::LoadErrorCodes()
  ****************************/
 void Parser::ProcessError(ScannerTokenType type)
 {
-  wstring msg = error_msgs[type];
+  std::wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << std::endl;
 #endif
 
-  const wstring& str_line_num = ToString(GetLineNumber());
-  const wstring& str_line_pos = ToString(GetLinePosition());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  const std::wstring& str_line_num = ToString(GetLineNumber());
+  const std::wstring& str_line_pos = ToString(GetLinePosition());
+  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring &msg)
+void Parser::ProcessError(const std::wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << std::endl;
 #endif
 
-  const wstring &str_line_num = ToString(GetLineNumber());
-  const wstring& str_line_pos = ToString(GetLinePosition());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  const std::wstring &str_line_num = ToString(GetLineNumber());
+  const std::wstring& str_line_pos = ToString(GetLinePosition());
+  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring &msg, ScannerTokenType sync)
+void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L":(" << GetLineNumber() << L',' << GetLinePosition() << L"): " << msg << std::endl;
 #endif
 
-  const wstring &str_line_num = ToString(GetLineNumber());
-  const wstring& str_line_pos = ToString(GetLinePosition());
+  const std::wstring &str_line_num = ToString(GetLineNumber());
+  const std::wstring& str_line_pos = ToString(GetLinePosition());
 
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -175,15 +175,15 @@ void Parser::ProcessError(const wstring &msg, ScannerTokenType sync)
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring &msg, ParseNode * node)
+void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber()
-    << L": " << msg << endl;
+    << L": " << msg << std::endl;
 #endif
 
-  const wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
+  const std::wstring &str_line_num = ToString(node->GetLineNumber());
+  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -195,13 +195,13 @@ bool Parser::CheckErrors()
   if(errors.size()) {
     const size_t error_max = 8;
 
-    map<int, wstring>::iterator error = errors.begin();
+    std::map<int, std::wstring>::iterator error = errors.begin();
     if(errors.size() > error_max) {
       for(size_t i = 0; i < error_max; ++error, ++i) {
 #ifdef _DIAG_LIB
         error_strings.push_back(error->second);
 #else
-        wcerr << error->second << endl;
+        std::wcerr << error->second << std::endl;
 #endif
       }
     }
@@ -210,7 +210,7 @@ bool Parser::CheckErrors()
 #ifdef _DIAG_LIB
         error_strings.push_back(error->second);
 #else
-        wcerr << error->second << endl;
+        std::wcerr << error->second << std::endl;
 #endif
       }
     }
@@ -231,21 +231,21 @@ bool Parser::CheckErrors()
 bool Parser::Parse()
 {
 #ifdef _DEBUG
-  GetLogger() << L"\n---------- Scanning/Parsing ---------" << endl;
+  GetLogger() << L"\n---------- Scanning/Parsing ---------" << std::endl;
 #endif
 
   // parses source path
   if(src_path.size() > 0) {
     size_t offset = 0;
     size_t index = src_path.find(',');
-    while(index != wstring::npos) {
-      const wstring &file_name = src_path.substr(offset, index - offset);
+    while(index != std::wstring::npos) {
+      const std::wstring &file_name = src_path.substr(offset, index - offset);
       ParseFile(file_name);
       // update
       offset = index + 1;
       index = src_path.find(',', offset);
     }
-    const wstring &file_name = src_path.substr(offset, src_path.size());
+    const std::wstring &file_name = src_path.substr(offset, src_path.size());
     ParseFile(file_name);
   }
   else if(programs.size() > 0) {
@@ -260,7 +260,7 @@ bool Parser::Parse()
 /****************************
  * Parses a file.
  ****************************/
-void Parser::ParseFile(const wstring &file_name)
+void Parser::ParseFile(const std::wstring &file_name)
 {
   scanner = new Scanner(file_name, alt_syntax);
   NextToken();
@@ -271,9 +271,9 @@ void Parser::ParseFile(const wstring &file_name)
 }
 
 /****************************
- * Parses string
+ * Parses std::string
  ****************************/
-void Parser::ParseText(pair<wstring, wstring> &progam)
+void Parser::ParseText(std::pair<std::wstring, std::wstring> &progam)
 {
   scanner = new Scanner(progam.first, alt_syntax, progam.second);
   NextToken();
@@ -290,7 +290,7 @@ void Parser::ParseBundle(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   if(Match(TOKEN_END_OF_STREAM)) {
     ProcessError(L"Unable to open source file: '" + file_name + L"'");
@@ -298,7 +298,7 @@ void Parser::ParseBundle(int depth)
   }
 
   // default system uses
-  vector<wstring> uses;
+  std::vector<std::wstring> uses;
   uses.push_back(L"System");
   uses.push_back(L"System.IO");
   uses.push_back(L"System.Introspection");
@@ -308,7 +308,7 @@ void Parser::ParseBundle(int depth)
     NextToken();
 
     while(Match(TOKEN_IDENT)) {
-      const wstring ident = ParseBundleName();
+      const std::wstring ident = ParseBundleName();
 #ifdef _DEBUG
       Debug(L"search: " + ident, depth);
 #endif
@@ -336,7 +336,7 @@ void Parser::ParseBundle(int depth)
       while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
         NextToken();
 
-        wstring bundle_name = ParseBundleName();
+        std::wstring bundle_name = ParseBundleName();
         if(bundle_name == DEFAULT_BUNDLE_NAME) {
           bundle_name = L"";
         }
@@ -405,7 +405,7 @@ void Parser::ParseBundle(int depth)
     }
     // parse class
     else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
-      wstring bundle_name = L"";
+      std::wstring bundle_name = L"";
       
       ParsedBundle* bundle = program->GetBundle(bundle_name);
       if(bundle) {
@@ -472,23 +472,23 @@ Enum* Parser::ParseEnum(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const wstring enum_name = scanner->GetToken()->GetIdentifier();
+  const std::wstring enum_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetEnumScopeName(enum_name);
+  const std::wstring enum_scope_name = GetEnumScopeName(enum_name);
 
   size_t index = enum_scope_name.find('#');
-  if(index != wstring::npos) {
-    const wstring use_name = enum_scope_name.substr(0, index + 1);
+  if(index != std::wstring::npos) {
+    const std::wstring use_name = enum_scope_name.substr(0, index + 1);
     program->AddUse(use_name, file_name);
   }
 
@@ -528,7 +528,7 @@ Enum* Parser::ParseEnum(int depth)
     const int item_line_pos = GetLinePosition();
 
     // identifier
-    wstring label_name = scanner->GetToken()->GetIdentifier();
+    std::wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
     if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, item_line_num, item_line_pos, label_name, eenum))) {
       ProcessError(L"Duplicate enum label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
@@ -563,23 +563,23 @@ Alias* Parser::ParseLambdas(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const wstring alias_name = scanner->GetToken()->GetIdentifier();
+  const std::wstring alias_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(alias_name) || current_bundle->GetEnum(alias_name) || current_bundle->GetAlias(alias_name)) {
     ProcessError(L"Class, interface or alias name already defined in this bundle");
   }
   NextToken();
-  const wstring alias_scope_name = GetEnumScopeName(alias_name);
+  const std::wstring alias_scope_name = GetEnumScopeName(alias_name);
 
   size_t index = alias_scope_name.find('#');
-  if(index != wstring::npos) {
-    const wstring use_name = alias_scope_name.substr(0, index + 1);
+  if(index != std::wstring::npos) {
+    const std::wstring use_name = alias_scope_name.substr(0, index + 1);
     program->AddUse(use_name, file_name);
   }
 
@@ -598,7 +598,7 @@ Alias* Parser::ParseLambdas(int depth)
       ProcessError(TOKEN_IDENT);
     }
     // identifier
-    wstring label_name = scanner->GetToken()->GetIdentifier();
+    std::wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
 
     if(!Match(TOKEN_COLON)) {
@@ -637,19 +637,19 @@ Enum* Parser::ParseConsts(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const wstring enum_name = scanner->GetToken()->GetIdentifier();
+  const std::wstring enum_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetEnumScopeName(enum_name);
+  const std::wstring enum_scope_name = GetEnumScopeName(enum_name);
 
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
@@ -662,7 +662,7 @@ Enum* Parser::ParseConsts(int depth)
       ProcessError(TOKEN_IDENT);
     }
     // identifier
-    wstring label_name = scanner->GetToken()->GetIdentifier();
+    std::wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
 
     if(!Match(TOKEN_ASSIGN)) {
@@ -687,7 +687,7 @@ Enum* Parser::ParseConsts(int depth)
       case MUL_EXPR:
       case DIV_EXPR:
       case MOD_EXPR: {
-        stack<int> values;
+        std::stack<int> values;
         CalculateConst(expression, values, depth + 1);
         if(values.size() == 1) {
           value = values.top();
@@ -734,7 +734,7 @@ Enum* Parser::ParseConsts(int depth)
 /****************************
  * Calculates a constant expression
  ****************************/
-void Parser::CalculateConst(Expression* expression, stack<int>& values, int depth)
+void Parser::CalculateConst(Expression* expression, std::stack<int>& values, int depth)
 {
   switch (expression->GetExpressionType()) {
   case INT_LIT_EXPR:
@@ -803,11 +803,11 @@ void Parser::CalculateConst(Expression* expression, stack<int>& values, int dept
 /****************************
  * Parses a class.
  ****************************/
-Class* Parser::ParseClass(const wstring &bundle_name, int depth)
+Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 {
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   bool is_public = true;
   NextToken();
@@ -835,7 +835,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  wstring cls_name = scanner->GetToken()->GetIdentifier();
+  std::wstring cls_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
@@ -846,10 +846,10 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 #endif
 
   // generic ids
-  vector<Class*> generic_classes = ParseGenericClasses(bundle_name, depth);
+  std::vector<Class*> generic_classes = ParseGenericClasses(bundle_name, depth);
 
   // from id
-  wstring parent_cls_name;
+  std::wstring parent_cls_name;
   if(Match(TOKEN_FROM_ID)) {
     NextToken();
     if(!Match(TOKEN_IDENT)) {
@@ -864,7 +864,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   // implements ids
-  vector<wstring> interface_names;
+  std::vector<std::wstring> interface_names;
   if(Match(TOKEN_IMPLEMENTS_ID)) {
     NextToken();
     while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -872,7 +872,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
         ProcessError(TOKEN_IDENT);
       }
       // identifier
-      const wstring &ident = ParseBundleName();
+      const std::wstring &ident = ParseBundleName();
       interface_names.push_back(ident);
       if(Match(TOKEN_COMMA)) {
         NextToken();
@@ -910,7 +910,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   // add '@self' entry
   Type* self_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name, file_name, line_num, line_pos);
   if(!generic_classes.empty()) {
-    vector<Type*> generic_types;
+    std::vector<Type*> generic_types;
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       Class* generic_class = generic_classes[i];
       generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_class->GetName(), file_name, line_num, line_pos));
@@ -937,7 +937,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       }
     }
     else if(Match(TOKEN_IDENT)) {
-      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = scanner->GetToken()->GetIdentifier();
       line_num = GetLineNumber();
       line_pos = GetLinePosition();
       IdentifierContext ident_context(ident, line_num, line_pos);
@@ -979,18 +979,18 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 /****************************
  * Parses an interface
  ****************************/
-Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
+Class* Parser::ParseInterface(const std::wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  wstring cls_name = scanner->GetToken()->GetIdentifier();
+  std::wstring cls_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
@@ -1056,11 +1056,11 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
 Lambda* Parser::ParseLambda(int depth) {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   // build method
-  const wstring lambda_name = L"#{L" + ToString(current_class->NextLambda()) + L"}#";
-  const wstring method_name = current_class->GetName() + L':' + lambda_name;
+  const std::wstring lambda_name = L"#{L" + ToString(current_class->NextLambda()) + L"}#";
+  const std::wstring method_name = current_class->GetName() + L':' + lambda_name;
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, -1, -1, method_name);
   
   // declarations
@@ -1070,7 +1070,7 @@ Lambda* Parser::ParseLambda(int depth) {
 
   // parse derived, alias, or types 
   Type* type = nullptr;
-  wstring alias_name;
+  std::wstring alias_name;
   if(Match(TOKEN_OPEN_PAREN)) {
     type = ParseType(depth + 1);
 
@@ -1099,13 +1099,13 @@ Lambda* Parser::ParseLambda(int depth) {
   int end_pos = 0;
   ExpressionList* parameter_list = ParseExpressionList(end_pos, depth + 1);
 
-  vector<Expression*> parameters = parameter_list->GetExpressions();
+  std::vector<Expression*> parameters = parameter_list->GetExpressions();
   DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
   for(size_t i = 0; i < parameters.size(); ++i) {
     Expression* expression = parameters[i];
     if(expression && expression->GetExpressionType() == VAR_EXPR) {
       Variable* var_expr = static_cast<Variable*>(expression);
-      const wstring ident = var_expr->GetName();
+      const std::wstring ident = var_expr->GetName();
       const int line_num = var_expr->GetLineNumber();
       const int line_pos = var_expr->GetLinePosition();
 
@@ -1169,13 +1169,13 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   int mid_line_num = -1;
   int mid_line_pos = -1;
 
   MethodType method_type = PRIVATE_METHOD;
-  wstring method_name;
+  std::wstring method_name;
   bool is_native = false;
   bool is_virtual = false;
   if(Match(TOKEN_NEW_ID)) {
@@ -1343,7 +1343,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
     }
-    wstring ident = scanner->GetToken()->GetIdentifier();
+    std::wstring ident = scanner->GetToken()->GetIdentifier();
     mid_line_num = GetLineNumber();
     mid_line_pos = GetLinePosition();
     method_name = current_class->GetName() + L':' + ident;
@@ -1401,7 +1401,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 }
 
 /****************************
- * Parses a statement list.
+ * Parses a statement std::list.
  ****************************/
 StatementList* Parser::ParseStatementList(int depth)
 {
@@ -1438,13 +1438,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   Statement* statement = nullptr;
 
   // identifier
   if(Match(TOKEN_IDENT)) {
-    const wstring ident = ParseBundleName();
+    const std::wstring ident = ParseBundleName();
 
     switch(GetToken()) {
     case TOKEN_COLON:
@@ -1686,7 +1686,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   else {
     switch(GetToken()) {
     case TOKEN_ADD_ADD: {
-      const wstring ident = ParseBundleName();
+      const std::wstring ident = ParseBundleName();
       line_num = GetLineNumber();
       line_pos = GetLinePosition();
 
@@ -1706,7 +1706,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_SUB_SUB: {
-      const wstring ident = ParseBundleName();
+      const std::wstring ident = ParseBundleName();
       IdentifierContext ident_context(ident, line_num, line_pos);
       NextToken();
 
@@ -2858,7 +2858,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 StaticArray* Parser::ParseStaticArray(int depth) {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Static Array", depth);
@@ -2924,14 +2924,14 @@ StaticArray* Parser::ParseStaticArray(int depth) {
           break;
 
         case TOKEN_CHAR_STRING_LIT: {
-          const wstring ident = scanner->GetToken()->GetIdentifier();
+          const std::wstring ident = scanner->GetToken()->GetIdentifier();
           expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident);
           NextToken();
         }
                                     break;
 
         case TOKEN_BAD_CHAR_STRING_LIT:
-          ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
+          ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
           NextToken();
           break;
 
@@ -2974,8 +2974,8 @@ Variable* Parser::ParseVariable(IdentifierContext& context, int depth)
 {
   const int line_num = context.GetLineNumber();
   const int line_pos = context.GetLinePosition();
-  const wstring ident = context.GetIdentifier();
-  const wstring file_name = GetFileName();
+  const std::wstring ident = context.GetIdentifier();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Variable", depth);
@@ -2984,7 +2984,7 @@ Variable* Parser::ParseVariable(IdentifierContext& context, int depth)
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) && (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) ||
                                                               Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
-    vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+    std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);
     variable->SetConcreteTypes(generic_dclrs);
   }
   variable->SetIndices(ParseIndices(depth + 1));
@@ -2995,9 +2995,9 @@ Variable* Parser::ParseVariable(IdentifierContext& context, int depth)
 /****************************
  * Parses generic types
  ****************************/
-vector<Type*> Parser::ParseGenericTypes(int depth)
+std::vector<Type*> Parser::ParseGenericTypes(int depth)
 {
-  vector<Type*> generic_types;
+  std::vector<Type*> generic_types;
 
   if(Match(TOKEN_LES)) {
     NextToken();
@@ -3046,13 +3046,13 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
 /****************************
  * Parses generic classes
  ****************************/
-vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth)
+std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
-  vector<Class*> generic_classes;
+  std::vector<Class*> generic_classes;
 
   if(Match(TOKEN_LES)) {
     NextToken();
@@ -3062,7 +3062,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
       if(!Match(TOKEN_IDENT)) {
         ProcessError(TOKEN_IDENT);
       }
-      wstring generic_klass = scanner->GetToken()->GetIdentifier();
+      std::wstring generic_klass = scanner->GetToken()->GetIdentifier();
       NextToken();
 
       Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, -1, -1, generic_klass, true);
@@ -3080,13 +3080,13 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
         if(!Match(TOKEN_IDENT)) {
           ProcessError(TOKEN_IDENT);
         }
-        const wstring interface_name = scanner->GetToken()->GetIdentifier();
+        const std::wstring interface_name = scanner->GetToken()->GetIdentifier();
         klass->SetGenericInterface(interface_name);
         NextToken();
       }
 
       if(Match(TOKEN_LES)) {
-        vector<Class*> generic_klasss = ParseGenericClasses(bundle_name, depth + 1);
+        std::vector<Class*> generic_klasss = ParseGenericClasses(bundle_name, depth + 1);
         klass->SetGenericClasses(generic_klasss);
       }
 
@@ -3124,13 +3124,13 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
 {
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Declaration", depth);
 #endif
 
-  vector<IdentifierContext> idents;
+  std::vector<IdentifierContext> idents;
   idents.push_back(context);
 
   // parse additional names
@@ -3142,7 +3142,7 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
         ProcessError(TOKEN_IDENT);
       }
 
-      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = scanner->GetToken()->GetIdentifier();
       line_num = GetLineNumber();
       line_pos = GetLinePosition();
 
@@ -3214,11 +3214,11 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
 frontend::Declaration* Parser::AddDeclaration(IdentifierContext& context, Type* type, bool is_static, Declaration* child,
                                               const int line_num, const int line_pos, int depth)
 {
-  const wstring file_name = GetFileName();
-  const wstring ident = context.GetIdentifier();
+  const std::wstring file_name = GetFileName();
+  const std::wstring ident = context.GetIdentifier();
 
   // add entry
-  const wstring scope_name = GetScopeName(ident);
+  const std::wstring scope_name = GetScopeName(ident);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, scope_name, 
                                                                 type, is_static, current_method != nullptr);
 
@@ -3245,7 +3245,7 @@ frontend::Declaration* Parser::AddDeclaration(IdentifierContext& context, Type* 
 }
 
 /****************************
- * Parses a declaration list.
+ * Parses a declaration std::list.
  ****************************/
 DeclarationList* Parser::ParseDecelerationList(int depth)
 {
@@ -3264,7 +3264,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
       ProcessError(TOKEN_IDENT);
     }
     // identifier
-    const wstring ident = scanner->GetToken()->GetIdentifier();
+    const std::wstring ident = scanner->GetToken()->GetIdentifier();
     const int line_num = GetLineNumber();
     const int line_pos = GetLinePosition();
 
@@ -3293,7 +3293,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 }
 
 /****************************
- * Parses a expression list.
+ * Parses a expression std::list.
  ****************************/
 ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerTokenType open, ScannerTokenType closed)
 {
@@ -3347,7 +3347,7 @@ ExpressionList* Parser::ParseIndices(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   ExpressionList* expressions = nullptr;
   if(Match(TOKEN_OPEN_BRACKET)) {
@@ -3403,7 +3403,7 @@ Expression* Parser::ParseExpression(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Expression", depth);
@@ -3444,7 +3444,7 @@ Expression* Parser::ParseLogic(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Boolean logic", depth);
@@ -3505,7 +3505,7 @@ Expression* Parser::ParseMathLogic(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Boolean math", depth);
@@ -3561,7 +3561,7 @@ Expression* Parser::ParseTerm(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Term", depth);
@@ -3625,7 +3625,7 @@ Expression* Parser::ParseFactor(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Factor", depth);
@@ -3745,7 +3745,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 {
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Simple expression", depth);
@@ -3754,7 +3754,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   Expression* expression = nullptr;
   if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) ||
      Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
-    wstring ident;
+    std::wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;
 
@@ -3886,7 +3886,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_IDENT: {
-      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = scanner->GetToken()->GetIdentifier();
       const int line_num = GetLineNumber();
       const int line_pos = GetLinePosition();
       IdentifierContext ident_context(ident, line_num, line_pos);
@@ -3922,14 +3922,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_CHAR_STRING_LIT: {
-      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = scanner->GetToken()->GetIdentifier();
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident);
       NextToken();
     }
       break;
 
     case TOKEN_BAD_CHAR_STRING_LIT:
-      ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
       NextToken();
       break;
 
@@ -4037,7 +4037,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Parent call", depth);
@@ -4058,8 +4058,8 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 {
   const int line_num = context.GetLineNumber();
   const int line_pos = context.GetLinePosition();
-  const wstring ident = context.GetIdentifier();
-  const wstring file_name = GetFileName();
+  const std::wstring ident = context.GetIdentifier();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Method call", depth);
@@ -4073,7 +4073,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     if(Match(TOKEN_IDENT)) {
       const int mid_line_num = GetLineNumber();
       const int mid_line_pos = GetLinePosition();
-      const wstring method_ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring method_ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
       if(Match(TOKEN_OPEN_PAREN)) {
@@ -4092,7 +4092,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
         else if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
                 (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) || 
                  Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
-          vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+          std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);
           method_call->SetConcreteTypes(generic_dclrs);
         }
       }
@@ -4113,7 +4113,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
                                                               GetLineNumber(), end_pos, NEW_ARRAY_CALL, ident, expressions);
         // array of generics
         if(Match(TOKEN_LES)) {
-          vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+          std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);
           method_call->SetConcreteTypes(generic_dclrs);
         }
       }
@@ -4126,7 +4126,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
                                                               GetLineNumber(), end_pos, NEW_INST_CALL, ident, exprs);
         // anonymous class
         if(Match(TOKEN_LES)) {
-          vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+          std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);
           method_call->SetConcreteTypes(generic_dclrs);
         }
         else if(Match(TOKEN_OPEN_BRACE) || Match(TOKEN_IMPLEMENTS_ID)) {
@@ -4172,7 +4172,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
   }
   // method call
   else if(Match(TOKEN_OPEN_PAREN)) {
-    const wstring klass_name = current_class->GetName();
+    const std::wstring klass_name = current_class->GetName();
     
     int end_pos = 0;
     ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
@@ -4193,7 +4193,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
      (Match(TOKEN_LES, THIRD_INDEX) || Match(TOKEN_GTR, THIRD_INDEX) ||
       Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_PERIOD, THIRD_INDEX))) {
-    vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+    std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);
     if(method_call) {
       method_call->SetConcreteTypes(generic_dclrs);
     }
@@ -4230,7 +4230,7 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const wstring ident = scanner->GetToken()->GetIdentifier();
+  const std::wstring ident = scanner->GetToken()->GetIdentifier();
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   IdentifierContext ident_context(ident, line_num, line_pos);
@@ -4260,15 +4260,15 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   NextToken();
-  const wstring &method_ident = scanner->GetToken()->GetIdentifier();
+  const std::wstring &method_ident = scanner->GetToken()->GetIdentifier();
   
   NextToken();
   const int mid_line_num = GetLineNumber();
   const int mid_line_pos = GetLinePosition();
-  const wstring mid_ident = variable->GetName();
+  const std::wstring mid_ident = variable->GetName();
   IdentifierContext ident_context(mid_ident, mid_line_num, mid_line_pos);
   
   int end_pos = 0;
@@ -4291,17 +4291,17 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
   if(prev_method && current_method) {
     ProcessError(L"Invalid nested anonymous classes");
     return;
   }
 
-  const wstring cls_name = method_call->GetVariableName() + L".#Anonymous." +
+  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." +
     ToString(anonymous_class_id++) + L'#';
 
-  vector<wstring> interface_names;
+  std::vector<std::wstring> interface_names;
   if(Match(TOKEN_IMPLEMENTS_ID)) {
     NextToken();
     while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -4309,7 +4309,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
         ProcessError(TOKEN_IDENT);
       }
       // identifier
-      const wstring &ident = ParseBundleName();
+      const std::wstring &ident = ParseBundleName();
       interface_names.push_back(ident);
       if(Match(TOKEN_COMMA)) {
         NextToken();
@@ -4362,7 +4362,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
       }
     }
     else if(Match(TOKEN_IDENT)) {
-      const wstring ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = scanner->GetToken()->GetIdentifier();
       const int line_num = GetLineNumber();
       const int line_pos = GetLinePosition();
       IdentifierContext ident_context(ident, line_num, line_pos);
@@ -4386,7 +4386,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   NextToken();
 
   if(!klass->HasDefaultNew()) {
-    const wstring method_name = klass->GetName() + L":New";
+    const std::wstring method_name = klass->GetName() + L":New";
     Method* default_new = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), method_name, NEW_PUBLIC_METHOD, false, false);
 
     symbol_table->NewParseScope();
@@ -4417,7 +4417,7 @@ If* Parser::ParseIf(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"If", depth);
@@ -4465,7 +4465,7 @@ DoWhile* Parser::ParseDoWhile(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Do/While", depth);
@@ -4502,7 +4502,7 @@ While* Parser::ParseWhile(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"While", depth);
@@ -4538,7 +4538,7 @@ While* Parser::ParseWhile(int depth)
  ****************************/
 CriticalSection* Parser::ParseCritical(int depth)
 {
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Critical Section", depth);
@@ -4554,7 +4554,7 @@ CriticalSection* Parser::ParseCritical(int depth)
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   } 
-  const wstring ident = scanner->GetToken()->GetIdentifier();
+  const std::wstring ident = scanner->GetToken()->GetIdentifier();
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   IdentifierContext ident_context(ident, line_num, line_pos);
@@ -4580,7 +4580,7 @@ CriticalSection* Parser::ParseCritical(int depth)
 For* Parser::ParseEach(bool reverse, int depth)
 {
   const int line_num = GetLineNumber();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Each/Reverse", depth);
@@ -4597,13 +4597,13 @@ For* Parser::ParseEach(bool reverse, int depth)
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
-  const wstring count_ident = scanner->GetToken()->GetIdentifier();
+  const std::wstring count_ident = scanner->GetToken()->GetIdentifier();
   int line_pos = GetLinePosition() + (int)count_ident.size();
   NextToken();
 
   // add entry
   Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
-  const wstring count_scope_name = GetScopeName(count_ident);
+  const std::wstring count_scope_name = GetScopeName(count_ident);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, type, false, current_method != nullptr);
 
 #ifdef _DEBUG
@@ -4640,8 +4640,8 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      const wstring list_ident = scanner->GetToken()->GetIdentifier();
-      const wstring ident = L"Size";
+      const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = L"Size";
       const int line_pos = GetLinePosition() - 1;
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, 
                                                            -1, -1, list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
@@ -4701,8 +4701,8 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      const wstring list_ident = scanner->GetToken()->GetIdentifier();
-      const wstring ident = L"Size";
+      const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
+      const std::wstring ident = L"Size";
       const int line_pos = GetLinePosition();
       list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
                                                            list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
@@ -4753,7 +4753,7 @@ For * Parser::ParseFor(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"For", depth);
@@ -4795,7 +4795,7 @@ Select* Parser::ParseSelect(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Select", depth);
@@ -4822,8 +4822,8 @@ Select* Parser::ParseSelect(int depth)
   NextToken();
 
   StatementList* other = nullptr;
-  vector<StatementList*> statement_lists;
-  map<ExpressionList*, StatementList*> statement_map;
+  std::vector<StatementList*> statement_lists;
+  std::map<ExpressionList*, StatementList*> statement_map;
   while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
     bool is_other_label = false;
     ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
@@ -4871,7 +4871,7 @@ Select* Parser::ParseSelect(int depth)
     }
     // named label
     else {
-      statement_map.insert(pair<ExpressionList*, StatementList*>(labels, statements));
+      statement_map.insert(std::pair<ExpressionList*, StatementList*>(labels, statements));
     }
 
     // note: order matters during contextual analysis due 
@@ -4894,7 +4894,7 @@ Return* Parser::ParseReturn(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Return", depth);
@@ -4916,7 +4916,7 @@ Leaving* Parser::ParseLeaving(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Leaving", depth);
@@ -4937,12 +4937,12 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Assignment", depth);
 #endif
-  stack<Expression*> expressions;
+  std::stack<Expression*> expressions;
   expressions.push(variable);
 
   NextToken();
@@ -4990,7 +4990,7 @@ Type* Parser::ParseType(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
-  const wstring file_name = GetFileName();
+  const std::wstring file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Data Type", depth);
@@ -5000,7 +5000,7 @@ Type* Parser::ParseType(int depth)
   switch(GetToken()) {
   case TOKEN_BACK_SLASH: {
     NextToken();
-    wstring alias_name = ParseBundleName();
+    std::wstring alias_name = ParseBundleName();
     if(Match(TOKEN_ASSESSOR)) {
       NextToken();
       alias_name += L"#";
@@ -5041,7 +5041,7 @@ Type* Parser::ParseType(int depth)
     break;
 
   case TOKEN_IDENT: {
-    wstring ident = ParseBundleName();
+    std::wstring ident = ParseBundleName();
     if(Match(TOKEN_ASSESSOR)) {
       NextToken();
       ident += L"#";
@@ -5054,7 +5054,7 @@ Type* Parser::ParseType(int depth)
   case TOKEN_OPEN_PAREN: {
     NextToken();
 
-    vector<Type*> func_params;
+    std::vector<Type*> func_params;
     while(!Match(TOKEN_CLOSED_PAREN) && !Match(TOKEN_END_OF_STREAM)) {
       Type* param = ParseType(depth + 1);
       if(param) {
@@ -5113,7 +5113,7 @@ Type* Parser::ParseType(int depth)
 
     // generic
     if(Match(TOKEN_LES)) {
-      const vector<Type*> generic_types = ParseGenericTypes(depth);
+      const std::vector<Type*> generic_types = ParseGenericTypes(depth);
       type->SetGenerics(generic_types);
     }
   }

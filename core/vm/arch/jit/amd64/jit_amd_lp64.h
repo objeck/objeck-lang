@@ -34,8 +34,6 @@
 
 #include "../jit_common.h"
 
-using namespace std;
-
 namespace Runtime {
 #ifdef _WIN64
   // offsets for Win64
@@ -258,16 +256,16 @@ namespace Runtime {
 #ifdef _WIN64    
       buffer = (unsigned char*)VirtualAlloc(nullptr, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
+        std::wcerr << L"Unable to allocate JIT memory!" << std::endl;
         exit(1);
       }
 #else
       if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
+        std::wcerr << L"Unable to allocate JIT memory!" << std::endl;
         exit(1);
       }
       if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
+        std::wcerr << L"Unable to mprotect" << std::endl;
         exit(1);
       }
 #endif    
@@ -306,7 +304,7 @@ namespace Runtime {
    * Manage executable buffers of memory
    */
   class PageManager {
-    vector<PageHolder*> holders;
+    std::vector<PageHolder*> holders;
 
   public:
     PageManager();
@@ -321,18 +319,18 @@ namespace Runtime {
    */
   class JitAmd64 : public JitCompiler {
     static PageManager* page_manager;
-    deque<RegInstr*> working_stack;
-    vector<RegisterHolder*> aval_regs;
-    list<RegisterHolder*> used_regs;
-    stack<RegisterHolder*> aux_regs;
+    std::deque<RegInstr*> working_stack;
+    std::vector<RegisterHolder*> aval_regs;
+    std::list<RegisterHolder*> used_regs;
+    std::stack<RegisterHolder*> aux_regs;
     RegisterHolder* rax_reg;
-    vector<RegisterHolder*> aval_xregs;
-    list<RegisterHolder*> used_xregs;
-    unordered_map<long, StackInstr*> jump_table; // jump addresses
-    vector<long> nil_deref_offsets;      // code -1
-    vector<long> bounds_less_offsets;    // code -2
-    vector<long> bounds_greater_offsets; // code -3
-    vector<long> div_by_zero_offsets;    // code -4
+    std::vector<RegisterHolder*> aval_xregs;
+    std::list<RegisterHolder*> used_xregs;
+    std::unordered_map<long, StackInstr*> jump_table; // jump addresses
+    std::vector<long> nil_deref_offsets;      // code -1
+    std::vector<long> bounds_less_offsets;    // code -2
+    std::vector<long> bounds_greater_offsets; // code -3
+    std::vector<long> div_by_zero_offsets;    // code -4
     long local_space, org_local_space;
     StackMethod* method;
     long instr_count;
@@ -388,7 +386,7 @@ namespace Runtime {
       if(code_index == code_buf_max) {
         code = (unsigned char*)realloc(code, code_buf_max * 2);
         if(!code) {
-          wcerr << L"Unable to allocate memory!" << endl;
+          std::wcerr << L"Unable to allocate memory!" << std::endl;
           exit(1);
         }
 
@@ -529,7 +527,7 @@ namespace Runtime {
     /**
      * Returns the name of a register
      */
-    wstring GetRegisterName(Register reg);
+    std::wstring GetRegisterName(Register reg);
 
     /**
      * Encodes a byte array with a 32-bit value
@@ -569,7 +567,7 @@ namespace Runtime {
     inline void CheckNilDereference(Register reg) {
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG_JIT
-      wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
+      std::wcout << L"  " << (++instr_count) << L": [je <err>]" << std::endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -590,7 +588,7 @@ namespace Runtime {
         cmp_imm_xreg((size_t)&float_consts[0], reg);
       }
 #ifdef _DEBUG_JIT
-      wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
+      std::wcout << L"  " << (++instr_count) << L": [je <err>]" << std::endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -606,7 +604,7 @@ namespace Runtime {
     inline void CheckDivideByZero(int32_t offset, Register src) {
       cmp_imm_mem(offset, src, 0);
 #ifdef _DEBUG_JIT
-      wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
+      std::wcout << L"  " << (++instr_count) << L": [je <err>]" << std::endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -624,7 +622,7 @@ namespace Runtime {
       // less than zero
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG_JIT
-      wcout << L"  " << (++instr_count) << L": [jl <err>]" << endl;
+      std::wcout << L"  " << (++instr_count) << L": [jl <err>]" << std::endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -636,7 +634,7 @@ namespace Runtime {
       // greater than max
       cmp_reg_reg(max_reg, reg);
 #ifdef _DEBUG_JIT
-      wcout << L"  " << (++instr_count) << L": [jge <err>]" << endl;
+      std::wcout << L"  " << (++instr_count) << L": [jge <err>]" << std::endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -657,7 +655,7 @@ namespace Runtime {
         else {
           compile_success = false;
 #ifdef _DEBUG_JIT
-          wcout << L">>> No general registers avaiable! <<<" << endl;
+          std::wcout << L">>> No general registers avaiable! <<<" << std::endl;
 #endif
           aux_regs.push(rax_reg);
           holder = aux_regs.top();
@@ -670,8 +668,8 @@ namespace Runtime {
         used_regs.push_back(holder);
       }
 #ifdef _VERBOSE
-      wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
-        << L" *" << endl;
+      std::wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
+        << L" *" << std::endl;
 #endif
 
       return holder;
@@ -680,8 +678,8 @@ namespace Runtime {
     // Returns a register to the pool
     void ReleaseRegister(RegisterHolder* h) {
 #ifdef _VERBOSE
-      wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
-        << L" *" << endl;
+      std::wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
+        << L" *" << std::endl;
 #endif
 
 #ifdef _DEBUG_JIT
@@ -706,7 +704,7 @@ namespace Runtime {
       if(aval_xregs.empty()) {
         compile_success = false;
 #ifdef _DEBUG_JIT
-        wcout << L">>> No XMM registers avaiable! <<<" << endl;
+        std::wcout << L">>> No XMM registers avaiable! <<<" << std::endl;
 #endif
         aval_xregs.push_back(new RegisterHolder(XMM0));
         holder = aval_xregs.back();
@@ -719,8 +717,8 @@ namespace Runtime {
         used_xregs.push_back(holder);
       }
 #ifdef _VERBOSE
-      wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
-        << L" *" << endl;
+      std::wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
+        << L" *" << std::endl;
 #endif
 
       return holder;
@@ -736,7 +734,7 @@ namespace Runtime {
 #endif
 
 #ifdef _VERBOSE
-      wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister()) << L" * " << endl;
+      std::wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister()) << L" * " << std::endl;
 #endif
       aval_xregs.push_back(h);
       used_xregs.remove(h);

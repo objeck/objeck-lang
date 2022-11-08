@@ -44,7 +44,7 @@ using namespace frontend;
  * Identifier position
  ****************************/
 class IdentifierContext {
-  wstring ident;
+  std::wstring ident;
   int line_num;
   int line_pos;
 
@@ -55,7 +55,7 @@ public:
     line_pos = c.line_pos;
   }
   
-  IdentifierContext(const wstring i, int l, int p) {
+  IdentifierContext(const std::wstring i, int l, int p) {
     ident = i;
     line_num = l;
     line_pos = p;
@@ -73,7 +73,7 @@ public:
     return line_pos;
   }
 
-  const wstring GetIdentifier() {
+  const std::wstring GetIdentifier() {
     return ident;
   }
 };
@@ -90,14 +90,14 @@ class Parser {
   Method* prev_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;
-  map<ScannerTokenType, wstring> error_msgs;
-  map<int, wstring> errors;
-  wstring src_path;
-  vector<pair<wstring, wstring> > programs;
+  std::map<ScannerTokenType, std::wstring> error_msgs;
+  std::map<int, std::wstring> errors;
+  std::wstring src_path;
+  std::vector<std::pair<std::wstring, std::wstring> > programs;
   unsigned int anonymous_class_id;
   bool expand_generic_def;
 #ifdef _DIAG_LIB
-  vector<wstring> error_strings;
+  std::vector<std::wstring> error_strings;
 #endif
 
   // gets the scanner token
@@ -124,30 +124,30 @@ class Parser {
     return scanner->GetToken()->GetLinePosition();
   }
   // get filename of current token
-  inline const wstring GetFileName() {
+  inline const std::wstring GetFileName() {
     return scanner->GetToken()->GetFileName();
   }
   // gets the symbol table's name for the current scope
-  const wstring GetScopeName(const wstring &ident);
+  const std::wstring GetScopeName(const std::wstring &ident);
   // gets the enum scope name
-  const wstring GetEnumScopeName(const wstring &ident);
+  const std::wstring GetEnumScopeName(const std::wstring &ident);
 
   // helper functions
-  void Debug(const wstring &msg, int depth) {
-    GetLogger() << setw(4) << GetLineNumber() << L": ";
+  void Debug(const std::wstring &msg, int depth) {
+    GetLogger() << std::setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; ++i) {
       GetLogger() << L"  ";
     }
-    GetLogger() << msg << endl;
+    GetLogger() << msg << std::endl;
   }
 
-  inline wstring ToString(int v) {
-    wostringstream str;
+  inline std::wstring ToString(int v) {
+    std::wostringstream str;
     str << v;
     return str.str();
   }
 
-  wstring ParseBundleName();
+  std::wstring ParseBundleName();
 
   Declaration* AddDeclaration(IdentifierContext &context, Type* type, bool is_static, Declaration* child,
                               const int line_num, const int line_pos, int depth);
@@ -155,22 +155,22 @@ class Parser {
   // error processing
   void LoadErrorCodes();
   void ProcessError(const ScannerTokenType type);
-  void ProcessError(const wstring &msg);
-  void ProcessError(const wstring &msg, ParseNode * node);
-  void ProcessError(const wstring &msg, const ScannerTokenType sync);
+  void ProcessError(const std::wstring &msg);
+  void ProcessError(const std::wstring &msg, ParseNode * node);
+  void ProcessError(const std::wstring &msg, const ScannerTokenType sync);
   bool CheckErrors();
 
   // parsing operations
-  void ParseFile(const wstring &file_name);
-  void ParseText(pair<wstring, wstring>& progam);
+  void ParseFile(const std::wstring &file_name);
+  void ParseText(std::pair<std::wstring, std::wstring>& progam);
   void ParseBundle(int depth);
-  Class* ParseClass(const wstring& bundle_id, int depth);
-  Class* ParseInterface(const wstring &bundle_id, int depth);
+  Class* ParseClass(const std::wstring& bundle_id, int depth);
+  Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth);
   Variable* ParseVariable(IdentifierContext &context, int depth);
-  vector<Type*> ParseGenericTypes(int depth);
-  vector<Class*> ParseGenericClasses(const wstring &bundle_name, int depth);
+  std::vector<Type*> ParseGenericTypes(int depth);
+  std::vector<Class*> ParseGenericClasses(const std::wstring &bundle_name, int depth);
   MethodCall* ParseMethodCall(int depth);
   MethodCall* ParseMethodCall(IdentifierContext &context, int depth);
   void ParseMethodCall(Expression* expression, int depth);
@@ -187,7 +187,7 @@ class Parser {
   Enum* ParseEnum(int depth);
   Alias* ParseLambdas(int depth);
   Enum* ParseConsts(int depth);
-  void CalculateConst(Expression* expression, stack<int> &values, int depth);
+  void CalculateConst(Expression* expression, std::stack<int> &values, int depth);
   For* ParseFor(int depth);
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
@@ -209,7 +209,7 @@ class Parser {
   Expression* ParseSimpleExpression(int depth);
 
  public:
-  Parser(const wstring &s, bool a, vector<pair<wstring, wstring> > &p) {
+  Parser(const std::wstring &s, bool a, std::vector<std::pair<std::wstring, std::wstring> > &p) {
     src_path = s;
     alt_syntax = a;
     programs = p;

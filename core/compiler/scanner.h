@@ -37,8 +37,6 @@
 #include <windows.h>
 #endif
 
-using namespace std;
-
 // comment
 #define COMMENT L'#'
 #define ALT_COMMENT L'/'
@@ -366,8 +364,8 @@ class Token {
   ScannerTokenType token_type;
   int line_nbr;
   int line_pos;
-  wstring filename;
-  wstring ident;
+  std::wstring filename;
+  std::wstring ident;
 
   INT_VALUE int_lit;
   FLOAT_VALUE double_lit;
@@ -387,11 +385,11 @@ class Token {
     filename = token->filename;
   }
 
-  inline const wstring GetFileName() {
+  inline const std::wstring GetFileName() {
     return filename;
   }
 
-  inline void SetFileName(wstring f) {
+  inline void SetFileName(std::wstring f) {
     filename = f;
   }
 
@@ -427,7 +425,7 @@ class Token {
     char_lit = c;
   }
 
-  inline void SetIdentifier(wstring i) {
+  inline void SetIdentifier(std::wstring i) {
     ident = i;
   }
 
@@ -447,7 +445,7 @@ class Token {
     return char_lit;
   }
 
-  inline const wstring GetIdentifier() {
+  inline const std::wstring GetIdentifier() {
     return ident;
   }
 
@@ -469,7 +467,7 @@ class Scanner {
   // syntax
   bool alt_syntax;
   // input file name
-  wstring filename;
+  std::wstring filename;
   // input buffer
   wchar_t* buffer;
   // buffer size
@@ -484,7 +482,7 @@ class Scanner {
   // input characters
   wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  map<const wstring, ScannerTokenType> ident_map;
+  std::map<const std::wstring, ScannerTokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
   // line number
@@ -492,7 +490,7 @@ class Scanner {
   size_t line_pos;
   
   // loads file into memory
-  wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size);
+  wchar_t* LoadFileBuffer(std::wstring filename, size_t& buffer_size);
   // parsers a character string
   void CheckString(int index, bool is_valid);
   // parse an integer
@@ -516,11 +514,11 @@ class Scanner {
   // check identifier
   void CheckIdentifier(int index);
   // create a random string
-  wstring RandomString(size_t len);
+  std::wstring RandomString(size_t len);
 
  public:
   // default constructor
-  Scanner(wstring f, bool a, const wstring c = L"");
+  Scanner(std::wstring f, bool a, const std::wstring c = L"");
   // default destructor
   ~Scanner();
 
@@ -531,7 +529,7 @@ class Scanner {
   Token* GetToken(int index = 0);
 
   // gets the file name
-  wstring GetFileName() {
+  std::wstring GetFileName() {
     return filename;
   }
 };

@@ -53,8 +53,6 @@
 #define INT64_VALUE int64_t
 #define FLOAT_VALUE double
 
-using namespace std;
-
 namespace instructions {
   // vm types
   enum MemoryType {
@@ -81,8 +79,8 @@ namespace instructions {
   };
 }
 
-static wstring GetLibraryPath() {
-  wstring path;
+static std::wstring GetLibraryPath() {
+  std::wstring path;
 
 #ifdef _WIN32
   char* path_str_ptr; size_t len;
@@ -93,8 +91,8 @@ static wstring GetLibraryPath() {
   const char* path_str_ptr = getenv("OBJECK_LIB_PATH");
 #endif
   if(path_str_ptr && strlen(path_str_ptr) > 0) {
-    string path_str(path_str_ptr);
-    path = wstring(path_str.begin(), path_str.end());
+    std::string path_str(path_str_ptr);
+    path = std::wstring(path_str.begin(), path_str.end());
 #ifdef _WIN32
     if(path[path.size() - 1] != '\\') {
       path += L"\\";
@@ -118,9 +116,9 @@ static wstring GetLibraryPath() {
 
 /****************************
  * Converts UTF-8 bytes to a 
- * native Unicode string 
+ * native Unicode std::string 
  ****************************/
-static bool BytesToUnicode(const string &in, wstring &out) {    
+static bool BytesToUnicode(const std::string &in, std::wstring &out) {    
 #ifdef _WIN32
   // allocate space
   const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, nullptr, 0);
@@ -171,8 +169,8 @@ static bool BytesToUnicode(const string &in, wstring &out) {
   return true;
 }
 
-static wstring BytesToUnicode(const string &in) {
-  wstring out;
+static std::wstring BytesToUnicode(const std::string &in) {
+  std::wstring out;
   if(BytesToUnicode(in, out)) {
     return out;
   }
@@ -184,8 +182,8 @@ static wstring BytesToUnicode(const string &in) {
  * Converts UTF-8 bytes to
  * native a unicode character
  */
-static bool BytesToCharacter(const string &in, wchar_t &out) {
-  wstring buffer;
+static bool BytesToCharacter(const std::string &in, wchar_t &out) {
+  std::wstring buffer;
   if(!BytesToUnicode(in, buffer)) {
     return false;
   }
@@ -210,10 +208,10 @@ static bool BytesToCharacter(const string &in, wchar_t &out) {
 }
 
 /**
- * Converts a native string
+ * Converts a native std::string
  * to UTF-8 bytes
  */
-static bool UnicodeToBytes(const wstring &in, string &out) {
+static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
 #ifdef _WIN32
   // allocate space
   const int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, nullptr, 0, nullptr, nullptr);
@@ -263,8 +261,8 @@ static bool UnicodeToBytes(const wstring &in, string &out) {
   return true;
 }
 
-static string UnicodeToBytes(const wstring &in) {
-  string out;
+static std::string UnicodeToBytes(const std::wstring &in) {
+  std::string out;
   if(UnicodeToBytes(in, out)) {
     return out;
   }
@@ -276,7 +274,7 @@ static string UnicodeToBytes(const wstring &in) {
  * Converts a native character
  * to UTF-8 bytes
  */
-static bool CharacterToBytes(wchar_t in, string &out) {
+static bool CharacterToBytes(wchar_t in, std::string &out) {
   if(in == L'\0') {
     return true;
   }
@@ -296,11 +294,11 @@ static bool CharacterToBytes(wchar_t in, string &out) {
  * Byte output stream
  */
 class OutputStream {
-  wstring file_name;
-  vector<char> out_buffer;
+  std::wstring file_name;
+  std::vector<char> out_buffer;
 
 public:
-  OutputStream(const wstring &n) {
+  OutputStream(const std::wstring &n) {
     file_name = n;
   }
 
@@ -308,22 +306,22 @@ public:
   }
 
   bool WriteFile() {
-    const string open_filename = UnicodeToBytes(file_name);
-    ofstream file_out(open_filename.c_str(), ofstream::binary);
+    const std::string open_filename = UnicodeToBytes(file_name);
+    std::ofstream file_out(open_filename.c_str(), std::ofstream::binary);
     if(!file_out.is_open()) {
-      wcerr << L"Unable to write file: '" << file_name << L"'" << endl;
+      std::wcerr << L"Unable to write file: '" << file_name << L"'" << std::endl;
       return false;
     }
 
     uLong dest_len;
     char* compressed = Compress(out_buffer.data(), (uLong)out_buffer.size(), dest_len);
     if(!compressed) {
-      wcerr << L"Unable to compress file: '" << file_name << L"'" << endl;
+      std::wcerr << L"Unable to compress file: '" << file_name << L"'" << std::endl;
       file_out.close();
       return false;
     }
 #ifdef _DEBUG
-    GetLogger() << L"--- file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << endl;
+    GetLogger() << L"--- file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << std::endl;
 #endif
     file_out.write(compressed, dest_len);
     free(compressed);
@@ -334,10 +332,10 @@ public:
     return true;
   }
 
-  inline void WriteString(const wstring &in) {
-    string out;
+  inline void WriteString(const std::wstring &in) {
+    std::string out;
     if(!UnicodeToBytes(in, out)) {
-      wcerr << L">>> Unable to write unicode string <<<" << endl;
+      std::wcerr << L">>> Unable to write unicode std::string <<<" << std::endl;
       exit(1);
     }
     WriteInt((int)out.size());
@@ -354,19 +352,19 @@ public:
   inline void WriteInt(int32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
-    std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
+    std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
   inline void WriteUnsigned(uint32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
-    std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
+    std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
   inline void WriteChar(wchar_t value) {
-    string buffer;
+    std::string buffer;
     if(!CharacterToBytes(value, buffer)) {
-      wcerr << L">>> Unable to write character <<<" << endl;
+      std::wcerr << L">>> Unable to write character <<<" << std::endl;
       exit(1);
     }
 
@@ -385,7 +383,7 @@ public:
   inline void WriteDouble(FLOAT_VALUE value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
-    std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
+    std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
   //
@@ -443,11 +441,11 @@ public:
   }
 };
 
-static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[], wstring &path_string) {
-  map<const wstring, wstring> arguments;
+static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, char* argv[], std::wstring &path_string) {
+  std::map<const std::wstring, std::wstring> arguments;
 
   // reconstruct command line
-  string path;
+  std::string path;
   for(int i = 1; i < 1024 && i < argc; ++i) {
     path += ' ';
     char* cmd_param = argv[i];
@@ -477,7 +475,7 @@ static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[], wstr
       while(pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
         pos++;
       }
-      const wstring key = path_string.substr(start, pos - start);
+      const std::wstring key = path_string.substr(start, pos - start);
       // parse value
       while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
         pos++;
@@ -503,14 +501,14 @@ static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[], wstr
           pos++;
         }
       }
-      wstring value = path_string.substr(start, pos - start);
+      std::wstring value = path_string.substr(start, pos - start);
 
       // close string and add
       if(path_string[pos] == L'\'') {
         pos++;
       }
 
-      map<const wstring, wstring>::iterator found = arguments.find(key);
+      std::map<const std::wstring, std::wstring>::iterator found = arguments.find(key);
       if(found != arguments.end()) {
         value += L',';
         value += found->second;

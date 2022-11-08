@@ -34,8 +34,6 @@
 
 #include "common.h"
 
-using namespace std;
-
 // offset for Objeck arrays
 #define ARRAY_HEADER_OFFSET 3
 
@@ -375,12 +373,12 @@ void APITools_SetObjectValue(VMContext & context, int index, size_t * obj) {
 }
 
 // creates object
-size_t* APITools_CreateObject(VMContext& context, const wstring& cls_name) {
+size_t* APITools_CreateObject(VMContext& context, const std::wstring& cls_name) {
   return context.alloc_obj(cls_name.c_str(), context.op_stack, *context.stack_pos, false);
 }
 
 // creates a string object
-size_t* APITools_CreateStringValue(VMContext & context, const wstring & value) {
+size_t* APITools_CreateStringValue(VMContext & context, const std::wstring & value) {
   // create character array
   const long char_array_size = (long)value.size();
   const long char_array_dim = 1;
@@ -409,7 +407,7 @@ size_t* APITools_CreateStringValue(VMContext & context, const wstring & value) {
 
 // sets the requested String object for an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
-void APITools_SetStringValue(VMContext & context, int index, const wstring & value) {
+void APITools_SetStringValue(VMContext & context, int index, const std::wstring & value) {
   APITools_SetObjectValue(context, index, APITools_CreateStringValue(context, value));
 }
 
@@ -448,10 +446,10 @@ size_t* APITools_GetObjectValue(VMContext & context, int index) {
 
 // invokes a runtime Objeck method
 void APITools_CallMethod(VMContext & context, size_t * instance, const wchar_t* mthd_name) {
-  const wstring qualified_method_name(mthd_name);
+  const std::wstring qualified_method_name(mthd_name);
   size_t delim = qualified_method_name.find(':');
-  if(delim != wstring::npos) {
-    wstring cls_name = qualified_method_name.substr(0, delim);
+  if(delim != std::wstring::npos) {
+    std::wstring cls_name = qualified_method_name.substr(0, delim);
     (*context.call_method_by_name)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
 
 #ifdef _DEBUG
@@ -459,7 +457,7 @@ void APITools_CallMethod(VMContext & context, size_t * instance, const wchar_t* 
 #endif
   }
   else {
-    cerr << L">>> DLL call: Invalid method name: '" << mthd_name << L"'" << endl;
+    std::cerr << L">>> DLL call: Invalid method name: '" << mthd_name << L"'" << std::endl;
     exit(1);
   }
 }

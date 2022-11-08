@@ -57,7 +57,7 @@ int main(const int argc, const char* argv[])
     WSADATA data;
     int status;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
-      wcerr << L"Unable to load Winsock 2.2!" << endl;
+      std::wcerr << L"Unable to load Winsock 2.2!" << std::endl;
       status = SYSTEM_ERROR;
     }
     else {
@@ -70,7 +70,7 @@ int main(const int argc, const char* argv[])
     return status;
   }
   else {
-    wstring usage;
+    std::wstring usage;
     usage += L"Usage: obr <program>\n\n";
     usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
@@ -94,7 +94,7 @@ int main(const int argc, const char* argv[])
 #endif
     
     usage += L"\nWeb: https://www.objeck.org";
-    wcerr << usage << endl;
+    std::wcerr << usage << std::endl;
 
     return 1;
   }

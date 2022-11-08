@@ -43,7 +43,7 @@ SOCKET IPSocket::Open(const char* address, const int port) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
-  string port_str = to_string(port);
+  std::string port_str = std::to_string(port);
   if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
     WSACleanup();
     return -1;
@@ -69,13 +69,13 @@ SOCKET IPSocket::Open(const char* address, const int port) {
 	return sock == INVALID_SOCKET ? -1 : sock;
 }
 
-vector<string> IPSocket::Resolve(const char* address) {
-	vector<string> addresses;
+std::vector<std::string> IPSocket::Resolve(const char* address) {
+ std::vector<std::string> addresses;
 
 	struct addrinfo* result;
 	if(getaddrinfo(address, nullptr, nullptr, &result)) {
 		freeaddrinfo(result);
-		return vector<string>();
+		return std::vector<std::string>();
 	}
 
 	struct addrinfo* res;
@@ -83,7 +83,7 @@ vector<string> IPSocket::Resolve(const char* address) {
 		char hostname[NI_MAXHOST] = {0};
 		if(getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
 			freeaddrinfo(result);
-			return vector<string>();
+			return std::vector<std::string>();
 		}
 
 		if(*hostname != '\0') {

@@ -38,7 +38,7 @@
 /****************************
  * Scanner constructor
  ****************************/
-Scanner::Scanner(wstring f, bool a, const wstring c)
+Scanner::Scanner(std::wstring f, bool a, const std::wstring c)
 {
   // copy file name
   
@@ -64,8 +64,8 @@ Scanner::Scanner(wstring f, bool a, const wstring c)
 #endif
     
 #ifdef _DEBUG
-    GetLogger() << L"---------- Source (inline) ---------" << endl;
-    GetLogger() << buffer << endl;
+    GetLogger() << L"---------- Source (inline) ---------" << std::endl;
+    GetLogger() << buffer << std::endl;
 #endif
   }
   else {
@@ -337,7 +337,7 @@ void Scanner::CheckIdentifier(int index)
   try {
     // copy string
     const size_t length = foo_pos - start_pos;
-    wstring ident(buffer, start_pos, length);
+    std::wstring ident(buffer, start_pos, length);
     // check string
     ScannerTokenType ident_type = ident_map[ident];
     switch(ident_type) {
@@ -576,7 +576,7 @@ void Scanner::CheckIdentifier(int index)
 	  tokens[index]->SetLinePos((int)(line_pos - length - 1));
     tokens[index]->SetFileName(filename);
   }
-  catch(const out_of_range&) {
+  catch(const std::out_of_range&) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetLinePos((int)(line_pos - 1));
@@ -588,17 +588,17 @@ void Scanner::CheckIdentifier(int index)
  * Load a UTF-8 source file (text)
  * into memory.
  ****************************/
-wchar_t* Scanner::LoadFileBuffer(wstring filename, size_t& buffer_size)
+wchar_t* Scanner::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 {
   char* buffer;
-  const string open_filename = UnicodeToBytes(filename);
+  const std::string open_filename = UnicodeToBytes(filename);
 
-  ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
+  std::ifstream in(open_filename.c_str(), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
   if(in.good()) {
     // get file size
-    in.seekg(0, ios::end);
+    in.seekg(0, std::ios::end);
     buffer_size = (size_t)in.tellg();
-    in.seekg(0, ios::beg);
+    in.seekg(0, std::ios::beg);
     buffer = (char*)calloc(buffer_size + 1, sizeof(char));
     in.read(buffer, buffer_size);
     // close file
@@ -643,7 +643,7 @@ void Scanner::CheckString(int index, bool is_valid)
 {
   // copy string
   const size_t length = foo_pos - start_pos;
-  wstring char_string(buffer, start_pos, length);
+  std::wstring char_string(buffer, start_pos, length);
   // set string
   if(is_valid) {
     tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
@@ -661,7 +661,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
 {
   // copy string
   const size_t length = foo_pos - start_pos;
-  wstring ident(buffer, start_pos, length);
+  std::wstring ident(buffer, start_pos, length);
 
   // set token
   wchar_t* end;
@@ -676,7 +676,7 @@ void Scanner::ParseDouble(int index)
 {
   // copy string
   const size_t length = foo_pos - start_pos;
-  wstring ident(buffer, start_pos, length);
+  std::wstring ident(buffer, start_pos, length);
   // set token
   tokens[index]->SetType(TOKEN_FLOAT_LIT);
   tokens[index]->SetFloatLit(wcstod(ident.c_str(), nullptr));
@@ -690,7 +690,7 @@ void Scanner::ParseUnicodeChar(int index)
   // copy string
   const size_t length = foo_pos - start_pos;
   if(length < 5) {
-    wstring ident(buffer, start_pos, length);
+    std::wstring ident(buffer, start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_CHAR_LIT);
     tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), nullptr, 16));
@@ -716,7 +716,7 @@ void Scanner::ReadFile()
   buffer = LoadFileBuffer(filename, buffer_size);
   
 #ifdef _DEBUG
-  GetLogger() << L"---------- Source: '" << filename << L"' ---------" << endl;
+  GetLogger() << L"---------- Source: '" << filename << L"' ---------" << std::endl;
 #endif
 }
 
@@ -761,13 +761,13 @@ Token* Scanner::GetToken(int index)
   return nullptr;
 }
 
-wstring Scanner::RandomString(size_t len)
+std::wstring Scanner::RandomString(size_t len)
 {
-  random_device gen;
+  std::random_device gen;
   const wchar_t* values = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const size_t offset = len / 3;
 
-  wstring output = L"blob://";
+  std::wstring output = L"blob://";
   for(size_t i = 0; i < len; ++i) {
     if(i != 0 && i % offset == 0) {
       output += L'-';

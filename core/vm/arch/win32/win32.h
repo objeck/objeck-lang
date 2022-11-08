@@ -56,8 +56,8 @@ typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 class File {
-  static bool GetAccountGroupOwner(const char* name, wstring &account, wstring &group) {
-    wstring value;
+  static bool GetAccountGroupOwner(const char* name, std::wstring &account, std::wstring &group) {
+    std::wstring value;
 
     PSID sid_owner = nullptr;
     PSECURITY_DESCRIPTOR security = nullptr;
@@ -120,16 +120,16 @@ class File {
   }
 
  public:
-  static string TempName() {
+  static std::string TempName() {
     char buffer[FILENAME_MAX + 1];
     if(!tmpnam_s(buffer, FILENAME_MAX)) {
-      return string(buffer);
+      return std::string(buffer);
     }
 
     return "";
   }
 
-  static string FullPathName(const string name) {
+  static std::string FullPathName(const std::string name) {
     char buffer[BUFSIZE] = "";
     char* part = nullptr;
 
@@ -231,8 +231,8 @@ class File {
     return true;
   }
 
-  static wstring FileOwner(const char* name, bool is_account) {
-    wstring account;  wstring group;
+  static std::wstring FileOwner(const char* name, bool is_account) {
+    std::wstring account;  std::wstring group;
 
     if(GetAccountGroupOwner(name, account, group)) {
       if(is_account) {
@@ -254,10 +254,10 @@ class File {
     return _S_IFDIR & buf.st_mode;
   }
 
-  static vector<string> ListDir(const char* p) {
-    vector<string> files;
+  static std::vector<std::string> ListDir(const char* p) {
+    std::vector<std::string> files;
 
-    string path = p;
+    std::string path = p;
     if(path.size() > 0 && path[path.size() - 1] == '\\') {
       path += "*";
     }
@@ -289,7 +289,7 @@ class File {
  ****************************/
 class IPSocket {
  public:
-   static vector<string> Resolve(const char* address);
+   static std::vector<std::string> Resolve(const char* address);
 
    static SOCKET Open(const char* address, const int port);
   
@@ -388,8 +388,8 @@ class IPSecureSocket {
       return false;
     }
 
-    wstring path = GetLibraryPath();
-    string cert_path = UnicodeToBytes(path);
+    std::wstring path = GetLibraryPath();
+    std::string cert_path = UnicodeToBytes(path);
     cert_path += CACERT_PEM_FILE;
 
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
@@ -401,7 +401,7 @@ class IPSecureSocket {
     SSL* ssl;
     BIO_get_ssl(bio, &ssl);
     SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
-    string ssl_address = address;
+    std::string ssl_address = address;
     if(ssl_address.size() < 1 || port < 0) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
@@ -502,25 +502,25 @@ class IPSecureSocket {
  ****************************/
 class System {
  public:
-   static vector<string> CommandOutput(const char* c) {
-     vector<string> output;
+   static std::vector<std::string> CommandOutput(const char* c) {
+     std::vector<std::string> output;
 
      // create temporary file
-     const string tmp_file_name = File::TempName();
+     const std::string tmp_file_name = File::TempName();
      FILE* file = File::FileOpen(tmp_file_name.c_str(), "wb");
      if(file) {
        fclose(file);
 
-       string str_cmd(c);
+       std::string str_cmd(c);
        str_cmd += " > ";
        str_cmd += tmp_file_name;
 
        system(str_cmd.c_str());
 
        // read file output
-       ifstream file_out(tmp_file_name.c_str());
+       std::ifstream file_out(tmp_file_name.c_str());
        if(file_out.is_open()) {
-         string line_out;
+         std::string line_out;
          while(getline(file_out, line_out)) {
            output.push_back(line_out);
          }
@@ -549,8 +549,8 @@ class System {
     return TRUE;
   }
 
-  static string GetPlatform() {
-    string platform;
+  static std::string GetPlatform() {
+    std::string platform;
 
     TCHAR buffer[BUFSIZE];
     if(GetOSDisplayString(buffer)) {
