@@ -31,4 +31,4 @@
 
 #include "logger.h"
 
-wofstream* logger;
+std::wofstream* logger;

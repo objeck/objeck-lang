@@ -36,62 +36,62 @@
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
+void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << endl;
+  GetLogger() << L"\tError: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << std::endl;
 #endif
 
-  const wstring &str_line_num = ToString(node->GetLineNumber());
-  const wstring& str_line_pos = ToString(node->GetLinePosition());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  const std::wstring &str_line_num = ToString(node->GetLineNumber());
+  const std::wstring& str_line_pos = ToString(node->GetLinePosition());
+  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessWarning(ParseNode* node, const wstring& msg)
+void ContextAnalyzer::ProcessWarning(ParseNode* node, const std::wstring& msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tWarning: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << endl;
+  GetLogger() << L"\tWarning: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << std::endl;
 #endif
 
-  const wstring& str_line_num = ToString(node->GetLineNumber());
-  const wstring& str_line_pos = ToString(node->GetLinePosition());
-  warnings.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): Warning: " + msg));
+  const std::wstring& str_line_num = ToString(node->GetLineNumber());
+  const std::wstring& str_line_pos = ToString(node->GetLinePosition());
+  warnings.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): Warning: " + msg));
 }
 
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(const wstring& fn, int ln, int lp, const wstring& msg)
+void ContextAnalyzer::ProcessError(const std::wstring& fn, int ln, int lp, const std::wstring& msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << fn << L": (" << ln << L',' << lp << L"): " << msg << endl;
+  GetLogger() << L"\tError: " << fn << L": (" << ln << L',' << lp << L"): " << msg << std::endl;
 #endif
 
-  const wstring& str_line_num = ToString(ln);
-  const wstring& str_line_pos = ToString(lp);
-  errors.insert(pair<int, wstring>(ln, fn+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  const std::wstring& str_line_num = ToString(ln);
+  const std::wstring& str_line_pos = ToString(lp);
+  errors.insert(std::pair<int, std::wstring>(ln, fn+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(const wstring& fn, const wstring& msg)
+void ContextAnalyzer::ProcessError(const std::wstring& fn, const std::wstring& msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << msg << endl;
+  GetLogger() << L"\tError: " << msg << std::endl;
 #endif
 
-  errors.insert(pair<int, wstring>(1, fn + L":(1,1): " + msg));
+  errors.insert(std::pair<int, std::wstring>(1, fn + L":(1,1): " + msg));
 }
 
 /****************************
  * Formats possible alternative
  * methods
  ****************************/
-void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
+void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
 {
   if(alt_error_method_names.size() > 0) {
     message += L"\n\tPossible alternative(s):\n";
@@ -113,12 +113,12 @@ bool ContextAnalyzer::CheckErrors()
 
   // check and process errors
   if(!errors.empty()) {
-    map<int, wstring>::iterator error;
+    std::map<int, std::wstring>::iterator error;
     for(error = errors.begin(); error != errors.end(); ++error) {
 #ifdef _DIAG_LIB
       error_strings.push_back(error->second);
 #else
-      wcerr << error->second << endl;
+      std::wcerr << error->second << std::endl;
 #endif
     }
 
@@ -131,12 +131,12 @@ bool ContextAnalyzer::CheckErrors()
 
   // check and process warnings
   if(!warnings.empty()) {
-    map<int, wstring>::iterator warning;
+    std::map<int, std::wstring>::iterator warning;
     for(warning = warnings.begin(); warning != warnings.end(); ++warning) {
 #ifdef _DIAG_LIB
       warning_strings.push_back(warning->second);
 #else
-      wcerr << warning->second << endl;
+      std::wcerr << warning->second << std::endl;
 #endif
     }
 
@@ -154,7 +154,7 @@ bool ContextAnalyzer::CheckErrors()
 bool ContextAnalyzer::Analyze()
 {
 #ifdef _DEBUG
-  GetLogger() << L"\n--------- Contextual Analysis ---------" << endl;
+  GetLogger() << L"\n--------- Contextual Analysis ---------" << std::endl;
 #endif
   int class_id = 0;
 
@@ -164,17 +164,17 @@ bool ContextAnalyzer::Analyze()
 #endif
 
   // check uses
-  const wstring file_name = program->GetFileName();
-  vector<wstring> program_uses = program->GetUses();
+  const std::wstring file_name = program->GetFileName();
+  std::vector<std::wstring> program_uses = program->GetUses();
   for(size_t i = 0; i < program_uses.size(); ++i) {
-    const wstring &name = program_uses[i];
+    const std::wstring &name = program_uses[i];
     if(!program->HasBundleName(name) && !linker->HasBundleName(name)) {
       ProcessError(file_name, L"Bundle name '" + name + L"' not defined in program or linked libraries");
     }
   }
 
   // resolve alias types
-  vector<Type*>& types = TypeFactory::Instance()->GetTypes();
+  std::vector<Type*>& types = TypeFactory::Instance()->GetTypes();
   for(size_t i = 0; i < types.size(); ++i) {
     Type* type = types[i];
     if(type->GetType() == ALIAS_TYPE) {
@@ -186,13 +186,13 @@ bool ContextAnalyzer::Analyze()
   }
 
   // add methods for default parameters
-  vector<ParsedBundle*> bundles = program->GetBundles();
+  std::vector<ParsedBundle*> bundles = program->GetBundles();
   for(size_t i = 0; i < bundles.size(); ++i) {
     ParsedBundle* bundle = bundles[i];
-    vector<Class*> classes = bundle->GetClasses();
+    std::vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
-      vector<Method*> methods = klass->GetMethods();
+      std::vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
         AddDefaultParameterMethods(bundle, klass, methods[k]);
       }
@@ -202,10 +202,10 @@ bool ContextAnalyzer::Analyze()
   for(size_t i = 0; i < bundles.size(); ++i) {
     // methods
     ParsedBundle* bundle = bundles[i];
-    vector<Class*> classes = bundle->GetClasses();
+    std::vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
-      vector<Method*> methods = klass->GetMethods();
+      std::vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
         Method* method = methods[k];
         if(!method->IsLambda()) {
@@ -215,7 +215,7 @@ bool ContextAnalyzer::Analyze()
     }
 
     // aliases
-    vector<Alias*> aliases = bundle->GetAliases();
+    std::vector<Alias*> aliases = bundle->GetAliases();
     for(size_t j = 0; j < aliases.size(); ++j) {
       aliases[j]->EncodeSignature(program, linker);
     }
@@ -224,10 +224,10 @@ bool ContextAnalyzer::Analyze()
   // associate re-encoded method signatures with methods
   for(size_t i = 0; i < bundles.size(); ++i) {
     bundle = bundles[i];
-    vector<Class*> classes = bundle->GetClasses();
+    std::vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
-      wstring parent_name = klass->GetParentName();
+      std::wstring parent_name = klass->GetParentName();
 #ifdef _SYSTEM
       if(parent_name.size() == 0 && klass->GetName() != SYSTEM_BASE_NAME) {
 #else
@@ -268,13 +268,13 @@ bool ContextAnalyzer::Analyze()
     symbol_table = bundle->GetSymbolTableManager();
 
     // process enums
-    vector<Enum*> enums = bundle->GetEnums();
+    std::vector<Enum*> enums = bundle->GetEnums();
     for(size_t j = 0; j < enums.size(); ++j) {
       AnalyzeEnum(enums[j], 0);
     }
 
     // process classes
-    vector<Class*> classes = bundle->GetClasses();
+    std::vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       AnalyzeClass(classes[j], class_id++, 0);
     }
@@ -306,7 +306,7 @@ bool ContextAnalyzer::Analyze()
 void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
+  std::wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
   Debug(msg, eenum->GetLineNumber(), depth);
 #endif
 
@@ -323,10 +323,10 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
 /****************************
  * Find duplicate classes
  ****************************/
-void ContextAnalyzer::AnalyzeDuplicateClasses(vector<ParsedBundle*>& bundles)
+void ContextAnalyzer::AnalyzeDuplicateClasses(std::vector<ParsedBundle*>& bundles)
 {
   for(size_t i = 0; i < bundles.size(); ++i) {
-    vector<Class*> classes = bundles[i]->GetClasses();
+    std::vector<Class*> classes = bundles[i]->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
       for(size_t k = 0; k < bundles.size(); ++k) {
@@ -344,12 +344,12 @@ void ContextAnalyzer::AnalyzeDuplicateClasses(vector<ParsedBundle*>& bundles)
  * Checks for duplicate instance
  * and class level variables
  ****************************/
-void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int depth)
+void ContextAnalyzer::AnalyzeDuplicateEntries(std::vector<Class*> &classes, const int depth)
 {
   for(size_t i = 0; i < classes.size(); ++i) {
     // declarations
     Class* klass = classes[i];
-    vector<Statement*> statements = klass->GetStatements();
+    std::vector<Statement*> statements = klass->GetStatements();
     for(size_t j = 0; j < statements.size(); ++j) {
       Declaration* declaration = static_cast<Declaration*>(statements[j]);
       SymbolEntry* entry = declaration->GetEntry();
@@ -357,9 +357,9 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int
         // duplicate parent
         if(DuplicateParentEntries(entry, klass)) {
           size_t offset = entry->GetName().find(L':');
-          if(offset != wstring::npos) {
+          if(offset != std::wstring::npos) {
             ++offset;
-            const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
+            const std::wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
             ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
           }
           else {
@@ -379,7 +379,7 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int
 void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method)
 {
   // declarations
-  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
     bool default_params = true;
     for(int i = (int)declarations.size() - 1; i >= 0; --i) {
@@ -410,7 +410,7 @@ void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* kl
 void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method)
 {
   // find initial parameter offset
-  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   size_t inital_param_offset = 0;
 
   if(!inital_param_offset) {
@@ -468,7 +468,7 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
+  std::wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
     L"; virtual=" + (klass->IsVirtual() ? L"true" : L"false") + L"]";
   Debug(msg, klass->GetLineNumber(), depth);
 #endif
@@ -496,7 +496,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
   AnalyzeInterfaces(klass, depth);
 
   // declarations
-  vector<Statement*> statements = klass->GetStatements();
+  std::vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
     current_method = nullptr;
     AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
@@ -528,7 +528,7 @@ void ContextAnalyzer::CheckParent(Class* klass, const int depth)
 void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"[class: name='" + klass->GetName() + L"]";
+  std::wstring msg = L"[class: name='" + klass->GetName() + L"]";
   Debug(msg, klass->GetLineNumber(), depth);
 #endif
 
@@ -536,7 +536,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
   current_table = symbol_table->GetSymbolTable(current_class->GetName());
 
   // methods
-  vector<Method*> methods = klass->GetMethods();
+  std::vector<Method*> methods = klass->GetMethods();
   for(size_t i = 0; i < methods.size(); ++i) {
     AnalyzeMethod(methods[i], depth + 1);
   }
@@ -566,11 +566,11 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
  *****************************************************************/
 void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
 {
-  const vector<Class*> generic_classes = klass->GetGenericClasses();
+  const std::vector<Class*> generic_classes = klass->GetGenericClasses();
   for(size_t i = 0; i < generic_classes.size(); ++i) {
     Class* generic_class = generic_classes[i];
     // check generic class
-    const wstring generic_class_name = generic_class->GetName();
+    const std::wstring generic_class_name = generic_class->GetName();
     if(HasProgramLibraryClass(generic_class_name)) {
       ProcessError(klass, L"Generic reference '" + generic_class_name + L"' previously defined as a class");
     }
@@ -587,7 +587,7 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
         }
       }
       else {
-        const wstring generic_inf_name = generic_inf_type->GetName();
+        const std::wstring generic_inf_name = generic_inf_type->GetName();
         ProcessError(klass, L"Undefined backing generic interface: '" + generic_inf_name + L"'");
       }
     }
@@ -600,17 +600,17 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
 {
-  wstring error_msg;
+  std::wstring error_msg;
 
-  vector<Method*> virtual_class_methods = virtual_class->GetMethods();
+  std::vector<Method*> virtual_class_methods = virtual_class->GetMethods();
   for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
     Method* virtual_method = virtual_class_methods[i];
     if(virtual_method->IsVirtual()) {
-      const wstring virtual_method_name = virtual_method->GetEncodedName();
+      const std::wstring virtual_method_name = virtual_method->GetEncodedName();
       // search for implementation method via signature
       const size_t offset = virtual_method_name.find(':');
-      if(offset != wstring::npos) {
-        const wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+      if(offset != std::wstring::npos) {
+        const std::wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         Method* impl_method = impl_class->GetMethod(encoded_name);
         if(impl_method) {
           AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
@@ -639,11 +639,11 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
  ****************************/
 void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
 {
-  const vector<wstring> interface_names = klass->GetInterfaceNames();
-  vector<Class*> interfaces;
-  vector<LibraryClass*> lib_interfaces;
+  const std::vector<std::wstring> interface_names = klass->GetInterfaceNames();
+  std::vector<Class*> interfaces;
+  std::vector<LibraryClass*> lib_interfaces;
   for(size_t i = 0; i < interface_names.size(); ++i) {
-    const wstring &interface_name = interface_names[i];
+    const std::wstring &interface_name = interface_names[i];
     Class* inf_klass = SearchProgramClasses(interface_name);
     if(inf_klass) {
       if(!inf_klass->IsInterface()) {
@@ -652,7 +652,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
       }
 
       // ensure interface methods are virtual
-      vector<Method*> methods = inf_klass->GetMethods();
+      std::vector<Method*> methods = inf_klass->GetMethods();
       for(size_t i = 0; i < methods.size(); ++i) {
         if(!methods[i]->IsVirtual()) {
           ProcessError(methods[i], L"Interface method must be defined as 'virtual'");
@@ -678,8 +678,8 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
         }
 
         // ensure interface methods are virtual
-        map<const wstring, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
-        map<const wstring, LibraryMethod*>::iterator iter;
+        std::map<const std::wstring, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
+        std::map<const std::wstring, LibraryMethod*>::iterator iter;
         for(iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
           LibraryMethod* lib_method = iter->second;
           if(!lib_method->IsVirtual()) {
@@ -756,18 +756,18 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
 {
-  wstring error_msg;
+  std::wstring error_msg;
 
-  map<const wstring, LibraryMethod*>::iterator iter;
-  map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
+  std::map<const std::wstring, LibraryMethod*>::iterator iter;
+  std::map<const std::wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
   for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
     LibraryMethod* virtual_method = iter->second;
     if(virtual_method->IsVirtual()) {
-      const wstring virtual_method_name = virtual_method->GetName();
+      const std::wstring virtual_method_name = virtual_method->GetName();
       // search for implementation method via signature
       const size_t offset = virtual_method_name.find(':');
-      if(offset != wstring::npos) {
-        const wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+      if(offset != std::wstring::npos) {
+        const std::wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         Method* impl_method = impl_class->GetMethod(encoded_name);
         if(impl_method) {
           AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
@@ -841,7 +841,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
 void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')";
+  std::wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')";
   Debug(msg, method->GetLineNumber(), depth);
 #endif
 
@@ -854,7 +854,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
   method->SetSymbolTable(current_table);
 
   // declarations
-  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   for(size_t i = 0; i < declarations.size(); ++i) {
     Declaration* declaration = declarations[i];
     AnalyzeDeclaration(declaration, current_class, depth + 1);
@@ -864,7 +864,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
   // process statements if function/method is not virtual
   if(!method->IsVirtual()) {
     // statements
-    vector<Statement*> statements = method->GetStatements()->GetStatements();
+    std::vector<Statement*> statements = method->GetStatements()->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       AnalyzeStatement(statements[i], depth + 1);
     }
@@ -899,7 +899,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 #endif
 
     // check program main
-    const wstring main_str = current_class->GetName() + L":Main:o.System.String*,";
+    const std::wstring main_str = current_class->GetName() + L":Main:o.System.String*,";
     if(method->GetEncodedName() == main_str) {
       if(main_found) {
         ProcessError(method, L"The 'Main(args)' function has already been defined");
@@ -916,7 +916,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
     // web program
     else if(is_web) {
-      const wstring web_str = current_class->GetName() + L":Action:o.Web.FastCgi.Request,o.Web.FastCgi.Response,";
+      const std::wstring web_str = current_class->GetName() + L":Action:o.Web.FastCgi.Request,o.Web.FastCgi.Response,";
       if(method->GetEncodedName() == web_str) {
         if(web_found) {
           ProcessError(method, L"The 'Action(args)' function has already been defined");
@@ -947,12 +947,12 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
  ****************************/
 void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
 {
-  vector<SymbolEntry*> entries = current_table->GetEntries();
+  std::vector<SymbolEntry*> entries = current_table->GetEntries();
   for(size_t i = 0; i < entries.size(); ++i) {
     SymbolEntry* entry = entries[i];
     if(entry->IsLocal()) {
       // check for unreferenced variables
-      vector<Variable*> variables = entry->GetVariables();
+      std::vector<Variable*> variables = entry->GetVariables();
       if(!entry->IsParameter() && !entry->IsLoaded()) {
         const int start_line = method->GetLineNumber();
         const int end_line = method->GetEndLineNumber();
@@ -980,7 +980,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 
   // by type
   Type* lambda_type = nullptr;
-  const wstring lambda_name = lambda->GetName();
+  const std::wstring lambda_name = lambda->GetName();
   bool is_inferred = HasInferredLambdaTypes(lambda_name);
 
   if(lambda->GetLambdaType()) {
@@ -1003,16 +1003,16 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   }
 }
 
-Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int ln, int lp) {
+Type* ContextAnalyzer::ResolveAlias(const std::wstring& name, const std::wstring& fn, int ln, int lp) {
   Type* alias_type = nullptr;
 
-  wstring alias_name;
+  std::wstring alias_name;
   const size_t middle = name.find(L'#');
-  if(middle != wstring::npos) {
+  if(middle != std::wstring::npos) {
     alias_name = name.substr(0, middle);
   }
 
-  wstring type_name;
+  std::wstring type_name;
   if(middle + 1 < name.size()) {
     type_name = name.substr(middle + 1);
   }
@@ -1066,18 +1066,18 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
   return alias_type;
 }
 
-Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
+Method* ContextAnalyzer::DerivedLambdaFunction(std::vector<Method*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
     Method* alt_mthd = alt_mthds[0];
-    vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
+    std::vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
     if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry() && 
        alt_mthd_types[0]->GetEntry()->GetType()->GetType() == FUNC_TYPE) {
       // set parameters
-      vector<Type*> inferred_type_params;
+      std::vector<Type*> inferred_type_params;
       Type* alt_mthd_type = alt_mthd_types[0]->GetEntry()->GetType();
-      const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
+      const std::vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         inferred_type_params.push_back(ResolveGenericType(func_params[i], lambda_inferred_call, alt_mthd->GetClass(), nullptr));
       }
@@ -1097,17 +1097,17 @@ Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
   return nullptr;
 }
 
-LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(vector<LibraryMethod*>& alt_mthds)
+LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
     LibraryMethod* alt_mthd = alt_mthds[0];
-    vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
+    std::vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
     if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetType() == FUNC_TYPE) {
       // set parameters
-      vector<Type*> inferred_type_params;
+      std::vector<Type*> inferred_type_params;
       Type* alt_mthd_type = alt_mthd_types[0];
-      const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
+      const std::vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         inferred_type_params.push_back(ResolveGenericType(func_params[i], lambda_inferred_call, NULL, alt_mthd->GetLibraryClass()));
       }
@@ -1135,9 +1135,9 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
   method->SetReturn(lambda_type->GetFunctionReturn());
 
   // update declarations
-  vector<Type*> types = lambda_type->GetFunctionParameters();
+  std::vector<Type*> types = lambda_type->GetFunctionParameters();
   DeclarationList* declaration_list = method->GetDeclarations();
-  vector<Declaration*> declarations = declaration_list->GetDeclarations();
+  std::vector<Declaration*> declarations = declaration_list->GetDeclarations();
   if(types.size() == declarations.size()) {
     // encode lookup
     method->EncodeSignature();
@@ -1164,10 +1164,10 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     capture_method = nullptr;
     capture_lambda = nullptr;
 
-    const wstring full_method_name = method->GetName();
+    const std::wstring full_method_name = method->GetName();
     const size_t offset = full_method_name.find(':');
-    if(offset != wstring::npos) {
-      const wstring method_name = full_method_name.substr(offset + 1);
+    if(offset != std::wstring::npos) {
+      const std::wstring method_name = full_method_name.substr(offset + 1);
 
       // create method call
       MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(), 
@@ -1179,7 +1179,7 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
       lambda->SetTypes(method_call->GetEvalType());
     }
     else {
-      wcerr << L"Internal compiler error: Invalid method name." << endl;
+      std::wcerr << L"Internal compiler error: Invalid method name." << std::endl;
       exit(1);
     }
   }
@@ -1190,15 +1190,15 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
 
 /****************************
  * maps lambda decelerations 
- * to parameter list
+ * to parameter std::list
  ****************************/
 ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarations)
 {
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
 
-  const vector<Declaration*> dclrs = declarations->GetDeclarations();
+  const std::vector<Declaration*> dclrs = declarations->GetDeclarations();
   for(size_t i = 0; i < dclrs.size(); ++i) {
-    wstring ident;
+    std::wstring ident;
     Type* dclr_type = dclrs[i]->GetEntry()->GetType();
     switch(dclr_type->GetType()) {
     case NIL_TYPE:
@@ -1246,7 +1246,7 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
  * Check to determine if lambda 
  * concrete types are inferred
  ****************************/
-bool ContextAnalyzer::HasInferredLambdaTypes(const wstring lambda_name)
+bool ContextAnalyzer::HasInferredLambdaTypes(const std::wstring lambda_name)
 {
   return lambda_inferred.second && lambda_name.empty();
 }
@@ -1269,7 +1269,7 @@ void ContextAnalyzer::CheckLambdaInferredTypes(MethodCall* method_call, int dept
  ****************************/
 bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const int depth)
 {
-  vector<Statement*> statements = statement_list->GetStatements();
+  std::vector<Statement*> statements = statement_list->GetStatements();
   if(statements.size() == 0) {
     ProcessError(current_method, L"All method/function paths must return a value");
   }
@@ -1337,9 +1337,9 @@ bool ContextAnalyzer::AnalyzeReturnPaths(If* if_stmt, bool nested, const int dep
 
 bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
 {
-  map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
-  map<int, StatementList*> label_statements;
-  for(map<ExpressionList*, StatementList*>::iterator iter = statements.begin(); iter != statements.end(); ++iter) {
+  std::map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
+  std::map<int, StatementList*> label_statements;
+  for(std::map<ExpressionList*, StatementList*>::iterator iter = statements.begin(); iter != statements.end(); ++iter) {
     if(!AnalyzeReturnPaths(iter->second, depth + 1)) {
       return false;
     }
@@ -1364,7 +1364,7 @@ bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
 void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int depth)
 {
   current_table->NewScope();
-  vector<Statement*> statements = statement_list->GetStatements();
+  std::vector<Statement*> statements = statement_list->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
     AnalyzeStatement(statements[i], depth + 1);
   }
@@ -1386,7 +1386,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       Declaration* declaration = static_cast<Declaration*>(statement);
       if(declaration->GetChild()) {
         // build stack declarations
-        stack<Declaration*> declarations;
+        std::stack<Declaration*> declarations;
         while(declaration) {
           declarations.push(declaration);
           declaration = declaration->GetChild();
@@ -1428,7 +1428,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       Assignment* assignment = static_cast<Assignment*>(statement);
       if(assignment->GetChild()) {
         // build stack assignments
-        stack<Assignment*> assignments;
+        std::stack<Assignment*> assignments;
         while(assignment) {
           assignments.push(assignment);
           assignment = assignment->GetChild();
@@ -1655,14 +1655,14 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
 void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth)
 {
 #ifdef _DEBUG
-  Debug(L"character string literal", char_str->GetLineNumber(), depth);
+  Debug(L"character std::string literal", char_str->GetLineNumber(), depth);
 #endif
 
   int var_start = -1;
   int str_start = 0;
-  const wstring &str = char_str->GetString();
+  const std::wstring &str = char_str->GetString();
 
-  // empty wstring segment
+  // empty string segment
   if(str.empty()) {
     char_str->AddSegment(L"");
   }
@@ -1672,14 +1672,14 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       // variable start
       if(str[i] == L'{' && i + 1 < str.size() && str[i + 1] == L'$') {
         var_start = (int)i;
-        const wstring token = str.substr(str_start, i - str_start);
+        const std::wstring token = str.substr(str_start, i - str_start);
         char_str->AddSegment(token);
       }
 
       // variable end
       if(var_start > -1) {
         if(str[i] == L'}') {
-          const wstring token = str.substr(var_start + 2, i - var_start - 2);
+          const std::wstring token = str.substr(var_start + 2, i - var_start - 2);
           SymbolEntry* entry = GetEntry(token);
           if(entry) {
             AnalyzeCharacterStringVariable(entry, char_str, depth);
@@ -1692,7 +1692,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
           str_start = (int)i + 1;
         }
         else if(i + 1 == str.size()) {
-          const wstring token = str.substr(var_start + 1, i - var_start);
+          const std::wstring token = str.substr(var_start + 1, i - var_start);
           SymbolEntry* entry = GetEntry(token);
           if(entry) {
             AnalyzeCharacterStringVariable(entry, char_str, depth);
@@ -1707,14 +1707,14 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       }
       else if(i + 1 == str.size()) {
         var_start = (int)i;
-        const wstring token = str.substr(str_start, i - str_start + 1);
+        const std::wstring token = str.substr(str_start, i - str_start + 1);
         char_str->AddSegment(token);
       }
     }
   }
 
   // tag literal strings
-  vector<CharacterStringSegment*> segments = char_str->GetSegments();
+  std::vector<CharacterStringSegment*> segments = char_str->GetSegments();
   for(size_t i = 0; i < segments.size(); ++i) {
     if(segments[i]->GetType() == STRING) {
       int id = program->GetCharStringId(segments[i]->GetString());
@@ -1732,7 +1732,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   // create temporary variable for concat of strings and variables
   if(segments.size() > 1) {
     Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-    const wstring scope_name = current_method->GetName() + L":#_var_concat_#";
+    const std::wstring scope_name = current_method->GetName() + L":#_var_concat_#";
     SymbolEntry* entry = current_table->GetEntry(scope_name);
     if(!entry) {
       entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
@@ -1783,7 +1783,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
   array->SetEvalType(type, false);
 
   // ensure that element sizes match dimensions
-  vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+  std::vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
   switch(array->GetType()) {
   case INT_TYPE: {
     int id = program->GetIntStringId(all_elements);
@@ -1812,12 +1812,12 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     break;
 
   case CHAR_TYPE: {
-    // copy wstring elements
-    wstring char_str;
+    // copy string elements
+    std::wstring char_str;
     for(size_t i = 0; i < all_elements.size(); ++i) {
       char_str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
     }
-    // associate char wstring
+    // associate char string
     int id = program->GetCharStringId(char_str);
     if(id > -1) {
       array->SetId(id);
@@ -1856,11 +1856,11 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   if(entry) {
     entry->WasLoaded();
 #ifdef _DEBUG
-    wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" + (entry->IsLocal() ? L"true" : L"false") + L"' loaded=" + (entry->IsLoaded() ? L"true" : L"false");;
+    std::wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" + (entry->IsLocal() ? L"true" : L"false") + L"' loaded=" + (entry->IsLoaded() ? L"true" : L"false");;
     Debug(msg, variable->GetLineNumber(), depth);
 #endif
 
-    const wstring &name = variable->GetName();
+    const std::wstring &name = variable->GetName();
     if(HasProgramLibraryEnum(name) || HasProgramLibraryClass(name)) {
       ProcessError(variable, L"Variable '" + name + L"' already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
     }
@@ -1904,7 +1904,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // lambda expressions
   else if(current_method && current_method->IsLambda()) {
-    const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
+    const std::wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
     SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
     if(capture_entry) {
       if(capture_lambda->HasClosure(capture_entry)) {
@@ -1914,7 +1914,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
         copy_entry->AddVariable(variable);
       }
       else {
-        const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
+        const std::wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
         SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(var_scope_name, capture_entry->GetType(), false, false);
         symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
 
@@ -1927,7 +1927,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // type inferred variable
   else if(current_method) {
-    const wstring scope_name = current_method->GetName() + L':' + variable->GetName();
+    const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
 
@@ -1960,8 +1960,8 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
  * Analyzes an enum call
  ****************************/
 void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, const int depth) {
-  const wstring variable_name = method_call->GetVariableName();
-  const wstring method_name = method_call->GetMethodName();
+  const std::wstring variable_name = method_call->GetVariableName();
+  const std::wstring method_name = method_call->GetMethodName();
 
   //
   // check library enum reference; fully qualified name
@@ -1973,7 +1973,7 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
   }
 
   if(lib_eenum && method_call->GetMethodCall()) {
-    const wstring item_name = method_call->GetMethodCall()->GetVariableName();
+    const std::wstring item_name = method_call->GetMethodCall()->GetVariableName();
     ResolveEnumCall(lib_eenum, item_name, method_call);
   }
   else if(lib_eenum) {
@@ -1983,7 +1983,7 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
     //
     // check program enum reference
     //
-    wstring enum_name; wstring item_name;
+    std::wstring enum_name; std::wstring item_name;
     if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
       enum_name = method_name;
       item_name = method_call->GetMethodCall()->GetVariableName();
@@ -2067,7 +2067,7 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
 void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
+  std::wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
     L"; method=" + method_call->GetMethodName() + L"; call_type=" +
     ToString(method_call->GetCallType());
   Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
@@ -2096,7 +2096,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   //
   else {
     // static check
-    const wstring variable_name = method_call->GetVariableName();
+    const std::wstring variable_name = method_call->GetVariableName();
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry) {
       entry->WasLoaded();
@@ -2109,7 +2109,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       AnalyzeVariable(method_call->GetVariable(), depth + 1);
     }
     else if(capture_lambda) {
-      const wstring full_class_name = GetProgramLibraryClassName(variable_name);
+      const std::wstring full_class_name = GetProgramLibraryClassName(variable_name);
       if(!HasProgramLibraryEnum(full_class_name) && !HasProgramLibraryClass(full_class_name)) {
         Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
                                                                    static_cast<Expression*>(method_call)->GetLineNumber(),
@@ -2121,7 +2121,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
     }
     
-    wstring encoding;
+    std::wstring encoding;
     // local call
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
     if(klass) {
@@ -2195,9 +2195,9 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
   }
 }
 
-void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
+void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
 {
-  const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
+  const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
     ProcessError(node, L"Cannot utilize an unqualified instance of class: '" + lib_klass->GetName() + L"'");
   }
@@ -2207,8 +2207,8 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
       Type* concrete_type = concrete_types[i];
       LibraryClass* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const wstring backing_inf_name = class_generic->GetGenericInterface()->GetName();
-        const wstring concrete_name = concrete_type->GetName();
+        const std::wstring backing_inf_name = class_generic->GetGenericInterface()->GetName();
+        const std::wstring concrete_name = concrete_type->GetName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         if(GetProgramLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
           if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
@@ -2230,7 +2230,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
         }
       }
       else {
-        const wstring concrete_type_name = concrete_type->GetName();
+        const std::wstring concrete_type_name = concrete_type->GetName();
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
            !current_class->GetGenericClass(concrete_type_name)) {
@@ -2241,9 +2241,9 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
   }
 }
 
-void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node)
+void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node)
 {
-  const vector<Class*> class_generics = klass->GetGenericClasses();
+  const std::vector<Class*> class_generics = klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
     ProcessError(node, L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
   }
@@ -2255,8 +2255,8 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
 
       Class* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const wstring backing_inf_name = GetProgramLibraryClassName(class_generic->GetGenericInterface()->GetName());
-        const wstring concrete_name = concrete_type->GetName();
+        const std::wstring backing_inf_name = GetProgramLibraryClassName(class_generic->GetGenericInterface()->GetName());
+        const std::wstring concrete_name = concrete_type->GetName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         if(GetProgramLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
           if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
@@ -2278,7 +2278,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
         }
       }
       else {
-        const wstring concrete_type_name = concrete_type->GetName();
+        const std::wstring concrete_type_name = concrete_type->GetName();
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
            !current_class->GetGenericClass(concrete_type_name)) {
@@ -2289,9 +2289,9 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
   }
 }
 
-void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_name, Expression * expression)
+void ContextAnalyzer::ValidateGenericBacking(Type* type, const std::wstring backing_name, Expression * expression)
 {
-  const wstring concrete_name = type->GetName();
+  const std::wstring concrete_name = type->GetName();
   Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
   if(GetProgramLibraryClass(type, inf_klass, inf_lib_klass)) {
     if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
@@ -2308,8 +2308,8 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_n
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* mthd_call = static_cast<MethodCall*>(expression);
     if(mthd_call->GetConcreteTypes().empty() && mthd_call->GetEntry()) {
-      vector<Type*> concrete_types = mthd_call->GetEntry()->GetType()->GetGenerics();
-      vector<Type*> concrete_copies;
+      std::vector<Type*> concrete_types = mthd_call->GetEntry()->GetType()->GetGenerics();
+      std::vector<Type*> concrete_copies;
       for(size_t i = 0; i < concrete_types.size(); ++i) {
         concrete_copies.push_back(TypeFactory::Instance()->MakeType(concrete_types[i]));
       }
@@ -2327,7 +2327,7 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_n
  * Validates an expression
  * method call
  ****************************/
-bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, wstring &encoding,
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, std::wstring &encoding,
                                                   Class* &klass, LibraryClass* &lib_klass,
                                                   bool &is_enum_call)
 {
@@ -2374,7 +2374,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, wstrin
  * Validates an expression
  * method call
  ****************************/
-bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, std::wstring &encoding,
                                                   Class* &klass, LibraryClass* &lib_klass)
 {
   Type* type = entry->GetType();
@@ -2392,7 +2392,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &e
  * method call
  ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
-                                                  wstring &encoding, Class* &klass,
+                                                  std::wstring &encoding, Class* &klass,
                                                   LibraryClass* &lib_klass, bool& is_enum_call)
 {
   switch(type->GetType()) {
@@ -2437,7 +2437,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
       encoding = L"o.System.Base";
     }
     else {
-      const wstring &cls_name = type->GetName();
+      const std::wstring &cls_name = type->GetName();
       klass = SearchProgramClasses(cls_name);
       lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
 
@@ -2486,7 +2486,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   ExpressionList* call_params = method_call->GetCallingParameters();
   AnalyzeExpressions(call_params, depth + 1);
   // check indexes
-  vector<Expression*> expressions = call_params->GetExpressions();
+  std::vector<Expression*> expressions = call_params->GetExpressions();
   if(expressions.size() == 0) {
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
   }
@@ -2518,9 +2518,9 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   if(method_call->HasConcreteTypes() && method_call->GetEvalType()) {
     Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
     if(GetProgramLibraryClass(method_call->GetEvalType(), generic_klass, generic_lib_klass)) {
-      const vector<Type*> concrete_types = GetConcreteTypes(method_call);
+      const std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(generic_klass) {
-        const vector<Class*> generic_classes = generic_klass->GetGenericClasses();
+        const std::vector<Class*> generic_classes = generic_klass->GetGenericClasses();
         if(concrete_types.size() == generic_classes.size()) {
           method_call->GetEvalType()->SetGenerics(concrete_types);
         }
@@ -2529,7 +2529,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
         }
       }
       else {
-        const vector<LibraryClass*> generic_classes = generic_lib_klass->GetGenericClasses();
+        const std::vector<LibraryClass*> generic_classes = generic_lib_klass->GetGenericClasses();
         if(concrete_types.size() == generic_classes.size()) {
           method_call->GetEvalType()->SetGenerics(concrete_types);
         }
@@ -2552,13 +2552,13 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth
 
   Class* parent = current_class->GetParent();
   if(parent) {
-    wstring encoding;
+    std::wstring encoding;
     AnalyzeMethodCall(parent, method_call, false, encoding, depth);
   }
   else {
     LibraryClass* lib_parent = current_class->GetLibraryParent();
     if(lib_parent) {
-      wstring encoding;
+      std::wstring encoding;
       AnalyzeMethodCall(lib_parent, method_call, false, encoding, true, depth);
     }
     else {
@@ -2583,7 +2583,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       }
     }
     else {
-      wstring encoding;
+      std::wstring encoding;
       Class* klass = nullptr;
       LibraryClass* lib_klass = nullptr;
 
@@ -2603,7 +2603,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       }
       else {
         if(expression->GetEvalType()) {
-          wstring error_msg;
+          std::wstring error_msg;
 
           if(!expression->GetEvalType()->GetName().empty()) {
             error_msg = L" +Undefined class reference: '" + expression->GetEvalType()->GetName();
@@ -2611,7 +2611,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
           else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
             MethodCall* cls_method = static_cast<MethodCall*>(expression);
 
-            wstring cls_name;
+            std::wstring cls_name;
             if(cls_method->GetMethod()) {
               cls_name = cls_method->GetMethod()->GetClass()->GetName() + L"->";
             }
@@ -2637,12 +2637,12 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
  * is method call within the source
  * program.
  *********************************/
-Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
+Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, std::wstring &encoding, const int depth)
 {
   Class* klass = nullptr;
 
   // method within the same class
-  const wstring variable_name = method_call->GetVariableName();
+  const std::wstring variable_name = method_call->GetVariableName();
   if(method_call->GetMethodName().size() == 0) {
     klass = SearchProgramClasses(current_class->GetName());
   }
@@ -2692,10 +2692,10 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstrin
  * is method call within a linked
  * library
  *********************************/
-LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
+LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, std::wstring &encoding, const int depth)
 {
   LibraryClass* klass = nullptr;
-  const wstring variable_name = method_call->GetVariableName();
+  const std::wstring variable_name = method_call->GetVariableName();
 
   // external method
   SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
@@ -2817,11 +2817,11 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
               return 0;
             }
             // calculate relative match
-            const wstring &from_klass_name = calling_type->GetName();
+            const std::wstring &from_klass_name = calling_type->GetName();
             Class* from_klass = SearchProgramClasses(from_klass_name);
             LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
 
-            const wstring &to_klass_name = method_type->GetName();
+            const std::wstring &to_klass_name = method_type->GetName();
             Class* to_klass = SearchProgramClasses(to_klass_name);
             if(to_klass) {
               return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
@@ -2844,8 +2844,8 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
         }
 
         case FUNC_TYPE: {
-          const wstring calling_type_name = calling_type->GetName();
-          wstring method_type_name = method_type->GetName();
+          const std::wstring calling_type_name = calling_type->GetName();
+          std::wstring method_type_name = method_type->GetName();
           if(method_type_name.size() == 0) {
             AnalyzeVariableFunctionParameters(method_type, calling_param);
             method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
@@ -2872,20 +2872,20 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
  ****************************/
 Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth)
 {
-  const wstring method_name = method_call->GetMethodName();
+  const std::wstring method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
-  vector<Expression*> expr_params = calling_params->GetExpressions();
-  vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
+  std::vector<Expression*> expr_params = calling_params->GetExpressions();
+  std::vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
 
   // save all valid candidates
-  vector<MethodCallSelection*> matches;
+  std::vector<MethodCallSelection*> matches;
   for(size_t i = 0; i < candidates.size(); ++i) {
     // match parameter sizes
-    vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
+    std::vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
 
     if(expr_params.size() == method_parms.size()) {
       // box and unbox parameters
-      vector<Expression*> boxed_resolved_params;
+      std::vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         // cannot be set to method, need to preserve test against other selections
         Expression* expr_param = expr_params[j];
@@ -2930,7 +2930,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 #endif
 
     // check casts on final candidate
-    vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
+    std::vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
     for(size_t j = 0; j < expr_params.size(); ++j) {
       Expression* expression = expr_params[j];
       while(expression->GetMethodCall()) {
@@ -2943,7 +2943,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
     }
   }
   else {
-    vector<Method*> alt_mthds = selector.GetAlternativeMethods();
+    std::vector<Method*> alt_mthds = selector.GetAlternativeMethods();
     Method* derived_method = DerivedLambdaFunction(alt_mthds);
     if(derived_method) {
       return derived_method;
@@ -2961,12 +2961,12 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
  * is method call within the source
  * program.
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, wstring &encoding, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, const int depth)
  {
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L':' 
     << (method_call->GetMethodName().size() > 0 ? method_call->GetMethodName() : method_call->GetVariableName())
-    << L"|" << endl;
+    << L"|" << std::endl;
 #endif
 
   // calling parameters
@@ -2980,7 +2980,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   // note: find system based methods and call with function parameters (i.e. $Int, $Float)
   Method* method = ResolveMethodCall(klass, method_call, depth);
   if(!method) {
-    const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding +
+    const std::wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
     method = klass->GetMethod(encoded_name);
   }
@@ -2989,14 +2989,14 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     if(klass->GetParent()) {
       Class* parent = klass->GetParent();
       method_call->SetOriginalClass(klass);
-      wstring encoding;
+      std::wstring encoding;
       AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
       return;
     }
     else if(klass->GetLibraryParent()) {
       LibraryClass* lib_parent = klass->GetLibraryParent();
       method_call->SetOriginalClass(klass);
-      wstring encoding;
+      std::wstring encoding;
       AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
     }
@@ -3009,8 +3009,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   // found program method
   if(method) {
     // look for implicit casts
-    vector<Declaration*> mthd_params = method->GetDeclarations()->GetDeclarations();
-    vector<Expression*> expressions = call_params->GetExpressions();
+    std::vector<Declaration*> mthd_params = method->GetDeclarations()->GetDeclarations();
+    std::vector<Expression*> expressions = call_params->GetExpressions();
 
 #ifndef _SYSTEM
     if(mthd_params.size() != expressions.size()) {
@@ -3063,7 +3063,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     }
     
     // check private class scope
-    const wstring bundle_name = klass->GetBundleName();
+    const std::wstring bundle_name = klass->GetBundleName();
     if(!klass->IsPublic() && current_class->GetBundleName() != bundle_name) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
     }
@@ -3088,8 +3088,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     const bool is_new = method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD;
     const bool same_cls_return = ClassEquals(method->GetReturn()->GetName(), klass, nullptr);
     if((is_new || same_cls_return) && klass->HasGenerics()) {
-      const vector<Class*> class_generics = klass->GetGenericClasses();      
-      vector<Type*> concrete_types = GetConcreteTypes(method_call);
+      const std::vector<Class*> class_generics = klass->GetGenericClasses();      
+      std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
       }
@@ -3102,7 +3102,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
             Type* backing_type = class_generic->GetGenericInterface();
             // backing type
             ResolveClassEnumType(backing_type);
-            const wstring backing_name = backing_type->GetName();
+            const std::wstring backing_name = backing_type->GetName();
             // concrete type
             ResolveClassEnumType(concrete_type);
             // validate backing
@@ -3140,17 +3140,17 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
   else {
-    const wstring &mthd_name = method_call->GetMethodName();
-    const wstring &var_name = method_call->GetVariableName();
+    const std::wstring &mthd_name = method_call->GetMethodName();
+    const std::wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
-      wstring message = L"Undefined function/method call: '" +
+      std::wstring message = L"Undefined function/method call: '" +
         mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
     }
     else {
-      wstring message = L"Undefined function/method call: '" +
+      std::wstring message = L"Undefined function/method call: '" +
         var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
@@ -3163,19 +3163,19 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
  ****************************/
 LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth)
 {
-  const wstring &method_name = method_call->GetMethodName();
+  const std::wstring &method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
-  vector<Expression*> expr_params = calling_params->GetExpressions();
-  vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
+  std::vector<Expression*> expr_params = calling_params->GetExpressions();
+  std::vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
 
   // save all valid candidates
-  vector<LibraryMethodCallSelection*> matches;
+  std::vector<LibraryMethodCallSelection*> matches;
   for(size_t i = 0; i < candidates.size(); ++i) {
     // match parameter sizes
-    vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();
+    std::vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();
     if(expr_params.size() == method_parms.size()) {
       // box and unbox parameters
-      vector<Expression*> boxed_resolved_params;
+      std::vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
@@ -3213,7 +3213,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   LibraryMethod* lib_method = selector.GetSelection();
   if(lib_method) {
     // check casts on final candidate
-    vector<Type*> method_parms = lib_method->GetDeclarationTypes();
+    std::vector<Type*> method_parms = lib_method->GetDeclarationTypes();
     for(size_t j = 0; j < expr_params.size(); ++j) {
       Expression* expression = expr_params[j];
       while(expression->GetMethodCall()) {
@@ -3230,7 +3230,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     }
   }
   else {
-    vector<LibraryMethod*> alt_mthds = selector.GetAlternativeMethods();
+    std::vector<LibraryMethod*> alt_mthds = selector.GetAlternativeMethods();
     LibraryMethod* derived_method = DerivedLambdaFunction(alt_mthds);
     if(derived_method) {
       return derived_method;
@@ -3249,10 +3249,10 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
  * library
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, 
-                                        wstring &encoding, bool is_parent, const int depth)
+                                        std::wstring &encoding, bool is_parent, const int depth)
 {
 #ifdef _DEBUG
-  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << endl;
+  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << std::endl;
 #endif
 
   ExpressionList* call_params = method_call->GetCallingParameters();
@@ -3272,7 +3272,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 
   // note: last resort to find system based methods i.e. $Int, $Float, etc.
   if(!lib_method) {
-    wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' +
+    std::wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' +
       encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
     if(*encoded_name.rbegin() == L'*') {
       encoded_name.push_back(L',');
@@ -3281,7 +3281,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   }
 
   // check private class scope
-  const wstring bundle_name = klass->GetBundleName();
+  const std::wstring bundle_name = klass->GetBundleName();
   if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
     ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
   }
@@ -3299,7 +3299,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 {
   if(lib_method) {
     ExpressionList* call_params = method_call->GetCallingParameters();
-    vector<Expression*> expressions = call_params->GetExpressions();
+    std::vector<Expression*> expressions = call_params->GetExpressions();
 
     for(size_t i = 0; i < expressions.size(); ++i) {
       Expression* expression = expressions[i];
@@ -3376,8 +3376,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     const bool is_new = lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD;
     const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetName(), nullptr, lib_klass);
     if((is_new || same_cls_return) && lib_klass->HasGenerics()) {
-      const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
-      const vector<Type*> concrete_types = GetConcreteTypes(method_call);
+      const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
+      const std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_method->GetUserName() + L"'");
       }
@@ -3390,7 +3390,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
             Type* backing_type = class_generic->GetGenericInterface();
             // backing type
             ResolveClassEnumType(backing_type);
-            const wstring backing_name = backing_type->GetName();
+            const std::wstring backing_name = backing_type->GetName();
             // concrete type
             ResolveClassEnumType(concrete_type);
             // validate backing
@@ -3408,8 +3408,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       method_call->SetEvalType(eval_type, false);
     }
     else if(lib_method->GetReturn()->HasGenerics()) {
-      const vector<Type*> concretate_types = method_call->GetConcreteTypes();
-      const vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
+      const std::vector<Type*> concretate_types = method_call->GetConcreteTypes();
+      const std::vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
       if(concretate_types.size() == generic_types.size()) {
         for(size_t i = 0; i < concretate_types.size(); ++i) {
           Type* concretate_type = concretate_types[i];
@@ -3427,7 +3427,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
 
     // TODO: refactor, side effects?
-    const vector<Type*> concretate_types = method_call->GetConcreteTypes();
+    const std::vector<Type*> concretate_types = method_call->GetConcreteTypes();
     if(method_call->GetCallType() != NEW_INST_CALL && concretate_types.size() > 0 && concretate_types[0]->GetGenerics().size() == 1) {
       Type* first_type = concretate_types[0];
       ResolveClassEnumType(first_type);
@@ -3458,15 +3458,15 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
 
     // get calling and function parameters
-    const vector<Type*> func_params = type->GetFunctionParameters();
-    vector<Expression*> calling_params = method_call->GetCallingParameters()->GetExpressions();
+    const std::vector<Type*> func_params = type->GetFunctionParameters();
+    std::vector<Expression*> calling_params = method_call->GetCallingParameters()->GetExpressions();
     if(func_params.size() != calling_params.size()) {
       ProcessError(static_cast<Expression*>(method_call), L"Function call parameter size mismatch");
       return;
     }
 
     // check parameters
-    wstring dyn_func_params_str;
+    std::wstring dyn_func_params_str;
     ExpressionList* boxed_resolved_params = TreeFactory::Instance()->MakeExpressionList();
     for(size_t i = 0; i < func_params.size(); ++i) {
       Type* func_param = func_params[i];
@@ -3498,7 +3498,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     AnalyzeExpressions(boxed_resolved_params, depth + 1);
 
     // check parameters again dynamic definition
-    const wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
+    const std::wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
     if(dyn_func_params_str != call_params_str) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + method_call->GetMethodName() +
                    L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
@@ -3506,7 +3506,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     // reset calling parameters
     method_call->SetCallingParameters(boxed_resolved_params);
 
-    //  set entry reference and return type
+    // set entry reference and return type
     method_call->SetFunctionalCall(entry);
     method_call->SetEvalType(type->GetFunctionReturn(), true);
     if(method_call->GetMethodCall()) {
@@ -3517,17 +3517,17 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
   else {
-    const wstring &mthd_name = method_call->GetMethodName();
-    const wstring &var_name = method_call->GetVariableName();
+    const std::wstring &mthd_name = method_call->GetMethodName();
+    const std::wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
-      wstring message = L"Undefined function/method call: '" + mthd_name +
+      std::wstring message = L"Undefined function/method call: '" + mthd_name +
         L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
     }
     else {
-      wstring message = L"Undefined function/method call: '" + var_name +
+      std::wstring message = L"Undefined function/method call: '" + var_name +
         L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
@@ -3539,15 +3539,15 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
  * Analyzes a function reference
  ********************************/
 void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
-                                               wstring &encoding, const int depth)
+                                               std::wstring &encoding, const int depth)
 {
-  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-  const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() +
+  const std::wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
+  const std::wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() +
     L':' + encoding + func_encoding;
 
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
-    const wstring func_type_id = L"m.(" + func_encoding + L")~" + method->GetEncodedReturn();
+    const std::wstring func_type_id = L"m.(" + func_encoding + L")~" + method->GetEncodedReturn();
     
     Type* type = TypeParser::ParseType(func_type_id);
     type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
@@ -3569,7 +3569,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     }
     else if(rtrn_type->GetType() == CLASS_TYPE) {
       if(ResolveClassEnumType(rtrn_type)) {
-        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetName();
+        const std::wstring rtrn_encoded_name = L"o." + rtrn_type->GetName();
         if(rtrn_encoded_name != method->GetEncodedReturn()) {
           ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
         }
@@ -3584,8 +3584,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     method_call->SetMethod(method, false);
   }
   else {
-    const wstring &mthd_name = method_call->GetMethodName();
-    const wstring &var_name = method_call->GetVariableName();
+    const std::wstring &mthd_name = method_call->GetMethodName();
+    const std::wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
@@ -3602,14 +3602,14 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
  * Checks a function reference
  ****************************/
 void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
-                                               wstring &encoding, const int depth)
+                                               std::wstring &encoding, const int depth)
 {
-  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-  const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding + func_encoding;
+  const std::wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
+  const std::wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding + func_encoding;
 
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
-    const wstring func_type_id = L'(' + func_encoding + L")~" + method->GetEncodedReturn();
+    const std::wstring func_type_id = L'(' + func_encoding + L")~" + method->GetEncodedReturn();
     Type* type = TypeParser::ParseType(func_type_id);
     type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
     type->SetFunctionReturn(method->GetReturn());
@@ -3630,7 +3630,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     }
     else if(rtrn_type->GetType() == CLASS_TYPE) {
       if(ResolveClassEnumType(rtrn_type)) {
-        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetName();
+        const std::wstring rtrn_encoded_name = L"o." + rtrn_type->GetName();
         if(rtrn_encoded_name != method->GetEncodedReturn()) {
           ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
         }
@@ -3645,8 +3645,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     method_call->SetLibraryMethod(method, false);
   }
   else {
-    const wstring &mthd_name = method_call->GetMethodName();
-    const wstring &var_name = method_call->GetVariableName();
+    const std::wstring &mthd_name = method_call->GetMethodName();
+    const std::wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
@@ -3718,8 +3718,8 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 {
   AnalyzeExpressions(indices, depth + 1);
 
-  vector<Expression*> unboxed_expressions;
-  vector<Expression*> expressions = indices->GetExpressions();
+  std::vector<Expression*> unboxed_expressions;
+  std::vector<Expression*> expressions = indices->GetExpressions();
 
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];    
@@ -3823,21 +3823,21 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   }
 
   // labels and expressions
-  map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
+  std::map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
   if(statements.size() < 1) {
     ProcessError(select_stmt, L"Select statement must have at least one label");
   }
   
-  map<ExpressionList*, StatementList*>::iterator iter;
+  std::map<ExpressionList*, StatementList*>::iterator iter;
   // duplicate value vector
   int value = 0;
-  map<int, StatementList*> label_statements;
+  std::map<int, StatementList*> label_statements;
   for(iter = statements.begin(); iter != statements.end(); ++iter) {
     // expressions
     ExpressionList* expressions = iter->first;
     AnalyzeExpressions(expressions, depth + 1);
     // check expression type
-    vector<Expression*> expression_list = expressions->GetExpressions();
+    std::vector<Expression*> expression_list = expressions->GetExpressions();
     for(size_t i = 0; i < expression_list.size(); ++i) {
       Expression* expression = expression_list[i];
       if(expression) {
@@ -3888,13 +3888,13 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       }
 
       // statements get assoicated here and validated below
-      label_statements.insert(pair<int, StatementList*>(value, iter->second));
+      label_statements.insert(std::pair<int, StatementList*>(value, iter->second));
     }
   }
   select_stmt->SetLabelStatements(label_statements);
 
   // process statements (in parse order)
-  vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
+  std::vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
   for(size_t i = 0; i < statement_lists.size(); ++i) {
     AnalyzeStatements(statement_lists[i], depth + 1);
   }
@@ -3960,7 +3960,7 @@ void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
   // 'do/while' statements
   current_table->NewScope();
   in_loop++;
-  vector<Statement*> statements = do_while_stmt->GetStatements()->GetStatements();
+  std::vector<Statement*> statements = do_while_stmt->GetStatements()->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
     AnalyzeStatement(statements[i], depth + 2);
   }
@@ -4081,7 +4081,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
     return;
   }
 
-  const wstring concrete_type_name = concrete_type->GetName();
+  const std::wstring concrete_type_name = concrete_type->GetName();
   Class* concrete_klass = nullptr; LibraryClass* concrete_lib_klass = nullptr;
   if(!GetProgramLibraryClass(concrete_type, concrete_klass, concrete_lib_klass)) {
     concrete_klass = current_class->GetGenericClass(concrete_type_name);
@@ -4092,14 +4092,14 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
       (concrete_lib_klass && concrete_lib_klass->IsInterface())) ? true : false;
 
     if(!is_concrete_inf) {
-      const wstring cls_type_name = cls_type->GetName();
+      const std::wstring cls_type_name = cls_type->GetName();
       Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
       if(!GetProgramLibraryClass(cls_type, dclr_klass, dclr_lib_klass)) {
         dclr_klass = current_class->GetGenericClass(cls_type_name);
       }
 
       if(dclr_klass && dclr_klass->HasGenerics()) {
-        const vector<Type*> concrete_types = concrete_type->GetGenerics();
+        const std::vector<Type*> concrete_types = concrete_type->GetGenerics();
         if(concrete_types.empty()) {
           ProcessError(node, L"Generic to concrete size mismatch");
         }
@@ -4108,7 +4108,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
         }
       }
       else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
-        const vector<Type*> concrete_types = concrete_type->GetGenerics();
+        const std::vector<Type*> concrete_types = concrete_type->GetGenerics();
         if(concrete_types.empty()) {
           ProcessError(node, L"Generic to concrete size mismatch");
         }
@@ -4232,8 +4232,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
     // handle generics, update entry
     if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry() && variable->GetEntry()->GetType()) {
-      const vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
-      const vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
+      const std::vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
+      const std::vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
 
       if(var_types.size() == expr_types.size()) {
         for(size_t i = 0; i < var_types.size(); ++i) {
@@ -4273,7 +4273,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       Class* left_class = SearchProgramClasses(left_type->GetName());
 #endif
       if(left_class) {
-        const wstring left_name = left_class->GetName();
+        const std::wstring left_name = left_class->GetName();
         //
         // 'System.String' append operations
         //
@@ -4286,7 +4286,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
             Class* right_class = SearchProgramClasses(right_type->GetName());
 #endif
             if(right_class) {
-              const wstring right = right_class->GetName();
+              const std::wstring right = right_class->GetName();
               // rhs string append
               if(right == L"System.String") {
                 switch(type) {
@@ -4553,7 +4553,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
         ProcessError(expression, L"Invalid mathematical operation");
       }
       else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) || ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
-        const wstring cls_name = cls_type->GetName();
+        const std::wstring cls_name = cls_type->GetName();
         if(cls_name != L"System.ByteHolder" && cls_name != L"System.CharHolder" && cls_name != L"System.IntHolder") {
           ProcessError(expression, L"Invalid mathematical operation");
         }
@@ -5889,8 +5889,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
       if(left_enum->GetName() != right_enum->GetName()) {
-        const wstring left_str = FormatTypeString(left->GetName());
-        const wstring right_str = FormatTypeString(right->GetName());
+        const std::wstring left_str = FormatTypeString(left->GetName());
+        const std::wstring right_str = FormatTypeString(right->GetName());
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
@@ -5898,8 +5898,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     else if(right && linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
       LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
       if(right_lib_enum && (left_enum->GetName() != right_lib_enum->GetName())) {
-        const wstring left_str = FormatTypeString(left->GetName());
-        const wstring right_str = FormatTypeString(right->GetName());
+        const std::wstring left_str = FormatTypeString(left->GetName());
+        const std::wstring right_str = FormatTypeString(right->GetName());
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
@@ -5998,8 +5998,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
       if(left_lib_enum->GetName() != right_enum->GetName()) {
-        const wstring left_str = FormatTypeString(left_lib_enum->GetName());
-        const wstring right_str = FormatTypeString(right_enum->GetName());
+        const std::wstring left_str = FormatTypeString(left_lib_enum->GetName());
+        const std::wstring right_str = FormatTypeString(right_enum->GetName());
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
@@ -6007,8 +6007,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     else if(linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
       LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
       if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
-        const wstring left_str = FormatTypeString(left_lib_enum->GetName());
-        const wstring right_str = FormatTypeString(right_lib_enum->GetName());
+        const std::wstring left_str = FormatTypeString(left_lib_enum->GetName());
+        const std::wstring right_str = FormatTypeString(right_lib_enum->GetName());
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
@@ -6098,8 +6098,8 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
   }
 
   if(left_klass == right_klass && lib_left_klass == lib_right_klass) {
-    const vector<Type*> left_generic_types = left->GetGenerics();
-    const vector<Type*> right_generic_types = right->GetGenerics();
+    const std::vector<Type*> left_generic_types = left->GetGenerics();
+    const std::vector<Type*> right_generic_types = right->GetGenerics();
     if(left_generic_types.size() != right_generic_types.size()) {
       if(check_only) {
         return false;
@@ -6154,13 +6154,13 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
         }
 
-        const wstring left_type_name = left_generic_type->GetName();
-        const wstring right_type_name = right_generic_type->GetName();
+        const std::wstring left_type_name = left_generic_type->GetName();
+        const std::wstring right_type_name = right_generic_type->GetName();
         if(left_type_name != right_type_name) {
           if(check_only) {
             return false;
           }
-          ProcessError(expression, L"Cannot map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          ProcessError(expression, L"Cannot std::map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
@@ -6189,9 +6189,9 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
       // resolve function name
       Type* type = entry->GetType();
       AnalyzeVariableFunctionParameters(type, entry, klass);
-      const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn());
+      const std::wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn());
 #ifdef _DEBUG
-      GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
+      GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << std::endl;
 #endif
       type->SetName(encoded_name);
     }
@@ -6226,7 +6226,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
  ****************************/
 void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int depth)
 {
-  vector<Expression*> expressions = parameters->GetExpressions();
+  std::vector<Expression*> expressions = parameters->GetExpressions();
   
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
@@ -6240,10 +6240,10 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int d
 /********************************
  * Encodes a function definition
  ********************************/
-wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, const int depth)
+std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, const int depth)
 {
-  wstring encoded_name;
-  vector<Expression*> expressions = calling_params->GetExpressions();
+  std::wstring encoded_name;
+  std::vector<Expression*> expressions = calling_params->GetExpressions();
   for(size_t i = 0; i < expressions.size(); ++i) {
     if(expressions[i]->GetExpressionType() == VAR_EXPR) {
       Variable* variable = static_cast<Variable*>(expressions[i]);
@@ -6278,10 +6278,10 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
       else {
         encoded_name += L"o.";
         // search program
-        const wstring klass_name = variable->GetName();
+        const std::wstring klass_name = variable->GetName();
         Class* klass = program->GetClass(klass_name);
         if(!klass) {
-          vector<wstring> uses = program->GetUses(current_class->GetFileName());
+          std::vector<std::wstring> uses = program->GetUses(current_class->GetFileName());
           for(size_t i = 0; !klass && i < uses.size(); ++i) {
             klass = program->GetClass(uses[i] + L"." + klass_name);
           }
@@ -6305,7 +6305,7 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
         }
         // generics
         if(variable->HasConcreteTypes()) {
-          const vector<Type*> generic_types = variable->GetConcreteTypes();
+          const std::vector<Type*> generic_types = variable->GetConcreteTypes();
           for(size_t j = 0; j < generic_types.size(); ++j) {
             encoded_name += L"|" + generic_types[j]->GetName();
           }
@@ -6314,7 +6314,7 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
 
       // dimension
       if(variable->GetIndices()) {
-        vector<Expression*> indices = variable->GetIndices()->GetExpressions();
+        std::vector<Expression*> indices = variable->GetIndices()->GetExpressions();
         variable->GetEvalType()->SetDimension((int)indices.size());
         for(size_t j = 0; j < indices.size(); ++j) {
           encoded_name += L'*';
@@ -6326,7 +6326,7 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
     else if(expressions[i]->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expressions[i])->GetCallType() == ENUM_CALL) {
       MethodCall* mthd_call = static_cast<MethodCall*>(expressions[i]);
 
-      wstring klass_name = mthd_call->GetVariableName();
+      std::wstring klass_name = mthd_call->GetVariableName();
       Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
       if(GetProgramLibraryClass(klass_name, klass, lib_klass)) {
         if(klass) {
@@ -6355,8 +6355,8 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params,
 /****************************
  * Encodes a function type
  ****************************/
-wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {
-  wstring encoded_name = L"(";
+std::wstring ContextAnalyzer::EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn) {
+  std::wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
     // encode params
     encoded_name += EncodeType(func_params[i]);
@@ -6382,10 +6382,10 @@ wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* fun
 /****************************
  * Encodes a method call
  ****************************/
-wstring ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, const int depth)
+std::wstring ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, const int depth)
 {
-  wstring encoded_name;
-  vector<Expression*> expressions = calling_params->GetExpressions();
+  std::wstring encoded_name;
+  std::vector<Expression*> expressions = calling_params->GetExpressions();
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
     while(expression->GetMethodCall()) {
@@ -6524,10 +6524,10 @@ bool ContextAnalyzer::DuplicateParentEntries(SymbolEntry* entry, Class* klass)
     Class* parent = klass->GetParent();
     do {
       size_t offset = entry->GetName().find(L':');
-      if(offset != wstring::npos) {
+      if(offset != std::wstring::npos) {
         ++offset;
-        const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-        const wstring lookup = parent->GetName() + L':' + short_name;
+        const std::wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
+        const std::wstring lookup = parent->GetName() + L':' + short_name;
         SymbolEntry * parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
         if(parent_entry) {
           return true;
@@ -6541,9 +6541,9 @@ bool ContextAnalyzer::DuplicateParentEntries(SymbolEntry* entry, Class* klass)
   return false;
 }
 
-bool ContextAnalyzer::DuplicateCaseItem(map<int, StatementList*>label_statements, int value)
+bool ContextAnalyzer::DuplicateCaseItem(std::map<int, StatementList*>label_statements, int value)
 {
-  map<int, StatementList*>::iterator result = label_statements.find(value);
+  std::map<int, StatementList*>::iterator result = label_statements.find(value);
   if(result != label_statements.end()) {
     return true;
   }
@@ -6599,7 +6599,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* lib_
   return not_variable && not_static_prev && not_new;
 }
 
-SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
+SymbolEntry* ContextAnalyzer::GetEntry(std::wstring name, bool is_parent)
 {
   if(current_table) {
     // check locally
@@ -6617,7 +6617,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
       else {
         // check parents
         entry = nullptr;
-        const wstring& bundle_name = bundle->GetName();
+        const std::wstring& bundle_name = bundle->GetName();
         Class* parent;
         if(bundle_name.size() > 0) {
           parent = bundle->GetClass(bundle_name + L"." + current_class->GetParentName());
@@ -6646,7 +6646,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
   return nullptr;
 }
 
-SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& variable_name, int depth)
+SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const std::wstring& variable_name, int depth)
 {
   SymbolEntry* entry;
   if(method_call->GetVariable()) {
@@ -6711,7 +6711,7 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
   return type;
 }
 
-bool ContextAnalyzer::ValidDownCast(const wstring& cls_name, Class* class_tmp, LibraryClass* lib_class_tmp)
+bool ContextAnalyzer::ValidDownCast(const std::wstring& cls_name, Class* class_tmp, LibraryClass* lib_class_tmp)
 {
   if(cls_name == L"System.Base") {
     return true;
@@ -6719,8 +6719,8 @@ bool ContextAnalyzer::ValidDownCast(const wstring& cls_name, Class* class_tmp, L
 
   while(class_tmp || lib_class_tmp) {
     // get cast name
-    wstring cast_name;
-    vector<wstring> interface_names;
+    std::wstring cast_name;
+    std::vector<std::wstring> interface_names;
     if(class_tmp) {
       cast_name = class_tmp->GetName();
       interface_names = class_tmp->GetInterfaceNames();
@@ -6771,7 +6771,7 @@ bool ContextAnalyzer::ValidDownCast(const wstring& cls_name, Class* class_tmp, L
   return false;
 }
 
-bool ContextAnalyzer::ValidUpCast(const wstring& to, Class* from_klass)
+bool ContextAnalyzer::ValidUpCast(const std::wstring& to, Class* from_klass)
 {
   if(from_klass->GetName() == L"System.Base") {
     return true;
@@ -6783,7 +6783,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, Class* from_klass)
   }
 
   // interface cast
-  vector<wstring> interface_names = from_klass->GetInterfaceNames();
+  std::vector<std::wstring> interface_names = from_klass->GetInterfaceNames();
   for(size_t i = 0; i < interface_names.size(); ++i) {
     Class* klass = SearchProgramClasses(interface_names[i]);
     if(klass && klass->GetName() == to) {
@@ -6798,7 +6798,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, Class* from_klass)
   }
 
   // updates
-  vector<Class*> children = from_klass->GetChildren();
+  std::vector<Class*> children = from_klass->GetChildren();
   for(size_t i = 0; i < children.size(); ++i) {
     if(ValidUpCast(to, children[i])) {
       return true;
@@ -6808,7 +6808,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, Class* from_klass)
   return false;
 }
 
-bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
+bool ContextAnalyzer::ValidUpCast(const std::wstring& to, LibraryClass* from_klass)
 {
   if(from_klass->GetName() == L"System.Base") {
     return true;
@@ -6820,7 +6820,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   }
 
   // interface cast
-  vector<wstring> interface_names = from_klass->GetInterfaceNames();
+  std::vector<std::wstring> interface_names = from_klass->GetInterfaceNames();
   for(size_t i = 0; i < interface_names.size(); ++i) {
     Class* klass = SearchProgramClasses(interface_names[i]);
     if(klass && klass->GetName() == to) {
@@ -6835,7 +6835,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   }
 
   // program updates
-  vector<LibraryClass*> children = from_klass->GetLibraryChildren();
+  std::vector<LibraryClass*> children = from_klass->GetLibraryChildren();
   for(size_t i = 0; i < children.size(); ++i) {
     if(ValidUpCast(to, children[i])) {
       return true;
@@ -6843,7 +6843,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   }
 
   // library updates
-  vector<ParseNode*> lib_children = from_klass->GetChildren();
+  std::vector<ParseNode*> lib_children = from_klass->GetChildren();
   for(size_t i = 0; i < lib_children.size(); ++i) {
     if(ValidUpCast(to, static_cast<Class*>(lib_children[i]))) {
       return true;
@@ -6853,7 +6853,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   return false;
 }
 
-bool ContextAnalyzer::GetProgramLibraryClass(const wstring &cls_name, Class*& klass, LibraryClass*& lib_klass)
+bool ContextAnalyzer::GetProgramLibraryClass(const std::wstring &cls_name, Class*& klass, LibraryClass*& lib_klass)
 {
   klass = SearchProgramClasses(cls_name);
   if(klass) {
@@ -6882,7 +6882,7 @@ bool ContextAnalyzer::GetProgramLibraryClass(Type* type, Class*& klass, LibraryC
     return true;
   }
 
-  wstring type_name = type->GetName();
+  std::wstring type_name = type->GetName();
   if(type_name.empty()) {
     switch(type->GetType()) {
     case 	BOOLEAN_TYPE:
@@ -6930,7 +6930,7 @@ bool ContextAnalyzer::GetProgramLibraryClass(Type* type, Class*& klass, LibraryC
   return false;
 }
 
-wstring ContextAnalyzer::GetProgramLibraryClassName(const wstring& n)
+std::wstring ContextAnalyzer::GetProgramLibraryClassName(const std::wstring& n)
 {
   Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
   if(GetProgramLibraryClass(n, klass, lib_klass)) {
@@ -6945,9 +6945,9 @@ wstring ContextAnalyzer::GetProgramLibraryClassName(const wstring& n)
   return n;
 }
 
-const wstring ContextAnalyzer::EncodeType(Type* type)
+const std::wstring ContextAnalyzer::EncodeType(Type* type)
 {
-  wstring encoded_name;
+  std::wstring encoded_name;
 
   if(type) {
     switch(type->GetType()) {
@@ -7088,12 +7088,12 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
   return false;
 }
 
-wstring ContextAnalyzer::FormatTypeString(const wstring name)
+std::wstring ContextAnalyzer::FormatTypeString(const std::wstring name)
 {
   const size_t index = name.find(L'#');
-  if(index != wstring::npos) {
-    const wstring left = name.substr(0, index);
-    const wstring right = name.substr(index + 1);
+  if(index != std::wstring::npos) {
+    const std::wstring left = name.substr(0, index);
+    const std::wstring right = name.substr(index + 1);
     if(left == right) {
       return left;
     }
@@ -7107,7 +7107,7 @@ wstring ContextAnalyzer::FormatTypeString(const wstring name)
 
 bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method_type)
 {
-  const wstring& from_klass_name = calling_type->GetName();
+  const std::wstring& from_klass_name = calling_type->GetName();
 
   LibraryClass* from_lib_klass = nullptr;
   Class* from_klass = SearchProgramClasses(from_klass_name);
@@ -7120,7 +7120,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   }
 
   // resolve to class name
-  wstring to_klass_name;
+  std::wstring to_klass_name;
   Class* to_klass = SearchProgramClasses(method_type->GetName());
   if(!to_klass && current_class->HasGenerics()) {
     to_klass = current_class->GetGenericClass(method_type->GetName());
@@ -7141,7 +7141,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
     Enum* from_enum = SearchProgramEnums(from_klass_name);
     LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetUses());
 
-    wstring to_enum_name;
+    std::wstring to_enum_name;
     Enum* to_enum = SearchProgramEnums(method_type->GetName());
     if(to_enum) {
       to_enum_name = to_enum->GetName();
@@ -7178,7 +7178,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   return false;
 }
 
-void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const wstring& item_name, MethodCall* method_call)
+void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const std::wstring& item_name, MethodCall* method_call)
 {
   // item_name = method_call->GetMethodCall()->GetVariableName();
   LibraryEnumItem* lib_item = lib_eenum->GetItem(item_name);
@@ -7221,7 +7221,7 @@ Enum* ContextAnalyzer::GetExpressionEnum(Type* type, Expression* expression, int
 
 StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int depth) {
   if(expression->GetExpressionType() == ADD_EXPR) {
-    list<Expression*> concat_exprs;
+    std::list<Expression*> concat_exprs;
 
     concat_exprs.push_front(static_cast<CalculatedExpression*>(expression)->GetRight());
     Expression* calc_left_expr = static_cast<CalculatedExpression*>(expression)->GetLeft();
@@ -7237,16 +7237,16 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
 
-        unordered_map<Expression*, Method*> methods_to_string;
-        unordered_map<Expression*, LibraryMethod*> lib_methods_to_string;
+        std::unordered_map<Expression*, Method*> methods_to_string;
+        std::unordered_map<Expression*, LibraryMethod*> lib_methods_to_string;
 
-        for(list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
+        for(std::list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
           Expression* concat_expr = *iter;
           AnalyzeExpression(concat_expr, depth + 1);
 
           if(concat_expr->GetEvalType()) {
             if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
-              const wstring cls_name = concat_expr->GetEvalType()->GetName();
+              const std::wstring cls_name = concat_expr->GetEvalType()->GetName();
               Class* klass = SearchProgramClasses(cls_name);
               if(klass) {
                 Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -7282,7 +7282,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
         // create temporary variable for concat of strings and variables
         StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs, methods_to_string, lib_methods_to_string);
         Type * type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-        const wstring scope_name = current_method->GetName() + L":#_add_concat_#";
+        const std::wstring scope_name = current_method->GetName() + L":#_add_concat_#";
         
         SymbolEntry* entry = current_table->GetEntry(scope_name);
         if(!entry) {
@@ -7312,7 +7312,7 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
       ProcessError(char_str, L"Invalid function variable type or dimension size");
     }
     else if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetName() != L"System.String" && entry->GetType()->GetName() != L"String") {
-      const wstring cls_name = entry->GetType()->GetName();
+      const std::wstring cls_name = entry->GetType()->GetName();
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
         Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -7354,7 +7354,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
 {
   if(to_type && to_type->GetType() == CLASS_TYPE && expression->GetCastType() && to_type->GetDimension() < 1 &&
      to_type->GetName() != L"System.Base" && to_type->GetName() != L"Base") {
-    const wstring to_class_name = to_type->GetName();
+    const std::wstring to_class_name = to_type->GetName();
     if(SearchProgramEnums(to_class_name) ||
        linker->SearchEnumLibraries(to_class_name, program->GetUses(current_class->GetFileName()))) {
       return;
@@ -7378,7 +7378,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
 
 void ContextAnalyzer::AnalyzeVariableFunctionParameters(Type* func_type, ParseNode* node, Class* klass)
 {
-  const vector<Type*> func_params = func_type->GetFunctionParameters();
+  const std::vector<Type*> func_params = func_type->GetFunctionParameters();
   Type* rtrn_type = func_type->GetFunctionReturn();
 
   // might be a resolved string from a class library
@@ -7398,10 +7398,10 @@ void ContextAnalyzer::AnalyzeVariableFunctionParameters(Type* func_type, ParseNo
 
 void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth)
 {
-  const wstring& entry_name = entry->GetName();
+  const std::wstring& entry_name = entry->GetName();
   const size_t start = entry_name.rfind(':');
-  if(start != wstring::npos) {
-    const wstring& param_name = entry_name.substr(start + 1);
+  if(start != std::wstring::npos) {
+    const std::wstring& param_name = entry_name.substr(start + 1);
     Variable * variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),
                                                                 static_cast<Expression*>(method_call)->GetLineNumber(),
                                                                 static_cast<Expression*>(method_call)->GetLinePosition(),
@@ -7411,7 +7411,7 @@ void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* e
   }
 }
 
-bool ContextAnalyzer::ClassEquals(const wstring &left_name, Class* right_klass, LibraryClass* right_lib_klass)
+bool ContextAnalyzer::ClassEquals(const std::wstring &left_name, Class* right_klass, LibraryClass* right_lib_klass)
 {
   Class* left_klass = nullptr; LibraryClass* left_lib_klass = nullptr;
   if(GetProgramLibraryClass(left_name, left_klass, left_lib_klass)) {
@@ -7433,20 +7433,20 @@ bool ContextAnalyzer::ClassEquals(const wstring &left_name, Class* right_klass, 
   return false;
 }
 
-wstring ContextAnalyzer::ReplaceSubstring(wstring s, const wstring& f, const wstring& r)
+std::wstring ContextAnalyzer::ReplaceSubstring(std::wstring s, const std::wstring& f, const std::wstring& r)
 {
   const size_t index = s.find(f);
-  if(index != string::npos) {
+  if(index != std::string::npos) {
     s.replace(index, f.size(), r);
   }
 
   return s;
 }
 
-void ContextAnalyzer::ReplaceAllSubstrings(wstring& str, const wstring& from, const wstring& to)
+void ContextAnalyzer::ReplaceAllSubstrings(std::wstring& str, const std::wstring& from, const std::wstring& to)
 {
   size_t start_pos = 0;
-  while((start_pos = str.find(from, start_pos)) != wstring::npos) {
+  while((start_pos = str.find(from, start_pos)) != std::wstring::npos) {
     str.replace(start_pos, from.length(), to);
     start_pos += to.length();
   }
@@ -7459,8 +7459,8 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
     if(candidate_type->GetType() == FUNC_TYPE) {
       if(klass) {
         Type* concrete_rtrn = ResolveGenericType(candidate_type->GetFunctionReturn(), method_call, klass, lib_klass, false);
-        vector<Type*> concrete_params;
-        const vector<Type*> type_params = candidate_type->GetFunctionParameters();
+        std::vector<Type*> concrete_params;
+        const std::vector<Type*> type_params = candidate_type->GetFunctionParameters();
         for(size_t i = 0; i < type_params.size(); ++i) {
           concrete_params.push_back(ResolveGenericType(type_params[i], method_call, klass, lib_klass, false));
         }
@@ -7469,17 +7469,17 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
       }
       else {
         ResolveClassEnumType(candidate_type);
-        wstring func_name = candidate_type->GetName();
+        std::wstring func_name = candidate_type->GetName();
 
-        const vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
+        const std::vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
         for(size_t i = 0; i < generic_classes.size(); ++i) {
-          const wstring find_name = generic_classes[i]->GetName();
+          const std::wstring find_name = generic_classes[i]->GetName();
           Type* to_type = ResolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name), method_call, klass, lib_klass, false);
-          const wstring from_name = L"o." + generic_classes[i]->GetName();
-          wstring to_name = L"o." + to_type->GetName();
+          const std::wstring from_name = L"o." + generic_classes[i]->GetName();
+          std::wstring to_name = L"o." + to_type->GetName();
           // generics
           if(to_type->HasGenerics()) {
-            const vector<Type*> generic_types = to_type->GetGenerics();
+            const std::vector<Type*> generic_types = to_type->GetGenerics();
             for(size_t j = 0; j < generic_types.size(); ++j) {
               to_name += L"|" + generic_types[j]->GetName();
             }
@@ -7494,7 +7494,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
       // find concrete index
       int concrete_index = -1;
       ResolveClassEnumType(candidate_type);
-      const wstring generic_name = candidate_type->GetName();
+      const std::wstring generic_name = candidate_type->GetName();
       if(klass) {
         concrete_index = klass->GenericIndex(generic_name);
       }
@@ -7505,12 +7505,12 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
       if(is_rtrn) {
         Class* klass_generic = nullptr; LibraryClass* lib_klass_generic = nullptr;
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
-          const vector<Type*> candidate_types = GetConcreteTypes(method_call);
+          const std::vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
-            vector<Type*> from_concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+            std::vector<Type*> from_concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               if(klass && method_call->GetEvalType()) {
-                const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
+                const std::vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
                   ResolveClassEnumType(map_types[i]);
                 }
@@ -7519,7 +7519,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                 }
               }
               else if(lib_klass && method_call->GetEvalType()) {
-                const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
+                const std::vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
                   Type* map_type = map_types[i];
                   ResolveClassEnumType(map_type);
@@ -7536,9 +7536,9 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   }
                   else {
                     // TODO: this is a hack, fix it...
-                    vector<Type*> to_concrete_types = method_call->GetConcreteTypes();                    
+                    std::vector<Type*> to_concrete_types = method_call->GetConcreteTypes();                    
                     if(from_concrete_types.size() != to_concrete_types.size() && to_concrete_types.size() == 1) {
-                      vector<Type*> mthd_types;
+                      std::vector<Type*> mthd_types;
                       if(method_call->GetMethod()) {
                         mthd_types = method_call->GetMethod()->GetReturn()->GetGenerics();
                       }
@@ -7595,7 +7595,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
 
       // find concrete type
       if(concrete_index > -1) {
-        vector<Type*> concrete_types;
+        std::vector<Type*> concrete_types;
         // get types from declaration
         if(method_call->GetEntry()) {
           concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
@@ -7631,7 +7631,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
 Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)
 {
   int concrete_index = -1;
-  const wstring left_type_name = type->GetName();
+  const std::wstring left_type_name = type->GetName();
 
   if(program->GetEnum(left_type_name) || linker->SearchEnumLibraries(left_type_name, program->GetUses())) {
     ProcessError(expression, L"Generic must be a class type");
@@ -7645,7 +7645,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Cl
   }
 
   if(concrete_index > -1) {
-    vector<Type*> concrete_types;
+    std::vector<Type*> concrete_types;
 
     if(expression->GetExpressionType() == VAR_EXPR) {
       Variable* variable = static_cast<Variable*>(expression);
@@ -7665,13 +7665,13 @@ Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Cl
   return type;
 }
 
-Class* ContextAnalyzer::SearchProgramClasses(const wstring& klass_name)
+Class* ContextAnalyzer::SearchProgramClasses(const std::wstring& klass_name)
 {
   Class* klass = program->GetClass(klass_name);
   if(!klass) {
     klass = program->GetClass(bundle->GetName() + L"." + klass_name);
     if(!klass) {
-      vector<wstring> uses = program->GetUses();
+      std::vector<std::wstring> uses = program->GetUses();
       for(size_t i = 0; !klass && i < uses.size(); ++i) {
         klass = program->GetClass(uses[i] + L"." + klass_name);
       }
@@ -7681,13 +7681,13 @@ Class* ContextAnalyzer::SearchProgramClasses(const wstring& klass_name)
   return klass;
 }
 
-Enum* ContextAnalyzer::SearchProgramEnums(const wstring& eenum_name)
+Enum* ContextAnalyzer::SearchProgramEnums(const std::wstring& eenum_name)
 {
   Enum* eenum = program->GetEnum(eenum_name);
   if(!eenum) {
     eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
     if(!eenum) {
-      vector<wstring> uses = program->GetUses();
+      std::vector<std::wstring> uses = program->GetUses();
       for(size_t i = 0; !eenum && i < uses.size(); ++i) {
         eenum = program->GetEnum(uses[i] + L"." + eenum_name);
         if(!eenum) {
@@ -7722,7 +7722,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
     // calculate match score
     int match_score = 0;
     bool exact_match = true;
-    vector<int> parm_matches = matches[i]->GetParameterMatches();
+    std::vector<int> parm_matches = matches[i]->GetParameterMatches();
     for(size_t j = 0; exact_match && j < parm_matches.size(); ++j) {
       if(parm_matches[j] == 0) {
         match_score++;
@@ -7764,7 +7764,7 @@ Method* MethodCallSelector::GetSelection()
     // calculate match score
     int match_score = 0;
     bool exact_match = true;
-    vector<int> parm_matches = matches[i]->GetParameterMatches();
+    std::vector<int> parm_matches = matches[i]->GetParameterMatches();
     for(size_t j = 0; exact_match && j < parm_matches.size(); ++j) {
       if(parm_matches[j] == 0) {
         match_score++;
@@ -7792,64 +7792,62 @@ Method* MethodCallSelector::GetSelection()
 // START: diagnostics operations
 //
 #ifdef _DIAG_LIB
-bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, const wstring var_str, const wstring mthd_str,
-                                    const int line_num, const int line_pos, vector<pair<int, wstring> >& found_completion)
+bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, const std::wstring var_str, const std::wstring mthd_str,
+                                    const int line_num, const int line_pos, std::vector<std::pair<int, std::wstring> >& found_completion)
 {
   // static keywords
-  found_completion.push_back(pair<int, wstring>(14, L"if"));
-  found_completion.push_back(pair<int, wstring>(14, L"else"));
-  found_completion.push_back(pair<int, wstring>(14, L"do"));
-  found_completion.push_back(pair<int, wstring>(14, L"while"));
-  found_completion.push_back(pair<int, wstring>(14, L"static"));
-  found_completion.push_back(pair<int, wstring>(14, L"select"));
-  found_completion.push_back(pair<int, wstring>(14, L"break"));
-  found_completion.push_back(pair<int, wstring>(14, L"continue"));
-  found_completion.push_back(pair<int, wstring>(14, L"other"));
-  found_completion.push_back(pair<int, wstring>(14, L"for"));
-  found_completion.push_back(pair<int, wstring>(14, L"each"));
-  found_completion.push_back(pair<int, wstring>(14, L"reverse"));
-  found_completion.push_back(pair<int, wstring>(14, L"label"));
-  found_completion.push_back(pair<int, wstring>(14, L"return"));
-  found_completion.push_back(pair<int, wstring>(14, L"critical"));
-  found_completion.push_back(pair<int, wstring>(14, L"use"));
-  found_completion.push_back(pair<int, wstring>(14, L"leaving"));
-  found_completion.push_back(pair<int, wstring>(14, L"virtual"));
-  found_completion.push_back(pair<int, wstring>(14, L"Parent"));
-  found_completion.push_back(pair<int, wstring>(14, L"from"));
-  found_completion.push_back(pair<int, wstring>(14, L"implements"));
-  found_completion.push_back(pair<int, wstring>(14, L"Byte"));
-  found_completion.push_back(pair<int, wstring>(14, L"Int"));
-  found_completion.push_back(pair<int, wstring>(14, L"Float"));
-  found_completion.push_back(pair<int, wstring>(14, L"Char"));
-  found_completion.push_back(pair<int, wstring>(14, L"Bool"));
-  found_completion.push_back(pair<int, wstring>(14, L"String"));
-  found_completion.push_back(pair<int, wstring>(14, L"As"));
-  found_completion.push_back(pair<int, wstring>(14, L"Nil"));
-  // found_completion.push_back(pair<int, wstring>(12, L"true"));
-  // found_completion.push_back(pair<int, wstring>(12, L"false"));
-  found_completion.push_back(pair<int, wstring>(14, L"method"));
-  found_completion.push_back(pair<int, wstring>(14, L"function"));
-  found_completion.push_back(pair<int, wstring>(14, L"class"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"if"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"else"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"do"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"while"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"static"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"select"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"break"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"continue"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"other"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"for"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"each"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"reverse"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"label"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"return"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"critical"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"use"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"leaving"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"virtual"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Parent"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"from"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"implements"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Byte"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Int"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Float"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Char"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Bool"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"String"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"As"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"Nil"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"method"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"function"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"class"));
 
   // search code
   Class* context_klass = method->GetClass();
   SymbolTable* symbol_table = method->GetSymbolTable();
-  vector<SymbolEntry*> entries = symbol_table->GetEntries();
+  std::vector<SymbolEntry*> entries = symbol_table->GetEntries();
 
-  set<wstring> unique_names;
+  std::set<std::wstring> unique_names;
 
   if(var_str.empty() && !mthd_str.empty()) {
     // local variables
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-      const wstring full_var_name = entry->GetName();
+      const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      const std::wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
       if(short_var_name.rfind(mthd_str, 0) == 0) {
-        set<wstring>::iterator found = unique_names.find(short_var_name);
+        std::set<std::wstring>::iterator found = unique_names.find(short_var_name);
         if(found == unique_names.end()) {
           unique_names.insert(short_var_name);
-          found_completion.push_back(pair<int, wstring>(6, short_var_name));
+          found_completion.push_back(std::pair<int, std::wstring>(6, short_var_name));
         }
       }
     }
@@ -7859,41 +7857,41 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-      const wstring full_var_name = entry->GetName();
+      const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      std::wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
       if(short_var_name.rfind(mthd_str, 0) == 0) {
-        set<wstring>::iterator found = unique_names.find(short_var_name);
+        std::set<std::wstring>::iterator found = unique_names.find(short_var_name);
         if(found == unique_names.end()) {
           if(short_var_name[0] == L'@') {
             short_var_name.erase(0, 1);
           }
 
           unique_names.insert(short_var_name);
-          found_completion.push_back(pair<int, wstring>(6, short_var_name));
+          found_completion.push_back(std::pair<int, std::wstring>(6, short_var_name));
         }
       }
     }
 
     // methods
-    vector<Method*> methods = context_klass->GetMethods();
-    const wstring search_str = L':' + mthd_str;
+    std::vector<Method*> methods = context_klass->GetMethods();
+    const std::wstring search_str = L':' + mthd_str;
     for(size_t i = 0; i < methods.size(); ++i) {
-      const wstring mthd_name = methods[i]->GetName();
-      if(mthd_name.find(search_str, 0) != wstring::npos) {
-        set<wstring>::iterator found = unique_names.find(mthd_name);
+      const std::wstring mthd_name = methods[i]->GetName();
+      if(mthd_name.find(search_str, 0) != std::wstring::npos) {
+        std::set<std::wstring>::iterator found = unique_names.find(mthd_name);
         if(found == unique_names.end()) {
           const size_t short_name_index = mthd_name.find_last_of(L':');
-          if(short_name_index != wstring::npos) {
-            const wstring short_name = mthd_name.substr(short_name_index + 1);
+          if(short_name_index != std::wstring::npos) {
+            const std::wstring short_name = mthd_name.substr(short_name_index + 1);
             unique_names.insert(short_name);
-            found_completion.push_back(pair<int, wstring>(2, short_name));
+            found_completion.push_back(std::pair<int, std::wstring>(2, short_name));
           }
         }
       }
     }
 
-    vector<Expression*> expressions = method->GetExpressions();
+    std::vector<Expression*> expressions = method->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++ i) {
       Expression* expression = expressions[i];
       if(expression->GetLineNumber() == line_num + 1 && expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -7902,21 +7900,21 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     }
   }
   else if(!var_str.empty() && !mthd_str.empty()) {
-    vector<Method*> found_methods; vector<LibraryMethod*> found_lib_methods;
+    std::vector<Method*> found_methods; std::vector<LibraryMethod*> found_lib_methods;
 
     // local variables
     SymbolTable* symbol_table = method->GetSymbolTable();
-    vector<SymbolEntry*> entries = symbol_table->GetEntries();
+    std::vector<SymbolEntry*> entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {  
       SymbolEntry* entry = entries[i];
-      const wstring full_var_name = entry->GetName();
+      const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      if(short_var_pos != wstring::npos) {
-        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      if(short_var_pos != std::wstring::npos) {
+        const std::wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
 
         if(!var_str.empty() && iswdigit(var_str.front())) {
           // float literal
-          if(var_str.find(L'.') != wstring::npos) {
+          if(var_str.find(L'.') != std::wstring::npos) {
             FindSignatureClass(type_map[L"Float"], mthd_str, context_klass, found_methods, found_lib_methods, true);
           }
           // integer literal
@@ -7944,31 +7942,31 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-      const wstring full_var_name = entry->GetName();
+      const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      if(short_var_pos != wstring::npos) {
-        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      if(short_var_pos != std::wstring::npos) {
+        const std::wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
           FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, true);
         }
       }
 
       // find enums
-      const vector<ParsedBundle*> bundles = program->GetBundles();
+      const std::vector<ParsedBundle*> bundles = program->GetBundles();
       for(size_t j = 0; j < bundles.size(); ++j) {
         ParsedBundle* bundle = bundles[j];
-        const vector<Enum*> eenums = bundle->GetEnums();
+        const std::vector<Enum*> eenums = bundle->GetEnums();
         for(size_t k = 0; k < eenums.size(); ++k) {
           Enum* eenum = eenums[k];
-          const wstring var_str_check =  L'#' + var_str;
+          const std::wstring var_str_check =  L'#' + var_str;
           if(EndsWith(eenum->GetName(), var_str_check)) {
-            map<const wstring, EnumItem*> eenum_items = eenum->GetItems();
-            for(map<const wstring, EnumItem*>::iterator iter = eenum_items.begin(); iter != eenum_items.end(); ++iter) {
+            std::map<const std::wstring, EnumItem*> eenum_items = eenum->GetItems();
+            for(std::map<const std::wstring, EnumItem*>::iterator iter = eenum_items.begin(); iter != eenum_items.end(); ++iter) {
               if(iter->first.rfind(mthd_str, 0) == 0) {
-                set<wstring>::iterator found = unique_names.find(iter->first);
+                std::set<std::wstring>::iterator found = unique_names.find(iter->first);
                 if(found == unique_names.end()) {
                   unique_names.insert(iter->first);
-                  found_completion.push_back(pair<int, wstring>(2, iter->first));
+                  found_completion.push_back(std::pair<int, std::wstring>(2, iter->first));
                 }
               }
             }
@@ -7979,32 +7977,32 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
       // find unique signatures
       if(!found_methods.empty()) {
         for(size_t j = 0; j < found_methods.size(); ++j) {
-          const wstring mthd_name = found_methods[j]->GetName();
+          const std::wstring mthd_name = found_methods[j]->GetName();
           const size_t mthd_name_start = mthd_name.find(L':');
           const size_t mthd_name_end = mthd_name.find_last_of(L':');
 
-          if(mthd_name_start != wstring::npos && mthd_name_end != wstring::npos) {
-            wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
-            set<wstring>::iterator found = unique_names.find(short_mthd_name);
+          if(mthd_name_start != std::wstring::npos && mthd_name_end != std::wstring::npos) {
+            std::wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
+            std::set<std::wstring>::iterator found = unique_names.find(short_mthd_name);
             if(found == unique_names.end()) {
               unique_names.insert(short_mthd_name);
-              found_completion.push_back(pair<int, wstring>(2, short_mthd_name));
+              found_completion.push_back(std::pair<int, std::wstring>(2, short_mthd_name));
             }
           }
         }
       }
       else if(!found_lib_methods.empty()) {
         for(size_t i = 0; i < found_lib_methods.size(); ++i) {
-          const wstring mthd_name = found_lib_methods[i]->GetName();
+          const std::wstring mthd_name = found_lib_methods[i]->GetName();
           const size_t mthd_name_start = mthd_name.find(L':');
           const size_t mthd_name_end = mthd_name.find_last_of(L':');
 
-          if(mthd_name_start != wstring::npos && mthd_name_end != wstring::npos) {
-            wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
-            set<wstring>::iterator found = unique_names.find(short_mthd_name);
+          if(mthd_name_start != std::wstring::npos && mthd_name_end != std::wstring::npos) {
+            std::wstring short_mthd_name = mthd_name.substr(mthd_name_start + 1, mthd_name_end - mthd_name_start - 1);
+            std::set<std::wstring>::iterator found = unique_names.find(short_mthd_name);
             if(found == unique_names.end()) {
               unique_names.insert(short_mthd_name);
-              found_completion.push_back(pair<int, wstring>(2, short_mthd_name));
+              found_completion.push_back(std::pair<int, std::wstring>(2, short_mthd_name));
             }
           }
         }
@@ -8015,7 +8013,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   return !found_completion.empty();
 }
 
-void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const wstring mthd_str, set<wstring> unique_names, vector<pair<int, wstring> >& found_completion)
+void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const std::wstring mthd_str, std::set<std::wstring> unique_names, std::vector<std::pair<int, std::wstring> >& found_completion)
 {
   while(mthd_call->GetMethodCall()) {
     mthd_call = mthd_call->GetMethodCall();
@@ -8034,38 +8032,38 @@ void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const wstring 
   if(rtrn_type) {
     Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
     if(GetProgramLibraryClass(rtrn_type, klass, lib_klass)) {
-      const wstring check_mthd_str = rtrn_type->GetName() + L':' + mthd_str;
+      const std::wstring check_mthd_str = rtrn_type->GetName() + L':' + mthd_str;
 
       if(klass) {
-        vector<Method*> klass_mthds = klass->GetMethods();
+        std::vector<Method*> klass_mthds = klass->GetMethods();
         for(size_t i = 0; i < klass_mthds.size(); ++i) {
           Method* klass_mthd = klass_mthds[i];
-          const wstring klass_mthd_name = klass_mthd->GetEncodedName();
+          const std::wstring klass_mthd_name = klass_mthd->GetEncodedName();
           if(klass_mthd_name.rfind(check_mthd_str, 0) == 0) {
             size_t short_name_start_index = klass_mthd_name.find_first_of(L':');
             const size_t short_name_end_index = klass_mthd_name.find_last_of(L':');
-            if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+            if(short_name_start_index != std::wstring::npos && short_name_end_index != std::wstring::npos) {
               ++short_name_start_index;
-              const wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+              const std::wstring short_name = klass_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
               unique_names.insert(short_name);
-              found_completion.push_back(pair<int, wstring>(2, short_name));
+              found_completion.push_back(std::pair<int, std::wstring>(2, short_name));
             }
           }
         }
       }
       else {
-        map<const wstring, LibraryMethod*> klass_lib_mthds = lib_klass->GetMethods();
-        map<const wstring, LibraryMethod*>::iterator iter;
+        std::map<const std::wstring, LibraryMethod*> klass_lib_mthds = lib_klass->GetMethods();
+        std::map<const std::wstring, LibraryMethod*>::iterator iter;
         for(iter = klass_lib_mthds.begin(); iter != klass_lib_mthds.end(); ++iter) {
-          const wstring klass_lib_mthd_name = iter->first;
+          const std::wstring klass_lib_mthd_name = iter->first;
           if(klass_lib_mthd_name.rfind(check_mthd_str, 0) == 0) {
             size_t short_name_start_index = klass_lib_mthd_name.find_first_of(L':');
             const size_t short_name_end_index = klass_lib_mthd_name.find_last_of(L':');
-            if(short_name_start_index != wstring::npos && short_name_end_index != wstring::npos) {
+            if(short_name_start_index != std::wstring::npos && short_name_end_index != std::wstring::npos) {
               ++short_name_start_index;
-              const wstring short_name = klass_lib_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
+              const std::wstring short_name = klass_lib_mthd_name.substr(short_name_start_index, short_name_end_index - short_name_start_index);
               unique_names.insert(short_name);
-              found_completion.push_back(pair<int, wstring>(2, short_name));
+              found_completion.push_back(std::pair<int, std::wstring>(2, short_name));
             }
           }
         }
@@ -8074,7 +8072,7 @@ void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const wstring 
   }
 }
 
-bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const wstring mthd_str, vector<Method*> &found_methods, vector<LibraryMethod*> & found_lib_methods)
+bool ContextAnalyzer::GetSignature(Method* method, const std::wstring var_str, const std::wstring mthd_str, std::vector<Method*> &found_methods, std::vector<LibraryMethod*> & found_lib_methods)
 {
   Class* context_klass = method->GetClass();
 
@@ -8085,13 +8083,13 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
   else if(method && context_klass) {
     // local variables
     SymbolTable* symbol_table = method->GetSymbolTable();
-    vector<SymbolEntry*> entries = symbol_table->GetEntries();
+    std::vector<SymbolEntry*> entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-      const wstring full_var_name = entry->GetName();
+      const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      if(short_var_pos != wstring::npos) {
-        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      if(short_var_pos != std::wstring::npos) {
+        const std::wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
           FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
@@ -8104,10 +8102,10 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
     entries = symbol_table->GetEntries();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
-      const wstring full_var_name = entry->GetName();
+      const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
-      if(short_var_pos != wstring::npos) {
-        const wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
+      if(short_var_pos != std::wstring::npos) {
+        const std::wstring short_var_name = full_var_name.substr(short_var_pos + 1, full_var_name.size() - short_var_pos - 1);
         if(short_var_name == var_str) {
           FindSignatureClass(entry->GetType(), mthd_str, context_klass, found_methods, found_lib_methods, false);
           return !found_methods.empty() || !found_lib_methods.empty();
@@ -8119,7 +8117,7 @@ bool ContextAnalyzer::GetSignature(Method* method, const wstring var_str, const 
   return false;
 }
 
-void ContextAnalyzer::FindSignatureClass(Type* type, const wstring mthd_str, Class* context_klass, vector<Method*> &found_methods, vector<LibraryMethod*>& found_lib_methods, bool is_completion)
+void ContextAnalyzer::FindSignatureClass(Type* type, const std::wstring mthd_str, Class* context_klass, std::vector<Method*> &found_methods, std::vector<LibraryMethod*>& found_lib_methods, bool is_completion)
 {
   Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
 
@@ -8173,46 +8171,46 @@ void ContextAnalyzer::FindSignatureClass(Type* type, const wstring mthd_str, Cla
   }
 }
 
-void ContextAnalyzer::FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods)
+void ContextAnalyzer::FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const std::wstring mthd_str, std::vector<Method*>& found_methods, std::vector<LibraryMethod*>& found_lib_methods)
 {
   if(klass) {
-    vector<Method*> methods = klass->GetMethods();
-    const wstring search_str = L':' + mthd_str;
+    std::vector<Method*> methods = klass->GetMethods();
+    const std::wstring search_str = L':' + mthd_str;
     for(size_t i = 0; i < methods.size(); ++i) {
-      const wstring mthd_name = methods[i]->GetName();
-      if(mthd_name.find(search_str, 0) != wstring::npos) {
+      const std::wstring mthd_name = methods[i]->GetName();
+      if(mthd_name.find(search_str, 0) != std::wstring::npos) {
         found_methods.push_back(methods[i]);
       }
     }
   }
   else if(lib_klass) {
-    map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
-    const wstring search_str = L':' + mthd_str;
-    for(map<const wstring, LibraryMethod*>::iterator iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
-      if(iter->first.find(search_str, 0) != wstring::npos) {
+    std::map<const std::wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
+    const std::wstring search_str = L':' + mthd_str;
+    for(std::map<const std::wstring, LibraryMethod*>::iterator iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
+      if(iter->first.find(search_str, 0) != std::wstring::npos) {
         found_lib_methods.push_back(iter->second);
       }
     }
   }
 }
 
-void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const wstring mthd_str, vector<Method*>& found_methods, vector<LibraryMethod*>& found_lib_methods)
+void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass, const std::wstring mthd_str, std::vector<Method*>& found_methods, std::vector<LibraryMethod*>& found_lib_methods)
 {
   if(klass) {
-    vector<Method*> methods = klass->GetMethods();
-    const wstring search_str = L':' + mthd_str;
+    std::vector<Method*> methods = klass->GetMethods();
+    const std::wstring search_str = L':' + mthd_str;
     for(size_t i = 0; i < methods.size(); ++i) {
-      const wstring mthd_name = methods[i]->GetName();
-      if(mthd_name.find(search_str, 0) != wstring::npos) {
+      const std::wstring mthd_name = methods[i]->GetName();
+      if(mthd_name.find(search_str, 0) != std::wstring::npos) {
         found_methods.push_back(methods[i]);
       }
     }
   }
   else if(lib_klass) {
-    map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
-    const wstring search_str = L':' + mthd_str;
-    for(map<const wstring, LibraryMethod*>::iterator iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
-      if(iter->first.find(search_str, 0) != wstring::npos) {
+    std::map<const std::wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
+    const std::wstring search_str = L':' + mthd_str;
+    for(std::map<const std::wstring, LibraryMethod*>::iterator iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
+      if(iter->first.find(search_str, 0) != std::wstring::npos) {
         found_lib_methods.push_back(iter->second);
       }
     }
@@ -8225,7 +8223,7 @@ void ContextAnalyzer::FindSignatureMethods(Class* klass, LibraryClass* lib_klass
 
 bool ContextAnalyzer::GetDefinition(Class* klass, const int line_num, const int line_pos, Class*& found_klass)
 {
-  vector<Statement*> decelerations = klass->GetStatements();
+  std::vector<Statement*> decelerations = klass->GetStatements();
   for(size_t i = 0; i < decelerations.size(); ++i) {
     if(decelerations[i]->GetStatementType() == DECLARATION_STMT) {
       Declaration* deceleration = static_cast<Declaration*>(decelerations[i]);
@@ -8235,7 +8233,7 @@ bool ContextAnalyzer::GetDefinition(Class* klass, const int line_num, const int 
       const int end_pos = deceleration->GetEndLinePosition();
 
       if(start_line - 1 == line_num && start_pos <= line_pos && end_pos >= line_pos) {
-        const wstring search_name = deceleration->GetEntry()->GetType()->GetName();
+        const std::wstring search_name = deceleration->GetEntry()->GetType()->GetName();
         found_klass = SearchProgramClasses(search_name);
         return found_klass != nullptr;
       }
@@ -8245,22 +8243,22 @@ bool ContextAnalyzer::GetDefinition(Class* klass, const int line_num, const int 
   return false;
 }
 
-bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const int line_pos, wstring& found_name, 
+bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const int line_pos, std::wstring& found_name, 
                                     int& found_line, int& found_start_pos, int& found_end_pos, Class* &klass, 
                                     Enum*& eenum, EnumItem*& eenum_item)
 {
   // find matching expressions
-  vector<Expression*> all_expressions;
+  std::vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
   bool is_alt = false;
 
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
-    const wstring entry_name = method->GetName() + L':' + found_name;
+    const std::wstring entry_name = method->GetName() + L':' + found_name;
     SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(entry_name);
 
     // found variable
     if(found_entry && found_entry->GetType()) {
-      const wstring search_name = found_entry->GetType()->GetName();
+      const std::wstring search_name = found_entry->GetType()->GetName();
       // found class
       klass = SearchProgramClasses(search_name);
       if(klass) {
@@ -8279,8 +8277,8 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
       MethodCall* mthd_call = static_cast<MethodCall*>(found_expression);
       eenum = SearchProgramEnums(found_name);
       if(eenum) {
-        map<const wstring, EnumItem*> eenum_items = eenum->GetItems();
-        map<const wstring, EnumItem*>::iterator result = eenum_items.find(mthd_call->GetMethodName());
+        std::map<const std::wstring, EnumItem*> eenum_items = eenum->GetItems();
+        std::map<const std::wstring, EnumItem*>::iterator result = eenum_items.find(mthd_call->GetMethodName());
         if(result != eenum_items.end()) {
           eenum_item = result->second;
         }
@@ -8309,14 +8307,14 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
 // declarations
 //
 bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int line_pos, 
-                               wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
+                               std::wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos,
                                Expression* &found_expression, SymbolEntry* &found_entry)
 {
   // find matching expressions
   found_expression = nullptr;
   found_entry = nullptr;
 
-  vector<Expression*> all_expressions; bool is_alt = false;
+  std::vector<Expression*> all_expressions; bool is_alt = false;
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
     // function/method lookup
     if(is_alt) {
@@ -8326,13 +8324,13 @@ bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int lin
     }
     // variable lookup
     else {
-      const wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+      const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
       found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
       if(found_entry) {
         return true;
       }
       else {
-        const wstring method_entry_name = method->GetName() + L':' + found_name;
+        const std::wstring method_entry_name = method->GetName() + L':' + found_name;
         found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
         if(found_entry) {
           return true;
@@ -8347,10 +8345,10 @@ bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int lin
 //
 // declarations
 //
-bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos, wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
+bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const int line_pos, std::wstring& found_name, int& found_line, int& found_start_pos, int& found_end_pos)
 {
   // find matching expressions
-  vector<Expression*> all_expressions;
+  std::vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
   bool is_alt = false;
 
@@ -8369,12 +8367,12 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
     }
     // variable lookup
     else {
-      const wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+      const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
       SymbolEntry* found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
       if(found_entry) {
         found_name = found_entry->GetName();
         size_t var_name_pos = found_name.find_last_of(L':');
-        if(var_name_pos != wstring::npos) {
+        if(var_name_pos != std::wstring::npos) {
           found_name = found_name.substr(var_name_pos + 1, found_name.size() - var_name_pos - 1);
         }
         found_line = found_entry->GetLineNumber();
@@ -8384,12 +8382,12 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
         return true;
       }
       else {
-        const wstring method_entry_name = method->GetName() + L':' + found_name;
+        const std::wstring method_entry_name = method->GetName() + L':' + found_name;
         found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
         if(found_entry) {
           found_name = found_entry->GetName();
           size_t var_name_pos = found_name.find_last_of(L':');
-          if(var_name_pos != wstring::npos) {
+          if(var_name_pos != std::wstring::npos) {
             found_name = found_name.substr(var_name_pos + 1, found_name.size() - var_name_pos - 1);
           }
           found_line = found_entry->GetLineNumber();
@@ -8408,9 +8406,9 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
 
 Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, const int line_pos)
 {
-  vector<Expression*> expressions;
+  std::vector<Expression*> expressions;
 
-  vector<Statement*> decelerations = klass->GetStatements();
+  std::vector<Statement*> decelerations = klass->GetStatements();
   for(size_t i = 0; i < decelerations.size(); ++i) {
     if(decelerations[i]->GetStatementType() == DECLARATION_STMT) {
       Declaration* deceleration = static_cast<Declaration*>(decelerations[i]);
@@ -8428,16 +8426,16 @@ Declaration* ContextAnalyzer::FindDeclaration(Class* klass, const int line_num, 
   return nullptr;
 }
 
-vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos, bool &is_var, bool& is_cls)
+std::vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int line_num, const int line_pos, bool &is_var, bool& is_cls)
 {
-  vector<Expression*> matched_expressions;
+  std::vector<Expression*> matched_expressions;
   is_var = true;
   is_cls = false;
 
   // find matching expressions
-  vector<Expression*> all_expressions;
+  std::vector<Expression*> all_expressions;
   Expression* found_expression = nullptr;
-  wstring found_name;
+  std::wstring found_name;
   bool is_alt = false;
 
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
@@ -8481,25 +8479,25 @@ vector<Expression*> ContextAnalyzer::FindExpressions(Method* method, const int l
   return matched_expressions;
 }
 
-void ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, vector<Expression*> &matched_expressions)
+void ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int line_pos, bool &is_var, std::vector<Expression*> &matched_expressions)
 {
-  vector<ParsedBundle*> bundles = program->GetBundles();
+  std::vector<ParsedBundle*> bundles = program->GetBundles();
   for(auto bundle : bundles) {
-    vector<Class*> classes = bundle->GetClasses();
+    std::vector<Class*> classes = bundle->GetClasses();
     for(auto klass : classes) {
-      vector<Method*> methods = klass->GetMethods();
+      std::vector<Method*> methods = klass->GetMethods();
       for(auto method : methods) {
         const int mthd_line_num = method->GetLineNumber() - 1;
         if(mthd_line_num == line_num) {
-          const wstring mthd_long_name = method->GetName();
+          const std::wstring mthd_long_name = method->GetName();
           const size_t mthd_long_name_index = mthd_long_name.find(':');
-          if(mthd_long_name_index != wstring::npos) {
-            const wstring mthd_name = mthd_long_name.substr(mthd_long_name_index + 1);
+          if(mthd_long_name_index != std::wstring::npos) {
+            const std::wstring mthd_name = mthd_long_name.substr(mthd_long_name_index + 1);
             const int start_pos = method->GetMidLinePosition();
             const int end_pos = start_pos + (int)mthd_name.size();
             if(start_pos < line_pos && end_pos > line_pos) {
               is_var = false;
-              const vector<MethodCall*> method_calls = method->GetMethodCalls();
+              const std::vector<MethodCall*> method_calls = method->GetMethodCalls();
               if(method_calls.empty()) {
                 MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
                                                                                   method->GetEndLineNumber(), method->GetEndLinePosition(), L"#", method->GetName());
@@ -8521,30 +8519,30 @@ void ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int lin
 
 
 bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, 
-                                       wstring& found_name, bool &is_alt, vector<Expression*>& all_expressions)
+                                       std::wstring& found_name, bool &is_alt, std::vector<Expression*>& all_expressions)
 {
   // get all expressions
   all_expressions = method->GetExpressions();
 
   // local entries
-  vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
+  std::vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
   for(size_t i = 0; i < local_entries.size(); ++i) {
-    const vector<Variable*> variables = local_entries[i]->GetVariables();
+    const std::vector<Variable*> variables = local_entries[i]->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
       all_expressions.push_back(variables[j]);
     }
   }
 
   // instance and class entries
-  vector<SymbolEntry*> class_entries = symbol_table->GetEntries(method->GetClass()->GetName());
+  std::vector<SymbolEntry*> class_entries = symbol_table->GetEntries(method->GetClass()->GetName());
   for(size_t i = 0; i < class_entries.size(); ++i) {
     SymbolEntry* class_entry = class_entries[i];
     
     // add declaration
-    const wstring full_entry_name = class_entry->GetName();
+    const std::wstring full_entry_name = class_entry->GetName();
     const size_t full_entry_index = full_entry_name.find_last_of(L':');
-    if(full_entry_index != wstring::npos) {
-      const wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
+    if(full_entry_index != std::wstring::npos) {
+      const std::wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
       Variable* variable = TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), class_entry->GetLineNumber(), 
                                                                  class_entry->GetLinePosition(), entry_name);
       variable->SetEntry(class_entry);
@@ -8552,20 +8550,20 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
     }
     
     // add variable references
-    const vector<Variable*> variables = class_entry->GetVariables();
+    const std::vector<Variable*> variables = class_entry->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
       all_expressions.push_back(variables[j]);
     }
   }
   
   // class declarations
-  vector<Expression*> class_dclrs = method->GetClass()->GetExpressions();
+  std::vector<Expression*> class_dclrs = method->GetClass()->GetExpressions();
   for(size_t i = 0; i < class_dclrs.size(); ++i) {
     all_expressions.push_back(class_dclrs[i]);
   }
 
   // find expression
-  wstring alt_found_name;
+  std::wstring alt_found_name;
   for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
     Expression* expression = all_expressions[i];
     if(expression->GetLineNumber() == line_num + 1) {
@@ -8642,20 +8640,20 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
 }
 
 bool ContextAnalyzer::LocateExpression(Class* klass, const int line_num, const int line_pos, Expression*& found_expression,
-                                       wstring& found_name, bool& is_alt, vector<Expression*>& all_expressions)
+                                       std::wstring& found_name, bool& is_alt, std::vector<Expression*>& all_expressions)
 {
   // class declarations
-  vector<Statement*> class_dclrs = klass->GetStatements();
+  std::vector<Statement*> class_dclrs = klass->GetStatements();
   for(size_t i = 0; i < class_dclrs.size(); ++i) {
     Declaration* class_dclr = static_cast<Declaration*> (class_dclrs[i]);
-    vector<Variable*> variables = class_dclr->GetEntry()->GetVariables();
+    std::vector<Variable*> variables = class_dclr->GetEntry()->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
       all_expressions.push_back(variables[j]);
     }
   }
 
   // find expression
-  wstring alt_found_name;
+  std::wstring alt_found_name;
   for(size_t i = 0; !found_expression && i < all_expressions.size(); ++i) {
     Expression* expression = all_expressions[i];
     if(expression->GetLineNumber() == line_num + 1) {
