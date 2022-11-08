@@ -238,7 +238,7 @@ class IPSocket {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    std::string port_str = to_string(port);
+    std::string port_str = std::to_string(port);
     if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
       return -1;
     }
@@ -477,10 +477,10 @@ class System {
        str_cmd += tmp_file_name;
 
        // ignoring return value
-       system(str_cmd.c_str());
+       std::system(str_cmd.c_str());
        
        // read file output
-       ifstream file_out(tmp_file_name.c_str());
+       std::ifstream file_out(tmp_file_name.c_str());
        if(file_out.is_open()) {
          std::string line_out;
          while(getline(file_out, line_out)) {
