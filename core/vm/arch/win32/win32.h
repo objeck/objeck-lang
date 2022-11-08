@@ -44,7 +44,6 @@
 #include <strsafe.h>
 #include <accctrl.h>
 #include <aclapi.h>
-#include <shlwapi.h>
 #include <versionhelpers.h>
 
 #pragma comment(lib, "Ws2_32.lib")
