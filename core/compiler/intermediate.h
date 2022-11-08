@@ -71,9 +71,9 @@ class IntermediateEmitter {
   int cur_line_num;
   LibraryClass*  string_cls;
   int string_cls_id;
-  stack<pair<int, int> > break_labels;
+  std::stack<std::pair<int, int> > break_labels;
   bool is_str_array;
-  queue<OperationAssignment*>post_statements;
+  std::queue<OperationAssignment*>post_statements;
   
   // emit operations
   void EmitStrings();
@@ -122,18 +122,18 @@ class IntermediateEmitter {
   // determines if a method call returns an unused value
   int OrphanReturn(MethodCall* method_call);
 
-  Class* SearchProgramClasses(const wstring &klass_name);
+  Class* SearchProgramClasses(const std::wstring &klass_name);
 
-  Enum* SearchProgramEnums(const wstring &eenum_name);
+  Enum* SearchProgramEnums(const std::wstring &eenum_name);
 
-  wstring ToString(int v) {
-    wostringstream str;
+  std::wstring ToString(int v) {
+    std::wostringstream str;
     str << v;
     return str.str();
   }
 
-  wstring ToString(double d) {
-    wostringstream str;
+  std::wstring ToString(double d) {
+    std::wostringstream str;
     str << d;
     return str.str();
   }
@@ -298,7 +298,7 @@ class SelectArrayTree {
   int* values;
   SelectNode* root;
   IntermediateEmitter* emitter;
-  map<int, int> value_label_map;
+  std::map<int, int> value_label_map;
   Select* select;
   int other_label;
 

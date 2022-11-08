@@ -38,8 +38,6 @@
 #include "compiler.h"
 #include "types.h"
 
-using namespace std;
-
 #define SUCCESS 0
 #define COMMAND_ERROR 1
 #define PARSE_ERROR 2
@@ -48,7 +46,7 @@ using namespace std;
 /****************************
  * Starts the compilation process
  ****************************/
-int Compile(const wstring& src_files, const wstring& opt, const wstring& dest_file, vector<pair<wstring, wstring> > &programs, const wstring &sys_lib_path, wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
+int Compile(const std::wstring& src_files, const std::wstring& opt, const std::wstring& dest_file, std::vector<std::pair<std::wstring, std::wstring> > &programs, const std::wstring &sys_lib_path, std::wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
   // parse source code
   Parser parser(src_files, alt_syntax, programs);
   if(parser.Parse()) {
@@ -89,7 +87,7 @@ int Compile(const wstring& src_files, const wstring& opt, const wstring& dest_fi
 /****************************
  * Processes compilation options
  ****************************/
-int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argument_options, const wstring usage)
+int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::list<std::wstring>& argument_options, const std::wstring usage)
 {
   // set UTF-8 environment
 #ifdef _WIN32
@@ -100,43 +98,43 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
 #endif
 
   // check for optimize flag
-  map<const wstring, wstring>::iterator result = arguments.find(L"ver");
+  std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
 #if defined(_WIN64) && defined(_WIN32)
-    wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << std::endl;
 #elif _WIN32
-    wcout << VERSION_STRING << L" Objeck (Windows x86)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (Windows x86)" << std::endl;
 #elif _OSX
 #ifdef _ARM64
-    wcout << VERSION_STRING << L" Objeck (macOS ARM64)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (macOS ARM64)" << std::endl;
 #else
-    wcout << VERSION_STRING << L" Objeck (macOS x86_64)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (macOS x86_64)" << std::endl;
 #endif
 #elif _X64
-    wcout << VERSION_STRING << L" Objeck (Linux x86_64)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (Linux x86_64)" << std::endl;
 #elif _ARM32
-    wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << std::endl;
 #else
-    wcout << VERSION_STRING << L" Objeck (Linux x86)" << endl;
+    std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
 #endif 
-    wcout << L"---" << endl;
-    wcout << L"Copyright (c) 2008-2022, Randy Hollines" << endl;
-    wcout << L"This is free software; see the source for copying conditions.There is NO" << endl;
-    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
+    std::wcout << L"---" << std::endl;
+    std::wcout << L"Copyright (c) 2008-2022, Randy Hollines" << std::endl;
+    std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
+    std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
     argument_options.remove(L"ver");
     exit(0);
   }
 
   // check source input
-  wstring program;
-  wstring src_files;
-  wstring dest_file;
+  std::wstring program;
+  std::wstring src_files;
+  std::wstring dest_file;
 
   result = arguments.find(L"src");
   if(result == arguments.end()) {
     result = arguments.find(L"in");
     if(result == arguments.end()) {
-      wcerr << usage << endl;
+      std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
     program = L"class Objeck { function : Main(args : String[]) ~ Nil {";
@@ -154,22 +152,22 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     }
     // parse file wild card
     else if(frontend::EndsWith(src_files, L"*.obs")) {
-      wstring dir_path;
-      wstring files_paths;
+      std::wstring dir_path;
+      std::wstring files_paths;
       frontend::RemoveSubString(src_files, L"*.obs");
       if(src_files.empty()) {
         src_files = L"./";
       }
-      vector<string> file_names = ListDir(UnicodeToBytes(src_files).c_str());
+      std::vector<std::string> file_names = ListDir(UnicodeToBytes(src_files).c_str());
       for(size_t i = 0; i < file_names.size(); ++i) {
-        const wstring file_name = BytesToUnicode(file_names[i]);
+        const std::wstring file_name = BytesToUnicode(file_names[i]);
         if(frontend::EndsWith(file_name, L".obs")) {
           files_paths += src_files + file_name + L',';
         }
       }
 
       if(files_paths.empty()) {
-        wcerr << L"unknown:(0,0): Unable to open source files" << endl;
+        std::wcerr << L"unknown:(0,0): Unable to open source files" << std::endl;
         exit(1);
       }
       else {
@@ -180,12 +178,12 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
 
   // check program target
-  wstring target;
+  std::wstring target;
   result = arguments.find(L"tar");
   if(result != arguments.end()) {
     target = result->second;
     if(target != L"lib" && target != L"web" && target != L"exe") {
-      wcerr << usage << endl;
+      std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
     argument_options.remove(L"tar");
@@ -197,11 +195,11 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     if(!src_files.empty()) {
       dest_file = src_files;
     }
-    if(dest_file.find(L',') == string::npos) {
+    if(dest_file.find(L',') == std::string::npos) {
       frontend::RemoveSubString(dest_file, L".obs");
     }
     else {
-      wcerr << usage << endl;
+      std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
   }
@@ -218,7 +216,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
     
   // check program libraries path and 'strict' usage
-  wstring sys_lib_path;
+  std::wstring sys_lib_path;
   result = arguments.find(L"strict");
   if(result != arguments.end()) {
     result = arguments.find(L"lib");
@@ -232,7 +230,7 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
     sys_lib_path = L"lang,gen_collect";
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
-      wstring lib_path = result->second;
+      std::wstring lib_path = result->second;
       // --- START: command line clean up
       frontend::RemoveSubString(lib_path, L".obl");
       frontend::RemoveSubString(lib_path, L"gen_collect,");
@@ -247,12 +245,12 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
 
   // check for optimization flags
-  wstring optimize;
+  std::wstring optimize;
   result = arguments.find(L"opt");
   if(result != arguments.end()) {
     optimize = result->second;
     if(optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
-      wcerr << usage << endl;
+      std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
     argument_options.remove(L"opt");
@@ -283,22 +281,22 @@ int OptionsCompile(map<const wstring, wstring>& arguments, list<wstring>& argume
   }
 
   if(argument_options.size() != 0) {
-    wcerr << usage << endl;
+    std::wcerr << usage << std::endl;
     return COMMAND_ERROR;
   }
 
-  vector<pair<wstring, wstring> > programs;
+  std::vector<std::pair<std::wstring, std::wstring> > programs;
   programs.push_back(make_pair(L"blob://program.obs", program));
 
   return Compile(src_files, optimize, dest_file, programs, sys_lib_path, target, alt_syntax, is_debug, show_asm);
 }
 
 #ifdef _WIN32
-vector<string> ListDir(const char* p)
+std::vector<std::string> ListDir(const char* p)
 {
-  vector<string> files;
+  std::vector<std::string> files;
 
-  string path = p;
+  std::string path = p;
   if(path.size() > 0 && path[path.size() - 1] == '\\') {
     path += "*";
   }
@@ -325,8 +323,8 @@ vector<string> ListDir(const char* p)
   return files;
 }
 #else
-vector<string> ListDir(const char* path) {
-  vector<string> files;
+std::vector<std::string> ListDir(const char* path) {
+  std::vector<std::string> files;
 
   struct dirent** names;
   int n = scandir(path, &names, 0, alphasort);
