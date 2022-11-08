@@ -56,7 +56,7 @@
  ****************************/
 class File {
  public:
-  static string FullPathName(const string name) {
+  static std::string FullPathName(const std::string name) {
     char buffer[PATH_MAX] = "";
     if(!realpath(name.c_str(), buffer)) {
       return "";
@@ -74,7 +74,7 @@ class File {
     return buf.st_size;
   }
 
-  static string TempName() {
+  static std::string TempName() {
     char buffer[] = "/tmp/objeck-XXXXXX";
     if(mkstemp(buffer) < 0) {
       return "";
@@ -147,7 +147,7 @@ class File {
     return fopen(name, mode);
   }
 
-  static wstring FileOwner(const char* name, bool is_account) {
+  static std::wstring FileOwner(const char* name, bool is_account) {
     struct stat info;
     if(stat(name, &info)) {
       return L"";
@@ -179,8 +179,8 @@ class File {
     return S_IFDIR & buf.st_mode;
   }
 
-  static vector<string> ListDir(const char* path) {
-    vector<string> files;
+  static  std::vector<std::string> ListDir(const char* path) {
+     std::vector<std::string> files;
 
     struct dirent** names;
     int n = scandir(path, &names, 0, alphasort);
@@ -203,13 +203,13 @@ class File {
  ****************************/
 class IPSocket {
  public:
-  static vector<string> Resolve(const char* address) {
-		vector<string> addresses;
+  static  std::vector<std::string> Resolve(const char* address) {
+		 std::vector<std::string> addresses;
 
 		struct addrinfo* result;
 		if(getaddrinfo(address, nullptr, nullptr, &result)) {
 			freeaddrinfo(result);
-			return vector<string>();
+			return  std::vector<std::string>();
 		}
 
 		struct addrinfo* res;
@@ -217,7 +217,7 @@ class IPSocket {
 			char hostname[NI_MAXHOST] = { 0 };
 			if(getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
 				freeaddrinfo(result);
-				return vector<string>();
+				return  std::vector<std::string>();
 			}
 
 			if(*hostname != '\0') {
@@ -238,7 +238,7 @@ class IPSocket {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    string port_str = to_string(port);
+    std::string port_str = to_string(port);
     if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
       return -1;
     }
@@ -349,8 +349,8 @@ class IPSecureSocket {
       return false;
     }
     
-    wstring path = GetLibraryPath();
-    string cert_path(path.begin(), path.end());
+    std::wstring path = GetLibraryPath();
+    std::string cert_path(path.begin(), path.end());
     cert_path += CACERT_PEM_FILE;
     
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
@@ -362,7 +362,7 @@ class IPSecureSocket {
     SSL* ssl;
     BIO_get_ssl(bio, &ssl);
     SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
-    string ssl_address = address;
+    std::string ssl_address = address;
     if(ssl_address.size() < 1 || port < 0) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
@@ -463,16 +463,16 @@ class IPSecureSocket {
  ****************************/
 class System {
  public:
-   static vector<string> CommandOutput(const char* c) {
-     vector<string> output;
+   static  std::vector<std::string> CommandOutput(const char* c) {
+      std::vector<std::string> output;
 
      // create temporary file
-     const string tmp_file_name = File::TempName();
+     const std::string tmp_file_name = File::TempName();
      FILE* file = File::FileOpen(tmp_file_name.c_str(), "wb");
      if(file) {
        fclose(file);
 
-       string str_cmd(c);
+       std::string str_cmd(c);
        str_cmd += " > ";
        str_cmd += tmp_file_name;
 
@@ -482,7 +482,7 @@ class System {
        // read file output
        ifstream file_out(tmp_file_name.c_str());
        if(file_out.is_open()) {
-         string line_out;
+         std::string line_out;
          while(getline(file_out, line_out)) {
            output.push_back(line_out);
          }
@@ -496,8 +496,8 @@ class System {
      return output;
    }
 
-  static string GetPlatform() {
-    string platform;
+  static std::string GetPlatform() {
+    std::string platform;
     struct utsname uts;
     
     if(uname(&uts) < 0) {
