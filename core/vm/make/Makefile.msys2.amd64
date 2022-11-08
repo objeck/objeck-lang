@@ -8,7 +8,7 @@ JIT_PATH=arch/jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/usr/lib -lssl -lcrypto -lz -pthread -lwsock32 -lws2_32 -lz
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.amd64
@@ -17,7 +17,7 @@ jit_amd_lp64.a:
 	cd $(JIT_PATH); make -f make/Makefile.amd64
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CC) -m64 -I/usr/include $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make clean -f make/Makefile.amd64
