@@ -35,8 +35,6 @@
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 
-using namespace std;
-
 extern "C" {
   //
   // initialize library
@@ -291,8 +289,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_encrypt_base64(VMContext& context) {
-    const wstring w_input = APITools_GetStringValue(context, 1);
-    const string input = UnicodeToBytes(w_input);
+    const std::wstring w_input = APITools_GetStringValue(context, 1);
+    const std::string input = UnicodeToBytes(w_input);
 
     BIO* b64 = BIO_new(BIO_f_base64());
     BIO* bio = BIO_new(BIO_s_mem());
@@ -307,8 +305,8 @@ extern "C" {
     BIO_set_close(bio, BIO_NOCLOSE);
     BIO_free_all(bio);
 
-    const string return_buffer(bufferPtr->data, bufferPtr->length);
-    const wstring return_value = BytesToUnicode(return_buffer);
+    const std::string return_buffer(bufferPtr->data, bufferPtr->length);
+    const std::wstring return_value = BytesToUnicode(return_buffer);
     APITools_SetStringValue(context, 0, return_value);
   }
 
@@ -330,8 +328,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_decrypt_base64(VMContext& context) {
-    const wstring w_input = APITools_GetStringValue(context, 1);
-    const string input = UnicodeToBytes(w_input);
+    const std::wstring w_input = APITools_GetStringValue(context, 1);
+    const std::string input = UnicodeToBytes(w_input);
 
     const size_t decode_size = calcDecodeLength(input.c_str());
     char* buffer = new char[decode_size + 1];
