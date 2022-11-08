@@ -51,20 +51,18 @@
 #include "../shared/logger.h"
 #endif
 
-using namespace std;
-
 namespace frontend {
   /****************************
    * ParseNode base class
    ****************************/
   class ParseNode {
   protected:
-    wstring file_name;
+    std::wstring file_name;
     int line_num;
     int line_pos;
 
   public:
-    ParseNode(const wstring &f, const int l, const int p) {
+    ParseNode(const std::wstring &f, const int l, const int p) {
       file_name = f;
       line_num = l;
       line_pos = p;
@@ -73,7 +71,7 @@ namespace frontend {
     virtual ~ParseNode() {
     }
     
-    inline const wstring GetFileName() {
+    inline const std::wstring GetFileName() {
       return file_name;
     }
 
@@ -134,12 +132,12 @@ namespace frontend {
     friend class TypeFactory;
     EntryType type;
     int dimension;
-    wstring class_name;
-    vector<Type*> func_params;
+    std::wstring class_name;
+    std::vector<Type*> func_params;
     Type* func_rtrn;
     int func_param_count;
-    vector<Type*> generic_types;
-    wstring file_name;
+    std::vector<Type*> generic_types;
+    std::wstring file_name;
     int line_num;
     int line_pos;
 
@@ -167,7 +165,7 @@ namespace frontend {
       } 
     }
     
-    Type(EntryType t, const wstring &n, const wstring& f, int l, int p) {
+    Type(EntryType t, const std::wstring &n, const std::wstring& f, int l, int p) {
       type = t;
       class_name = n;
       file_name = f;
@@ -182,7 +180,7 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
 
-    Type(EntryType t, const wstring f, const int l, const int p) {
+    Type(EntryType t, const std::wstring f, const int l, const int p) {
       type = t;
       dimension = 0;
       func_rtrn = nullptr;
@@ -195,7 +193,7 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
     
-    Type(vector<Type*>& p, Type* r) {
+    Type(std::vector<Type*>& p, Type* r) {
       type = FUNC_TYPE;
       dimension = 0;
       func_params = p;
@@ -226,7 +224,7 @@ namespace frontend {
       return type;
     }
 
-    void SetGenerics(const vector<Type*>& g) {
+    void SetGenerics(const std::vector<Type*>& g) {
       generic_types = g;
 
       is_resolved = false;
@@ -234,7 +232,7 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
 
-    vector<Type*> GetGenerics() {
+    std::vector<Type*> GetGenerics() {
       return generic_types;
     }
 
@@ -274,11 +272,11 @@ namespace frontend {
       return lib_klass_cache_ptr;
     }
 
-    vector<Type*> GetFunctionParameters() {
+    std::vector<Type*> GetFunctionParameters() {
       return func_params;
     }
 
-    void SetFunctionParameters(const vector<Type*> &p) {
+    void SetFunctionParameters(const std::vector<Type*> &p) {
       func_params = p;
     }
 
@@ -314,7 +312,7 @@ namespace frontend {
       return dimension;
     }
 
-    void SetName(const wstring &n) {
+    void SetName(const std::wstring &n) {
       class_name = n;
 
       is_resolved = false;
@@ -322,7 +320,7 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
 
-    const wstring GetName() {
+    const std::wstring GetName() {
       return class_name;
     }
 
@@ -342,7 +340,7 @@ namespace frontend {
       }
     }
 
-    const wstring GetFileName() {
+    const std::wstring GetFileName() {
       return file_name;
     }
 
@@ -360,7 +358,7 @@ namespace frontend {
    ****************************/
   class TypeFactory {
     static TypeFactory* instance;
-    vector<Type*> types;
+    std::vector<Type*> types;
 
     TypeFactory() {
     }
@@ -384,13 +382,13 @@ namespace frontend {
       instance = nullptr;
     }
 
-    Type* MakeType(EntryType type, const wstring file_name, const int line_num, const int line_pos) {
+    Type* MakeType(EntryType type, const std::wstring file_name, const int line_num, const int line_pos) {
       Type* tmp = new Type(type, file_name, line_num, line_pos);
       types.push_back(tmp);
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const wstring &name) {
+    Type* MakeType(EntryType type, const std::wstring &name) {
       Type* tmp = new Type(type, name, L"", -1, -1);
       types.push_back(tmp);
       return tmp;
@@ -402,13 +400,13 @@ namespace frontend {
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const wstring& name, const wstring& file_name, const int line_num, const int line_pos) {
+    Type* MakeType(EntryType type, const std::wstring& name, const std::wstring& file_name, const int line_num, const int line_pos) {
       Type* tmp = new Type(type, name, file_name, line_num, line_pos);
       types.push_back(tmp);
       return tmp;
     }
     
-    Type* MakeType(vector<Type*>& func_params, Type* rtrn_type) {
+    Type* MakeType(std::vector<Type*>& func_params, Type* rtrn_type) {
       Type* tmp = new Type(func_params, rtrn_type);
       types.push_back(tmp);
       return tmp;
@@ -420,7 +418,7 @@ namespace frontend {
       return tmp;
     }
 
-    vector<Type*>& GetTypes() {
+    std::vector<Type*>& GetTypes() {
       return types;
     }
   };
@@ -431,8 +429,8 @@ namespace frontend {
    ********************************/
   class TypeParser {
   public:
-    static vector<frontend::Type*> ParseParameters(const wstring& param_str);
-    static frontend::Type* ParseType(const wstring& type_name);
+    static std::vector<frontend::Type*> ParseParameters(const std::wstring& param_str);
+    static frontend::Type* ParseType(const std::wstring& type_name);
     static void ParseFunctionalType(frontend::Type* func_type);
   };
   
@@ -447,8 +445,8 @@ namespace frontend {
     int length;
   };
 
-  bool EndsWith(wstring const& str, wstring const& ending);
-  void RemoveSubString(wstring& str_in, const wstring& find);
+  bool EndsWith(std::wstring const& str, std::wstring const& ending);
+  void RemoveSubString(std::wstring& str_in, const std::wstring& find);
 }
 
 namespace backend {
@@ -458,10 +456,10 @@ namespace backend {
    ****************************/
   class IntermediateDeclaration {
     instructions::ParamType type;
-    wstring name;
+    std::wstring name;
 
   public:
-    IntermediateDeclaration(const wstring &n, instructions::ParamType t) {
+    IntermediateDeclaration(const std::wstring &n, instructions::ParamType t) {
       type = t;
       name = n;
     }
@@ -470,7 +468,7 @@ namespace backend {
       return type;
     }
 
-    const wstring GetName() {
+    const std::wstring GetName() {
       return name;
     }
 
@@ -484,13 +482,13 @@ namespace backend {
    * class
    ****************************/
   class IntermediateDeclarations {
-    vector<IntermediateDeclaration*> declarations;
+    std::vector<IntermediateDeclaration*> declarations;
 
     void WriteInt(int value, OutputStream &out_stream) {
       out_stream.WriteInt(value);
     }
 
-    void WriteString(const wstring &in, OutputStream &out_stream) {
+    void WriteString(const std::wstring &in, OutputStream &out_stream) {
       out_stream.WriteString(in);
     }
 
@@ -512,16 +510,16 @@ namespace backend {
       declarations.push_back(parameter);
     }
 
-    vector<IntermediateDeclaration*> GetParameters() {
+    std::vector<IntermediateDeclaration*> GetParameters() {
       return declarations;
     }
     
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
         size_t index = has_and_or ? 1 : 0;
-        GetLogger() << L"memory types:" << endl;
+        GetLogger() << L"memory types:" << std::endl;
         if(has_and_or) {
-          GetLogger() << L"  0: INT_PARM" << endl;
+          GetLogger() << L"  0: INT_PARM" << std::endl;
         }
 
         for(size_t i = 0; i < declarations.size(); ++i, ++index) {   
@@ -529,43 +527,43 @@ namespace backend {
     
           switch(entry->GetType()) {  
           case instructions::CHAR_PARM:   
-            GetLogger() << L"  " << index << L": CHAR_PARM" << endl;   
+            GetLogger() << L"  " << index << L": CHAR_PARM" << std::endl;   
             break;
       
           case instructions::INT_PARM:   
-            GetLogger() << L"  " << index << L": INT_PARM" << endl;   
+            GetLogger() << L"  " << index << L": INT_PARM" << std::endl;   
             break;   
     
           case instructions::FLOAT_PARM:   
-            GetLogger() << L"  " << index << L": FLOAT_PARM" << endl;   
+            GetLogger() << L"  " << index << L": FLOAT_PARM" << std::endl;   
             break;   
     
           case instructions::BYTE_ARY_PARM:   
-            GetLogger() << L"  " << index << L": BYTE_ARY_PARM" << endl;   
+            GetLogger() << L"  " << index << L": BYTE_ARY_PARM" << std::endl;   
             break;   
     
           case instructions::CHAR_ARY_PARM:   
-            GetLogger() << L"  " << index << L": CHAR_ARY_PARM" << endl;   
+            GetLogger() << L"  " << index << L": CHAR_ARY_PARM" << std::endl;   
             break;
 
           case instructions::INT_ARY_PARM:   
-            GetLogger() << L"  " << index << L": INT_ARY_PARM" << endl;   
+            GetLogger() << L"  " << index << L": INT_ARY_PARM" << std::endl;   
             break;   
     
           case instructions::FLOAT_ARY_PARM:   
-            GetLogger() << L"  " << index << L": FLOAT_ARY_PARM" << endl;   
+            GetLogger() << L"  " << index << L": FLOAT_ARY_PARM" << std::endl;   
             break;   
     
           case instructions::OBJ_PARM:   
-            GetLogger() << L"  " << index << L": OBJ_PARM" << endl;   
+            GetLogger() << L"  " << index << L": OBJ_PARM" << std::endl;   
             break;
        
           case instructions::OBJ_ARY_PARM:   
-            GetLogger() << L"  " << index << L": OBJ_ARY_PARM" << endl;   
+            GetLogger() << L"  " << index << L": OBJ_ARY_PARM" << std::endl;   
             break;
       
           case instructions::FUNC_PARM:   
-            GetLogger() << L"  " << index << L": FUNC_PARM" << endl;   
+            GetLogger() << L"  " << index << L": FUNC_PARM" << std::endl;   
             break;
     
           default:   
@@ -574,7 +572,7 @@ namespace backend {
         }   
       }  
       else {
-        GetLogger() << L"memory types: none" << endl;
+        GetLogger() << L"memory types: none" << std::endl;
       }
     }
 

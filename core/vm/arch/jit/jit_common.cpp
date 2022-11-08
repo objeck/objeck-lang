@@ -55,11 +55,11 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
                                    StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
 #ifdef _DEBUG_JIT
-  wcout << L"Stack Call: instr=" << instr_id
+  std::wcout << L"Stack Call: instr=" << instr_id
     << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2()
     << L", oper_3=" << instr->GetOperand3() << L", self=" << inst << L"("
-    << (size_t)inst << L"), stack=" << op_stack << L", stack_addr=" << stack_pos
-    << L", stack_pos=" << (*stack_pos) << endl;
+    << (size_t)inst << L"), std::stack=" << op_stack << L", stack_addr=" << stack_pos
+    << L", stack_pos=" << (*stack_pos) << std::endl;
 #endif
   switch(instr_id) {
   case MTHD_CALL:
@@ -67,7 +67,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
 #ifdef _DEBUG_JIT
     StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-    wcout << L"jit oper: MTHD_CALL: mthd=" << called->GetName() << endl;
+    std::wcout << L"jit oper: MTHD_CALL: mthd=" << called->GetName() << std::endl;
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
@@ -77,8 +77,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case LOAD_ARY_SIZE: {
     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
     if(!array) {
-      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
     PushInt(op_stack, stack_pos, array[2]);
@@ -106,8 +106,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     PushInt(op_stack, stack_pos, (size_t)mem);
 
 #ifdef _DEBUG_JIT
-    wcout << L"jit oper: NEW_BYTE_ARY: dim=" << dim << L"; size=" << size
-      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
+    std::wcout << L"jit oper: NEW_BYTE_ARY: dim=" << dim << L"; size=" << size
+      << L"; index=" << (*stack_pos) << L"; mem=" << mem << std::endl;
 #endif
   }
     break;
@@ -132,8 +132,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     PushInt(op_stack, stack_pos, (size_t)mem);
 
 #ifdef _DEBUG_JIT
-    wcout << L"jit oper: NEW_CHAR_ARY: dim=" << dim << L"; size=" << size
-      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
+    std::wcout << L"jit oper: NEW_CHAR_ARY: dim=" << dim << L"; size=" << size
+      << L"; index=" << (*stack_pos) << L"; mem=" << mem << std::endl;
 #endif
   }
     break;
@@ -152,8 +152,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
     size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG_JIT
-    wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
-      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
+    std::wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
+      << L"; index=" << (*stack_pos) << L"; mem=" << mem << std::endl;
 #endif
     mem[0] = size;
     mem[1] = dim;
@@ -186,7 +186,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case NEW_OBJ_INST: {
 #ifdef _DEBUG_JIT
     StackClass* klass = program->GetClass(instr->GetOperand());
-    wcout << L"jit oper: NEW_OBJ_INST: class=" << klass->GetName() << endl;
+    std::wcout << L"jit oper: NEW_OBJ_INST: class=" << klass->GetName() << std::endl;
 #endif
     size_t* mem = MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
     PushInt(op_stack, stack_pos, (size_t)mem);
@@ -200,10 +200,10 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       const size_t base = PopInt(op_stack, stack_pos);
       const long value = (long)PopInt(op_stack, stack_pos);
 
-      wstringstream formatter;
-      wstring conv;
+      std::wstringstream formatter;
+      std::wstring conv;
 
-      const wstring int_format = program->GetProperty(L"int:string:format");
+      const std::wstring int_format = program->GetProperty(L"int:string:format");
       if(!int_format.empty()) {
         if(int_format == L"dec") {
           formatter << std::dec;
@@ -219,7 +219,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         conv = formatter.str();
       }
       else {
-        conv = to_wstring(value);
+        conv = std::to_wstring(value);
       }
 
       const size_t max = conv.size() < 32 ? conv.size() : 32;
@@ -238,11 +238,11 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
 
-      wstringstream formatter;
-      wstring conv;
+      std::wstringstream formatter;
+      std::wstring conv;
 
-      const wstring float_format = program->GetProperty(L"float:string:format");
-      const wstring float_precision = program->GetProperty(L"float:string:precision");
+      const std::wstring float_format = program->GetProperty(L"float:string:format");
+      const std::wstring float_precision = program->GetProperty(L"float:string:precision");
 
       if(!float_format.empty() && !float_precision.empty()) {
         if(float_format == L"fixed") {
@@ -254,7 +254,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         else if(float_format == L"hex") {
           formatter << std::hexfloat;
         }
-        formatter << setprecision(stol(float_precision));
+        formatter << std::setprecision(stol(float_precision));
 
         formatter << value;
         conv = formatter.str();
@@ -274,13 +274,13 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         conv = formatter.str();
       }
       else if(!float_precision.empty()) {
-        formatter << setprecision(stol(float_precision));
+        formatter << std::setprecision(stol(float_precision));
 
         formatter << value;
         conv = formatter.str();
       }
       else {
-        conv = to_wstring(value);
+        conv = std::to_wstring(value);
       }
 
       const size_t max = conv.size() < 64 ? conv.size() : 64;
@@ -297,11 +297,11 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
-      const FLOAT_VALUE value = stod(str);
+      const FLOAT_VALUE value = std::stod(str);
       PushFloat(value, op_stack, stack_pos);
     }
     else {
-      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       exit(1);
     }
   }
@@ -309,7 +309,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
   case S2I: {
 #ifdef _DEBUG_JIT
-    wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
+    std::wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
 
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
@@ -321,24 +321,24 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
           switch(str[1]) {
             // binary
           case 'b':
-            PushInt(op_stack, stack_pos, stol(str + 2, nullptr, 2));
+            PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 2));
             return;
 
             // octal
           case 'o':
-            PushInt(op_stack, stack_pos, stol(str + 2, nullptr, 8));
+            PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 8));
             return;
 
             // hexadecimal
           case 'x':
-            PushInt(op_stack, stack_pos, stol(str + 2, nullptr, 16));
+            PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 16));
             return;
 
           default:
       break;
           }
         }
-        PushInt(op_stack, stack_pos, stol(str, nullptr, base));
+        PushInt(op_stack, stack_pos, std::stol(str, nullptr, base));
       }
       catch(std::invalid_argument& e) {
 #ifdef _WIN32
@@ -348,7 +348,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       }
     }
     else {
-      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       exit(1);
     }
   }
@@ -370,14 +370,14 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
     long to_id = instr->GetOperand();
 #ifdef _DEBUG_JIT
-    wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl;
+    std::wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << std::endl;
 #endif
     size_t result = (size_t)MemoryManager::ValidObjectCast(mem, to_id, program->GetHierarchy(), program->GetInterfaces());
     if(!result && mem) {
       StackClass* to_cls = MemoryManager::GetClass(mem);
-      wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-        << L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
+        << L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
     PushInt(op_stack, stack_pos, result);
@@ -389,22 +389,22 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case THREAD_JOIN: {
     size_t* instance = inst;
     if(!instance) {
-      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 
 #ifdef _WIN32
     HANDLE vm_thread = (HANDLE)instance[0];
     if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
-      wcerr << L"Unable to join thread!" << endl;
+      std::wcerr << L"Unable to join thread!" << std::endl;
       exit(-1);
     }
 #else
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
     if(pthread_join(vm_thread, &status)) {
-      wcerr << L"Unable to join thread!" << endl;
+      std::wcerr << L"Unable to join thread!" << std::endl;
       exit(-1);
     }
 #endif      
@@ -422,8 +422,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case THREAD_MUTEX: {
     size_t* instance = inst;
     if(!instance) {
-      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 #ifdef _WIN32      
@@ -437,8 +437,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case CRITICAL_START: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
-      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 #ifdef _WIN32      
@@ -452,8 +452,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case CRITICAL_END: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
-      wcerr << L"Attempting to dereference a 'Nil' memory instance" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 #ifdef _WIN32      
@@ -473,8 +473,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 
@@ -505,8 +505,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 
@@ -538,8 +538,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 
@@ -570,8 +570,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
-      wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << endl;
-      wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       exit(1);
     }
 
@@ -597,14 +597,14 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   case TRAP:
   case TRAP_RTRN:
     if(!TrapProcessor::ProcessTrap(program, inst, op_stack, stack_pos, nullptr)) {
-      wcerr << L"  JIT compiled machine code..." << endl;
+      std::wcerr << L"  JIT compiled machine code..." << std::endl;
       exit(1);
     }
     break;
 
 #ifdef _DEBUG_JIT
   default:
-    wcerr << L"Unknown callback!" << endl;
+    std::wcerr << L"Unknown callback!" << std::endl;
     break;
 #endif
   }
@@ -616,7 +616,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 size_t JitCompiler::PopInt(size_t* op_stack, long* stack_pos) {
   const size_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG_JIT
-  wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
+  std::wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << std::endl;
 #endif
 
   return value;
@@ -628,7 +628,7 @@ size_t JitCompiler::PopInt(size_t* op_stack, long* stack_pos) {
 void JitCompiler::PushInt(size_t* op_stack, long* stack_pos, size_t value) {
   op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG_JIT
-  wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
+  std::wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << std::endl;
 #endif
 }
 
@@ -640,7 +640,7 @@ FLOAT_VALUE JitCompiler::PopFloat(size_t* op_stack, long* stack_pos) {
 
 #ifdef _DEBUG_JIT
   FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
-  wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << endl;
+  std::wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << L"]; pos=" << (*stack_pos) << std::endl;
   return v;
 #endif
 
@@ -652,8 +652,8 @@ FLOAT_VALUE JitCompiler::PopFloat(size_t* op_stack, long* stack_pos) {
  */
 void JitCompiler::PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG_JIT
-  wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-    << L"]; call_pos=" << (*stack_pos) << endl;
+  std::wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
+    << L"]; call_pos=" << (*stack_pos) << std::endl;
 #endif
   * ((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
   (*stack_pos)++;
