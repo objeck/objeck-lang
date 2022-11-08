@@ -61,7 +61,7 @@ union PropValue {
 
 class ItermediateOptimizer {
   IntermediateProgram* program;
-  set<wstring> can_inline;
+  std::set<std::wstring> can_inline;
   int optimization_level;
   int unconditional_label;
   IntermediateMethod* current_method;
@@ -69,9 +69,9 @@ class ItermediateOptimizer {
   int cur_line_num;
   bool is_lib;
   
-  vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
-  vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
-  vector<IntermediateBlock*> JumpToLocation(vector<IntermediateBlock*> inputs);
+  std::vector<IntermediateBlock*> OptimizeMethod(std::vector<IntermediateBlock*> input);
+  std::vector<IntermediateBlock*> InlineMethod(std::vector<IntermediateBlock*> inputs);
+  std::vector<IntermediateBlock*> JumpToLocation(std::vector<IntermediateBlock*> inputs);
   
   // inline setters/getters
   IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
@@ -88,41 +88,41 @@ class ItermediateOptimizer {
 
   // dead store
   IntermediateBlock* DeadStore(IntermediateBlock* input);
-  bool IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, vector<IntermediateInstruction*>& input_instrs);
-  pair<size_t, size_t> DeadStoreEdit(size_t start_pos, vector<IntermediateInstruction*>& input_instrs);
-  bool InDeadStoreRange(size_t pos, vector<pair<size_t, size_t>> dead_store_edits);
+  bool IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, std::vector<IntermediateInstruction*>& input_instrs);
+  std::pair<size_t, size_t> DeadStoreEdit(size_t start_pos, std::vector<IntermediateInstruction*>& input_instrs);
+  bool InDeadStoreRange(size_t pos, std::vector<std::pair<size_t, size_t>> dead_store_edits);
 
   // constant propagation
   IntermediateBlock* ConstantProp(IntermediateBlock* input);
 
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
-  void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+  void CalculateIntFold(IntermediateInstruction* instr, std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
   // float constant folding
   IntermediateBlock* FoldFloatConstants(IntermediateBlock* input);
-  void CalculateFloatFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+  void CalculateFloatFold(IntermediateInstruction* instr, std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
   
   // strength reduction
   IntermediateBlock* StrengthReduction(IntermediateBlock* inputs);
-  void CalculateReduction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+  void CalculateReduction(IntermediateInstruction* instr, std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
   void ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr,
-                      deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+                      std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
   void AddBackReduction(IntermediateInstruction* instr, IntermediateInstruction* top_instr, 
-                        deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+                        std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
   
   // instruction replacement
   IntermediateBlock* InstructionReplacement(IntermediateBlock* inputs);
-  void ReplacementInstruction(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
+  void ReplacementInstruction(IntermediateInstruction* instr, std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
-  bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets);
+  bool CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*> &inlined_mthds, std::set<int> &lbl_jmp_offsets);
   
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);
   
  public:
-   ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool l, bool d);
+   ItermediateOptimizer(IntermediateProgram* p, int u, std::wstring o, bool l, bool d);
   
   ~ItermediateOptimizer() {
   }
