@@ -31,8 +31,6 @@
 
 #include "odbc.h"
 
-using namespace std;
-
 extern "C" {
   SQLLEN sql_null;
   
@@ -74,18 +72,18 @@ extern "C" {
   {
     SQLHDBC conn;
 
-    const wstring wds(APITools_GetStringValue(context, 1));
-    const wstring wusername(APITools_GetStringValue(context, 2));
-    const wstring wpassword(APITools_GetStringValue(context, 3));
+    const std::wstring wds(APITools_GetStringValue(context, 1));
+    const std::wstring wusername(APITools_GetStringValue(context, 2));
+    const std::wstring wpassword(APITools_GetStringValue(context, 3));
 
 #ifdef _DEBUG
     wcout << L"### connect: " << L"ds=" << wds << L", username=" 
-          << wusername << L", password=" << wpassword << L" ###" << endl;
+          << wusername << L", password=" << wpassword << L" ###" << std::endl;
 #endif
 		
-    const string ds = UnicodeToBytes(wds);
-    const string username = UnicodeToBytes(wusername);
-    const string password = UnicodeToBytes(wpassword);
+    const std::string ds = UnicodeToBytes(wds);
+    const std::string username = UnicodeToBytes(wusername);
+    const std::string password = UnicodeToBytes(wpassword);
 		
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_FAIL) {
@@ -120,7 +118,7 @@ extern "C" {
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
 
 #ifdef _DEBUG
-      wcout << L"### disconnect ###" << endl;
+      wcout << L"### disconnect ###" << std::endl;
 #endif
     }
   }
@@ -134,10 +132,10 @@ extern "C" {
   void odbc_update_statement(VMContext& context) 
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
-    const wstring wsql(APITools_GetStringValue(context, 2));
+    const std::wstring wsql(APITools_GetStringValue(context, 2));
 
 #ifdef _DEBUG
-    wcout << L"### update: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
+    wcout << L"### update: conn=" << conn << L", stmt=" << wsql << L"  ###" << std::endl;
 #endif    
 
     if(!conn || wsql.size() < 1) {
@@ -156,7 +154,7 @@ extern "C" {
       return;
     }
 		
-    const string sql = UnicodeToBytes(wsql);
+    const std::string sql = UnicodeToBytes(wsql);
     status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
@@ -191,7 +189,7 @@ extern "C" {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
 
 #ifdef _DEBUG
-    wcout << L"### stmt_select_update: stmt=" << stmt << L" ###" << endl;
+    wcout << L"### stmt_select_update: stmt=" << stmt << L" ###" << std::endl;
 #endif
     if(stmt) {
       SQLExecute(stmt);
@@ -207,10 +205,10 @@ extern "C" {
   void odbc_select_statement(VMContext& context) 
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 3);
-    const wstring wsql(APITools_GetStringValue(context, 4));
+    const std::wstring wsql(APITools_GetStringValue(context, 4));
 
 #ifdef _DEBUG
-    wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
+    wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << std::endl;
 #endif    
 
     if(!conn || wsql.size() < 1) {
@@ -230,7 +228,7 @@ extern "C" {
       return;
     }
 		
-    const string sql = UnicodeToBytes(wsql);
+    const std::string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
@@ -254,8 +252,8 @@ extern "C" {
       return;
     }
 
-    map<const wstring, int>* column_names = new map<const wstring, int>;
-    map<int, pair<void*, SQLLEN> >* exec_data = new map<int, pair<void*, SQLLEN> >;
+    std::map<const std::wstring, int>* column_names = new std::map<const std::wstring, int>;
+    std::map<int, std::pair<void*, SQLLEN> >* exec_data = new std::map<int, std::pair<void*, SQLLEN> >;
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
@@ -283,11 +281,11 @@ extern "C" {
         return;
       }
 			
-      const string column_name((const char*)description.column_name);
-      const wstring wcolumn_name(column_name.begin(), column_name.end());
-      column_names->insert(pair<wstring, int>(wcolumn_name, i));
+      const std::string column_name((const char*)description.column_name);
+      const std::wstring wcolumn_name(column_name.begin(), column_name.end());
+      column_names->insert(std::pair<std::wstring, int>(wcolumn_name, i));
 #ifdef _DEBUG
-      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << endl;
+      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << std::endl;
 #endif
     }
 		
@@ -318,7 +316,7 @@ extern "C" {
     APITools_SetIntValue(context, 1, (size_t)column_names);
     APITools_SetIntValue(context, 2, (size_t)exec_data);
 #ifdef _DEBUG
-    wcout << L"### select OK: stmt=" << stmt << L" ###" << endl;
+    wcout << L"### select OK: stmt=" << stmt << L" ###" << std::endl;
 #endif  
   }		
 	
@@ -331,10 +329,10 @@ extern "C" {
   void odbc_pepare_statement(VMContext& context) 
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 3);
-    const wstring wsql(APITools_GetStringValue(context, 4));
+    const std::wstring wsql(APITools_GetStringValue(context, 4));
 		
 #ifdef _DEBUG
-    wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
+    wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << std::endl;
 #endif    
 		
     if(!conn || wsql.size() < 1) {
@@ -356,7 +354,7 @@ extern "C" {
       return;
     }
 		
-    const string sql = UnicodeToBytes(wsql);
+    const std::string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
@@ -381,8 +379,8 @@ extern "C" {
     }
 
     // map execution data and get column information
-    map<int, pair<void*, SQLLEN> >* exec_data = new map<int, pair<void*, SQLLEN> >;
-    map<const wstring, int>* column_names = new map<const wstring, int>;
+    std::map<int, std::pair<void*, SQLLEN> >* exec_data = new std::map<int, std::pair<void*, SQLLEN> >;
+    std::map<const std::wstring, int>* column_names = new std::map<const std::wstring, int>;
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
@@ -410,11 +408,11 @@ extern "C" {
         return;
       }
 			
-      const string column_name((const char*)description.column_name);
-      const wstring wcolumn_name(column_name.begin(), column_name.end());
-      column_names->insert(pair<wstring, int>(wcolumn_name, i));
+      const std::string column_name((const char*)description.column_name);
+      const std::wstring wcolumn_name(column_name.begin(), column_name.end());
+      column_names->insert(std::pair<std::wstring, int>(wcolumn_name, i));
 #ifdef _DEBUG
-      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << endl;
+      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << std::endl;
 #endif
     }
 		
@@ -456,11 +454,11 @@ extern "C" {
   void odbc_stmt_update(VMContext& context) 
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);    
-    map<size_t, pair<void*, SQLLEN> >* exec_data = (map<size_t, pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 2);
-    map<const wstring, int>* column_names = (map<const wstring, int>*)APITools_GetIntValue(context, 3);
+    std::map<size_t, std::pair<void*, SQLLEN> >* exec_data = (std::map<size_t, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 2);
+    std::map<const std::wstring, int>* column_names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 3);
 		
 #ifdef _DEBUG
-    wcout << L"### stmt_update: stmt=" << stmt << L" ###" << endl;
+    wcout << L"### stmt_update: stmt=" << stmt << L" ###" << std::endl;
 #endif
 
     SQLRETURN status = SQLExecute(stmt);
@@ -469,7 +467,7 @@ extern "C" {
     if(status == SQL_NEED_DATA) {
       status = SQLParamData(stmt, &param_id);
       do {
-        map<size_t, pair<void*, SQLLEN> >::iterator found = exec_data->find((size_t)param_id);
+        std::map<size_t, std::pair<void*, SQLLEN> >::iterator found = exec_data->find((size_t)param_id);
         if(found != exec_data->end()) {
           status = SQLPutData(stmt, found->second.first, found->second.second);
           if(SQL_FAIL) {
@@ -565,7 +563,7 @@ extern "C" {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
 
 #ifdef _DEBUG
-    wcout << L"### set_smallint: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+    wcout << L"### set_smallint: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SSHORT, 
@@ -592,7 +590,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_smallint: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SSHORT, 
@@ -617,7 +615,7 @@ extern "C" {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
 
 #ifdef _DEBUG
-    wcout << L"### set_bit: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+    wcout << L"### set_bit: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
@@ -644,7 +642,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_bit: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
@@ -669,7 +667,7 @@ extern "C" {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
 
 #ifdef _DEBUG
-    wcout << L"### set_int: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+    wcout << L"### set_int: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
@@ -696,7 +694,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_int: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
@@ -722,7 +720,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_double: stmt=" << stmt << L", column=" << i 
-          << L", value=<NULL> ###" << endl;
+          << L", value=<NULL> ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_DOUBLE, 
@@ -749,7 +747,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_double: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_DOUBLE, 
@@ -775,7 +773,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_real: stmt=" << stmt << L", column=" << i 
-          << L", value=<NULL> ###" << endl;
+          << L", value=<NULL> ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_FLOAT,
@@ -802,7 +800,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_real: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << std::endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_FLOAT,
@@ -825,11 +823,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_int_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -845,7 +843,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -864,9 +862,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
@@ -876,7 +874,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_int_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -892,7 +890,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -911,10 +909,10 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
-    wcout << L"### get_smallint_by_id: stmt=" << stmt << L", column=" << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+    wcout << L"### get_smallint_by_id: stmt=" << stmt << L", column=" << i << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -930,7 +928,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -949,9 +947,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
     
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
@@ -960,7 +958,7 @@ extern "C" {
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
 
 #ifdef _DEBUG
-    wcout << L"### get_smallint_by_name: stmt=" << stmt << L", column=" << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+    wcout << L"### get_smallint_by_name: stmt=" << stmt << L", column=" << i << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -976,7 +974,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -995,11 +993,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_bit_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1015,7 +1013,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1034,9 +1032,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
@@ -1046,7 +1044,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_bit_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1062,7 +1060,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1081,11 +1079,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_double_by_id: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)(names->size() + 1) << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1101,7 +1099,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetFloatValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1120,9 +1118,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetFloatValue(context, 1, 0.0);
@@ -1132,7 +1130,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_double_by_name: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)(names->size() + 1) << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1148,7 +1146,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetFloatValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1167,11 +1165,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_real_by_id: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)(names->size() + 1) << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1187,7 +1185,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetFloatValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1206,9 +1204,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
     
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetFloatValue(context, 1, 0.0);
@@ -1218,7 +1216,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_real_by_name: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)(names->size() + 1) << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1234,7 +1232,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetFloatValue(context, 1, value);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1244,7 +1242,7 @@ extern "C" {
   }
   
   //
-  // set a string for a prepared statement to null
+  // set a std::string for a prepared statement to null
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1256,7 +1254,7 @@ extern "C" {
 		
 #ifdef _DEBUG
     wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i 
-          << L", value=<NULL> ###" << endl;
+          << L", value=<NULL> ###" << std::endl;
 #endif  
 		
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
@@ -1270,7 +1268,7 @@ extern "C" {
   }
 
   //
-  // set a string for a prepared statement
+  // set a std::string for a prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1284,7 +1282,7 @@ extern "C" {
 		
 #ifdef _DEBUG
     wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << std::endl;
 #endif  
 		
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
@@ -1298,7 +1296,7 @@ extern "C" {
   }
 
   //
-  // set a binary string for a prepared statement
+  // set a binary std::string for a prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1310,7 +1308,7 @@ extern "C" {
 		
 #ifdef _DEBUG
     wcout << L"### set_blob: stmt=" << stmt << L", column=" << i 
-          << L", value=<NULL> ###" << endl;
+          << L", value=<NULL> ###" << std::endl;
 #endif  
     
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
@@ -1324,7 +1322,7 @@ extern "C" {
   }
 
   //
-  // set a binary string for a prepared statement
+  // set a binary std::string for a prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1339,7 +1337,7 @@ extern "C" {
 		
 #ifdef _DEBUG
     wcout << L"### set_blob: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << std::endl;
 #endif  
     
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
@@ -1353,7 +1351,7 @@ extern "C" {
   }
 
   //
-  // set a binary string for a prepared statement
+  // set a binary std::string for a prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1365,18 +1363,18 @@ extern "C" {
     SQLLEN* value_size = (SQLLEN*)APITools_GetIntAddress(context, 2);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 3);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
-    map<int, pair<void*, SQLLEN> >* exec_data = (map<int, pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 5);
+    std::map<int, std::pair<void*, SQLLEN> >* exec_data = (std::map<int, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 5);
     
 #ifdef _DEBUG
     wcout << L"### set_bytes: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << std::endl;
 #endif
     
-    pair<void*, SQLLEN> data(value, *value_size);
+    std::pair<void*, SQLLEN> data(value, *value_size);
     *value_size = SQL_LEN_DATA_AT_EXEC(*value_size);
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
                                         *value_size, 0, (SQLPOINTER)i, 0, value_size);
-    exec_data->insert(pair<int, pair<void*, SQLLEN> >(i, data));
+    exec_data->insert(std::pair<int, std::pair<void*, SQLLEN> >(i, data));
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -1397,7 +1395,7 @@ extern "C" {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
 
 #ifdef _DEBUG
-    wcout << L"### set_timestamp: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+    wcout << L"### set_timestamp: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << std::endl;
 #endif
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, 
@@ -1426,7 +1424,7 @@ extern "C" {
     wcout << L"### set_timestamp: stmt=" << stmt << L", column=" << i 
           << L", value=" << value[1] << L"-" << value[2] << L"-" << value[2] << L" " 
           << value[4] << L":" <<  value[5] << L":" <<  value[5] << value[6] << L"." 
-          << value[7] << L" ###" << endl;
+          << value[7] << L" ###" << std::endl;
 #endif
 
     SQL_TIMESTAMP_STRUCT time_stamp;    
@@ -1465,7 +1463,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_date: stmt=" << stmt << L", column=" << i 
-          << L", value=<NULL> ###" << endl;
+          << L", value=<NULL> ###" << std::endl;
 #endif
     
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_DATE, 
@@ -1492,7 +1490,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_date: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << std::endl;
 #endif
 
     SQL_DATE_STRUCT time_stamp;    
@@ -1515,7 +1513,7 @@ extern "C" {
   }
 
   //
-  // gets a string from a result set
+  // gets a std::string from a result set
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1524,11 +1522,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1542,10 +1540,10 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, VARCHAR_MAX, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      const wstring out = BytesToUnicode(value);
+      const std::wstring out = BytesToUnicode(value);
       APITools_SetStringValue(context, 1, out);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1568,11 +1566,11 @@ extern "C" {
 		
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_blob_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << buffer_size << L" ###" << endl;
+          << L", max=" << buffer_size << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1605,9 +1603,9 @@ extern "C" {
 
     const wchar_t* name = APITools_GetStringValue(context, 2);		
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
     
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       return;
@@ -1616,7 +1614,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_blob_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << buffer_size << L" ###" << endl;
+          << L", max=" << buffer_size << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1635,7 +1633,7 @@ extern "C" {
   }
   
   //
-  // gets a string from a result set
+  // gets a std::string from a result set
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -1644,9 +1642,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
@@ -1656,7 +1654,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1671,10 +1669,10 @@ extern "C" {
                                   VARCHAR_MAX, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      const wstring out = BytesToUnicode(value);
+      const std::wstring out = BytesToUnicode(value);
       APITools_SetStringValue(context, 1, out);
 #ifdef _DEBUG
-      wcout << L"  " << value << endl;
+      wcout << L"  " << value << std::endl;
 #endif
     }
     else {
@@ -1693,11 +1691,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_timestamp_by_id: stmt=" << stmt << L", column=" 
-          << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << i << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1721,14 +1719,14 @@ extern "C" {
       ts_obj[7] = value.fraction;
 
 #ifdef _DEBUG
-      wcout << L"  " << value.year << endl;
-      wcout << L"  " << value.month << endl;
-      wcout << L"  " << value.day << endl;
-      wcout << L"  " << value.hour << endl;
-      wcout << L"  " << value.minute << endl;
-      wcout << L"  " << value.second << endl;
-      wcout << L"  " << value.fraction << endl;
-      wcout << L"  is_null=" << (is_null == SQL_NULL_DATA) << endl;
+      wcout << L"  " << value.year << std::endl;
+      wcout << L"  " << value.month << std::endl;
+      wcout << L"  " << value.day << std::endl;
+      wcout << L"  " << value.hour << std::endl;
+      wcout << L"  " << value.minute << std::endl;
+      wcout << L"  " << value.second << std::endl;
+      wcout << L"  " << value.fraction << std::endl;
+      wcout << L"  is_null=" << (is_null == SQL_NULL_DATA) << std::endl;
 #endif
       // set values
       APITools_SetIntValue(context, 0, (is_null == SQL_NULL_DATA) ? 1 : 0);
@@ -1750,9 +1748,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
     
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
@@ -1762,7 +1760,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_timestamp_by_name: stmt=" << stmt << L", column=" 
-          << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << i << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1786,14 +1784,14 @@ extern "C" {
       ts_obj[7] = value.fraction;
 
 #ifdef _DEBUG
-      wcout << L"  " << value.year << endl;
-      wcout << L"  " << value.month << endl;
-      wcout << L"  " << value.day << endl;
-      wcout << L"  " << value.hour << endl;
-      wcout << L"  " << value.minute << endl;
-      wcout << L"  " << value.second << endl;
-      wcout << L"  " << value.fraction << endl;
-      wcout << L"  is_null=" << (is_null == SQL_NULL_DATA) << endl;
+      wcout << L"  " << value.year << std::endl;
+      wcout << L"  " << value.month << std::endl;
+      wcout << L"  " << value.day << std::endl;
+      wcout << L"  " << value.hour << std::endl;
+      wcout << L"  " << value.minute << std::endl;
+      wcout << L"  " << value.second << std::endl;
+      wcout << L"  " << value.fraction << std::endl;
+      wcout << L"  is_null=" << (is_null == SQL_NULL_DATA) << std::endl;
 #endif
       // set values
       APITools_SetIntValue(context, 0, (is_null == SQL_NULL_DATA) ? 1 : 0);
@@ -1815,11 +1813,11 @@ extern "C" {
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
     wcout << L"### get_date_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1838,9 +1836,9 @@ extern "C" {
       ts_obj[3] = value.day;
 
 #ifdef _DEBUG
-      wcout << L"  " << value.year << endl;
-      wcout << L"  " << value.month << endl;
-      wcout << L"  " << value.day << endl;
+      wcout << L"  " << value.year << std::endl;
+      wcout << L"  " << value.month << std::endl;
+      wcout << L"  " << value.day << std::endl;
 #endif
 
       // set values
@@ -1863,9 +1861,9 @@ extern "C" {
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
 
-    map<const wstring, int>::iterator result = names->find(name);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
@@ -1875,7 +1873,7 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_date_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
@@ -1894,9 +1892,9 @@ extern "C" {
       ts_obj[3] = value.day;
 
 #ifdef _DEBUG
-      wcout << L"  " << value.year << endl;
-      wcout << L"  " << value.month << endl;
-      wcout << L"  " << value.day << endl;
+      wcout << L"  " << value.year << std::endl;
+      wcout << L"  " << value.month << std::endl;
+      wcout << L"  " << value.day << std::endl;
 #endif
 
       // set values
@@ -1918,20 +1916,20 @@ extern "C" {
 #endif
   void odbc_result_close(VMContext& context) 
   {
-    map<const wstring, int>* column_names = (map<const wstring, int>*)APITools_GetIntValue(context, 0);
+    std::map<const std::wstring, int>* column_names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 0);
     if(column_names) {
       delete column_names;
       column_names = NULL;
     }
     
-    map<int, pair<void*, SQLLEN> >* exec_data = (map<int, pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 1);
+    std::map<int, std::pair<void*, SQLLEN> >* exec_data = (std::map<int, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 1);
     if(exec_data) {
       delete exec_data;
       exec_data = NULL;
     }
 		
 #ifdef _DEBUG
-    wcout << L"### closed result set ###" << endl;
+    wcout << L"### closed result set ###" << std::endl;
 #endif
   }
 	
@@ -1950,7 +1948,7 @@ extern "C" {
     }
 		
 #ifdef _DEBUG
-    wcout << L"### closed prepared statement ###" << endl;
+    wcout << L"### closed prepared statement ###" << std::endl;
 #endif
   }
 }
