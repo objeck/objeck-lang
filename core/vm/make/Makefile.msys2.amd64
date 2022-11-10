@@ -1,8 +1,8 @@
-ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -Wno-unused-function -std=c++17
+ARGS=-O3 -Wall -std=c++17 -pthread -D_MSYS2 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-dangling-pointer -Wno-maybe-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS=jit_amd_lp64.a memory.a win32.a
+OBJ_LIBS=win32.a jit_amd_lp64.a memory.a 
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
 WIN32_PATH=arch/win32
@@ -10,6 +10,7 @@ EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/usr/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
+	cp /usr/bin/msys-z.dll .; cp /usr/bin/msys-2.0.dll .; cp /usr/bin/msys-crypto-1.1.dll .; cp /usr/bin/msys-ssl-1.1.dll .; cp /ucrt64/bin/libgcc_s_seh-1.dll .; cp /ucrt64/bin/libstdc++-6.dll .; cp /ucrt64/bin/libwinpthread-1.dll .
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.msys2.amd64
@@ -26,4 +27,4 @@ win32.a:
 clean:
 	cd $(MEM_PATH); make clean -f make/Makefile.msys2.amd64
 	cd $(JIT_PATH); make clean -f make/Makefile.msys2.amd64
-	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~
