@@ -424,7 +424,7 @@ namespace Runtime {
     inline void AddImm64(size_t imm) {
       unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
-      for(int i = 0; i < sizeof(size_t); ++i) {
+      for(size_t i = 0; i < sizeof(size_t); ++i) {
         AddMachineCode(buffer[i]);
       }
   }  
