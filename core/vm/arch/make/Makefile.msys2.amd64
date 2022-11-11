@@ -1,4 +1,5 @@
-ARGS=-O3 -Wall -D_X64 -D_MSYS2 -Wno-unused-function -std=c++17
+# ARGS=-O3 -Wall -D_X64 -D_MSYS2 -Wno-unused-function -std=c++17
+ARGS=-g -Wall -D_X64 -D_MSYS2 -Wno-unused-function -std=c++17
 
 CC=g++
 AR=ar
