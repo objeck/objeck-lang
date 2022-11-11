@@ -3,7 +3,7 @@
 ARGS=-g -Wall -std=c++17 -pthread -D_MSYS2 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-dangling-pointer -Wno-maybe-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
 
 CC=g++
-SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+SRC=common.o interpreter.o loader.o vm.o win_main.o ../shared/logger.o
 OBJ_LIBS=win32.a jit_amd_lp64.a memory.a 
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
