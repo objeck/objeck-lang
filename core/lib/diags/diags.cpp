@@ -44,7 +44,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void load_lib()
+  void load_lib()
   {
 #ifdef _DEBUG
     OpenLogger("debug.log");
@@ -57,7 +57,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void unload_lib()
+  void unload_lib()
   {
 #ifdef _DEBUG
     CloseLogger();
@@ -67,7 +67,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_tree_release(VMContext& context)
+  void diag_tree_release(VMContext& context)
   {
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
@@ -82,7 +82,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_parse_file(VMContext& context)
+  void diag_parse_file(VMContext& context)
   {
     const std::wstring src_file(APITools_GetStringValue(context, 2));
 
@@ -101,7 +101,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_parse_text(VMContext& context)
+  void diag_parse_text(VMContext& context)
   {
     size_t* names_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
     const long names_array_size = APITools_GetArraySize(names_array);
@@ -134,7 +134,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_get_diagnosis(VMContext& context)
+  void diag_get_diagnosis(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -171,7 +171,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_get_symbols(VMContext& context)
+  void diag_get_symbols(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -332,7 +332,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_find_definition(VMContext& context)
+  void diag_find_definition(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -343,11 +343,8 @@ extern "C" {
 
     const std::wstring lib_path = APITools_GetStringValue(context, 5);
 
-    Class* klass = nullptr;
-    Method* method = nullptr;
-    SymbolTable* table = nullptr;
-
     // TODO: check the right file
+    Class* klass; Method* method; SymbolTable* table;
     if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       // method level
       if(method) {
@@ -419,7 +416,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_find_declaration(VMContext& context)
+  void diag_find_declaration(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -430,10 +427,7 @@ extern "C" {
 
     const std::wstring lib_path = APITools_GetStringValue(context, 5);
 
-    Class* klass = nullptr;
-    Method* method = nullptr;
-    SymbolTable* table = nullptr;
-
+    Class* klass; Method* method; SymbolTable* table;
     if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         std::wstring full_lib_path = L"lang.obl";
@@ -464,7 +458,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_completion_help(VMContext& context)
+  void diag_completion_help(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -477,10 +471,7 @@ extern "C" {
     const std::wstring mthd_str = APITools_GetStringValue(context, 6);
     const std::wstring lib_path = APITools_GetStringValue(context, 7);
 
-    Class* klass = nullptr;
-    Method* method = nullptr;
-    SymbolTable* table = nullptr;
-
+    Class* klass; Method* method; SymbolTable* table;
     if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         std::wstring full_lib_path = L"lang.obl";
@@ -524,7 +515,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_hover(VMContext& context)
+  void diag_hover(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -537,10 +528,7 @@ extern "C" {
     const std::wstring mthd_str = APITools_GetStringValue(context, 6);
     std::wstring lib_path = APITools_GetStringValue(context, 7);
 
-    Class* klass = nullptr;
-    Method* method = nullptr;
-    SymbolTable* table = nullptr;
-
+    Class* klass; Method* method; SymbolTable* table;
     if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         std::wstring full_lib_path = L"lang.obl";
@@ -622,7 +610,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_signature_help(VMContext& context)
+  void diag_signature_help(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -636,10 +624,7 @@ extern "C" {
     const std::wstring mthd_str = APITools_GetStringValue(context, 6);
     const std::wstring lib_path = APITools_GetStringValue(context, 7);
 
-    Class* klass = nullptr;
-    Method* method = nullptr;
-    SymbolTable* table = nullptr;
-
+    Class* klass; Method* method; SymbolTable* table;
     if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         std::wstring full_lib_path = L"lang.obl";
@@ -728,7 +713,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_code_rename(VMContext& context)
+  void diag_code_rename(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -748,7 +733,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void diag_find_references(VMContext& context)
+  void diag_find_references(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
