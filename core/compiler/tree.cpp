@@ -995,6 +995,8 @@ const std::vector<std::wstring> ParsedProgram::GetUses() {
 #ifdef _DIAG_LIB
 bool ParsedProgram::FindMethodOrClass(const std::wstring uri, const int line_num, Class*& found_klass, Method*& found_method, SymbolTable*& table)
 {
+  found_klass = nullptr; found_method = nullptr; table = nullptr;
+
   // bundles
   for(size_t i = 0; i < bundles.size(); ++i) {
     ParsedBundle* bundle = bundles[i];

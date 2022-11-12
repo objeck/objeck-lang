@@ -202,6 +202,20 @@ bundle System.Diagnostics {
 		}
 
 		#~
+		Get signature definitions
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param var_str variable string name
+		@param mthd_str method string name
+		@param sys_path system library path
+		@return symbol references, Nil of none found
+		~#
+		method : public : CodeAction(start_range_line : Int, start_range_char : Int, end_range_line : Int, end_range_char : Int, var_name : String)  ~ Result {
+			return Nil;
+		}
+
+		#~
 		Gets hover signatures
 		@param uri file uri
 		@param line line of symbol
