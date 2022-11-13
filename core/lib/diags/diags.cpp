@@ -93,6 +93,7 @@ extern "C" {
 
     APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
     APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
+    APITools_SetIntValue(context, 3, (size_t)parser.GetSymbolTable());
   }
 
   //
@@ -125,6 +126,7 @@ extern "C" {
 
       APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
       APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
+      APITools_SetIntValue(context, 4, (size_t)parser.GetSymbolTable());
     }
   }
 
@@ -507,6 +509,25 @@ extern "C" {
         }
       }
     }
+  }
+
+  //
+  // code action
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_code_action(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    SymbolTableManager* table_mgr = (SymbolTableManager*)prgm_obj[6];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int start_range_line = (int)APITools_GetIntValue(context, 3);
+    const int start_range_char = (int)APITools_GetIntValue(context, 4);
+    const std::wstring var_name = APITools_GetStringValue(context, 5);
+
+    std::wcerr << uri << L", " << var_name << std::endl;
   }
 
   //
