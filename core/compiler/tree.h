@@ -367,6 +367,19 @@ namespace frontend {
 
       return nullptr;
     }
+
+#ifdef _DIAG_LIB
+    std::vector<std::wstring> GetNamescopes() {
+      std::vector<std::wstring> namescopes;
+
+      std::map<const std::wstring, SymbolTable*>::iterator iter;
+      for(iter = tables.begin(); iter != tables.end(); ++iter) {
+        namescopes.push_back(iter->first);
+      }
+
+      return namescopes;
+    }
+#endif
   };
 
   /****************************

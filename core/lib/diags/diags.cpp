@@ -523,11 +523,23 @@ extern "C" {
     SymbolTableManager* table_mgr = (SymbolTableManager*)prgm_obj[6];
 
     const std::wstring uri = APITools_GetStringValue(context, 2);
-    const int start_range_line = (int)APITools_GetIntValue(context, 3);
-    const int start_range_char = (int)APITools_GetIntValue(context, 4);
+    const int start_line = (int)APITools_GetIntValue(context, 3);
+    const int start_char = (int)APITools_GetIntValue(context, 4);
     const std::wstring var_name = APITools_GetStringValue(context, 5);
 
-    std::wcerr << uri << L", " << var_name << std::endl;
+    if(table_mgr) {
+      std::vector<std::wstring> namescopes = table_mgr->GetNamescopes();
+      for(auto &namescope : namescopes) {
+        std::vector<SymbolEntry*> entries = table_mgr->GetEntries(namescope);
+        for(auto& entry : entries) {
+          if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1) {
+            
+            std::wcerr << entry->GetName() << std::endl;
+
+          }
+        }
+      }
+    }
   }
 
   //
