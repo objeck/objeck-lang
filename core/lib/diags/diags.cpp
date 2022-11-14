@@ -527,15 +527,21 @@ extern "C" {
     const int start_char = (int)APITools_GetIntValue(context, 4);
     const std::wstring cls_var_name = APITools_GetStringValue(context, 5);
 
+    size_t* code_action_obj = nullptr;
+
     if(table_mgr) {
       std::vector<std::wstring> namescopes = table_mgr->GetNamescopes();
       for(auto &namescope : namescopes) {
         std::vector<SymbolEntry*> entries = table_mgr->GetEntries(namescope);
         for(auto& entry : entries) {
           if(entry->GetType()->GetType() == CLASS_TYPE) {
+            const std::wstring entry_type_name = entry->GetType()->GetName();
             // declaration match
-            if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry->GetType()->GetName() == cls_var_name) {
-              std::wcerr << "declaration: '" << entry->GetName() << L'\'' << std::endl;
+            if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry_type_name == cls_var_name) {
+              // std::wcerr << "declaration: '" << entry->GetName() << L'\'' << std::endl;
+              code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+              code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
+              code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry->GetName());
             }
             // variable match
             else {
@@ -544,7 +550,10 @@ extern "C" {
               if(entry_var_index != std::wstring::npos) {
                 const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
                 if(entry_var_name == cls_var_name) {
-                  std::wcerr << "variable: '" << entry_var_name << L'\'' << std::endl;
+                  // std::wcerr << "variable: '" << entry_var_name << L'\'' << std::endl;
+                  code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                  code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
+                  code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_dec_var_name);
                 }
               }
             }
@@ -552,6 +561,8 @@ extern "C" {
         }
       }
     }
+
+    APITools_SetObjectValue(context, 0, code_action_obj);
   }
 
   //
