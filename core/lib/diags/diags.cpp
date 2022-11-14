@@ -525,17 +525,29 @@ extern "C" {
     const std::wstring uri = APITools_GetStringValue(context, 2);
     const int start_line = (int)APITools_GetIntValue(context, 3);
     const int start_char = (int)APITools_GetIntValue(context, 4);
-    const std::wstring var_name = APITools_GetStringValue(context, 5);
+    const std::wstring cls_var_name = APITools_GetStringValue(context, 5);
 
     if(table_mgr) {
       std::vector<std::wstring> namescopes = table_mgr->GetNamescopes();
       for(auto &namescope : namescopes) {
         std::vector<SymbolEntry*> entries = table_mgr->GetEntries(namescope);
         for(auto& entry : entries) {
-          if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1) {
-            
-            std::wcerr << entry->GetName() << std::endl;
-
+          if(entry->GetType()->GetType() == CLASS_TYPE) {
+            // declaration match
+            if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry->GetType()->GetName() == cls_var_name) {
+              std::wcerr << "declaration: '" << entry->GetName() << L'\'' << std::endl;
+            }
+            // variable match
+            else {
+              const std::wstring entry_dec_var_name = entry->GetName();
+              const size_t entry_var_index = entry_dec_var_name.find_last_of(L':');
+              if(entry_var_index != std::wstring::npos) {
+                const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
+                if(entry_var_name == cls_var_name) {
+                  std::wcerr << "variable: '" << entry_var_name << L'\'' << std::endl;
+                }
+              }
+            }
           }
         }
       }
