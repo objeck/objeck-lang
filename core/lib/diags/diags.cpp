@@ -537,11 +537,11 @@ extern "C" {
         for(size_t j = 0; code_action_obj == nullptr && j < entries.size(); ++j) {
           SymbolEntry* entry = entries[j];
           if(entry->GetType()->GetType() == CLASS_TYPE) {
-            const std::wstring entry_type_name = entry->GetType()->GetName();
             const std::wstring entry_dec_var_name = entry->GetName();
             const size_t entry_var_index = entry_dec_var_name.find_last_of(L':');
             
             if(entry_var_index != std::wstring::npos) {
+              const std::wstring entry_type_name = entry->GetType()->GetName();
               const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
               // declaration match
               if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry_type_name == cls_var_name) {
