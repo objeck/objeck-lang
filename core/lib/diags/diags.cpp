@@ -531,9 +531,11 @@ extern "C" {
 
     if(table_mgr) {
       std::vector<std::wstring> namescopes = table_mgr->GetNamescopes();
-      for(auto &namescope : namescopes) {
+      for(size_t i = 0; code_action_obj == nullptr && i < namescopes.size(); ++i) {
+        std::wstring namescope = namescopes[i];
         std::vector<SymbolEntry*> entries = table_mgr->GetEntries(namescope);
-        for(auto& entry : entries) {
+        for(size_t j = 0; code_action_obj == nullptr && j < entries.size(); ++j) {
+          SymbolEntry* entry = entries[j];
           if(entry->GetType()->GetType() == CLASS_TYPE) {
             const std::wstring entry_type_name = entry->GetType()->GetName();
             // declaration match
@@ -542,9 +544,11 @@ extern "C" {
               code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
               code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
               code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry->GetName());
+              code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
+              code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
             }
             // variable match
-            else {
+            else if(entry->GetLineNumber() <= start_line + 1 && entry->GetLinePosition() <= start_char + 1) {
               const std::wstring entry_dec_var_name = entry->GetName();
               const size_t entry_var_index = entry_dec_var_name.find_last_of(L':');
               if(entry_var_index != std::wstring::npos) {
@@ -554,6 +558,8 @@ extern "C" {
                   code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
                   code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
                   code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_dec_var_name);
+                  code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
+                  code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
                 }
               }
             }
