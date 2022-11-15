@@ -543,6 +543,7 @@ extern "C" {
             if(entry_var_index != std::wstring::npos) {
               const std::wstring entry_type_name = entry->GetType()->GetName();
               const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
+
               // declaration match
               if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry_type_name == cls_var_name) {
                 code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
