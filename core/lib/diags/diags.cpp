@@ -533,6 +533,7 @@ extern "C" {
       std::vector<std::wstring> namescopes = table_mgr->GetNamescopes();
       for(size_t i = 0; code_action_obj == nullptr && i < namescopes.size(); ++i) {
         std::wstring namescope = namescopes[i];
+
         std::vector<SymbolEntry*> entries = table_mgr->GetEntries(namescope);
         for(size_t j = 0; code_action_obj == nullptr && j < entries.size(); ++j) {
           SymbolEntry* entry = entries[j];
