@@ -538,26 +538,25 @@ extern "C" {
           SymbolEntry* entry = entries[j];
           if(entry->GetType()->GetType() == CLASS_TYPE) {
             const std::wstring entry_type_name = entry->GetType()->GetName();
-            // declaration match
-            if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry_type_name == cls_var_name) {
-              // std::wcerr << "declaration: '" << entry->GetName() << L'\'' << std::endl;
-              code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-              code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
-              code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry->GetName());
-              code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
-              code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
-            }
-            // variable match
-            else if(entry->GetLineNumber() <= start_line + 1 && entry->GetLinePosition() <= start_char + 1) {
-              const std::wstring entry_dec_var_name = entry->GetName();
-              const size_t entry_var_index = entry_dec_var_name.find_last_of(L':');
-              if(entry_var_index != std::wstring::npos) {
-                const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
+            const std::wstring entry_dec_var_name = entry->GetName();
+            const size_t entry_var_index = entry_dec_var_name.find_last_of(L':');
+            
+            if(entry_var_index != std::wstring::npos) {
+              const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
+              // declaration match
+              if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry_type_name == cls_var_name) {
+                code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
+                code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_var_name);
+                code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
+                code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
+              }
+              // variable match
+              else if(entry->GetLineNumber() <= start_line + 1 && entry->GetLinePosition() <= start_char + 1) {
                 if(entry_var_name == cls_var_name) {
-                  // std::wcerr << "variable: '" << entry_var_name << L'\'' << std::endl;
                   code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
                   code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
-                  code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_dec_var_name);
+                  code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_var_name);
                   code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
                   code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
                 }
