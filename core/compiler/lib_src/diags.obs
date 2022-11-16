@@ -27,16 +27,18 @@ bundle System.Diagnostics {
 		@return object instance used for analysis
 		~#
 		function : ParseFile(src_file : String) ~ Analysis {
-			array_args := Base->New[4];
+			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
 			array_args[2] := src_file;
 			array_args[3] := IntHolder->New();
+			array_args[4] := IntHolder->New();
 			Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
 			
 			program_handle := array_args[0]->As(IntHolder);
 			table_handle := array_args[3]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
+			use_uses := array_args[4]->As(IntHolder);
 
 			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
@@ -65,17 +67,19 @@ bundle System.Diagnostics {
 				texts[i] := text;
 			};
 
-			array_args := Base->New[5];
+			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New();
 			array_args[2] := StringArrayHolder->New(names);
 			array_args[3] := StringArrayHolder->New(texts);
 			array_args[4] := IntHolder->New();
+			array_args[5] := IntHolder->New();
 			Proxy->GetDllProxy()->CallFunction("diag_parse_text", array_args);
 			
 			program_handle := array_args[0]->As(IntHolder);
 			table_handle := array_args[4]->As(IntHolder);
 			is_parsed := array_args[1]->As(IntHolder);
+			use_uses := array_args[5]->As(IntHolder);
 
 			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed->Get() = 1 ? true : false);
 		}
