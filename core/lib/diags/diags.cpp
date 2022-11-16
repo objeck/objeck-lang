@@ -91,9 +91,11 @@ extern "C" {
     Parser parser(src_file, false, programs);
     const bool was_parsed = parser.Parse();
 
-    APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
+    ParsedProgram* progam = parser.GetProgram();
+    APITools_SetIntValue(context, 0, (size_t)progam);
     APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
     APITools_SetIntValue(context, 3, (size_t)parser.GetSymbolTable());
+    APITools_SetIntValue(context, 4, HasUserUses(progam));
   }
 
   //
@@ -124,9 +126,11 @@ extern "C" {
       Parser parser(L"", false, texts);
       const bool was_parsed = parser.Parse();
 
-      APITools_SetIntValue(context, 0, (size_t)parser.GetProgram());
+      ParsedProgram* progam = parser.GetProgram();
+      APITools_SetIntValue(context, 0, (size_t)progam);
       APITools_SetIntValue(context, 1, was_parsed ? 1 : 0);
       APITools_SetIntValue(context, 4, (size_t)parser.GetSymbolTable());
+      APITools_SetIntValue(context, 5, HasUserUses(progam));
     }
   }
 
@@ -1211,4 +1215,16 @@ std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* met
   }
   
   return expressions;
+}
+
+size_t HasUserUses(frontend::ParsedProgram* program)
+{
+  std::vector<std::wstring> use_names = program->GetUses();
+  for(auto& use_name : use_names) {
+    if(use_name.rfind(L"System", 0)) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
