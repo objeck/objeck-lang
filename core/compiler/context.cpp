@@ -7222,6 +7222,7 @@ Enum* ContextAnalyzer::GetExpressionEnum(Type* type, Expression* expression, int
   return type_enum;
 }
 
+
 StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int depth) {
   if(expression->GetExpressionType() == ADD_EXPR) {
     std::list<Expression*> concat_exprs;
