@@ -1,0 +1,12 @@
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        bh := IntHolder->New(1);
+        ah := IntHolder->New(0);
+
+        Foo(ah->Get() = 1 ? true : false, bh->Get() = 1 ? true : false);
+    }
+
+    function : Foo(a : Bool, b : Bool) ~ Nil {
+        "a={$a}, b={$b}"->PrintLine();
+    }
+}
