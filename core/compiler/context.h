@@ -322,7 +322,11 @@ class ContextAnalyzer {
 
   // resolves type reference for class or enum
   inline bool ResolveClassEnumType(Type* type) {
-    return ResolveClassEnumType(type, current_class);
+    if(type) {
+      return ResolveClassEnumType(type, current_class);
+    }
+
+    return false;
   }
 
   // formats a class type string
