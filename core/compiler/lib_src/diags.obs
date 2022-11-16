@@ -37,10 +37,10 @@ bundle System.Diagnostics {
 			
 			program_handle := array_args[0]->As(IntHolder);
 			table_handle := array_args[3]->As(IntHolder);
-			is_parsed_holder := array_args[1]->As(IntHolder);
-			has_uses_holder := array_args[4]->As(IntHolder);
+			is_parsed := array_args[1]->As(IntHolder)->Get() = 1 ? true : false;
+			has_users := array_args[4]->As(IntHolder) = 1 ? true : false;
 
-			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed_holder->Get() = 1 ? true : false, has_uses_holder->Get() = 1 ? true : false);
+			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed, has_users);
 		}
 
 		#~
@@ -78,10 +78,10 @@ bundle System.Diagnostics {
 			
 			program_handle := array_args[0]->As(IntHolder);
 			table_handle := array_args[4]->As(IntHolder);
-			is_parsed_holder := array_args[1]->As(IntHolder);
-			has_uses_holder := array_args[5]->As(IntHolder);
+			is_parsed := array_args[1]->As(IntHolder)->Get() = 1 ? true : false;
+			has_users := array_args[5]->As(IntHolder)->Get() = 1 ? true : false;
 
-			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed_holder->Get() = 1 ? true : false, has_uses_holder->Get() = 1 ? true : false);
+			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed, has_users);
 		}
 	}
 
@@ -91,19 +91,17 @@ bundle System.Diagnostics {
 	class Analysis {
 		@progam_handle : Int;
 		@is_parsed : Bool;
-		@has_uses : Bool;
 		@symbols_result : Result;
 		@diagnostics_results : Result[];
 		@references_results : Result[];
 		@rename_results : Result[];
 		@table_handle : Int;
 
-		New(progam_handle : Int, table_handle : Int, is_parsed : Bool, has_uses : Bool) {
+		New(progam_handle : Int, table_handle : Int, is_parsed : Bool, has_users : Bool) {
 			Parent();
 			@progam_handle := progam_handle;
 			@table_handle := table_handle;
 			@is_parsed := is_parsed;
-			@has_uses := has_uses;
 		}
 
 		#~
@@ -112,14 +110,6 @@ bundle System.Diagnostics {
 		~#
 		method : public : IsParsed() ~ Bool {
 			return @is_parsed;
-		}
-
-		#~
-		Check if the program has non-system uses statements
-		@return true if has non-system uses statements, false otherwise
-		~#
-		method : public : HasUses() ~ Bool {
-			return @has_uses;
 		}
 
 		#~
