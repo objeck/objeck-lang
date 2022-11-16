@@ -5864,19 +5864,21 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
   
-  if(current_class->HasGenerics() || left->HasGenerics() || right->HasGenerics()) {
-    CheckGenericEqualTypes(left, right, expression);
-  }
-  
-  if(current_class->HasGenerics()) {
-    Class* left_tmp = current_class->GetGenericClass(left->GetName());
-    if(left_tmp && left_tmp->HasGenericInterface()) {
-      left = left_tmp->GetGenericInterface();
+  if(left && right) {
+    if(current_class->HasGenerics() || left->HasGenerics() || right->HasGenerics()) {
+      CheckGenericEqualTypes(left, right, expression);
     }
 
-    Class* right_tmp = current_class->GetGenericClass(right->GetName());
-    if(right_tmp && right_tmp->HasGenericInterface()) {
-      right = right_tmp->GetGenericInterface();
+    if(current_class->HasGenerics()) {
+      Class* left_tmp = current_class->GetGenericClass(left->GetName());
+      if(left_tmp && left_tmp->HasGenericInterface()) {
+        left = left_tmp->GetGenericInterface();
+      }
+
+      Class* right_tmp = current_class->GetGenericClass(right->GetName());
+      if(right_tmp && right_tmp->HasGenericInterface()) {
+        right = right_tmp->GetGenericInterface();
+      }
     }
   }
 
@@ -6685,7 +6687,7 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
       AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
       // favor casts
-      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && !SearchProgramEnums(mthd_call->GetEvalType()->GetName())) {
+      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && mthd_call->GetEvalType() && !SearchProgramEnums(mthd_call->GetEvalType()->GetName())) {
         type = mthd_call->GetPreviousExpression()->GetCastType();
       }
       else if(mthd_call->GetCastType()) {
@@ -7210,8 +7212,10 @@ Enum* ContextAnalyzer::GetExpressionEnum(Type* type, Expression* expression, int
         expression = expression->GetMethodCall();
       }
 
-      ResolveClassEnumType(expression->GetEvalType());
-      type_enum = SearchProgramEnums(expression->GetEvalType()->GetName());
+      if(expression->GetEvalType()) {
+        ResolveClassEnumType(expression->GetEvalType());
+        type_enum = SearchProgramEnums(expression->GetEvalType()->GetName());
+      }
     }
   }
 

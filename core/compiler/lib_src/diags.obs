@@ -37,10 +37,10 @@ bundle System.Diagnostics {
 			
 			program_handle := array_args[0]->As(IntHolder);
 			table_handle := array_args[3]->As(IntHolder);
-			is_parsed_holder := array_args[1]->As(IntHolder);
-			has_uses_holder := array_args[4]->As(IntHolder);
+			is_parsed_holder := array_args[1]->As(IntHolder)->Get() = 1 ? true : false;
+			has_uses_holder := array_args[4]->As(IntHolder)->Get() = 1 ? true : false;
 
-			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed_holder->Get() = 1 ? true : false, has_uses_holder->Get() = 1 ? true : false);
+			return Analysis->New(program_handle->Get(), table_handle->Get(), is_parsed_holder, has_uses_holder);
 		}
 
 		#~
