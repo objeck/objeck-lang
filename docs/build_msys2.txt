@@ -1,1 +1,17 @@
-pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make
+Building with MSYS2  
+---
+
+Package dependencies: 
+	* pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make
+
+Build compiler:
+	* cd objeck-lang/core/compiler
+	* make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+
+Build VM:
+	* cd objeck-lang/core/vm
+	* make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+
+Build debugger:
+	* cd objeck-lang/core/debugger
+	* make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
