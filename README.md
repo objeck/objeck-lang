@@ -76,14 +76,15 @@ __Building on Windows__
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
 __Building on MSYS2 for Windows (Experimental)__
-  * Package dependencies: 
+  * Package dependencies
     * pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make
-  * Build compiler:
+  * Build compiler
     * cd objeck-lang/core/compiler
     * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
-  * Build VM:
+  * Build VM
     * cd objeck-lang/core/vm
     * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
-  * Build debugger:
+  * Build debugger
     * cd objeck-lang/core/debugger
     * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+  * Forthcoming coming support for building native Objeck libraries 
