@@ -74,3 +74,16 @@ __Building on Windows__
 *  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_amd64.cmd deploy</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
+
+__Building on MSYS2 for Windows (Experimental)__
+  * Package dependencies: 
+    * pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make
+  * Build compiler:
+    * cd objeck-lang/core/compiler
+    * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+  * Build VM:
+    * cd objeck-lang/core/vm
+    * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+  * Build debugger:
+    * cd objeck-lang/core/debugger
+    * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
