@@ -56,7 +56,6 @@ cd ../diags
 ./build_win_msys2.sh diags
 cp diags.dll ../../release/deploy/lib/native/libobjk_diags.dll
 
-
 cd ../../native_launcher
 make -f make/Makefile.obb.msys2.amd64 clean; make -f make/Makefile.obb.msys2.amd64
 make -f make/Makefile.obn.msys2.amd64 clean; make -f make/Makefile.obn.msys2.amd64
