@@ -77,14 +77,14 @@ __Building on Windows__
 
 __Building on MSYS2 for Windows (Experimental)__
   * Package dependencies
-    * pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make
+    * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make</code>
   * Build compiler
-    * cd objeck-lang/core/compiler
-    * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+    * <code>cd objeck-lang/core/compiler</code>
+    * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
   * Build VM
-    * cd objeck-lang/core/vm
-    * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+    * <code>cd objeck-lang/core/vm</code>
+    * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
   * Build debugger
-    * cd objeck-lang/core/debugger
-    * make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+    * <code>cd objeck-lang/core/debugger</code>
+    * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
   * Forthcoming coming support for building native Objeck libraries 
