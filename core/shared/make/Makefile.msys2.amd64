@@ -3,11 +3,12 @@ ARGS=-O3 -Wall -Wno-unused-function -std=c++17
 CC=g++
 AR=ar
 SRC=logger.o
-LIB=../vm/logger.a
+LIB=logger.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
-
+	cp logger.a ../compiler; cp logger.a ../vm
+	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
