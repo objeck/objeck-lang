@@ -1,1 +1,1 @@
-pacman -S mingw-w64-ucrt-x86_64-gcc git openssl-devel make
+pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make
