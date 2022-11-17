@@ -75,7 +75,7 @@ __Building on Windows__
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
-__Building on MSYS2 for Windows (Experimental)__
+__Building under MSYS2 on Windows (Experimental)__
   * Runs under the URCT64 shell
   * Package dependencies
     * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_ttf; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_mixer; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_image; pacman --noconfirm -S mingw-w64-ucrt-x86_64-unixodbc</code>
