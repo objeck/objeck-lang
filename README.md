@@ -63,7 +63,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 
 __Building on Linux and macOS__
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
-*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>macos</code> representing the bit version of Linux
+*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>macos</code> for x64 Linux or macOS
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
 
@@ -76,15 +76,9 @@ __Building on Windows__
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
 __Building on MSYS2 for Windows (Experimental)__
+  * Runs under the URCT64 shell
   * Package dependencies
     * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_ttf; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_mixer; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_image; pacman --noconfirm -S mingw-w64-ucrt-x86_64-unixodbc</code>
-  * Build compiler
-    * <code>cd objeck-lang/core/compiler</code>
-    * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
-  * Build VM
-    * <code>cd objeck-lang/core/vm</code>
-    * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
-  * Build debugger
-    * <code>cd objeck-lang/core/debugger</code>
-    * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
-  * Forthcoming coming support for building native Objeck libraries 
+  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_win_msys2.sh</code> with the parameter <code>64</code> or <code>macos</code>
+*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
+*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
