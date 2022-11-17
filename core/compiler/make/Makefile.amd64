@@ -15,5 +15,5 @@ logger.a:
 	cd $(LOGGER_PATH); make -f make/Makefile.amd64
 
 clean:
-	cd $(LOGGER_PATH); make clean -f make/Makefile.amd64
+	cd $(LOGGER_PATH); make -f make/Makefile.amd64 clean
 	rm -f $(EXE) *.o *~
