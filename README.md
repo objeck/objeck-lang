@@ -77,7 +77,7 @@ __Building on Windows__
 
 __Building on MSYS2 for Windows (Experimental)__
   * Package dependencies
-    * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make</code>
+    * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_ttf; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_mixer; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_image; pacman --noconfirm -S mingw-w64-ucrt-x86_64-unixodbc</code>
   * Build compiler
     * <code>cd objeck-lang/core/compiler</code>
     * <code>make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64</code>
