@@ -8,6 +8,7 @@ mkdir deploy/lib
 mkdir deploy/lib/sdl
 mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
+mkdir deploy/lib/native/msys2
 mkdir deploy/lib/native/misc
 mkdir deploy/doc
 
@@ -36,6 +37,9 @@ cp make/Makefile.msys2.amd64 Makefile
 
 make clean; make -j3
 cp obd ../release/deploy/bin
+
+# copy msys2 libs
+unzip ../lib/msys-ucrt64.zip -d ../release/deploy/lib/native/msys2
 
 # build libraries
 
