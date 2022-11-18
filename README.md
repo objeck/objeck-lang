@@ -78,7 +78,7 @@ __Building on Windows__
 __Building under MSYS2 on Windows (Experimental)__
   * Runs under the URCT64 shell
   * Package dependencies
-    * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2; pacman --noconfirm -S unzip; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_ttf; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_mixer; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_image; pacman --noconfirm -S mingw-w64-ucrt-x86_64-unixodbc</code>
+    * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
   * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_win_msys2.sh</code> with the parameter <code>64</code> or <code>macos</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
