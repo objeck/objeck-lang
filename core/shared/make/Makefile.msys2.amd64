@@ -7,7 +7,7 @@ LIB=logger.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
-	cp logger.a ../compiler; cp logger.a ../vm
+	cp logger.a ../compiler; cp logger.a ../vm; cp logger.a ../release/WindowsLauncher/AppLauncher
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 

@@ -4,7 +4,6 @@ CC=g++
 SRC=AppLauncher.o
 OBJ_LIBS=logger.a
 LOGGER_PATH=../../../shared
-LOGGER_PATH_LIB=../../../compiler
 EXE=app
 
 $(EXE): $(SRC) $(OBJ_LIBS)
@@ -18,3 +17,4 @@ logger.a:
 
 clean:
 	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~
+	cd $(LOGGER_PATH); make -f make/Makefile.msys2.amd64 clean
