@@ -71,7 +71,7 @@ __Building on Windows__
 *  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/x64</code>
 *  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
 *  Ensure the core build completes successfully (in Release mode)
-*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_amd64.cmd deploy</code>
+*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_amd64.cmd</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
@@ -79,6 +79,6 @@ __Building under MSYS2 on Windows (Experimental)__
   * Runs under the URCT64 shell
   * Package dependencies
     * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
-  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_win_msys2.sh</code> with the parameter <code>64</code> or <code>macos</code>
+  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_win_msys2.sh</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
