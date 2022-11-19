@@ -554,8 +554,8 @@ extern "C" {
                 code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
                 code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
                 code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_var_name);
-                code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
-                code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
+                code_action_obj[ResultPosition::POS_START_LINE] = entry->GetType()->GetLineNumber() - 1;
+                code_action_obj[ResultPosition::POS_START_POS] = entry->GetType()->GetLinePosition() - 1;
               }
               // variable match
               else if(entry->GetLineNumber() <= start_line + 1 && entry->GetLinePosition() <= start_char + 1) {
@@ -563,8 +563,8 @@ extern "C" {
                   code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
                   code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
                   code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_var_name);
-                  code_action_obj[ResultPosition::POS_START_LINE] = entry->GetLineNumber();
-                  code_action_obj[ResultPosition::POS_START_POS] = entry->GetLinePosition();
+                  code_action_obj[ResultPosition::POS_START_LINE] = entry->GetType()->GetLineNumber() - 1;
+                  code_action_obj[ResultPosition::POS_START_POS] = entry->GetType()->GetLinePosition() - 1;
                 }
               }
             }
