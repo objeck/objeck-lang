@@ -1,5 +1,9 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
-        
+        map := Collection.Generic.Map->New()<String, String>;
+        map->Insert("foo", "bar");
+
+        fie := map->Find("foo") + '#';
+        fie->PrintLine();
     }
 }
