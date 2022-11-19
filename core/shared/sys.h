@@ -92,6 +92,10 @@ static std::wstring GetLibraryPath() {
 #endif
   if(path_str_ptr && strlen(path_str_ptr) > 0) {
     std::string path_str(path_str_ptr);
+    
+    free(path_str_ptr);
+    path_str_ptr = nullptr;
+
     path = std::wstring(path_str.begin(), path_str.end());
 #ifdef _WIN32
     if(path[path.size() - 1] != '\\') {
