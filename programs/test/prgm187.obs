@@ -3,7 +3,7 @@ class Test {
         map := Collection.Generic.Map->New()<String, String>;
         map->Insert("foo", "bar");
 
-        fie := map->Find("foo") + '#';
+        fie := map->Find("foo") + '#' + "foo";
         fie->PrintLine();
     }
 }
