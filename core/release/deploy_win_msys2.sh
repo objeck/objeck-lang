@@ -8,7 +8,7 @@ mkdir deploy/lib
 mkdir deploy/lib/sdl
 mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
-mkdir deploy/lib/native/msys_ucrt64
+mkdir deploy/lib/msys_ucrt64
 mkdir deploy/lib/native/misc
 mkdir deploy/doc
 
@@ -39,7 +39,7 @@ make clean; make -j3
 cp obd ../release/deploy/bin
 
 # copy msys2 libs
-unzip ../lib/msys_ucrt64/msys-ucrt64.zip -d ../release/deploy/lib/native/msys_ucrt64
+unzip ../lib/msys_ucrt64/msys-ucrt64.zip -d ../release/deploy/lib/msys_ucrt64
 
 # build libraries
 
