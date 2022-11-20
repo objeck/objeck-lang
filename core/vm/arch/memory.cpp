@@ -521,10 +521,9 @@ void MemoryManager::ClearFreeMemory(bool all) {
     if(all) {
       delete free_cache;
       free_cache = nullptr;
-
-      free_memory_cache.clear();
     }
   }
+
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif

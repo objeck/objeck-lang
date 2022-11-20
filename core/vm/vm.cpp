@@ -75,12 +75,14 @@ int Execute(const int argc, const char* argv[])
     op_stack = nullptr;
     
 #ifdef _SANITIZE
+#ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
         std::wcout << L"dump: value=" << *(stack_pos + 1) << std::endl;
       }
     }
+#endif
 
     assert(!(*stack_pos));
 
@@ -90,10 +92,8 @@ int Execute(const int argc, const char* argv[])
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
-#ifdef _SANITIZE
     Runtime::StackInterpreter::Clear();
     MemoryManager::Clear();
-#endif
 
     delete intpr;
     intpr = nullptr;
