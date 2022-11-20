@@ -22,10 +22,10 @@ gg := foo->Size();
 tt := gg->Abs();
 tt->PrintLine();
 
-    elem : Data.JSON.JsonElement;
-    elem->GetString();    
-       
-                
+    elem : Data.JSON.........JsonElement;
+    elem->GetString();  
+    
+    
     elem->GetType();
     fie := elem->GetString();
     fie->PrintLine();
