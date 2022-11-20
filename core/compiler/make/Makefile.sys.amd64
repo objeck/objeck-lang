@@ -1,12 +1,12 @@
 CC=g++
 ARGS=-O3 -D_SYSTEM -Wall -Wno-unused-function -std=c++17
-SRC=../shared/logger.o types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
+SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=logger.a
 LOGGER_PATH=../shared
 EXE=obc
 
-$(EXE): $(OBJ_LIBS) $(SRC) 
-	$(CC) -m64 -o $(EXE) $(SRC) -lz
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
 
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
