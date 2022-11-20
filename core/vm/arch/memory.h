@@ -194,7 +194,10 @@ class MemoryManager {
     mem_logger.close();
 #endif
 
-    ClearFreeMemory(true);
+    if(free_memory_cache.empty()) {
+      ClearFreeMemory(true);
+      free_memory_cache.clear();
+    }
 
     for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
       size_t* mem = *iter;
