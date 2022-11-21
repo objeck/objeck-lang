@@ -14,16 +14,16 @@ xmlns="http://www.w3.org/TR/REC-html40">
  <o:DocumentProperties>
   <o:Author>Randy Hollines</o:Author>
   <o:LastAuthor>Randy Hollines</o:LastAuthor>
-  <o:Revision>88</o:Revision>
-  <o:TotalTime>127</o:TotalTime>
+  <o:Revision>90</o:Revision>
+  <o:TotalTime>128</o:TotalTime>
   <o:Created>2022-09-01T22:16:00Z</o:Created>
-  <o:LastSaved>2022-11-21T17:29:00Z</o:LastSaved>
+  <o:LastSaved>2022-11-21T17:30:00Z</o:LastSaved>
   <o:Pages>3</o:Pages>
-  <o:Words>807</o:Words>
-  <o:Characters>4606</o:Characters>
+  <o:Words>813</o:Words>
+  <o:Characters>4637</o:Characters>
   <o:Lines>38</o:Lines>
   <o:Paragraphs>10</o:Paragraphs>
-  <o:CharactersWithSpaces>5403</o:CharactersWithSpaces>
+  <o:CharactersWithSpaces>5440</o:CharactersWithSpaces>
   <o:Version>16.00</o:Version>
  </o:DocumentProperties>
 </xml><![endif]-->
@@ -34,6 +34,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   <w:View>Print</w:View>
   <w:Zoom>120</w:Zoom>
   <w:SpellingState>Clean</w:SpellingState>
+  <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
   <w:TrackFormatting/>
   <w:ValidateAgainstSchemas/>
@@ -845,6 +846,9 @@ span.InternetLink
 span.SpellE
 	{mso-style-name:"";
 	mso-spl-e:yes;}
+span.GramE
+	{mso-style-name:"";
+	mso-gram-e:yes;}
 .MsoChpDefault
 	{mso-style-type:export-only;
 	mso-default-props:yes;
@@ -1419,7 +1423,7 @@ notes<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>LSP “Quick Fix” support<o:p></o:p></span></p>
+minor-latin'>LSP “Quick Fix” functionality and MSYS2 UCRT64 build support<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1526,11 +1530,12 @@ site</a> for additional information. <o:p></o:p></span></p>
 
 <p class=MsoNormal><span style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:
 minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>The
-Programmer’s Guide is located in the “doc” directory. Additional examples are
-available in the <span class=InternetLink><span style='font-family:"Calibri",sans-serif;
-mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'><a href="mailto:Rosetta%20Code%20website">Rosetta Code</a></span></span>.
-If you are facing issues, please submit a <a
+Programmer’s Guide <span class=GramE>is located in</span> the “doc” directory.
+Additional examples are available in the <span class=InternetLink><span
+style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><a
+href="mailto:Rosetta%20Code%20website">Rosetta Code</a></span></span>. If you
+are facing issues, please submit a <a
 href="https://github.com/objeck/objeck-lang/issues">bug report</a>.<o:p></o:p></span></p>
 
 <h2 style='margin-top:0in'><span style='font-size:14.0pt;line-height:105%;
@@ -1746,7 +1751,7 @@ margin-left:.5in;text-indent:-.25in;line-height:normal'><span style='font-family
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
 minor-latin;mso-bidi-theme-font:minor-latin'>1.&nbsp;&nbsp;&nbsp; <span
 class=SpellE>obc</span> -<span class=SpellE>src</span> ..\examples\<span
-class=SpellE>xml_path.obs</span> -lib <span class=SpellE>collect.obl,xml.obl</span>
+class=SpellE>xml_path.obs</span> -lib <span class=SpellE><span class=GramE>collect.obl,xml.obl</span></span>
 -<span class=SpellE>dest</span> <span class=SpellE>xml_path.obe</span><o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
@@ -1868,7 +1873,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'> req -x509 -<s
 class=SpellE>newkey</span> rsa:4096 -sha256 -days 3650 -nodes -<span
 class=SpellE>keyout</span> <span class=SpellE>local.key</span> -out local.crt
 -subj &quot;/CN=localhost&quot; -<span class=SpellE>addext</span> &quot;<span
-class=SpellE>subjectAltName</span>=DNS:localhost,DNS:www.local.net,IP:127.0.0.1&quot;<o:p></o:p></span></p>
+class=SpellE>subjectAltName</span>=DNS:<span class=GramE>localhost,DNS</span>:www.local.net,IP:127.0.0.1&quot;<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in;line-height:normal;
 mso-list:l6 level1 lfo5'><![if !supportLists]><span style='font-family:"Calibri",sans-serif;
