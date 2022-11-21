@@ -1,7 +1,7 @@
 /***************************************************************************
 * VM memory manager. Implements a "mark and sweep" collection algorithm.
 *
-* Copyright (c) 2008-2022, Randy Hollines
+* Copyright (c) 2008-2023, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
