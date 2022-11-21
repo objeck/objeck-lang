@@ -1,3 +1,5 @@
+use Data.JSON;
+
 class Test {
     function : Main(args : String[]) ~ Nil {
         "4.2e+7"->ToInt()->PrintLine();
@@ -22,10 +24,10 @@ gg := foo->Size();
 tt := gg->Abs();
 tt->PrintLine();
 
-    elem : Data.JSON.........JsonElement;
-    elem->GetString();  
+    elem : JsonElement;
+    elem->GetString(); 
     
-    
+     
     elem->GetType();
     fie := elem->GetString();
     fie->PrintLine();
@@ -39,7 +41,7 @@ tt->PrintLine();
         "foof bar"->PrintLine();
     };
 
-    7->ToFloat()->PrintLine();
+    (13 + 7)->ToFloat()->PrintLine();
 
         yy->PrintLine();                                                                                                                                                                     
        s : String := "hello";
