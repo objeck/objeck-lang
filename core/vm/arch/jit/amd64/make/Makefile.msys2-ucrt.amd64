@@ -13,11 +13,11 @@ $(LIB): $(COMMON_LIBS) $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 jit_common.a:
-	cd $(COMMON_PATH); make -f make/Makefile.msys2.amd64
+	cd $(COMMON_PATH); make -f make/Makefile.msys2-ucrt.amd64
 
 %.o: %.cpp
 	$(CC) -m64 -I/usr/include $(ARGS) -c $< 
 
 clean:
-	cd $(COMMON_PATH); make -f make/Makefile.msys2.amd64 clean
+	cd $(COMMON_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
 	rm -f *.o *~ $(LIB)
