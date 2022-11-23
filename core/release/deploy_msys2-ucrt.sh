@@ -8,13 +8,13 @@ mkdir deploy/lib
 mkdir deploy/lib/sdl
 mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
-mkdir deploy/lib/msys_ucrt64
+mkdir deploy/lib/msys-ucrt64
 mkdir deploy/lib/native/misc
 mkdir deploy/doc
 
 # build compiler
 cd ../compiler
-cp make/Makefile.msys2.amd64 Makefile
+cp make/Makefile.msys2-ucrt.amd64 Makefile
 
 make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy/bin
@@ -24,7 +24,7 @@ rm ../release/deploy/lib/gtk2.obl
 
 # build VM
 cd ../vm
-cp make/Makefile.msys2.amd64 Makefile
+cp make/Makefile.msys2-ucrt.amd64 Makefile
 
 make clean; make -j3
 cp obr ../release/deploy/bin
@@ -33,13 +33,13 @@ make clean; make -j3
 
 # build debugger
 cd ../debugger
-cp make/Makefile.msys2.amd64 Makefile
+cp make/Makefile.msys2-ucrt.amd64 Makefile
 
 make clean; make -j3
 cp obd ../release/deploy/bin
 
 # copy msys2 libs
-unzip ../lib/msys_ucrt64/msys-ucrt64.zip -d ../release/deploy/lib/msys_ucrt64
+unzip ../lib/msys-ucrt64/msys-ucrt64.zip -d ../release/deploy/lib/msys-ucrt64
 
 # build libraries
 
@@ -61,9 +61,11 @@ cd ../diags
 cp diags.dll ../../release/deploy/lib/native/libobjk_diags.dll
 
 cd ../../native_launcher
-make -f make/Makefile.obb.msys2.amd64 clean; make -f make/Makefile.obb.msys2.amd64
-make -f make/Makefile.obn.msys2.amd64 clean; make -f make/Makefile.obn.msys2.amd64
-cp *.exe ../release/deploy/lib/native/misc/
+make -f make/Makefile.obb.msys2-ucrt.amd64 clean; make -f make/Makefile.obb.msys2-ucrt.amd64
+cp obb.exe ../release/deploy/bin
+
+make -f make/Makefile.obn.msys2-ucrt.amd64 clean; make -f make/Makefile.obn.msys2-ucrt.amd64
+cp obn.exe ../release/deploy/lib/native/misc
 
 cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
 cd ../release
