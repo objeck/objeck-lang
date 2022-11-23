@@ -81,4 +81,4 @@ __Building under MSYS2 on Windows (Experimental)__
     * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
   * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-ucrt.sh</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-ucrt</code>
-*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
+*  Reference <code>objeck-lang/core/release/deploy-msys2-ucrt/readme.html</code> to set paths and find examples
