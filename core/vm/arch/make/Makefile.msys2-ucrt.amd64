@@ -1,0 +1,16 @@
+# ARGS=-O3 -Wall -D_X64 -D_MSYS2 -Wno-unused-function -std=c++17
+ARGS=-g -Wall -D_X64 -D_MSYS2 -Wno-unused-function -std=c++17
+
+CC=g++
+AR=ar
+SRC=memory.o 
+LIB=../memory.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) -m64 -I/usr/include $(ARGS) win32/win32.o -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)
