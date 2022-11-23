@@ -93,9 +93,9 @@ extern "C" {
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    long result = (long)APITools_GetIntAddress(context, 1)[0];
-    if(result > -1) {
-      size_t* input_array = (size_t*)((size_t)result);
+    size_t result = APITools_GetIntAddress(context, 1)[0];
+    if(result) {
+      size_t* input_array = (size_t*)result;
 
       int input_size =  APITools_GetArraySize(input_array) - 1;
       const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
