@@ -12,23 +12,23 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -L/ucrt64/lib -Wunused-function -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
 
 ../vm/compiler.a:
-	cd $(VM_PATH); make -f make/Makefile.msys2.amd64.obd
+	cd $(VM_PATH); make -f make/Makefile.msys2-ucrt.amd64.obd
 
 ../vm/memory.a:
-	cd $(MEM_PATH); make -f make/Makefile.msys2.amd64
+	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64
 
 ../vm/win32.a:
-	cd $(WIN32_PATH); make -f make/Makefile.msys2.amd64	
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64	
 
 ../vm/logger.a:
-	cd $(LOGGER_PATH); make -f make/Makefile.msys2.amd64
+	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64
 
 ../vm/jit_amd_lp64.a:
-	cd $(JIT_PATH); make -f make/Makefile.msys2.amd64
+	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
-	cd $(VM_PATH); make -f make/Makefile.msys2.amd64.obd clean
+	cd $(VM_PATH); make -f make/Makefile.msys2-ucrt.amd64.obd clean
 	rm -f $(EXE) *.o *~

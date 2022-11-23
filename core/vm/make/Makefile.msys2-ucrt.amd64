@@ -15,21 +15,21 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/ucrt64/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
 
 memory.a:
-	cd $(MEM_PATH); make -f make/Makefile.msys2.amd64
+	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64
 	
 jit_amd_lp64.a:
-	cd $(JIT_PATH); make -f make/Makefile.msys2.amd64
+	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64
 
 win32.a:
-	cd $(WIN32_PATH); make -f make/Makefile.msys2.amd64	
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64	
 
 logger.a:
-	cd $(LOGGER_PATH); make -f make/Makefile.msys2.amd64
+	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 -I/ucrt64/include $(ARGS) -c $< 
 
 clean:
-	cd $(MEM_PATH); make -f make/Makefile.msys2.amd64 clean
-	cd $(JIT_PATH); make -f make/Makefile.msys2.amd64 clean
+	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
+	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
 	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~
