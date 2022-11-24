@@ -1,7 +1,5 @@
 ARGS=-O3 -Wall -std=c++17 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-dangling-pointer -Wno-maybe-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
 
-# ARGS=-g -Wall -std=c++17 -pthread -D_MSYS2 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-dangling-pointer -Wno-maybe-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
-
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o win_main.o
 OBJ_LIBS=win32.a jit_amd_lp64.a memory.a logger.a

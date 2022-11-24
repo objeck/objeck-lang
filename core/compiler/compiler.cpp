@@ -90,11 +90,13 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
 int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::list<std::wstring>& argument_options, const std::wstring usage)
 {
   // set UTF-8 environment
+#ifndef _MSYS2  
 #ifdef _WIN32
   _setmode(_fileno(stdout), _O_U8TEXT);
 #else
   setlocale(LC_ALL, "");
   setlocale(LC_CTYPE, "UTF-8");
+#endif
 #endif
 
   // check for optimize flag
