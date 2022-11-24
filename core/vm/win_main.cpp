@@ -44,7 +44,7 @@
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-#ifndef _MSYS2_CLANG    
+#ifndef _MSYS2_CLANG // poor UTF-8 support (https://github.com/mstorsjo/llvm-mingw/issues/145)
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;
