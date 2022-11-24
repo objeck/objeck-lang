@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 
   if(argc >= 3) {
 #ifdef _WIN32
-#ifndef _MSYS2_CLANG    
+#ifndef _MSYS2_CLANG // poor UTF-8 support (https://github.com/mstorsjo/llvm-mingw/issues/145)   
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;
