@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# setup directories
+rm -rf deploy-msys2-clang
+mkdir deploy-msys2-clang
+mkdir deploy-msys2-clang/bin
+mkdir deploy-msys2-clang/lib
+mkdir deploy-msys2-clang/lib/sdl
+mkdir deploy-msys2-clang/lib/sdl/fonts
+mkdir deploy-msys2-clang/lib/native
+mkdir deploy-msys2-clang/lib/msys2-clang64
+mkdir deploy-msys2-clang/lib/native/misc
+mkdir deploy-msys2-clang/doc
+
+# build compiler
+cd ../compiler
+cp make/Makefile.msys2-clang.amd64 Makefile
+
+make clean; make -j3 OBJECK_LIB_PATH=///".///"
+cp obc ../release/deploy-msys2-clang/bin
+cp ../lib/*.obl ../release/deploy-msys2-clang/lib
+cp ../vm/misc/*.pem ../release/deploy-msys2-clang/lib
+rm ../release/deploy-msys2-clang/lib/gtk2.obl
+
+# build VM
+cd ../vm
+cp make/Makefile.msys2-clang.amd64 Makefile
+
+make clean; make -j3
+cp obr ../release/deploy-msys2-clang/bin
+
+make clean; make -j3
+
+# build debugger
+cd ../debugger
+cp make/Makefile.msys2-clang.amd64 Makefile
+
+make clean; make -j3
+cp obd ../release/deploy-msys2-clang/bin
+
+# copy msys2 libs
+unzip ../lib/msys2-clang64/msys2-clang64.zip -d ../release/deploy-msys2-clang/lib/msys2-clang64
+
+# build libraries
+
+cd ../lib/odbc
+./build_win_msys2.sh odbc
+cp odbc.dll ../../release/deploy-msys2-clang/lib/native/libobjk_odbc.dll
+
+cd ../openssl
+./build_win_msys2.sh openssl
+cp openssl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_openssl.dll
+
+cd ../sdl
+./build_win_msys2.sh sdl
+cp sdl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_sdl.dll
+cp lib/fonts/*.ttf ../../release/deploy-msys2-clang/lib/sdl/fonts
+
+cd ../diags
+./build_win_msys2.sh diags
+cp diags.dll ../../release/deploy-msys2-clang/lib/native/libobjk_diags.dll
+
+cd ../../native_launcher
+make -f make/Makefile.obb.msys2-clang.amd64 clean; make -f make/Makefile.obb.msys2-clang.amd64
+cp obb.exe ../release/deploy-msys2-clang/bin
+
+make -f make/Makefile.obn.msys2-clang.amd64 clean; make -f make/Makefile.obn.msys2-clang.amd64
+cp obn.exe ../release/deploy-msys2-clang/lib/native/misc
+
+cp ../vm/misc/config.prop ../release/deploy-msys2-clang/lib/native/misc
+cd ../release
+
+# copy docs
+cd ../..
+cp -R docs/syntax core/release/deploy-msys2-clang/doc/syntax
+cp docs/readme.html core/release/deploy
+cp LICENSE core/release/deploy
+unzip docs/api.zip -d core/release/deploy-msys2-clang/doc
+
+# copy examples
+mkdir core/release/deploy-msys2-clang/examples
+mkdir core/release/deploy-msys2-clang/examples/media
+cp programs/deploy/*.obs core/release/deploy-msys2-clang/examples
+cp programs/deploy/media/*.png core/release/deploy-msys2-clang/examples/media
+cp programs/deploy/media/*.wav core/release/deploy-msys2-clang/examples/media
+cp -aR programs/doc core/release/deploy-msys2-clang/examples
+cp -aR programs/tiny core/release/deploy-msys2-clang/examples
+
+cd core/release
+
+# deploy
+if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
+	rm -rf ~/Desktop/objeck*
+	cp -rf ../release/deploy ~/Desktop/objeck-lang
+	cd ~/Desktop
+	
+	rm -f objeck.tar objeck.tgz
+	tar cf objeck.tar objeck-lang
+	gzip objeck.tar
+
+	mv objeck.tar.gz objeck-windows-msys2-x64_0.0.0.tgz
+fi
