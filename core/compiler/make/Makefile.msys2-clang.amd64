@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -D_MSYS2 -std=c++17 -Wno-sequence-point
+ARGS=-O3 -Wall -Wno-unused-function -D_X64 -D_MSYS2_CLANG -std=c++17 -Wno-sequence-point
 
 CC=clang++
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
