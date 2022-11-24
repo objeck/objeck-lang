@@ -1,17 +1,12 @@
 Building with MSYS2  
 ---
 
-Package dependencies: 
+For UCRT:
 	* pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc; pacman --noconfirm -S mingw-w64-ucrt-x86_64-openssl; pacman --noconfirm -S make; pacman --noconfirm -S unzip; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_ttf; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_mixer; pacman --noconfirm -S mingw-w64-ucrt-x86_64-SDL2_image; pacman --noconfirm -S mingw-w64-ucrt-x86_64-unixodbc
+	* Go to 'core/release' and run 'deploy_msys2-ucrt.sh'
 
-Build compiler:
-	* cd objeck-lang/core/compiler
-	* make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
-
-Build VM:
-	* cd objeck-lang/core/vm
-	* make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
-
-Build debugger:
-	* cd objeck-lang/core/debugger
-	* make -f make/Makefile.msys2.amd64 clean; make -f make/Makefile.msys2.amd64
+TODO
+<<<<
+For Clang64:
+	* pacman --noconfirm -S mingw-w64-clang-x86_64-gcc; pacman --noconfirm -S mingw-w64-clang-x86_64-openssl; pacman --noconfirm -S make; pacman --noconfirm -S unzip; pacman --noconfirm -S mingw-w64-clang-x86_64-SDL2; pacman --noconfirm -S mingw-w64-clang-x86_64-SDL2_ttf; pacman --noconfirm -S mingw-w64-clang-x86_64-SDL2_mixer; pacman --noconfirm -S mingw-w64-clang-x86_64-SDL2_image; pacman --noconfirm -S mingw-w64-clang-x86_64-unixodbc
+	* Go to 'core/release' and run 'deploy_msys2-clang.sh'
