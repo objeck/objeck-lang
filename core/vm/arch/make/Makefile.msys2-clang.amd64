@@ -1,6 +1,6 @@
 ARGS=-O3 -Wall -D_X64 -D_MSYS2 -std=c++17 -Wno-unused-command-line-argument -Wno-unused-function
 
-CC=g++
+CC=clang++
 AR=ar
 SRC=memory.o 
 LIB=../memory.a
