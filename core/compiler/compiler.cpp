@@ -90,7 +90,7 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
 int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::list<std::wstring>& argument_options, const std::wstring usage)
 {
   // set UTF-8 environment
-#ifndef _MSYS2_CLANG 
+#ifndef _MSYS2_CLANG // poor UTF-8 support (https://github.com/mstorsjo/llvm-mingw/issues/145)
 #ifdef _WIN32
   _setmode(_fileno(stdout), _O_U8TEXT);
 #else
