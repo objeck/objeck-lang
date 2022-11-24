@@ -349,3 +349,7 @@ extern "C" {
     buffer = nullptr;
   }
 }
+
+#ifdef _MSYS2_CLANG
+int main() { return 0; }
+#endif

@@ -44,20 +44,20 @@ unzip ../lib/msys2-clang64/msys2-clang64.zip -d ../release/deploy-msys2-clang/li
 # build libraries
 
 cd ../lib/odbc
-./build_win_msys2.sh odbc
+./build_msys2-clang.sh odbc
 cp odbc.dll ../../release/deploy-msys2-clang/lib/native/libobjk_odbc.dll
 
 cd ../openssl
-./build_win_msys2.sh openssl
+./build_msys2-clang.sh openssl
 cp openssl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_openssl.dll
 
 cd ../sdl
-./build_win_msys2.sh sdl
+./build_msys2-clang.sh sdl
 cp sdl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_sdl.dll
 cp lib/fonts/*.ttf ../../release/deploy-msys2-clang/lib/sdl/fonts
 
 cd ../diags
-./build_win_msys2.sh diags
+./build_msys2-clang.sh diags
 cp diags.dll ../../release/deploy-msys2-clang/lib/native/libobjk_diags.dll
 
 cd ../../native_launcher
