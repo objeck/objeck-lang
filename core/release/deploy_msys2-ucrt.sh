@@ -38,7 +38,7 @@ make clean; make -j3
 cp obd ../release/deploy-msys2-ucrt/bin
 
 # copy msys2 libs
-unzip ../lib/msys2-ucrt64/msys2-ucrt64.zip -d ../release/deploy-msys2-ucrt/lib/msys2-ucrt64
+unzip ../lib/msys2/msys2-ucrt64.zip -d ../release/deploy-msys2-ucrt/lib/msys2-ucrt64
 
 # build libraries
 
