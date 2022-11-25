@@ -9,7 +9,7 @@ JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -L/ucrt64/lib -Wunused-function -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -L/clang64/lib -Wunused-function -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
 
 ../vm/compiler.a:
 	cd $(VM_PATH); make -f make/Makefile.msys2-clang.amd64.obd
