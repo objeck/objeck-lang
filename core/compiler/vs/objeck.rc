@@ -1,5 +1,7 @@
 #include <windows.h>
+#ifndef _MSYS2_CLANG
 #include "resource.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
