@@ -91,17 +91,12 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
 {
   // set UTF-8 environment
 #ifdef _WIN32
-#ifdef _MSYS2_CLANG
-  SetConsoleOutputCP(CP_UTF8);
-  SetConsoleCP(CP_UTF8);
-#else
   _setmode(_fileno(stdout), _O_U8TEXT);
-#endif  
 #else
   setlocale(LC_ALL, "");
   setlocale(LC_CTYPE, "UTF-8");
 #endif
-
+  
   // check for optimize flag
   std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
