@@ -4652,7 +4652,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     std::wstring in(BytesToUnicode(byte_buffer));
     
     // remove file BOM UTF (8, 16, 32)
-    if(in.size() > 0 && (in[0] == 0xFEFF || in[0] == 0xFFFE || in[0] == 0xFFFE0000 || in[0] == 0xEFBBBF)) {
+    if(in.size() > 0 && ((size_t)in[0] == 0xFEFF || (size_t)in[0] == 0xFFFE || (size_t)in[0] == 0xFFFE0000 || (size_t)in[0] == 0xEFBBBF)) {
       in.erase(in.begin(), in.begin() + 1);
     }
 
