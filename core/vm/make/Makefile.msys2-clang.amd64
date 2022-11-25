@@ -2,7 +2,7 @@ ARGS=-O3 -Wall -std=c++17 -pthread -D_MSYS2 -D_MSYS2_CLANG -D_X64 -D_WIN32 -D_OB
 
 CC=clang++
 SRC=common.o interpreter.o loader.o vm.o win_main.o
-OBJ_LIBS=win32.a jit_amd_lp64.a memory.a
+OBJ_LIBS=win32.a jit_amd_lp64.a memory.a objeck.res
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
 WIN32_PATH=arch/win32
@@ -19,7 +19,10 @@ jit_amd_lp64.a:
 
 win32.a:
 	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64
-	
+
+objeck.res:
+	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
+
 %.o: %.cpp
 	$(CC) -m64 -I/clang64/include $(ARGS) -c $< 
 
