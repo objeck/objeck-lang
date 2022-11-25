@@ -72,8 +72,8 @@ cd ../release
 # copy docs
 cd ../..
 cp -R docs/syntax core/release/deploy-msys2-clang/doc/syntax
-cp docs/readme.html core/release/deploy
-cp LICENSE core/release/deploy
+cp docs/readme.html core/release/deploy-msys2-clang
+cp LICENSE core/release/deploy-msys2-clang
 unzip docs/api.zip -d core/release/deploy-msys2-clang/doc
 
 # copy examples
@@ -90,7 +90,7 @@ cd core/release
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 	rm -rf ~/Desktop/objeck*
-	cp -rf ../release/deploy ~/Desktop/objeck-lang
+	cp -rf ../release/deploy-msys2-clang ~/Desktop/objeck-lang
 	cd ~/Desktop
 	
 	rm -f objeck.tar objeck.tgz
