@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
   usage += L"\nWeb: https://www.objeck.org";
 
   if(argc >= 3) {
-#ifndef _WIN32
+#ifdef _WIN32
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;

@@ -3742,8 +3742,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
   if(instance) {
 		BIO* server_bio = (BIO*)instance[0];
 		BIO* bio = (BIO*)instance[1];
-    SSL_CTX* ctx = (SSL_CTX*)instance[2];
-
+    
     if(server_bio && bio) {
       BIO_do_accept(server_bio);
 
