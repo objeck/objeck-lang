@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
     if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
       return 1;
     }
-
+    
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
       std::cerr << L"Unable to load Winsock 2.2!" << std::endl;
