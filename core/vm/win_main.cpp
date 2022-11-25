@@ -44,10 +44,6 @@
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-#ifdef _MSYS2_CLANG
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-#else
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;
@@ -56,7 +52,6 @@ int main(const int argc, const char* argv[])
     if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
       return 1;
     }
-#endif
 
     // initialize Winsock
     WSADATA data;
