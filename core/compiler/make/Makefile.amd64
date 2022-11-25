@@ -1,5 +1,5 @@
 CC=g++
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++17
+ARGS=-O3 -Wall -D_X64 -std=c++17 -Wno-unused-function
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=logger.a
 LOGGER_PATH=../shared

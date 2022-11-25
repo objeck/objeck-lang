@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -Wall -Wno-unused-variable -Wno-unused-function -std=c++17 -Wno-strict-overflow -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER
+ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
