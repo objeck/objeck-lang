@@ -71,7 +71,10 @@ int main(int argc, char* argv[])
 
   if(argc >= 3) {
 #ifdef _WIN32
-#ifndef _MSYS2_CLANG // poor UTF-8 support (https://github.com/mstorsjo/llvm-mingw/issues/145)   
+#ifdef _MSYS2_CLANG
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+#else
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;
@@ -81,7 +84,8 @@ int main(int argc, char* argv[])
       return 1;
     }
 #endif
-
+#endif
+    
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
       std::cerr << L"Unable to load Winsock 2.2!" << std::endl;
