@@ -109,7 +109,6 @@ namespace Runtime {
     // break info
     std::list<UserBreak*> breaks;
     int cur_line_num;
-    int continue_line_num;
     std::wstring cur_file_name;
     StackFrame** cur_call_stack;
     long cur_call_stack_pos;
