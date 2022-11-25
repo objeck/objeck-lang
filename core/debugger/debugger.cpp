@@ -84,7 +84,6 @@ int main(int argc, char* argv[])
       return 1;
     }
 #endif
-#endif
     
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
