@@ -9,7 +9,7 @@ WIN32_PATH=arch/win32
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/ucrt64/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/clang64/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64
@@ -21,9 +21,10 @@ win32.a:
 	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64
 	
 %.o: %.cpp
-	$(CC) -m64 -I/ucrt64/include $(ARGS) -c $< 
+	$(CC) -m64 -I/clang64/include $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64 clean
 	cd $(JIT_PATH); make -f make/Makefile.msys2-clang.amd64 clean
 	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~
