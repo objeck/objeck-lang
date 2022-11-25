@@ -48,8 +48,19 @@ int main(const int argc, const char* argv[])
   
 #ifdef _WIN32
   // enable Unicode console support
-  _setmode(_fileno(stdin), _O_U16TEXT);
-  _setmode(_fileno(stdout), _O_U16TEXT);
+#ifdef _MSYS2_CLANG
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+#else
+  // enable Unicode console support
+  if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+    return 1;
+  }
+  
+  if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+    return 1;
+  }
+#endif
 
   // initialize Winsock
   WSADATA data;
