@@ -91,7 +91,9 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
 {
   // set UTF-8 environment
 #ifdef _WIN32
+#ifndef _MSYS2_CLANG  
   _setmode(_fileno(stdout), _O_U8TEXT);
+#endif  
 #else
   setlocale(LC_ALL, "");
   setlocale(LC_CTYPE, "UTF-8");
