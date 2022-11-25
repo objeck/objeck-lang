@@ -1,6 +1,4 @@
-# ARGS=-g -D_DEBUG -D_X64 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-deprecated-declarations
-ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declarations
-# ARGS=-O3 -D_TIMING -D_X64 -Wno-unused-function -Wno-deprecated-declarations
+ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declarations -Wunused-variable
 
 CC=g++
 AR=ar
