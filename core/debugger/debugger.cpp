@@ -71,6 +71,7 @@ int main(int argc, char* argv[])
 
   if(argc >= 3) {
 #ifdef _WIN32
+#ifndef _MSYS2_CLANG    
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;
@@ -79,6 +80,7 @@ int main(int argc, char* argv[])
     if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
       return 1;
     }
+#endif
     
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
