@@ -38,7 +38,7 @@ make clean; make -j3
 cp obd ../release/deploy-msys2-clang/bin
 
 # copy msys2 libs
-unzip ../lib/msys2-clang64/msys2-clang64.zip -d ../release/deploy-msys2-clang/lib/msys2-clang64
+unzip ../lib/msys2/msys2-clang64.zip -d ../release/deploy-msys2-clang/lib/msys2-clang64
 
 # build libraries
 
