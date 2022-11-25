@@ -1,5 +1,7 @@
 #include "windows.h"
+#ifndef _MSYS2_CLANG
 #include "resource.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -58,7 +60,7 @@ BEGIN
             VALUE "FileDescription", "Objeck Virtual Machine"
             VALUE "FileVersion", "6.9.0"
             VALUE "InternalName", "obr"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2022"
+            VALUE "LegalCopyright", "Copyright (C) 2008-2023"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Runtime"
             VALUE "ProductVersion", "6.9.0"
