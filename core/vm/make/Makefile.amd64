@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -Wno-unused-function -std=c++17
+ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -std=c++17 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
