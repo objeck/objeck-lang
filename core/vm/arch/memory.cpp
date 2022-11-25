@@ -656,7 +656,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifdef _DEBUG_GC
   size_t start = allocation_size;
-  std::wcout << dec << std::endl << L"=========================================" << std::endl;
+  std::wcout << std::dec << std::endl << L"=========================================" << std::endl;
 #ifdef _WIN32  
   std::wcout << L"Starting Garbage Collection; thread=" << GetCurrentThread() << std::endl;
 #else
@@ -870,7 +870,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifdef _DEBUG_GC
   std::wcout << L"===============================================================" << std::endl;
   std::wcout << L"Finished Collection: collected=" << (start - allocation_size)
-        << L" of " << start << L" byte(s) - " << showpoint << setprecision(3)
+        << L" of " << start << L" byte(s) - " << std::showpoint << std::setprecision(3)
         << (((double)(start - allocation_size) / (double)start) * 100.0)
         << L"%" << std::endl;
   std::wcout << L"===============================================================" << std::endl;
