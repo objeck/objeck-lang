@@ -28,7 +28,6 @@ REM libraries
 mkdir deploy_arm64\lib\sdl
 mkdir deploy_arm64\lib\sdl\fonts
 copy ..\lib\*.obl deploy_arm64\lib
-del deploy_arm64\lib\gtk2.obl
 del /q deploy_arm64\bin\a.*
 copy ..\vm\misc\*.pem deploy_arm64\lib
 

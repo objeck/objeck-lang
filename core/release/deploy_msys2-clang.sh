@@ -20,7 +20,6 @@ make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy-msys2-clang/bin
 cp ../lib/*.obl ../release/deploy-msys2-clang/lib
 cp ../vm/misc/*.pem ../release/deploy-msys2-clang/lib
-rm ../release/deploy-msys2-clang/lib/gtk2.obl
 
 # build VM
 cd ../vm
