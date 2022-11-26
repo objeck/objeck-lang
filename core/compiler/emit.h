@@ -1,7 +1,7 @@
 /***************************************************************************
 * Defines how the intermediate code is written to output files
 *
-* Copyright (c) 2008-2023, Randy Hollines
+* Copyright (c) 2023, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
