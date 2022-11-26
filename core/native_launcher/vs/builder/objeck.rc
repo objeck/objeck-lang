@@ -1,5 +1,7 @@
-#include "windows.h"
+#include <windows.h>
+#ifndef _MSYS2_CLANG
 #include "resource.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -33,12 +35,21 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "..\\..\\..\\..\\images\\Gear.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // Version
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 6,7,2
- PRODUCTVERSION 6,7,2
+ FILEVERSION 6,9,0
+ PRODUCTVERSION 6,9,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -53,15 +64,15 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "Objeck Virtual Machine"
-            VALUE "CompanyName", "Randy Hollines"
-            VALUE "FileDescription", "Objeck Virtual Machine"
-            VALUE "FileVersion", "6.7.2"
-            VALUE "InternalName", "obr"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2022"
-            VALUE "OriginalFilename", "obr.exe"
-            VALUE "ProductName", "Objeck Runtime"
-            VALUE "ProductVersion", "6.7.2"
+            VALUE "Comments", "Objeck Native Binary Builder"
+            VALUE "CompanyName", "objeck.org"
+            VALUE "FileDescription", "Objeck Native Builder"
+            VALUE "FileVersion", "6.9.0"
+            VALUE "InternalName", "obc"
+            VALUE "LegalCopyright", "Copyright (c) 2023 Randy Hollines"
+            VALUE "OriginalFilename", "obb.exe"
+            VALUE "ProductName", "Objeck Native Builder"
+            VALUE "ProductVersion", "6.9.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -70,15 +81,6 @@ BEGIN
     END
 END
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_ICON1               ICON                    "..\\..\\..\\..\\images\\Gear.ico"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

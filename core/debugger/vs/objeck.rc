@@ -1,7 +1,5 @@
 #include "windows.h"
-#ifndef _MSYS2_CLANG
 #include "resource.h"
-#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -55,14 +53,14 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "Objeck Language Debugger"
-            VALUE "CompanyName", "Randy Hollines"
-            VALUE "FileDescription", "Objeck Language Debugger"
+            VALUE "Comments", "Objeck Debugger"
+            VALUE "CompanyName", "objeck.org"
+            VALUE "FileDescription", "Objeck Debugger"
             VALUE "FileVersion", "6.9.0"
             VALUE "InternalName", "obr"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2023"
+            VALUE "LegalCopyright", "Copyright (c) 2023 Randy Hollines"
             VALUE "OriginalFilename", "obr.exe"
-            VALUE "ProductName", "Objeck Lanuage Debugger"
+            VALUE "ProductName", "Objeck Debugger"
             VALUE "ProductVersion", "6.9.0"
         END
     END
