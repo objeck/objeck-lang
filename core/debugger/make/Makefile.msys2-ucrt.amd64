@@ -38,4 +38,4 @@ clean:
 	cd $(JIT_PATH); make -f make/Makefile.msys2-clang.amd64 clean
 	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64 clean
 	cd $(VM_PATH); make -f make/Makefile.msys2-clang.amd64.obd clean
-	rm -f $(EXE) *.o *~ *.res
+	rm -f $(EXE) $(EXE).exe *.o *~ *.res
