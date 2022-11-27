@@ -2,11 +2,10 @@ ARGS=-O3 -Wall -std=c++17 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o win_main.o
-OBJ_LIBS=win32.a jit_amd_lp64.a memory.a logger.a
+OBJ_LIBS=win32.a jit_amd_lp64.a memory.a objeck.res
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
 WIN32_PATH=arch/win32
-LOGGER_PATH=../shared
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
@@ -21,13 +20,14 @@ jit_amd_lp64.a:
 win32.a:
 	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64	
 
-logger.a:
-	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64
-	
+objeck.res:
+	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
+
 %.o: %.cpp
 	$(CC) -m64 -I/ucrt64/include $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
 	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
-	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
+	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~ *.res

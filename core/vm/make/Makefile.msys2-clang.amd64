@@ -27,7 +27,8 @@ objeck.res:
 	$(CC) -m64 -I/clang64/include $(ARGS) -c $< 
 
 clean:
-	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64 clean
-	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64 clean
-	cd $(JIT_PATH); make -f make/Makefile.msys2-clang.amd64 clean
-	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~
+	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
+	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
+	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
+	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~ *.res
