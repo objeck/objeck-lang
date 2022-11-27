@@ -15,4 +15,4 @@ objeck.res:
 	windres vs/builder/objeck.rc -O coff -o objeck.res
 
 clean:
-	rm -f $(EXE) *.o *~
+	rm -f $(EXE) *.o *~ *.res
