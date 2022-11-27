@@ -81,10 +81,12 @@ __Building under MSYS2 on Windows__
   * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
   * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-ucrt.sh</code>
   *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-ucrt</code>
+  *  Set the path for to the UCRT64 'bin' directory
   *  Reference <code>objeck-lang/core/release/deploy-msys2-ucrt/readme.html</code> to set paths and find examples
 * Under the Clang64
   * Package dependencies
   * <code>pacman --noconfirm -S mingw-w64-clang-x86_64-gcc mingw-w64-clang-x86_64-openssl make mingw-w64-clang-x86_64-SDL2 unzip mingw-w64-clang-x86_64-SDL2_ttf mingw-w64-clang-x86_64-SDL2_mixer mingw-w64-clang-x86_64-SDL2_image mingw-w64-clang-x86_64-unixodbc</code>
   * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-clang.sh</code>
   *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-clang</code>
+  *  Set the path for to the Clang64 'bin' directory
   *  Reference <code>objeck-lang/core/release/deploy-msys2-clang/readme.html</code> to set paths and find examples
