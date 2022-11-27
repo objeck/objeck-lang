@@ -20,4 +20,4 @@ objeck.res:
 
 clean:
 	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
-	rm -f $(EXE) *.o *~
+	rm -f $(EXE) *.o *.res *~
