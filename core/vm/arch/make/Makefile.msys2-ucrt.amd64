@@ -9,7 +9,7 @@ $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 %.o: %.cpp
-	$(CC) -m64 -I/usr/include $(ARGS) win32/win32.o -c $< 
+	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
 	rm -f *.o *~ $(LIB)
