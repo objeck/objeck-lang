@@ -1,4 +1,4 @@
-ARGS=-O3 -D_OSX -D_X64 -Wall -Wno-unused-function -std=c++11
+ARGS=-O3 -Wall -std=c++17 -D_OSX -D_X64 -Wno-unused-variable -Wno-unused-function
 
 CC=clang++
 AR=ar
