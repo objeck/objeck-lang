@@ -10,7 +10,7 @@ EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -L/clang64/lib -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
-
+	
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64
 	
@@ -30,5 +30,4 @@ clean:
 	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
 	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
 	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
-	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
 	rm -f $(EXE).exe $(EXE) *.exe *.dll *.o *~ *.res
