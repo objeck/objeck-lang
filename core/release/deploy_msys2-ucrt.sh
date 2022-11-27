@@ -8,7 +8,6 @@ mkdir deploy-msys2-ucrt/lib
 mkdir deploy-msys2-ucrt/lib/sdl
 mkdir deploy-msys2-ucrt/lib/sdl/fonts
 mkdir deploy-msys2-ucrt/lib/native
-mkdir deploy-msys2-ucrt/lib/msys2-ucrt64
 mkdir deploy-msys2-ucrt/lib/native/misc
 mkdir deploy-msys2-ucrt/doc
 
@@ -37,11 +36,7 @@ cp make/Makefile.msys2-ucrt.amd64 Makefile
 make clean; make -j3
 cp obd ../release/deploy-msys2-ucrt/bin
 
-# copy msys2 libs
-unzip ../lib/msys2/msys2-ucrt64.zip -d ../release/deploy-msys2-ucrt/lib/msys2-ucrt64
-
 # build libraries
-
 cd ../lib/odbc
 ./build_msys2-ucrt.sh odbc
 cp odbc.dll ../../release/deploy-msys2-ucrt/lib/native/libobjk_odbc.dll
