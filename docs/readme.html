@@ -14,16 +14,16 @@ xmlns="http://www.w3.org/TR/REC-html40">
  <o:DocumentProperties>
   <o:Author>Randy Hollines</o:Author>
   <o:LastAuthor>Randy Hollines</o:LastAuthor>
-  <o:Revision>90</o:Revision>
-  <o:TotalTime>128</o:TotalTime>
+  <o:Revision>93</o:Revision>
+  <o:TotalTime>137</o:TotalTime>
   <o:Created>2022-09-01T22:16:00Z</o:Created>
-  <o:LastSaved>2022-11-21T17:30:00Z</o:LastSaved>
+  <o:LastSaved>2022-11-27T15:27:00Z</o:LastSaved>
   <o:Pages>3</o:Pages>
-  <o:Words>813</o:Words>
-  <o:Characters>4637</o:Characters>
-  <o:Lines>38</o:Lines>
-  <o:Paragraphs>10</o:Paragraphs>
-  <o:CharactersWithSpaces>5440</o:CharactersWithSpaces>
+  <o:Words>861</o:Words>
+  <o:Characters>4910</o:Characters>
+  <o:Lines>40</o:Lines>
+  <o:Paragraphs>11</o:Paragraphs>
+  <o:CharactersWithSpaces>5760</o:CharactersWithSpaces>
   <o:Version>16.00</o:Version>
  </o:DocumentProperties>
 </xml><![endif]-->
@@ -33,6 +33,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
  <w:WordDocument>
   <w:View>Print</w:View>
   <w:Zoom>120</w:Zoom>
+  <w:DontDisplayPageBoundaries/>
   <w:SpellingState>Clean</w:SpellingState>
   <w:GrammarState>Clean</w:GrammarState>
   <w:TrackMoves>false</w:TrackMoves>
@@ -51,7 +52,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAymwNK4FAMUsQ5EtAAAA</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAymwNKkFAAK6At4tAAAA</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -750,8 +751,7 @@ p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
 a:link, span.MsoHyperlink
-	{mso-style-noshow:yes;
-	mso-style-priority:99;
+	{mso-style-priority:99;
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
@@ -1410,7 +1410,7 @@ mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'><o:p></o:p></s
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v6.9.0 (November 22, 2022)<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>v6.9.0 (November 27, 2022)<o:p></o:p></span></p>
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
@@ -1423,7 +1423,11 @@ notes<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>LSP “Quick Fix” functionality and MSYS2 UCRT64 build support<o:p></o:p></span></p>
+minor-latin'>LSP “Quick Fix” functionality and MSYS2 support. Adding MSYS2
+support required <a
+href="https://www.thirtyonewhiskey.com/whiskey-review-whistlepig-10-year-straight-rye-whiskey/">bourbon</a>
+and <a href="https://www.youtube.com/watch?v=7Fqq1BfvkqE">theme music</a> in
+equal measure.<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1439,7 +1443,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added initial support for ‘<span class=SpellE>textDocument</span>/<span
+minor-latin'>Added initial LSP support for ‘<span class=SpellE>textDocument</span>/<span
 class=SpellE>codeAction</span>’ “Quick Fix” functionality (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
@@ -1448,7 +1452,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added JSON to string formatting (new)<o:p></o:p></span></p>
+minor-latin'>Added JSON to formatted string (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l3 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1456,7 +1460,16 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Provided Windows MSYS2 UCRT64 build support (new)<o:p></o:p></span></p>
+minor-latin'>Provided Windows MSYS2 support for UCRT64 and Clang64 (new)<o:p></o:p></span></p>
+
+<p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
+mso-list:l3 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
+mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
+style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
+mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
+minor-latin'>Fixed issue with ‘<span class=SpellE>Encryption.Hash</span>-&gt;RIPEMD160(..)’
+hash function in Windows (bug)<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
