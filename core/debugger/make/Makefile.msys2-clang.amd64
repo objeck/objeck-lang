@@ -5,6 +5,7 @@ SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=../vm/compiler.a ../vm/jit_amd_lp64.a ../vm/memory.a ../vm/win32.a objeck.res
 VM_PATH=../vm
 MEM_PATH=../vm/arch
+WIN32_PATH=../vm/arch/win32
 JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
@@ -30,5 +31,8 @@ objeck.res:
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(JIT_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64 clean
 	cd $(VM_PATH); make -f make/Makefile.msys2-clang.amd64.obd clean
 	rm -f $(EXE) *.o *~
