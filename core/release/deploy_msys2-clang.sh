@@ -8,7 +8,6 @@ mkdir deploy-msys2-clang/lib
 mkdir deploy-msys2-clang/lib/sdl
 mkdir deploy-msys2-clang/lib/sdl/fonts
 mkdir deploy-msys2-clang/lib/native
-mkdir deploy-msys2-clang/lib/msys2-clang64
 mkdir deploy-msys2-clang/lib/native/misc
 mkdir deploy-msys2-clang/doc
 
@@ -37,11 +36,7 @@ cp make/Makefile.msys2-clang.amd64 Makefile
 make clean; make -j3
 cp obd ../release/deploy-msys2-clang/bin
 
-# copy msys2 libs
-unzip ../lib/msys2/msys2-clang64.zip -d ../release/deploy-msys2-clang/lib/msys2-clang64
-
 # build libraries
-
 cd ../lib/odbc
 ./build_msys2-clang.sh odbc
 cp odbc.dll ../../release/deploy-msys2-clang/lib/native/libobjk_odbc.dll
