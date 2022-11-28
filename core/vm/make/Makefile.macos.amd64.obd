@@ -1,11 +1,11 @@
-ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -pthread -Wall -D_DEBUGGER  -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT
+ARGS=-O3 -Wall -std=c++11 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -Wno-strict-overflow -Wno-unused-function  -Wno-unused-variable -Wno-int-to-void-pointer-cast
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_amd_lp64.a memory.a
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
-LIB=compiler.a objeck.res
+LIB=compiler.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
@@ -18,9 +18,6 @@ jit_amd_lp64.a:
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< -I../lib/openssl/macos/include
-
-objeck.res:
-	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
 
 clean:
 	cd $(MEM_PATH); make clean -f make/Makefile.macos.amd64
