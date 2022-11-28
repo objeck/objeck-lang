@@ -1221,7 +1221,7 @@ size_t HasUserUses(frontend::ParsedProgram* program)
 {
   std::vector<std::wstring> use_names = program->GetUses();
   for(auto& use_name : use_names) {
-    if(use_name.rfind(L"System", 0)) {
+    if(use_name.rfind(L"System", 0) != std::wstring::npos) {
       return 1;
     }
   }

@@ -7202,19 +7202,23 @@ void ContextAnalyzer::ResolveEnumCall(LibraryEnum* lib_eenum, const std::wstring
 
 Enum* ContextAnalyzer::GetExpressionEnum(Type* type, Expression* expression, int depth)
 {
-  Enum* type_enum = SearchProgramEnums(type->GetName());
+  Enum* type_enum = nullptr;
 
-  if(!type_enum) {
-    type_enum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetName());
-    if(!type_enum && expression->GetCastType() && expression->GetMethodCall()) {
-      while(expression->GetMethodCall()) {
-        AnalyzeExpressionMethodCall(expression, depth + 1);
-        expression = expression->GetMethodCall();
-      }
+  if(type) {
+    type_enum = SearchProgramEnums(type->GetName());
 
-      if(expression->GetEvalType()) {
-        ResolveClassEnumType(expression->GetEvalType());
-        type_enum = SearchProgramEnums(expression->GetEvalType()->GetName());
+    if(!type_enum) {
+      type_enum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetName());
+      if(!type_enum && expression->GetCastType() && expression->GetMethodCall()) {
+        while(expression->GetMethodCall()) {
+          AnalyzeExpressionMethodCall(expression, depth + 1);
+          expression = expression->GetMethodCall();
+        }
+
+        if(expression->GetEvalType()) {
+          ResolveClassEnumType(expression->GetEvalType());
+          type_enum = SearchProgramEnums(expression->GetEvalType()->GetName());
+        }
       }
     }
   }
