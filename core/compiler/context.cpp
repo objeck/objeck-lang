@@ -6071,13 +6071,11 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
       // downcast
       else {
-        ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" +
-                     right_lib_class->GetName() + L"'");
+        ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" + right_lib_class->GetName() + L"'");
       }
     }
     else {
-      ProcessError(expression, L"Invalid cast between class or enum: '" + 
-                   left->GetName() + L"' and '" + right->GetName() + L"'");
+      ProcessError(expression, L"Invalid cast between class or enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
     }
   }
   else {
