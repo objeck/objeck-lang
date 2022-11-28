@@ -5912,7 +5912,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // program class
   //
-  else if(right && (left_class = SearchProgramClasses(left->GetName()))) {
+  else if(left && right && (left_class = SearchProgramClasses(left->GetName()))) {
     // program and generic
     Class* right_class = SearchProgramClasses(right->GetName());
     if(!right_class) {
@@ -5973,7 +5973,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // generic class
   //
-  else if(right && (left_class = current_class->GetGenericClass(left->GetName()))) {
+  else if(left && right && (left_class = current_class->GetGenericClass(left->GetName()))) {
     // program
     Class* right_class = current_class->GetGenericClass(right->GetName());
     if(right_class) {
@@ -5995,7 +5995,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // enum library
   //
-  else if(right && (left_lib_enum = linker->SearchEnumLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
+  else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
     // program
     Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
@@ -6021,7 +6021,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // class library
   //
-  else if(right && (left_lib_class = linker->SearchClassLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
+  else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
     // program and generic
     Class* right_class = SearchProgramClasses(right->GetName());
     if(!right_class) {
