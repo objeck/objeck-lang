@@ -1,5 +1,5 @@
 # strings
-$version = "6.9.0"
+$version = "6.9.1"
 $year_end = "2023"
 
 # alternative strings
