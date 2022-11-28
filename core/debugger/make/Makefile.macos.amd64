@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++17 -Wno-deprecated-declarations -Wno-unused-function -pthread -D_X64 -D_OSX -D_DEBUGGER
+ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OSX -D_DEBUGGER -Wno-unused-variable -Wno-deprecated-declarations -Wno-unused-function
 
 CC=clang++
 SRC=tree.o scanner.o parser.o debugger.o
@@ -25,4 +25,6 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 
 clean:
 	cd $(VM_PATH); make -f make/Makefile.macos.amd64.obd clean
+	cd $(MEM_PATH); make -f make/Makefile.macos.amd64.obd clean
+	cd $(JIT_PATH); make -f make/Makefile.macos.amd64.obd clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
