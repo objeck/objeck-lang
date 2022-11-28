@@ -834,6 +834,42 @@ class Parser {
 						};
 					}
 
+# --- TODO ---
+					label Token->Type->CAR_KEYWORD: {
+						if(@is_debug) {
+							"\tCar"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->CAR);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren()->Size() <> 1) {
+							@error := true;
+							"*** Syntax Error: The 'car' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}
+
+					label Token->Type->CDR_KEYWORD: {
+						if(@is_debug) {
+							"\tCdr"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->CDR);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren()->Size() <> 1) {
+							@error := true;
+							"*** Syntax Error: The 'cdr' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}					
+# ---- END: TODO ---
+
 					label Token->Type->CONS_KEYWORD: {
 						if(@is_debug) {
 							"\tCons"->PrintLine();
@@ -1030,6 +1066,8 @@ class Node {
 		BIND_VAR,
 		DEFUN,
 		RTRN,
+		CAR,
+		CDR,
 		CONS,
 		COND,
 		WRITE,
@@ -1249,6 +1287,8 @@ class Scanner {
 		keywords->Insert("list", IntHolder->New(Token->Type->LIST_KEYWORD));
 		keywords->Insert("cond", IntHolder->New(Token->Type->COND_KEYWORD));
 		keywords->Insert("cons", IntHolder->New(Token->Type->CONS_KEYWORD));
+		keywords->Insert("car", IntHolder->New(Token->Type->CAR_KEYWORD));
+		keywords->Insert("cdr", IntHolder->New(Token->Type->CDR_KEYWORD));
 		keywords->Insert("length", IntHolder->New(Token->Type->LENGTH_KEYWORD));
 		keywords->Insert("defun", IntHolder->New(Token->Type->DEFUN_KEYWORD));
 
@@ -1358,6 +1398,8 @@ class Token {
 		LET_KEYWORD,	
 		LIST_KEYWORD,
 		CONS_KEYWORD,
+		CAR_KEYWORD,
+		CDR_KEYWORD,
 		LENGTH_KEYWORD,
 		COND_KEYWORD,
 		DEFUN_KEYWORD,
@@ -1452,6 +1494,14 @@ class Token {
 
 			label Type->CONS_KEYWORD {
 				return "cons";
+			}
+
+			label Type->CAR_KEYWORD {
+				return "car";
+			}
+
+			label Type->CDR_KEYWORD {
+				return "cdr";
 			}
 
 			label Type->COND_KEYWORD {
