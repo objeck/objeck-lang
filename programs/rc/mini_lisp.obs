@@ -237,6 +237,24 @@ class Evaluator {
 					};
 				}
 
+# ---- TODO ---
+				label Node->Type->CAR {
+">>> 0 <<<"->PrintLine();					
+					children := node->GetChildren();
+					if(children <> Nil) {
+
+					};
+				}
+
+				label Node->Type->CDR {
+">>> 1 <<<"->PrintLine();					
+					children := node->GetChildren();
+					if(children <> Nil) {
+
+					};
+				}
+# ---- END: TODO ---
+
 				label Node->Type->WRITE {
 					children := node->GetChildren();
 					if(children <> Nil) {
@@ -834,7 +852,6 @@ class Parser {
 						};
 					}
 
-# --- TODO ---
 					label Token->Type->CAR_KEYWORD: {
 						if(@is_debug) {
 							"\tCar"->PrintLine();
@@ -845,9 +862,9 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->Size() <> 1) {
+						if(node->GetChildren()->IsEmpty()) {
 							@error := true;
-							"*** Syntax Error: The 'car' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							"*** Syntax Error: The 'car' operation takes 1 or more operands (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -862,13 +879,12 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->Size() <> 1) {
+						if(node->GetChildren()->IsEmpty()) {
 							@error := true;
-							"*** Syntax Error: The 'cdr' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							"*** Syntax Error: The 'car' operation takes 1 or more operands (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}					
-# ---- END: TODO ---
 
 					label Token->Type->CONS_KEYWORD: {
 						if(@is_debug) {
@@ -1200,6 +1216,14 @@ class Node {
 
 			label Node->Type->RTRN {
 				buffer += "return";
+			}
+
+			label Node->Type->CAR {
+				buffer += "car";
+			}
+
+			label Node->Type->CDR {
+				buffer += "cdr";
 			}
 
 			label Node->Type->COND {
