@@ -531,7 +531,6 @@ class Value {
 				temp->SetNextElement(elem->GetNextElement());
 			}
 			else {
-				
 				temp->SetNextElement(elem);
 			};
 		};
@@ -564,7 +563,6 @@ class Value {
 				temp->SetNextList(list->GetNextList());
 			}
 			else {
-				
 				temp->SetNextList(list);
 			};
 		};
@@ -595,7 +593,7 @@ class Value {
 			 	return @next_list;
 			 };
 		};
-		
+
 		return NilValue();
 	}
 
