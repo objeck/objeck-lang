@@ -587,16 +587,15 @@ class Value {
 
 	method : public : Car() ~ Value {
 		if(@type = Value->Type->LIST) {
-			if(@next_elem = Nil & @next_list = Nil) {
-				return NilValue();
-			}
-			else if(@next_elem <> Nil) {
+			if(@next_elem <> Nil) {
 				return @next_elem;
 			};
 
-			return @next_list;
+			 if(@next_list <> Nil) {
+			 	return @next_list;
+			 };
 		};
-
+		
 		return NilValue();
 	}
 
@@ -643,7 +642,6 @@ class Value {
 
 				elem := @next_elem;
 				while(elem <> Nil) {
-"####"->PrintLine();				
 					count += 1;
 					elem := elem->GetNextElement();
 				};
