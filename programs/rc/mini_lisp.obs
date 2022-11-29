@@ -212,10 +212,10 @@ class Evaluator {
 						each(i : children) {
 							child := @exe_stack->Pop();
 							if(child->GetType() = Value->Type->LIST) {
-								list->AddList(child);
+								list->AddBackList(child);
 							}
 							else {
-								list->AddElement(child);
+								list->AddBackElement(child);
 							};
 						};
 						@exe_stack->Push(list);
@@ -231,26 +231,38 @@ class Evaluator {
 
 						list := Value->New(Value->Type->LIST);
 						each(i : children) {
-							list->AddElement(@exe_stack->Pop());
+							list->AddBackElement(@exe_stack->Pop());
 						};
-						@exe_stack->Push(list);
+						@exe_stack->Push(list);						
 					};
 				}
 
 # ---- TODO ---
 				label Node->Type->CAR {
-">>> 0 <<<"->PrintLine();					
 					children := node->GetChildren();
 					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+					};
 
+					list := @exe_stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						@exe_stack->Push(list->Car());
 					};
 				}
 
 				label Node->Type->CDR {
-">>> 1 <<<"->PrintLine();					
 					children := node->GetChildren();
 					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+					};
 
+					list := @exe_stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						@exe_stack->Push(list->Cdr());
 					};
 				}
 # ---- END: TODO ---
@@ -447,6 +459,43 @@ class Value {
 		return @empty_list_value;
 	}
 
+	function : NilValue() ~ Value {
+		return @nil_value;
+	}
+
+	method : public : Clone() ~ Value {
+		select(@type) {
+			label Value->Type->LIST {
+
+			}
+			
+			label Value->Type->NIL_TYPE {
+				return Value->New(Value->Type->NIL_TYPE);
+			}
+			
+			label Value->Type->INT_TYPE {
+				return Value->New(@int_value);
+			}
+			
+			label Value->Type->BOOL_TYPE {
+				type := Value->New(Value->Type->BOOL_TYPE);
+				type->SetBoolValue(@bool_value);
+
+				return type;
+			}
+			
+			label Value->Type->REAL_TYPE {
+				return Value->New(@real_value);
+			}
+			
+			label Value->Type->STRING_TYPE {
+
+			}
+		};
+
+		return Nil;
+	}
+
 	method : public : GetType() ~ Value->Type {
 		return @type;
 	}
@@ -468,7 +517,27 @@ class Value {
 		@next_list := next_list;
 	}
 
-	method : public : AddElement(elem : Value) ~ Nil {
+	method : public : AddFrontElement(elem : Value) ~ Nil {
+		if(@next_elem = Nil) {
+			@next_elem := elem;
+		}
+		else {
+			temp := @next_elem;
+			while(temp->GetNextElement() <> Nil) {
+				temp := temp->GetNextElement();
+			};
+
+			if(elem->GetType() = Value->Type->LIST) {
+				temp->SetNextElement(elem->GetNextElement());
+			}
+			else {
+				
+				temp->SetNextElement(elem);
+			};
+		};
+	}
+
+	method : public : AddBackElement(elem : Value) ~ Nil {
 		temp := @next_elem;
 
 		if(elem->GetType() = Value->Type->LIST) {
@@ -479,9 +548,29 @@ class Value {
 		};
 
 		elem->SetNextElement(temp);
-	}	
+	}
 
-	method : public : AddList(list : Value) ~ Nil {
+	method : public : AddFrontList(list : Value) ~ Nil {
+		if(@next_list = Nil) {
+			@next_list := list;
+		}
+		else {
+			temp := @next_list;
+			while(temp->GetNextList() <> Nil) {
+				temp := temp->GetNextList();
+			};
+
+			if(list->GetType() = Value->Type->LIST) {
+				temp->SetNextList(list->GetNextList());
+			}
+			else {
+				
+				temp->SetNextList(list);
+			};
+		};
+	}
+
+	method : public : AddBackList(list : Value) ~ Nil {
 		if(list->GetType() = Value->Type->LIST) {
 			if(@next_list = Nil) {
 				@next_list := list;
@@ -496,6 +585,54 @@ class Value {
 		};
 	}
 
+	method : public : Car() ~ Value {
+		if(@type = Value->Type->LIST) {
+			if(@next_elem = Nil & @next_list = Nil) {
+				return NilValue();
+			}
+			else if(@next_elem <> Nil) {
+				return @next_elem;
+			};
+
+			return @next_list;
+		};
+
+		return NilValue();
+	}
+
+	method : public : Cdr() ~ Value {
+		if(@type = Value->Type->LIST) {
+			if(@next_elem = Nil & @next_list = Nil) {
+				return NilValue();
+			}
+			else {
+				new_list := Value->New(Value->Type->LIST);
+
+				elem := @next_elem;
+				if(elem <> Nil) {
+					elem := elem->GetNextElement();
+					while(elem <> Nil) {
+						new_list->AddFrontElement(elem->Clone());
+						elem := elem->GetNextElement();
+					};
+				};
+				
+				list := @next_list;
+				if(list <> Nil) {
+					list := list->GetNextList();
+					while(list <> Nil) {
+						new_list->AddFrontList(list);
+						list := list->GetNextList();
+					};
+				};
+
+				return new_list;
+			};
+		};
+
+		return NilValue();
+	}
+
 	method : public : GetListSize() ~ Int {
 		if(@type = Value->Type->LIST) {
 			if(@next_elem = Nil & @next_list = Nil) {
@@ -505,19 +642,16 @@ class Value {
 				count := 0;
 
 				elem := @next_elem;
-				list := @next_list;
-				if(elem <> Nil) {
-					while(elem <> Nil) {
-						count += 1;
-						elem := elem->GetNextElement();
-					};
+				while(elem <> Nil) {
+"####"->PrintLine();				
+					count += 1;
+					elem := elem->GetNextElement();
 				};
 				
-				if(list <> Nil) {
-					while(list <> Nil) {
-						count += 1;
-						list := list->GetNextList();
-					};
+				list := @next_list;
+				while(list <> Nil) {
+					count += 1;
+					list := list->GetNextList();
 				};
 
 				return count;
@@ -584,24 +718,20 @@ class Value {
 					buffer += "(";
 					
 					elem := @next_elem;
-					list := @next_list;
-					if(elem <> Nil) {
-						while(elem <> Nil) {
-							buffer += elem->ToString();
-							elem := elem->GetNextElement();
-							if(elem <> Nil | list <> Nil) {
-								buffer += ", ";
-							};
+					while(elem <> Nil) {
+						buffer += elem->ToString();
+						elem := elem->GetNextElement();
+						if(elem <> Nil) {
+							buffer += ", ";
 						};
 					};
-					
-					if(list <> Nil) {
-						while(list <> Nil) {
-							buffer += list->ToString();
-							list := list->GetNextList();
-							if(list <> Nil) {
-								buffer += ", ";
-							};
+
+					list := @next_list;					
+					while(list <> Nil) {
+						buffer += list->ToString();
+						list := list->GetNextList();
+						if(list <> Nil) {
+							buffer += ", ";
 						};
 					};
 
@@ -845,7 +975,7 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->Size() <> 1) {
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
 							@error := true;
 							"*** Syntax Error: The 'write' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
@@ -862,9 +992,9 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->IsEmpty()) {
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
 							@error := true;
-							"*** Syntax Error: The 'car' operation takes 1 or more operands (pos={$@token_pos}) ***"->ErrorLine();
+							"*** Syntax Error: The 'car' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}
@@ -879,9 +1009,9 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->IsEmpty()) {
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
 							@error := true;
-							"*** Syntax Error: The 'car' operation takes 1 or more operands (pos={$@token_pos}) ***"->ErrorLine();
+							"*** Syntax Error: The 'car' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
 						};
 					}					
@@ -896,7 +1026,7 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->Size() <> 2) {
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 2) {
 							@error := true;
 							"*** Syntax Error: The 'cons' operation takes 2 operands (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
@@ -959,7 +1089,7 @@ class Parser {
 							return Nil;
 						};
 
-						if(node->GetChildren()->Size() <> 1) {
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
 							@error := true;
 							"*** Syntax Error: The 'length' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
 							return Nil;
@@ -1224,6 +1354,10 @@ class Node {
 
 			label Node->Type->CDR {
 				buffer += "cdr";
+			}
+
+			label Node->Type->CONS {
+				buffer += "cons";
 			}
 
 			label Node->Type->COND {
