@@ -446,6 +446,16 @@ class Value {
 		@int_value := int_value;
 	}
 
+	New(bool_value : Bool) {
+		@type := Value->Type->BOOL_TYPE;
+		@bool_value := bool_value;
+	}
+
+	New(str_value : String) {
+		@type := Value->Type->STRING_TYPE;
+		@str_value := str_value;
+	}
+
 	New(real_value : Float) {
 		@type := Value->Type->REAL_TYPE;
 		@real_value := real_value;
@@ -478,10 +488,7 @@ class Value {
 			}
 			
 			label Value->Type->BOOL_TYPE {
-				type := Value->New(Value->Type->BOOL_TYPE);
-				type->SetBoolValue(@bool_value);
-
-				return type;
+				return Value->New(@bool_value);
 			}
 			
 			label Value->Type->REAL_TYPE {
@@ -489,10 +496,10 @@ class Value {
 			}
 			
 			label Value->Type->STRING_TYPE {
-
+				return Value->New(@str_value);
 			}
 		};
-
+		
 		return Nil;
 	}
 
