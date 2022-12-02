@@ -92,11 +92,11 @@ class AoC {
 			return 3;
 		}
 		else if((opponent_play = Play->Rock & your_play = Play->Scissors) | 
-				(opponent_play = Play->Scissors  & your_play = Play->Paper) | 
+				(opponent_play = Play->Scissors & your_play = Play->Paper) | 
 				(opponent_play = Play->Paper & your_play = Play->Rock)) {
 			return 0;
 		};
-
+		
 		return 6;
 	}
 }
