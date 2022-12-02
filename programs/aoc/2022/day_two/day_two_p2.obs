@@ -98,6 +98,10 @@ class AoC {
 	}
 
 	function : ChangeOutcome(opponent_play : Play, your_play : Play, outcome : Outcome) ~ Play {
+		if(outcome = Outcome->Draw) {
+			return opponent_play;
+		};
+		
 		return Play->Rock;
 	}
 
