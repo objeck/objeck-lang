@@ -100,9 +100,13 @@ class AoC {
 	function : ChangeOutcome(opponent_play : Play, your_play : Play, outcome : Outcome) ~ Play {
 		if(outcome = Outcome->Draw) {
 			return opponent_play;
+		}
+		else if(outcome = Outcome->Lose) {
+			return opponent_play;
+		}
+		else {
+			return Play->Rock;
 		};
-		
-		return Play->Rock;
 	}
 
 	function : PlayRound(opponent_play : Play, your_play : Play) ~ Int {
