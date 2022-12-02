@@ -1,30 +1,102 @@
+use Collection.Generic;
+
 class AoC {
+	enum Play {
+		Rock,
+		Paper,
+		Scissors
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			elf_id := 1;
-			elf_total_calories := elf_most_calories := 0;
+			plays := Vector->New()<Pair<IntHolder, IntHolder>>;
 
 			reader := System.IO.Filesystem.FileReader->New(args[0]);
 			line := reader->ReadLine();
 			while(line <> Nil) {
-				if(line->IsEmpty()) {
-					"Elf {$elf_id}: {$elf_total_calories}"->PrintLine();
+				if(<>line->Trim()->IsEmpty()) {
+					parts := line->Split(" ");
 
-					if(elf_most_calories < elf_total_calories) {
-						elf_most_calories := elf_total_calories;
+					opponent_play : Play;
+					select(parts[0]->Get(0)) {
+						label 'A' {
+							opponent_play := Play->Rock;
+						}
+
+						label 'B' {
+							opponent_play := Play->Paper;
+						}
+
+						label 'C' {
+							opponent_play := Play->Scissors;
+						}
 					};
-					elf_id += 1;
-					elf_total_calories := 0;
-				}
-				else {
-					elf_total_calories += line->ToInt();
+
+					your_play : Play;
+					select(parts[1]->Get(0)) {
+						label 'X' {
+							your_play := Play->Rock;
+						}
+
+						label 'Y' {
+							your_play := Play->Paper;
+						}
+
+						label 'Z' {
+							your_play := Play->Scissors;
+						}
+					};
+
+					play := Pair->New(opponent_play->As(Int), your_play->As(Int))<IntHolder, IntHolder>;
+					plays->AddBack(play);
 				};
 
 				line := reader->ReadLine();
 			};
 
-			"---"->PrintLine();
-			"Elf with most calories: {$elf_most_calories}"->PrintLine();
+			total_score := 0;
+
+			each(i : plays) {
+				play := plays->Get(i)<Pair<IntHolder, IntHolder>>;
+
+				opponent_play := play->GetFirst()->Get()->As(Play);
+				your_play := play->GetSecond()->Get()->As(Play);
+
+				shape_score : Int;
+				select(your_play) {
+					label Play->Rock {
+						shape_score := 1;
+					}
+
+					label Play->Paper {
+						shape_score := 2;
+					}
+
+					label Play->Scissors {
+						shape_score := 3;
+					}
+				};
+
+				round_score := PlayRound(opponent_play, your_play);
+				total_round_score := (shape_score + round_score);
+				"round={$total_round_score}"->PrintLine();
+
+				total_score += total_round_score;
+			};
+			"---\n{$total_score}"->PrintLine();
 		};
+	}
+
+	function : PlayRound(opponent_play : Play, your_play : Play) ~ Int {
+		if(opponent_play = your_play) {
+			return 3;
+		}
+		else if((opponent_play = Play->Rock & your_play = Play->Scissors) | 
+				(opponent_play = Play->Scissors  & your_play = Play->Paper) | 
+				(opponent_play = Play->Paper & your_play = Play->Rock)) {
+			return 0;
+		};
+
+		return 6;
 	}
 }
