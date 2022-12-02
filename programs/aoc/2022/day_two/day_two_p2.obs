@@ -7,6 +7,12 @@ class AoC {
 		Scissors
 	}
 
+	enum Outcome {
+		Lose,
+		Draw,
+		Win
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			plays := Vector->New()<Pair<IntHolder, IntHolder>>;
@@ -63,21 +69,25 @@ class AoC {
 				your_play := play->GetSecond()->Get()->As(Play);
 
 				shape_score : Int;
+				outcome : Outcome;
 				select(your_play) {
 					label Play->Rock {
 						shape_score := 1;
+						outcome := Outcome->Lose;
 					}
 
 					label Play->Paper {
 						shape_score := 2;
+						outcome := Outcome->Draw;
 					}
 
 					label Play->Scissors {
 						shape_score := 3;
+						outcome := Outcome->Win;
 					}
 				};
 
-				round_score := PlayRound(opponent_play, your_play);
+				round_score := PlayRound(opponent_play, ChangeOutcome(opponent_play, your_play));
 				total_round_score := (shape_score + round_score);
 				"round={$total_round_score}"->PrintLine();
 
@@ -85,6 +95,10 @@ class AoC {
 			};
 			"---\n{$total_score}"->PrintLine();
 		};
+	}
+
+	function : ChangeOutcome(opponent_play : Play, your_play : Play) ~ Play {
+		return Play->Rock;
 	}
 
 	function : PlayRound(opponent_play : Play, your_play : Play) ~ Int {
