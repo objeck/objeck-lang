@@ -60,7 +60,7 @@ class AoC {
 				line := reader->ReadLine();
 			};
 
-			total_score := 0;
+			total_points := 0;
 
 			each(i : plays) {
 				play := plays->Get(i)<Pair<IntHolder, IntHolder>>;
@@ -86,32 +86,33 @@ class AoC {
 					}
 				};
 
-				shape_score := ChangeOutcome(opponent_play, your_play, outcome)->As(Int);
-				select(shape_score) {
+				shape_points : Int;
+				your_play := FixPlay(opponent_play, your_play, outcome);
+				select(your_play) {
 					label Play->Rock {
-						shape_score := 1;
+						shape_points := 1;
 					}
 
 					label Play->Paper {
-						shape_score := 2;
+						shape_points := 2;
 					}
 
 					label Play->Scissors {
-						shape_score := 3;
+						shape_points := 3;
 					}
 				};
-				
-				round_score := PlayRound(opponent_play, ChangeOutcome(opponent_play, your_play, outcome));
-				total_round_score := (shape_score + round_score);
-				"{$shape_score} + {$round_score}: total={$total_round_score}\n---"->PrintLine();
 
-				total_score += total_round_score;
+				round_points := PlayRound(opponent_play, your_play);
+				total_round_points := (shape_points + round_points);
+				"{$shape_points} + {$round_points}: total={$total_round_points}\n---"->PrintLine();
+
+				total_points += total_round_points;
 			};
-			"{$total_score}"->PrintLine();
+			"{$total_points}"->PrintLine();
 		};
 	}
 
-	function : ChangeOutcome(opponent_play : Play, your_play : Play, outcome : Outcome) ~ Play {
+	function : FixPlay(opponent_play : Play, your_play : Play, outcome : Outcome) ~ Play {
 		if(outcome = Outcome->Draw) {
 			return opponent_play;
 		}
