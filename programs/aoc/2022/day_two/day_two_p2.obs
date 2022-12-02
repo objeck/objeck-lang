@@ -68,32 +68,46 @@ class AoC {
 				opponent_play := play->GetFirst()->Get()->As(Play);
 				your_play := play->GetSecond()->Get()->As(Play);
 
-				shape_score : Int;
 				outcome : Outcome;
 				select(your_play) {
 					label Play->Rock {
-						shape_score := 1;
 						outcome := Outcome->Lose;
+						"Lose"->PrintLine();
+					}
+
+					label Play->Paper {
+						outcome := Outcome->Draw;
+						"Draw"->PrintLine();
+					}
+
+					label Play->Scissors {
+						outcome := Outcome->Win;
+						"Win"->PrintLine();
+					}
+				};
+
+				shape_score := ChangeOutcome(opponent_play, your_play, outcome)->As(Int);
+				select(shape_score) {
+					label Play->Rock {
+						shape_score := 1;
 					}
 
 					label Play->Paper {
 						shape_score := 2;
-						outcome := Outcome->Draw;
 					}
 
 					label Play->Scissors {
 						shape_score := 3;
-						outcome := Outcome->Win;
 					}
 				};
-
+				
 				round_score := PlayRound(opponent_play, ChangeOutcome(opponent_play, your_play, outcome));
 				total_round_score := (shape_score + round_score);
-				"round={$total_round_score}"->PrintLine();
+				"{$shape_score} + {$round_score}: total={$total_round_score}\n---"->PrintLine();
 
 				total_score += total_round_score;
 			};
-			"---\n{$total_score}"->PrintLine();
+			"{$total_score}"->PrintLine();
 		};
 	}
 
@@ -102,10 +116,26 @@ class AoC {
 			return opponent_play;
 		}
 		else if(outcome = Outcome->Lose) {
-			return opponent_play;
+			if(opponent_play = Play->Rock) {
+				return Play->Scissors;
+			}
+			else if(opponent_play = Play->Scissors) {
+				return Play->Paper;
+			}
+			else {
+				return Play->Rock;
+			};
 		}
 		else {
-			return Play->Rock;
+			if(opponent_play = Play->Rock) {
+				return Play->Paper;
+			}
+			else if(opponent_play = Play->Scissors) {
+				return Play->Rock;
+			}
+			else {
+				return Play->Scissors;
+			};
 		};
 	}
 
