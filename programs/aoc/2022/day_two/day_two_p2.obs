@@ -87,7 +87,7 @@ class AoC {
 					}
 				};
 
-				round_score := PlayRound(opponent_play, ChangeOutcome(opponent_play, your_play));
+				round_score := PlayRound(opponent_play, ChangeOutcome(opponent_play, your_play, outcome));
 				total_round_score := (shape_score + round_score);
 				"round={$total_round_score}"->PrintLine();
 
@@ -97,7 +97,7 @@ class AoC {
 		};
 	}
 
-	function : ChangeOutcome(opponent_play : Play, your_play : Play) ~ Play {
+	function : ChangeOutcome(opponent_play : Play, your_play : Play, outcome : Outcome) ~ Play {
 		return Play->Rock;
 	}
 
