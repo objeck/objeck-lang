@@ -102,11 +102,11 @@ class AoC {
 					}
 				};
 
-				round_points := PlayRound(opponent_play, your_play);
-				total_round_points := (shape_points + round_points);
-				"{$shape_points} + {$round_points}: total={$total_round_points}\n---"->PrintLine();
+				play_points := PlayRound(opponent_play, your_play);
+				round_points := (shape_points + play_points);
+				"{$shape_points} + {$play_points}: total={$round_points}\n---"->PrintLine();
 
-				total_points += total_round_points;
+				total_points += round_points;
 			};
 			"{$total_points}"->PrintLine();
 		};
