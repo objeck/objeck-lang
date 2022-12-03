@@ -9,10 +9,9 @@ class AoC {
 			three_elves := String->New[3];
 			each(i : inputs) {
 				input := inputs->Get(i);
-				input->PrintLine();
 
 				if((i + 1) % 3 = 0) {
-					"---"->PrintLine();
+					Foo(three_elves);
 					index := 0;
 				}
 				else {
@@ -70,6 +69,12 @@ class AoC {
 				"---"->PrintLine();
 			};
 ~#			
+		};
+	}
+
+	function : Foo(three_elves : String[]) ~ Nil {
+		each(i : three_elves) {
+			three_elves[i]->PrintLine();
 		};
 	}
 
