@@ -45,7 +45,7 @@ class AoC {
 			elf->PrintLine();
 
 			each(j : elf) {
-				elf_value := elf->Get(i);
+				elf_value := elf->Get(j);
 
 				value : Int;
 				if(elf_value->IsLower()) {
