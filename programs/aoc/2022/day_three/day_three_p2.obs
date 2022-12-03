@@ -43,6 +43,22 @@ class AoC {
 		for(i := 1; i < three_elves->Size(); i += 1;) {
 			elf := three_elves[i];
 			elf->PrintLine();
+
+			each(j : elf) {
+				elf_value := elf->Get(i);
+
+				value : Int;
+				if(elf_value->IsLower()) {
+					value := (elf_value - 96)->ToInt();
+				}
+				else {
+					value := (elf_value - 38)->ToInt();
+				};
+
+				if(first_elf_set->Has(value)) {
+					elf_value->PrintLine();
+				};
+			};
 		};
 
 		"---"->PrintLine();
