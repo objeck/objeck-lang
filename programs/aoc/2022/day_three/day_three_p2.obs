@@ -25,19 +25,19 @@ class AoC {
 	function : Foo(three_elves : String[]) ~ Nil {
 		first_elf := three_elves[0];
 
-		first_elf_set := Set->New()<IntHolder>;
+		first_elf_set := Map->New()<IntHolder, IntHolder>;
 		each(i : first_elf) {
-			elf_value := first_elf->Get(i);
+			elf_key := first_elf->Get(i);
 
-			value : Int;
-			if(elf_value->IsLower()) {
-				value := (elf_value - 96)->ToInt();
+			key : Int;
+			if(elf_key->IsLower()) {
+				key := (elf_key - 96)->ToInt();
 			}
 			else {
-				value := (elf_value - 38)->ToInt();
+				key := (elf_key - 38)->ToInt();
 			};
 
-			first_elf_set->Insert(value);
+			first_elf_set->Insert(key, 1);
 		};
 
 		for(i := 1; i < three_elves->Size(); i += 1;) {
@@ -45,18 +45,20 @@ class AoC {
 			elf->PrintLine();
 
 			each(j : elf) {
-				elf_value := elf->Get(j);
+				elf_key := elf->Get(j);
 
-				value : Int;
-				if(elf_value->IsLower()) {
-					value := (elf_value - 96)->ToInt();
+				key : Int;
+				if(elf_key->IsLower()) {
+					key := (elf_key - 96)->ToInt();
 				}
 				else {
-					value := (elf_value - 38)->ToInt();
+					key := (elf_key - 38)->ToInt();
 				};
 
-				if(first_elf_set->Has(value)) {
-					elf_value->PrintLine();
+				elf_count := first_elf_set->Find(key);
+				if(elf_count <> Nil) {
+					elf_count->Add(1);
+					elf_count->PrintLine();
 				};
 			};
 		};
