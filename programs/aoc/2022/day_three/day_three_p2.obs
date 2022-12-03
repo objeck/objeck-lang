@@ -19,65 +19,33 @@ class AoC {
 					three_elves[index++] := input;
 				};
 			};
-
-#~
-			each(i : inputs) {
-				input := inputs->Get(i);
-				half_pos := input->Size() / 2;
-
-				# get laft a right halfs
-				left_input := input->SubString(half_pos);
-				right_input := input->SubString(half_pos, input->Size() - half_pos);
-
-				left_input->PrintLine();
-				right_input->PrintLine();
-
-				left_input_set := Set->New()<IntHolder>;
-				each(j : left_input) {
-					left_value := left_input->Get(j);
-
-					value : Int;
-					if(left_value->IsLower()) {
-						value := (left_input->Get(j) - 96)->ToInt();
-					}
-					else {
-						value := (left_input->Get(j) - 38)->ToInt();
-					};
-
-					left_input_set->Insert(value);
-				};
-
-				found := false;
-				for(j := 0; j < right_input->Size() & <>found; j += 1;) {
-					right_value := right_input->Get(j);
-
-					value : Int;
-					if(right_value->IsLower()) {
-						value := (right_input->Get(j) - 96)->ToInt();
-					}
-					else {
-						value := (right_input->Get(j) - 38)->ToInt();
-					};
-
-					
-					if(left_input_set->Has(value)) {
-						total += value;
-						value->PrintLine();
-						found := true;
-					};
-				};
-
-				"---"->PrintLine();
-			};
-~#			
 		};
 	}
 
 	function : Foo(three_elves : String[]) ~ Nil {
-		"---"->PrintLine();
-		each(i : three_elves) {
-			three_elves[i]->PrintLine();
+		first_elf := three_elves[0];
+
+		first_elf_set := Set->New()<IntHolder>;
+		each(i : first_elf) {
+			elf_value := first_elf->Get(i);
+
+			value : Int;
+			if(elf_value->IsLower()) {
+				value := (elf_value - 96)->ToInt();
+			}
+			else {
+				value := (elf_value - 38)->ToInt();
+			};
+
+			first_elf_set->Insert(value);
 		};
+
+		for(i := 1; i < three_elves->Size(); i += 1;) {
+			elf := three_elves[i];
+			elf->PrintLine();
+		};
+
+		"---"->PrintLine();
 	}
 
 	function : ReadInput(file : String) ~ Vector<String> {
