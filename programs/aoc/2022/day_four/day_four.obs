@@ -40,7 +40,7 @@ class AoC {
 		start_check := elf_two_start >= elf_one_start;
 		end_check := elf_two_end <= elf_one_end;
 		
-"{$elf_one_start},{$elf_two_start};{$elf_one_end},{$elf_two_end}"->PrintLine();
+"{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
 
 		return start_check & end_check;
 	}
