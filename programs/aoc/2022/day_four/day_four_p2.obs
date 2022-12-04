@@ -37,7 +37,7 @@ class AoC {
 		elf_two_start := elf_two_pair->GetFirst()->Get();
 		elf_two_end := elf_two_pair->GetSecond()->Get();
 		
-"{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
+		"{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
 
 		return elf_one_end >=  elf_two_start;
 	}
