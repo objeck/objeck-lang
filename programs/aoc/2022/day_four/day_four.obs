@@ -17,7 +17,7 @@ class AoC {
 				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
 
 				IsContained(elf_one_pair, elf_two_pair)->PrintLine();
-				IsContained(elf_two_pair, elf_one_pair)->PrintLine();
+#				IsContained(elf_two_pair, elf_one_pair)->PrintLine();
 
 				"==="->PrintLine();
 			};
@@ -26,10 +26,10 @@ class AoC {
 
 	function : IsContained(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
 		elf_one_start := elf_one_pair->GetFirst()->Get();
-		elf_one_end := elf_one_pair->GetFirst()->Get();
+		elf_one_end := elf_one_pair->GetSecond()->Get();
 
 		elf_two_start := elf_two_pair->GetFirst()->Get();
-		elf_two_end := elf_two_pair->GetFirst()->Get();
+		elf_two_end := elf_two_pair->GetSecond()->Get();
 		
 		"{$elf_one_start},{$elf_two_start};{$elf_one_end},{$elf_two_end}"->PrintLine();
 
