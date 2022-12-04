@@ -18,7 +18,7 @@ class AoC {
 				elf_two_range := elf_two->Split("-");
 				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
 
-				if((IsOverlap(elf_one_pair, elf_two_pair) | IsOverlap(elf_two_pair, elf_one_pair))) {
+				if((IsOverlap(elf_one_pair, elf_two_pair) & IsOverlap(elf_two_pair, elf_one_pair))) {
 					count += 1;
 					"(*)"->PrintLine();
 				};
@@ -36,13 +36,10 @@ class AoC {
 
 		elf_two_start := elf_two_pair->GetFirst()->Get();
 		elf_two_end := elf_two_pair->GetSecond()->Get();
-
-		start_check := elf_two_start >= elf_one_start;
-		end_check := elf_two_end <= elf_one_end;
 		
 "{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
 
-		return start_check & end_check;
+		return elf_one_end >=  elf_two_start;
 	}
 
 	function : ReadInput(file : String) ~ Vector<String> {
