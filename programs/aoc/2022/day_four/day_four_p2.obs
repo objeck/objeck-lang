@@ -18,7 +18,7 @@ class AoC {
 				elf_two_range := elf_two->Split("-");
 				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
 
-				if((IsContained(elf_one_pair, elf_two_pair) | IsContained(elf_two_pair, elf_one_pair))) {
+				if((IsOverlap(elf_one_pair, elf_two_pair) | IsOverlap(elf_two_pair, elf_one_pair))) {
 					count += 1;
 					"(*)"->PrintLine();
 				};
@@ -30,7 +30,7 @@ class AoC {
 		};
 	}
 
-	function : IsContained(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
+	function : IsOverlap(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
 		elf_one_start := elf_one_pair->GetFirst()->Get();
 		elf_one_end := elf_one_pair->GetSecond()->Get();
 
