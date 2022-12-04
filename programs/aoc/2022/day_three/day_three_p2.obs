@@ -16,7 +16,9 @@ class AoC {
 					Runtime->Assert(item_value > 0);
 					item_sum += item_value;
 
-					"{$i}: {$item_value}"->PrintLine();					
+					group := i + 1;
+					"{$group}: {$item_value}"->PrintLine();					
+					
 					# reset
 					index := 0;
 				}
