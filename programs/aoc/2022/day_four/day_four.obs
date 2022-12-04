@@ -17,6 +17,7 @@ class AoC {
 				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
 
 				IsContained(elf_one_pair, elf_two_pair)->PrintLine();
+				IsContained(elf_two_pair, elf_one_pair)->PrintLine();
 
 				"==="->PrintLine();
 			};
