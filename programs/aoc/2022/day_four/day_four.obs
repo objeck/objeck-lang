@@ -12,18 +12,11 @@ class AoC {
 			
 				elf_one := elves[0];
 				elf_one_range := elf_one->Split("-");
-				elf_one_start := elf_one_range[0]->ToInt();
-				elf_one_end := elf_one_range[1]->ToInt();
-"{$elf_one_start},{$elf_one_end}"->PrintLine();
-				elf_one_pair := Pair->New(elf_one_start, elf_one_end)<IntHolder, IntHolder>;
-
-				"---"->PrintLine();
+				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntHolder, IntHolder>;
+				
 				elf_two := elves[1];
 				elf_two_range := elf_two->Split("-");
-				elf_two_start := elf_two_range[0]->ToInt();
-				elf_two_end := elf_two_range[1]->ToInt();
-"{$elf_two_start},{$elf_two_end}"->PrintLine();
-				elf_two_pair := Pair->New(elf_two_start, elf_two_end)<IntHolder, IntHolder>;
+				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
 
 				IsContained(elf_one_pair, elf_two_pair)->PrintLine();
 
