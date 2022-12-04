@@ -6,14 +6,12 @@ class AoC {
 			inputs := ReadInput(args[0])<String>;
 
 			each(i : inputs) {
-				input := inputs->Get(i);
-
-				elves := input->Split(",");
+				elves := inputs->Get(i)->Split(",");
 			
 				elf_one := elves[0];
 				elf_one_range := elf_one->Split("-");
 				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntHolder, IntHolder>;
-				
+
 				elf_two := elves[1];
 				elf_two_range := elf_two->Split("-");
 				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
