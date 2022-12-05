@@ -63,15 +63,43 @@ extern "C" {
   void openssl_hash_sha256(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
-    int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
-    
-    // hash 
-    unsigned char output[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, input, input_size);
-    SHA256_Final(output, &sha256);
+    int input_size = APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if(!ctx) {
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestUpdate(ctx, input, input_size)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    unsigned char output[EVP_MAX_MD_SIZE];
+    memset(output, 0, EVP_MAX_MD_SIZE);
+
+    unsigned int hash_len = 0;
+    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(hash_len != SHA256_DIGEST_LENGTH) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, SHA256_DIGEST_LENGTH);
@@ -79,8 +107,66 @@ extern "C" {
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
-    
+
+    EVP_MD_CTX_free(ctx);
+    output_holder[0] = (size_t)output_byte_array;
+  }
+
+  //
+  // SHA-512 hash
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void openssl_hash_sha512(VMContext& context) {
+    // get parameters
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
+    int input_size = APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
     size_t* output_holder = APITools_GetIntAddress(context, 0);
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if(!ctx) {
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestInit_ex(ctx, EVP_sha512(), NULL)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestUpdate(ctx, input, input_size)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    unsigned char output[EVP_MAX_MD_SIZE];
+    memset(output, 0, EVP_MAX_MD_SIZE);
+
+    unsigned int hash_len = 0;
+    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(hash_len != SHA512_DIGEST_LENGTH) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    // copy output
+    size_t* output_byte_array = APITools_MakeByteArray(context, SHA512_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(int i = 0; i < SHA512_DIGEST_LENGTH; i++) {
+      output_byte_array_buffer[i] = output[i];
+    }
+
+    EVP_MD_CTX_free(ctx);
     output_holder[0] = (size_t)output_byte_array;
   }
   
@@ -92,32 +178,63 @@ extern "C" {
 #endif
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
+    int input_size = APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    size_t result = APITools_GetIntAddress(context, 1)[0];
-    if(result) {
-      size_t* input_array = (size_t*)result;
 
-      int input_size =  APITools_GetArraySize(input_array) - 1;
-      const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
-      
-      // hash 
-      unsigned char output[RIPEMD160_DIGEST_LENGTH];
-      RIPEMD160_CTX sha256;
-      RIPEMD160_Init(&sha256);
-      RIPEMD160_Update(&sha256, input, input_size);
-      RIPEMD160_Final(output, &sha256);
-
-      // copy output
-      size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
-      unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-      for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
-        output_byte_array_buffer[i] = output[i];
-      }
-      output_holder[0] = (size_t)output_byte_array;
-    }
-    else {
+    // hash 
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if(!ctx) {
       output_holder[0] = 0;
+      return;
     }
+
+    if(!EVP_DigestInit_ex(ctx, EVP_ripemd160(), NULL)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestUpdate(ctx, input, input_size)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    unsigned char output[EVP_MAX_MD_SIZE];
+    memset(output, 0, EVP_MAX_MD_SIZE);
+
+    unsigned int hash_len = 0;
+    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(hash_len != RIPEMD160_DIGEST_LENGTH) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    // copy output
+    size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
+      output_byte_array_buffer[i] = output[i];
+    }
+
+    EVP_MD_CTX_free(ctx);
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
+    unsigned char output[RIPEMD160_DIGEST_LENGTH];
+    RIPEMD160_CTX sha256;
+    RIPEMD160_Init(&sha256);
+    RIPEMD160_Update(&sha256, input, input_size);
+    RIPEMD160_Final(output, &sha256);
+    */
   }
   
 #ifdef _WIN32
