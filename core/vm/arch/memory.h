@@ -194,7 +194,7 @@ class MemoryManager {
     mem_logger.close();
 #endif
 
-    if(free_memory_cache.empty()) {
+    if(!free_memory_cache.empty()) {
       ClearFreeMemory(true);
       free_memory_cache.clear();
     }
