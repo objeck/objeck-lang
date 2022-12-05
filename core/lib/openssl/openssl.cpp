@@ -183,6 +183,7 @@ extern "C" {
     const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
     size_t* output_holder = APITools_GetIntAddress(context, 0);
 
+#ifdef _WIN32_
     // hash 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if(!ctx) {
@@ -217,6 +218,15 @@ extern "C" {
       output_holder[0] = 0;
       return;
     }
+    EVP_MD_CTX_free(ctx);
+#else
+    // hash 
+    unsigned char output[RIPEMD160_DIGEST_LENGTH];
+    RIPEMD160_CTX sha256;
+    RIPEMD160_Init(&sha256);
+    RIPEMD160_Update(&sha256, input, input_size);
+    RIPEMD160_Final(output, &sha256);
+#endif
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
@@ -225,7 +235,6 @@ extern "C" {
       output_byte_array_buffer[i] = output[i];
     }
 
-    EVP_MD_CTX_free(ctx);
     output_holder[0] = (size_t)output_byte_array;
   }
   
