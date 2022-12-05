@@ -222,21 +222,18 @@ extern "C" {
 #else
     // hash 
     unsigned char output[RIPEMD160_DIGEST_LENGTH];
-    RIPEMD160_CTX sha256);
-    if(RIPEMD160_Init(&sha256)) {
-      EVP_MD_CTX_free(ctx);
+    RIPEMD160_CTX sha256;
+    if(!RIPEMD160_Init(&sha256)) {
       output_holder[0] = 0;
       return;
     }
 
     if(!RIPEMD160_Update(&sha256, input, input_size)) {
-      EVP_MD_CTX_free(ctx);
       output_holder[0] = 0;
       return;
     }
 
     if(!RIPEMD160_Final(output, &sha256)) {
-      EVP_MD_CTX_free(ctx);
       output_holder[0] = 0;
       return;
     }
