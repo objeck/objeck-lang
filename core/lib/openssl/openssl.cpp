@@ -118,7 +118,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_hash_sha512(VMContext& context) {
+  void openssl_hash_sha512(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
     int input_size = APITools_GetArraySize(input_array) - 1;
@@ -171,7 +171,7 @@ extern "C" {
   }
   
   //
-  // RIPEMD-160 hash
+  // RIPEMD160 hash
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -227,37 +227,63 @@ extern "C" {
 
     EVP_MD_CTX_free(ctx);
     output_holder[0] = (size_t)output_byte_array;
-
-    /*
-    unsigned char output[RIPEMD160_DIGEST_LENGTH];
-    RIPEMD160_CTX sha256;
-    RIPEMD160_Init(&sha256);
-    RIPEMD160_Update(&sha256, input, input_size);
-    RIPEMD160_Final(output, &sha256);
-    */
   }
   
+  //
+  // MD5 hash
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
   void openssl_hash_md5(VMContext& context) {
     // get parameters
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
-    int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
-    
-    // hash 
-    unsigned char output[MD5_DIGEST_LENGTH];
-    MD5(input, input_size, output);
-    
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
+    int input_size = APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if(!ctx) {
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!EVP_DigestUpdate(ctx, input, input_size)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    unsigned char output[EVP_MAX_MD_SIZE];
+    memset(output, 0, EVP_MAX_MD_SIZE);
+
+    unsigned int hash_len = 0;
+    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(hash_len != MD5_DIGEST_LENGTH) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, MD5_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
-    
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+
+    EVP_MD_CTX_free(ctx);
     output_holder[0] = (size_t)output_byte_array;
   }
 
@@ -283,7 +309,7 @@ extern "C" {
     // encrypt
     unsigned char iv[32];
     unsigned char key_out[32];
-    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, key, key_size, 8, key_out, iv);
+    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv);
     if (result != 32) {
       return;
     }
@@ -351,7 +377,7 @@ extern "C" {
     // decrypt
     unsigned char iv[32];
     unsigned char key_out[32];
-    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, key, key_size, 8, key_out, iv);
+    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv);
     if (result != 32) {
       return;
     }
