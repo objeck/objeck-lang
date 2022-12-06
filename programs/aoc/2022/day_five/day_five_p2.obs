@@ -3,89 +3,169 @@ use Collection.Generic;
 class AoC {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			inputs := ReadInput(args[0])<String>;
+			stacks_max := 9;
 
-			index := item_sum := 0;
-			three_elves := String->New[3];
-			each(i : inputs) {
-				input := inputs->Get(i);
-
-				if((i + 1) % 3 = 0) {
-					three_elves[index] := input;
-					item_value := CarryThree(three_elves);
-					Runtime->Assert(item_value > 0);
-					item_sum += item_value;
-
-					group := i + 1;
-					"{$group}: {$item_value}"->PrintLine();					
-					
-					# reset
-					index := 0;
-				}
-				else {
-					three_elves[index++] := input;
-				};
+			stacks := CompareList->New[stacks_max]<CharHolder>;
+			each(i : stacks_max) {
+				stacks[i] := CompareList->New()<CharHolder>;
 			};
-			"---\n{$item_sum}"->PrintLine();
+			
+			# read data
+			inputs := ReadData(args[0])<String>;
+
+			# load crates
+			line_nbr := LoadCrates(inputs, stacks);
+
+			# load instructions
+			instrs := LoadInstructions(inputs, line_nbr);
+
+			# process instructions
+			ProcessInstructions(instrs, stacks);
 		};
 	}
 
-	function : CarryThree(three_elves : String[]) ~ Int {
-		first_elf := three_elves[0];
+	function : ProcessInstructions(instrs : Vector<IntArrayHolder>, stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : instrs) {
+			instr := instrs->Get(i)->Get();
 
-		first_elf_set := Map->New()<IntHolder, IntHolder>;
-		each(i : first_elf) {
-			elf_key := first_elf->Get(i);
+			instr->ToString()->PrintLine();
+			"---"->PrintLine();
 
-			key : Int;
-			if(elf_key->IsLower()) {
-				key := (elf_key - 96)->ToInt();
-			}
-			else {
-				key := (elf_key - 38)->ToInt();
+			from_pos := instr[1];
+			to_pos := instr[2];
+			count := instr[0] + 1;
+
+			from_list := stacks[from_pos];
+			to_list := stacks[to_pos];
+
+			each(j : count) {
+				value := from_list->Back();
+				from_list->RemoveBack();			
+				to_list->AddBack(value);
 			};
 
-			first_elf_set->Insert(key, 0);
+			PrintStacks(stacks);
 		};
 
-		for(i := 1; i < three_elves->Size(); i += 1;) {
-			elf := three_elves[i];
+		PrintStackTops(stacks);
+	}
 
-			each(j : elf) {
-				elf_key := elf->Get(j);
+	function : LoadCrates(inputs : Vector<String>, stacks : CompareList[]<CharHolder>) ~ Int {
+		line_nbr := 0;
 
-				key : Int;
-				if(elf_key->IsLower()) {
-					key := (elf_key - 96)->ToInt();
-				}
-				else {
-					key := (elf_key - 38)->ToInt();
-				};
+		done := false;
+		instrs : Vector<IntArrayHolder>;
+		for(; <>done & line_nbr < inputs->Size(); line_nbr += 1;) {
+			input := inputs->Get(line_nbr);
+			if(input->IsEmpty()) {
+				done := true;
+			}
+			else {
+				each(line_pos : input) {
+					char := input->Get(line_pos);
+					if(char->IsChar()) {
+						select(line_pos) {
+							label 1: {
+								stacks[0]->AddFront(char);
+							}
 
-				elf_count := first_elf_set->Find(key);
-				if(elf_count <> Nil) {
-					if(elf_count->Get() = i - 1) {
-						elf_count->Add(1);
+							label 5: {
+								stacks[1]->AddFront(char);
+							}
+
+							label 9: {
+								stacks[2]->AddFront(char);
+							}
+
+							label 13: {
+								stacks[3]->AddFront(char);
+							}
+
+							label 17: {
+								stacks[4]->AddFront(char);
+							}
+
+							label 21: {
+								stacks[5]->AddFront(char);
+							}
+
+							label 25: {
+								stacks[6]->AddFront(char);
+							}
+
+							label 29: {
+								stacks[7]->AddFront(char);
+							}
+
+							label 33: {
+								stacks[8]->AddFront(char);
+							}
+						};
 					};
 				};
 			};
 		};
 
-		first_elf_key_values := first_elf_set->GetKeyValues()<Pair<IntHolder, IntHolder>>;
-		each(i : first_elf_key_values) {
-			first_elf_key_value := first_elf_key_values->Get(i)<Pair<IntHolder, IntHolder>>;
-			first_elf_key := first_elf_key_value->GetFirst();
-			first_elf_value := first_elf_key_value->GetSecond();
-
-			if(first_elf_value = 2) {
-				return first_elf_key;
-			};
-		};
-
-		return -1;
+		return line_nbr;
 	}
 
-	function : ReadInput(file : String) ~ Vector<String> {
+	function : LoadInstructions(inputs : Vector<String>, line_nbr : Int) ~ Vector<IntArrayHolder> {
+		instrs := Vector->New()<IntArrayHolder>;
+
+		for(; line_nbr < inputs->Size(); line_nbr += 1;) {
+			instr := Int->New[3];
+			instr_pos := 0;
+
+			input := inputs->Get(line_nbr);
+			each(line_pos : input) {
+				char := input->Get(line_pos);
+				if(char->IsDigit()) {
+					str_digit := "";
+					while(char->IsDigit()) {
+						str_digit->Append(char);
+						char := input->Get(++line_pos);
+					};
+					instr[instr_pos++] := str_digit->ToInt() - 1;
+				};
+			};
+			instrs->AddBack(IntArrayHolder->New(instr));
+		};
+
+		return instrs;
+	}
+
+	function : PrintStackTops(stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : stacks) {
+			stack := stacks[i];
+			if(<>stack->IsEmpty()) {
+				stack->Back()->Print();
+			};
+		};
+		'\n'->Print();
+	}
+
+	function : PrintStacks(stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : stacks) {
+			stack := stacks[i];
+
+			stack->Rewind();
+			"{$i}: "->Print();
+			while(stack->More()) {
+				char := stack->Get();
+				char->Print();
+				# next
+				stack->Next();
+
+				if(stack->More()) {
+					", "->Print();
+				};
+			};
+			'\n'->Print();
+		};
+		"======"->PrintLine();
+	}
+
+	function : ReadData(file : String) ~ Vector<String> {
 		inputs := Vector->New()<String>;
 
 		reader := System.IO.Filesystem.FileReader->New(file);
@@ -93,12 +173,10 @@ class AoC {
 			reader->Close();
 		};
 
-		line := reader->ReadLine();
-		while(line <> Nil) {
-			if(<>line->IsEmpty()) {
-				inputs->AddBack(line);
-			};
-			line := reader->ReadLine();
+		line_nbr := reader->ReadLine();
+		while(line_nbr <> Nil) {
+			inputs->AddBack(line_nbr);
+			line_nbr := reader->ReadLine();
 		};
 
 		return inputs;
