@@ -15,9 +15,12 @@ class AoC {
 
 			# load crates
 			line_nbr := LoadCrates(inputs, stacks);
+			PrintStacks(stacks);
 
 			# load instructions
 			instrs := LoadInstructions(inputs, line_nbr);
+
+"--- 0 ---"->PrintLine();
 
 			# process instructions
 			ProcessInstructions(instrs, stacks);
@@ -28,20 +31,27 @@ class AoC {
 		each(i : instrs) {
 			instr := instrs->Get(i)->Get();
 
-			instr->ToString()->PrintLine();
-			"---"->PrintLine();
-
 			from_pos := instr[1];
 			to_pos := instr[2];
 			count := instr[0] + 1;
 
+			"[{$count}:{$from_pos}→{$to_pos}]"->PrintLine();
+			"---"->PrintLine();
+
 			from_list := stacks[from_pos];
 			to_list := stacks[to_pos];
 
-			each(j : count) {
+			if(count = 1) {
 				value := from_list->Back();
 				from_list->RemoveBack();			
 				to_list->AddBack(value);
+			}
+			else {
+				each(j : count) {
+					value := from_list->Front();
+					from_list->RemoveFront();			
+					to_list->AddBack(value);
+				};
 			};
 
 			PrintStacks(stacks);
