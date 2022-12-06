@@ -176,14 +176,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void openssl_hash_ripemd160(VMContext& context) {
+    void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
     int input_size = APITools_GetArraySize(input_array) - 1;
     const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
     size_t* output_holder = APITools_GetIntAddress(context, 0);
 
-#ifdef _WIN32_
+#ifdef _WIN32
     // hash 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if(!ctx) {
@@ -222,10 +222,24 @@ extern "C" {
 #else
     // hash 
     unsigned char output[RIPEMD160_DIGEST_LENGTH];
-    RIPEMD160_CTX sha256;
-    RIPEMD160_Init(&sha256);
-    RIPEMD160_Update(&sha256, input, input_size);
-    RIPEMD160_Final(output, &sha256);
+    RIPEMD160_CTX sha256);
+    if(RIPEMD160_Init(&sha256)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!RIPEMD160_Update(&sha256, input, input_size)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(!RIPEMD160_Final(output, &sha256)) {
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = 0;
+      return;
+    }
 #endif
 
     // copy output
