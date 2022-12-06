@@ -41,13 +41,13 @@ contexts:
     - match: '\b(bundle)\b'
       scope: storage.type.trait.objeck-obs
 
-    - match: '\b(Byte|Int|Float|Char|Bool|String|As)\b'
+    - match: '\b(Nil|Byte|ByteHolder|Int|IntHolder|Float|FloatHolder|Char|CharHolder|Bool|BoolHolder|String|BaseArrayHolder|BoolArrayHolder|ByteArrayHolder|CharArrayHolder|FloatArrayHolder|IntArrayHolder|StringArrayHolder|Func2Holder|Func3Holder|Func4Holder|FuncHolder|As)\b'
       scope: storage.type.objeck-obs
 
     - match: \[|\]|,
       scope: punctuation.separator.objeck-obs
 
-    - match: '\b(Nil|true|false)\b'
+    - match: '\b(true|false)\b'
       scope: constant.language.objeck-obs
 
     # Numbers

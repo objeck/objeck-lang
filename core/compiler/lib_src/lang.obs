@@ -2140,6 +2140,38 @@ bundle System {
 	}
 
 	#~
+	Holds an boolean array
+	~#
+	class BoolArrayHolder {
+		@values : Bool[];
+
+		#~
+		Copy constructor 
+		@param values integer array 
+		~#
+		New(values : Bool[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ Bool[] {
+			return @values;
+		}
+		
+		#~
+		Set values
+		@param values integer array 
+		~#
+		method : public : Set(values : Bool[]) ~ Nil {
+			@values := values;
+		}
+	}
+
+	#~
 	Holds a float array
 	~#
 	class FloatArrayHolder {
