@@ -73,7 +73,7 @@ extern "C" {
       return;
     }
 
-    if(!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
+    if(!EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr)) {
       EVP_MD_CTX_free(ctx);
       output_holder[0] = 0;
       return;
@@ -131,7 +131,7 @@ extern "C" {
       return;
     }
 
-    if(!EVP_DigestInit_ex(ctx, EVP_sha512(), NULL)) {
+    if(!EVP_DigestInit_ex(ctx, EVP_sha512(), nullptr)) {
       EVP_MD_CTX_free(ctx);
       output_holder[0] = 0;
       return;
@@ -176,7 +176,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-    void openssl_hash_ripemd160(VMContext& context) {
+  void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
     int input_size = APITools_GetArraySize(input_array) - 1;
@@ -191,7 +191,7 @@ extern "C" {
       return;
     }
 
-    if(!EVP_DigestInit_ex(ctx, EVP_ripemd160(), NULL)) {
+    if(!EVP_DigestInit_ex(ctx, EVP_ripemd160(), nullptr)) {
       EVP_MD_CTX_free(ctx);
       output_holder[0] = 0;
       return;
@@ -268,7 +268,7 @@ extern "C" {
       return;
     }
 
-    if(!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
+    if(!EVP_DigestInit_ex(ctx, EVP_md5(), nullptr)) {
       EVP_MD_CTX_free(ctx);
       output_holder[0] = 0;
       return;
@@ -322,32 +322,36 @@ extern "C" {
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
     const int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
+
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     
     // TODO: add salt
-    unsigned char* salt = NULL;
+    unsigned char* salt = nullptr;
     
     // encrypt
     unsigned char iv[32];
     unsigned char key_out[32];
-    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv);
-    if (result != 32) {
+    if(EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv) != 32) {
+      output_holder[0] = 0;
       return;
     }
     
     int output_size = input_size + AES_BLOCK_SIZE;     
     unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));    
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, key, iv)) {
       EVP_CIPHER_CTX_free(ctx);      
       free(output);
-      output = NULL;
+      output = nullptr;
+      output_holder[0] = 0;
       return;
     }
     
     if(!EVP_EncryptUpdate(ctx, output, &output_size, input, input_size)) {
       EVP_CIPHER_CTX_free(ctx);      
       free(output);
-      output = NULL;
+      output = nullptr;
+      output_holder[0] = 0;
       return;
     }
     
@@ -355,7 +359,8 @@ extern "C" {
     if(!EVP_EncryptFinal_ex(ctx, output + output_size, &final_size)) {
       EVP_CIPHER_CTX_free(ctx);      
       free(output);
-      output = NULL;
+      output = nullptr;
+      output_holder[0] = 0;
       return;
     }
     
@@ -369,9 +374,8 @@ extern "C" {
       output_byte_array_buffer[i] = output[i];
     }
     free(output);
-    output = NULL;
+    output = nullptr;
     
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
   }
   
@@ -390,21 +394,25 @@ extern "C" {
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
     const int input_size =  APITools_GetArraySize(input_array);
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
+
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     
     // TODO: add salt
-    unsigned char* salt = NULL;
+    unsigned char* salt = nullptr;
     
     // decrypt
     unsigned char iv[32];
     unsigned char key_out[32];
     int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv);
     if (result != 32) {
+      output_holder[0] = 0;
       return;
     }
     
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if(!EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+    if(!EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, key, iv)) {
       EVP_CIPHER_CTX_free(ctx);      
+      output_holder[0] = 0;
       return;
     }
     
@@ -413,7 +421,8 @@ extern "C" {
     if(!EVP_DecryptUpdate(ctx, output, &output_size, input, input_size)) {
       EVP_CIPHER_CTX_free(ctx);      
       free(output);
-      output = NULL;
+      output = nullptr;
+      output_holder[0] = 0;
       return;
     }
   
@@ -421,7 +430,8 @@ extern "C" {
     if(!EVP_DecryptFinal_ex(ctx, output + output_size, &final_size))  {
       EVP_CIPHER_CTX_free(ctx);      
       free(output);
-      output = NULL;
+      output = nullptr;
+      output_holder[0] = 0;
       return;
     }
     
@@ -435,9 +445,8 @@ extern "C" {
       output_byte_array_buffer[i] = output[i];
     }
     free(output);
-    output = NULL;
+    output = nullptr;
     
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
   }
 
