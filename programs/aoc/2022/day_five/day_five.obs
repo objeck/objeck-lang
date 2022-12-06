@@ -3,59 +3,93 @@ use Collection.Generic;
 class AoC {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			inputs := ReadInput(args[0])<String>;
+			stacks_max := 9;
 
-			total := 0;
-			each(i : inputs) {
-				input := inputs->Get(i);
-				half_pos := input->Size() / 2;
-
-				# get laft a right halfs
-				left_input := input->SubString(half_pos);
-				right_input := input->SubString(half_pos, input->Size() - half_pos);
-
-				left_input->PrintLine();
-				right_input->PrintLine();
-
-				left_input_set := Set->New()<IntHolder>;
-				each(j : left_input) {
-					left_value := left_input->Get(j);
-
-					value : Int;
-					if(left_value->IsLower()) {
-						value := (left_input->Get(j) - 96)->ToInt();
-					}
-					else {
-						value := (left_input->Get(j) - 38)->ToInt();
-					};
-
-					left_input_set->Insert(value);
-				};
-
-				found := false;
-				for(j := 0; j < right_input->Size() & <>found; j += 1;) {
-					right_value := right_input->Get(j);
-
-					value : Int;
-					if(right_value->IsLower()) {
-						value := (right_input->Get(j) - 96)->ToInt();
-					}
-					else {
-						value := (right_input->Get(j) - 38)->ToInt();
-					};
-
-					
-					if(left_input_set->Has(value)) {
-						total += value;
-						value->PrintLine();
-						found := true;
-					};
-				};
-
-				"---"->PrintLine();
+			stacks := CompareList->New[stacks_max]<CharHolder>;
+			each(i : stacks_max) {
+				stacks[i] := CompareList->New()<CharHolder>;
 			};
 			
-			"===\n{$total}"->PrintLine();			
+			inputs := ReadInput(args[0])<String>;
+
+			# process stacks
+			done := false;
+			line := 0;
+			for(; <>done & line < inputs->Size(); line += 1;) {
+				input := inputs->Get(line);
+				if(input->IsEmpty()) {
+					done := true;
+				}
+				else {
+					each(pos : input) {
+						char := input->Get(pos);
+						if(char->IsChar()) {
+							select(pos) {
+								label 1: {
+									stacks[0]->AddFront(char);
+								}
+
+								label 5: {
+									stacks[1]->AddFront(char);
+								}
+
+								label 9: {
+									stacks[2]->AddFront(char);
+								}
+
+								label 13: {
+									stacks[3]->AddFront(char);
+								}
+
+								label 17: {
+									stacks[4]->AddFront(char);
+								}
+
+								label 21: {
+									stacks[5]->AddFront(char);
+								}
+
+								label 25: {
+									stacks[6]->AddFront(char);
+								}
+
+								label 29: {
+									stacks[7]->AddFront(char);
+								}
+
+								label 33: {
+									stacks[8]->AddFront(char);
+								}
+							};
+						};
+					};
+				};
+			};
+			PrintStacks(stacks);
+
+			# process instructions
+
+
+		};
+	}
+
+	function : PrintStacks(stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : stacks) {
+			stack := stacks[i];
+
+			stack->Rewind();
+			"{$i}: "->Print();
+			while(stack->More()) {
+				char := stack->Get();
+				char->Print();
+				# next
+				stack->Next();
+
+				if(stack->More()) {
+					", "->Print();
+				};
+			};
+			'\n'->Print();
 		};
 	}
 
@@ -69,9 +103,7 @@ class AoC {
 
 		line := reader->ReadLine();
 		while(line <> Nil) {
-			if(<>line->IsEmpty()) {
-				inputs->AddBack(line);
-			};
+			inputs->AddBack(line);
 			line := reader->ReadLine();
 		};
 
