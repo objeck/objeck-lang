@@ -68,8 +68,11 @@ class AoC {
 			PrintStacks(stacks);
 
 			# process instructions
-
-
+			line += 1;
+			for(; line < inputs->Size(); line += 1;) {
+				instr := inputs->Get(line);
+				instr->PrintLine();
+			};
 		};
 	}
 
