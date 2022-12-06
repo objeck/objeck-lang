@@ -1,0 +1,9 @@
+use Collection.Generic;
+
+class AoC {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			System.IO.Filesystem.FileReader->ReadFile(args[0])->PrintLine();
+		};
+	}
+}
