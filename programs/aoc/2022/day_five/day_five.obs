@@ -15,6 +15,7 @@ class AoC {
 			# process stacks
 			done := false;
 			line_nbr := 0;
+			instrs : Vector<IntArrayHolder>;
 			for(; <>done & line_nbr < inputs->Size(); line_nbr += 1;) {
 				input := inputs->Get(line_nbr);
 				if(input->IsEmpty()) {
@@ -65,26 +66,71 @@ class AoC {
 					};
 				};
 			};
+
 			PrintStacks(stacks);
 
-			# process instructions
-			instrs := Vector->New()<IntArrayHolder>;
+			# load instructions
+			instrs := LoadInstructions(inputs, line_nbr);
 
-			for(; line_nbr < inputs->Size(); line_nbr += 1;) {
-				instr := Int->New[3];
-				instr_pos := 0;
+			each(i : instrs) {
+				instr := instrs->Get(i)->Get();
 
-				input := inputs->Get(line_nbr);
-				each(line_pos : input) {
-					char := input->Get(line_pos);
-					if(char->IsDigit()) {
-						# for zero based array
-						instr[instr_pos++] := char - '1';
-					};
+				instr->ToString()->PrintLine();
+				"---"->PrintLine();
+
+				from_pos := instr[1];
+				to_pos := instr[2];
+				count := instr[0] + 1;
+
+				from_list := stacks[from_pos];
+				to_list := stacks[to_pos];
+
+				each(j : count) {
+					value := from_list->Back();
+					from_list->RemoveBack();			
+					to_list->AddBack(value);
 				};
-				instrs->AddBack(IntArrayHolder->New(instr));
+
+				PrintStacks(stacks);
+			};
+
+			PrintStackTops(stacks);
+		};
+	}
+
+	function : LoadInstructions(inputs : Vector<String>, line_nbr : Int) ~ Vector<IntArrayHolder> {
+		instrs := Vector->New()<IntArrayHolder>;
+
+		for(; line_nbr < inputs->Size(); line_nbr += 1;) {
+			instr := Int->New[3];
+			instr_pos := 0;
+
+			input := inputs->Get(line_nbr);
+			each(line_pos : input) {
+				char := input->Get(line_pos);
+				if(char->IsDigit()) {
+					str_digit := "";
+					while(char->IsDigit()) {
+						str_digit->Append(char);
+						char := input->Get(++line_pos);
+					};
+					instr[instr_pos++] := str_digit->ToInt() - 1;
+				};
+			};
+			instrs->AddBack(IntArrayHolder->New(instr));
+		};
+
+		return instrs;
+	}
+
+	function : PrintStackTops(stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : stacks) {
+			stack := stacks[i];
+			if(<>stack->IsEmpty()) {
+				stack->Back()->Print();
 			};
 		};
+		'\n'->Print();
 	}
 
 	function : PrintStacks(stacks : CompareList[]<CharHolder>) ~ Nil {
@@ -105,7 +151,7 @@ class AoC {
 			};
 			'\n'->Print();
 		};
-		"---"->PrintLine();
+		"======"->PrintLine();
 	}
 
 	function : ReadInput(file : String) ~ Vector<String> {
