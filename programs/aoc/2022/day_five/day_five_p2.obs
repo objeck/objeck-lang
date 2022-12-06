@@ -20,14 +20,14 @@ class AoC {
 			# load instructions
 			instrs := LoadInstructions(inputs, line_nbr);
 
-"--- 0 ---"->PrintLine();
-
 			# process instructions
 			ProcessInstructions(instrs, stacks);
 		};
 	}
 
 	function : ProcessInstructions(instrs : Vector<IntArrayHolder>, stacks : CompareList[]<CharHolder>) ~ Nil {
+		order_stack := Stack->New()<CharHolder>;
+
 		each(i : instrs) {
 			instr := instrs->Get(i)->Get();
 
@@ -35,23 +35,21 @@ class AoC {
 			to_pos := instr[2];
 			count := instr[0] + 1;
 
-			"[{$count}:{$from_pos}→{$to_pos}]"->PrintLine();
+			"[{$from_pos}→{$to_pos}:{$count}]"->PrintLine();
 			"---"->PrintLine();
 
 			from_list := stacks[from_pos];
 			to_list := stacks[to_pos];
 
-			if(count = 1) {
+			order_stack->Empty();
+			each(j : count) {
 				value := from_list->Back();
 				from_list->RemoveBack();			
-				to_list->AddBack(value);
-			}
-			else {
-				each(j : count) {
-					value := from_list->Front();
-					from_list->RemoveFront();			
-					to_list->AddBack(value);
-				};
+				order_stack->Push(value);	
+			};
+
+			while(<>order_stack->IsEmpty()) {
+				to_list->AddBack(order_stack->Pop());
 			};
 
 			PrintStacks(stacks);
