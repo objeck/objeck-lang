@@ -5,7 +5,7 @@ class AoC {
 		if(args->Size() = 1) {
 			input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 			input_size := input->Size();
-			"input={$input_size}: '{$input}'"->PrintLine();
+			"{$input_size}: '{$input}'"->PrintLine();
 
 			buffer := LoadBuffer(input, 4);
 			if(IsMarker(buffer)) {
