@@ -22,10 +22,8 @@ class AoC {
 		};
 
 		command->ToString()->PrintLine();
-
 		
 		if(command->GetType() = Command->Type->CD) {
-
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);
 			}
