@@ -1,5 +1,3 @@
-use Collection.Generic;
-
 class AoC {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -46,7 +44,7 @@ class AoC {
 
 	function : LoadBuffer(input : String, size : Int) ~ Char[] {
 		buffer := Char->New[size];
-				
+		
 		each(i : size) {
 			buffer[i] := input->Get(i);
 		};
