@@ -9,15 +9,40 @@ class AoC {
 			each(i : inputs) {
 				commands->AddBack(ParseCommand(inputs->Get(i)));
 			};
-			
+
 			ExecuteCommands(commands);
 		};
 	}
 
 	function : ExecuteCommands(commands : Vector<Command>) ~ Nil {
+		dir_stack := Collection.Generic.Stack->New()<String>;
+
 		each(i : commands) {
-			commands->Get(i)->ToString()->PrintLine();
-			"---"->PrintLine();
+			command := commands->Get(i);
+			
+			select(command->GetType()) {
+				label Command->Type->CD {
+					operand := command->GetOperand();
+					if(operand->Equals("..")) {
+						dir_stack->Pop();
+					}
+					else {
+						dir_stack->Push(operand);
+					};
+				}
+
+				label Command->Type->LS {
+					
+				}
+
+				label Command->Type->DIR {
+					
+				}
+
+				label Command->Type->FILE {
+					
+				}
+			};
 		};
 	}
 
