@@ -11,55 +11,89 @@ class AoC {
 			};
 
 			ExecuteCommands(commands);
+			"---"->PrintLine();
+			WalkTree(commands->Get(0), 0);
+		};
+	}
+
+	function : WalkTree(command : Command, level : IntHolder) ~ Nil {
+		for(i := 0; i < level->Get(); i += 1;) {
+			'\t'->Print();
+		};
+
+		command->ToString()->PrintLine();
+
+		
+		if(command->GetType() = Command->Type->CD) {
+
+			if(command->GetOperand()->Equals("..")) {
+				level->Sub(1);
+			}
+			else {
+				level->Add(1);
+			};
+		};
+
+		children := command->GetChildren();
+		each(i : children) {
+			WalkTree(children->Get(i), level);
 		};
 	}
 
 	function : ExecuteCommands(commands : Vector<Command>) ~ Nil {
-		is_ls := false;
-		dir_stack := Collection.Generic.Stack->New()<String>;
+		cur_dir : Command;
+		dir_stack := Collection.Generic.Stack->New()<Command>;
 		each(i : commands) {
 			command := commands->Get(i);
-			
-			each(j : dir_stack) {
-				"  "->Print();
-			};
 
 			select(command->GetType()) {
 				label Command->Type->CD {
-					is_ls := false;
+					if(<>dir_stack->IsEmpty()) {
+						cur_dir->AddChild(command);
+					};
 
-					operand := command->GetOperand();
-					if(operand->Equals("..")) {
+					dir_name := command->GetOperand();
+					if(dir_name->Equals("..")) {
 						dir_stack->Pop();
-						""->PrintLine();
 					}
 					else {
-						dir_stack->Push(operand);
-						"[{$operand}]"->PrintLine();
+						dir_stack->Push(command);
 					};
 				}
 
 				label Command->Type->LS {
-					""->PrintLine();
-					is_ls := true;
+					dir_name := dir_stack->Top()->GetOperand();
+					for(j := 1; j < dir_stack->Size(); j += 1;) {
+						'\t'->Print();
+					};
+					"At: '{$dir_name}'"->PrintLine();
+
+					cur_dir := dir_stack->Top();
 				}
 
 				label Command->Type->DIR {
-					if(is_ls) {
-						name := command->GetOperand();
-						"{$name} (dir)"->PrintLine();
+					dir_name := command->GetOperand();
+					for(j := 0; j < dir_stack->Size(); j += 1;) {
+						'\t'->Print();
 					};
+					"Directory: {$dir_name}"->PrintLine();
 				}
 
 				label Command->Type->FILE {
-					if(is_ls) {
-						size := command->GetOperand();
-						name := command->GetOperand2();
-						"{$name} (size={$size})"->PrintLine();
+					file_size := command->GetOperand()->ToInt();
+					file_name := command->GetOperand2();
+					
+					for(j := 0; j < dir_stack->Size(); j += 1;) {
+						'\t'->Print();
 					};
+					"File: {$file_name} ({$file_size})"->PrintLine();
+
+					cur_dir->AddChild(command);
 				}
 			};
 		};
+
+		
 	}
 
 	function : ParseCommand(line : String) ~ Command {
@@ -108,6 +142,7 @@ class Command {
 	@type : Command->Type;
 	@operand : String;
 	@operand2 : String;
+	@children : Vector<Command>;
 
 	enum Type {
 		CD,
@@ -118,17 +153,20 @@ class Command {
 
 	New(type : Command->Type) {
 		@type := type;
+		@children := Vector->New()<Command>;
 	}
 
 	New(type : Command->Type, operand : String) {
 		@type := type;
 		@operand := operand;
+		@children := Vector->New()<Command>;
 	}
 
 	New(type : Command->Type, operand : String, operand2 : String) {
 		@type := type;
 		@operand := operand;
 		@operand2 := operand2;
+		@children := Vector->New()<Command>;
 	}
 
 	method : public : GetType() ~ Command->Type {
@@ -141,6 +179,14 @@ class Command {
 
 	method : public : GetOperand2() ~ String {
 		return @operand2;
+	}
+
+	method : public : AddChild(child : Command) ~ Nil {
+		@children->AddBack(child);
+	}
+
+	method : public : GetChildren() ~ Vector<Command> {
+		return @children;
 	}
 
 	method : public : ToString() ~ String {
