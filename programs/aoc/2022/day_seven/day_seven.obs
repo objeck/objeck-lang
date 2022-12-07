@@ -1,8 +1,11 @@
 use Collection.Generic;
 
 class AoC {
+	@debug : static : Bool;
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
+			@debug := false;
 			inputs := ReadInput(args[0])<String>;
 
 			commands := Vector->New()<Command>;
@@ -22,7 +25,7 @@ class AoC {
 		};
 
 		command->ToString()->PrintLine();
-		
+
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);
@@ -61,37 +64,42 @@ class AoC {
 
 				label Command->Type->LS {
 					dir_name := dir_stack->Top()->GetOperand();
-					for(j := 1; j < dir_stack->Size(); j += 1;) {
-						'\t'->Print();
+
+					if(@debug) {
+						for(j := 1; j < dir_stack->Size(); j += 1;) {
+							'\t'->Print();
+						};
+						"At: '{$dir_name}'"->PrintLine();
 					};
-					"At: '{$dir_name}'"->PrintLine();
 
 					cur_dir := dir_stack->Top();
 				}
 
 				label Command->Type->DIR {
 					dir_name := command->GetOperand();
-					for(j := 0; j < dir_stack->Size(); j += 1;) {
-						'\t'->Print();
+
+					if(@debug) {
+						for(j := 0; j < dir_stack->Size(); j += 1;) {
+							'\t'->Print();
+						};
+						"Directory: {$dir_name}"->PrintLine();
 					};
-					"Directory: {$dir_name}"->PrintLine();
 				}
 
 				label Command->Type->FILE {
 					file_size := command->GetOperand()->ToInt();
 					file_name := command->GetOperand2();
-					
-					for(j := 0; j < dir_stack->Size(); j += 1;) {
-						'\t'->Print();
-					};
-					"File: {$file_name} ({$file_size})"->PrintLine();
-
 					cur_dir->AddChild(command);
+					
+					if(@debug) {
+						for(j := 0; j < dir_stack->Size(); j += 1;) {
+							'\t'->Print();
+						};
+						"File: {$file_name} ({$file_size})"->PrintLine();
+					};					
 				}
 			};
 		};
-
-		
 	}
 
 	function : ParseCommand(line : String) ~ Command {
