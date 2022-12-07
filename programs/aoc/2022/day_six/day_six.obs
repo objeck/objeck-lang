@@ -3,7 +3,62 @@ use Collection.Generic;
 class AoC {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			System.IO.Filesystem.FileReader->ReadFile(args[0])->PrintLine();
+			input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+			input_size := input->Size();
+			"input={$input_size}: '{$input}'"->PrintLine();
+
+			buffer := LoadBuffer(input, 4);
+			buffer->PrintLine();
+			
+			pos := buffer->Size();
+			for(i := pos; i < input->Size(); i += buffer->Size() - 1;) {
+				is_start := IsStartMarker(buffer);
+foo := String->New(buffer);				
+"{$is_start}: {$foo}"->PrintLine();				
+				UpdateBuffer(buffer, input, i);
+			};
 		};
+	}
+
+	function : UpdateBuffer(buffer : Char[], input : String, pos : Int) ~ Nil {
+		buffer[0] := buffer[buffer->Size() - 1];
+		for(i := 1; i < buffer->Size(); i += 1;) {
+			buffer[i] := input->Get(pos++);
+		};
+	}
+
+	function : LoadBuffer(input : String, size : Int) ~ Char[] {
+		buffer := Char->New[size];
+				
+		each(i : size) {
+			buffer[i] := input->Get(i);
+		};
+
+		return buffer;
+	}
+
+	function : ShiftBuffer(input_buffer : Char[]) ~ Char[] {
+		output_buffer := Char->New[4];
+
+		for(i := 0; i < input_buffer->Size() - 1; i += 1;) {
+			output_buffer[i] := input_buffer[i + 1];
+		};
+		output_buffer[input_buffer->Size() - 1] := '#';
+
+		return output_buffer;
+	}
+
+	function : IsStartMarker(buffer : Char[]) ~ Bool {
+		each(i : buffer) {
+			char := buffer[i];
+			j := i + 1;
+			for(; j < buffer->Size(); j += 1;) {
+				if(buffer[j] = char) {
+					return false;
+				};
+			};
+		};
+
+		return true;
 	}
 }
