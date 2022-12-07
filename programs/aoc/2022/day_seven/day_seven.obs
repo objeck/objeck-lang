@@ -5,44 +5,38 @@ class AoC {
 		if(args->Size() = 1) {
 			inputs := ReadInput(args[0])<String>;
 
-			count := 0;
-
+			commands := Vector->New()<Command>;
 			each(i : inputs) {
-				elves := inputs->Get(i)->Split(",");
-			
-				elf_one := elves[0];
-				elf_one_range := elf_one->Split("-");
-				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntHolder, IntHolder>;
-
-				elf_two := elves[1];
-				elf_two_range := elf_two->Split("-");
-				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
-
-				if((IsContained(elf_one_pair, elf_two_pair) | IsContained(elf_two_pair, elf_one_pair))) {
-					count += 1;
-					"(*)"->PrintLine();
-				};
-
-				"---"->PrintLine();
+				commands->AddBack(ParseCommand(inputs->Get(i)));
 			};
 
-			"===\n{$count}"->PrintLine();
+			each(i : commands) {
+				commands->Get(i)->ToString()->PrintLine();
+				"---"->PrintLine();
+			};
 		};
 	}
 
-	function : IsContained(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
-		elf_one_start := elf_one_pair->GetFirst()->Get();
-		elf_one_end := elf_one_pair->GetSecond()->Get();
+	function : ParseCommand(line : String) ~ Command {
+		tokens := line->Split(" ");
 
-		elf_two_start := elf_two_pair->GetFirst()->Get();
-		elf_two_end := elf_two_pair->GetSecond()->Get();
+		command : Command;
+		if(tokens[0]->Trim()->Equals("$")) {
+			if(tokens[1]->Trim()->Equals("cd")) {
+				command := Command->New(Command->Type->CD, tokens[2]);
+			}
+			else if(tokens[1]->Trim()->Equals("ls")) {
+				command := Command->New(Command->Type->LS);
+			};
+		}
+		else if(tokens[0]->Trim()->Equals("dir")) {
+			command := Command->New(Command->Type->DIR, tokens[1]);
+		}
+		else {
+			command := Command->New(Command->Type->FILE, tokens[0], tokens[1]);
+		};
 
-		start_check := elf_two_start >= elf_one_start;
-		end_check := elf_two_end <= elf_one_end;
-		
-"{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
-
-		return start_check & end_check;
+		return command;
 	}
 
 	function : ReadInput(file : String) ~ Vector<String> {
@@ -62,5 +56,67 @@ class AoC {
 		};
 
 		return inputs;
+	}
+}
+
+class Command {
+	@type : Command->Type;
+	@operand : String;
+	@operand2 : String;
+
+	enum Type {
+		CD,
+		LS,
+		DIR,
+		FILE
+	}
+
+	New(type : Command->Type) {
+		@type := type;
+	}
+
+	New(type : Command->Type, operand : String) {
+		@type := type;
+		@operand := operand;
+	}
+
+	New(type : Command->Type, operand : String, operand2 : String) {
+		@type := type;
+		@operand := operand;
+		@operand2 := operand2;
+	}
+
+	method : public : GetType() ~ Command->Type {
+		return @type;
+	}
+
+	method : public : GetOperand() ~ String {
+		return @operand;
+	}
+
+	method : public : GetOperand2() ~ String {
+		return @operand2;
+	}
+
+	method : public : ToString() ~ String {
+		select(@type) {
+			label Command->Type->CD {
+				return "Change Directory: '{$@operand}'";
+			}
+
+			label Command->Type->LS {
+				return "List Directory";
+			}
+
+			label Command->Type->DIR {
+				return "Directory: '{$@operand}'";
+			}
+
+			label Command->Type->FILE {
+				return "File: '{$@operand2}' (size={$@operand})";
+			}
+		};
+
+		return "<Unknown>";
 	}
 }
