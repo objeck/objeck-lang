@@ -8,13 +8,8 @@ class AoC {
 			"input={$input_size}: '{$input}'"->PrintLine();
 
 			buffer := LoadBuffer(input, 4);
-			buffer->PrintLine();
-			
-			pos := buffer->Size();
-			for(i := pos; i < input->Size(); i += buffer->Size() - 1;) {
-				is_start := IsStartMarker(buffer);
-foo := String->New(buffer);				
-"{$is_start}: {$foo}"->PrintLine();				
+			for(i := buffer->Size(); i < input->Size(); i += buffer->Size() - 1;) {
+				buffer->PrintLine();
 				UpdateBuffer(buffer, input, i);
 			};
 		};
