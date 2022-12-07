@@ -24,10 +24,12 @@ class AoC {
 				label Command->Type->CD {
 					operand := command->GetOperand();
 					if(operand->Equals("..")) {
-						dir_stack->Pop();
+						at := dir_stack->Pop();
+						"Out: ../{$at}"->PrintLine();
 					}
 					else {
 						dir_stack->Push(operand);
+						"In: {$operand}"->PrintLine();
 					};
 				}
 
