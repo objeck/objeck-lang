@@ -8,18 +8,40 @@ class AoC {
 			"input={$input_size}: '{$input}'"->PrintLine();
 
 			buffer := LoadBuffer(input, 4);
-			for(i := buffer->Size(); i < input->Size(); i += buffer->Size() - 1;) {
-				buffer->PrintLine();
-				UpdateBuffer(buffer, input, i);
+			if(IsMarker(buffer)) {
+				ShowBuffer(buffer, 0);
+			}
+			else {
+				found := false;
+				for(i := 1; <>found & i < input->Size(); i += 1;) {
+					if(UpdateBufferStep(buffer, input, i)) {
+						if(IsMarker(buffer)) {
+							ShowBuffer(buffer, i);
+							found := true;
+						};
+					};
+				};
 			};
 		};
 	}
 
-	function : UpdateBuffer(buffer : Char[], input : String, pos : Int) ~ Nil {
-		buffer[0] := buffer[buffer->Size() - 1];
-		for(i := 0; i < buffer->Size(); i += 1;) {
-			buffer[i] := input->Get(pos++);
+	function : ShowBuffer(buffer : Char[], index : Int) ~ Nil {
+		str_buffer := String->New(buffer);
+		index += str_buffer->Size();
+		"{$index}: '{$str_buffer}'"->PrintLine();
+	}
+
+
+	function : UpdateBufferStep(buffer : Char[], input : String, pos : Int) ~ Bool {
+		each(i : buffer) {
+			char := input->Get(pos++);
+			if(char = '\0') {
+				return false;
+			};
+			buffer[i] := char;
 		};
+
+		return true;
 	}
 
 	function : LoadBuffer(input : String, size : Int) ~ Char[] {
@@ -32,18 +54,7 @@ class AoC {
 		return buffer;
 	}
 
-	function : ShiftBuffer(input_buffer : Char[]) ~ Char[] {
-		output_buffer := Char->New[4];
-
-		for(i := 0; i < input_buffer->Size() - 1; i += 1;) {
-			output_buffer[i] := input_buffer[i + 1];
-		};
-		output_buffer[input_buffer->Size() - 1] := '#';
-
-		return output_buffer;
-	}
-
-	function : IsStartMarker(buffer : Char[]) ~ Bool {
+	function : IsMarker(buffer : Char[]) ~ Bool {
 		each(i : buffer) {
 			char := buffer[i];
 			j := i + 1;
