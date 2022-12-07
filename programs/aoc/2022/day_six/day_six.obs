@@ -12,7 +12,7 @@ class AoC {
 			else {
 				found := false;
 				for(i := 1; <>found & i < input->Size(); i += 1;) {
-					if(UpdateBufferStep(buffer, input, i)) {
+					if(UpdateBuffer(buffer, input, i)) {
 						if(IsMarker(buffer)) {
 							ShowBuffer(buffer, i);
 							found := true;
@@ -28,9 +28,8 @@ class AoC {
 		index += str_buffer->Size();
 		"{$index}: '{$str_buffer}'"->PrintLine();
 	}
-
-
-	function : UpdateBufferStep(buffer : Char[], input : String, pos : Int) ~ Bool {
+	
+	function : UpdateBuffer(buffer : Char[], input : String, pos : Int) ~ Bool {
 		each(i : buffer) {
 			char := input->Get(pos++);
 			if(char = '\0') {
