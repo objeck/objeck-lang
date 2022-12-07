@@ -9,11 +9,15 @@ class AoC {
 			each(i : inputs) {
 				commands->AddBack(ParseCommand(inputs->Get(i)));
 			};
+			
+			ExecuteCommands(commands);
+		};
+	}
 
-			each(i : commands) {
-				commands->Get(i)->ToString()->PrintLine();
-				"---"->PrintLine();
-			};
+	function : ExecuteCommands(commands : Vector<Command>) ~ Nil {
+		each(i : commands) {
+			commands->Get(i)->ToString()->PrintLine();
+			"---"->PrintLine();
 		};
 	}
 
