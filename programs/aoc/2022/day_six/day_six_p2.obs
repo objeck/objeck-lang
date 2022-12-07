@@ -1,63 +1,67 @@
-use Collection.Generic;
-
 class AoC {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			inputs := ReadInput(args[0])<String>;
+			input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+			input_size := input->Size();
+			"{$input_size}: '{$input}'"->PrintLine();
 
-			count := 0;
-
-			each(i : inputs) {
-				elves := inputs->Get(i)->Split(",");
-			
-				elf_one := elves[0];
-				elf_one_range := elf_one->Split("-");
-				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntHolder, IntHolder>;
-
-				elf_two := elves[1];
-				elf_two_range := elf_two->Split("-");
-				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
-
-				if((IsOverlap(elf_one_pair, elf_two_pair) & IsOverlap(elf_two_pair, elf_one_pair))) {
-					count += 1;
-					"(*)"->PrintLine();
+			buffer := LoadBuffer(input, 14);
+			if(IsMarker(buffer)) {
+				ShowBuffer(buffer, 0);
+			}
+			else {
+				found := false;
+				for(i := 1; <>found & i < input->Size(); i += 1;) {
+					if(UpdateBuffer(buffer, input, i)) {
+						if(IsMarker(buffer)) {
+							ShowBuffer(buffer, i);
+							found := true;
+						};
+					};
 				};
-
-				"---"->PrintLine();
 			};
-
-			"===\n{$count}"->PrintLine();
 		};
 	}
 
-	function : IsOverlap(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
-		elf_one_start := elf_one_pair->GetFirst()->Get();
-		elf_one_end := elf_one_pair->GetSecond()->Get();
+	function : ShowBuffer(buffer : Char[], index : Int) ~ Nil {
+		str_buffer := String->New(buffer);
+		index += str_buffer->Size();
+		"{$index}: '{$str_buffer}'"->PrintLine();
+	}
 
-		elf_two_start := elf_two_pair->GetFirst()->Get();
-		elf_two_end := elf_two_pair->GetSecond()->Get();
+	function : UpdateBuffer(buffer : Char[], input : String, pos : Int) ~ Bool {
+		each(i : buffer) {
+			char := input->Get(pos++);
+			if(char = '\0') {
+				return false;
+			};
+			buffer[i] := char;
+		};
+
+		return true;
+	}
+
+	function : LoadBuffer(input : String, size : Int) ~ Char[] {
+		buffer := Char->New[size];
 		
-		"{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
+		each(i : size) {
+			buffer[i] := input->Get(i);
+		};
 
-		return elf_one_end >=  elf_two_start;
+		return buffer;
 	}
 
-	function : ReadInput(file : String) ~ Vector<String> {
-		inputs := Vector->New()<String>;
-
-		reader := System.IO.Filesystem.FileReader->New(file);
-		leaving {
-			reader->Close();
-		};
-
-		line := reader->ReadLine();
-		while(line <> Nil) {
-			if(<>line->IsEmpty()) {
-				inputs->AddBack(line);
+	function : native : IsMarker(buffer : Char[]) ~ Bool {
+		each(i : buffer) {
+			char := buffer[i];
+			j := i + 1;
+			for(; j < buffer->Size(); j += 1;) {
+				if(buffer[j] = char) {
+					return false;
+				};
 			};
-			line := reader->ReadLine();
 		};
 
-		return inputs;
+		return true;
 	}
 }
