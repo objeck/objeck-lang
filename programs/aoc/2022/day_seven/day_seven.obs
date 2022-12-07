@@ -15,13 +15,15 @@ class AoC {
 	}
 
 	function : ExecuteCommands(commands : Vector<Command>) ~ Nil {
+		is_ls := false;
 		dir_stack := Collection.Generic.Stack->New()<String>;
-
 		each(i : commands) {
 			command := commands->Get(i);
 			
 			select(command->GetType()) {
 				label Command->Type->CD {
+					is_ls := false;
+
 					operand := command->GetOperand();
 					if(operand->Equals("..")) {
 						at := dir_stack->Pop();
@@ -34,15 +36,19 @@ class AoC {
 				}
 
 				label Command->Type->LS {
-					
+					is_ls := true;
 				}
 
 				label Command->Type->DIR {
-					
+					if(is_ls) {
+						"Directory"->PrintLine();
+					};
 				}
 
 				label Command->Type->FILE {
-					
+					if(is_ls) {
+						"File"->PrintLine();
+					};
 				}
 			};
 		};
