@@ -17,7 +17,7 @@ class AoC {
 
 	function : UpdateBuffer(buffer : Char[], input : String, pos : Int) ~ Nil {
 		buffer[0] := buffer[buffer->Size() - 1];
-		for(i := 1; i < buffer->Size(); i += 1;) {
+		for(i := 0; i < buffer->Size(); i += 1;) {
 			buffer[i] := input->Get(pos++);
 		};
 	}
