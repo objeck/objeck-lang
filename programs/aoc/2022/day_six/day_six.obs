@@ -28,7 +28,7 @@ class AoC {
 		index += str_buffer->Size();
 		"{$index}: '{$str_buffer}'"->PrintLine();
 	}
-	
+
 	function : UpdateBuffer(buffer : Char[], input : String, pos : Int) ~ Bool {
 		each(i : buffer) {
 			char := input->Get(pos++);
@@ -51,7 +51,7 @@ class AoC {
 		return buffer;
 	}
 
-	function : IsMarker(buffer : Char[]) ~ Bool {
+	function : native : IsMarker(buffer : Char[]) ~ Bool {
 		each(i : buffer) {
 			char := buffer[i];
 			j := i + 1;
