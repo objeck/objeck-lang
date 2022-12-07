@@ -20,34 +20,42 @@ class AoC {
 		each(i : commands) {
 			command := commands->Get(i);
 			
+			each(j : dir_stack) {
+				"  "->Print();
+			};
+
 			select(command->GetType()) {
 				label Command->Type->CD {
 					is_ls := false;
 
 					operand := command->GetOperand();
 					if(operand->Equals("..")) {
-						at := dir_stack->Pop();
-						"Out: ../{$at}"->PrintLine();
+						dir_stack->Pop();
+						""->PrintLine();
 					}
 					else {
 						dir_stack->Push(operand);
-						"In: {$operand}"->PrintLine();
+						"[{$operand}]"->PrintLine();
 					};
 				}
 
 				label Command->Type->LS {
+					""->PrintLine();
 					is_ls := true;
 				}
 
 				label Command->Type->DIR {
 					if(is_ls) {
-						"Directory"->PrintLine();
+						name := command->GetOperand();
+						"{$name} (dir)"->PrintLine();
 					};
 				}
 
 				label Command->Type->FILE {
 					if(is_ls) {
-						"File"->PrintLine();
+						size := command->GetOperand();
+						name := command->GetOperand2();
+						"{$name} (size={$size})"->PrintLine();
 					};
 				}
 			};
