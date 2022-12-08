@@ -15,17 +15,11 @@ class AoC {
 
 			ExecuteCommands(commands);
 			"---"->PrintLine();
-			WalkTree(commands->Get(0), 0);
+			WalkTree(commands->Get(0), -1);
 		};
 	}
 
 	function : WalkTree(command : Command, level : IntHolder) ~ Nil {
-		for(i := 0; i < level->Get(); i += 1;) {
-			'\t'->Print();
-		};
-
-		command->ToString()->PrintLine();
-
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);
@@ -35,9 +29,29 @@ class AoC {
 			};
 		};
 
+		for(i := 0; i < level->Get(); i += 1;) {
+			'\t'->Print();
+		};
+
+		if(command->GetType() = Command->Type->CD) {
+			dir_name := command->GetOperand();
+			if(dir_name->Equals("..")) {
+				"\t\t[{$dir_name}]"->PrintLine();
+			}
+			else {
+				"directory: '[{$dir_name}]'"->PrintLine();
+			};
+		};
+
 		children := command->GetChildren();
 		each(i : children) {
 			WalkTree(children->Get(i), level);
+		};
+
+		if(command->GetType() = Command->Type->FILE) {
+			file_size := command->GetOperand()->ToInt();
+			file_name := command->GetOperand2();
+			"\t'{$file_name}' (size={$file_size})"->PrintLine();
 		};
 	}
 
