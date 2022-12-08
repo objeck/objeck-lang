@@ -39,7 +39,7 @@ class AoC {
 				"\t\t[{$dir_name}]"->PrintLine();
 			}
 			else {
-				"dir: '[{$dir_name}]'"->PrintLine();
+				"directory: '[{$dir_name}]'"->PrintLine();
 			};
 		};
 
@@ -51,7 +51,7 @@ class AoC {
 		if(command->GetType() = Command->Type->FILE) {
 			file_size := command->GetOperand()->ToInt();
 			file_name := command->GetOperand2();
-			"\t'{$file_name}' (size={$file_size})"->PrintLine();
+			"\tfile: '{$file_name}' (size={$file_size})"->PrintLine();
 		};
 	}
 
