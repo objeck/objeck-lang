@@ -701,8 +701,7 @@ bundle System {
 		}
 
 		function : native : ToString(c : Char[]) ~ String {
-			string := String->New(c);
-			return string;
+			return String->New(c);
 		}
 	}
 	
