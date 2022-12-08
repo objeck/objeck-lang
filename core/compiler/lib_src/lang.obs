@@ -446,31 +446,31 @@ bundle System {
 		}
 		
 		#~
-	        Returns the Float value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToFloat(v : Char) ~ Float {
-	                return v->As(Float);
-	        }
+        Returns the Float value
+        @ignore-params
+        @return value
+        ~#
+        function : ToFloat(v : Char) ~ Float {
+                return v->As(Float);
+        }
 
-	        #~
-	        Returns the Character value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToByte(v : Byte) ~ Byte {
-	                return v->As(Byte);
-	        }
+        #~
+        Returns the Character value
+        @ignore-params
+        @return value
+        ~#
+        function : ToByte(v : Byte) ~ Byte {
+                return v->As(Byte);
+        }
 
-	        #~
-	        Returns the Int value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToInt(v : Char) ~ Int {
-	                return v->As(Int);
-	        }
+        #~
+        Returns the Int value
+        @ignore-params
+        @return value
+        ~#
+        function : ToInt(v : Char) ~ Int {
+                return v->As(Int);
+        }
 		
 		#~
 		Checks if the character is lower-case
@@ -635,6 +635,10 @@ bundle System {
 		function : PrintLine(c : Char[]) ~ Nil {
 			STD_OUT_CHAR_ARY;
 			'\n'->Print();
+		}
+
+		function : ToString(c : Char[]) ~ String {
+			return String->New(c);
 		}
 
 		#~
