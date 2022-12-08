@@ -14,12 +14,12 @@ class AoC {
 			};
 
 			ExecuteCommands(commands);
-			"---"->PrintLine();
-			WalkTree(commands->Get(0), -1);
+			TotalDirectories(commands->Get(0), -1);
+			PrintTree(commands->Get(0), -1);
 		};
 	}
 
-	function : WalkTree(command : Command, level : IntHolder) ~ Nil {
+	function : PrintTree(command : Command, level : IntHolder) ~ Nil {
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);
@@ -35,23 +35,78 @@ class AoC {
 
 		if(command->GetType() = Command->Type->CD) {
 			dir_name := command->GetOperand();
+			dir_total := command->GetDirTotal();
 			if(dir_name->Equals("..")) {
-				"\t\t[{$dir_name}]"->PrintLine();
+				"\t\t({$dir_name})"->PrintLine();
 			}
 			else {
-				"directory: '[{$dir_name}]'"->PrintLine();
+				"[directory: '{$dir_name}'] (size={$dir_total})"->PrintLine();
+			};
+		}
+		else if(command->GetType() = Command->Type->FILE) {
+			file_size := command->GetOperand()->ToInt();
+			file_name := command->GetOperand2();
+			"\tfile: '{$file_name}' (size={$file_size})"->PrintLine();
+		};
+
+		children := command->GetChildren();
+		each(i : children) {
+			PrintTree(children->Get(i), level);
+		};
+	}
+
+	function : TotalDirectories(command : Command, level : IntHolder) ~ Nil {
+		if(command->GetType() = Command->Type->CD) {
+			if(command->GetOperand()->Equals("..")) {
+				level->Sub(1);
+			}
+			else {
+				level->Add(1);
+			};
+		};
+
+		if(@debug) {
+			for(i := 0; i < level->Get(); i += 1;) {
+				'\t'->Print();
+			};
+		};
+
+		if(@debug) {
+			if(command->GetType() = Command->Type->CD) {
+				dir_name := command->GetOperand();
+				if(dir_name->Equals("..")) {
+					"\t\t[{$dir_name}]"->PrintLine();
+				}
+				else {
+					"directory: '[{$dir_name}]'"->PrintLine();
+				};
 			};
 		};
 
 		children := command->GetChildren();
 		each(i : children) {
-			WalkTree(children->Get(i), level);
+			child := children->Get(i);
+			TotalDirectories(child, level);
+			
+			if(command->GetType() = Command->Type->CD) {
+				dir_name := command->GetOperand();
+				if(<>dir_name->Equals("..")) {
+					if(child->GetType() = Command->Type->FILE) {
+						command->AddDirTotal(child->GetOperand()->ToInt());
+					}
+					else if(child->GetType() = Command->Type->CD) {
+						command->AddDirTotal(child->GetDirTotal());
+					};
+				};
+			};
 		};
 
-		if(command->GetType() = Command->Type->FILE) {
-			file_size := command->GetOperand()->ToInt();
-			file_name := command->GetOperand2();
-			"\tfile: '{$file_name}' (size={$file_size})"->PrintLine();
+		if(@debug) {
+			if(command->GetType() = Command->Type->FILE) {
+				file_size := command->GetOperand()->ToInt();
+				file_name := command->GetOperand2();
+				"\tfile: '{$file_name}' (size={$file_size})"->PrintLine();
+			};
 		};
 	}
 
@@ -64,7 +119,7 @@ class AoC {
 			select(command->GetType()) {
 				label Command->Type->CD {
 					if(<>dir_stack->IsEmpty()) {
-						cur_dir->AddChild(command);
+						dir_stack->Top()->AddChild(command);
 					};
 
 					dir_name := command->GetOperand();
@@ -85,8 +140,6 @@ class AoC {
 						};
 						"At: '{$dir_name}'"->PrintLine();
 					};
-
-					cur_dir := dir_stack->Top();
 				}
 
 				label Command->Type->DIR {
@@ -103,7 +156,7 @@ class AoC {
 				label Command->Type->FILE {
 					file_size := command->GetOperand()->ToInt();
 					file_name := command->GetOperand2();
-					cur_dir->AddChild(command);
+					dir_stack->Top()->AddChild(command);
 					
 					if(@debug) {
 						for(j := 0; j < dir_stack->Size(); j += 1;) {
@@ -162,6 +215,7 @@ class Command {
 	@type : Command->Type;
 	@operand : String;
 	@operand2 : String;
+	@dir_total : Int;
 	@children : Vector<Command>;
 
 	enum Type {
@@ -207,6 +261,14 @@ class Command {
 
 	method : public : GetChildren() ~ Vector<Command> {
 		return @children;
+	}
+
+	method : public : AddDirTotal(dir_size : Int) ~ Nil {
+		@dir_total += dir_size;
+	}
+
+	method : public : GetDirTotal() ~ Int {
+		return @dir_total;
 	}
 
 	method : public : ToString() ~ String {
