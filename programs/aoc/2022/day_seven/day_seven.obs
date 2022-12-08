@@ -2,6 +2,7 @@ use Collection.Generic;
 
 class AoC {
 	@debug : static : Bool;
+	@grand_dir_total : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -16,6 +17,9 @@ class AoC {
 			ExecuteCommands(commands);
 			TotalDirectories(commands->Get(0), -1);
 			PrintTree(commands->Get(0), -1);
+			
+			"---"->PrintLine();
+			"Calculated total: {$@grand_dir_total}"->PrintLine();
 		};
 	}
 
@@ -40,6 +44,9 @@ class AoC {
 				"\t\t({$dir_name})"->PrintLine();
 			}
 			else {
+				if(dir_total <= 100000) {
+					@grand_dir_total += dir_total;
+				};
 				"[directory: '{$dir_name}'] (size={$dir_total})"->PrintLine();
 			};
 		}
