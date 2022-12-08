@@ -39,7 +39,7 @@ class AoC {
 				"\t\t[{$dir_name}]"->PrintLine();
 			}
 			else {
-				"directory: '[{$dir_name}]'"->PrintLine();
+				"dir: '[{$dir_name}]'"->PrintLine();
 			};
 		};
 
