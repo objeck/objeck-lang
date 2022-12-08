@@ -34,16 +34,16 @@ class AoC {
 		space_free := 70000000 - commands->Get(0)->GetDirTotal();
 		"free space: {$space_free}"->PrintLine();
 
-		goal := storage_goal - space_free;
-		goal->PrintLine();
+		space_required := storage_goal - space_free;
+		"space required: {$space_required}"->PrintLine();
 
 		"---"->PrintLine();
 		@dir_totals->Sort();
 		done := false;
 		for(i := 0; <>done & i < @dir_totals->Size(); i += 1;) {
 			dir_total := @dir_totals->Get(i)->Get();
-			if(dir_total >= goal) {
-				dir_total->PrintLine();
+			if(dir_total >= space_required) {
+				"space freed: {$dir_total}"->PrintLine();
 				done := true;
 			};
 		};
