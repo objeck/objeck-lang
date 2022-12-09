@@ -18,7 +18,7 @@ class AoC {
 					};
 
 					count += ViewableExternalEdges(forest);
-					count += ViewableInternalEdges(forest);
+					count += ViewableExternal(forest);
 					count->PrintLine();
 					return;
 				};
@@ -28,47 +28,130 @@ class AoC {
 		">>> Unable to load matrix <<<"->PrintLine();
 	}
 
-	function : ViewableInternalEdges(forest : Int[,]) ~ Int {
+	function : ViewableExternal(forest : Int[,]) ~ Int {
 		dims := forest->Size();
 		x := dims[0]; y := dims[1];
 		
 		count := 0;
+
 		each(i : x) {
 			each(j : y) {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
 #					"{$i},{$j}"->PrintLine();
-
+					
 					# up
-					temp := i;
-					while(temp <> -1) {
-#						System.IO.Standard->Print(forest[temp,j])->Print(',');
-						temp -= 1;
+					if(ViewableExternalUp(i, j, forest)) {
+						start := forest[i, j];
+#						"{$start} is viewable up at {$i},{$j}"->PrintLine();
+						count += 1;
 					};
+
 					# down
-					temp := i;
-					while(temp <> x) {
-#						System.IO.Standard->Print(forest[temp,j])->Print(',');
-						temp += 1;
+					if(ViewableExternalDown(i, j, forest)) {
+						start := forest[i, j];
+#						"{$start} is viewable down at {$i},{$j}"->PrintLine();
+						count += 1;
 					};
+
 					# left
-					temp := i;
-					while(temp <> -1) {
-#						System.IO.Standard->Print(forest[j, temp])->Print(',');
-						temp -= 1;
-					};					
-					# right
-					temp := i;
-					while(temp <> x) {
-#						System.IO.Standard->Print(forest[j, temp])->Print(',');
-						temp += 1;
+					if(ViewableExternalLeft(i, j, forest)) {
+						start := forest[i, j];
+#						"{$start} is viewable left at {$i},{$j}"->PrintLine();
+						count += 1;
 					};
-					"\n"->Print();
+
+					# right
+					if(ViewableExternalRight(i, j, forest)) {
+						start := forest[i, j];
+#						"{$start} is viewable right at {$i},{$j}"->PrintLine();
+						count += 1;
+					};
 				};
 			};
 			
 		};
 
 		return count;
+	}
+
+	function : ViewableExternalUp(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		prev := 10;
+		temp := i;
+
+		while(temp <> -1) {
+			if(forest[temp,j] >= prev) {
+				return false;
+			};
+# System.IO.Standard->Print(forest[temp,j])->Print(',');
+
+			prev := forest[temp,j];
+			temp -= 1;
+		};
+# ":{$prev}"->PrintLine();
+
+		return true;
+	}
+
+	function : ViewableExternalDown(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		dims := forest->Size();
+		x := dims[0];
+
+		temp := i;
+		prev := 10;
+
+		while(temp <> x) {
+			if(forest[temp,j] >= prev) {
+				return false;
+			};
+# System.IO.Standard->Print(forest[temp,j])->Print(',');
+
+			prev := forest[temp,j];
+			temp += 1;
+		};
+# ":{$prev}"->PrintLine();
+
+		return true;
+	}
+
+	function : ViewableExternalLeft(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		temp := i;
+		prev := 10;
+
+		while(temp <> -1) {
+			if(forest[j, temp] >= prev) {
+				return false;
+			};
+# System.IO.Standard->Print(forest[j, temp])->Print(',');
+			
+			prev := forest[j, temp];
+			temp -= 1;
+		};		
+# ":{$prev}"->PrintLine();
+
+		return true;
+	}
+
+	function : ViewableExternalRight(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		dims := forest->Size();
+		x := dims[0];
+
+		temp := i;
+		prev := 10;
+
+		while(temp <> x) {
+#~			
+			if(forest[j, temp] >= prev) {
+				return false;
+			};
+~#			
+System.IO.Standard->Print(forest[j, temp])->Print(',');
+
+			prev := forest[j, temp];
+			temp += 1;
+		};
+":{$prev}"->PrintLine();
+
+		return true;
 	}
 
 	function : ViewableExternalEdges(forest : Int[,]) ~ Int {
