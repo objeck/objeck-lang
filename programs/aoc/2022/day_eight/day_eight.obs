@@ -8,7 +8,7 @@ class AoC {
 					size := inputs->Size();
 					"matrix: {$size}x{$size}"->PrintLine();
 					"---"->PrintLine();
-					
+
 					forest := Int->New[size, size];
 					each(i : size) {
 						row := inputs->Get(i);
@@ -36,9 +36,16 @@ class AoC {
 		each(i : x) {
 			each(j : y) {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
-					"{$i},{$j}"->PrintLine();
+#					"{$i},{$j}"->PrintLine();
+					# left
+					temp := i;
+					while(temp <> 0) {
+						"{$temp},{$j}"->Print();
+						temp -= 1;
+					};
 				};
 			};
+			"\n"->Print();
 		};
 
 		return count;
