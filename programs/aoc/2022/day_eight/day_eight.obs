@@ -128,9 +128,11 @@ class AoC {
 		};
 # ":"->PrintLine();
 
+		start := values->Get(0);
 		each(k : values) {
 			values->Get(k)->Print();
 		};
+":{$start}"->PrintLine();
 
 		return false;
 	}
