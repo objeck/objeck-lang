@@ -40,30 +40,36 @@ class AoC {
 #					"{$i},{$j}"->PrintLine();
 					
 					# up
-					if(ViewableExternalUp(i, j, forest)) {
+					found := false;
+
+					found := ViewableExternalUp(i, j, forest);
+					if(<>found) {
 						start := forest[i, j];
-#						"{$start} is viewable up at {$i},{$j}"->PrintLine();
+						"{$start} is viewable up at {$i},{$j}"->PrintLine();
 						count += 1;
 					};
-
+					
 					# down
-					if(ViewableExternalDown(i, j, forest)) {
+					found := ViewableExternalDown(i, j, forest);
+					if(<>found) {
 						start := forest[i, j];
-#						"{$start} is viewable down at {$i},{$j}"->PrintLine();
+						"{$start} is viewable down at {$i},{$j}"->PrintLine();
 						count += 1;
 					};
 
 					# left
-					if(ViewableExternalLeft(i, j, forest)) {
+					found := ViewableExternalLeft(i, j, forest);
+					if(<>found) {
 						start := forest[i, j];
-#						"{$start} is viewable left at {$i},{$j}"->PrintLine();
+						"{$start} is viewable left at {$i},{$j}"->PrintLine();
 						count += 1;
 					};
 
 					# right
-					if(ViewableExternalRight(i, j, forest)) {
+					found := ViewableExternalRight(i, j, forest);
+					if(<>found) {
 						start := forest[i, j];
-#						"{$start} is viewable right at {$i},{$j}"->PrintLine();
+						"{$start} is viewable right at {$i},{$j}"->PrintLine();
 						count += 1;
 					};
 				};
@@ -75,14 +81,22 @@ class AoC {
 	}
 
 	function : ViewableExternalUp(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
+
 		temp := i;
-
 		while(temp <> -1) {
-# System.IO.Standard->Print(forest[temp,j])->Print(',');
-
+			values->AddBack(forest[j, temp]); # TODO
 			temp -= 1;
 		};
-# ":"->PrintLine();
+
+		# TODO
+		check := values->Get(0)->Get();
+		for(k := 1; k < values->Size(); k += 1;) {
+			cur := values->Get(k)->Get();
+			if(cur >= check) {
+				return false;
+			};
+		};
 
 		return false;
 	}
@@ -91,25 +105,42 @@ class AoC {
 		dims := forest->Size();
 		x := dims[0];
 
+		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
 		temp := i;
 		while(temp <> x) {
-# System.IO.Standard->Print(forest[temp,j])->Print(',');
-
+			values->AddBack(forest[j, temp]); # TODO
 			temp += 1;
 		};
-# ":"->PrintLine();
+
+		# TODO
+		check := values->Get(0)->Get();
+		for(k := 1; k < values->Size(); k += 1;) {
+			cur := values->Get(k)->Get();
+			if(cur >= check) {
+				return false;
+			};
+		};
 
 		return false;
 	}
 
 	function : ViewableExternalLeft(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
+
 		temp := i;
 		while(temp <> -1) {
-# System.IO.Standard->Print(forest[j, temp])->Print(',');
-			
+			values->AddBack(forest[j, temp]); # TODO
 			temp -= 1;
 		};		
-# ":"->PrintLine();
+
+		# TODO
+		check := values->Get(0)->Get();
+		for(k := 1; k < values->Size(); k += 1;) {
+			cur := values->Get(k)->Get();
+			if(cur >= check) {
+				return false;
+			};
+		};
 
 		return false;
 	}
@@ -131,13 +162,9 @@ class AoC {
 		for(k := 1; k < values->Size(); k += 1;) {
 			cur := values->Get(k)->Get();
 			if(cur >= check) {
-"{$cur}<{$check}: fail"->PrintLine();				
-"---"->PrintLine();
 				return false;
 			};
-"{$cur}<{$check}: ok"->PrintLine();
 		};
-"---"->PrintLine();
 
 		return true;
 	}
