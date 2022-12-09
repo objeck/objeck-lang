@@ -118,13 +118,19 @@ class AoC {
 		dims := forest->Size();
 		x := dims[0];
 
+		values := Collection.Generic.CompareVector->New()<IntHolder>;
+
 		temp := i;
 		while(temp <> x) {
-System.IO.Standard->Print(forest[j, temp])->Print(',');
-
+# System.IO.Standard->Print(forest[j, temp])->Print(',');
+			values->AddBack(forest[j, temp]);
 			temp += 1;
 		};
-":"->PrintLine();
+# ":"->PrintLine();
+
+		each(k : values) {
+			values->Get(k)->Print();
+		};
 
 		return false;
 	}
