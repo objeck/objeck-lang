@@ -39,148 +39,48 @@ class AoC {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
 #					"{$i},{$j}"->PrintLine();
 					
-					found := false;
-
-					# up
-					if(<>found) {
-						found := ViewableExternalUp(i, j, forest);
-						if(found) {
-							start := forest[i, j];
-							"{$start} is viewable up at {$i},{$j}"->PrintLine();
-							count += 1;
-						};
-					};
-
-					# down
-					if(<>found) {
-						found := ViewableExternalDown(i, j, forest);
-						if(found) {
-							start := forest[i, j];
-							"{$start} is viewable down at {$i},{$j}"->PrintLine();
-							count += 1;
-						};
-					};
-
-					# left
-					if(<>found) {
-						found := ViewableExternalLeft(i, j, forest);
-						if(found) {
-							start := forest[i, j];
-							"{$start} is viewable left at {$i},{$j}"->PrintLine();
-							count += 1;
-						};
-					};
-
-					# right
-					if(<>found) {
-						found := ViewableExternalRight(i, j, forest);
-						if(found) {
-							start := forest[i, j];
-							"{$start} is viewable right at {$i},{$j}"->PrintLine();
-							count += 1;
-						};
-					};
+					ViewableExternalRight(i, j, forest);
 				};
-			};
-			
+			};			
 		};
 
 		return count;
 	}
 
 	function : ViewableExternalUp(i : Int, j : Int, forest : Int[,]) ~ Bool {
-		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
-
-		temp := i;
-		while(temp <> -1) {
-# System.IO.Standard->Print(forest[temp,j])->Print(',');
-			values->AddBack(forest[temp,j]); # TODO
-
-			temp -= 1;
-		};
-
-		# TODO
-		check := values->Get(0)->Get();
-		for(k := 1; k < values->Size(); k += 1;) {
-			cur := values->Get(k)->Get();
-			if(cur >= check) {
-				return false;
-			};
-		};
-
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalDown(i : Int, j : Int, forest : Int[,]) ~ Bool {
-		dims := forest->Size();
-		x := dims[0];
-
-		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
-		temp := i;
-		while(temp <> x) {
-# System.IO.Standard->Print(forest[temp,j])->Print(',');
-			values->AddBack(forest[temp,j]); # TODO
-
-			temp += 1;
-		};
-
-		# TODO
-		check := values->Get(0)->Get();
-		for(k := 1; k < values->Size(); k += 1;) {
-			cur := values->Get(k)->Get();
-			if(cur >= check) {
-				return false;
-			};
-		};
-
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalLeft(i : Int, j : Int, forest : Int[,]) ~ Bool {
-		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
-
-		temp := i;
-		while(temp <> -1) {
-# System.IO.Standard->Print(forest[j, temp])->Print(',');
-			values->AddBack(forest[j, temp]); # TODO
-			
-			temp -= 1;
-		};		
-
-		# TODO
-		check := values->Get(0)->Get();
-		for(k := 1; k < values->Size(); k += 1;) {
-			cur := values->Get(k)->Get();
-			if(cur >= check) {
-				return false;
-			};
-		};
-
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalRight(i : Int, j : Int, forest : Int[,]) ~ Bool {
 		dims := forest->Size();
-		x := dims[0];
+		start := 1;
+		end := dims[0] - 2;
 
-		values := Collection.Generic.CompareVector->New()<IntHolder>; # TODO
-
-		temp := i;
-		while(temp <> x) {
-			values->AddBack(forest[j, temp]); # TODO
-			temp += 1;
-		};
-
-		# TODO
-		check := values->Get(0)->Get();
-		for(k := 1; k < values->Size(); k += 1;) {
-			cur := values->Get(k)->Get();
-			if(cur >= check) {
-				return false;
+		value := forest[i, j];
+		for(x := 1; x < end + 1; x += 1;) {
+			"{$value}:"->Print();
+			temp := x;
+			while(temp <> -1) {
+				forest[i, temp]->Print();
+				temp -= 1;
 			};
+			""->PrintLine();
 		};
+		"\n---"->PrintLine();
 
-		return true;
+
+ # System.IO.Standard->Print(i)->Print(',')->Print(j)->Print(':')->PrintLine(forest[i, j]);
+	
+
+		return false;
 	}
 
 	function : ViewableExternalEdges(forest : Int[,]) ~ Int {
