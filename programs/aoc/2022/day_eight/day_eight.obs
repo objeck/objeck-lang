@@ -133,9 +133,8 @@ class AoC {
 			if(cur >= check) {
 				return false;
 			};
-cur->Print();
+"{$cur}:{$check}"->PrintLine();
 		};
-":{$check}"->PrintLine();
 
 		return true;
 	}
