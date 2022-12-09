@@ -37,10 +37,11 @@ class AoC {
 			each(j : y) {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
 #					"{$i},{$j}"->PrintLine();
+
 					# up
 					temp := i;
 					while(temp <> -1) {
-						System.IO.Standard->Print(forest[temp,j])->Print(',');
+#						System.IO.Standard->Print(forest[temp,j])->Print(',');
 						temp -= 1;
 					};
 					# down
@@ -49,9 +50,19 @@ class AoC {
 #						System.IO.Standard->Print(forest[temp,j])->Print(',');
 						temp += 1;
 					};
+					# left
+					temp := i;
+					while(temp <> -1) {
+#						System.IO.Standard->Print(forest[j, temp])->Print(',');
+						temp -= 1;
+					};					
+					# right
+					temp := i;
+					while(temp <> x) {
+#						System.IO.Standard->Print(forest[j, temp])->Print(',');
+						temp += 1;
+					};
 					"\n"->Print();
-
-					# TODO: left and right to x and y
 				};
 			};
 			
