@@ -37,15 +37,22 @@ class AoC {
 			each(j : y) {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
 #					"{$i},{$j}"->PrintLine();
-					# left
+					# up
 					temp := i;
-					while(temp <> 0) {
-						"{$temp},{$j}"->Print();
+					while(temp <> -1) {
+#						System.IO.Standard->Print(forest[temp,j])->Print(',');
 						temp -= 1;
 					};
+					# down
+					temp := i;
+					while(temp <> x) {
+#						System.IO.Standard->Print(forest[temp,j])->Print(',');
+						temp += 1;
+					};
+					"\n"->Print();
 				};
 			};
-			"\n"->Print();
+			
 		};
 
 		return count;
