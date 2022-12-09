@@ -39,7 +39,8 @@ class AoC {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
 #					"{$i},{$j}"->PrintLine();
 					
-					ViewableExternalRight(i, j, forest);
+					ViewableExternalLeft(i, j, forest);
+#					ViewableExternalRight(i, j, forest);
 				};
 			};			
 		};
@@ -56,16 +57,35 @@ class AoC {
 	}
 
 	function : ViewableExternalLeft(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		dims := forest->Size();
+		start := 1;
+		end := dims[0] - 1;
+
+		value := forest[i, j];
+		for(x := end; x <> 1; x -= 1;) {
+			"{$value}:"->Print();
+			temp := 0;
+			while(temp <> x) {
+				forest[i, temp]->Print();
+				temp += 1;
+			};
+			""->PrintLine();
+		};
+		"\n---"->PrintLine();
+
+
+ # System.IO.Standard->Print(i)->Print(',')->Print(j)->Print(':')->PrintLine(forest[i, j]);
+	
+
 		return false;
 	}
 
 	function : ViewableExternalRight(i : Int, j : Int, forest : Int[,]) ~ Bool {
 		dims := forest->Size();
-		start := 1;
-		end := dims[0] - 2;
+		end := dims[0] - 1;
 
 		value := forest[i, j];
-		for(x := 1; x < end + 1; x += 1;) {
+		for(x := 1; x < end; x += 1;) {
 			"{$value}:"->Print();
 			temp := x;
 			while(temp <> -1) {
