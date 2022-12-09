@@ -40,7 +40,7 @@ class AoC {
 					# up
 					temp := i;
 					while(temp <> -1) {
-#						System.IO.Standard->Print(forest[temp,j])->Print(',');
+						System.IO.Standard->Print(forest[temp,j])->Print(',');
 						temp -= 1;
 					};
 					# down
