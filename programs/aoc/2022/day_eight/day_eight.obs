@@ -131,10 +131,13 @@ class AoC {
 		for(k := 1; k < values->Size(); k += 1;) {
 			cur := values->Get(k)->Get();
 			if(cur >= check) {
+"{$cur}<{$check}: fail"->PrintLine();				
+"---"->PrintLine();
 				return false;
 			};
-"{$cur}:{$check}"->PrintLine();
+"{$cur}<{$check}: ok"->PrintLine();
 		};
+"---"->PrintLine();
 
 		return true;
 	}
