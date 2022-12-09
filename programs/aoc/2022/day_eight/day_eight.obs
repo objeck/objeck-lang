@@ -128,11 +128,12 @@ class AoC {
 
 		# TODO
 		check := values->Get(0)->Get();
-		each(k : values) {
-			if(values->Get(k)->Get() >= check) {
+		for(k := 1; k < values->Size(); k += 1;) {
+			cur := values->Get(k)->Get();
+			if(cur >= check) {
 				return false;
 			};
-values->Get(k)->Print();
+cur->Print();
 		};
 ":{$check}"->PrintLine();
 
