@@ -75,21 +75,16 @@ class AoC {
 	}
 
 	function : ViewableExternalUp(i : Int, j : Int, forest : Int[,]) ~ Bool {
-		prev := 10;
 		temp := i;
 
 		while(temp <> -1) {
-			if(forest[temp,j] >= prev) {
-				return false;
-			};
 # System.IO.Standard->Print(forest[temp,j])->Print(',');
 
-			prev := forest[temp,j];
 			temp -= 1;
 		};
-# ":{$prev}"->PrintLine();
+# ":"->PrintLine();
 
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalDown(i : Int, j : Int, forest : Int[,]) ~ Bool {
@@ -97,38 +92,26 @@ class AoC {
 		x := dims[0];
 
 		temp := i;
-		prev := 10;
-
 		while(temp <> x) {
-			if(forest[temp,j] >= prev) {
-				return false;
-			};
 # System.IO.Standard->Print(forest[temp,j])->Print(',');
 
-			prev := forest[temp,j];
 			temp += 1;
 		};
-# ":{$prev}"->PrintLine();
+# ":"->PrintLine();
 
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalLeft(i : Int, j : Int, forest : Int[,]) ~ Bool {
 		temp := i;
-		prev := 10;
-
 		while(temp <> -1) {
-			if(forest[j, temp] >= prev) {
-				return false;
-			};
 # System.IO.Standard->Print(forest[j, temp])->Print(',');
 			
-			prev := forest[j, temp];
 			temp -= 1;
 		};		
-# ":{$prev}"->PrintLine();
+# ":"->PrintLine();
 
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalRight(i : Int, j : Int, forest : Int[,]) ~ Bool {
@@ -136,22 +119,14 @@ class AoC {
 		x := dims[0];
 
 		temp := i;
-		prev := 10;
-
 		while(temp <> x) {
-#~			
-			if(forest[j, temp] >= prev) {
-				return false;
-			};
-~#			
 System.IO.Standard->Print(forest[j, temp])->Print(',');
 
-			prev := forest[j, temp];
 			temp += 1;
 		};
-":{$prev}"->PrintLine();
+":"->PrintLine();
 
-		return true;
+		return false;
 	}
 
 	function : ViewableExternalEdges(forest : Int[,]) ~ Int {
