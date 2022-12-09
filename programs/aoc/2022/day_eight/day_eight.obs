@@ -50,6 +50,8 @@ class AoC {
 						temp += 1;
 					};
 					"\n"->Print();
+
+					# TODO: left and right to x and y
 				};
 			};
 			
