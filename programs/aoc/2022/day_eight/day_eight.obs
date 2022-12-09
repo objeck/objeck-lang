@@ -14,10 +14,10 @@ class AoC {
 							forest[i,j] := row->Get(j) - '0';
 						};
 					};
-
-					count += CountEdgeViews(forest);
+					
+					count += ViewableExternalEdges(forest);
+					count += ViewableInternalEdges(forest);
 					count->PrintLine();
-
 					return;
 				};
 			};
@@ -26,7 +26,11 @@ class AoC {
 		">>> Unable to load matrix <<<"->PrintLine();
 	}
 
-	function : CountEdgeViews(forest : Int[,]) ~ Int {
+	function : ViewableInternalEdges(forest : Int[,]) ~ Int {
+		return 0;
+	}
+
+	function : ViewableExternalEdges(forest : Int[,]) ~ Int {
 		dims := forest->Size();
 		x := dims[0];
 		y := dims[1];
