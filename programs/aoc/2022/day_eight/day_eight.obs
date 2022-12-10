@@ -11,7 +11,7 @@ class AoC {
 
 	New(file : String) {
 		@file := file;
-		@debug := true;
+		@debug := false;
 	}
 
 	method : public : Brun() ~ Nil {
@@ -20,7 +20,8 @@ class AoC {
 			row := inputs->Get(0);
 			if(row->Size() = inputs->Size()) {
 				size := inputs->Size();
-				"matrix: {$size}x{$size}"->PrintLine();
+
+				"forest: {$size}x{$size}"->PrintLine();
 				"---"->PrintLine();
 
 				@forest := Int->New[size, size];
@@ -32,7 +33,9 @@ class AoC {
 				};
 
 				count := ViewableExternalEdges() + ViewableExternal();
-				count->PrintLine();
+				"---"->PrintLine();
+				"viewable trees: {$count}"->PrintLine();
+				
 			};
 		};
 	}
@@ -46,17 +49,34 @@ class AoC {
 		each(i : x) {
 			each(j : y) {
 				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {					
-					check := ViewableExternalUp(i, j);
-					if(<>check) {
-						check := ViewableExternalRight(i, j);
+					check := ViewableExternalTop(i, j);
+					if(check) {
+						tree := @forest[i,j];
+						"First viewable from top ({$i},{$j})[{$tree}]"->PrintLine();
 					};
 
 					if(<>check) {
-						check := ViewableExternalDown(i, j);
+						check := ViewableExternalRight(i, j);
+						if(check) {
+							tree := @forest[i,j];
+							"First viewable from right ({$i},{$j})[{$tree}]"->PrintLine();
+						};
+					};
+
+					if(<>check) {
+						check := ViewableExternalBottom(i, j);
+						if(check) {
+							tree := @forest[i,j];
+							"First viewable from bottom ({$i},{$j})[{$tree}]"->PrintLine();
+						};
 					};
 
 					if(<>check) {
 						check := ViewableExternalLeft(i, j);
+						if(check) {
+							tree := @forest[i,j];
+							"First viewable from left ({$i},{$j})[{$tree}]"->PrintLine();
+						};
 					};
 
 					if(check) {
@@ -64,13 +84,12 @@ class AoC {
 					};
 				};
 			};
-			"---"->PrintLine();
 		};
 
 		return count;
 	}
 
-	method : ViewableExternalUp(i : Int, j : Int) ~ Bool {
+	method : ViewableExternalTop(i : Int, j : Int) ~ Bool {
 		tree := @forest[i, j];
 
 		if(@debug) {
@@ -95,7 +114,7 @@ class AoC {
 		return true;
 	}
 
-	method : ViewableExternalDown(i : Int, j : Int) ~ Bool {
+	method : ViewableExternalBottom(i : Int, j : Int) ~ Bool {
 		dims := @forest->Size();
 		tree := @forest[i, j];
 
