@@ -19,6 +19,7 @@ class AoC {
 
 					count += ViewableExternalEdges(forest);
 					count += ViewableExternal(forest);
+
 					count->PrintLine();
 					return;
 				};
@@ -36,11 +37,12 @@ class AoC {
 
 		each(i : x) {
 			each(j : y) {
-				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {
-#					"{$i},{$j}"->PrintLine();
-					
-					ViewableExternalLeft(i, j, forest);
+				if(i > 0 & j > 0 & i < x - 1 & j < y - 1) {					
+					ViewableExternalUp(i, j, forest);
+#					ViewableExternalDown(i, j, forest);
+
 #					ViewableExternalRight(i, j, forest);
+#					ViewableExternalLeft(i, j, forest);
 				};
 			};			
 		};
@@ -49,56 +51,53 @@ class AoC {
 	}
 
 	function : ViewableExternalUp(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		dims := forest->Size();
+		tree := forest[i, j];
+
+"({$i},{$j}):[{$tree}] => "->Print();
+		for(x := i - 1; x >= 0; x -= 1;) {
+System.IO.Standard->Print("(")->Print->Print(x)->Print(',')->Print(j)->Print("):[")->Print(forest[x, j])->Print("], ");				
+		};
+"\n"->PrintLine();
+
 		return false;
 	}
 
 	function : ViewableExternalDown(i : Int, j : Int, forest : Int[,]) ~ Bool {
+		dims := forest->Size();
+		tree := forest[i, j];
+
+"({$i},{$j}):[{$tree}] => "->Print();
+		for(x := j + 1; x < dims[0]; x += 1;) {
+System.IO.Standard->Print("(")->Print->Print(x)->Print(',')->Print(i)->Print("):[")->Print(forest[x, i])->Print("], ");				
+		};
+"\n"->PrintLine();
+
 		return false;
 	}
 
 	function : ViewableExternalLeft(i : Int, j : Int, forest : Int[,]) ~ Bool {
 		dims := forest->Size();
-		start := 1;
-		end := dims[0] - 1;
+		tree := forest[i, j];
 
-		value := forest[i, j];
-		for(x := end; x <> 1; x -= 1;) {
-			"{$value}:"->Print();
-			temp := 0;
-			while(temp <> x) {
-				forest[i, temp]->Print();
-				temp += 1;
-			};
-			""->PrintLine();
+"({$i},{$j}):[{$tree}] => "->Print();
+		for(y := j - 1; y >= 0; y -= 1;) {
+System.IO.Standard->Print("(")->Print->Print(i)->Print(',')->Print(y)->Print("):[")->Print(forest[i, y])->Print("], ");				
 		};
-		"\n---"->PrintLine();
-
-
- # System.IO.Standard->Print(i)->Print(',')->Print(j)->Print(':')->PrintLine(forest[i, j]);
-	
+"\n"->PrintLine();
 
 		return false;
 	}
 
 	function : ViewableExternalRight(i : Int, j : Int, forest : Int[,]) ~ Bool {
 		dims := forest->Size();
-		end := dims[0] - 1;
+		tree := forest[i, j];
 
-		value := forest[i, j];
-		for(x := 1; x < end; x += 1;) {
-			"{$value}:"->Print();
-			temp := x;
-			while(temp <> -1) {
-				forest[i, temp]->Print();
-				temp -= 1;
-			};
-			""->PrintLine();
+"({$i},{$j}):[{$tree}] => "->Print();
+		for(y := j + 1; y < dims[1]; y += 1;) {
+System.IO.Standard->Print("(")->Print->Print(i)->Print(',')->Print(y)->Print("):[")->Print(forest[i, y])->Print("], ");				
 		};
-		"\n---"->PrintLine();
-
-
- # System.IO.Standard->Print(i)->Print(',')->Print(j)->Print(':')->PrintLine(forest[i, j]);
-	
+"\n"->PrintLine();
 
 		return false;
 	}
