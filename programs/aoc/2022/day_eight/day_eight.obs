@@ -31,9 +31,7 @@ class AoC {
 					};
 				};
 
-				count += ViewableExternalEdges();
-				count += ViewableExternal();
-
+				count := ViewableExternalEdges() + ViewableExternal();
 				count->PrintLine();
 			};
 		};
@@ -73,7 +71,6 @@ class AoC {
 	}
 
 	method : ViewableExternalUp(i : Int, j : Int) ~ Bool {
-#		dims := @forest->Size();
 		tree := @forest[i, j];
 
 		if(@debug) {
@@ -125,7 +122,6 @@ class AoC {
 	}
 
 	method : ViewableExternalLeft(i : Int, j : Int) ~ Bool {
-#		dims := @forest->Size();
 		tree := @forest[i, j];
 
 		if(@debug) {
