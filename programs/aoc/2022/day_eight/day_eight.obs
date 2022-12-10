@@ -82,6 +82,14 @@ class AoC {
 					if(check) {
 						count += 1;
 					};
+
+
+#					ViewableExternalTop(i, j);
+#					ViewableExternalBottom(i, j);
+
+#					ViewableExternalLeft(i, j);
+#					ViewableExternalRight(i, j);
+
 				};
 			};
 		};
@@ -140,6 +148,7 @@ class AoC {
 		return true;
 	}
 
+	# (2,3):[3] => (2,2):[3] -> false(2,1):[5] -> false(2,0):[6] -> false
 	method : ViewableExternalLeft(i : Int, j : Int) ~ Bool {
 		tree := @forest[i, j];
 
