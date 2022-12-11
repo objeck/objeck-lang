@@ -45,8 +45,8 @@ class AoC {
 
 	method : ViewableTree(check : Int, x : Int, y : Int) ~ Bool {
 		dims := @forest->Size();
-		min := 0; max := dims[0];
-		
+		max := dims[0];
+
 
 #~		# down
 		dx := x + 1;
@@ -70,15 +70,18 @@ System.IO.Standard->Print("|")->Print(@forest[x,dy]);
 			dy += 1;
 		};
 ": {$result}"->Print();
-
+~#
 		# up
 		dx := x - 1;
-		"=>"->Print();
+"=>"->Print();
+		result := true;
 		while(dx >= 0) {
-			System.IO.Standard->Print(@forest[dx, y])->Print("|");
+			result := @forest[dx, y] < check;
+System.IO.Standard->Print(@forest[dx, y])->Print("|");
 			dx -= 1;
 		};
-	
+": {$result}"->Print();		
+#~	
 		# left
 		dy := y - 1;
 		"=>"->Print();
