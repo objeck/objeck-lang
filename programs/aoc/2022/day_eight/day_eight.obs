@@ -20,8 +20,8 @@ class AoC {
 			dims := @forest->Size();
 			x := dims[0]; y := dims[1];
 
-			"Forest is {$x}x{$y}\n---"->PrintLine();
-			ViewableTrees()->PrintLine();
+			"Forest is {$x}x{$y}"->PrintLine();
+			ViewableTrees();
 		}
 		else {
 			">>> Error executing program <<<"->ErrorLine();
@@ -32,18 +32,15 @@ class AoC {
 		dims := @forest->Size();
 		x := dims[0]; y := dims[1];
 
-		count := 0;
-
 		each(i : x) {
 			each(j : y) {
 				System.IO.Standard->Print("[")->Print(@forest[i,j])->Print("]: ");
-				if(ViewableTree(@forest[i,j], i, j)) {
-					count += 1;
-				};
+				ViewableTree(@forest[i,j], i, j);
 			};
+			""->PrintLine();
 		};
 
-		return count;
+		return -1;
 	}
 
 	method : ViewableTree(check : Int, x : Int, y : Int) ~ Bool {
@@ -53,36 +50,27 @@ class AoC {
 		# down
 		dx := x + 1;
 		while(dx < max) {
-# System.IO.Standard->Print("|")->Print(@forest[dx,y]);
-			if(@forest[dx,y] >= check) {
-				return false;
-			};
+			result := @forest[dx,y] < check;
 			dx += 1;
 		};
 
 		# right
 		dy := y + 1;
 		while(dy < max) {
-			if(@forest[x,dy] >= check) {
-				return false;
-			};
+			result := @forest[x,dy] < check;
 			dy += 1;
 		};
 		# up
 		dx := x - 1;
 		while(dx >= 0) {
-			if(@forest[dx, y] >= check) {
-				return false;
-			};
+			result := @forest[dx, y] < check;
 			dx -= 1;
 		};
 
 		# left
 		dy := y - 1;
 		while(dy >= 0) {
-			if(@forest[x, dy] >= check) {
-				return false;
-			};
+			result := @forest[x, dy] < check;
 			dy -= 1;
 		};
 		
