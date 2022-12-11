@@ -1,49 +1,120 @@
-use Collection.Generic;
-
 class AoC {
+	@file : String;
+	@forest : Int[,];
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			inputs := ReadInput(args[0])<String>;
-
-			count := 0;
-
-			each(i : inputs) {
-				elves := inputs->Get(i)->Split(",");
-			
-				elf_one := elves[0];
-				elf_one_range := elf_one->Split("-");
-				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntHolder, IntHolder>;
-
-				elf_two := elves[1];
-				elf_two_range := elf_two->Split("-");
-				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
-
-				if((IsOverlap(elf_one_pair, elf_two_pair) & IsOverlap(elf_two_pair, elf_one_pair))) {
-					count += 1;
-					"(*)"->PrintLine();
-				};
-
-				"---"->PrintLine();
-			};
-
-			"===\n{$count}"->PrintLine();
+			AoC->New(args[0])->Brun();
 		};
 	}
 
-	function : IsOverlap(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
-		elf_one_start := elf_one_pair->GetFirst()->Get();
-		elf_one_end := elf_one_pair->GetSecond()->Get();
-
-		elf_two_start := elf_two_pair->GetFirst()->Get();
-		elf_two_end := elf_two_pair->GetSecond()->Get();
-		
-		"{$elf_one_start},{$elf_one_end};{$elf_two_start},{$elf_two_end}"->PrintLine();
-
-		return elf_one_end >=  elf_two_start;
+	New(file : String) {
+		@file := file;
 	}
 
-	function : ReadInput(file : String) ~ Vector<String> {
-		inputs := Vector->New()<String>;
+	method : public : Brun() ~ Nil {
+		inputs := ReadInput(@file)<String>;
+		if(MakeForest(inputs)) {
+			dims := @forest->Size();
+			x := dims[0]; y := dims[1];
+
+			"Forest is {$x}x{$y}\n---"->PrintLine();
+			ViewableDistances()->PrintLine();
+		}
+		else {
+			">>> Error executing program <<<"->ErrorLine();
+		};
+	}
+
+	method : native : ViewableDistances() ~ Int {
+		dims := @forest->Size();
+		x := dims[0]; y := dims[1];
+
+		count := 0;
+
+		each(i : x) {
+			each(j : y) {
+				"({$i},{$j}):"->Print();
+				System.IO.Standard->Print(@forest[i,j])->Print('=')->PrintLine(ViewableDistance(@forest[i,j], i, j));
+			};
+		};
+
+		return count;
+	}
+
+	method : native : ViewableDistance(check : Int, x : Int, y : Int) ~ Int {
+		dims := @forest->Size();
+		max := dims[0];
+
+		# down
+		dx := x + 1;
+		result := true;
+		while(result & dx < max) {
+			result := @forest[dx,y] < check;
+			dx += 1;
+		};
+		if(result) {
+			return 0;
+		};
+
+		# right
+		dy := y + 1;
+		result := true;
+		while(result & dy < max) {
+			result := @forest[x,dy] < check;
+			dy += 1;
+		};
+		if(result) {
+			return 0;
+		};
+
+		# up
+		dx := x - 1;
+		result := true;
+		while(result & dx >= 0) {
+			result := @forest[dx, y] < check;
+			dx -= 1;
+		};
+		if(result) {
+			return 0;
+		};
+
+		# left
+		dy := y - 1;
+		result := true;
+		while(result & dy >= 0) {
+			result := @forest[x, dy] < check;
+			dy -= 1;
+		};
+		if(result) {
+			return 0;
+		};
+		
+		return -1;
+	}
+
+	method : MakeForest(inputs : Collection.Generic.Vector<String>) ~ Bool {
+		if(<>inputs->IsEmpty()) {
+			row := inputs->Get(0);
+			if(row->Size() = inputs->Size()) {
+				size := inputs->Size();
+				@forest := Int->New[size, size];
+				each(i : size) {
+					row := inputs->Get(i);
+					each(j : row) {
+						@forest[i,j] := row->Get(j) - '0';
+					};
+				};				
+			};
+
+			return true;
+		};
+
+		return false;
+	}
+
+	function : ReadInput(file : String) ~ Collection.Generic.Vector<String> {
+		inputs := Collection.Generic.Vector->New()<String>;
 
 		reader := System.IO.Filesystem.FileReader->New(file);
 		leaving {
