@@ -34,7 +34,7 @@ class AoC {
 
 		each(i : x) {
 			each(j : y) {
-				System.IO.Standard->Print("\t[")->Print(@forest[i,j])->Print("]: ");
+				System.IO.Standard->Print("[")->Print(@forest[i,j])->Print("]: ");
 				ViewableTree(@forest[i,j], i, j);
 			};
 			""->PrintLine();
@@ -46,8 +46,7 @@ class AoC {
 	method : ViewableTree(check : Int, x : Int, y : Int) ~ Bool {
 		dims := @forest->Size();
 		max := dims[0];
-
-
+		
 #~		# down
 		dx := x + 1;
 " => "->Print();
@@ -70,7 +69,6 @@ System.IO.Standard->Print("|")->Print(@forest[x,dy]);
 			dy += 1;
 		};
 ": {$result}"->Print();
-~#
 		# up
 		dx := x - 1;
 "=>"->Print();
@@ -80,8 +78,8 @@ System.IO.Standard->Print("|")->Print(@forest[x,dy]);
 System.IO.Standard->Print(@forest[dx, y])->Print("|");
 			dx -= 1;
 		};
-": {$result}"->Print();		
-#~	
+": {$result}\t"->Print();		
+~#
 		# left
 		dy := y - 1;
 		"=>"->Print();
@@ -89,7 +87,7 @@ System.IO.Standard->Print(@forest[dx, y])->Print("|");
 			System.IO.Standard->Print(@forest[x, dy])->Print("|");
 			dy -= 1;
 		};
-~#
+
 		return true;
 	}
 
