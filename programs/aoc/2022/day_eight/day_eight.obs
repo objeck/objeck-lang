@@ -47,47 +47,49 @@ class AoC {
 		dims := @forest->Size();
 		max := dims[0];
 		
-#~		# down
+		# down
 		dx := x + 1;
-" => "->Print();
+# " => "->Print();
 		result := true;
 		while(result & dx < max) {
 			result := @forest[dx,y] < check;
-System.IO.Standard->Print("|")->Print(@forest[dx,y]);
+# System.IO.Standard->Print("|")->Print(@forest[dx,y]);
 			dx += 1;
 		};
-": {$result}"->Print();
-
+# ": {$result}"->Print();
 
 		# right
 		dy := y + 1;
-" => "->Print();
+# " => "->Print();
 		result := true;
 		while(result & dy < max) {
 			result := @forest[x,dy] < check;
-System.IO.Standard->Print("|")->Print(@forest[x,dy]);
+# System.IO.Standard->Print("|")->Print(@forest[x,dy]);
 			dy += 1;
 		};
-": {$result}"->Print();
+# ": {$result}"->Print();
 		# up
 		dx := x - 1;
-"=>"->Print();
+# "=>"->Print();
 		result := true;
 		while(dx >= 0) {
 			result := @forest[dx, y] < check;
-System.IO.Standard->Print(@forest[dx, y])->Print("|");
+# System.IO.Standard->Print(@forest[dx, y])->Print("|");
 			dx -= 1;
 		};
-": {$result}\t"->Print();		
-~#
+# ": {$result}\t"->Print();		
+
 		# left
 		dy := y - 1;
-		"=>"->Print();
+# "=>"->Print();
+		result := true;
 		while(dy >= 0) {
-			System.IO.Standard->Print(@forest[x, dy])->Print("|");
+			result := @forest[x, dy] < check;
+# System.IO.Standard->Print(@forest[x, dy])->Print("|");
 			dy -= 1;
 		};
-
+#": {$result}\t"->Print();
+		
 		return true;
 	}
 
