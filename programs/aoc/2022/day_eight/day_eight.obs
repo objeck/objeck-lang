@@ -1,7 +1,6 @@
 class AoC {
 	@file : String;
 	@forest : Int[,];
-	@debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -11,7 +10,6 @@ class AoC {
 
 	New(file : String) {
 		@file := file;
-		@debug := false;
 	}
 
 	method : public : Brun() ~ Nil {
@@ -59,7 +57,7 @@ class AoC {
 		if(result) {
 			return true;
 		};
-		
+
 		# right
 		dy := y + 1;
 		result := true;
