@@ -43,7 +43,7 @@ class AoC {
 		return count;
 	}
 
-	method : ViewableTree(check : Int, x : Int, y : Int) ~ Bool {
+	method : native : ViewableTree(check : Int, x : Int, y : Int) ~ Bool {
 		dims := @forest->Size();
 		max := dims[0];
 
