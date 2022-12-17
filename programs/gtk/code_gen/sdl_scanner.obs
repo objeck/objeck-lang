@@ -17,21 +17,17 @@ bundle CodeGen {
 		method : public : Scan() ~ Vector<Token> {
 			reserved := Map->New()<String, Token>;
 			# c keywords
-			reserved->Insert("extern", Token->New(Token->Type->EXTERN_ID, "extern"));
-			reserved->Insert("DECLSPEC", Token->New(Token->Type->DECLSPEC_ID, "DECLSPEC"));
-			reserved->Insert("SDL2_GFXPRIMITIVES_SCOPE", Token->New(Token->Type->SDL2_GFXPRIMITIVES_SCOPE_ID, "SDL2_GFXPRIMITIVES_SCOPE"));
-			reserved->Insert("SDLCALL", Token->New(Token->Type->SDLCALL_ID, "SDLCALL"));
+			
 			
 			# c types
 			reserved->Insert("const", Token->New(Token->Type->CONST_ID, "const"));
 			reserved->Insert("int", Token->New(Token->Type->INT_ID, "int"));
 			reserved->Insert("char", Token->New(Token->Type->CHAR_ID, "char"));
 			reserved->Insert("void", Token->New(Token->Type->VOID_ID, "void"));
-			reserved->Insert("Uint8", Token->New(Token->Type->UINT8_ID, "Uint8"));
-			reserved->Insert("Uint16", Token->New(Token->Type->UINT16_ID, "Uint16"));
-			reserved->Insert("Sint16", Token->New(Token->Type->SINT16_ID, "Sint16"));
-			reserved->Insert("Uint32", Token->New(Token->Type->UINT32_ID, "Uint32"));
-			reserved->Insert("SDL_bool", Token->New(Token->Type->SDL_BOOL_ID, "SDL_bool"));
+			reserved->Insert("gint", Token->New(Token->Type->GINT, "guint"));
+			reserved->Insert("guint", Token->New(Token->Type->GUINT, "guint"));
+			reserved->Insert("gboolean", Token->New(Token->Type->GBOOLEAN, "GBOOLEAN"));
+			reserved->Insert("gchar", Token->New(Token->Type->GCHAR, "GCHAR"));
 			
 			"filename='{$@filename}'"->PrintLine();
 
@@ -138,17 +134,12 @@ bundle CodeGen {
 	~#
 	class Token {
 		enum Type := -100 {
-			EXTERN_ID,
-			DECLSPEC_ID,
-			SDL2_GFXPRIMITIVES_SCOPE_ID,
-			SDLCALL_ID,
 			INT_ID,
 			CHAR_ID,
-			UINT8_ID,
-			UINT16_ID,
-			SINT16_ID,
-			UINT32_ID,
-			SDL_BOOL_ID,
+			GINT,
+			GUINT,
+			GCHAR,
+			GBOOLEAN,
 			VOID_ID,
 			CONST_ID,
 			OPRN,
@@ -183,6 +174,88 @@ bundle CodeGen {
 		
 		method : public : GetValue() ~ String {
 			return @value;
+		}
+
+		method : public : ToString() ~ String {
+			select(@type) {
+				label Token->Type->INT_ID {
+
+				}
+
+				label Token->Type->CHAR_ID {
+
+				}
+
+				label Token->Type->GUINT {
+
+				}
+
+				label Token->Type->GBOOLEAN {
+
+				}
+
+				label Token->Type->GCHAR {
+
+				}
+
+				label Token->Type->VOID_ID {
+
+				}
+
+				label Token->Type->CONST_ID {
+
+				}
+
+				label Token->Type->OPRN {
+
+				}
+
+				label Token->Type->CPRN {
+
+				}
+
+				label Token->Type->OBR {
+
+				}
+
+				label Token->Type->CBR {
+
+				}
+
+				label Token->Type->COMMA {
+
+				}
+
+				label Token->Type->SCOLON {
+
+				}
+
+				label Token->Type->STAR {
+
+				}
+
+				label Token->Type->AND {
+
+				}
+
+				label Token->Type->NUM {
+
+				}
+
+				label Token->Type->IDENT {
+
+				}
+
+				label Token->Type->UNKWN {
+
+				}
+
+				label Token->Type->EOS {
+
+				}
+			};
+
+			return "<unknown>";
 		}
 	}
 }
