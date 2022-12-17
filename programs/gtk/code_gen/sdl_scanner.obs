@@ -24,10 +24,10 @@ bundle CodeGen {
 			reserved->Insert("int", Token->New(Token->Type->INT_ID, "int"));
 			reserved->Insert("char", Token->New(Token->Type->CHAR_ID, "char"));
 			reserved->Insert("void", Token->New(Token->Type->VOID_ID, "void"));
-			reserved->Insert("gint", Token->New(Token->Type->GINT, "guint"));
-			reserved->Insert("guint", Token->New(Token->Type->GUINT, "guint"));
-			reserved->Insert("gboolean", Token->New(Token->Type->GBOOLEAN, "GBOOLEAN"));
-			reserved->Insert("gchar", Token->New(Token->Type->GCHAR, "GCHAR"));
+			reserved->Insert("gint", Token->New(Token->Type->GINT_ID, "guint"));
+			reserved->Insert("guint", Token->New(Token->Type->GUINT_ID, "guint"));
+			reserved->Insert("gboolean", Token->New(Token->Type->GBOOLEAN_ID, "GBOOLEAN_ID"));
+			reserved->Insert("gchar", Token->New(Token->Type->GCHAR_ID, "GCHAR_ID"));
 			
 			"filename='{$@filename}'"->PrintLine();
 
@@ -136,10 +136,10 @@ bundle CodeGen {
 		enum Type := -100 {
 			INT_ID,
 			CHAR_ID,
-			GINT,
-			GUINT,
-			GCHAR,
-			GBOOLEAN,
+			GINT_ID,
+			GUINT_ID,
+			GCHAR_ID,
+			GBOOLEAN_ID,
 			VOID_ID,
 			CONST_ID,
 			OPRN,
@@ -179,79 +179,76 @@ bundle CodeGen {
 		method : public : ToString() ~ String {
 			select(@type) {
 				label Token->Type->INT_ID {
-
+					return "type=INT_ID, value=\"{$@value}\"";
 				}
 
 				label Token->Type->CHAR_ID {
-
+					return "type=CHAR_ID, value=\"{$@value}\"";
 				}
 
-				label Token->Type->GUINT {
-
+				label Token->Type->GINT_ID {
+					return "type=GINT_ID, value=\"{$@value}\"";
 				}
 
-				label Token->Type->GBOOLEAN {
-
+				label Token->Type->GUINT_ID {
+					return "type=GUINT_ID, value=\"{$@value}\"";
 				}
 
-				label Token->Type->GCHAR {
+				label Token->Type->GBOOLEAN_ID {
+					return "type=GBOOLEAN_ID, value=\"{$@value}\"";
+				}
+
+				label Token->Type->GCHAR_ID {
+					return "type=GCHAR_ID, value=\"{$@value}\"";
 
 				}
 
 				label Token->Type->VOID_ID {
-
+					return "type=VOID_ID, value=\"{$@value}\"";
 				}
 
 				label Token->Type->CONST_ID {
-
+					return "type=CONST_ID, value=\"{$@value}\"";
 				}
 
 				label Token->Type->OPRN {
-
+					return "type=GCHAR_ID, value=\"{$@value}\"";
 				}
 
 				label Token->Type->CPRN {
-
+					return "type=GCHAR_ID, value=\"{$@value}\"";
 				}
 
 				label Token->Type->OBR {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->CBR {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->COMMA {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->SCOLON {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->STAR {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->AND {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->NUM {
-
+					return "type='{$@value}'";
 				}
 
 				label Token->Type->IDENT {
-
-				}
-
-				label Token->Type->UNKWN {
-
-				}
-
-				label Token->Type->EOS {
-
+					return "type=IDENT, value=\"{$@value}\"";
 				}
 			};
 
