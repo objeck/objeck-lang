@@ -44,7 +44,7 @@ bundle CodeGen {
 		
 		method : public : Parse() ~ Vector<ParsedFunction> {
 			functions := Vector->New()<ParsedFunction>;
-			
+						
 			while(<>Match(Token->Type->EOS)) {
 				parsed_function := ParseFunction();
 				if(parsed_function <> Nil) {
@@ -102,7 +102,7 @@ bundle CodeGen {
 		}
 		
 		method : ParseCxxName(name : String) ~ String {
-			if(name->StartsWith("SDL_") | name->StartsWith("SDL2_") | name->StartsWith("TTF_")  | name->StartsWith("Mix_")) {
+			if(name->StartsWith("Gtk_") #~ | name->StartsWith("Mix_") ~# ) {
 				name := name->SubString(4, name->Size() - 4);
 			};
 			
@@ -118,6 +118,7 @@ bundle CodeGen {
 			};
 			
 			select(Token()->GetType()) {
+				label Token->Type->GTYPE_ID:
 				label Token->Type->GINT_ID:
 				label Token->Type->GUINT_ID:
 				label Token->Type->INT_ID: {
@@ -128,7 +129,8 @@ bundle CodeGen {
 					type := ParsedType->New(ParsedType->Type->BOOL);
 				}
 				
-				label Token->Type->CHAR_ID: {
+				label Token->Type->CHAR_ID:
+				label Token->Type->GCHAR_ID: {
 					type := ParsedType->New(ParsedType->Type->CHAR);
 				}
 				
@@ -142,7 +144,8 @@ bundle CodeGen {
 				}
 				
 				other: {
-					"expected type"->PrintLine();
+					id := Token()->GetValue();
+					"expected type: found='{$id}'"->PrintLine();
 					Runtime->Exit(1);
 				}
 			};
@@ -168,11 +171,12 @@ bundle CodeGen {
 		
 		method : public : ParseFunction() ~ ParsedFunction {
 			parsed_function : ParsedFunction;
+
 			
 			# TODO: anchor
 			match := false;
-			if(#~ Match(Token->Type->SDL2_GFXPRIMITIVES_SCOPE_ID) & ~# Match(Token->Type->INT_ID, 1)) {
-				match := true;
+			if(Match(Token->Type->GDK_AVAILABLE_IN_ALL_ID) #~ & Match(Token->Type->INT_ID, 1) ~#) {
+				match := true;			
 				Next(); 
 			}
 #~			
@@ -243,7 +247,7 @@ bundle CodeGen {
 		}
 		
 		method : public : GetObjeckName() ~ String {
-			if(@objk_name = Nil & (@func_name->StartsWith("SDL_") | @func_name->StartsWith("SDL2_") | @func_name->StartsWith("TTF_") | @func_name->StartsWith("Mix_"))) {
+			if(@objk_name = Nil & (@func_name->StartsWith("Gtk_") #~ | @func_name->StartsWith("Mix_") ~# )) {
 				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
 				@objk_name := @objk_name->ReplaceAll(@this_name, "");
 				@objk_name := @objk_name->ReplaceAll("_", "");
@@ -270,9 +274,12 @@ bundle CodeGen {
 		
 		method : public : GetCxxName() ~ String {
 			if(@cxx_name = Nil) {
-				@cxx_name := "sdl_";
+				@cxx_name := "";
+#~	TODO: revisit?	
+				@cxx_name := "gtk_";
 				@cxx_name->Append(@this_name->ToLower());
 				@cxx_name->Append('_');
+~#				
 				objeck_name := GetObjeckName();
 				each(i : objeck_name) {
 					c := objeck_name->Get(i);

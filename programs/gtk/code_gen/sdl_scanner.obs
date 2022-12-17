@@ -17,7 +17,8 @@ bundle CodeGen {
 		method : public : Scan() ~ Vector<Token> {
 			reserved := Map->New()<String, Token>;
 			# c keywords
-			
+			reserved->Insert("GDK_AVAILABLE_IN_ALL", Token->New(Token->Type->GDK_AVAILABLE_IN_ALL_ID, "GDK_AVAILABLE_IN_ALL"));
+			reserved->Insert("GType", Token->New(Token->Type->GTYPE_ID, "GTYPE"));
 			
 			# c types
 			reserved->Insert("const", Token->New(Token->Type->CONST_ID, "const"));
@@ -133,10 +134,12 @@ bundle CodeGen {
 	Scanned token
 	~#
 	class Token {
-		enum Type := -100 {
+		enum Type := -200 {
+			GDK_AVAILABLE_IN_ALL_ID,
 			INT_ID,
 			CHAR_ID,
 			GINT_ID,
+			GTYPE_ID,
 			GUINT_ID,
 			GCHAR_ID,
 			GBOOLEAN_ID,
@@ -178,45 +181,52 @@ bundle CodeGen {
 
 		method : public : ToString() ~ String {
 			select(@type) {
+				label Token->Type->GDK_AVAILABLE_IN_ALL_ID {
+					return "type='GDK_AVAILABLE_IN_ALL_ID'";
+				}
+
 				label Token->Type->INT_ID {
-					return "type=INT_ID, value=\"{$@value}\"";
+					return "type=INT_ID";
 				}
 
 				label Token->Type->CHAR_ID {
-					return "type=CHAR_ID, value=\"{$@value}\"";
+					return "type=CHAR_ID";
 				}
 
 				label Token->Type->GINT_ID {
-					return "type=GINT_ID, value=\"{$@value}\"";
+					return "type=GINT_ID";
+				}
+
+				label Token->Type->GTYPE_ID {
+					return "type=GTYPE_ID";
 				}
 
 				label Token->Type->GUINT_ID {
-					return "type=GUINT_ID, value=\"{$@value}\"";
+					return "type=GUINT_ID";
 				}
 
 				label Token->Type->GBOOLEAN_ID {
-					return "type=GBOOLEAN_ID, value=\"{$@value}\"";
+					return "type=GBOOLEAN_ID";
 				}
 
 				label Token->Type->GCHAR_ID {
-					return "type=GCHAR_ID, value=\"{$@value}\"";
-
+					return "type=GCHAR_ID";
 				}
 
 				label Token->Type->VOID_ID {
-					return "type=VOID_ID, value=\"{$@value}\"";
+					return "type=VOID_ID";
 				}
 
 				label Token->Type->CONST_ID {
-					return "type=CONST_ID, value=\"{$@value}\"";
+					return "type=CONST_ID";
 				}
 
 				label Token->Type->OPRN {
-					return "type=GCHAR_ID, value=\"{$@value}\"";
+					return "type=GCHAR_ID";
 				}
 
 				label Token->Type->CPRN {
-					return "type=GCHAR_ID, value=\"{$@value}\"";
+					return "type=GCHAR_ID";
 				}
 
 				label Token->Type->OBR {
