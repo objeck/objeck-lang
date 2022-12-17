@@ -15,7 +15,7 @@ bundle CodeGen {
 		
 		method : public : Emit() ~ Nil {
 			tokens := Scanner->New(@file_name)->Scan();
-			each(i : 10) {
+			each(i : 512) {
 				tokens->Get(i)->ToString()->PrintLine();
 			};
 tokens->Size()->PrintLine();
