@@ -118,13 +118,13 @@ bundle CodeGen {
 			};
 			
 			select(Token()->GetType()) {
-				label Token->Type->GINT:
-				label Token->Type->GUINT:
+				label Token->Type->GINT_ID:
+				label Token->Type->GUINT_ID:
 				label Token->Type->INT_ID: {
 					type := ParsedType->New(ParsedType->Type->INT);
 				}
 				
-				label Token->Type->GBOOLEAN: {
+				label Token->Type->GBOOLEAN_ID: {
 					type := ParsedType->New(ParsedType->Type->BOOL);
 				}
 				
