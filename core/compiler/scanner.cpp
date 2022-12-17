@@ -835,7 +835,7 @@ void Scanner::Whitespace()
  ****************************/
 void Scanner::Comments()
 {
-  while((cur_char == COMMENT || (alt_syntax && (cur_char == ALT_COMMENT && (nxt_char == ALT_COMMENT || cur_char == ALT_EXTENDED_COMMENT)))) && cur_char != EOB) {
+  while((cur_char == COMMENT || (alt_syntax && (cur_char == ALT_COMMENT && (nxt_char == ALT_COMMENT || nxt_char == ALT_EXTENDED_COMMENT)))) && cur_char != EOB) {
     NextChar();
 
     // extended comment
