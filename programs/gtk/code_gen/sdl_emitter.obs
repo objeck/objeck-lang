@@ -14,20 +14,15 @@ bundle CodeGen {
 		}
 		
 		method : public : Emit() ~ Nil {
-			tokens := Scanner->New(@file_name)->Scan();
-			each(i : 512) {
-				tokens->Get(i)->ToString()->PrintLine();
-			};
-tokens->Size()->PrintLine();
-#~			
 			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name)->Parse();
+			
+			"---"->PrintLine();
 			each(i : methods) {
 				parsed_method := methods->Get(i)->As(ParsedFunction);
 				EmitObjeckCode(parsed_method);
 				EmitCxxCode(parsed_method);
 				"---"->PrintLine();
 			};
-~#			
 		}
 		
 		function : Main(args : String[]) ~ Nil {
@@ -132,7 +127,7 @@ tokens->Size()->PrintLine();
 				
 				if(i = 0 & parameters->Get(0)->GetType()->GetType() = ParsedType->Type->CLASS & 
 						GetTypeString(parameters->Get(0)->GetType())->Equals(@this_name)) {
-					buffer += "\t\tSDL_";
+					buffer += "\t\tGtk_";
 					buffer += @this_name;
 					buffer += "* ";
 					buffer += parameter->GetName();
