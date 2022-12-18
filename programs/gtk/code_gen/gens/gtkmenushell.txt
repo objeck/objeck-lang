@@ -1,0 +1,148 @@
+Compiled 8 source classes.
+Linked 22 library classes.
+Wrote target file: 'code_gen.obe'
+---
+function: 'gtk_menu_shell_get_type'
+function: 'gtk_menu_shell_append'
+function: 'gtk_menu_shell_insert'
+function: 'gtk_menu_shell_select_item'
+function: 'gtk_menu_shell_activate_item'
+function: 'gtk_menu_shell_cancel'
+function: 'gtk_menu_shell_set_take_focus'
+function: 'gtk_menu_shell_get_parent_shell'
+---
+method : public : Append(child : GtkWidget) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@menu_shell);
+	array_args[1] := child;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_append", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_append(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 0);
+		const size* child = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_menu_shell_append(menu_shell, child);
+	}
+
+---
+method : public : Insert(child : GtkWidget, position : Int) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@menu_shell);
+	array_args[1] := child;
+	array_args[2] := IntHolder->New(position);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_insert", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_insert(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 0);
+		const size* child = (size_t*)APITools_GetObjectValue(context, 1);
+		const int position = APITools_GetIntValue(context, 2);
+		gtk_menu_shell_insert(menu_shell, child, position);
+	}
+
+---
+method : public : SelectItem(menu_item : GtkWidget) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@menu_shell);
+	array_args[1] := menu_item;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_select_item", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_select_item(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 0);
+		const size* menu_item = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_menu_shell_select_item(menu_shell, menu_item);
+	}
+
+---
+method : public : ActivateItem(menu_item : GtkWidget, force_deactivate : Bool) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@menu_shell);
+	array_args[1] := menu_item;
+	array_args[2] := IntHolder->New(force_deactivate ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_activate_item", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_activate_item(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 0);
+		const size* menu_item = (size_t*)APITools_GetObjectValue(context, 1);
+		const int force_deactivate = APITools_GetIntValue(context, 2);
+		gtk_menu_shell_activate_item(menu_shell, menu_item, force_deactivate);
+	}
+
+---
+method : public : Cancel() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@menu_shell);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_cancel", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_cancel(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 0);
+		gtk_menu_shell_cancel(menu_shell);
+	}
+
+---
+method : public : SetTakeFocus(take_focus : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@menu_shell);
+	array_args[1] := IntHolder->New(take_focus ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_set_take_focus", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_set_take_focus(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 0);
+		const int take_focus = APITools_GetIntValue(context, 1);
+		gtk_menu_shell_set_take_focus(menu_shell, take_focus);
+	}
+
+---
+method : public : GetParentShell() ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menu_shell);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_shell_get_parent_shell", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_shell_get_parent_shell(VMContext& context) {
+		Gtk_GtkMenuShell* menu_shell = (GtkMenuShell*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_menu_shell_get_parent_shell(menu_shell);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+

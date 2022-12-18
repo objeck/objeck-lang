@@ -1,0 +1,66 @@
+Compiled 8 source classes.
+Linked 22 library classes.
+Wrote target file: 'code_gen.obe'
+---
+function: 'gtk_menu_bar_get_type'
+function: 'gtk_menu_bar_new'
+function: 'gtk_menu_bar_get_pack_direction'
+function: 'gtk_menu_bar_get_child_pack_direction'
+---
+method : public : New() ~ GtkWidget {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_bar_new", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_bar_new(VMContext& context) {
+		const size* return_value = gtk_menu_bar_new();
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : GetPackDirection() ~ GtkPackDirection {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menubar);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_bar_get_pack_direction", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_bar_get_pack_direction(VMContext& context) {
+		Gtk_GtkMenuBar* menubar = (GtkMenuBar*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_menu_bar_get_pack_direction(menubar);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : GetChildPackDirection() ~ GtkPackDirection {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menubar);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_bar_get_child_pack_direction", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_bar_get_child_pack_direction(VMContext& context) {
+		Gtk_GtkMenuBar* menubar = (GtkMenuBar*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_menu_bar_get_child_pack_direction(menubar);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
