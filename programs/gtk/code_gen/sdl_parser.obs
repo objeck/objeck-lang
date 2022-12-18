@@ -2,7 +2,7 @@ use Collection.Generic;
 
 bundle CodeGen {
 	#~
-	Source code parser
+	Parse C-source
 	~#
 	class Parser {
 		@tokens : Vector<Token>;
@@ -79,7 +79,7 @@ bundle CodeGen {
 					return Nil;
 				};
 				
-				## function name
+				# function name
 				if(<>Match(Token->Type->IDENT)) {
 					return Nil;
 				};
@@ -102,14 +102,14 @@ bundle CodeGen {
 		}
 		
 		method : ParseCxxName(name : String) ~ String {
-			if(name->StartsWith("Gtk_") #~ | name->StartsWith("Mix_") ~# ) {
+			if(name->StartsWith("Gtk_") #~ | name->StartsWith("SDL_") ~# ) {
 				name := name->SubString(4, name->Size() - 4);
 			};
 			
 			return name;
 		}
 		
-		## handle * and & c types
+		# handle * and & c types
 		method : public : ParseType() ~ ParsedType {
 			type : ParsedType;
 			
@@ -172,41 +172,30 @@ bundle CodeGen {
 		method : public : ParseFunction() ~ ParsedFunction {
 			parsed_function : ParsedFunction;
 
-			
-			# TODO: anchor
+			# TODO: GTK3 vs. GTK4
 			match := false;
-			if(Match(Token->Type->GDK_AVAILABLE_IN_ALL_ID) #~ & Match(Token->Type->INT_ID, 1) ~#) {
+			if(Match(Token->Type->GDK_AVAILABLE_IN_ALL_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_4_ID)) {
 				match := true;			
 				Next(); 
-			}
-#~			
-			else if(Match(Token->Type->EXTERN_ID) & Match(Token->Type->DECLSPEC_ID, 1)) {
-				match := true;
-				Next(); 
-				Next();
-			}~# ;
+			};
 			
 			if(match) {
-				## return type
+				# return type
 				parsed_return := ParseType();
 				if(parsed_return = Nil) {
 					return Nil;
 				};
-#~				
-				if(Match(Token->Type->SDLCALL_ID)) {
-					Next();
-				};
-~#
 
 				# function name
 				if(<>Match(Token->Type->IDENT)) {
 					return Nil;
 				};
 				parsed_function_name := Token()->GetValue();
-"function='{$parsed_function_name}'"->PrintLine();
+				"function: '{$parsed_function_name}'"->PrintLine();
+
 				Next();
 				
-				## parameters
+				# parameters
 				parsed_parameters := ParseParameters();
 				if(parsed_parameters = Nil) {
 					return Nil;
@@ -225,7 +214,7 @@ bundle CodeGen {
 	}
 	
 	#~
-	Parsed function
+	Parse function
 	~#
 	class ParsedFunction {
 		@func_name : String;
@@ -247,10 +236,30 @@ bundle CodeGen {
 		}
 		
 		method : public : GetObjeckName() ~ String {
-			if(@objk_name = Nil & (@func_name->StartsWith("Gtk_") #~ | @func_name->StartsWith("Mix_") ~# )) {
+			# TODO: very ugly clean up!
+			if(@objk_name = Nil & (@func_name->StartsWith("gtk_"))) {
 				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
-				@objk_name := @objk_name->ReplaceAll(@this_name, "");
-				@objk_name := @objk_name->ReplaceAll("_", "");
+
+				this_name_temp := @this_name->ToLower();
+				this_name_temp->SubString(3, this_name_temp->Size() - 3);
+
+				@objk_name := @objk_name->ReplaceAll(this_name_temp, "");
+				if(<>@objk_name->IsEmpty() & @objk_name->Get(0)->IsLower()) {
+					found_char := @objk_name->Get(0);
+					@objk_name->Delete(0);
+					@objk_name->Insert(0, found_char - 32);
+
+					while(@objk_name->Has('_')) {
+						found_index := @objk_name->Find('_');
+						@objk_name->Delete(found_index);
+						found_char := @objk_name->Get(found_index);					
+						@objk_name->Insert(found_index, found_char - 32);
+						@objk_name->Delete(found_index + 1);
+					};
+				};
+
+				this_name_prefix := @this_name->SubString(3, this_name_temp->Size() - 3);
+				@objk_name := @objk_name->ReplaceAll(this_name_prefix, "");
 			}
 			else {
 				@objk_name := String->New(@func_name);
@@ -275,11 +284,6 @@ bundle CodeGen {
 		method : public : GetCxxName() ~ String {
 			if(@cxx_name = Nil) {
 				@cxx_name := "";
-#~	TODO: revisit?	
-				@cxx_name := "gtk_";
-				@cxx_name->Append(@this_name->ToLower());
-				@cxx_name->Append('_');
-~#				
 				objeck_name := GetObjeckName();
 				each(i : objeck_name) {
 					c := objeck_name->Get(i);
@@ -320,7 +324,7 @@ bundle CodeGen {
 	}
 	
 	#~
-	Parsed function parameters
+	Parse function parameters
 	~#
 	class ParsedParameters {
 		@parameters : Vector<ParseParameter>;
@@ -357,7 +361,7 @@ bundle CodeGen {
 	}
 	
 	#~
-	Parsed function parameter
+	Parse function parameter
 	~#
 	class ParseParameter {
 		@name : String;
@@ -390,7 +394,7 @@ bundle CodeGen {
 	}
 	
 	#~
-	Parsed type
+	Parse type
 	~#
 	class ParsedType {
 		enum Type {
