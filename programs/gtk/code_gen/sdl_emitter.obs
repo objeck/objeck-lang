@@ -7,14 +7,22 @@ bundle CodeGen {
 	class Emitter {
 		@file_name : String;
 		@this_name : String;
+		@version : String;
 		
-		New(file_name : String, this_name : String) {
-			@file_name := file_name;
+		New(this_name : String, version : String, file_name : String) {
 			@this_name := this_name;
+			@version := version;
+			@file_name := file_name;
 		}
 		
 		method : public : Emit() ~ Nil {
-			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name)->Parse();			
+			version := @version->ToInt();
+
+			"file={@file_name}"->PrintLine();
+			"version={@version}"->PrintLine();
+			"class={@this_name}"->PrintLine();
+
+			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name, version)->Parse();
 			each(i : methods) {
 				"---"->PrintLine();
 				parsed_method := methods->Get(i)->As(ParsedFunction);
@@ -24,9 +32,8 @@ bundle CodeGen {
 		}
 		
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
-				emitter := Emitter->New(args[1], args[0]);
-				emitter->Emit();
+			if(args->Size() = 3) {
+				Emitter->New(args[0], args[1], args[2])->Emit();
 			};
 		}
 		
