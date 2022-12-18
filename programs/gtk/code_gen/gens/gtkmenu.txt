@@ -1,0 +1,261 @@
+Compiled 8 source classes.
+Linked 22 library classes.
+Wrote target file: 'code_gen.obe'
+---
+function: 'gtk_menu_get_type'
+function: 'gtk_menu_new'
+function: 'gtk_menu_reposition'
+function: 'gtk_menu_get_active'
+function: 'gtk_menu_set_accel_group'
+function: 'gtk_menu_set_accel_path'
+function: 'gtk_menu_attach_to_widget'
+function: 'gtk_menu_get_attach_widget'
+function: 'gtk_menu_reorder_child'
+function: 'gtk_menu_attach'
+function: 'gtk_menu_get_monitor'
+function: 'gtk_menu_get_for_attach_widget'
+function: 'gtk_menu_get_reserve_toggle_size'
+---
+method : public : New() ~ GtkWidget {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_new", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_new(VMContext& context) {
+		const size* return_value = gtk_menu_new();
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : Reposition() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@menu);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_reposition", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_reposition(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 0);
+		gtk_menu_reposition(menu);
+	}
+
+---
+method : public : GetActive() ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menu);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_get_active", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_get_active(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_menu_get_active(menu);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : SetAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@menu);
+	array_args[1] := accel_group;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_set_accel_group", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_set_accel_group(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 0);
+		const size* accel_group = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_menu_set_accel_group(menu, accel_group);
+	}
+
+---
+method : public : SetAccelPath(accel_path : String) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@menu);
+	array_args[1] := accel_path;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_set_accel_path", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_set_accel_path(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 0);
+		const wstring accel_path = APITools_GetStringValue(context, 1);
+		gtk_menu_set_accel_path(menu, accel_path);
+	}
+
+---
+method : public : AttachToWidget(attach_widget : GtkWidget, detacher : GtkMenuDetachFunc) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@menu);
+	array_args[1] := attach_widget;
+	array_args[2] := detacher;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_attach_to_widget", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_attach_to_widget(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 0);
+		const size* attach_widget = (size_t*)APITools_GetObjectValue(context, 1);
+		const size* detacher = (size_t*)APITools_GetObjectValue(context, 2);
+		gtk_menu_attach_to_widget(menu, attach_widget, detacher);
+	}
+
+---
+method : public : GetAttachWidget() ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menu);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_get_attach_widget", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_get_attach_widget(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_menu_get_attach_widget(menu);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : ReorderChild(child : GtkWidget, position : Int) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@menu);
+	array_args[1] := child;
+	array_args[2] := IntHolder->New(position);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_reorder_child", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_reorder_child(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 0);
+		const size* child = (size_t*)APITools_GetObjectValue(context, 1);
+		const int position = APITools_GetIntValue(context, 2);
+		gtk_menu_reorder_child(menu, child, position);
+	}
+
+---
+method : public : Attach(child : GtkWidget, left_attach : Int, right_attach : Int, top_attach : Int, bottom_attach : Int) ~ Nil {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New(@menu);
+	array_args[1] := child;
+	array_args[2] := IntHolder->New(left_attach);
+	array_args[3] := IntHolder->New(right_attach);
+	array_args[4] := IntHolder->New(top_attach);
+	array_args[5] := IntHolder->New(bottom_attach);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_attach", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_attach(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 0);
+		const size* child = (size_t*)APITools_GetObjectValue(context, 1);
+		const int left_attach = APITools_GetIntValue(context, 2);
+		const int right_attach = APITools_GetIntValue(context, 3);
+		const int top_attach = APITools_GetIntValue(context, 4);
+		const int bottom_attach = APITools_GetIntValue(context, 5);
+		gtk_menu_attach(menu, child, left_attach, right_attach, top_attach, bottom_attach);
+	}
+
+---
+method : public : GetMonitor() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menu);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_get_monitor", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_get_monitor(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 1);
+		const int return_value = gtk_menu_get_monitor(menu);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetForAttachWidget(widget : GtkWidget) ~ GList {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(widget);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_get_for_attach_widget", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_get_for_attach_widget(VMContext& context) {
+		const size* widget = (size_t*)APITools_GetObjectValue(context, 1);
+		const size* return_value = gtk_menu_get_for_attach_widget(widget);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : GetReserveToggleSize() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@menu);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_menu_get_reserve_toggle_size", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_menu_get_reserve_toggle_size(VMContext& context) {
+		Gtk_GtkMenu* menu = (GtkMenu*)APITools_GetIntValue(context, 1);
+		const int return_value = gtk_menu_get_reserve_toggle_size(menu);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
