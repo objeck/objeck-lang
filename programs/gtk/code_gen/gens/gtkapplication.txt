@@ -1,0 +1,142 @@
+Compiled 8 source classes.
+Linked 22 library classes.
+Wrote target file: 'code_gen.obe'
+---
+function: 'gtk_application_get_type'
+function: 'gtk_application_new'
+function: 'gtk_application_remove_window'
+function: 'gtk_application_get_app_menu'
+function: 'gtk_application_get_menubar'
+function: 'gtk_application_inhibit'
+function: 'gtk_application_is_inhibited'
+---
+method : public : New(application_id : String, flags : GApplicationFlags) ~ GtkApplication {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(application_id);
+	array_args[2] := flags;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_application_new", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_application_new(VMContext& context) {
+		const wstring application_id = APITools_GetStringValue(context, 1);
+		const size* flags = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* return_value = gtk_application_new(application_id, flags);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : RemoveWindow(window : GtkWindow) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@application);
+	array_args[1] := window;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_application_remove_window", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_application_remove_window(VMContext& context) {
+		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 0);
+		const size* window = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_application_remove_window(application, window);
+	}
+
+---
+method : public : GetAppMenu() ~ GMenuModel {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@application);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_application_get_app_menu", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_application_get_app_menu(VMContext& context) {
+		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_application_get_app_menu(application);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : GetMenubar() ~ GMenuModel {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@application);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_application_get_menubar", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_application_get_menubar(VMContext& context) {
+		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		const size* return_value = gtk_application_get_menubar(application);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags, reason : String) ~ Int {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@application);
+	array_args[2] := window;
+	array_args[3] := flags;
+	array_args[4] := reason;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_application_inhibit", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_application_inhibit(VMContext& context) {
+		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		const size* window = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* flags = (size_t*)APITools_GetObjectValue(context, 3);
+		const wstring reason = APITools_GetStringValue(context, 4);
+		const int return_value = gtk_application_inhibit(application, window, flags, reason);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : IsInhibited(flags : GtkApplicationInhibitFlags) ~ Bool {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@application);
+	array_args[2] := flags;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_application_is_inhibited", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_application_is_inhibited(VMContext& context) {
+		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		const size* flags = (size_t*)APITools_GetObjectValue(context, 2);
+		const int return_value = gtk_application_is_inhibited(application, flags);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
