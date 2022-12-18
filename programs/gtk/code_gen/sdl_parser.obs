@@ -6,13 +6,15 @@ bundle CodeGen {
 	~#
 	class Parser {
 		@tokens : Vector<Token>;
-		@pos : Int;
 		@this_name : String;
-		
-		New(tokens : Vector<Token>, this_name : String) {
+		@version : Int;
+		@pos : Int;
+
+		New(tokens : Vector<Token>, this_name : String, version : Int) {
 			@tokens := tokens;
 			@pos := 0;
 			@this_name := this_name;
+			@version := version;
 		}
 		
 		method : Match(type : Token->Type) ~ Bool {
@@ -174,7 +176,7 @@ bundle CodeGen {
 
 			# TODO: GTK3 vs. GTK4
 			match := false;
-			if(Match(Token->Type->GDK_AVAILABLE_IN_ALL_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_4_ID)) {
+			if((@version = 3 & IsVersion3()) | ((@version = 4 & IsVersion4()))) {
 				match := true;			
 				Next(); 
 			};
@@ -210,6 +212,17 @@ bundle CodeGen {
 			};
 			
 			return parsed_function;
+		}
+
+		method : IsVersion3() ~ Bool {
+			return Match(Token->Type->GDK_AVAILABLE_IN_ALL_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_0_ID) | 
+				Match(Token->Type->GDK_AVAILABLE_IN_3_2_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_4_ID) | 
+				Match(Token->Type->GDK_AVAILABLE_IN_3_6_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_8_ID) | 
+				Match(Token->Type->GDK_AVAILABLE_IN_3_10_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_12_ID);
+		}
+
+		method : IsVersion4() ~ Bool {
+			return IsVersion3() | false;
 		}
 	}
 	
