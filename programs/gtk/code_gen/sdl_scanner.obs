@@ -15,9 +15,15 @@ bundle CodeGen {
 		
 		method : public : Scan() ~ Vector<Token> {
 			reserved := Map->New()<String, Token>;
-			# C sync keywords
+			# GTK3 sync keywords
 			reserved->Insert("GDK_AVAILABLE_IN_ALL", Token->New(Token->Type->GDK_AVAILABLE_IN_ALL_ID, "GDK_AVAILABLE_IN_ALL"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_0", Token->New(Token->Type->GDK_AVAILABLE_IN_3_0_ID, "GDK_AVAILABLE_IN_3_0"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_2", Token->New(Token->Type->GDK_AVAILABLE_IN_3_2_ID, "GDK_AVAILABLE_IN_3_2"));
 			reserved->Insert("GDK_AVAILABLE_IN_3_4", Token->New(Token->Type->GDK_AVAILABLE_IN_3_4_ID, "GDK_AVAILABLE_IN_3_4"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_6", Token->New(Token->Type->GDK_AVAILABLE_IN_3_6_ID, "GDK_AVAILABLE_IN_3_6"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_8", Token->New(Token->Type->GDK_AVAILABLE_IN_3_8_ID, "GDK_AVAILABLE_IN_3_8"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_10", Token->New(Token->Type->GDK_AVAILABLE_IN_3_10_ID, "GDK_AVAILABLE_IN_3_10"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_12", Token->New(Token->Type->GDK_AVAILABLE_IN_3_12_ID, "GDK_AVAILABLE_IN_3_12"));
 
 			# types to map
 			reserved->Insert("GType", Token->New(Token->Type->GTYPE_ID, "GTYPE"));
@@ -137,7 +143,13 @@ bundle CodeGen {
 		~#
 		enum Type := -200 {
 			GDK_AVAILABLE_IN_ALL_ID,
+			GDK_AVAILABLE_IN_3_0_ID,
+			GDK_AVAILABLE_IN_3_2_ID,
 			GDK_AVAILABLE_IN_3_4_ID,
+			GDK_AVAILABLE_IN_3_6_ID,
+			GDK_AVAILABLE_IN_3_8_ID,
+			GDK_AVAILABLE_IN_3_10_ID,
+			GDK_AVAILABLE_IN_3_12_ID,
 			INT_ID,
 			CHAR_ID,
 			GINT_ID,
@@ -184,13 +196,37 @@ bundle CodeGen {
 		method : public : ToString() ~ String {
 			select(@type) {
 				label Token->Type->GDK_AVAILABLE_IN_ALL_ID {
-					return "type='GDK_AVAILABLE_IN_ALL_ID'";
+					return "GDK_AVAILABLE_IN_ALL_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_0_ID {
+					return "GDK_AVAILABLE_IN_3_0_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_2_ID {
+					return "GDK_AVAILABLE_IN_3_2_ID"; 
 				}
 
 				label Token->Type->GDK_AVAILABLE_IN_3_4_ID {
-					return "type='GDK_AVAILABLE_IN_3_4_ID'";
+					return "GDK_AVAILABLE_IN_3_4_ID"; 
 				}
 
+				label Token->Type->GDK_AVAILABLE_IN_3_6_ID {
+					return "GDK_AVAILABLE_IN_3_6_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_8_ID {
+					return "GDK_AVAILABLE_IN_3_8_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_10_ID {
+					return "GDK_AVAILABLE_IN_3_10_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_12_ID {
+					return "GDK_AVAILABLE_IN_3_12_ID"; 
+				}
+				
 				label Token->Type->INT_ID {
 					return "type=INT_ID";
 				}
