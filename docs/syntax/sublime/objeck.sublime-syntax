@@ -127,7 +127,7 @@ contexts:
 
   line_comment:
     - meta_scope: comment.line.objeck-obs
-    - match: #
+    - match: $
       pop: true
 
   multi_line_comment:
