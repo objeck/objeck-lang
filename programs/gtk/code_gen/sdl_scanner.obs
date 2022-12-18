@@ -1,4 +1,3 @@
-use System.IO.Filesystem;
 use Collection.Generic;
 
 bundle CodeGen {
@@ -16,11 +15,12 @@ bundle CodeGen {
 		
 		method : public : Scan() ~ Vector<Token> {
 			reserved := Map->New()<String, Token>;
-			# c keywords
+			# C sync keywords
 			reserved->Insert("GDK_AVAILABLE_IN_ALL", Token->New(Token->Type->GDK_AVAILABLE_IN_ALL_ID, "GDK_AVAILABLE_IN_ALL"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_4", Token->New(Token->Type->GDK_AVAILABLE_IN_3_4_ID, "GDK_AVAILABLE_IN_3_4"));
+
+			# types to map
 			reserved->Insert("GType", Token->New(Token->Type->GTYPE_ID, "GTYPE"));
-			
-			# c types
 			reserved->Insert("const", Token->New(Token->Type->CONST_ID, "const"));
 			reserved->Insert("int", Token->New(Token->Type->INT_ID, "int"));
 			reserved->Insert("char", Token->New(Token->Type->CHAR_ID, "char"));
@@ -30,9 +30,7 @@ bundle CodeGen {
 			reserved->Insert("gboolean", Token->New(Token->Type->GBOOLEAN_ID, "GBOOLEAN_ID"));
 			reserved->Insert("gchar", Token->New(Token->Type->GCHAR_ID, "GCHAR_ID"));
 			
-			"filename='{$@filename}'"->PrintLine();
-
-			reader := FileReader->New(@filename);
+			reader := System.IO.Filesystem.FileReader->New(@filename);
 			line_num := 0;
 			while(reader->IsEOF() <> true) {
 				line := reader->ReadLine();
@@ -131,11 +129,15 @@ bundle CodeGen {
 	}
 	
 	#~
-	Scanned token
+	Token
 	~#
 	class Token {
+		#~
+		Token type
+		~#
 		enum Type := -200 {
 			GDK_AVAILABLE_IN_ALL_ID,
+			GDK_AVAILABLE_IN_3_4_ID,
 			INT_ID,
 			CHAR_ID,
 			GINT_ID,
@@ -183,6 +185,10 @@ bundle CodeGen {
 			select(@type) {
 				label Token->Type->GDK_AVAILABLE_IN_ALL_ID {
 					return "type='GDK_AVAILABLE_IN_ALL_ID'";
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_4_ID {
+					return "type='GDK_AVAILABLE_IN_3_4_ID'";
 				}
 
 				label Token->Type->INT_ID {
