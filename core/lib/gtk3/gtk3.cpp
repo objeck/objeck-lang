@@ -35,6 +35,9 @@
 #include "../../shared/sys.h"
 
 extern "C" {
+	//
+	// GtkApplication
+	//
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
@@ -51,5 +54,16 @@ extern "C" {
 		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 0);
 		size_t* window_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		gtk_application_remove_window(application, (GtkWindow*)window_obj[0]);
+	}
+
+	//
+	// GtkWindow
+	//
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_new(VMContext& context) {
+		const GtkWindowType type = (GtkWindowType)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, (size_t)gtk_window_new(type));
 	}
 }

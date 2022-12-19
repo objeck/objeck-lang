@@ -9,7 +9,7 @@ bundle GTK3 {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_openssl");
+				@lib_proxy := DllProxy->New("libobjk_gtk3");
 			};
 
 			return @lib_proxy;
@@ -28,6 +28,11 @@ bundle GTK3 {
 		G_APPLICATION_CAN_OVERRIDE_APP_ID := 64,
 		G_APPLICATION_ALLOW_REPLACEMENT := 128,
 		G_APPLICATION_REPLACE := 256
+	}
+	
+	enum GtkWindowType {
+		GTK_WINDOW_TOPLEVEL,
+		GTK_WINDOW_POPUP
 	}
 	
 	class GtkApplication {
@@ -57,6 +62,15 @@ bundle GTK3 {
 	class GtkWindow {
 		@window : Int;
 
-		New() {}
+		method : public : New(type : GtkWindowType) {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(type);
+
+			Proxy->GetDllProxy()->CallFunction("window_new", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@window := value->Get();
+		}
 	}
 }
