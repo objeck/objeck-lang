@@ -49,7 +49,7 @@ bundle GTK3 {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := application_id;
-			array_args[2] := IntHolder->New(flags->As(Int));
+			array_args[2] := IntHolder->New(flags);
 
 			Proxy->GetDllProxy()->CallFunction("application_new", array_args);
 
