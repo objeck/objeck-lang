@@ -30,10 +30,10 @@ method : public : New(application_id : String, flags : GApplicationFlags) ~ GtkA
 	__declspec(dllexport)
 #endif
 	void application_new(VMContext& context) {
-		const wstring application_id = APITools_GetStringValue(context, 1);
-		const size* flags = (size_t*)APITools_GetObjectValue(context, 2);
-		const size* return_value = application_new(application_id, flags);
-		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+		const std::string application_id = UnicodeToBytes(APITools_GetStringValue(context, 1));
+		const size_t* flags_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const size* value = gtk_application_new(application_id, flags);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
 
 ---
@@ -51,7 +51,7 @@ method : public : RemoveWindow(window : GtkWindow) ~ Nil {
 #endif
 	void application_remove_window(VMContext& context) {
 		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 0);
-		const size* window = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* window_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		application_remove_window(application, window);
 	}
 
@@ -71,8 +71,8 @@ method : public : GetAppMenu() ~ GMenuModel {
 #endif
 	void application_get_app_menu(VMContext& context) {
 		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
-		const size* return_value = application_get_app_menu(application);
-		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+		const size* value = gtk_application_get_app_menu(application);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
 
 ---
@@ -91,8 +91,8 @@ method : public : GetMenubar() ~ GMenuModel {
 #endif
 	void application_get_menubar(VMContext& context) {
 		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
-		const size* return_value = application_get_menubar(application);
-		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+		const size* value = gtk_application_get_menubar(application);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
 
 ---
@@ -115,11 +115,11 @@ method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags
 #endif
 	void application_inhibit(VMContext& context) {
 		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
-		const size* window = (size_t*)APITools_GetObjectValue(context, 2);
-		const size* flags = (size_t*)APITools_GetObjectValue(context, 3);
-		const wstring reason = APITools_GetStringValue(context, 4);
-		const int return_value = application_inhibit(application, window, flags, reason);
-		APITools_SetIntValue(context, 0, return_value);
+		const size_t* window_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const size_t* flags_obj = (size_t*)APITools_GetObjectValue(context, 3);
+		const std::string reason = UnicodeToBytes(APITools_GetStringValue(context, 4));
+		const int value = gtk_application_inhibit(application, window, flags, reason);
+		APITools_SetIntValue(context, 0, value);
 	}
 
 ---
@@ -140,9 +140,9 @@ method : public : IsInhibited(flags : GtkApplicationInhibitFlags) ~ Bool {
 #endif
 	void application_is_inhibited(VMContext& context) {
 		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
-		const size* flags = (size_t*)APITools_GetObjectValue(context, 2);
-		const int return_value = application_is_inhibited(application, flags);
-		APITools_SetIntValue(context, 0, return_value);
+		const size_t* flags_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const int value = gtk_application_is_inhibited(application, flags);
+		APITools_SetIntValue(context, 0, value);
 	}
 
 ---
@@ -161,7 +161,11 @@ method : public : GetActiveWindow() ~ GtkWindow {
 #endif
 	void application_get_active_window(VMContext& context) {
 		Gtk_GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
-		const size* return_value = application_get_active_window(application);
-		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+		const size* value = gtk_application_get_active_window(application);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
 
+Compiled 4 source classes.
+Linked 0 library class.
+Wrote target file: '..\..\..\core\lib\gtk3.obl'
+---
