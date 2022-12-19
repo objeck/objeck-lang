@@ -171,6 +171,36 @@ bundle GTK3 {
 
 			return array_args[0]->As(String);
 		}
+
+		method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := accel_group;
+
+			Proxy->GetDllProxy()->CallFunction("window_remove_accel_group", array_args);
+		}
+
+		method : public : ActivateFocus() ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_activate_focus", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : GetFocus() ~ GtkWidget {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_focus", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return GtkWidget->New(value->Get());
+		}
 	}
 
 	class GMenuModel {
@@ -178,6 +208,22 @@ bundle GTK3 {
 
 		New(menu_model : Int) {
 			@menu_model := menu_model;
+		}
+	}
+
+	class GtkAccelGroup {
+		@accel_group : Int;
+
+		New(accel_group : Int) {
+			@accel_group := accel_group;
+		}
+	}
+
+	class GtkWidget {
+		@widget : Int;
+
+		New(widget : Int) {
+			@widget := widget;
 		}
 	}
 }
