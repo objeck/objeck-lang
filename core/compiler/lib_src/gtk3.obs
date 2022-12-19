@@ -34,6 +34,13 @@ bundle GTK3 {
 		GTK_WINDOW_TOPLEVEL,
 		GTK_WINDOW_POPUP
 	}
+
+	consts GtkApplicationInhibitFlags {
+		GTK_APPLICATION_INHIBIT_LOGOUT := 1,
+		GTK_APPLICATION_INHIBIT_SWITCH := 2,
+		GTK_APPLICATION_INHIBIT_SUSPEND := 4,
+		GTK_APPLICATION_INHIBIT_IDLE := 8
+	}
 	
 	class GtkApplication {
 		@application : Int;
@@ -57,10 +64,73 @@ bundle GTK3 {
 
 			Proxy->GetDllProxy()->CallFunction("application_remove_window", array_args);
 		}
+
+		method : public : GetAppMenu() ~ GMenuModel {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+
+			Proxy->GetDllProxy()->CallFunction("application_get_app_menu", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return GMenuModel->New(value->Get());
+		}
+
+		method : public : GetMenubar() ~ GMenuModel {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+
+			Proxy->GetDllProxy()->CallFunction("application_get_menubar", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return GMenuModel->New(value->Get());
+		}
+
+		method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags, reason : String) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+			array_args[2] := window;
+			array_args[3] := IntHolder->New(flags);
+			array_args[4] := reason;
+
+			Proxy->GetDllProxy()->CallFunction("application_inhibit", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : IsInhibited(flags : GtkApplicationInhibitFlags) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+			array_args[2] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("application_is_inhibited", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : GetActiveWindow() ~ GtkWindow {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+
+			Proxy->GetDllProxy()->CallFunction("application_get_active_window", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return GtkWindow->New(value->Get());
+		}
 	}
 
 	class GtkWindow {
 		@window : Int;
+
+		New(window : Int) {
+			@window := window;
+		}
 
 		New(type : GtkWindowType) {
 			array_args := Base->New[2];
@@ -71,6 +141,14 @@ bundle GTK3 {
 
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
+		}
+	}
+
+	class GMenuModel {
+		@menu_model : Int;
+
+		New(menu_model : Int) {
+			@menu_model := menu_model;
 		}
 	}
 }

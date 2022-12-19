@@ -77,7 +77,7 @@ method : public : New(type : GtkWindowType) ~ GtkWidget {
 	__declspec(dllexport)
 #endif
 	void window_new(VMContext& context) {
-		const size* type = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* type_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		const size* value = gtk_window_new(type);
 		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
@@ -98,7 +98,7 @@ method : public : GetTitle() ~ String {
 #endif
 	void window_get_title(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
-		const wstring value = gtk_window_get_title(window);
+		const std::wstring value = gtk_window_get_title(window);
 		APITools_SetStringValue(context, 0, value);
 	}
 
@@ -117,7 +117,7 @@ method : public : SetRole(role : String) ~ Nil {
 #endif
 	void window_set_role(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const wstring role = APITools_GetStringValue(context, 1);
+		const std::string role = UnicodeToBytes(APITools_GetStringValue(context, 1));
 		window_set_role(window, role);
 	}
 
@@ -137,7 +137,7 @@ method : public : GetRole() ~ String {
 #endif
 	void window_get_role(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
-		const wstring value = gtk_window_get_role(window);
+		const std::wstring value = gtk_window_get_role(window);
 		APITools_SetStringValue(context, 0, value);
 	}
 
@@ -156,7 +156,7 @@ method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 #endif
 	void window_remove_accel_group(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* accel_group = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* accel_group_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_remove_accel_group(window, accel_group);
 	}
 
@@ -236,7 +236,7 @@ method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
 #endif
 	void window_set_transient_for(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* parent = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* parent_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_set_transient_for(window, parent);
 	}
 
@@ -255,7 +255,7 @@ method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
 #endif
 	void window_set_attached_to(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* attach_widget = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* attach_widget_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_set_attached_to(window, attach_widget);
 	}
 
@@ -274,7 +274,7 @@ method : public : SetTypeHint(hint : GdkWindowTypeHint) ~ Nil {
 #endif
 	void window_set_type_hint(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* hint = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* hint_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_set_type_hint(window, hint);
 	}
 
@@ -483,7 +483,7 @@ method : public : SetGravity(gravity : GdkGravity) ~ Nil {
 #endif
 	void window_set_gravity(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* gravity = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* gravity_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_set_gravity(window, gravity);
 	}
 
@@ -504,9 +504,9 @@ method : public : SetGeometryHints(geometry_widget : GtkWidget, geometry : GdkGe
 #endif
 	void window_set_geometry_hints(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* geometry_widget = (size_t*)APITools_GetObjectValue(context, 1);
-		const size* geometry = (size_t*)APITools_GetObjectValue(context, 2);
-		const size* geom_mask = (size_t*)APITools_GetObjectValue(context, 3);
+		const size_t* geometry_widget_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* geometry_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const size_t* geom_mask_obj = (size_t*)APITools_GetObjectValue(context, 3);
 		window_set_geometry_hints(window, geometry_widget, geometry, geom_mask);
 	}
 
@@ -628,7 +628,7 @@ method : public : SetIconName(name : String) ~ Nil {
 #endif
 	void window_set_icon_name(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const wstring name = APITools_GetStringValue(context, 1);
+		const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
 		window_set_icon_name(window, name);
 	}
 
@@ -665,7 +665,7 @@ method : public : SetDefaultIconList(list : GList) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void window_set_default_icon_list(VMContext& context) {
-		const size* list = (size_t*)APITools_GetObjectValue(context, 0);
+		const size_t* list_obj = (size_t*)APITools_GetObjectValue(context, 0);
 		window_set_default_icon_list(list);
 	}
 
@@ -682,7 +682,7 @@ method : public : SetDefaultIcon(icon : GdkPixbuf) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void window_set_default_icon(VMContext& context) {
-		const size* icon = (size_t*)APITools_GetObjectValue(context, 0);
+		const size_t* icon_obj = (size_t*)APITools_GetObjectValue(context, 0);
 		window_set_default_icon(icon);
 	}
 
@@ -700,7 +700,7 @@ method : public : GetDefaultIconName() ~ String {
 	__declspec(dllexport)
 #endif
 	void window_get_default_icon_name(VMContext& context) {
-		const wstring value = gtk_window_get_default_icon_name();
+		const std::wstring value = gtk_window_get_default_icon_name();
 		APITools_SetStringValue(context, 0, value);
 	}
 
@@ -775,7 +775,7 @@ method : public : AddMnemonic(keyval : Int, target : GtkWidget) ~ Nil {
 	void window_add_mnemonic(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
 		const int keyval = APITools_GetIntValue(context, 1);
-		const size* target = (size_t*)APITools_GetObjectValue(context, 2);
+		const size_t* target_obj = (size_t*)APITools_GetObjectValue(context, 2);
 		window_add_mnemonic(window, keyval, target);
 	}
 
@@ -799,7 +799,7 @@ method : public : MnemonicActivate(keyval : Int, modifier : GdkModifierType) ~ B
 	void window_mnemonic_activate(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
 		const int keyval = APITools_GetIntValue(context, 2);
-		const size* modifier = (size_t*)APITools_GetObjectValue(context, 3);
+		const size_t* modifier_obj = (size_t*)APITools_GetObjectValue(context, 3);
 		const int value = gtk_window_mnemonic_activate(window, keyval, modifier);
 		APITools_SetIntValue(context, 0, value);
 	}
@@ -842,7 +842,7 @@ method : public : PropagateKeyEvent(event : GdkEventKey) ~ Bool {
 #endif
 	void window_propagate_key_event(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
-		const size* event = (size_t*)APITools_GetObjectValue(context, 2);
+		const size_t* event_obj = (size_t*)APITools_GetObjectValue(context, 2);
 		const int value = gtk_window_propagate_key_event(window, event);
 		APITools_SetIntValue(context, 0, value);
 	}
@@ -862,7 +862,7 @@ method : public : PresentWithTime(timestamp : guint32) ~ Nil {
 #endif
 	void window_present_with_time(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* timestamp = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* timestamp_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_present_with_time(window, timestamp);
 	}
 
@@ -991,7 +991,7 @@ method : public : BeginMoveDrag(button : Int, root_x : Int, root_y : Int, timest
 		const int button = APITools_GetIntValue(context, 1);
 		const int root_x = APITools_GetIntValue(context, 2);
 		const int root_y = APITools_GetIntValue(context, 3);
-		const size* timestamp = (size_t*)APITools_GetObjectValue(context, 4);
+		const size_t* timestamp_obj = (size_t*)APITools_GetObjectValue(context, 4);
 		window_begin_move_drag(window, button, root_x, root_y, timestamp);
 	}
 
@@ -1113,7 +1113,7 @@ method : public : SetApplication(application : GtkApplication) ~ Nil {
 #endif
 	void window_set_application(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* application = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* application_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_set_application(window, application);
 	}
 
@@ -1132,7 +1132,7 @@ method : public : SetTitlebar(titlebar : GtkWidget) ~ Nil {
 #endif
 	void window_set_titlebar(VMContext& context) {
 		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
-		const size* titlebar = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* titlebar_obj = (size_t*)APITools_GetObjectValue(context, 1);
 		window_set_titlebar(window, titlebar);
 	}
 
@@ -1157,3 +1157,7 @@ method : public : IsMaximized() ~ Bool {
 		APITools_SetIntValue(context, 0, value);
 	}
 
+Compiled 4 source classes.
+Linked 0 library class.
+Wrote target file: '..\..\..\core\lib\gtk3.obl'
+---
