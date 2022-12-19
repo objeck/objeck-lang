@@ -1,0 +1,46 @@
+use System.API;
+
+#~
+Provides GUI support via GTK3 (-lib gtk3.obl)
+~#
+bundle GTK3 {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_openssl");
+			};
+
+			return @lib_proxy;
+		}
+	}
+	
+	class GtkApplication {
+		@application : Int;
+
+		New(application_id : String, flags : Int) {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := application_id;
+			array_args[2] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("gtk_application_new", array_args);
+
+			@application := array_args[0];
+		}
+		
+		method : public : RemoveWindow(window : GtkWindow) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@application);
+			array_args[1] := window;
+
+			Proxy->GetDllProxy()->CallFunction("gtk_application_remove_window", array_args);
+
+		}
+	}
+
+	class GtkWindow {
+		New() {}
+	}
+}
