@@ -29,7 +29,7 @@ bundle GTK3 {
 		G_APPLICATION_ALLOW_REPLACEMENT := 128,
 		G_APPLICATION_REPLACE := 256
 	}
-	
+
 	enum GtkWindowType {
 		GTK_WINDOW_TOPLEVEL,
 		GTK_WINDOW_POPUP
@@ -62,7 +62,7 @@ bundle GTK3 {
 	class GtkWindow {
 		@window : Int;
 
-		method : public : New(type : GtkWindowType) {
+		New(type : GtkWindowType) {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(type);
