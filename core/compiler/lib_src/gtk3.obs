@@ -61,6 +61,8 @@ bundle GTK3 {
 
 		#~
 		Creates a new #GtkApplication instance
+		@param application_id: The application ID.
+ 		@param flags the application flags
 		~#
 		New(application_id : String, flags : GApplicationFlags) {
 			array_args := Base->New[3];
@@ -120,10 +122,10 @@ bundle GTK3 {
 		Inform the session manager that certain types of actions should be
  		inhibited. This is not guaranteed to work on all platforms and for
  		all types of actions
-		@param a window
-		@param what types of actions should be inhibited
-		@param a short, human-readable string that explains why these operations are inhibited
-		@return A non-zero cookie that is used to uniquely identify this
+		@param window a window
+		@param flags what types of actions should be inhibited
+		@param reason a short, human-readable string that explains why these operations are inhibited
+		@return a non-zero cookie that is used to uniquely identify this
  		request
 		~#
 		method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags, reason : String) ~ Int {
@@ -141,7 +143,7 @@ bundle GTK3 {
 		}
 
 		#~
-		Determines if any of the actions specified in @flags are
+		Determines if any of the actions specified in flags are
 		currently inhibited (possibly by another application)
  		@param flags what types of actions should be queried
  		@return true if any of the actions specified in flags are inhibited
@@ -174,6 +176,12 @@ bundle GTK3 {
 		}
 	}
 
+	#~
+	A GtkWindow is a toplevel window which can contain other widgets.
+ 	Windows normally have decorations that are under the control
+ 	of the windowing system and allow the user to manipulate the window
+	(resize it, move it, close it,...)
+ 	~#
 	class GtkWindow {
 		@window : Int;
 
@@ -181,6 +189,12 @@ bundle GTK3 {
 			@window := window;
 		}
 
+		#~
+		Creates a new #GtkWindow, which is a toplevel window that can
+ 		contain other widgets
+		@param type window type
+		@return a new GtkWindow.
+ 		~#
 		New(type : GtkWindowType) {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -192,6 +206,10 @@ bundle GTK3 {
 			@window := value->Get();
 		}
 
+		#~
+		Retrieves the title of the window
+		@return the title of the window, or Nil if none has
+		~#
 		method : public : GetTitle() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
