@@ -142,6 +142,35 @@ bundle GTK3 {
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
 		}
+
+		method : public : GetTitle() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_title", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		method : public : SetRole(role : String) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := role;
+
+			Proxy->GetDllProxy()->CallFunction("window_set_role", array_args);
+
+		}
+
+		method : public : GetRole() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_role", array_args);
+
+			return array_args[0]->As(String);
+		}
 	}
 
 	class GMenuModel {
