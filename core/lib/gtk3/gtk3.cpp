@@ -136,7 +136,31 @@ extern "C" {
 #endif
 	void window_get_role(VMContext& context) {
 		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
-		const std::wstring value = BytesToUnicode(gtk_window_get_role(window));
-		APITools_SetStringValue(context, 0, value);
+		APITools_SetStringValue(context, 0, BytesToUnicode(gtk_window_get_role(window)));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_remove_accel_group(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* accel_group_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_window_remove_accel_group(window, (GtkAccelGroup*)accel_group_obj[0]);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_activate_focus(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, gtk_window_activate_focus(window));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_focus(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, (size_t)gtk_window_get_focus(window));
 	}
 }

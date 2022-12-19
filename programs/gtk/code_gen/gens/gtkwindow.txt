@@ -160,7 +160,7 @@ method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 		window_remove_accel_group(window, accel_group);
 	}
 
----
+===
 method : public : ActivateFocus() ~ Bool {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
@@ -181,7 +181,7 @@ method : public : ActivateFocus() ~ Bool {
 		APITools_SetIntValue(context, 0, value);
 	}
 
----
+===
 method : public : GetFocus() ~ GtkWidget {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
@@ -201,7 +201,7 @@ method : public : GetFocus() ~ GtkWidget {
 		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
 
----
+=== TODO ===
 method : public : GetDefaultWidget() ~ GtkWidget {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
