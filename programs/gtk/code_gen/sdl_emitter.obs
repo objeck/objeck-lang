@@ -180,24 +180,24 @@ bundle CodeGen {
 			select(parameter->GetType()) {
 				label ParsedType->Type->INT:
 				label ParsedType->Type->BOOL: {
-					buffer += "\t\tconst int return_value = ";
+					buffer += "\t\tconst int value = gtk_";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
-					buffer += "\t\tAPITools_SetIntValue(context, 0, return_value);\n";
+					buffer += "\t\tAPITools_SetIntValue(context, 0, value);\n";
 				}
 
 				label ParsedType->Type->CLASS: {
-					buffer += "\t\tconst size* return_value = ";
+					buffer += "\t\tconst size* value = gtk_";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
-					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)return_value);\n";
+					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)value);\n";
 				}
 				
 				label ParsedType->Type->CHAR_STAR: {
-					buffer += "\t\tconst wstring return_value = ";
+					buffer += "\t\tconst wstring value = gtk_";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
-					buffer += "\t\tAPITools_SetStringValue(context, 0, return_value);\n";
+					buffer += "\t\tAPITools_SetStringValue(context, 0, value);\n";
 				}
 							
 				label ParsedType->Type->VOID: {
