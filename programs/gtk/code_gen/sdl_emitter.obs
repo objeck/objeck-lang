@@ -154,19 +154,19 @@ bundle CodeGen {
 						}
 		
 						label ParsedType->Type->CLASS: {
-							buffer += "\t\tconst size* ";
+							buffer += "\t\tconst size_t* ";
 							buffer += parameter->GetName();
-							buffer += " = (size_t*)APITools_GetObjectValue(context, ";
+							buffer += "_obj = (size_t*)APITools_GetObjectValue(context, ";
 							buffer += offset;
 							buffer += ");\n";
 						}
 						
 						label ParsedType->Type->CHAR_STAR: {
-							buffer += "\t\tconst wstring ";
+							buffer += "\t\tconst std::string ";
 							buffer += parameter->GetName();
-							buffer += " = APITools_GetStringValue(context, ";
+							buffer += " = UnicodeToBytes(APITools_GetStringValue(context, ";
 							buffer += offset;
-							buffer += ");\n";
+							buffer += "));\n";
 						}
 						
 ##					label ParsedType->Type->VOID_STAR:
@@ -194,7 +194,7 @@ bundle CodeGen {
 				}
 				
 				label ParsedType->Type->CHAR_STAR: {
-					buffer += "\t\tconst wstring value = gtk_";
+					buffer += "\t\tconst std::wstring value = gtk_";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetStringValue(context, 0, value);\n";

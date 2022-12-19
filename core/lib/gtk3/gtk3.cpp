@@ -56,6 +56,52 @@ extern "C" {
 		gtk_application_remove_window(application, (GtkWindow*)window_obj[0]);
 	}
 
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void application_get_app_menu(VMContext& context) {
+		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, (size_t)gtk_application_get_app_menu(application));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void application_get_menubar(VMContext& context) {
+		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, (size_t)gtk_application_get_menubar(application));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void application_inhibit(VMContext& context) {
+		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		size_t* window_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const GtkApplicationInhibitFlags flags = (GtkApplicationInhibitFlags)APITools_GetIntValue(context, 3);
+		const std::string reason = UnicodeToBytes(APITools_GetStringValue(context, 4));
+
+		const int value = gtk_application_inhibit(application, (GtkWindow*)window_obj[0], flags, reason.c_str());
+		APITools_SetIntValue(context, 0, value);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void application_is_inhibited(VMContext& context) {
+		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		const GtkApplicationInhibitFlags flags = (GtkApplicationInhibitFlags)APITools_GetIntValue(context, 2);
+		APITools_SetIntValue(context, 0, gtk_application_is_inhibited(application, flags));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void application_get_active_window(VMContext& context) {
+		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, (size_t)gtk_application_get_active_window(application));
+	}
+
 	//
 	// GtkWindow
 	//
