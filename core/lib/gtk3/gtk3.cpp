@@ -112,4 +112,31 @@ extern "C" {
 		const GtkWindowType type = (GtkWindowType)APITools_GetIntValue(context, 1);
 		APITools_SetIntValue(context, 0, (size_t)gtk_window_new(type));
 	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_title(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const std::wstring value = BytesToUnicode(gtk_window_get_title(window));
+		APITools_SetStringValue(context, 0, value);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_role(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const std::string role = UnicodeToBytes(APITools_GetStringValue(context, 1));
+		gtk_window_set_role(window, role.c_str());
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_role(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const std::wstring value = BytesToUnicode(gtk_window_get_role(window));
+		APITools_SetStringValue(context, 0, value);
+	}
 }
