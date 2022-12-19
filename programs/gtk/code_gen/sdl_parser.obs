@@ -252,6 +252,7 @@ bundle CodeGen {
 			# TODO: very ugly clean up!
 			if(@objk_name = Nil & (@func_name->StartsWith("gtk_"))) {
 				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
+				@func_name := String->New(@objk_name);
 
 				this_name_temp := @this_name->ToLower();
 				this_name_temp->SubString(3, this_name_temp->Size() - 3);
