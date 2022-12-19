@@ -16,6 +16,9 @@ bundle GTK3 {
 		}
 	}
 
+	#~
+	Flags used to define the behaviour of a GApplication
+	~#
 	consts GApplicationFlags {
 		G_APPLICATION_FLAGS_NONE := 0,
 		G_APPLICATION_DEFAULT_FLAGS := 0,
@@ -30,11 +33,17 @@ bundle GTK3 {
 		G_APPLICATION_REPLACE := 256
 	}
 
+	#~
+	GtkWindow window type
+	~#
 	enum GtkWindowType {
 		GTK_WINDOW_TOPLEVEL,
 		GTK_WINDOW_POPUP
 	}
 
+	#~
+	Inhibit flags
+	~#
 	consts GtkApplicationInhibitFlags {
 		GTK_APPLICATION_INHIBIT_LOGOUT := 1,
 		GTK_APPLICATION_INHIBIT_SWITCH := 2,
@@ -42,9 +51,17 @@ bundle GTK3 {
 		GTK_APPLICATION_INHIBIT_IDLE := 8
 	}
 	
+	#~
+	GtkApplication is a class that handles many important aspects
+	of a GTK+ application in a convenient fashion, without enforcing
+ 	a one-size-fits-all application model
+ 	~#
 	class GtkApplication {
 		@application : Int;
 
+		#~
+		Creates a new #GtkApplication instance
+		~#
 		New(application_id : String, flags : GApplicationFlags) {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -57,6 +74,10 @@ bundle GTK3 {
 			@application := value->Get();
 		}
 
+		#~
+		Adds a window to application
+		@param window window to add
+		~#
 		method : public : RemoveWindow(window : GtkWindow) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@application);
@@ -65,6 +86,10 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("application_remove_window", array_args);
 		}
 
+		#~
+		Returns the menu model that has been set with
+		@return the application menu
+		~#
 		method : public : GetAppMenu() ~ GMenuModel {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -76,6 +101,10 @@ bundle GTK3 {
 			return GMenuModel->New(value->Get());
 		}
 
+		#~
+		Returns the menu model that has been set with
+		@return the menubar for windows of application
+		~#
 		method : public : GetMenubar() ~ GMenuModel {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -87,6 +116,16 @@ bundle GTK3 {
 			return GMenuModel->New(value->Get());
 		}
 
+		#~
+		Inform the session manager that certain types of actions should be
+ 		inhibited. This is not guaranteed to work on all platforms and for
+ 		all types of actions
+		@param a window
+		@param what types of actions should be inhibited
+		@param a short, human-readable string that explains why these operations are inhibited
+		@return A non-zero cookie that is used to uniquely identify this
+ 		request
+		~#
 		method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags, reason : String) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -101,6 +140,12 @@ bundle GTK3 {
 			return value->Get();
 		}
 
+		#~
+		Determines if any of the actions specified in @flags are
+		currently inhibited (possibly by another application)
+ 		@param flags what types of actions should be queried
+ 		@return true if any of the actions specified in flags are inhibited
+ 		~#
 		method : public : IsInhibited(flags : GtkApplicationInhibitFlags) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -113,6 +158,10 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Gets the 'active' window for the application
+		@return the active window Nil if there isn't one.
+		~#
 		method : public : GetActiveWindow() ~ GtkWindow {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
