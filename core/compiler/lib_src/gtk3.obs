@@ -100,7 +100,11 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("application_get_app_menu", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return GMenuModel->New(value->Get());
+			if(value->Get() <> 0) {
+				return GMenuModel->New(value->Get());
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -115,7 +119,11 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("application_get_menubar", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return GMenuModel->New(value->Get());
+			if(value->Get() <> 0) {
+				return GMenuModel->New(value->Get());
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -172,7 +180,11 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("application_get_active_window", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return GtkWindow->New(value->Get());
+			if(value->Get() <> 0) {
+				return GtkWindow->New(value->Get());
+			};
+
+			return Nil;
 		}
 	}
 
@@ -220,6 +232,13 @@ bundle GTK3 {
 			return array_args[0]->As(String);
 		}
 
+		#~
+		This function is only useful on X11, not with other GTK+ targets.
+		In combination with the window title, the window role allows a
+		[window manager][gtk-X11-arch] to identify "the
+		same" window when an application is restarted.
+		@param role unique identifier for the window to be used when restoring a session
+		~#
 		method : public : SetRole(role : String) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@window);
@@ -229,6 +248,11 @@ bundle GTK3 {
 
 		}
 
+		#~
+		Returns the role of the window. See gtk_window_set_role() for
+		further explanation
+		@return the role of the window if set, or Nil
+		~#
 		method : public : GetRole() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -266,7 +290,11 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("window_get_focus", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return GtkWidget->New(value->Get());
+			if(value->Get() <> 0) {
+				return GtkWidget->New(value->Get());
+			};
+
+			return Nil;
 		}
 	}
 
