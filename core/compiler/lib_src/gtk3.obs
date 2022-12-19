@@ -27,16 +27,16 @@ bundle GTK3 {
 
 			Proxy->GetDllProxy()->CallFunction("gtk_application_new", array_args);
 
-			@application := array_args[0];
+			value := array_args[0]->As(IntHolder);
+			@application := value->Get();
 		}
-		
+
 		method : public : RemoveWindow(window : GtkWindow) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@application);
 			array_args[1] := window;
 
 			Proxy->GetDllProxy()->CallFunction("gtk_application_remove_window", array_args);
-
 		}
 	}
 
