@@ -15,17 +15,31 @@ bundle GTK3 {
 			return @lib_proxy;
 		}
 	}
+
+	consts GApplicationFlags {
+		G_APPLICATION_FLAGS_NONE := 0,
+		G_APPLICATION_DEFAULT_FLAGS := 0,
+		G_APPLICATION_IS_SERVICE := 1,
+		G_APPLICATION_IS_LAUNCHER := 2,
+		G_APPLICATION_HANDLES_OPEN := 4,
+		G_APPLICATION_HANDLES_COMMAND_LINE := 8,
+		G_APPLICATION_SEND_ENVIRONMENT := 16,
+		G_APPLICATION_NON_UNIQUE := 32,
+		G_APPLICATION_CAN_OVERRIDE_APP_ID := 64,
+		G_APPLICATION_ALLOW_REPLACEMENT := 128,
+		G_APPLICATION_REPLACE := 256
+	}
 	
 	class GtkApplication {
 		@application : Int;
 
-		New(application_id : String, flags : Int) {
+		New(application_id : String, flags : GApplicationFlags) {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := application_id;
-			array_args[2] := IntHolder->New(flags);
+			array_args[2] := IntHolder->New(flags->As(Int));
 
-			Proxy->GetDllProxy()->CallFunction("gtk_application_new", array_args);
+			Proxy->GetDllProxy()->CallFunction("gtk_application_create", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			@application := value->Get();
