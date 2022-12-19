@@ -39,7 +39,7 @@ bundle GTK3 {
 			array_args[1] := application_id;
 			array_args[2] := IntHolder->New(flags->As(Int));
 
-			Proxy->GetDllProxy()->CallFunction("gtk_application_create", array_args);
+			Proxy->GetDllProxy()->CallFunction("application_new", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			@application := value->Get();
@@ -50,11 +50,13 @@ bundle GTK3 {
 			array_args[0] := IntHolder->New(@application);
 			array_args[1] := window;
 
-			Proxy->GetDllProxy()->CallFunction("gtk_application_remove_window", array_args);
+			Proxy->GetDllProxy()->CallFunction("application_remove_window", array_args);
 		}
 	}
 
 	class GtkWindow {
+		@window : Int;
+
 		New() {}
 	}
 }

@@ -38,9 +38,18 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void gtk_application_create(VMContext& context) {
+	void application_new(VMContext& context) {
 		const std::string application_id = UnicodeToBytes(APITools_GetStringValue(context, 1));
 		const GApplicationFlags flags = (GApplicationFlags)APITools_GetIntValue(context, 2);
 		APITools_SetIntValue(context, 0, (size_t)gtk_application_new(application_id.c_str(), flags));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void application_remove_window(VMContext& context) {
+		GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 0);
+		size_t* window_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_application_remove_window(application, (GtkWindow*)window_obj[0]);
 	}
 }
