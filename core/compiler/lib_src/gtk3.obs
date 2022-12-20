@@ -263,6 +263,10 @@ bundle GTK3 {
 			return array_args[0]->As(String);
 		}
 
+		#~
+		Removes the accelerator group
+		@param the GtkAccelGroup
+		~#
 		method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@window);
