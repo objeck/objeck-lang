@@ -1,0 +1,328 @@
+use System.API;
+
+#~
+Provides GUI support via GTK3 (-lib gtk3.obl)
+~#
+bundle GTK3 {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_gtk3");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	#~
+	Flags used to define the behaviour of a GApplication
+	~#
+	consts GApplicationFlags {
+		G_APPLICATION_FLAGS_NONE := 0,
+		G_APPLICATION_DEFAULT_FLAGS := 0,
+		G_APPLICATION_IS_SERVICE := 1,
+		G_APPLICATION_IS_LAUNCHER := 2,
+		G_APPLICATION_HANDLES_OPEN := 4,
+		G_APPLICATION_HANDLES_COMMAND_LINE := 8,
+		G_APPLICATION_SEND_ENVIRONMENT := 16,
+		G_APPLICATION_NON_UNIQUE := 32,
+		G_APPLICATION_CAN_OVERRIDE_APP_ID := 64,
+		G_APPLICATION_ALLOW_REPLACEMENT := 128,
+		G_APPLICATION_REPLACE := 256
+	}
+
+	#~
+	GtkWindow window type
+	~#
+	enum GtkWindowType {
+		GTK_WINDOW_TOPLEVEL,
+		GTK_WINDOW_POPUP
+	}
+
+	#~
+	Inhibit flags
+	~#
+	consts GtkApplicationInhibitFlags {
+		GTK_APPLICATION_INHIBIT_LOGOUT := 1,
+		GTK_APPLICATION_INHIBIT_SWITCH := 2,
+		GTK_APPLICATION_INHIBIT_SUSPEND := 4,
+		GTK_APPLICATION_INHIBIT_IDLE := 8
+	}
+	
+	#~
+	GtkApplication is a class that handles many important aspects
+	of a GTK+ application in a convenient fashion, without enforcing
+ 	a one-size-fits-all application model
+ 	~#
+	class GtkApplication {
+		@application : Int;
+
+		#~
+		Creates a new #GtkApplication instance
+		@param application_id: The application ID.
+ 		@param flags the application flags
+		~#
+		New(application_id : String, flags : GApplicationFlags) {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := application_id;
+			array_args[2] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("application_new", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@application := value->Get();
+		}
+
+		#~
+		Adds a window to application
+		@param window window to add
+		~#
+		method : public : RemoveWindow(window : GtkWindow) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@application);
+			array_args[1] := window;
+
+			Proxy->GetDllProxy()->CallFunction("application_remove_window", array_args);
+		}
+
+		#~
+		Returns the menu model that has been set with
+		@return the application menu
+		~#
+		method : public : GetAppMenu() ~ GMenuModel {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+
+			Proxy->GetDllProxy()->CallFunction("application_get_app_menu", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			if(value->Get() <> 0) {
+				return GMenuModel->New(value->Get());
+			};
+
+			return Nil;
+		}
+
+		#~
+		Returns the menu model that has been set with
+		@return the menubar for windows of application
+		~#
+		method : public : GetMenubar() ~ GMenuModel {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+
+			Proxy->GetDllProxy()->CallFunction("application_get_menubar", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			if(value->Get() <> 0) {
+				return GMenuModel->New(value->Get());
+			};
+
+			return Nil;
+		}
+
+		#~
+		Inform the session manager that certain types of actions should be
+ 		inhibited. This is not guaranteed to work on all platforms and for
+ 		all types of actions
+		@param window a window
+		@param flags what types of actions should be inhibited
+		@param reason a short, human-readable string that explains why these operations are inhibited
+		@return a non-zero cookie that is used to uniquely identify this
+ 		request
+		~#
+		method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags, reason : String) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+			array_args[2] := window;
+			array_args[3] := IntHolder->New(flags);
+			array_args[4] := reason;
+
+			Proxy->GetDllProxy()->CallFunction("application_inhibit", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Determines if any of the actions specified in flags are
+		currently inhibited (possibly by another application)
+ 		@param flags what types of actions should be queried
+ 		@return true if any of the actions specified in flags are inhibited
+ 		~#
+		method : public : IsInhibited(flags : GtkApplicationInhibitFlags) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+			array_args[2] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("application_is_inhibited", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Gets the 'active' window for the application
+		@return the active window Nil if there isn't one.
+		~#
+		method : public : GetActiveWindow() ~ GtkWindow {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@application);
+
+			Proxy->GetDllProxy()->CallFunction("application_get_active_window", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			if(value->Get() <> 0) {
+				return GtkWindow->New(value->Get());
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	A GtkWindow is a toplevel window which can contain other widgets.
+ 	Windows normally have decorations that are under the control
+ 	of the windowing system and allow the user to manipulate the window
+	(resize it, move it, close it,...)
+ 	~#
+	class GtkWindow {
+		@window : Int;
+
+		New(window : Int) {
+			@window := window;
+		}
+
+		#~
+		Creates a new #GtkWindow, which is a toplevel window that can
+ 		contain other widgets
+		@param type window type
+		@return a new GtkWindow.
+ 		~#
+		New(type : GtkWindowType) {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(type);
+
+			Proxy->GetDllProxy()->CallFunction("window_new", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@window := value->Get();
+		}
+
+		#~
+		Retrieves the title of the window
+		@return the title of the window, or Nil if none has
+		~#
+		method : public : GetTitle() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_title", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		This function is only useful on X11, not with other GTK+ targets.
+		In combination with the window title, the window role allows a
+		[window manager][gtk-X11-arch] to identify "the
+		same" window when an application is restarted.
+		@param role unique identifier for the window to be used when restoring a session
+		~#
+		method : public : SetRole(role : String) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := role;
+
+			Proxy->GetDllProxy()->CallFunction("window_set_role", array_args);
+
+		}
+
+		#~
+		Returns the role of the window. See gtk_window_set_role() for
+		further explanation
+		@return the role of the window if set, or Nil
+		~#
+		method : public : GetRole() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_role", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Removes the accelerator group
+		@param the GtkAccelGroup
+		~#
+		method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := accel_group;
+
+			Proxy->GetDllProxy()->CallFunction("window_remove_accel_group", array_args);
+		}
+
+		method : public : ActivateFocus() ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_activate_focus", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : GetFocus() ~ GtkWidget {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_focus", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			if(value->Get() <> 0) {
+				return GtkWidget->New(value->Get());
+			};
+
+			return Nil;
+		}
+	}
+
+	class GMenuModel {
+		@menu_model : Int;
+
+		New(menu_model : Int) {
+			@menu_model := menu_model;
+		}
+	}
+
+	class GtkAccelGroup {
+		@accel_group : Int;
+
+		New(accel_group : Int) {
+			@accel_group := accel_group;
+		}
+	}
+
+	class GtkWidget {
+		@widget : Int;
+
+		New(widget : Int) {
+			@widget := widget;
+		}
+	}
+}

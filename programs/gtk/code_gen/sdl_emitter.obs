@@ -7,26 +7,33 @@ bundle CodeGen {
 	class Emitter {
 		@file_name : String;
 		@this_name : String;
+		@version : String;
 		
-		New(file_name : String, this_name : String) {
-			@file_name := file_name;
+		New(this_name : String, version : String, file_name : String) {
 			@this_name := this_name;
+			@version := version;
+			@file_name := file_name;
 		}
 		
 		method : public : Emit() ~ Nil {
-			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name)->Parse();
+			version := @version->ToInt();
+
+			"file={@file_name}"->PrintLine();
+			"version={@version}"->PrintLine();
+			"class={@this_name}"->PrintLine();
+
+			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name, version)->Parse();
 			each(i : methods) {
+				"---"->PrintLine();
 				parsed_method := methods->Get(i)->As(ParsedFunction);
 				EmitObjeckCode(parsed_method);
 				EmitCxxCode(parsed_method);
-				"---"->PrintLine();
 			};
 		}
 		
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
-				emitter := Emitter->New(args[1], args[0]);
-				emitter->Emit();
+			if(args->Size() = 3) {
+				Emitter->New(args[0], args[1], args[2])->Emit();
 			};
 		}
 		
@@ -89,7 +96,7 @@ bundle CodeGen {
 			return buffer;
 		}
 		
-		method : GetCallingString(parameters : ParsedParameters) ~ String {
+		method : GetCallingString(parameters : ParsedParameters, newline : Bool := true) ~ String {
 			buffer := "(";
 			
 			for(i := 0; i < parameters->Size(); i += 1;) {
@@ -100,7 +107,13 @@ bundle CodeGen {
 					buffer += ", ";
 				};
 			};
-			buffer += ");\n";
+			
+			if(newline) {
+				buffer += ");\n";
+			}
+			else {
+				buffer += "));";
+			};
 			
 			return buffer;
 		}
@@ -125,7 +138,7 @@ bundle CodeGen {
 				
 				if(i = 0 & parameters->Get(0)->GetType()->GetType() = ParsedType->Type->CLASS & 
 						GetTypeString(parameters->Get(0)->GetType())->Equals(@this_name)) {
-					buffer += "\t\tSDL_";
+					buffer += "\t\tGtk_";
 					buffer += @this_name;
 					buffer += "* ";
 					buffer += parameter->GetName();
@@ -139,7 +152,7 @@ bundle CodeGen {
 					select(parameter->GetType()->GetType()) {
 						label ParsedType->Type->INT:
 						label ParsedType->Type->BOOL: {
-							buffer += "\t\tconst int ";
+							buffer += "\t\tconst int gtk_";
 							buffer += parameter->GetName();
 							buffer += " = APITools_GetIntValue(context, ";
 							buffer += offset;
@@ -147,19 +160,19 @@ bundle CodeGen {
 						}
 		
 						label ParsedType->Type->CLASS: {
-							buffer += "\t\tconst size* ";
+							buffer += "\t\tconst size_t* gtk_";
 							buffer += parameter->GetName();
-							buffer += " = (size_t*)APITools_GetObjectValue(context, ";
+							buffer += "_obj = (size_t*)APITools_GetObjectValue(context, ";
 							buffer += offset;
 							buffer += ");\n";
 						}
 						
 						label ParsedType->Type->CHAR_STAR: {
-							buffer += "\t\tconst wstring ";
+							buffer += "\t\tconst std::string gtk_";
 							buffer += parameter->GetName();
-							buffer += " = APITools_GetStringValue(context, ";
+							buffer += " = UnicodeToBytes(APITools_GetStringValue(context, ";
 							buffer += offset;
-							buffer += ");\n";
+							buffer += "));\n";
 						}
 						
 ##					label ParsedType->Type->VOID_STAR:
@@ -173,24 +186,24 @@ bundle CodeGen {
 			select(parameter->GetType()) {
 				label ParsedType->Type->INT:
 				label ParsedType->Type->BOOL: {
-					buffer += "\t\tconst int return_value = ";
+					buffer += "\t\tconst int value = gtk_";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
-					buffer += "\t\tAPITools_SetIntValue(context, 0, return_value);\n";
+					buffer += "\t\tAPITools_SetIntValue(context, 0, value);\n";
 				}
 
 				label ParsedType->Type->CLASS: {
-					buffer += "\t\tconst size* return_value = ";
+					buffer += "\t\tconst size* value = gtk_";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
-					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)return_value);\n";
+					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)value);\n";
 				}
 				
 				label ParsedType->Type->CHAR_STAR: {
-					buffer += "\t\tconst wstring return_value = ";
+					buffer += "\t\tconst std::wstring value = BytesToUnicode(gtk_";
 					buffer += parsed_method->GetFunctionName();
-					buffer += GetCallingString(parameters);
-					buffer += "\t\tAPITools_SetStringValue(context, 0, return_value);\n";
+					buffer += GetCallingString(parameters, false);
+					buffer += "\n\t\tAPITools_SetStringValue(context, 0, value);\n";
 				}
 							
 				label ParsedType->Type->VOID: {

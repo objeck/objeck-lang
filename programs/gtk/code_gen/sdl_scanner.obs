@@ -1,4 +1,3 @@
-use System.IO.Filesystem;
 use Collection.Generic;
 
 bundle CodeGen {
@@ -16,26 +15,28 @@ bundle CodeGen {
 		
 		method : public : Scan() ~ Vector<Token> {
 			reserved := Map->New()<String, Token>;
-			# c keywords
-			reserved->Insert("extern", Token->New(Token->Type->EXTERN_ID, "extern"));
-			reserved->Insert("DECLSPEC", Token->New(Token->Type->DECLSPEC_ID, "DECLSPEC"));
-			reserved->Insert("SDL2_GFXPRIMITIVES_SCOPE", Token->New(Token->Type->SDL2_GFXPRIMITIVES_SCOPE_ID, "SDL2_GFXPRIMITIVES_SCOPE"));
-			reserved->Insert("SDLCALL", Token->New(Token->Type->SDLCALL_ID, "SDLCALL"));
-			
-			# c types
+			# GTK3 sync keywords
+			reserved->Insert("GDK_AVAILABLE_IN_ALL", Token->New(Token->Type->GDK_AVAILABLE_IN_ALL_ID, "GDK_AVAILABLE_IN_ALL"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_0", Token->New(Token->Type->GDK_AVAILABLE_IN_3_0_ID, "GDK_AVAILABLE_IN_3_0"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_2", Token->New(Token->Type->GDK_AVAILABLE_IN_3_2_ID, "GDK_AVAILABLE_IN_3_2"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_4", Token->New(Token->Type->GDK_AVAILABLE_IN_3_4_ID, "GDK_AVAILABLE_IN_3_4"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_6", Token->New(Token->Type->GDK_AVAILABLE_IN_3_6_ID, "GDK_AVAILABLE_IN_3_6"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_8", Token->New(Token->Type->GDK_AVAILABLE_IN_3_8_ID, "GDK_AVAILABLE_IN_3_8"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_10", Token->New(Token->Type->GDK_AVAILABLE_IN_3_10_ID, "GDK_AVAILABLE_IN_3_10"));
+			reserved->Insert("GDK_AVAILABLE_IN_3_12", Token->New(Token->Type->GDK_AVAILABLE_IN_3_12_ID, "GDK_AVAILABLE_IN_3_12"));
+
+			# types to map
+			reserved->Insert("GType", Token->New(Token->Type->GTYPE_ID, "GTYPE"));
 			reserved->Insert("const", Token->New(Token->Type->CONST_ID, "const"));
 			reserved->Insert("int", Token->New(Token->Type->INT_ID, "int"));
 			reserved->Insert("char", Token->New(Token->Type->CHAR_ID, "char"));
 			reserved->Insert("void", Token->New(Token->Type->VOID_ID, "void"));
-			reserved->Insert("Uint8", Token->New(Token->Type->UINT8_ID, "Uint8"));
-			reserved->Insert("Uint16", Token->New(Token->Type->UINT16_ID, "Uint16"));
-			reserved->Insert("Sint16", Token->New(Token->Type->SINT16_ID, "Sint16"));
-			reserved->Insert("Uint32", Token->New(Token->Type->UINT32_ID, "Uint32"));
-			reserved->Insert("SDL_bool", Token->New(Token->Type->SDL_BOOL_ID, "SDL_bool"));
+			reserved->Insert("gint", Token->New(Token->Type->GINT_ID, "guint"));
+			reserved->Insert("guint", Token->New(Token->Type->GUINT_ID, "guint"));
+			reserved->Insert("gboolean", Token->New(Token->Type->GBOOLEAN_ID, "GBOOLEAN_ID"));
+			reserved->Insert("gchar", Token->New(Token->Type->GCHAR_ID, "GCHAR_ID"));
 			
-			"filename='{$@filename}'"->PrintLine();
-
-			reader := FileReader->New(@filename);
+			reader := System.IO.Filesystem.FileReader->New(@filename);
 			line_num := 0;
 			while(reader->IsEOF() <> true) {
 				line := reader->ReadLine();
@@ -134,21 +135,28 @@ bundle CodeGen {
 	}
 	
 	#~
-	Scanned token
+	Token
 	~#
 	class Token {
-		enum Type := -100 {
-			EXTERN_ID,
-			DECLSPEC_ID,
-			SDL2_GFXPRIMITIVES_SCOPE_ID,
-			SDLCALL_ID,
+		#~
+		Token type
+		~#
+		enum Type := -200 {
+			GDK_AVAILABLE_IN_ALL_ID,
+			GDK_AVAILABLE_IN_3_0_ID,
+			GDK_AVAILABLE_IN_3_2_ID,
+			GDK_AVAILABLE_IN_3_4_ID,
+			GDK_AVAILABLE_IN_3_6_ID,
+			GDK_AVAILABLE_IN_3_8_ID,
+			GDK_AVAILABLE_IN_3_10_ID,
+			GDK_AVAILABLE_IN_3_12_ID,
 			INT_ID,
 			CHAR_ID,
-			UINT8_ID,
-			UINT16_ID,
-			SINT16_ID,
-			UINT32_ID,
-			SDL_BOOL_ID,
+			GINT_ID,
+			GTYPE_ID,
+			GUINT_ID,
+			GCHAR_ID,
+			GBOOLEAN_ID,
 			VOID_ID,
 			CONST_ID,
 			OPRN,
@@ -183,6 +191,120 @@ bundle CodeGen {
 		
 		method : public : GetValue() ~ String {
 			return @value;
+		}
+
+		method : public : ToString() ~ String {
+			select(@type) {
+				label Token->Type->GDK_AVAILABLE_IN_ALL_ID {
+					return "GDK_AVAILABLE_IN_ALL_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_0_ID {
+					return "GDK_AVAILABLE_IN_3_0_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_2_ID {
+					return "GDK_AVAILABLE_IN_3_2_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_4_ID {
+					return "GDK_AVAILABLE_IN_3_4_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_6_ID {
+					return "GDK_AVAILABLE_IN_3_6_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_8_ID {
+					return "GDK_AVAILABLE_IN_3_8_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_10_ID {
+					return "GDK_AVAILABLE_IN_3_10_ID"; 
+				}
+
+				label Token->Type->GDK_AVAILABLE_IN_3_12_ID {
+					return "GDK_AVAILABLE_IN_3_12_ID"; 
+				}
+				
+				label Token->Type->INT_ID {
+					return "type=INT_ID";
+				}
+
+				label Token->Type->CHAR_ID {
+					return "type=CHAR_ID";
+				}
+
+				label Token->Type->GINT_ID {
+					return "type=GINT_ID";
+				}
+
+				label Token->Type->GTYPE_ID {
+					return "type=GTYPE_ID";
+				}
+
+				label Token->Type->GUINT_ID {
+					return "type=GUINT_ID";
+				}
+
+				label Token->Type->GBOOLEAN_ID {
+					return "type=GBOOLEAN_ID";
+				}
+
+				label Token->Type->GCHAR_ID {
+					return "type=GCHAR_ID";
+				}
+
+				label Token->Type->VOID_ID {
+					return "type=VOID_ID";
+				}
+
+				label Token->Type->CONST_ID {
+					return "type=CONST_ID";
+				}
+
+				label Token->Type->OPRN {
+					return "type=GCHAR_ID";
+				}
+
+				label Token->Type->CPRN {
+					return "type=GCHAR_ID";
+				}
+
+				label Token->Type->OBR {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->CBR {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->COMMA {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->SCOLON {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->STAR {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->AND {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->NUM {
+					return "type='{$@value}'";
+				}
+
+				label Token->Type->IDENT {
+					return "type=IDENT, value=\"{$@value}\"";
+				}
+			};
+
+			return "<unknown>";
 		}
 	}
 }
