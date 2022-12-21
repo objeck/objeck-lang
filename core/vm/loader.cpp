@@ -1,7 +1,7 @@
 /***************************************************************************
  * Program loader.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,16 +41,16 @@ StackProgram* Loader::GetProgram() {
 
 void Loader::LoadConfiguration()
 {
-  ifstream in("obr.conf");
+  std::ifstream in("obr.conf");
   if(in.good()) {
-    string line;
+    std::string line;
     do {
       getline(in, line);
       size_t pos = line.find('=');
-      if(pos != string::npos) {
-        string name = line.substr(0, pos);
-        string value = line.substr(pos + 1);
-        params.insert(pair<const wstring, int>(BytesToUnicode(name), atoi(value.c_str())));
+      if(pos != std::string::npos) {
+        std::string name = line.substr(0, pos);
+        std::string value = line.substr(pos + 1);
+        params.insert(std::pair<const std::wstring, int>(BytesToUnicode(name), atoi(value.c_str())));
       }
     }
     while(!in.eof());
@@ -62,14 +62,14 @@ void Loader::Load()
 {
   const int ver_num = ReadInt();
   if(ver_num != VER_NUM) {
-    wcerr << L"This executable appears to be invalid or compiled with a different version of the toolchain." << endl;
+    std::wcerr << L"This executable appears to be invalid or compiled with a different version of the toolchain." << std::endl;
     exit(1);
   } 
 
   const int magic_num = ReadInt();
   switch(magic_num) {
   case MAGIC_NUM_LIB:
-    wcerr << L"Unable to use execute shared library '" << filename << L"'." << endl;
+    std::wcerr << L"Unable to use execute shared library '" << filename << L"'." << std::endl;
     exit(1);
 
   case MAGIC_NUM_EXE:
@@ -80,7 +80,7 @@ void Loader::Load()
     break;
 
   default:
-    wcerr << L"Unknown file type for '" << filename << L"'." << endl;
+    std::wcerr << L"Unknown file type for '" << filename << L"'." << std::endl;
     exit(1);
   }
 
@@ -96,16 +96,16 @@ void Loader::Load()
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
-    wcout << L"Loaded static float string[" << i << L"]: '";
+    std::wcout << L"Loaded static float std::string[" << i << L"]: '";
 #endif
     for(int j = 0; j < float_string_length; j++) {
       float_string[j] = ReadDouble();
 #ifdef _DEBUG
-      wcout << float_string[j] << L",";
+      std::wcout << float_string[j] << L",";
 #endif
     }
 #ifdef _DEBUG
-    wcout << L"'" << endl;
+    std::wcout << L"'" << std::endl;
 #endif
     float_strings[i] = float_string;
   }
@@ -119,16 +119,16 @@ void Loader::Load()
     INT_VALUE* int_string = new INT_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
-    wcout << L"Loaded static int string[" << i << L"]: '";
+    std::wcout << L"Loaded static int std::string[" << i << L"]: '";
 #endif
     for(int j = 0; j < int_string_length; ++j) {
       int_string[j] = ReadInt();
 #ifdef _DEBUG
-      wcout << int_string[j] << L",";
+      std::wcout << int_string[j] << L",";
 #endif
     }
 #ifdef _DEBUG
-    wcout << L"'" << endl;
+    std::wcout << L"'" << std::endl;
 #endif
     int_strings[i] = int_string;
   }
@@ -138,7 +138,7 @@ void Loader::Load()
   num_char_strings = ReadInt();
   wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
   for(i = 0; i < num_char_strings; ++i) {
-    const wstring value = ReadString();
+    const std::wstring value = ReadString();
     wchar_t* char_string = new wchar_t[value.size() + 1];
     // copy string
 #ifdef _WIN32
@@ -148,7 +148,7 @@ void Loader::Load()
 #endif
 
 #ifdef _DEBUG
-    wcout << L"Loaded static character string[" << i << L"]: '" << char_string << L"'" << endl;
+    std::wcout << L"Loaded static character std::string[" << i << L"]: '" << char_string << L"'" << std::endl;
 #endif
     char_strings[i] = char_string;
   }
@@ -162,25 +162,25 @@ void Loader::Load()
 #endif
 
 #ifdef _DEBUG
-    wcout << L"Loaded static string: '" << char_strings[i] << L"'" << endl;
+    std::wcout << L"Loaded static std::string: '" << char_strings[i] << L"'" << std::endl;
 #endif
   }
   program->SetCharStrings(char_strings, num_char_strings);
 
 #ifdef _DEBUG
-  wcout << L"=======================================" << endl;
+  std::wcout << L"=======================================" << std::endl;
 #endif
   
   // read start class and method ids
   start_class_id = ReadInt();
   start_method_id = ReadInt();
 #ifdef _DEBUG
-  wcout << L"Program starting point: " << start_class_id << L"," << start_method_id << endl;
+  std::wcout << L"Program starting point: " << start_class_id << L"," << start_method_id << std::endl;
 #endif
 
   LoadClasses();
   
-  const wstring name = L"$Initialization$:";
+  const std::wstring name = L"$Initialization$:";
   StackDclr** dclrs = new StackDclr*[1];
   dclrs[0] = new StackDclr;
   dclrs[0]->name = L"args";
@@ -192,17 +192,17 @@ void Loader::Load()
   program->SetStringObjectId(string_cls_id);
 }
 
-char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
+char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 {
   char* buffer;
-  const string open_filename = UnicodeToBytes(filename);
+  const std::string open_filename = UnicodeToBytes(filename);
 
-  ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
+  std::ifstream in(open_filename.c_str(), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
   if(in.good()) {
     // get file size
-    in.seekg(0, ios::end);
+    in.seekg(0, std::ios::end);
     buffer_size = (size_t)in.tellg();
-    in.seekg(0, ios::beg);
+    in.seekg(0, std::ios::beg);
     buffer = (char*)calloc(buffer_size + 1, sizeof(char));
     in.read(buffer, buffer_size);
     // close file
@@ -211,7 +211,7 @@ char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
     uLong dest_len;
     char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
     if(!out) {
-      wcerr << L"Unable to uncompress file: " << filename << endl;
+      std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);
     }
 #ifdef _DEBUG
@@ -223,7 +223,7 @@ char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
     return out;
   }
   else {
-    wcerr << L"Unable to open file: " << filename << endl;
+    std::wcerr << L"Unable to open file: " << filename << std::endl;
     exit(1);
   }
 
@@ -238,15 +238,15 @@ void Loader::LoadClasses()
   StackClass** classes = new StackClass*[num_classes];
 
 #ifdef _DEBUG
-  wcout << L"Reading " << num_classes << L" classe(s)..." << endl;
+  std::wcout << L"Reading " << num_classes << L" classe(s)..." << std::endl;
 #endif
 
   for(int i = 0; i < num_classes; ++i) {
     // read id and pid
     const int id = ReadInt();
-    wstring name = ReadString();
+    std::wstring name = ReadString();
     const int pid = ReadInt();
-    wstring parent_name = ReadString();
+    std::wstring parent_name = ReadString();
 
     // read interface ids
     const int num_interfaces = ReadInt();
@@ -265,7 +265,7 @@ void Loader::LoadClasses()
     
     const bool is_virtual = ReadByte() != 0;
     const bool is_debug = ReadByte() != 0;
-    wstring file_name;
+    std::wstring file_name;
     if(is_debug) {
       file_name = ReadString();
     }
@@ -283,7 +283,7 @@ void Loader::LoadClasses()
     StackDclr** inst_dclrs = LoadDeclarations(inst_num_dclrs, is_debug);
     
     // read closure declarations
-    map<int, pair<int, StackDclr**> > closure_dclr_map;
+    std::map<int, std::pair<int, StackDclr**> > closure_dclr_map;
     const int num_closure_dclrs = ReadInt();
     for(int i = 0; i < num_closure_dclrs; ++i) {
       const int closure_mthd_id = ReadInt();
@@ -291,7 +291,7 @@ void Loader::LoadClasses()
       const int closure_num_dclrs = ReadInt();
       StackDclr** closure_dclrs = LoadDeclarations(closure_num_dclrs, is_debug);
       // add declarations to map
-      closure_dclr_map[closure_mthd_id] = pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
+      closure_dclr_map[closure_mthd_id] = std::pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
     }
 
     cls_hierarchy[id] = pid;
@@ -299,9 +299,9 @@ void Loader::LoadClasses()
                                      closure_dclr_map, inst_num_dclrs, cls_space, inst_space, is_debug);
 
 #ifdef _DEBUG
-    wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
+    std::wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
     << parent_name << L"'; class_bytes=" << cls_space << L"'; instance_bytes="
-    << inst_space << endl;
+    << inst_space << std::endl;
 #endif
 
     // load methods
@@ -326,7 +326,7 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
     // set type
     int type = ReadInt();
     // set name
-    wstring name;
+    std::wstring name;
     if(is_debug) {
       name = ReadString();
     }
@@ -342,7 +342,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 {
   const int number = ReadInt();
 #ifdef _DEBUG
-  wcout << L"Reading " << number << L" method(s)..." << endl;
+  std::wcout << L"Reading " << number << L" method(s)..." << std::endl;
 #endif
   
   StackMethod** methods = new StackMethod*[number];
@@ -356,9 +356,9 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // is lambda expression
     const bool is_lambda = ReadByte() != 0;
     // name
-    const wstring name = ReadString();
+    const std::wstring name = ReadString();
     // return
-    const wstring rtrn_name = ReadString();
+    const std::wstring rtrn_name = ReadString();
     // params
     const int params = ReadInt();
     // space
@@ -371,7 +371,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       // set type
       const int type = ReadInt();
       // set name
-      wstring name;
+      std::wstring name;
       if(is_debug) {
         name = ReadString();
       }
@@ -409,7 +409,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       break;
 
     default:
-      wcerr << L">>> unknown type <<<" << endl;
+      std::wcerr << L">>> unknown type <<<" << std::endl;
       exit(1);
       break;
     }
@@ -418,9 +418,9 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
           num_dclrs, params, mem_size, rtrn_type, cls);    
     // load statements
 #ifdef _DEBUG
-    wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='" 
+    std::wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='" 
     << rtrn_name << L"'; params=" << params << L"; bytes=" 
-    << mem_size << endl;
+    << mem_size << std::endl;
 #endif    
     LoadStatements(mthd, is_debug);
 
@@ -435,7 +435,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 
 void Loader::LoadInitializationCode(StackMethod* method)
 {
-  vector<StackInstr*> instrs;
+  std::vector<StackInstr*> instrs;
 
   instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
   instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
@@ -670,15 +670,15 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case LIB_OBJ_INST_CAST:
-      wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
+      std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
       exit(1);
 
     case LIB_NEW_OBJ_INST:
-      wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << endl;
+      std::wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << std::endl;
       exit(1);
 
     case LIB_MTHD_CALL:
-      wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << endl;
+      std::wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << std::endl;
       exit(1);
 
     case JMP: {
@@ -990,7 +990,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;
-      wcout << L">>> unknown instruction: id=" << instr << L" <<<" << endl;
+      std::wcout << L">>> unknown instruction: id=" << instr << L" <<<" << std::endl;
 #endif
       exit(1);
     }

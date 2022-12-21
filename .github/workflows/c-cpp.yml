@@ -59,7 +59,6 @@ jobs:
         ./obr ../../../../programs/deploy/hello_0.obe; \
         ./obr ../../../../programs/deploy/http_regex_9.obe https://www.google.org; \
         ./obr ../../../../programs/deploy/https_1.obe; \
-        ./obr ../../../../programs/deploy/http_xml_regex_8.obe; \
         ./obr ../../../../programs/deploy/json_3.obe; \
         ./obr ../../../../programs/deploy/lambda_17.obe; \
         ./obr ../../../../programs/deploy/regex_4.obe; \

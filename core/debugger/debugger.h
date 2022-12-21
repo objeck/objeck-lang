@@ -49,37 +49,35 @@
 #include <readline/history.h>
 #endif
 
-using namespace std;
-
 namespace Runtime {
   class StackInterpreter;
   class Debugger;
 
   typedef struct _UserBreak {
     int line_num;
-    wstring file_name;
+    std::wstring file_name;
   } UserBreak;
 
   /********************************
   * Source file
   ********************************/
   class SourceFile {
-    wstring file_name;
-    vector<wstring> lines;
+    std::wstring file_name;
+    std::vector<std::wstring> lines;
     int cur_line_num;
     Debugger* debugger;
 
   public:
-    SourceFile(const wstring &fn, int l, class Debugger* d) {
+    SourceFile(const std::wstring &fn, int l, class Debugger* d) {
       file_name = fn;
       cur_line_num = l;
       debugger = d;
 
-      const string name = UnicodeToBytes(fn);
-      ifstream file_in (name.c_str());
+      const std::string name = UnicodeToBytes(fn);
+      std::ifstream file_in (name.c_str());
       while(file_in.good()) {
-        string line;
-        getline(file_in, line);
+        std::string line;
+        std::getline(file_in, line);
         lines.push_back(BytesToUnicode(line));
       }
       file_in.close();
@@ -94,7 +92,7 @@ namespace Runtime {
 
     bool Print(int start);
 
-    const wstring& GetFileName() {
+    const std::wstring& GetFileName() {
       return file_name;
     }
   };
@@ -104,15 +102,14 @@ namespace Runtime {
   * debugger
   ********************************/
   class Debugger {
-    wstring program_file_param;
-    wstring base_path_param;
-    wstring args_param;
+    std::wstring program_file_param;
+    std::wstring base_path_param;
+    std::wstring args_param;
     bool quit;
     // break info
-    list<UserBreak*> breaks;
+    std::list<UserBreak*> breaks;
     int cur_line_num;
-    int continue_line_num;
-    wstring cur_file_name;
+    std::wstring cur_file_name;
     StackFrame** cur_call_stack;
     long cur_call_stack_pos;
     long jump_stack_pos;
@@ -124,7 +121,7 @@ namespace Runtime {
     size_t* ref_mem;
     StackClass* ref_klass;
     // interpreter variables
-    vector<wstring> arguments;
+    std::vector<std::wstring> arguments;
     StackInterpreter* interpreter;
     StackProgram* cur_program;
     StackFrame* cur_frame;
@@ -133,22 +130,22 @@ namespace Runtime {
     Loader* loader;
 
     // pretty prints a method
-    wstring PrintMethod(StackMethod* method);
+    std::wstring PrintMethod(StackMethod* method);
 
     // checks to see if a file exists
-    bool FileExists(const wstring &file_name, bool is_exe = false);
+    bool FileExists(const std::wstring &file_name, bool is_exe = false);
 
     // checks to see if a directory exists
-    bool DirectoryExists(const wstring &wdir_name);
+    bool DirectoryExists(const std::wstring &wdir_name);
 
     // deletes a break point
-    bool DeleteBreak(int line_num, const wstring &file_name);
+    bool DeleteBreak(int line_num, const std::wstring &file_name);
 
     // searches for a valid breakpoint based upon the line number provided
-    UserBreak* FindBreak(int line_num, const wstring& file_name);
+    UserBreak* FindBreak(int line_num, const std::wstring& file_name);
 
     // adds a break
-    bool AddBreak(int line_num, const wstring &file_name);
+    bool AddBreak(int line_num, const std::wstring &file_name);
 
     // lists all breaks
     void ListBreaks();
@@ -156,19 +153,19 @@ namespace Runtime {
     // prints declarations
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num);
   
-    void ClearProgram();
+    void ClearProgram(bool clear_loader = true);
     void DoLoad();
     void ClearReload() {
-      ClearProgram();
+      ClearProgram(false);
       DoLoad();
     }
 
-    Command* ProcessCommand(const wstring &line);
+    Command* ProcessCommand(const std::wstring &line);
     void ProcessRun();
     void ProcessBin(Load* load);
     void ProcessSrc(Load* load);
     void ProcessArgs(Load* load);
-    void ProcessArgs(const wstring& temp);
+    void ProcessArgs(const std::wstring& temp);
     void ProcessInfo(Info* info);
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();
@@ -185,7 +182,7 @@ namespace Runtime {
     void EvaluateCalculation(CalculatedExpression* expression);
 
     // utility functions
-    wstring ToFloat(size_t value) {
+    std::wstring ToFloat(size_t value) {
       wchar_t buffer[16];
 
       if(value > 1000000) {
@@ -206,9 +203,9 @@ namespace Runtime {
       return buffer;
     }
 
-    wstring Trim(const wstring& input, const wstring& whitespace = L" \t\r\n") {
+    std::wstring Trim(const std::wstring& input, const std::wstring& whitespace = L" \t\r\n") {
       const size_t start = input.find_first_not_of(whitespace);
-      if(start != wstring::npos) {
+      if(start != std::wstring::npos) {
         const size_t end = input.find_last_not_of(whitespace);
         return input.substr(start, end - start + 1);
       }
@@ -216,10 +213,10 @@ namespace Runtime {
       return L"";
     }
 
-    void ReadLine(wstring &output) {
+    void ReadLine(std::wstring &output) {
 // #ifdef _WIN32
-      wcout << L"> ";
-      getline(wcin, output);
+      std::wcout << L"> ";
+      std::getline(std::wcin, output);
 /*
 #else
       char* input = readline(nullptr);
@@ -236,7 +233,7 @@ namespace Runtime {
     }
 
   public:
-    Debugger(const wstring &fn, const wstring &bp, const wstring &ap) {
+    Debugger(const std::wstring &fn, const std::wstring &bp, const std::wstring &ap) {
       program_file_param = fn;
       base_path_param = bp;
       args_param = ap;

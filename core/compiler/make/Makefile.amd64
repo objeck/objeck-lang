@@ -1,12 +1,12 @@
 CC=g++
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++17
-SRC=../shared/logger.o types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
+ARGS=-O3 -Wall -D_X64 -std=c++17 -Wno-unused-function
+SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=logger.a
 LOGGER_PATH=../shared
 EXE=obc
 
-$(EXE): $(OBJ_LIBS) $(SRC) 
-	$(CC) -m64 -o $(EXE) $(SRC) -lz
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
 
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
@@ -15,5 +15,5 @@ logger.a:
 	cd $(LOGGER_PATH); make -f make/Makefile.amd64
 
 clean:
-	cd $(LOGGER_PATH); make clean -f make/Makefile.amd64
+	cd $(LOGGER_PATH); make -f make/Makefile.amd64 clean
 	rm -f $(EXE) *.o *~

@@ -1,5 +1,5 @@
 /***************************************************************************
- * Copyright (c) 2020-2022, Randy Hollines
+ * Copyright (c) 2020-2023, Randy Hollines
  * All rights reserved.
  ***************************************************************************/
 
@@ -396,7 +396,7 @@ BOOL InitEnvironment()
   std::wstring pathText;
   pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt (v";
   pathText += VERSION_STRING;
-  pathText += L")\r\n@echo Copyright(c) 2008-2022, Randy Hollines\r\n@echo =========================================";
+  pathText += L")\r\n@echo Copyright(c) 2023, Randy Hollines\r\n@echo =========================================";
   WriteLineToFile(cmdFile, pathText);
 
   pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";

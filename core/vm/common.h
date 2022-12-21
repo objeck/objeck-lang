@@ -1,7 +1,7 @@
 /***************************************************************************
  * Defines the VM execution model.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,7 +62,6 @@
 #include <unordered_set>
 #include <userenv.h>
 #include <cstring>
-using namespace stdext;
 #elif _OSX
 #include <mach-o/dyld.h>
 #include <unordered_map>
@@ -99,7 +98,6 @@ using namespace stdext;
 #define MUTEX_UNLOCK pthread_mutex_unlock
 #endif
 
-using namespace std;
 using namespace instructions;
 
 #define INF_ENDING -2
@@ -115,9 +113,9 @@ enum {
 
 class StackClass;
 
-inline const wstring IntToString(int v)
+inline const std::wstring IntToString(int v)
 {
-  return to_wstring(v);
+  return std::to_wstring(v);
 }
 
 /********************************
@@ -125,7 +123,7 @@ inline const wstring IntToString(int v)
  ********************************/
 struct StackDclr 
 {
-  wstring name;
+  std::wstring name;
   ParamType type;
   long id;
 };
@@ -323,7 +321,7 @@ class NativeCode {
  ********************************/
 class StackMethod {
   long id;
-  wstring name;
+  std::wstring name;
   bool is_virtual;
   bool has_and_or;
   bool is_lambda;
@@ -337,10 +335,10 @@ class StackMethod {
   long num_dclrs;
   StackClass* cls;
 
-  const wstring ParseName(const wstring &name) const;
+  const std::wstring ParseName(const std::wstring &name) const;
 
  public:
-  StackMethod(long i, const wstring &n, bool v, bool h, bool l, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
+  StackMethod(long i, const std::wstring &n, bool v, bool h, bool l, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
     id = i;
     name = ParseName(n);
     is_virtual = v;
@@ -385,7 +383,7 @@ class StackMethod {
     instrs = nullptr;
   }
 
-  inline const wstring& GetName() {
+  inline const std::wstring& GetName() {
     return name;
   }
 
@@ -407,14 +405,14 @@ class StackMethod {
 
 #ifdef _DEBUGGER
   // TODO: might have 1 or more variables with the same name
-  bool GetLocalDeclaration(const wstring& name, StackDclr& found) {
-    vector<int> results;
+  bool GetDeclaration(const std::wstring& name, StackDclr& found) {
+    std::vector<int> results;
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < num_dclrs; i++, index++) {
         StackDclr* dclr = dclrs[i];
-        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
+        const std::wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
@@ -499,12 +497,12 @@ class StackMethod {
  * StackClass class
  ********************************/
 class StackClass {
-  unordered_map<wstring, StackMethod*> method_name_map;
+  std::unordered_map<std::wstring, StackMethod*> method_name_map;
   StackMethod** methods;
   int method_num;
   long id;
-  wstring name;
-  wstring file_name;
+  std::wstring name;
+  std::wstring file_name;
   StackClass* parent;
   long pid;
   bool is_virtual;
@@ -513,7 +511,7 @@ class StackClass {
   StackDclr** cls_dclrs;
   long cls_num_dclrs;
   StackDclr** inst_dclrs;
-  map<int, pair<int, StackDclr**> > closure_dclrs;
+  std::map<int, std::pair<int, StackDclr**> > closure_dclrs;
   long inst_num_dclrs;
   size_t* cls_mem;
   bool is_debug;
@@ -529,8 +527,8 @@ class StackClass {
   }
 
  public:
-  StackClass(long i, const wstring &cn, const wstring &fn, long p, bool v, StackDclr** cdclrs, long ccount,
-             StackDclr** idclrs, map<int, pair<int, StackDclr**> > fdclr, long icount, long cspace, long ispace, bool d) {
+  StackClass(long i, const std::wstring &cn, const std::wstring &fn, long p, bool v, StackDclr** cdclrs, long ccount,
+             StackDclr** idclrs, std::map<int, std::pair<int, StackDclr**> > fdclr, long icount, long cspace, long ispace, bool d) {
     id = i;
     name = cn;
     file_name = fn;
@@ -569,9 +567,9 @@ class StackClass {
       inst_dclrs = nullptr;
     }
 
-    map<int, pair<int, StackDclr**> >::iterator iter;
+    std::map<int, std::pair<int, StackDclr**> >::iterator iter;
     for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
-      pair<int, StackDclr**> tmp = iter->second;
+      std::pair<int, StackDclr**> tmp = iter->second;
       const int num_dclrs = tmp.first;
       StackDclr** dclrs = tmp.second;
       for(int i = 0; i < num_dclrs; ++i) {
@@ -606,11 +604,11 @@ class StackClass {
     return is_debug;
   }
 
-  inline const wstring& GetName() {
+  inline const std::wstring& GetName() {
     return name;
   }
 
-  inline const wstring& GetFileName() {
+  inline const std::wstring& GetFileName() {
     return file_name;
   }
 
@@ -626,7 +624,7 @@ class StackClass {
     return inst_dclrs;
   }
 
-  inline pair<int, StackDclr**> GetClosureDeclarations(const int id) {
+  inline std::pair<int, StackDclr**> GetClosureDeclarations(const int id) {
     return closure_dclrs[id];
   }
 
@@ -665,20 +663,65 @@ class StackClass {
   }
 
 #ifdef _DEBUGGER
-  vector<StackMethod*> GetMethods(const wstring &n) {
-    vector<StackMethod*> found;
+  std::vector<StackMethod*> GetMethods(const std::wstring &n) {
+    std::vector<StackMethod*> found;
     for(int i = 0; i < method_num; ++i) {
-      if(methods[i]->GetName().find(n) != wstring::npos) {
+      if(methods[i]->GetName().find(n) != std::wstring::npos) {
         found.push_back(methods[i]);
       }
     }
 
     return found;
   }
+
+  // TODO: might have 1 or more variables with the same name
+  bool GetDeclaration(const std::wstring& name, StackDclr& found, MemoryContext &context) {
+    std::vector<int> results;
+    if(name.size () > 0) {
+      // search for instance name
+      int index = 0;
+      for(int i = 0; i < inst_num_dclrs; i++, index++) {
+        StackDclr* dclr = inst_dclrs[i];
+        const std::wstring& dclr_name = dclr->name.substr (dclr->name.find_last_of (L':') + 1);
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;
+          context = INST;
+          return true;
+        }
+
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
+      }
+
+      // search for class name
+      index = 0;
+      for(int i = 0; i < cls_num_dclrs; i++, index++) {
+        StackDclr* dclr = cls_dclrs[i];
+        const std::wstring& dclr_name = dclr->name.substr (dclr->name.find_last_of (L':') + 1);
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;
+          context = CLS;
+          return true;
+        }
+
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
+      }
+    }
+
+    return false;
+  }
+
 #endif
 
-  inline StackMethod* GetMethod(const wstring &n) {
-    unordered_map<wstring, StackMethod*>::iterator result = method_name_map.find(n);
+  inline StackMethod* GetMethod(const std::wstring &n) {
+    std::unordered_map<std::wstring, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {
       return result->second;
     }
@@ -695,13 +738,13 @@ class StackClass {
   }
 
 #ifdef _DEBUGGER
-  bool GetInstanceDeclaration(const wstring& name, StackDclr& found) {
+  bool GetInstanceDeclaration(const std::wstring& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < inst_num_dclrs; i++, index++) {
         StackDclr* dclr = inst_dclrs[i];
-        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
+        const std::wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
@@ -718,13 +761,13 @@ class StackClass {
     return false;
   }
 
-  bool GetClassDeclaration(const wstring& name, StackDclr& found) {
+  bool GetClassDeclaration(const std::wstring& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < cls_num_dclrs; i++, index++) {
         StackDclr* dclr = cls_dclrs[i];
-        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
+        const std::wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(L':') + 1);       
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
@@ -747,7 +790,7 @@ class StackClass {
  * StackProgram class
  ********************************/
 class StackProgram {
-  map<wstring, StackClass*> cls_map;
+  std::map<std::wstring, StackClass*> cls_map;
   StackClass** classes;
   long class_num;
   long* cls_hierarchy;
@@ -758,8 +801,8 @@ class StackProgram {
   long sock_cls_id;
   long data_type_cls_id;
   StackMethod* init_method;
-  static map<wstring, wstring> properties_map;
-	static unordered_map<long, StackMethod*> signal_handler_func;
+  static std::map<std::wstring, std::wstring> properties_map;
+	static std::unordered_map<long, StackMethod*> signal_handler_func;
   
   FLOAT_VALUE** float_strings;
   int num_float_strings;
@@ -858,8 +901,8 @@ class StackProgram {
   }
 
 #ifdef _WIN32
-  static wstring GetProperty(const wstring& key) {
-    wstring value;
+  static std::wstring GetProperty(const std::wstring& key) {
+    std::wstring value;
 
     EnterCriticalSection(&prop_cs);
 
@@ -867,7 +910,7 @@ class StackProgram {
       InitializeProprieties();
     }
     
-    map<wstring, wstring>::iterator find = properties_map.find(key);
+    std::map<std::wstring, std::wstring>::iterator find = properties_map.find(key);
     if(find != properties_map.end()) {
       value = find->second;
     }
@@ -876,9 +919,9 @@ class StackProgram {
     return value;
   }
 
-  static void SetProperty(const wstring& key, const wstring& value) {
+  static void SetProperty(const std::wstring& key, const std::wstring& value) {
     EnterCriticalSection(&prop_cs);
-    properties_map.insert(pair<wstring, wstring>(key, value));
+    properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
     LeaveCriticalSection(&prop_cs);
   }
 
@@ -897,8 +940,8 @@ class StackProgram {
     return TRUE;
   }
 #else
-  static wstring GetProperty(const wstring& key) {
-    wstring value;
+  static std::wstring GetProperty(const std::wstring& key) {
+    std::wstring value;
     
     pthread_mutex_lock(&prop_mutex);
     
@@ -906,7 +949,7 @@ class StackProgram {
       InitializeProprieties();
     }
     
-    map<wstring, wstring>::iterator find = properties_map.find(key);
+    std::map<std::wstring, std::wstring>::iterator find = properties_map.find(key);
     if(find != properties_map.end()) {
       value = find->second;
     }
@@ -915,9 +958,9 @@ class StackProgram {
     return value;
   }
 
-  static void SetProperty(const wstring& key, const wstring& value) {
+  static void SetProperty(const std::wstring& key, const std::wstring& value) {
     pthread_mutex_lock(&prop_mutex);
-    properties_map.insert(pair<wstring, wstring>(key, value));
+    properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
     pthread_mutex_unlock(&prop_mutex);
   }
 #endif
@@ -947,7 +990,7 @@ class StackProgram {
     if(cls_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.Class");
       if(!cls) {
-        wcerr << L">>> Internal error: unable to find class: System.Introspection.Class <<<" << endl;
+        std::wcerr << L">>> Internal error: unable to find class: System.Introspection.Class <<<" << std::endl;
         exit(1);
       }
       cls_cls_id = cls->GetId();
@@ -960,7 +1003,7 @@ class StackProgram {
     if(mthd_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.Method");
       if(!cls) {
-        wcerr << L">>> Internal error: unable to find class: System.Introspection.Method <<<" << endl;
+        std::wcerr << L">>> Internal error: unable to find class: System.Introspection.Method <<<" << std::endl;
         exit(1);
       }
       mthd_cls_id = cls->GetId();
@@ -973,7 +1016,7 @@ class StackProgram {
     if(sock_cls_id < 0) {
       StackClass* cls = GetClass(L"System.IO.Net.TCPSocket");
       if(!cls) {
-        wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSocket <<<" << endl;
+        std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSocket <<<" << std::endl;
         exit(1);
       }
       sock_cls_id = cls->GetId();
@@ -986,7 +1029,7 @@ class StackProgram {
 		 if(sock_cls_id < 0) {
 			 StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
 			 if(!cls) {
-				 wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << endl;
+				 std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << std::endl;
 				 exit(1);
 			 }
 			 sock_cls_id = cls->GetId();
@@ -999,7 +1042,7 @@ class StackProgram {
     if(data_type_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.DataType");
       if(!cls) {
-        wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << endl;
+        std::wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << std::endl;
         exit(1);
       }
       data_type_cls_id = cls->GetId();
@@ -1040,16 +1083,16 @@ class StackProgram {
     class_num = num;
 
     for(int i = 0; i < num; ++i) {
-      const wstring &name = clss[i]->GetName();
+      const std::wstring &name = clss[i]->GetName();
       if(name.size() > 0) {  
-        cls_map.insert(pair<wstring, StackClass*>(name, clss[i]));
+        cls_map.insert(std::pair<std::wstring, StackClass*>(name, clss[i]));
       }
     }
   }
 
-  StackClass* GetClass(const wstring &n) {
+  StackClass* GetClass(const std::wstring &n) {
     if(classes) {
-      map<wstring, StackClass*>::iterator find = cls_map.find(n);
+      std::map<std::wstring, StackClass*>::iterator find = cls_map.find(n);
       if(find != cls_map.end()) {
         return find->second;
       }
@@ -1091,7 +1134,7 @@ class StackProgram {
   }
 
 #ifdef _DEBUGGER
-  bool HasFile(const wstring &fn) {
+  bool HasFile(const std::wstring &fn) {
     for(int i = 0; i < class_num; ++i) {
       if(classes[i]->GetFileName() == fn) {
         return true;
@@ -1125,12 +1168,12 @@ struct StackFrame {
  * Method signature formatter
  ********************************/
 class MethodFormatter {
-  static wstring FormatParameters(const wstring param_str);
-  static wstring FormatType(const wstring type_str);
-  static wstring FormatFunctionalType(const wstring func_str);
+  static std::wstring FormatParameters(const std::wstring param_str);
+  static std::wstring FormatType(const std::wstring type_str);
+  static std::wstring FormatFunctionalType(const std::wstring func_str);
   
  public:
-  static wstring Format(const wstring method_sig);
+  static std::wstring Format(const std::wstring method_sig);
 };
 
 /********************************
@@ -1138,8 +1181,8 @@ class MethodFormatter {
  ********************************/
 class ObjectSerializer 
 {
-  vector<char> values;
-  map<size_t*, long> serial_ids;
+  std::vector<char> values;
+  std::map<size_t*, long> serial_ids;
   long next_id;
   long cur_id;
   
@@ -1148,17 +1191,17 @@ class ObjectSerializer
   void Serialize(size_t* inst);
 
   bool WasSerialized(size_t* mem) {
-    map<size_t*, long>::iterator find = serial_ids.find(mem);
+    std::map<size_t*, long>::iterator find = serial_ids.find(mem);
     if(find != serial_ids.end()) {
       cur_id = find->second;
-      SerializeInt((int32_t)cur_id);
+      SerializeInt((long)cur_id);
 
       return true;
     }
     next_id++;
     cur_id = next_id * -1;
-    serial_ids.insert(pair<size_t*, long>(mem, next_id));
-    SerializeInt((int32_t)cur_id);
+    serial_ids.insert(std::pair<size_t*, long>(mem, next_id));
+    SerializeInt((long)cur_id);
 
     return false;
   }
@@ -1171,7 +1214,7 @@ class ObjectSerializer
   }
 
   inline void SerializeChar(const wchar_t v) {
-    string out;
+    std::string out;
     CharacterToBytes(v, out);
     SerializeInt((INT_VALUE)out.size());
     for(size_t i = 0; i < out.size(); ++i) {
@@ -1208,7 +1251,7 @@ class ObjectSerializer
   ~ObjectSerializer() {
   }
 
-  vector<char>& GetValues() {
+  std::vector<char>& GetValues() {
     return values;
   }
 };
@@ -1226,7 +1269,7 @@ class ObjectDeserializer
   StackClass* cls;
   size_t* instance;
   long instance_pos;
-  map<INT_VALUE, size_t*> mem_cache;
+  std::map<INT_VALUE, size_t*> mem_cache;
 
   char DeserializeByte() {
     char value;
@@ -1281,7 +1324,7 @@ class ObjectDeserializer
     instance_pos = 0;
   }
 
-  ObjectDeserializer(const char* b, long o, map<INT_VALUE, size_t*> &c,
+  ObjectDeserializer(const char* b, long o, std::map<INT_VALUE, size_t*> &c,
          long s, size_t* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
@@ -1301,7 +1344,7 @@ class ObjectDeserializer
     return buffer_offset;
   }
 
-  map<INT_VALUE, size_t*> GetMemoryCache() {
+  std::map<INT_VALUE, size_t*> GetMemoryCache() {
     return mem_cache;
   }
 
@@ -1324,13 +1367,13 @@ class TrapProcessor {
     struct tm temp_time;
     if(is_gmt) {
       if(gmtime_s(&temp_time, &raw_time)) {
-        wcerr << L">>> Unable to get GMT time <<<" << endl;
+        std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
         return false;
       }
     }
     else {
       if(localtime_s(&temp_time, &raw_time)) {
-        wcerr << L">>> Unable to get GMT time <<<" << endl;
+        std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
         return false;
       }
     }
@@ -1355,8 +1398,8 @@ class TrapProcessor {
 #ifdef _DEBUG
     assert((*stack_pos) - 1 > -1);
     size_t v = op_stack[--(*stack_pos)];
-    wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-    << (size_t*)v << L")]" << endl;
+    std::wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
+    << (size_t*)v << L")]" << std::endl;
     return v;
 #else
     return op_stack[--(*stack_pos)];
@@ -1370,8 +1413,8 @@ class TrapProcessor {
   static inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     assert((*stack_pos) < 128);
-    wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-    << (size_t*)v << L")]" << endl;
+    std::wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
+    << (size_t*)v << L")]" << std::endl;
 #endif
     op_stack[(*stack_pos)++] = v;
   }
@@ -1381,7 +1424,7 @@ class TrapProcessor {
   //
   static inline void PushFloat(FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-    wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
+    std::wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << std::endl;
 #endif
     memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
     (*stack_pos)++;
@@ -1405,7 +1448,7 @@ class TrapProcessor {
 
     memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
-    wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
+    std::wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << std::endl;
 #endif
 
     return v;
@@ -1418,7 +1461,7 @@ class TrapProcessor {
   static inline size_t TopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     size_t v = op_stack[(*stack_pos) - 1];
-    wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v << L")]" << endl;
+    std::wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v << L")]" << std::endl;
     return v;
 #else
     return op_stack[(*stack_pos) - 1];
@@ -1435,7 +1478,7 @@ class TrapProcessor {
     long index = (*stack_pos) - 1;
     memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
-    wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
+    std::wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << std::endl;
 #endif
 
     return v;
@@ -1695,7 +1738,7 @@ class TrapProcessor {
   //
   // creates new object and call default constructor
   //
-  static inline bool CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos);
+  static inline bool CreateNewObject(const std::wstring &cls_id, size_t* &op_stack, long* &stack_pos);
 
   //
   // creates a new class instance
@@ -1710,16 +1753,16 @@ class TrapProcessor {
            size_t* &op_stack, long* &stack_pos);
 
   //
-  // creates a wstring object instance
+  // creates a string object instance
   //
-  static inline size_t* CreateStringObject(const wstring &value_str, StackProgram* program, size_t* &op_stack, long* &stack_pos);
+  static inline size_t* CreateStringObject(const std::wstring &value_str, StackProgram* program, size_t* &op_stack, long* &stack_pos);
 
  public:
 
   static bool ProcessTrap(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
 };
 
-bool EndsWith(wstring const& str, wstring const& ending);
+bool EndsWith(std::wstring const& str, std::wstring const& ending);
 
 /********************************
  * Call back for DLL method calls

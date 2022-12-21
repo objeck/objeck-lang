@@ -1,7 +1,7 @@
 /***************************************************************************
  * Defines internal language types.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,9 +59,9 @@ Type* Type::CharStringType()
  * Routines for parsing library
  * encode strings
  ********************************/
-vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
+std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& param_str)
 {
-  vector<frontend::Type*> types;
+  std::vector<frontend::Type*> types;
 
   size_t index = 0;
   while(index < param_str.size()) {
@@ -101,10 +101,10 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
     case 'm': {
       size_t start = index;
 
-      const wstring prefix = L"m.(";
+      const std::wstring prefix = L"m.(";
       int nested_count = 1;
       size_t found = param_str.find(prefix);
-      while(found != wstring::npos) {
+      while(found != std::wstring::npos) {
         nested_count++;
         found = param_str.find(prefix, found + prefix.size());
       }
@@ -122,7 +122,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
         index++;
       }
 
-      const wstring name = param_str.substr(start, index - start - 1);
+      const std::wstring name = param_str.substr(start, index - start - 1);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
@@ -135,7 +135,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
         index++;
       }
       size_t end = index;
-      const wstring& cls_name = param_str.substr(start, end - start);
+      const std::wstring& cls_name = param_str.substr(start, end - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
     }
       break;
@@ -143,7 +143,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
 
     // set generics
     if(index < param_str.size() && param_str[index] == L'|') {
-      vector<frontend::Type*> generic_types;
+      std::vector<frontend::Type*> generic_types;
       do {
         index++;
         size_t start = index;
@@ -152,7 +152,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
         }
         size_t end = index;
 
-        const wstring generic_name = param_str.substr(start, end - start);
+        const std::wstring generic_name = param_str.substr(start, end - start);
         generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
       } 
       while(index < param_str.size() && param_str[index] == L'|');
@@ -183,7 +183,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
   return types;
 }
 
-frontend::Type* TypeParser::ParseType(const wstring& type_name)
+frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
 {
   frontend::Type* type = nullptr;
 
@@ -223,9 +223,9 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
     size_t start = index;
 
     int nested_count = 1;
-    const wstring prefix = L"m.(";
+    const std::wstring prefix = L"m.(";
     size_t found = type_name.find(prefix);
-    while(found != wstring::npos) {
+    while(found != std::wstring::npos) {
       nested_count++;
       found = type_name.find(prefix, found + prefix.size());
     }
@@ -243,7 +243,7 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
       index++;
     }
 
-    const wstring name = type_name.substr(start, index - start);
+    const std::wstring name = type_name.substr(start, index - start);
     type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
     ParseFunctionalType(type);
   }
@@ -260,7 +260,7 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
 
   // set generics
   if(index < type_name.size() && type_name[index] == L'|') {
-    vector<frontend::Type*> generic_types;
+    std::vector<frontend::Type*> generic_types;
     do {
       index++;
       size_t start = index;
@@ -269,7 +269,7 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
       }
       size_t end = index;
 
-      const wstring generic_name = type_name.substr(start, end - start);
+      const std::wstring generic_name = type_name.substr(start, end - start);
       generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
     } while(index < type_name.size() && type_name[index] == L'|');
     type->SetGenerics(generic_types);
@@ -288,32 +288,32 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
 
 void TypeParser::ParseFunctionalType(frontend::Type* func_type)
 {
-  const wstring func_name = func_type->GetName();
+  const std::wstring func_name = func_type->GetName();
 
   // parse parameters
   size_t start = func_name.rfind(L'(');
   size_t middle = func_name.find(L')');
 
-  if(start != wstring::npos && middle != wstring::npos) {
+  if(start != std::wstring::npos && middle != std::wstring::npos) {
     start++;
-    const wstring params_str = func_name.substr(start, middle - start);
-    vector<frontend::Type*> func_params = ParseParameters(params_str);
+    const std::wstring params_str = func_name.substr(start, middle - start);
+    std::vector<frontend::Type*> func_params = ParseParameters(params_str);
     func_type->SetFunctionParameters(func_params);
 
     // parse return
     size_t end = func_name.find(L',', middle);
-    if(end == wstring::npos) {
+    if(end == std::wstring::npos) {
       end = func_name.size();
     }
 
     middle += 2;
-    const wstring rtrn_str = func_name.substr(middle, end - middle);
+    const std::wstring rtrn_str = func_name.substr(middle, end - middle);
     frontend::Type* func_rtrn = ParseType(rtrn_str);
     func_type->SetFunctionReturn(func_rtrn);
   }
 }
 
-bool frontend::EndsWith(wstring const& str, wstring const& ending)
+bool frontend::EndsWith(std::wstring const& str, std::wstring const& ending)
 {
   if(str.length() >= ending.length()) {
     return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
@@ -322,10 +322,10 @@ bool frontend::EndsWith(wstring const& str, wstring const& ending)
   return false;
 }
 
-void frontend::RemoveSubString(wstring& str_in, const wstring& find)
+void frontend::RemoveSubString(std::wstring& str_in, const std::wstring& find)
 {
   size_t start = str_in.find(find);
-  while(start != wstring::npos) {
+  while(start != std::wstring::npos) {
     str_in.erase(start, find.size());
     start = str_in.find(find);
   }

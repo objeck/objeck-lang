@@ -1,7 +1,7 @@
 /***************************************************************************
 * VM memory manager. Implements a "mark and sweep" collection algorithm.
 *
-* Copyright (c) 2008-2022, Randy Hollines
+* Copyright (c) 2023, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -34,14 +34,14 @@
 
 StackProgram* MemoryManager::prgm;
 
-unordered_set<StackFrame**> MemoryManager::pda_frames;
-unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
-vector<StackFrame*> MemoryManager::jit_frames;
-set<size_t*> MemoryManager::allocated_memory;
+std::unordered_set<StackFrame**> MemoryManager::pda_frames;
+std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
+std::vector<StackFrame*> MemoryManager::jit_frames;
+std::set<size_t*> MemoryManager::allocated_memory;
 
-unordered_map<size_t, list<size_t*>*> MemoryManager::free_memory_cache;
+std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
-unordered_map<cantor_tuple_key, StackMethod*, MemoryManager::cantor_tuple> MemoryManager::virtual_method_table;
+std::unordered_map<cantor_tuple_key, StackMethod*, MemoryManager::cantor_tuple> MemoryManager::virtual_method_table;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -85,7 +85,7 @@ void MemoryManager::Initialize(StackProgram* p)
 
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
-  mem_logger << L"cycle,oper,type,addr,size" << endl;
+  mem_logger << L"cycle,oper,type,addr,size" << std::endl;
 #endif
 
 #ifdef _WIN32
@@ -156,7 +156,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
   }
 
 #ifdef _DEBUG_GC
-  wcout << L"adding PDA frame: addr=" << frame << endl;
+  std::wcout << L"adding PDA frame: addr=" << frame << std::endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -172,7 +172,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 void MemoryManager::RemovePdaMethodRoot(StackFrame** frame)
 {
 #ifdef _DEBUG_GC
-  wcout << L"removing PDA frame: addr=" << frame << endl;
+  std::wcout << L"removing PDA frame: addr=" << frame << std::endl;
 #endif
   
 #ifndef _GC_SERIAL
@@ -187,7 +187,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame** frame)
 void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG_GC
-  wcout << L"adding PDA method: monitor=" << monitor << endl;
+  std::wcout << L"adding PDA method: monitor=" << monitor << std::endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -207,7 +207,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
   }
 
 #ifdef _DEBUG_GC
-  wcout << L"removing PDA method: monitor=" << monitor << endl;
+  std::wcout << L"removing PDA method: monitor=" << monitor << std::endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -257,13 +257,13 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
  #endif
 
 #ifdef _MEM_LOGGING
-    mem_logger << mem_cycle << L",alloc,obj," << mem << L"," << size << endl;
+    mem_logger << mem_cycle << L",alloc,obj," << mem << L"," << size << std::endl;
 #endif
 
 #ifdef _DEBUG_GC
-    wcout << L"# allocating object: cached=" << (is_cached ? L"true" : L"false")  << L", addr=" << mem << L"(" 
+    std::wcout << L"# allocating object: cached=" << (is_cached ? L"true" : L"false")  << L", addr=" << mem << L"(" 
           << (size_t)mem << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #"
-          << endl;
+          << std::endl;
 #endif
   }
 
@@ -273,7 +273,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
 {
   if (size < 0) {
-    wcerr << L">>> Invalid allocation size: " << size << L" <<<" << endl;
+    std::wcerr << L">>> Invalid allocation size: " << size << L" <<<" << std::endl;
     exit(1);
   }
 
@@ -297,7 +297,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, siz
     break;
 
   default:
-    wcerr << L">>> Invalid memory allocation <<<" << endl;
+    std::wcerr << L">>> Invalid memory allocation <<<" << std::endl;
     exit(1);
   }
 
@@ -327,13 +327,13 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, siz
 #endif
 
 #ifdef _MEM_LOGGING
-  mem_logger << mem_cycle << L",alloc,array," << mem << L"," << size << endl;
+  mem_logger << mem_cycle << L",alloc,array," << mem << L"," << size << std::endl;
 #endif
 
 #ifdef _DEBUG_GC
-  wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem
+  std::wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem
     << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size
-    << L" byte(s) #" << endl;
+    << L" byte(s) #" << std::endl;
 #endif
 
   return mem;
@@ -348,7 +348,7 @@ size_t* MemoryManager::GetMemory(size_t size) {
   size_t alloc_size = size + sizeof(size_t);
   size_t* raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
 #ifdef _DEBUG_GC
-  wcout << L"*** Raw allocation: address=" << raw_mem << L" ***" << endl;
+  std::wcout << L"*** Raw allocation: address=" << raw_mem << L" ***" << std::endl;
 #endif
   raw_mem[0] = size;
   return raw_mem + 1;
@@ -376,11 +376,11 @@ void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
   const size_t mem_size = raw_mem[0];
   free_memory_cache_size += mem_size;
 
-  unordered_map<size_t, list<size_t*>*>::iterator result = free_memory_cache.find(pool);
+  std::unordered_map<size_t, std::list<size_t*>*>::iterator result = free_memory_cache.find(pool);
   if(result == free_memory_cache.end()) {
-    list<size_t*>* pool_list = new list<size_t*>;
+    std::list<size_t*>* pool_list = new std::list<size_t*>;
     pool_list->push_front(raw_mem);
-    free_memory_cache.insert(pair<size_t, list<size_t*>*>(pool, pool_list));
+    free_memory_cache.insert(std::pair<size_t, std::list<size_t*>*>(pool, pool_list));
   }
   else {
     result->second->push_front(raw_mem);
@@ -399,10 +399,10 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  unordered_map<size_t, list<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
+  std::unordered_map<size_t, std::list<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
   if(result != free_memory_cache.end() && !result->second->empty()) {
     bool found = false;
-    list<size_t*>* free_cache = result->second;
+    std::list<size_t*>* free_cache = result->second;
 
     std::list<size_t*>::iterator iter = free_cache->begin();
     for(; !found && iter != free_cache->end(); ++iter) {
@@ -503,9 +503,9 @@ void MemoryManager::ClearFreeMemory(bool all) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  unordered_map<size_t, list<size_t*>*>::iterator iter = free_memory_cache.begin();
+  std::unordered_map<size_t, std::list<size_t*>*>::iterator iter = free_memory_cache.begin();
   for(; iter != free_memory_cache.end(); ++iter) {
-    list<size_t*>* free_cache = iter->second;
+    std::list<size_t*>* free_cache = iter->second;
 
     while(!free_cache->empty()) {
       size_t* raw_mem = free_cache->front();
@@ -521,10 +521,9 @@ void MemoryManager::ClearFreeMemory(bool all) {
     if(all) {
       delete free_cache;
       free_cache = nullptr;
-
-      free_memory_cache.clear();
     }
   }
+
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif
@@ -572,7 +571,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierar
 void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 {
 #ifdef _TIMING
-  wcout << L"=========================================" << endl;
+  std::wcout << L"=========================================" << std::endl;
   clock_t start = clock();
 #endif
 
@@ -597,7 +596,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 #ifdef _WIN32
   HANDLE collect_thread_id = (HANDLE)_beginthreadex(nullptr, 0, CollectMemory, info, 0, nullptr);
   if(!collect_thread_id) {
-    wcerr << L"Unable to create garbage collection thread!" << endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 #else
@@ -607,7 +606,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
   
   pthread_t collect_thread;
   if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
-    cerr << L"Unable to create garbage collection thread!" << endl;
+    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 #endif
@@ -618,14 +617,14 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 #ifndef _GC_SERIAL
 #ifdef _WIN32
   if(WaitForSingleObject(collect_thread_id, INFINITE) != WAIT_OBJECT_0) {
-    wcerr << L"Unable to join garbage collection threads!" << endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }  
   CloseHandle(collect_thread_id);
 #else
   void* status;
   if(pthread_join(collect_thread, &status)) {
-    cerr << L"Unable to join garbage collection threads!" << endl;
+    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   pthread_attr_destroy(&attrs);
@@ -638,8 +637,8 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 
 #ifdef _TIMING
   clock_t end = clock();
-  wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
-  wcout << L"=========================================" << endl << endl;
+  std::wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
+  std::wcout << L"=========================================" << std::endl << std::endl;
 #endif
 }
 
@@ -657,14 +656,14 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifdef _DEBUG_GC
   size_t start = allocation_size;
-  wcout << dec << endl << L"=========================================" << endl;
+  std::wcout << std::dec << std::endl << L"=========================================" << std::endl;
 #ifdef _WIN32  
-  wcout << L"Starting Garbage Collection; thread=" << GetCurrentThread() << endl;
+  std::wcout << L"Starting Garbage Collection; thread=" << GetCurrentThread() << std::endl;
 #else
-  wcout << L"Starting Garbage Collection; thread=" << pthread_self() << endl;
+  std::wcout << L"Starting Garbage Collection; thread=" << pthread_self() << std::endl;
 #endif  
-  wcout << L"=========================================" << endl;
-  wcout << L"## Marking memory ##" << endl;
+  std::wcout << L"=========================================" << std::endl;
+  std::wcout << L"## Marking memory ##" << std::endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -674,25 +673,25 @@ void* MemoryManager::CollectMemory(void* arg)
 
   thread_ids[0] = (HANDLE)_beginthreadex(nullptr, 0, CheckStatic, info, 0, nullptr);
   if(!thread_ids[0]) {
-    wcerr << L"Unable to create garbage collection thread!" << endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   thread_ids[1] = (HANDLE)_beginthreadex(nullptr, 0, CheckStack, info, 0, nullptr);
   if(!thread_ids[1]) {
-    wcerr << L"Unable to create garbage collection thread!" << endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   thread_ids[2] = (HANDLE)_beginthreadex(nullptr, 0, CheckPdaRoots, nullptr, 0, nullptr);
   if(!thread_ids[2]) {
-    wcerr << L"Unable to create garbage collection thread!" << endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   // join all mark threads
   if(WaitForMultipleObjects(num_threads, thread_ids, TRUE, INFINITE) != WAIT_OBJECT_0) {
-    wcerr << L"Unable to join garbage collection threads!" << endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
 
@@ -706,19 +705,19 @@ void* MemoryManager::CollectMemory(void* arg)
   
   pthread_t static_thread;
   if(pthread_create(&static_thread, &attrs, CheckStatic, (void*)info)) {
-    cerr << L"Unable to create garbage collection thread!" << endl;
+    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   pthread_t stack_thread;
   if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
-    cerr << L"Unable to create garbage collection thread!" << endl;
+    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   pthread_t pda_thread;
   if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, nullptr)) {
-    cerr << L"Unable to create garbage collection thread!" << endl;
+    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
   
@@ -728,17 +727,17 @@ void* MemoryManager::CollectMemory(void* arg)
   void *status;
 
   if(pthread_join(static_thread, &status)) {
-    cerr << L"Unable to join garbage collection threads!" << endl;
+    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   
   if(pthread_join(stack_thread, &status)) {
-    cerr << L"Unable to join garbage collection threads!" << endl;
+    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
 
   if(pthread_join(pda_thread, &status)) {
-    cerr << L"Unable to join garbage collection threads!" << endl;
+    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
 #endif  
@@ -751,13 +750,13 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _TIMING
   clock_t end = clock();
-  wcout << dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
+  std::wcout << dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
   start = clock();
 #endif
   
   // sweep memory
 #ifdef _DEBUG_GC
-  wcout << L"## Sweeping memory ##" << endl;
+  std::wcout << L"## Sweeping memory ##" << std::endl;
 #endif
 
   // sort and search
@@ -767,18 +766,18 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
 
 #ifdef _DEBUG_GC
-  wcout << L"-----------------------------------------" << endl;
-  wcout << L"Sweeping..." << endl;
-  wcout << L"-----------------------------------------" << endl;
+  std::wcout << L"-----------------------------------------" << std::endl;
+  std::wcout << L"Sweeping..." << std::endl;
+  std::wcout << L"-----------------------------------------" << std::endl;
 #endif
 
 #ifndef _GC_SERIAL
 
 #endif
-  set<size_t*> live_memory;
+  std::set<size_t*> live_memory;
 
   // for(size_t i = 0; i < allocated_memory.size(); ++i) {
-  for (set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+  for (std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     // size_t* mem = allocated_memory[i];
     size_t* mem = *iter;
 
@@ -817,15 +816,15 @@ void* MemoryManager::CollectMemory(void* arg)
       allocation_size -= mem_size;
 
 #ifdef _MEM_LOGGING
-      mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << endl;
+      mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
 #endif
 
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
       AddFreeMemory(tmp - 1);
 #ifdef _DEBUG_GC
-      wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+      std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
+            << L"), size=" << mem_size << L" byte(s) #" << std::endl;
 #endif
     }
   }
@@ -869,17 +868,17 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
 
 #ifdef _DEBUG_GC
-  wcout << L"===============================================================" << endl;
-  wcout << L"Finished Collection: collected=" << (start - allocation_size)
-        << L" of " << start << L" byte(s) - " << showpoint << setprecision(3)
+  std::wcout << L"===============================================================" << std::endl;
+  std::wcout << L"Finished Collection: collected=" << (start - allocation_size)
+        << L" of " << start << L" byte(s) - " << std::showpoint << std::setprecision(3)
         << (((double)(start - allocation_size) / (double)start) * 100.0)
-        << L"%" << endl;
-  wcout << L"===============================================================" << endl;
+        << L"%" << std::endl;
+  std::wcout << L"===============================================================" << std::endl;
 #endif
   
 #ifdef _TIMING
   end = clock();
-  wcout << dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
+  std::wcout << dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
   
 #ifndef _WIN32
@@ -916,11 +915,11 @@ void* MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG_GC
-  wcout << L"----- Marking Stack: stack: pos=" << info->stack_pos 
+  std::wcout << L"----- Marking Stack: std::stack: pos=" << info->stack_pos 
 #ifdef _WIN32  
-        << L"; thread=" << GetCurrentThread() << L" -----" << endl;
+        << L"; thread=" << GetCurrentThread() << L" -----" << std::endl;
 #else
-        << L"; thread=" << pthread_self() << L" -----" << endl;
+        << L"; thread=" << pthread_self() << L" -----" << std::endl;
 #endif    
 #endif
 
@@ -959,13 +958,13 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif  
 
 #ifdef _DEBUG_GC
-  wcout << L"---- Marking JIT method root(s): num=" << jit_frames.size()
+  std::wcout << L"---- Marking JIT method root(s): num=" << jit_frames.size()
 #ifdef _WIN32
-        << L"; thread=" << GetCurrentThread() << L" ------" << endl;
+        << L"; thread=" << GetCurrentThread() << L" ------" << std::endl;
 #else
-        << L"; thread=" << pthread_self() << L" ------" << endl;
+        << L"; thread=" << pthread_self() << L" ------" << std::endl;
 #endif    
-  wcout << L"memory types: " << endl;
+  std::wcout << L"memory types: " << std::endl;
 #endif
   
   for(size_t i = 0; i < jit_frames.size(); ++i) {
@@ -976,9 +975,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
     const long dclrs_num = method->GetNumberDeclarations();
 
 #ifdef _DEBUG_GC
-    wcout << L"\t===== JIT method: name=" << method->GetName() << L", id=" << method->GetClass()->GetId()
+    std::wcout << L"\t===== JIT method: name=" << method->GetName() << L", id=" << method->GetClass()->GetId()
       << L"," << method->GetId() << L"; addr=" << method << L"; mem=" << mem << L"; self=" << self
-      << L"; num=" << method->GetNumberDeclarations() << L" =====" << endl;
+      << L"; num=" << method->GetNumberDeclarations() << L" =====" << std::endl;
 #endif
 
     if(mem) {
@@ -1011,9 +1010,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
           const long virtual_cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
           const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
+          std::wcout << L"\t" << j << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
-          pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
+          std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
           if(MarkMemory(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
@@ -1025,7 +1024,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
         case CHAR_PARM:
         case INT_PARM:
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
+          std::wcout << L"\t" << j << L": CHAR_PARM/INT_PARM: value=" << (*mem) << std::endl;
 #endif
           // update
           mem++;
@@ -1035,7 +1034,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifdef _DEBUG_GC
           FLOAT_VALUE value;
           memcpy(&value, mem, sizeof(FLOAT_VALUE));
-          wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
+          std::wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << std::endl;
 #endif
           // update
           mem++;
@@ -1044,9 +1043,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
         case BYTE_ARY_PARM:
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+          std::wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
           // mark data
           MarkMemory((size_t*)(*mem));
@@ -1056,9 +1055,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
         case CHAR_ARY_PARM:
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (size_t)(*mem)
+          std::wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (size_t)(*mem)
             << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
           // mark data
           MarkMemory((size_t*)(*mem));
@@ -1068,10 +1067,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
         case INT_ARY_PARM:
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
+          std::wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
             << L"(" << (size_t)(*mem) << L"), size="
             << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
           // mark data
           MarkMemory((size_t*)(*mem));
@@ -1081,9 +1080,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
         case FLOAT_ARY_PARM:
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem)
+          std::wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem)
             << L"(" << (size_t)(*mem) << L"), size=" << L" byte(s)"
-            << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << endl;
+            << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << std::endl;
 #endif
           // mark data
           MarkMemory((size_t*)(*mem));
@@ -1093,14 +1092,14 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
         case OBJ_PARM: {
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": OBJ_PARM: addr=" << (size_t*)(*mem)
+          std::wcout << L"\t" << j << L": OBJ_PARM: addr=" << (size_t*)(*mem)
             << L"(" << (size_t)(*mem) << L"), id=";
           if(*mem) {
             StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
-            wcout << L"'" << tmp->GetName() << L"'" << endl;
+            std::wcout << L"'" << tmp->GetName() << L"'" << std::endl;
           }
           else {
-            wcout << L"Unknown" << endl;
+            std::wcout << L"Unknown" << std::endl;
           }
 #endif
           // check object
@@ -1112,9 +1111,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
         case OBJ_ARY_PARM:
 #ifdef _DEBUG_GC
-          wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+          std::wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
           // mark data
           if(MarkValidMemory((size_t*)(*mem))) {
@@ -1162,7 +1161,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
     }
 #ifdef _DEBUG_GC
     else {
-      wcout << L"\t\t--- Nil memory ---" << endl;
+      std::wcout << L"\t\t--- Nil memory ---" << std::endl;
     }
 #endif
   }
@@ -1184,23 +1183,23 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
 void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
 {
-  vector<StackFrame*> frames;
+  std::vector<StackFrame*> frames;
 
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&pda_frame_lock);
 #endif
 
 #ifdef _DEBUG_GC
-  wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
+  std::wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
 #ifdef _WIN32  
-        << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
+        << L"; thread=" << GetCurrentThread()<< L" -----" << std::endl;
 #else
-        << L"; thread=" << pthread_self() << L" -----" << endl;
+        << L"; thread=" << pthread_self() << L" -----" << std::endl;
 #endif    
-  wcout << L"memory types:" <<  endl;
+  std::wcout << L"memory types:" <<  std::endl;
 #endif
 
-  for(unordered_set<StackFrame**>::iterator iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
+  for(std::unordered_set<StackFrame**>::iterator iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
       if((*frame)->jit_mem) {
@@ -1227,17 +1226,17 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
 
 #ifdef _DEBUG_GC
-  wcout << L"----- PDA method root(s): num=" << pda_monitors.size() 
+  std::wcout << L"----- PDA method root(s): num=" << pda_monitors.size() 
 #ifdef _WIN32  
-        << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
+        << L"; thread=" << GetCurrentThread()<< L" -----" << std::endl;
 #else
-        << L"; thread=" << pthread_self()<< L" -----" << endl;
+        << L"; thread=" << pthread_self()<< L" -----" << std::endl;
 #endif    
-  wcout << L"memory types:" <<  endl;
+  std::wcout << L"memory types:" <<  std::endl;
 #endif
 
     // look at pda methods
-  unordered_set<StackFrameMonitor*>::iterator pda_iter;
+  std::unordered_set<StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
     // gather stack frames
@@ -1289,7 +1288,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #ifdef _WIN32
   HANDLE thread_id = (HANDLE)_beginthreadex(nullptr, 0, CheckJitRoots, nullptr, 0, nullptr);
   if(!thread_id) {
-    wcerr << L"Unable to create garbage collection thread!" << endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 #else
@@ -1299,7 +1298,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   
   pthread_t jit_thread;
   if(pthread_create(&jit_thread, &attrs, CheckJitRoots, nullptr)) {
-    cerr << L"Unable to create garbage collection thread!" << endl;
+    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 #endif
@@ -1312,8 +1311,8 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     size_t* mem = frame->mem;
 
 #ifdef _DEBUG_GC
-    wcout << L"\t===== PDA method: name=" << method->GetName() << L", addr="
-      << method << L", num=" << method->GetNumberDeclarations() << L" =====" << endl;
+    std::wcout << L"\t===== PDA method: name=" << method->GetName() << L", addr="
+      << method << L", num=" << method->GetNumberDeclarations() << L" =====" << std::endl;
 #endif
 
     // mark self
@@ -1336,14 +1335,14 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #ifdef _WIN32
   // wait for JIT thread
   if(WaitForSingleObject(thread_id, INFINITE) != WAIT_OBJECT_0) {
-    wcerr << L"Unable to join garbage collection threads!" << endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   CloseHandle(thread_id);
 #else
   void *status;
   if(pthread_join(jit_thread, &status)) {
-    cerr << L"Unable to join garbage collection threads!" << endl;
+    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   pthread_exit(nullptr);
@@ -1359,7 +1358,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
   for(long i = 0; i < dcls_size; ++i) {
 #ifdef _DEBUG_GC
     for(int j = 0; j < depth; ++j) {
-      wcout << L"\t";
+      std::wcout << L"\t";
     }
 #endif
 
@@ -1371,9 +1370,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       const long virtual_cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
       const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
+      std::wcout << L"\t" << i << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
-      pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
+      std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
       if(MarkMemory(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
@@ -1385,7 +1384,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
   case CHAR_PARM:
     case INT_PARM:
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
+      std::wcout << L"\t" << i << L": CHAR_PARM/INT_PARM: value=" << (*mem) << std::endl;
 #endif
       // update
       mem++;
@@ -1395,7 +1394,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 #ifdef _DEBUG_GC
       FLOAT_VALUE value;
       memcpy(&value, mem, sizeof(FLOAT_VALUE));
-      wcout << L"\t" << i << L": FLOAT_PARM: value=" << value << endl;
+      std::wcout << L"\t" << i << L": FLOAT_PARM: value=" << value << std::endl;
 #endif
       // update
       mem++;
@@ -1404,9 +1403,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case BYTE_ARY_PARM:
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+      std::wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1416,9 +1415,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case CHAR_ARY_PARM:
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+      std::wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1428,9 +1427,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case INT_ARY_PARM:
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+      std::wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1440,9 +1439,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case FLOAT_ARY_PARM:
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+      std::wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1452,13 +1451,13 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case OBJ_PARM: {
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": OBJ_PARM: addr=" << (size_t*)(*mem) << L"(" << (size_t)(*mem) << L"), id=";
+      std::wcout << L"\t" << i << L": OBJ_PARM: addr=" << (size_t*)(*mem) << L"(" << (size_t)(*mem) << L"), id=";
       if(*mem) {
         StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
-        wcout << L"'" << tmp->GetName() << L"'" << endl;
+        std::wcout << L"'" << tmp->GetName() << L"'" << std::endl;
       }
       else {
-        wcout << L"Unknown" << endl;
+        std::wcout << L"Unknown" << std::endl;
       }
 #endif
       // check object
@@ -1470,9 +1469,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case OBJ_ARY_PARM:
 #ifdef _DEBUG_GC
-      wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+      std::wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
             << (size_t)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-            << L" byte(s)" << endl;
+            << L" byte(s)" << std::endl;
 #endif
       // mark data
       if(MarkValidMemory((size_t*)(*mem))) {
@@ -1508,10 +1507,10 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
     if(cls) {
 #ifdef _DEBUG_GC
       for(int i = 0; i < depth; ++i) {
-        wcout << L"\t";
+        std::wcout << L"\t";
       }
-      wcout << L"\t----- object: addr=" << mem << L"(" << (size_t)mem << L"), name='"
-            << cls->GetName() << L"', num=" << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
+      std::wcout << L"\t----- object: addr=" << mem << L"(" << (size_t)mem << L"), name='"
+            << cls->GetName() << L"', num=" << cls->GetNumberInstanceDeclarations() << L" -----" << std::endl;
 #endif
 
       // mark data
@@ -1525,9 +1524,9 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       // register variables
 #ifdef _DEBUG_GC
       for(int i = 0; i < depth; ++i) {
-        wcout << L"\t";
+        std::wcout << L"\t";
       }
-      wcout <<"$: addr/value=" << mem << endl;
+      std::wcout <<"$: addr/value=" << mem << std::endl;
       if(is_obj) {
         assert(cls);
       }
@@ -1552,7 +1551,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 
 StackMethod* MemoryManager::GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id)
 {
-  const auto cantor_hash = make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
+  const auto cantor_hash = std::make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
   const auto result = virtual_method_table.find(cantor_hash);
   if(result != virtual_method_table.end()) {
     return result->second;
@@ -1566,8 +1565,8 @@ void MemoryManager::AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls
 #ifndef _GC_SERIAL
 	MUTEX_LOCK(&virtual_method_lock);
 #endif
-  const auto cantor_hash = make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
-  virtual_method_table.insert(pair<cantor_tuple_key, StackMethod*>(cantor_hash, mthd));
+  const auto cantor_hash = std::make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
+  virtual_method_table.insert(std::pair<cantor_tuple_key, StackMethod*>(cantor_hash, mthd));
 #ifndef _GC_SERIAL
 	MUTEX_UNLOCK(&virtual_method_lock);
 #endif

@@ -1,7 +1,7 @@
 /***************************************************************************
  * Links pre-compiled code into existing program.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,8 +52,6 @@
 #include "../shared/logger.h"
 #endif
 
-using namespace std;
-
 class Library;
 class LibraryClass;
 class LibraryEnum;
@@ -67,8 +65,8 @@ class LibraryInstr {
   int operand2;
   int operand3;
   double operand4;
-  wstring operand5;
-  wstring operand6;
+  std::wstring operand5;
+  std::wstring operand6;
   int line_num;
 
  public:
@@ -106,13 +104,13 @@ class LibraryInstr {
     operand3 = o3;
   }
 
-  LibraryInstr(int l, instructions::InstructionType t, wstring o5) {
+  LibraryInstr(int l, instructions::InstructionType t, std::wstring o5) {
     line_num = l;
     type = t;
     operand5 = o5;
   }
 
-  LibraryInstr(int l, instructions::InstructionType t, int o3, wstring o5, wstring o6) {
+  LibraryInstr(int l, instructions::InstructionType t, int o3, std::wstring o5, std::wstring o6) {
     line_num = l;
     type = t;
     operand3 = o3;
@@ -163,11 +161,11 @@ class LibraryInstr {
     return operand4;
   }
 
-  const wstring &GetOperand5() const {
+  const std::wstring &GetOperand5() const {
     return operand5;
   }
 
-  const wstring &GetOperand6() const {
+  const std::wstring &GetOperand6() const {
     return operand6;
   }
 };
@@ -177,11 +175,11 @@ class LibraryInstr {
  ****************************/
 class LibraryMethod {
   int id;
-  wstring name;
-  wstring user_name;
-  wstring rtrn_name;
+  std::wstring name;
+  std::wstring user_name;
+  std::wstring rtrn_name;
   frontend::Type* rtrn_type;
-  vector<LibraryInstr*> instrs;
+  std::vector<LibraryInstr*> instrs;
   LibraryClass* lib_cls;
   frontend::MethodType type;
   bool is_native;
@@ -191,7 +189,7 @@ class LibraryMethod {
   bool has_and_or;
   int num_params;
   int mem_size;
-  vector<frontend::Type*> declarations;
+  std::vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
   void ParseDeclarations();
@@ -200,21 +198,21 @@ class LibraryMethod {
     rtrn_type = frontend::TypeParser::ParseType(rtrn_name);
   }
 
-  wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
+  std::wstring ReplaceSubstring(std::wstring s, const std::wstring &f, const std::wstring &r) {
     const size_t index = s.find(f);
-    if(index != string::npos) {
+    if(index != std::string::npos) {
       s.replace(index, f.size(), r);
     }
 
     return s;
   }
 
-  wstring EncodeUserType(frontend::Type* type);
+  std::wstring EncodeUserType(frontend::Type* type);
 
   void EncodeUserName();
   
  public:
-  LibraryMethod(int i, const wstring &n, const wstring &r, frontend::MethodType t, bool v,  bool h,
+  LibraryMethod(int i, const std::wstring &n, const std::wstring &r, frontend::MethodType t, bool v,  bool h,
                 bool nt, bool s, bool l, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
     id = i;
     name = n;
@@ -267,11 +265,11 @@ class LibraryMethod {
     return is_lambda;
   }
 
-  const wstring &GetName() const {
+  const std::wstring &GetName() const {
     return name;
   }
 
-  const wstring &GetUserName() {
+  const std::wstring &GetUserName() {
     if(user_name.empty()) {
       EncodeUserName();
     }
@@ -279,7 +277,7 @@ class LibraryMethod {
     return user_name;
   }
 
-  const wstring &GetEncodedReturn() const {
+  const std::wstring &GetEncodedReturn() const {
     return rtrn_name;
   }
 
@@ -287,7 +285,7 @@ class LibraryMethod {
     return type;
   }
   
-  vector<frontend::Type*> GetDeclarationTypes() {
+  std::vector<frontend::Type*> GetDeclarationTypes() {
     return declarations;
   }
   
@@ -315,7 +313,7 @@ class LibraryMethod {
     return lib_cls;
   }
 
-  void AddInstructions(vector<LibraryInstr*> is) {
+  void AddInstructions(std::vector<LibraryInstr*> is) {
     instrs = is;
   }
 
@@ -323,7 +321,7 @@ class LibraryMethod {
     return rtrn_type;
   }
 
-  vector<LibraryInstr*> GetInstructions() {
+  std::vector<LibraryInstr*> GetInstructions() {
     return instrs;
   }
 };
@@ -332,12 +330,12 @@ class LibraryMethod {
  * LibraryEnumItem class
  ****************************/
 class LibraryEnumItem {
-  wstring name;
+  std::wstring name;
   int id;
   LibraryEnum* lib_eenum;
 
  public:
-  LibraryEnumItem(const wstring &n, int i, LibraryEnum* e) {
+  LibraryEnumItem(const std::wstring &n, int i, LibraryEnum* e) {
     name = n;
     id = i;
     lib_eenum = e;
@@ -346,7 +344,7 @@ class LibraryEnumItem {
   ~LibraryEnumItem() {
   }
 
-  const wstring &GetName() const {
+  const std::wstring &GetName() const {
     return name;
   }
 
@@ -363,19 +361,19 @@ class LibraryEnumItem {
  * LibraryEnum class
  ****************************/
 class LibraryEnum {
-  wstring name;
+  std::wstring name;
   int offset;
-  map<const wstring, LibraryEnumItem*> items;
+  std::map<const std::wstring, LibraryEnumItem*> items;
 
  public:
-  LibraryEnum(const wstring &n, const int o) {
+  LibraryEnum(const std::wstring &n, const int o) {
     name = n;
     offset = o;
   }
 
   ~LibraryEnum() {
     // clean up
-    map<const wstring, LibraryEnumItem*>::iterator iter;
+    std::map<const std::wstring, LibraryEnumItem*>::iterator iter;
     for(iter = items.begin(); iter != items.end(); ++iter) {
       LibraryEnumItem* tmp = iter->second;
       delete tmp;
@@ -384,7 +382,7 @@ class LibraryEnum {
     items.clear();
   }
 
-  const wstring &GetName() const {
+  const std::wstring &GetName() const {
     return name;
   }
 
@@ -393,11 +391,11 @@ class LibraryEnum {
   }
 
   void AddItem(LibraryEnumItem* i) {
-    items.insert(pair<wstring, LibraryEnumItem*>(i->GetName(), i));
+    items.insert(std::pair<std::wstring, LibraryEnumItem*>(i->GetName(), i));
   }
 
-  LibraryEnumItem* GetItem(const wstring &n) {
-    map<const wstring, LibraryEnumItem*>::iterator result = items.find(n);
+  LibraryEnumItem* GetItem(const std::wstring &n) {
+    std::map<const std::wstring, LibraryEnumItem*>::iterator result = items.find(n);
     if(result != items.end()) {
       return result->second;
     }
@@ -405,7 +403,7 @@ class LibraryEnum {
     return nullptr;
   }
 
-  map<const wstring, LibraryEnumItem*> GetItems() {
+  std::map<const std::wstring, LibraryEnumItem*> GetItems() {
     return items;
   }
 };
@@ -415,35 +413,35 @@ class LibraryEnum {
  ****************************/
 class LibraryClass {
   int id;
-  wstring name;
-  wstring parent_name;
-  vector<wstring>interface_names;
-  vector<wstring>generic_name_types;
-  vector<int>interface_ids;
+  std::wstring name;
+  std::wstring parent_name;
+  std::vector<std::wstring>interface_names;
+  std::vector<std::wstring>generic_name_types;
+  std::vector<int>interface_ids;
   int cls_space;
   int inst_space;
-  map<const wstring, LibraryMethod*> methods;
-  multimap<const wstring, LibraryMethod*> unqualified_methods;
+  std::map<const std::wstring, LibraryMethod*> methods;
+  std::multimap<const std::wstring, LibraryMethod*> unqualified_methods;
   backend::IntermediateDeclarations* cls_entries;
   backend::IntermediateDeclarations* inst_entries;
-  map<wstring, backend::IntermediateDeclarations*> lib_closure_entries;
+  std::map<std::wstring, backend::IntermediateDeclarations*> lib_closure_entries;
   bool is_interface;
   bool is_public;
   bool is_virtual;
   bool is_generic;
   Library* library;
-  vector<LibraryClass*> lib_children;
-  vector<frontend::ParseNode*> children;
+  std::vector<LibraryClass*> lib_children;
+  std::vector<frontend::ParseNode*> children;
   bool was_called;
   bool is_debug;
-  wstring file_name;
-  vector<LibraryClass*> generic_classes;
+  std::wstring file_name;
+  std::vector<LibraryClass*> generic_classes;
   frontend::Type* generic_interface;
 
-  map<backend::IntermediateDeclarations*, pair<wstring, int>> CopyClosureEntries();
+  std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> CopyClosureEntries();
   
  public:
-   LibraryClass(const wstring &n, const wstring &g) {
+   LibraryClass(const std::wstring &n, const std::wstring &g) {
      name = n;
      if(g.empty()) {
        generic_interface = nullptr;
@@ -455,13 +453,13 @@ class LibraryClass {
      library = nullptr;
    }
    
-   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, bool ip, const vector<wstring> g, 
+   LibraryClass(const std::wstring& n, const std::wstring& p, const std::vector<std::wstring> i, bool is, bool ip, const std::vector<std::wstring> g, 
                 bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-                map<wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring &fn, bool d);
+                std::map<std::wstring, backend::IntermediateDeclarations*> le, Library* l, const std::wstring &fn, bool d);
    
   ~LibraryClass() {   
     // clean up
-    map<const wstring, LibraryMethod*>::iterator iter;
+    std::map<const std::wstring, LibraryMethod*>::iterator iter;
     for(iter = methods.begin(); iter != methods.end(); ++iter) {
       LibraryMethod* tmp = iter->second;
       delete tmp;
@@ -513,7 +511,7 @@ class LibraryClass {
     return is_generic;
   }
 
-  const wstring &GetFileName() const {
+  const std::wstring &GetFileName() const {
     return file_name;
   }
   
@@ -521,24 +519,24 @@ class LibraryClass {
     return id;
   }
 
-  const wstring &GetName() const {
+  const std::wstring &GetName() const {
     return name;
   }
 
-  wstring GetBundleName() {
+  std::wstring GetBundleName() {
     const size_t index = name.find_last_of(L'.');
-    if(index != string::npos) {
+    if(index != std::string::npos) {
       return name.substr(0, index);
     }
 
     return L"Default";
   }
   
-  vector<wstring> GetInterfaceNames() {
+  std::vector<std::wstring> GetInterfaceNames() {
     return interface_names;
   }
 
-  vector<int> GetInterfaceIds() {
+  std::vector<int> GetInterfaceIds() {
     return interface_ids;
   }
   
@@ -558,7 +556,7 @@ class LibraryClass {
     return !generic_classes.empty();
   }
 
-  int GenericIndex(const wstring& n) {
+  int GenericIndex(const std::wstring& n) {
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       if(n == generic_classes[i]->GetName()) {
         return (int)i;
@@ -568,11 +566,11 @@ class LibraryClass {
     return -1;
   }
 
-  const vector<LibraryClass*> GetGenericClasses() {
+  const std::vector<LibraryClass*> GetGenericClasses() {
     return generic_classes;
   }
 
-  LibraryClass* GetGenericClass(const wstring& n) {
+  LibraryClass* GetGenericClass(const std::wstring& n) {
     const int index = GenericIndex(n);
     if(index > -1) {
       return generic_classes[index];
@@ -589,11 +587,11 @@ class LibraryClass {
     return generic_interface != nullptr;
   }
 
-  const wstring &GetParentName() const {
+  const std::wstring &GetParentName() const {
     return parent_name;
   }
 
-  vector<frontend::ParseNode*> GetChildren() {
+  std::vector<frontend::ParseNode*> GetChildren() {
     return children;
   }
 
@@ -601,7 +599,7 @@ class LibraryClass {
     children.push_back(c);
   }
 
-  vector<LibraryClass*> GetLibraryChildren();
+  std::vector<LibraryClass*> GetLibraryChildren();
 
   bool IsVirtual() {
     return is_virtual;
@@ -623,7 +621,7 @@ class LibraryClass {
     return inst_entries;
   }
 
-  map<backend::IntermediateDeclarations*, pair<wstring, int> > GetLambaEntries() {
+  std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int> > GetLambaEntries() {
     if(lib_closure_entries.empty()) {
       return {};
     }
@@ -631,8 +629,8 @@ class LibraryClass {
     return CopyClosureEntries();
   }
   
-  LibraryMethod* GetMethod(const wstring &name) {
-    map<const wstring, LibraryMethod*>::iterator result = methods.find(name);
+  LibraryMethod* GetMethod(const std::wstring &name) {
+    std::map<const std::wstring, LibraryMethod*>::iterator result = methods.find(name);
     if(result != methods.end()) {
       return result->second;
     }
@@ -640,9 +638,9 @@ class LibraryClass {
     return nullptr;
   }
 
-  vector<LibraryMethod*> GetUnqualifiedMethods(const wstring &n);
+  std::vector<LibraryMethod*> GetUnqualifiedMethods(const std::wstring &n);
 
-  map<const wstring, LibraryMethod*> GetMethods() {
+  std::map<const std::wstring, LibraryMethod*> GetMethods() {
     return methods;
   }
 
@@ -653,11 +651,11 @@ class LibraryClass {
  * LibraryAlias class
  ****************************/
 class LibraryAlias {
-  wstring name;
-  map<wstring, frontend::Type*> aliases;
+  std::wstring name;
+  std::map<std::wstring, frontend::Type*> aliases;
 
 public:
-  LibraryAlias(const wstring &n, map<wstring, frontend::Type*> &a) {
+  LibraryAlias(const std::wstring &n, std::map<std::wstring, frontend::Type*> &a) {
     name = n;
     aliases = a;
   }
@@ -665,12 +663,12 @@ public:
   ~LibraryAlias() {
   }
 
-  const wstring GetName() const {
+  const std::wstring GetName() const {
     return name;
   }
 
-  frontend::Type* GetType(const wstring& n) {
-    map<wstring, frontend::Type*>::iterator result = aliases.find(n);
+  frontend::Type* GetType(const std::wstring& n) {
+    std::map<std::wstring, frontend::Type*>::iterator result = aliases.find(n);
     if(result != aliases.end()) {
       return result->second;
     }
@@ -683,37 +681,37 @@ public:
  * String classes
  ****************************/
 struct CharStringInstruction {
-  wstring value;
-  vector<LibraryInstr*> instrs;
+  std::wstring value;
+  std::vector<LibraryInstr*> instrs;
 };
 
 struct IntStringInstruction {
   frontend::IntStringHolder* value;
-  vector<LibraryInstr*> instrs;
+  std::vector<LibraryInstr*> instrs;
 };
 
 struct FloatStringInstruction {
   frontend::FloatStringHolder* value;
-  vector<LibraryInstr*> instrs;
+  std::vector<LibraryInstr*> instrs;
 };
 
 class Library {
-  wstring lib_path;
+  std::wstring lib_path;
   char* buffer;
   char* alloc_buffer;
   size_t buffer_size;
   long buffer_pos;
-  map<const wstring, LibraryAlias*> aliases;
-  vector<LibraryAlias*> aliases_list;
-  map<const wstring, LibraryEnum*> enums;
-  vector<LibraryEnum*> enum_list;
-  map<const wstring, LibraryClass*> named_classes;
-  vector<LibraryClass*> class_list;
-  map<const wstring, const wstring> hierarchies;
-  vector<CharStringInstruction*> char_strings;
-  vector<IntStringInstruction*> int_strings;
-  vector<FloatStringInstruction*> float_strings;
-  vector<wstring> bundle_names;
+  std::map<const std::wstring, LibraryAlias*> aliases;
+  std::vector<LibraryAlias*> aliases_list;
+  std::map<const std::wstring, LibraryEnum*> enums;
+  std::vector<LibraryEnum*> enum_list;
+  std::map<const std::wstring, LibraryClass*> named_classes;
+  std::vector<LibraryClass*> class_list;
+  std::map<const std::wstring, const std::wstring> hierarchies;
+  std::vector<CharStringInstruction*> char_strings;
+  std::vector<IntStringInstruction*> int_strings;
+  std::vector<FloatStringInstruction*> float_strings;
+  std::vector<std::wstring> bundle_names;
   
   inline int ReadInt() {
     int32_t value = *((int32_t*)buffer);
@@ -742,10 +740,10 @@ class Library {
 
     int size = ReadInt();
     if(size) {
-      string in(buffer, size);
+      std::string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-        wcerr << L">>> Unable to read character <<<" << endl;
+        std::wcerr << L">>> Unable to read character <<<" << std::endl;
         exit(1);
       }
     }
@@ -756,14 +754,14 @@ class Library {
     return out;
   }
   
-  inline wstring ReadString() {
+  inline std::wstring ReadString() {
     const int size = ReadInt(); 
-    string in(buffer, size);
+    std::string in(buffer, size);
     buffer += size;    
    
-    wstring out;
+    std::wstring out;
     if(!BytesToUnicode(in, out)) {
-      wcerr << L">>> Unable to read unicode string <<<" << endl;
+      std::wcerr << L">>> Unable to read unicode std::string <<<" << std::endl;
       exit(1);
     }
 
@@ -781,20 +779,20 @@ class Library {
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(wstring filename, size_t& buffer_size);
+  char* LoadFileBuffer(std::wstring filename, size_t& buffer_size);
 
-  void ReadFile(const wstring &file) {
+  void ReadFile(const std::wstring &file) {
     buffer_pos = 0;
     alloc_buffer = buffer = LoadFileBuffer(file, buffer_size);
   }
 
   void AddEnum(LibraryEnum* e) {
-    enums.insert(pair<wstring, LibraryEnum*>(e->GetName(), e));
+    enums.insert(std::pair<std::wstring, LibraryEnum*>(e->GetName(), e));
     enum_list.push_back(e);
   }
 
   void AddAlias(LibraryAlias* a) {
-    aliases.insert(pair<wstring, LibraryAlias*>(a->GetName(), a));
+    aliases.insert(std::pair<std::wstring, LibraryAlias*>(a->GetName(), a));
     aliases_list.push_back(a);
   }
   
@@ -802,7 +800,7 @@ class Library {
     if(cls->GetName() == L"System.wstring") {
       cls->SetCalled(true);
     }    
-    named_classes.insert(pair<wstring, LibraryClass*>(cls->GetName(), cls));
+    named_classes.insert(std::pair<std::wstring, LibraryClass*>(cls->GetName(), cls));
     class_list.push_back(cls);
   }
 
@@ -811,7 +809,7 @@ class Library {
     int num_params = ReadInt();
     for(int i = 0; i < num_params; ++i) {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
-      wstring var_name;
+      std::wstring var_name;
       if(is_debug) {
         var_name = ReadString();
       }
@@ -823,7 +821,7 @@ class Library {
 
   
   // loading functions
-  void LoadFile(const wstring &file_name);
+  void LoadFile(const std::wstring &file_name);
   void LoadLambdas();
   void LoadEnums();
   void LoadClasses();
@@ -831,14 +829,14 @@ class Library {
   void LoadStatements(LibraryMethod* mthd, bool is_debug);
 
  public:
-  Library(const wstring &p) {
+  Library(const std::wstring &p) {
     lib_path = p;
     alloc_buffer = nullptr;
   }
 
   ~Library() {
     // clean up
-    map<const wstring, LibraryAlias*>::iterator alias_iter;
+    std::map<const std::wstring, LibraryAlias*>::iterator alias_iter;
     for(alias_iter = aliases.begin(); alias_iter != aliases.end(); ++alias_iter) {
       LibraryAlias* tmp = alias_iter->second;
       delete tmp;
@@ -847,7 +845,7 @@ class Library {
     aliases.clear();
     aliases_list.clear(); 
 
-    map<const wstring, LibraryEnum*>::iterator enum_iter;
+    std::map<const std::wstring, LibraryEnum*>::iterator enum_iter;
     for(enum_iter = enums.begin(); enum_iter != enums.end(); ++enum_iter) {
       LibraryEnum* tmp = enum_iter->second;
       delete tmp;
@@ -856,7 +854,7 @@ class Library {
     enums.clear();
     enum_list.clear();
 
-    map<const wstring, LibraryClass*>::iterator cls_iter;
+    std::map<const std::wstring, LibraryClass*>::iterator cls_iter;
     for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); ++cls_iter) {
       LibraryClass* tmp = cls_iter->second;
       delete tmp;
@@ -895,13 +893,13 @@ class Library {
     }
   }
   
-  bool HasBundleName(const wstring &name) {
-    vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
+  bool HasBundleName(const std::wstring &name) {
+    std::vector<std::wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
     return found != bundle_names.end();
   }
 
-  LibraryClass* GetClass(const wstring &name) {
-    map<const wstring, LibraryClass*>::iterator result = named_classes.find(name);
+  LibraryClass* GetClass(const std::wstring &name) {
+    std::map<const std::wstring, LibraryClass*>::iterator result = named_classes.find(name);
     if(result != named_classes.end()) {
       return result->second;
     }
@@ -909,8 +907,8 @@ class Library {
     return nullptr;
   }
 
-  LibraryEnum* GetEnum(const wstring &name) {
-    map<const wstring, LibraryEnum*>::iterator result = enums.find(name);
+  LibraryEnum* GetEnum(const std::wstring &name) {
+    std::map<const std::wstring, LibraryEnum*>::iterator result = enums.find(name);
     if(result != enums.end()) {
       return result->second;
     }
@@ -918,8 +916,8 @@ class Library {
     return nullptr;
   }
 
-  LibraryAlias* GetAlias(const wstring &n) {
-    map<const wstring, LibraryAlias*>::iterator result = aliases.find(n);
+  LibraryAlias* GetAlias(const std::wstring &n) {
+    std::map<const std::wstring, LibraryAlias*>::iterator result = aliases.find(n);
     if(result != aliases.end()) {
       return result->second;
     }
@@ -927,31 +925,31 @@ class Library {
     return nullptr;
   }
 
-  vector<LibraryEnum*> GetEnums() {
+  std::vector<LibraryEnum*> GetEnums() {
     return enum_list;
   }
 
-  vector<LibraryAlias*> GetAliases() {
+  std::vector<LibraryAlias*> GetAliases() {
     return aliases_list;
   }
 
-  vector<LibraryClass*> GetClasses() {
+  std::vector<LibraryClass*> GetClasses() {
     return class_list;
   }
 
-  map<const wstring, const wstring> GetHierarchies() {
+  std::map<const std::wstring, const std::wstring> GetHierarchies() {
     return hierarchies;
   }
 
-  vector<CharStringInstruction*> GetCharStringInstructions() {
+  std::vector<CharStringInstruction*> GetCharStringInstructions() {
     return char_strings;
   }
 
-  vector<IntStringInstruction*> GetIntStringInstructions() {
+  std::vector<IntStringInstruction*> GetIntStringInstructions() {
     return int_strings;
   }
   
-  vector<FloatStringInstruction*> GetFloatStringInstructions() {
+  std::vector<FloatStringInstruction*> GetFloatStringInstructions() {
     return float_strings;
   }
 
@@ -962,41 +960,41 @@ class Library {
  * Manages shared libraries
  ********************************/
 class Linker {
-  map<const wstring, Library*> libraries;
-  vector <LibraryAlias*> all_aliases;
-  unordered_map<wstring, LibraryAlias*> all_aliases_map;
-  vector<LibraryClass*> all_classes;
-  unordered_map<wstring, LibraryClass*> all_classes_map;
-  vector<LibraryEnum*> all_enums;
-  unordered_map<wstring, LibraryEnum*> all_enums_map;
-  wstring master_path;
-  vector<wstring> paths;
+  std::map<const std::wstring, Library*> libraries;
+  std::vector <LibraryAlias*> all_aliases;
+  std::unordered_map<std::wstring, LibraryAlias*> all_aliases_map;
+  std::vector<LibraryClass*> all_classes;
+  std::unordered_map<std::wstring, LibraryClass*> all_classes_map;
+  std::vector<LibraryEnum*> all_enums;
+  std::unordered_map<std::wstring, LibraryEnum*> all_enums_map;
+  std::wstring master_path;
+  std::vector<std::wstring> paths;
 
  public:
 #ifdef _DEBUG
-  static void Debug(const wstring &msg, const int line_num, int depth) {
-    GetLogger() << setw(4) << line_num << L": ";
+  static void Debug(const std::wstring &msg, const int line_num, int depth) {
+    GetLogger() << std::setw(4) << line_num << L": ";
     for(int i = 0; i < depth; ++i) {
       GetLogger() << L"  ";
     }
-    GetLogger() << msg << endl;
+    GetLogger() << msg << std::endl;
   }
 #endif
 
-  static wstring ToString(int v) {
-    wostringstream str;
+  static std::wstring ToString(int v) {
+    std::wostringstream str;
     str << v;
     return str.str();
   }
   
  public:
-  Linker(const wstring &p) {
+  Linker(const std::wstring &p) {
     master_path = p;
   }
 
   ~Linker() {
     // clean up
-    map<const wstring, Library*>::iterator iter;
+    std::map<const std::wstring, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       Library* tmp = iter->second;
       delete tmp;
@@ -1011,12 +1009,12 @@ class Linker {
   void ResloveExternalClasses();
   void ResolveExternalMethodCalls();
 
-  vector<wstring> GetLibraryPaths() {
+  std::vector<std::wstring> GetLibraryPaths() {
     return paths;
   }
 
-  Library* GetLibrary(const wstring &name) {
-    map<const wstring, Library*>::iterator result = libraries.find(name);
+  Library* GetLibrary(const std::wstring &name) {
+    std::map<const std::wstring, Library*>::iterator result = libraries.find(name);
     if(result != libraries.end()) {
       return result->second;
     }
@@ -1025,47 +1023,47 @@ class Linker {
   }
 
   // get all libraries
-  map<const wstring, Library*> GetAllLibraries() {
+  std::map<const std::wstring, Library*> GetAllLibraries() {
     return libraries;
   }
 
   // get all used libraries
-  vector<Library*> GetAllUsedLibraries();
+  std::vector<Library*> GetAllUsedLibraries();
 
   // returns all aliases including duplicates
-  unordered_map<std::wstring, LibraryAlias*> GetAllAliasesMap();
+  std::unordered_map<std::wstring, LibraryAlias*> GetAllAliasesMap();
 
   // returns all aliases including duplicates
-  vector<LibraryAlias*> GetAllAliases();
+  std::vector<LibraryAlias*> GetAllAliases();
 
   // returns all classes including duplicates
-  unordered_map<wstring, LibraryClass*> GetAllClassesMap();
+  std::unordered_map<std::wstring, LibraryClass*> GetAllClassesMap();
 
   // returns all classes including duplicates
-  vector<LibraryClass*> GetAllClasses();
+  std::vector<LibraryClass*> GetAllClasses();
 
   // returns all enums including duplicates
-  unordered_map<wstring, LibraryEnum*> GetAllEnumsMap();
+  std::unordered_map<std::wstring, LibraryEnum*> GetAllEnumsMap();
 
   // returns all enums including duplicates
-  vector<LibraryEnum*> GetAllEnums();
+  std::vector<LibraryEnum*> GetAllEnums();
 
-  LibraryClass* SearchClassLibraries(const wstring &name) {
-    unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
+  LibraryClass* SearchClassLibraries(const std::wstring &name) {
+    std::unordered_map<std::wstring, LibraryClass*> klass_map = GetAllClassesMap();
     return klass_map[name];
   }
 
   // check to see if bundle name exists
-  bool HasBundleName(const wstring &name);
+  bool HasBundleName(const std::wstring &name);
 
   // finds the first alias match; note multiple matches may exist
-  LibraryAlias* SearchAliasLibraries(const wstring& name, vector<wstring> uses);
+  LibraryAlias* SearchAliasLibraries(const std::wstring& name, std::vector<std::wstring> uses);
 
   // finds the first class match; note multiple matches may exist
-  LibraryClass* SearchClassLibraries(const wstring& name, vector<wstring> uses);
+  LibraryClass* SearchClassLibraries(const std::wstring& name, std::vector<std::wstring> uses);
 
   // finds the first enum match; note multiple matches may exist
-  LibraryEnum* SearchEnumLibraries(const wstring& name, vector<wstring> uses);
+  LibraryEnum* SearchEnumLibraries(const std::wstring& name, std::vector<std::wstring> uses);
 
   void Load();
 };

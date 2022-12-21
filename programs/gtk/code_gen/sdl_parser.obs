@@ -1,0 +1,502 @@
+use Collection.Generic;
+
+bundle CodeGen {
+	#~
+	Parse C-source
+	~#
+	class Parser {
+		@tokens : Vector<Token>;
+		@this_name : String;
+		@version : Int;
+		@pos : Int;
+
+		New(tokens : Vector<Token>, this_name : String, version : Int) {
+			@tokens := tokens;
+			@pos := 0;
+			@this_name := this_name;
+			@version := version;
+		}
+		
+		method : Match(type : Token->Type) ~ Bool {
+			return Match(type, 0);
+		}
+		
+		method : Match(type : Token->Type, offset : Int) ~ Bool {
+			pos := @pos + offset;
+			if(pos < @tokens->Size()) {
+				return @tokens->Get(pos)->GetType() = type;
+			};
+			
+			return false;
+		}
+		
+		method : Next() ~ Nil {
+			if(@pos < @tokens->Size()) {
+				@pos += 1;
+			};
+		}
+		
+		method : Token() ~ Token {
+			if(@pos < @tokens->Size()) {
+				return @tokens->Get(@pos);
+			};
+			
+			return @tokens->Get(@tokens->Size() - 1);
+		}
+		
+		method : public : Parse() ~ Vector<ParsedFunction> {
+			functions := Vector->New()<ParsedFunction>;
+						
+			while(<>Match(Token->Type->EOS)) {
+				parsed_function := ParseFunction();
+				if(parsed_function <> Nil) {
+					functions->AddBack(parsed_function);
+				};
+				Next();
+			};
+			
+			return functions;
+		}
+		
+		method : public : ParseParameters () ~ ParsedParameters {
+			parsed_parameters : ParsedParameters;
+			
+			if(<>Match(Token->Type->OPRN)) {
+				return Nil;
+			};
+			Next();
+
+			parameters := Vector->New()<ParseParameter>;
+			
+			if(Match(Token->Type->VOID_ID) & Match(Token->Type->CPRN, 1)) {
+				Next();
+				Next();
+				
+				return ParsedParameters->New(parameters);
+			};
+			
+			while(<>Match(Token->Type->EOS) & <>Match(Token->Type->CPRN)) {
+				parameter_type := ParseType();
+				if(parameter_type = Nil) {
+					return Nil;
+				};
+				
+				# function name
+				if(<>Match(Token->Type->IDENT)) {
+					return Nil;
+				};
+				parameter_name := Token()->GetValue();					
+				Next();
+				
+				parameters->AddBack(ParseParameter->New(parameter_type, parameter_name));
+				
+				if(Match(Token->Type->COMMA)) {
+					Next();
+				};
+			};
+
+			if(<>Match(Token->Type->CPRN)) {
+				return Nil;
+			};
+			Next();
+			
+			return ParsedParameters->New(parameters);
+		}
+		
+		method : ParseCxxName(name : String) ~ String {
+			if(name->StartsWith("Gtk_") #~ | name->StartsWith("SDL_") ~# ) {
+				name := name->SubString(4, name->Size() - 4);
+			};
+			
+			return name;
+		}
+		
+		# handle * and & c types
+		method : public : ParseType() ~ ParsedType {
+			type : ParsedType;
+			
+			if(Match(Token->Type->CONST_ID)) {
+				Next();
+			};
+			
+			select(Token()->GetType()) {
+				label Token->Type->GTYPE_ID:
+				label Token->Type->GINT_ID:
+				label Token->Type->GUINT_ID:
+				label Token->Type->INT_ID: {
+					type := ParsedType->New(ParsedType->Type->INT);
+				}
+				
+				label Token->Type->GBOOLEAN_ID: {
+					type := ParsedType->New(ParsedType->Type->BOOL);
+				}
+				
+				label Token->Type->CHAR_ID:
+				label Token->Type->GCHAR_ID: {
+					type := ParsedType->New(ParsedType->Type->CHAR);
+				}
+				
+				label Token->Type->VOID_ID: {
+					type := ParsedType->New(ParsedType->Type->VOID);
+				}
+				
+				label Token->Type->IDENT: {
+					class_name := Token()->GetValue();
+					type := ParsedType->New(ParsedType->Type->CLASS, ParseCxxName(class_name));
+				}
+				
+				other: {
+					id := Token()->GetValue();
+					"expected type: found='{$id}'"->PrintLine();
+					Runtime->Exit(1);
+				}
+			};
+			Next();
+			
+			if(Match(Token->Type->STAR)) {
+				type->SetPointer(true);
+				if(type->GetType() = ParsedType->Type->VOID) {
+					type->SetType(ParsedType->Type->VOID_STAR);
+				}
+				else if(type->GetType() = ParsedType->Type->CHAR) {
+					type->SetType(ParsedType->Type->CHAR_STAR);
+				};
+				Next();
+			}
+			else if(Match(Token->Type->AND)) {
+				type->SetReference(true);
+				Next();
+			};
+
+			return type;			
+		}
+		
+		method : public : ParseFunction() ~ ParsedFunction {
+			parsed_function : ParsedFunction;
+
+			# TODO: GTK3 vs. GTK4
+			match := false;
+			if((@version = 3 & IsVersion3()) | ((@version = 4 & IsVersion4()))) {
+				match := true;			
+				Next(); 
+			};
+			
+			if(match) {
+				# return type
+				parsed_return := ParseType();
+				if(parsed_return = Nil) {
+					return Nil;
+				};
+
+				# function name
+				if(<>Match(Token->Type->IDENT)) {
+					return Nil;
+				};
+				parsed_function_name := Token()->GetValue();
+				"function: '{$parsed_function_name}'"->PrintLine();
+
+				Next();
+				
+				# parameters
+				parsed_parameters := ParseParameters();
+				if(parsed_parameters = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Token->Type->SCOLON)) {
+					return Nil;
+				};
+				Next();
+
+				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return, @this_name);
+			};
+			
+			return parsed_function;
+		}
+
+		method : IsVersion3() ~ Bool {
+			return Match(Token->Type->GDK_AVAILABLE_IN_ALL_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_0_ID) | 
+				Match(Token->Type->GDK_AVAILABLE_IN_3_2_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_4_ID) | 
+				Match(Token->Type->GDK_AVAILABLE_IN_3_6_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_8_ID) | 
+				Match(Token->Type->GDK_AVAILABLE_IN_3_10_ID) | Match(Token->Type->GDK_AVAILABLE_IN_3_12_ID);
+		}
+
+		method : IsVersion4() ~ Bool {
+			return IsVersion3() | false;
+		}
+	}
+	
+	#~
+	Parse function
+	~#
+	class ParsedFunction {
+		@func_name : String;
+		@this_name : String;
+		@objk_name : String;
+		@cxx_name : String;
+		@parameters : ParsedParameters;
+		@rtrn_type : ParsedType;
+		
+		New(name : String, parameters : ParsedParameters, rtrn_type : ParsedType, this_name : String) {
+			@func_name := name;
+			@parameters := parameters;
+			@rtrn_type := rtrn_type;
+			@this_name := this_name;
+		}
+		
+		method : public : HasReturn() ~ Bool {
+			return @rtrn_type->GetType() = ParsedType->Type->VOID;
+		}
+		
+		method : public : GetObjeckName() ~ String {
+			# TODO: very ugly clean up!
+			if(@objk_name = Nil & (@func_name->StartsWith("gtk_"))) {
+				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
+				@func_name := String->New(@objk_name);
+
+				this_name_temp := @this_name->ToLower();
+				this_name_temp->SubString(3, this_name_temp->Size() - 3);
+
+				@objk_name := @objk_name->ReplaceAll(this_name_temp, "");
+				if(<>@objk_name->IsEmpty() & @objk_name->Get(0)->IsLower()) {
+					found_char := @objk_name->Get(0);
+					@objk_name->Delete(0);
+					@objk_name->Insert(0, found_char - 32);
+
+					while(@objk_name->Has('_')) {
+						found_index := @objk_name->Find('_');
+						@objk_name->Delete(found_index);
+						found_char := @objk_name->Get(found_index);					
+						@objk_name->Insert(found_index, found_char - 32);
+						@objk_name->Delete(found_index + 1);
+					};
+				};
+
+				this_name_prefix := @this_name->SubString(3, this_name_temp->Size() - 3);
+				@objk_name := @objk_name->ReplaceAll(this_name_prefix, "");
+			}
+			else {
+				@objk_name := String->New(@func_name);
+				@objk_name->Set(@objk_name->Get(0)->ToUpper(), 0);
+			};
+			
+			return @objk_name;
+		}
+		
+		method : public : GetReturnType() ~ ParsedType {
+			return @rtrn_type;
+		}
+		
+		method : public : GetParameters() ~ ParsedParameters {
+			return @parameters;
+		}
+		
+		method : public : GetFunctionName() ~ String {
+			return @func_name;
+		}
+		
+		method : public : GetCxxName() ~ String {
+			if(@cxx_name = Nil) {
+				@cxx_name := "";
+				objeck_name := GetObjeckName();
+				each(i : objeck_name) {
+					c := objeck_name->Get(i);
+					n := '\0';
+					if(i + 1 < objeck_name->Size()) {
+						n := objeck_name->Get(i + 1);
+					};
+
+					if(i > 0 & c->IsUpper() & n->IsLower()) {
+						@cxx_name->Append('_');						
+						@cxx_name->Append(c->ToLower());
+					}
+					else {
+						@cxx_name->Append(c->ToLower());
+					};
+				};
+				
+				@cxx_name := @cxx_name->Replace("__", "_");
+			};
+			
+			return @cxx_name;
+		}
+		
+		method : public : ToString() ~ String {
+			if(@func_name <> Nil & @parameters <> Nil & @rtrn_type <> Nil) {
+				param_count := @parameters->Size();
+				parameters_string := "<none>";
+				if(@parameters <> Nil) {
+					parameters_string := @parameters->ToString();
+				};
+				rtrn_string := @rtrn_type->ToString();
+				
+				return "\n============\nfunction: name='{$@func_name}', params={$param_count}\n{$parameters_string}return:\n\t{$rtrn_string}";
+			};
+			
+			return "<empty>";
+		}
+	}
+	
+	#~
+	Parse function parameters
+	~#
+	class ParsedParameters {
+		@parameters : Vector<ParseParameter>;
+		
+		New(parameters : Vector<ParseParameter>) {
+			@parameters := parameters<ParseParameter>;
+		}
+		
+		method : public : Size() ~ Int {
+			return @parameters->Size();
+		}
+		
+		method : public : Get(i : Int) ~ ParseParameter {
+			return @parameters->Get(i);
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "";
+			
+			if(@parameters->Size() > 0) {
+				buffer->Append("parameters:\n");
+				each(i : @parameters) {
+					parameter := @parameters->Get(i);
+					buffer->Append(parameter->ToString());
+					if(i + 1 < @parameters->Size()) {
+						buffer->Append("\n\t---\n");
+					};
+				};
+				buffer->Append('\n');
+			};
+			
+			return buffer;
+		}
+	}
+	
+	#~
+	Parse function parameter
+	~#
+	class ParseParameter {
+		@name : String;
+		@type : ParsedType;
+		
+		New(type : ParsedType, name : String) {
+			@type := type;
+			@name := name;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetType() ~ ParsedType {
+			return @type;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "";
+			
+			if(@name <> Nil & @type <> Nil) {
+				buffer->Append("\tname='{$@name}'\n");
+				buffer->Append('\t');
+				buffer->Append(@type->ToString());
+			};
+			
+			return buffer;
+		}
+	}
+	
+	#~
+	Parse type
+	~#
+	class ParsedType {
+		enum Type {
+			INT,
+			CHAR,
+			CHAR_STAR,
+			BOOL,
+			CLASS,
+			VOID_STAR,
+			VOID
+		}
+		
+		@type : ParsedType->Type;
+		@name : String;
+		@is_pointer : Bool;
+		@is_reference : Bool;
+		
+		New(type : ParsedType->Type) {
+			@type := type;
+		}
+		
+		New(type : ParsedType->Type, name : String) {
+			@type := type;
+			@name := name;
+		}
+		
+		method : public : GetType() ~ ParsedType->Type {
+			return @type;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : SetType(type : ParsedType->Type) ~ Nil {
+			@type := type;
+		}
+		
+		method : public : SetPointer(is_pointer : Bool) ~ Nil {
+			@is_pointer := is_pointer;
+		}
+		
+		method : public : IsPointer() ~ Bool {
+			return @is_pointer;
+		}
+		
+		method : public : SetReference(is_reference : Bool) ~ Nil {
+			@is_reference := is_reference;
+		}
+		
+		method : public : IsReference() ~ Bool {
+			return @is_reference;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "";
+			
+			select(@type) {
+				label Type->INT: {
+					buffer->Append("type=int");
+				}
+				
+				label Type->CHAR: {
+					buffer->Append("type=char");
+				}
+				
+				label Type->CHAR_STAR: {
+					buffer->Append("type=char array");
+				}
+				
+				label Type->BOOL: {
+					buffer->Append("type=bool");
+				}
+				
+				label Type->CLASS: {
+					buffer->Append("type=class, name='{$@name}'");
+				}
+				
+				label Type->VOID: {
+					buffer->Append("type=pointer");
+				}
+				
+				label Type->VOID_STAR: {
+					buffer->Append("type=int");
+				}
+			};
+			
+			return buffer;
+		}
+	}
+}	

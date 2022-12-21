@@ -1,0 +1,41 @@
+ARGS=-O3 -Wall -Wall -std=c++17 -Wno-strict-overflow -pthread -D_X64  -D_MSYS2 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-dangling-pointer -Wno-maybe-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
+
+CC=g++
+SRC=tree.o scanner.o parser.o debugger.o
+OBJ_LIBS=../vm/compiler.a ../vm/jit_amd_lp64.a ../vm/memory.a ../vm/win32.a ../vm/logger.a objeck.res
+VM_PATH=../vm
+MEM_PATH=../vm/arch
+WIN32_PATH=../vm/arch/win32
+JIT_PATH=../vm/arch/jit/amd64
+EXE=obd
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -L/ucrt64/lib -Wunused-function -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
+
+../vm/compiler.a:
+	cd $(VM_PATH); make -f make/Makefile.msys2-ucrt.amd64.obd
+
+../vm/memory.a:
+	cd $(MEM_PATH); make -f make/Makefile.msys2-ucrt.amd64
+
+../vm/win32.a:
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-ucrt.amd64	
+
+../vm/logger.a:
+	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64
+
+../vm/jit_amd_lp64.a:
+	cd $(JIT_PATH); make -f make/Makefile.msys2-ucrt.amd64
+	
+objeck.res:
+	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG	
+
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(JIT_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(MEM_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(VM_PATH); make -f make/Makefile.msys2-clang.amd64.obd clean
+	rm -f $(EXE) $(EXE).exe *.o *~ *.res

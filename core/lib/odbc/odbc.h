@@ -66,7 +66,7 @@ extern "C" {
 
     SQLSMALLINT i = 1;
     while((result = SQLGetDiagRec(SQL_HANDLE_DBC, hstmt, i, SqlState, &NativeError, Msg, sizeof(Msg), &MsgLen)) != SQL_NO_DATA) {
-      cout << NativeError << " - " << Msg << endl;
+      std::cout << NativeError << " - " << Msg << std::endl;
       i++;
     }
   }

@@ -35,15 +35,13 @@
 #include <string>
 #include <fstream>
 
-using namespace std;
+extern std::wofstream* logger;
 
-extern wofstream* logger;
-
-static void OpenLogger(const string name) {
-  logger = new wofstream(name);
+static void OpenLogger(const std::string name) {
+  logger = new std::wofstream(name);
 }
 
-static wostream& GetLogger() {
+static std::wostream& GetLogger() {
   return *logger;
 }
 

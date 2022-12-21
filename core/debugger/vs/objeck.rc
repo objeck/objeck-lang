@@ -1,5 +1,7 @@
 #include "windows.h"
+#ifndef _MSYS2_CLANG
 #include "resource.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -37,8 +39,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 6,8,4
- PRODUCTVERSION 6,8,4
+ FILEVERSION 6,9,2
+ PRODUCTVERSION 6,9,2
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -53,15 +55,15 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "Objeck Language Debugger"
-            VALUE "CompanyName", "Randy Hollines"
-            VALUE "FileDescription", "Objeck Language Debugger"
-            VALUE "FileVersion", "6.8.4"
+            VALUE "Comments", "Objeck Debugger"
+            VALUE "CompanyName", "objeck.org"
+            VALUE "FileDescription", "Objeck Debugger"
+            VALUE "FileVersion", "6.9.2"
             VALUE "InternalName", "obr"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2022"
+            VALUE "LegalCopyright", "Copyright (c) 2023 Randy Hollines"
             VALUE "OriginalFilename", "obr.exe"
-            VALUE "ProductName", "Objeck Lanuage Debugger"
-            VALUE "ProductVersion", "6.8.4"
+            VALUE "ProductName", "Objeck Debugger"
+            VALUE "ProductVersion", "6.9.2"
         END
     END
     BLOCK "VarFileInfo"
