@@ -1,5 +1,5 @@
 use System.IO.Filesystem;
-use Collection;
+use Collection.Generic;
 
 #~
 Tag PageParser
@@ -12,9 +12,9 @@ class PageParser  {
 	@nxt_char : Char;
 	@nxt_nxt_char : Char;
 	@code : String;
-	@tag_stack : Stack;
-	@blocks : Vector;
-	@meta_values : StringMap;
+	@tag_stack : Stack<Tag>;
+	@blocks : Vector<Block>;
+	@meta_values : Map<String, String>;
 	
 	New(page : String) {
 		if(page <> Nil) {
@@ -22,10 +22,10 @@ class PageParser  {
 			@page_chars := page->ToCharArray();
 			@index := -1;
 			@code := String->New();
-			@tag_stack := Stack->New();
+			@tag_stack := Stack->New()<Tag>;
 			NextChar();
-			@blocks := Vector->New();
-			@meta_values := StringMap->New();
+			@blocks := Vector->New()<Block>;
+			@meta_values := Map->New()<String, String>;
 		};
 	}
 
@@ -137,10 +137,10 @@ class PageParser  {
 			each(i : @blocks) {
 				block := @blocks->Get(i)->As(Block);
 				if(block->GetType() = Block->BlockType->HTML) {
-System.IO.Console->Print("html='")->Print(block->GetText())->PrintLine("'");
+System.IO.Standard->Print("html='")->Print(block->GetText())->PrintLine("'");
 				}
 				else if(block->GetType() = Block->BlockType->META) {
-System.IO.Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
+System.IO.Standard->Print("meta='")->Print(block->GetText())->PrintLine("'");
 
 					attribs := block->GetText()->Split(" ");
 					each(j : attribs) {
@@ -148,12 +148,12 @@ System.IO.Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
 						if(name_values->Size() = 2) {
 							# todo add to map
 							@meta_values->Insert(name_values[0]->Trim(), name_values[1]->Trim());
-System.IO.Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
+System.IO.Standard->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
 						};
 					};
 				}
 				else {
-System.IO.Console->Print("code='")->Print(block->GetText())->PrintLine("'");
+System.IO.Standard->Print("code='")->Print(block->GetText())->PrintLine("'");
 				};
 			};
 "OK"->PrintLine();
