@@ -35,19 +35,19 @@ contexts:
     - match: '\b(if|else|do|while|static|select|break|continue|other|for|each|reverse|label|return|critical)\b'
       scope: keyword.control.objeck-obs
 
-    - match: '\b(use|leaving|virtual|Parent|from|implements)\b'
+    - match: '\b(use|leaving|virtual|Parent|As|from|implements)\b'
       scope: keyword.other
 
     - match: '\b(bundle)\b'
       scope: storage.type.trait.objeck-obs
 
-    - match: '\b(Nil|Byte|ByteHolder|Int|IntHolder|Float|FloatHolder|Char|CharHolder|Bool|BoolHolder|String|BaseArrayHolder|BoolArrayHolder|ByteArrayHolder|CharArrayHolder|FloatArrayHolder|IntArrayHolder|StringArrayHolder|Func2Holder|Func3Holder|Func4Holder|FuncHolder|As)\b'
+    - match: '\b(Byte|ByteHolder|Int|IntHolder|Float|FloatHolder|Char|CharHolder|Bool|BoolHolder|String|BaseArrayHolder|BoolArrayHolder|ByteArrayHolder|CharArrayHolder|FloatArrayHolder|IntArrayHolder|StringArrayHolder|Func2Holder|Func3Holder|Func4Holder|FuncHolder)\b'
       scope: storage.type.objeck-obs
 
     - match: \[|\]|,
       scope: punctuation.separator.objeck-obs
 
-    - match: '\b(true|false)\b'
+    - match: '\b(true|false|Nil)\b'
       scope: constant.language.objeck-obs
 
     # Numbers

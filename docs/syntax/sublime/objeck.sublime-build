@@ -1,9 +1,9 @@
 {
 	"env": { 
-		"OBJECK_LIB_PATH": "C:/Users/objec/Documents/Code/objeck-lang/core/release/deploy64/lib", 
-		"PATH": "C:/Users/objec/Documents/Code/objeck-lang/core/release/deploy64/bin"
+		"OBJECK_LIB_PATH": "<full_objeck_path>/objeck-lang/core/release/deploy64/lib", 
+		"PATH": "<full_objeck_path>/objeck-lang/core/release/deploy64/bin"
 	},
-	"cmd": ["C:/Users/objec/Documents/Code/objeck-lang/core/release/deploy64/bin/obc", "-src", "$file", "-lib", "gen_collect,diags,net,rss,misc,regex,csv,xml,json,encrypt,odbc,query,sdl2,sdl_game", "-dest", "$file_base_name.obe"],
+	"cmd": ["<full_objeck_path>/objeck-lang/core/release/deploy64/bin/obc", "-src", "$file", "-lib", "gen_collect,diags,net,rss,misc,regex,csv,xml,json,encrypt,odbc,query,sdl2,sdl_game", "-dest", "$file_base_name.obe"],
 	"selector": "source.objeck-obs",
 	"file_regex": "^(..[^:]*):\\((\\d+),(\\d+)\\):([^\\n]+)"
 }
