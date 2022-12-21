@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM stack machine.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,6 @@
 #include "../debugger/debugger.h"
 #endif
 
-using namespace std;
 #undef max
 
 namespace Runtime {
@@ -72,8 +71,8 @@ namespace Runtime {
   class StackInterpreter {
     // program
     static StackProgram* program;
-    static set<StackInterpreter*> intpr_threads;
-    static stack<StackFrame*> cached_frames;
+    static std::set<StackInterpreter*> intpr_threads;
+    static std::stack<StackFrame*> cached_frames;
 #ifdef _WIN32
     static CRITICAL_SECTION cached_frames_cs;
     static CRITICAL_SECTION intpr_threads_cs;
@@ -110,7 +109,7 @@ namespace Runtime {
     //
     inline void PushFrame(StackFrame* f) {
       if((*call_stack_pos) >= CALL_STACK_SIZE) {
-        wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
+        std::wcerr << L">>> call std::stack bounds have been exceeded! <<<" << std::endl;
         exit(1);
       }
       
@@ -122,7 +121,7 @@ namespace Runtime {
     //
     inline StackFrame* PopFrame() {
       if((*call_stack_pos) <= 0) {
-        wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
+        std::wcerr << L">>> call std::stack bounds have been exceeded! <<<" << std::endl;
         exit(1);
       }
       
@@ -147,14 +146,14 @@ namespace Runtime {
     }
 
     //
-    // pops an integer from the calculation stack.  this code
+    // pops an integer from the calculation stack. this code
     // in normally inlined and there's a macro version available.
     //
     inline size_t PopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       size_t v = op_stack[--(*stack_pos)];
-      wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      std::wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
+            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -167,8 +166,8 @@ namespace Runtime {
     //
     inline void PushInt(const size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-      wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      std::wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
+            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -178,8 +177,8 @@ namespace Runtime {
     //
     inline void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-      wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      std::wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
+            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
       (*stack_pos)++;
@@ -202,8 +201,8 @@ namespace Runtime {
 
 #ifdef _DEBUG
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
-      wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      std::wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
+            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #endif
 
@@ -211,14 +210,13 @@ namespace Runtime {
     }
     
     //
-    // peeks at the integer on the top of the
-    // execution stack.
+    // peeks at the integer on the top of the execution stack.
     //
     inline size_t TopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       size_t v = op_stack[(*stack_pos) - 1];
-      wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
-            << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      std::wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
+            << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #else
       return op_stack[(*stack_pos) - 1];
@@ -226,16 +224,15 @@ namespace Runtime {
     }
     
     //
-    // peeks at the double on the top of the
-    // execution stack.
+    // peeks at the double on the top of the execution stack.
     //
     inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
       const long index = (*stack_pos) - 1;
       
 #ifdef _DEBUG
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
-      wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      std::wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
+            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #endif
       
@@ -250,10 +247,10 @@ namespace Runtime {
     //
     // creates a string object instance
     // 
-    size_t* CreateStringObject(const wstring &value_str, size_t* &op_stack, long* &stack_pos);
+    size_t* CreateStringObject(const std::wstring &value_str, size_t* &op_stack, long* &stack_pos);
 
     inline FLOAT_VALUE GetRandomValue() {
-      random_device gen;
+      std::random_device gen;
       return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
     }
     
@@ -382,7 +379,7 @@ namespace Runtime {
       pthread_mutex_lock(&intpr_threads_mutex);
 #endif
       
-      set<StackInterpreter*>::iterator iter;
+      std::set<StackInterpreter*>::iterator iter;
       for(iter = intpr_threads.begin(); iter != intpr_threads.end(); ++iter) {
         (*iter)->Halt();
       }

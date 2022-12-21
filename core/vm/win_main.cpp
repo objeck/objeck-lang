@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for the VM.
  *
- * Copyright (c) 2008-2013, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,7 @@
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+#ifndef _MSYS2_CLANG    
     // enable Unicode console support
     if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
       return 1;
@@ -52,12 +53,13 @@ int main(const int argc, const char* argv[])
     if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
       return 1;
     }
+#endif
     
     // initialize Winsock
     WSADATA data;
     int status;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
-      wcerr << L"Unable to load Winsock 2.2!" << endl;
+      std::wcerr << L"Unable to load Winsock 2.2!" << std::endl;
       status = SYSTEM_ERROR;
     }
     else {
@@ -70,7 +72,7 @@ int main(const int argc, const char* argv[])
     return status;
   }
   else {
-    wstring usage;
+    std::wstring usage;
     usage += L"Usage: obr <program>\n\n";
     usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
@@ -94,7 +96,7 @@ int main(const int argc, const char* argv[])
 #endif
     
     usage += L"\nWeb: https://www.objeck.org";
-    wcerr << usage << endl;
+    std::wcerr << usage << std::endl;
 
     return 1;
   }

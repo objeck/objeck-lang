@@ -49,8 +49,6 @@
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 
-using namespace std;
-
 #define POLY_MAX 1024
 
 extern "C" {
@@ -107,8 +105,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_core_get_error(VMContext& context) {
-    const string return_value = SDL_GetError();
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const  std::string return_value = SDL_GetError();
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -168,8 +166,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_core_gl_extension_supported(VMContext& context) {
-    const wstring w_extension = APITools_GetStringValue(context, 1);
-    const string extension = UnicodeToBytes(w_extension);
+    const std::wstring w_extension = APITools_GetStringValue(context, 1);
+    const  std::string extension = UnicodeToBytes(w_extension);
     const int return_value = SDL_GL_ExtensionSupported(extension.c_str());
     APITools_SetIntValue(context, 0, return_value);
   }
@@ -180,7 +178,7 @@ extern "C" {
   void sdl_core_gl_load_library(VMContext& context) {
     const wchar_t* w_path = APITools_GetStringValue(context, 1);
     if(w_path) {
-      const string path = UnicodeToBytes(w_path);
+      const  std::string path = UnicodeToBytes(w_path);
       APITools_SetIntValue(context, 0, SDL_GL_LoadLibrary(path.c_str()));
     }
     else {
@@ -243,11 +241,11 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_hints_set_hint_with_priority(VMContext& context) {
-    const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name = UnicodeToBytes(w_name);
+    const std::wstring w_name = APITools_GetStringValue(context, 1);
+    const  std::string name = UnicodeToBytes(w_name);
 
-    const wstring w_value = APITools_GetStringValue(context, 2);
-    const string value = UnicodeToBytes(w_value);
+    const std::wstring w_value = APITools_GetStringValue(context, 2);
+    const  std::string value = UnicodeToBytes(w_value);
 
     const int priority = (int)APITools_GetIntValue(context, 3);
 
@@ -259,11 +257,11 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_hints_set_hint(VMContext& context) {
-    const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name = UnicodeToBytes(w_name);
+    const std::wstring w_name = APITools_GetStringValue(context, 1);
+    const  std::string name = UnicodeToBytes(w_name);
 
-    const wstring w_value = APITools_GetStringValue(context, 2);
-    const string value = UnicodeToBytes(w_value);
+    const std::wstring w_value = APITools_GetStringValue(context, 2);
+    const  std::string value = UnicodeToBytes(w_value);
 
     const int return_value = SDL_SetHint(name.c_str(), value.c_str());
     APITools_SetIntValue(context, 0, return_value);
@@ -273,11 +271,11 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_hints_get_hint(VMContext& context) {
-    const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name = UnicodeToBytes(w_name);
-    const string return_value = SDL_GetHint(name.c_str());
+    const std::wstring w_name = APITools_GetStringValue(context, 1);
+    const  std::string name = UnicodeToBytes(w_name);
+    const  std::string return_value = SDL_GetHint(name.c_str());
 
-    const wstring w_return_value(return_value.begin(), return_value.end());
+    const std::wstring w_return_value(return_value.begin(), return_value.end());
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -285,8 +283,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_hints_get_hint_boolean(VMContext& context) {
-    const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name = UnicodeToBytes(w_name);
+    const std::wstring w_name = APITools_GetStringValue(context, 1);
+    const  std::string name = UnicodeToBytes(w_name);
 
     const SDL_bool value = (SDL_bool)APITools_GetIntValue(context, 2);
 
@@ -422,8 +420,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_surface_loadbmp(VMContext& context) {
-    const wstring w_file = APITools_GetStringValue(context, 1);
-    const string file = UnicodeToBytes(w_file);
+    const std::wstring w_file = APITools_GetStringValue(context, 1);
+    const  std::string file = UnicodeToBytes(w_file);
 
     SDL_Surface* surface = SDL_LoadBMP(file.c_str());
     APITools_SetIntValue(context, 0, (size_t)surface);
@@ -435,8 +433,8 @@ extern "C" {
   void sdl_surface_savebmp(VMContext& context) {
     const size_t* surface_obj = APITools_GetObjectValue(context, 1);
     SDL_Surface* surface = surface_obj ? (SDL_Surface*)surface_obj[0] : NULL;
-    const wstring w_file = APITools_GetStringValue(context, 2);
-    const string file = UnicodeToBytes(w_file);
+    const std::wstring w_file = APITools_GetStringValue(context, 2);
+    const  std::string file = UnicodeToBytes(w_file);
 
     APITools_SetIntValue(context, 0, SDL_SaveBMP(surface, file.c_str()));
   }
@@ -1065,8 +1063,8 @@ extern "C" {
 #endif
   void sdl_display_get_video_driver(VMContext& context) {
     const int index = (int)APITools_GetIntValue(context, 1);
-    const string value = SDL_GetVideoDriver(index);
-    const wstring w_value(value.begin(), value.end());
+    const  std::string value = SDL_GetVideoDriver(index);
+    const std::wstring w_value(value.begin(), value.end());
     APITools_SetStringValue(context, 0, w_value);
   }
 
@@ -1074,8 +1072,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_display_video_init(VMContext& context) {
-    const wstring w_driver_name = APITools_GetStringValue(context, 1);
-    const string driver_name = UnicodeToBytes(w_driver_name);
+    const std::wstring w_driver_name = APITools_GetStringValue(context, 1);
+    const  std::string driver_name = UnicodeToBytes(w_driver_name);
     APITools_SetIntValue(context, 0, SDL_VideoInit(driver_name.c_str()));
   }
 
@@ -1090,8 +1088,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_display_get_current_video_driver(VMContext& context) {
-    const string value = SDL_GetCurrentVideoDriver();
-    const wstring w_value(value.begin(), value.end());
+    const  std::string value = SDL_GetCurrentVideoDriver();
+    const std::wstring w_value(value.begin(), value.end());
     APITools_SetStringValue(context, 0, w_value);
   }
 
@@ -1107,8 +1105,8 @@ extern "C" {
 #endif
   void sdl_display_get_display_name(VMContext& context) {
     const int displayIndex = (int)APITools_GetIntValue(context, 1);
-    const string value = SDL_GetDisplayName(displayIndex);
-    const wstring w_value = BytesToUnicode(value);
+    const  std::string value = SDL_GetDisplayName(displayIndex);
+    const std::wstring w_value = BytesToUnicode(value);
     APITools_SetStringValue(context, 0, w_value);
   }
 
@@ -1216,8 +1214,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_window_create(VMContext& context) {
-    const wstring w_title = APITools_GetStringValue(context, 1);
-    const string title = UnicodeToBytes(w_title);
+    const std::wstring w_title = APITools_GetStringValue(context, 1);
+    const  std::string title = UnicodeToBytes(w_title);
     const int x = (int)APITools_GetIntValue(context, 2);
     const int y = (int)APITools_GetIntValue(context, 3);
     const int w = (int)APITools_GetIntValue(context, 4);
@@ -1313,8 +1311,8 @@ extern "C" {
 #endif
   void sdl_window_set_title(VMContext& context) {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
-    const wstring w_title = APITools_GetStringValue(context, 1);
-    const string title = UnicodeToBytes(w_title);
+    const std::wstring w_title = APITools_GetStringValue(context, 1);
+    const  std::string title = UnicodeToBytes(w_title);
     SDL_SetWindowTitle(window, title.c_str());
   }
 
@@ -1675,11 +1673,11 @@ extern "C" {
   void sdl_window_show_simple_messagebox(VMContext& context) {    
     const Uint32 flags = (Uint32)APITools_GetIntValue(context, 0);
 
-    const wstring w_title = APITools_GetStringValue(context, 1);
-    const string title = UnicodeToBytes(w_title);
+    const std::wstring w_title = APITools_GetStringValue(context, 1);
+    const  std::string title = UnicodeToBytes(w_title);
 
-    const wstring w_message = APITools_GetStringValue(context, 2);
-    const string message = UnicodeToBytes(w_message);
+    const std::wstring w_message = APITools_GetStringValue(context, 2);
+    const  std::string message = UnicodeToBytes(w_message);
     
     size_t* window_obj = APITools_GetObjectValue(context, 3);
 
@@ -1769,7 +1767,7 @@ extern "C" {
       text_obj[1] = event->text.timestamp;
       text_obj[2] = event->text.windowID;
 
-      const wstring w_text = BytesToUnicode(event->text.text);
+      const std::wstring w_text = BytesToUnicode(event->text.text);
       text_obj[3] = (size_t)APITools_CreateStringValue(context, w_text);
 
       APITools_SetIntValue(context, 0, 0);
@@ -2033,8 +2031,8 @@ extern "C" {
   __declspec(dllexport)
   #endif
   void sdl_image_load(VMContext& context) {
-    const wstring wfile = APITools_GetStringValue(context, 1);
-    const string file = UnicodeToBytes(wfile);
+    const std::wstring wfile = APITools_GetStringValue(context, 1);
+    const  std::string file = UnicodeToBytes(wfile);
     APITools_SetIntValue(context, 0, (size_t)IMG_Load(file.c_str()));
   }
 
@@ -2199,8 +2197,8 @@ extern "C" {
       SDL_RendererInfo info;
       const int return_value = SDL_GetRenderDriverInfo(index, &info);
 
-      string name(info.name);
-      wstring wname(name.begin(), name.end());
+       std::string name(info.name);
+      std::wstring wname(name.begin(), name.end());
 
       info_obj[0] = (size_t)APITools_CreateStringValue(context, wname);
       info_obj[1] = info.flags;
@@ -2251,8 +2249,8 @@ extern "C" {
       SDL_RendererInfo info;
       const int return_value = SDL_GetRendererInfo(renderer, &info);
 
-      string name(info.name);
-      wstring wname(name.begin(), name.end());
+       std::string name(info.name);
+      std::wstring wname(name.begin(), name.end());
 
       info_obj[0] = (size_t)APITools_CreateStringValue(context, wname);
       info_obj[1] = info.flags;
@@ -2631,8 +2629,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_font_open(VMContext& context) {
-    const wstring wfile = APITools_GetStringValue(context, 1);
-    const string file = UnicodeToBytes(wfile);
+    const std::wstring wfile = APITools_GetStringValue(context, 1);
+    const  std::string file = UnicodeToBytes(wfile);
     const int ptsize = (int)APITools_GetIntValue(context, 2);
 
     TTF_Font* return_value = TTF_OpenFont(file.c_str(), ptsize);
@@ -2643,8 +2641,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_font_open_index(VMContext& context) {
-    const wstring wfile = APITools_GetStringValue(context, 1);
-    const string file = UnicodeToBytes(wfile);
+    const std::wstring wfile = APITools_GetStringValue(context, 1);
+    const  std::string file = UnicodeToBytes(wfile);
     const int ptsize = (int)APITools_GetIntValue(context, 2);
     const int index = (int)APITools_GetIntValue(context, 3);
 
@@ -2658,8 +2656,8 @@ extern "C" {
   void sdl_font_render_text_solid(VMContext& context) {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
     
-    const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text = UnicodeToBytes(wtext);
+    const std::wstring wtext = APITools_GetStringValue(context, 2);
+    const  std::string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2674,8 +2672,8 @@ extern "C" {
   void sdl_font_render_utf8_solid(VMContext& context) {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
-    const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text = UnicodeToBytes(wtext);
+    const std::wstring wtext = APITools_GetStringValue(context, 2);
+    const  std::string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2690,8 +2688,8 @@ extern "C" {
   void sdl_font_render_text_blended(VMContext& context) {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
-    const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text = UnicodeToBytes(wtext);
+    const std::wstring wtext = APITools_GetStringValue(context, 2);
+    const  std::string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2706,8 +2704,8 @@ extern "C" {
   void sdl_font_render_utf8_blended(VMContext& context) {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
-    const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text = UnicodeToBytes(wtext);
+    const std::wstring wtext = APITools_GetStringValue(context, 2);
+    const  std::string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2722,8 +2720,8 @@ extern "C" {
     void sdl_font_render_text_shaded(VMContext& context) {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
-    const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text = UnicodeToBytes(wtext);
+    const std::wstring wtext = APITools_GetStringValue(context, 2);
+    const  std::string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2742,8 +2740,8 @@ extern "C" {
     void sdl_font_render_utf8_shaded(VMContext& context) {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
-    const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text = UnicodeToBytes(wtext);
+    const std::wstring wtext = APITools_GetStringValue(context, 2);
+    const  std::string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2804,8 +2802,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_power_set_clipboard_text(VMContext& context) {
-    const wstring w_text = APITools_GetStringValue(context, 1);
-    const string text = UnicodeToBytes(w_text);
+    const std::wstring w_text = APITools_GetStringValue(context, 1);
+    const  std::string text = UnicodeToBytes(w_text);
     APITools_SetIntValue(context, 0, SDL_SetClipboardText(text.c_str()));
   }
 
@@ -2814,7 +2812,7 @@ extern "C" {
 #endif
   void sdl_power_get_clipboard_text(VMContext& context) {
     char* text_ptr = SDL_GetClipboardText();
-    const wstring w_text = BytesToUnicode(text_ptr);
+    const std::wstring w_text = BytesToUnicode(text_ptr);
     APITools_SetStringValue(context, 0, w_text);
     SDL_free(text_ptr);
   }
@@ -2888,8 +2886,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_gamecontroller_add_mapping(VMContext& context) {
-    const wstring w_mappingString = APITools_GetStringValue(context, 1);
-    const string mappingString = UnicodeToBytes(w_mappingString);
+    const std::wstring w_mappingString = APITools_GetStringValue(context, 1);
+    const  std::string mappingString = UnicodeToBytes(w_mappingString);
 
     APITools_SetIntValue(context, 0, SDL_GameControllerAddMapping(mappingString.c_str()));
   }
@@ -2906,9 +2904,9 @@ extern "C" {
 #endif
     void sdl_gamecontroller_mapping_for_index(VMContext& context) {
     const int mapping_index = (int)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerMappingForIndex(mapping_index);
+    const  std::string return_value = SDL_GameControllerMappingForIndex(mapping_index);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -2917,9 +2915,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_mapping(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerMapping(gamecontroller);
+    const  std::string return_value = SDL_GameControllerMapping(gamecontroller);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -2936,9 +2934,9 @@ extern "C" {
 #endif
     void sdl_gamecontroller_name_for_index(VMContext& context) {
     const int joystick_index = (int)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerNameForIndex(joystick_index);
+    const  std::string return_value = SDL_GameControllerNameForIndex(joystick_index);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -2948,9 +2946,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_path_for_index(VMContext& context) {
     const int joystick_index = (int)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerPathForIndex(joystick_index);
+    const  std::string return_value = SDL_GameControllerPathForIndex(joystick_index);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -2968,9 +2966,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_mapping_for_device_index(VMContext& context) {
     const int joystick_index = (int)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerMappingForDeviceIndex(joystick_index);
+    const  std::string return_value = SDL_GameControllerMappingForDeviceIndex(joystick_index);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -2997,9 +2995,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_name(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerName(gamecontroller);
+    const  std::string return_value = SDL_GameControllerName(gamecontroller);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -3009,9 +3007,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_path(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerPath(gamecontroller);
+    const  std::string return_value = SDL_GameControllerPath(gamecontroller);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
   
@@ -3083,9 +3081,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_get_serial(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerGetSerial(gamecontroller);
+    const  std::string return_value = SDL_GameControllerGetSerial(gamecontroller);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
   */
@@ -3125,8 +3123,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_gamecontorller_get_axis_from_string(VMContext& context) {
-    const wstring w_str = APITools_GetStringValue(context, 1);
-    const string str = UnicodeToBytes(w_str);
+    const std::wstring w_str = APITools_GetStringValue(context, 1);
+    const  std::string str = UnicodeToBytes(w_str);
 
     APITools_SetIntValue(context, 0, SDL_GameControllerGetAxisFromString(str.c_str()));
   }
@@ -3136,9 +3134,9 @@ extern "C" {
 #endif
   void sdl_gamecontroller_get_string_for_axis(VMContext& context) {
     const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_GameControllerGetStringForAxis(axis);
+    const  std::string return_value = SDL_GameControllerGetStringForAxis(axis);
 
-    const wstring w_return_value = BytesToUnicode(return_value);
+    const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -3178,8 +3176,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_gamecontroller_get_button_from_string(VMContext& context) {
-    const wstring w_str = APITools_GetStringValue(context, 1);
-    const string str = UnicodeToBytes(w_str);
+    const std::wstring w_str = APITools_GetStringValue(context, 1);
+    const  std::string str = UnicodeToBytes(w_str);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetButtonFromString(str.c_str()));
   }
 
@@ -3384,7 +3382,7 @@ extern "C" {
   void sdl_gamecontroller_get_applesf_symbols_name_for_button(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     const SDL_GameControllerButton button = (SDL_GameControllerButton)APITools_GetIntValue(context, 2);    
-    const string return_value = SDL_GameControllerGetAppleSFSymbolsNameForButton(gamecontroller, button);
+    const  std::string return_value = SDL_GameControllerGetAppleSFSymbolsNameForButton(gamecontroller, button);
     APITools_SetStringValue(context, 0, BytesToUnicode(return_value));
   }
   
@@ -3395,7 +3393,7 @@ extern "C" {
   void sdl_gamecontroller_get_applesf_symbols_name_for_axis(VMContext& context) {
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     const SDL_GameControllerAxis axis = (SDL_GameControllerAxis)APITools_GetIntValue(context, 2);
-    const string return_value = SDL_GameControllerGetAppleSFSymbolsNameForAxis(gamecontroller, axis);
+    const  std::string return_value = SDL_GameControllerGetAppleSFSymbolsNameForAxis(gamecontroller, axis);
     APITools_SetStringValue(context, 0, BytesToUnicode(return_value));
   }
   */
@@ -3547,9 +3545,9 @@ extern "C" {
 #endif
   void sdl_joystick_name(VMContext& context) {
     SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
-    const string return_value = SDL_JoystickName(joystick);
+    const  std::string return_value = SDL_JoystickName(joystick);
     
-    const wstring w_return_value(return_value.begin(), return_value.end());
+    const std::wstring w_return_value(return_value.begin(), return_value.end());
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
@@ -3579,8 +3577,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_mixer_load_wav(VMContext& context) {
-    const wstring w_file = APITools_GetStringValue(context, 1);
-    const string extension = UnicodeToBytes(w_file);
+    const std::wstring w_file = APITools_GetStringValue(context, 1);
+    const  std::string extension = UnicodeToBytes(w_file);
 
     APITools_SetIntValue(context, 0, (size_t)Mix_LoadWAV(extension.c_str()));
   }
@@ -3640,8 +3638,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_mixer_load_mus(VMContext& context) {
-    const wstring w_file = APITools_GetStringValue(context, 1);
-    const string file = UnicodeToBytes(w_file);
+    const std::wstring w_file = APITools_GetStringValue(context, 1);
+    const  std::string file = UnicodeToBytes(w_file);
 
     Mix_Music* music = Mix_LoadMUS(file.c_str());
     APITools_SetIntValue(context, 0, (size_t)music);
@@ -3750,8 +3748,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_platform_get(VMContext& context) {
-    const string value = SDL_GetPlatform();
-    const wstring return_value(value.begin(), value.end());
+    const  std::string value = SDL_GetPlatform();
+    const std::wstring return_value(value.begin(), value.end());
     APITools_SetStringValue(context, 0, return_value);
   }
 
@@ -3870,8 +3868,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_filesystem_get_base_path(VMContext& context) {
-    const string value = SDL_GetBasePath();
-    const wstring return_value = BytesToUnicode(value);
+    const  std::string value = SDL_GetBasePath();
+    const std::wstring return_value = BytesToUnicode(value);
     APITools_SetStringValue(context, 0, return_value);
   }
 
@@ -3879,15 +3877,15 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_filesystem_get_pref_path(VMContext& context) {
-    const wstring w_org = APITools_GetStringValue(context, 1);
-    const string org = UnicodeToBytes(w_org);
+    const std::wstring w_org = APITools_GetStringValue(context, 1);
+    const  std::string org = UnicodeToBytes(w_org);
 
-    const wstring w_app = APITools_GetStringValue(context, 2);
-    const string app = UnicodeToBytes(w_app);
+    const std::wstring w_app = APITools_GetStringValue(context, 2);
+    const  std::string app = UnicodeToBytes(w_app);
 
-    const string value = SDL_GetPrefPath(org.c_str(), app.c_str());
+    const  std::string value = SDL_GetPrefPath(org.c_str(), app.c_str());
 
-    const wstring return_value = BytesToUnicode(value);
+    const std::wstring return_value = BytesToUnicode(value);
     APITools_SetStringValue(context, 0, return_value);
   }
 
@@ -4474,8 +4472,8 @@ extern "C" {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
     const int x = (int)APITools_GetIntValue(context, 2);
     const int y = (int)APITools_GetIntValue(context, 3);
-    const wstring ws = APITools_GetStringValue(context, 4);
-    const string s = UnicodeToBytes(ws);
+    const std::wstring ws = APITools_GetStringValue(context, 4);
+    const  std::string s = UnicodeToBytes(ws);
 
     SDL_Color color;
     size_t* color_obj = APITools_GetObjectValue(context, 5);

@@ -1,0 +1,51 @@
+use Data.JSON;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        "4.2e+7"->ToInt()->PrintLine();
+        
+        abc : Int := 13;
+        yy := 88;
+
+        yy->ToFloat();
+              
+#~              
+        jj : JsonElement;
+        jj->Foo();
+        jj->Bar();
+~#        
+
+foo := "Foo Bar";
+gg := foo->Size();
+tt := gg->Abs();
+tt->PrintLine();
+
+gg := foo->Size();
+tt := gg->Abs();
+tt->PrintLine();
+
+    elem : JsonElement;
+    elem->GetString(); 
+    
+     
+    elem->GetType();
+    fie := elem->GetString();
+    fie->PrintLine();
+
+    elem->GetType();
+    fie := elem->GetString();
+    fie->PrintLine();
+    
+    ee := "abc"->ToUpper();
+    if(ee->Equals("abc")) {
+        "foof bar"->PrintLine();
+    };
+
+    (13 + 7)->ToFloat()->PrintLine();
+
+        yy->PrintLine();                                                                                                                                                                     
+       s : String := "hello";
+       s->ToInt()->PrintLine();
+       s->ToBool()->PrintLine();
+    }
+}

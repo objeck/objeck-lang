@@ -1,4 +1,4 @@
-ARGS=-O3 -D_OSX -D_X64 -Wall -Wno-unused-function -std=c++17 -Wno-deprecated-declarations
+ARGS=-O3 -Wall  -std=c++17 -D_OSX -D_X64  -Wno-unused-function -Wno-deprecated-declarations
 
 CC=g++
 AR=ar

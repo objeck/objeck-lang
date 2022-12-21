@@ -1,7 +1,7 @@
 /***************************************************************************
  * Program loader.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,17 +35,15 @@
 #include "common.h"
 #include <string.h>
 
-using namespace std;
-
 class Loader {
   static StackProgram* program;
-  vector<wstring> arguments;
+  std::vector<std::wstring> arguments;
   int num_float_strings;
   int num_int_strings;
   int num_char_strings;
   StackMethod* init_method;
   int string_cls_id;
-  wstring filename;
+  std::wstring filename;
   char* buffer;
   char* alloc_buffer;
   size_t buffer_size;
@@ -53,7 +51,7 @@ class Loader {
   int start_class_id;
   int start_method_id;
   bool is_web;
-  map<const wstring, const int> params;
+  std::map<const std::wstring, const int> params;
 
   inline int ReadInt() {
     int32_t value = *((int32_t*)buffer);
@@ -73,14 +71,14 @@ class Loader {
     return value;
   }
 
-  inline wstring ReadString() {
+  inline std::wstring ReadString() {
     const int size = ReadInt();
-    string in(buffer, size);
+    std::string in(buffer, size);
     buffer += size;    
     
-    wstring out;
+    std::wstring out;
     if(!BytesToUnicode(in, out)) {
-      wcerr << L">>> Unable to read unicode string <<<" << endl;
+      std::wcerr << L">>> Unable to read unicode std::string <<<" << std::endl;
       exit(1);
     }
     
@@ -92,10 +90,10 @@ class Loader {
     
     const int size = ReadInt(); 
     if(size) {
-      string in(buffer, size);
+      std::string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-        wcerr << L">>> Unable to read character <<<" << endl;
+        std::wcerr << L">>> Unable to read character <<<" << std::endl;
         exit(1);
       }
     }
@@ -113,7 +111,7 @@ class Loader {
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(wstring filename, size_t &buffer_size);
+  char* LoadFileBuffer(std::wstring filename, size_t &buffer_size);
 
   void ReadFile() {
     buffer_pos = 0;
@@ -177,8 +175,8 @@ public:
     return nullptr;
   }
   
-  inline int GetConfigurationParameter(const wstring& key) {
-    map<const wstring, const int>::iterator result = params.find(key);
+  inline int GetConfigurationParameter(const std::wstring& key) {
+    std::map<const std::wstring, const int>::iterator result = params.find(key);
     if(result != params.end()) {
       return result->second;
     }

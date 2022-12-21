@@ -36,7 +36,7 @@
  /****************************
   * Scanner constructor
   ****************************/
-Scanner::Scanner(const wstring &line)
+Scanner::Scanner(const std::wstring &line)
 {
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; i++) {
@@ -113,10 +113,10 @@ void Scanner::LoadKeywords()
  ****************************/
 void Scanner::CheckIdentifier(int index)
 {
-  // copy wstring
+  // copy std::wstring
   const int length = end_pos - start_pos;
-  wstring ident(buffer, start_pos, length);
-  // check wstring
+  std::wstring ident(buffer, start_pos, length);
+  // check std::wstring
   enum TokenType ident_type = ident_map[ident];
   switch(ident_type) {
     case TOKEN_STACK_ID:
@@ -153,7 +153,7 @@ void Scanner::CheckIdentifier(int index)
 /****************************
  * Reads a source input file
  ****************************/
-void Scanner::ReadLine(const wstring &line)
+void Scanner::ReadLine(const std::wstring &line)
 {
   buffer_pos = 0;
   const int buffer_max = (int)line.size() + 1;
@@ -166,9 +166,9 @@ void Scanner::ReadLine(const wstring &line)
   buffer[line.size()] = '\0';
   buffer_size = line.size() + 1;
 #ifdef _DEBUG
-  wcout << L"---------- Source ---------" << endl;
-  wcout << buffer << endl;
-  wcout << L"---------------------------" << endl;
+  std::wcout << L"---------- Source ---------" << std::endl;
+  std::wcout << buffer << std::endl;
+  std::wcout << L"---------------------------" << std::endl;
 #endif
 }
 
@@ -316,7 +316,7 @@ void Scanner::ParseToken(int index)
     }
     // mark
     end_pos = buffer_pos - 1;
-    // check wstring
+    // check std::wstring
     NextChar();
     CheckString(index);
     return;
@@ -327,7 +327,7 @@ void Scanner::ParseToken(int index)
     // escape or hex/unicode encoding
     if(cur_char == L'\\') {
       NextChar();
-      // read unicode wstring
+      // read unicode std::wstring
       if(cur_char == L'u') {
         NextChar();
         start_pos = buffer_pos - 1;

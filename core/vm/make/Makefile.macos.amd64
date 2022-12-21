@@ -1,9 +1,10 @@
-ARGS=-O3 -Wall -pthread -std=c++17 -D_OSX -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wno-deprecated-declarations
+ARGS=-O3 -Wall -pthread -std=c++17 -D_OSX -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wno-deprecated-declarations -Wno-int-to-void-pointer-cast -Wno-unused-variable
 
 CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_amd_lp64.a memory.a jit_common.a
 MEM_PATH=arch
+JIT_COMMON_PATH=arch/jit
 JIT_PATH=arch/jit/amd64
 EXE= obr
 
@@ -12,14 +13,18 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.macos.amd64
-	
+
 jit_amd_lp64.a:
 	cd $(JIT_PATH); make -f make/Makefile.macos.amd64
+
+jit_common.a:
+	cd $(JIT_COMMON_PATH); make -f make/Makefile.macos.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< -I../lib/openssl/macos/include
 
 clean:
 	cd $(MEM_PATH); make clean -f make/Makefile.macos.amd64
+	cd $(JIT_COMMON_PATH); make clean -f make/Makefile.macos.amd64
 	cd $(JIT_PATH); make clean -f make/Makefile.macos.amd64
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~

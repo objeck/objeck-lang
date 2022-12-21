@@ -72,10 +72,11 @@ enum ResultPosition {
   POS_END_POS = 8
 };
 
-vector<frontend::Expression*> GetMatchedExpressions(frontend::Class* klass, class ContextAnalyzer &analyzer, const int line_num, const int line_pos);
-vector<frontend::Expression*> GetMatchedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
-size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const wstring uri, const int line_num, const int line_pos, const wstring lib_path);
-size_t* FormatErrors(VMContext& context, const vector<wstring>& error_strings, const vector<wstring>& warning_strings = vector<wstring>());
-void GetTypeName(frontend::Type* type, wstring& output);
+size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_strings, const std::vector<std::wstring>& warning_strings = std::vector<std::wstring>());
+void GetTypeName(frontend::Type* type, std::wstring &output);
+size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const std::wstring uri, const int line_num, const int line_pos, const std::wstring lib_path);
+std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer &analyzer, const int line_num, const int line_pos);
+std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
+inline size_t HasUserUses(frontend::ParsedProgram* program);
 
 #endif

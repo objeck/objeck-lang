@@ -4,11 +4,11 @@ Objeck release process
 	a. GitHub 
 		i.	LSP
 		ii.	Objeck
-	b. Sourceforge
 
 2. Trial build on Windows; push code
 	a. Update Windows installer version
 	b. Update LSP version number
+
 3. Update system libraries on Linux x64; push code
 4. Full build on Windows with LSP binaries; push code; copy binaries to network directory
 5. Build other OSs and copy binaries to network directory (9 items, with 'old' in total)
@@ -16,6 +16,7 @@ Objeck release process
 	b. Linux arm64
 	c. macOS x64
 	d. macOS arm64
+
 6. Run binary renaming tool
 7. Upload binaries to Sourceforge and GitHub
 8. Upload API documentation to objeck.org

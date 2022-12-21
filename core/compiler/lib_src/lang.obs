@@ -1,6 +1,6 @@
 #~
 Objeck system classes.
-Copyright (c) 2008-2022 Randy Hollines
+Copyright (c) 2023 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
 ~#	
 
@@ -446,31 +446,31 @@ bundle System {
 		}
 		
 		#~
-	        Returns the Float value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToFloat(v : Char) ~ Float {
-	                return v->As(Float);
-	        }
+        Returns the Float value
+        @ignore-params
+        @return value
+        ~#
+        function : ToFloat(v : Char) ~ Float {
+                return v->As(Float);
+        }
 
-	        #~
-	        Returns the Character value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToByte(v : Byte) ~ Byte {
-	                return v->As(Byte);
-	        }
+        #~
+        Returns the Character value
+        @ignore-params
+        @return value
+        ~#
+        function : ToByte(v : Byte) ~ Byte {
+                return v->As(Byte);
+        }
 
-	        #~
-	        Returns the Int value
-	        @ignore-params
-	        @return value
-	        ~#
-	        function : ToInt(v : Char) ~ Int {
-	                return v->As(Int);
-	        }
+        #~
+        Returns the Int value
+        @ignore-params
+        @return value
+        ~#
+        function : ToInt(v : Char) ~ Int {
+                return v->As(Int);
+        }
 		
 		#~
 		Checks if the character is lower-case
@@ -637,6 +637,10 @@ bundle System {
 			'\n'->Print();
 		}
 
+		function : ToString(c : Char[]) ~ String {
+			return String->New(c);
+		}
+
 		#~
 		Prints error value
 		@ignore-params
@@ -694,6 +698,10 @@ bundle System {
 			string := String->New();
 			string->Append(c);
 			return string;
+		}
+
+		function : native : ToString(c : Char[]) ~ String {
+			return String->New(c);
 		}
 	}
 	
@@ -2135,6 +2143,38 @@ bundle System {
 		@param values integer array 
 		~#
 		method : public : Set(values : Int[]) ~ Nil {
+			@values := values;
+		}
+	}
+
+	#~
+	Holds an boolean array
+	~#
+	class BoolArrayHolder {
+		@values : Bool[];
+
+		#~
+		Copy constructor 
+		@param values integer array 
+		~#
+		New(values : Bool[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ Bool[] {
+			return @values;
+		}
+		
+		#~
+		Set values
+		@param values integer array 
+		~#
+		method : public : Set(values : Bool[]) ~ Nil {
 			@values := values;
 		}
 	}

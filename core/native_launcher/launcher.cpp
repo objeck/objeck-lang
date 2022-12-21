@@ -220,7 +220,7 @@ int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env)
   int result = execve(spawn_path, spawn_args, spawn_env);
 #endif
 
-  free(spawn_args);
+  delete[] spawn_args;
   spawn_args = nullptr;
 
   return result == 0 ? 0 : 1;

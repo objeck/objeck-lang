@@ -1,7 +1,7 @@
 /***************************************************************************
  * Implements a caching "mark and sweep" collector
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -75,31 +75,31 @@ struct ClassMethodId {
   long mthd_id;
 };
 
-using cantor_tuple_key = tuple<StackClass*, size_t, size_t>;
+using cantor_tuple_key = std::tuple<StackClass*, size_t, size_t>;
 
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
-  static unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
-  static unordered_set<StackFrame**> pda_frames;
-  static vector<StackFrame*> jit_frames; // deleted elsewhere
-  static set<size_t*> allocated_memory;
-  static unordered_map<size_t, list<size_t*>*> free_memory_cache;
+  static std::unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
+  static std::unordered_set<StackFrame**> pda_frames;
+  static std::vector<StackFrame*> jit_frames; // deleted elsewhere
+  static std::set<size_t*> allocated_memory;
+  static std::unordered_map<size_t, std::list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
   struct cantor_tuple {
       template <class T1, class T2, class T3>
 
-      size_t operator () (const tuple<T1,T2,T3> &t) const {
-        const size_t t1 = (size_t)get<0>(t);
-        const size_t t2 = get<1>(t);
-        const size_t t3 = get<2>(t);
+      size_t operator () (const std::tuple<T1,T2,T3> &t) const {
+        const size_t t1 = (size_t)std::get<0>(t);
+        const size_t t2 = std::get<1>(t);
+        const size_t t3 = std::get<2>(t);
 
         const size_t p1 = (t2 + t3) * (t2 + t3 + 1) / 2 + t3;
         return (t1 + p1) * (t1 + p1 + 1) / 2 + p1;
       }
   };
-  static unordered_map<cantor_tuple_key, StackMethod*, cantor_tuple> virtual_method_table;
+  static std::unordered_map<cantor_tuple_key, StackMethod*, cantor_tuple> virtual_method_table;
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -165,7 +165,7 @@ class MemoryManager {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    set<size_t*>::iterator found = allocated_memory.find(mem);
+    std::set<size_t*>::iterator found = allocated_memory.find(mem);
     if(found != allocated_memory.end() && mem[TYPE] == NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
@@ -194,9 +194,12 @@ class MemoryManager {
     mem_logger.close();
 #endif
 
-    ClearFreeMemory(true);
+    if(!free_memory_cache.empty()) {
+      ClearFreeMemory(true);
+      free_memory_cache.clear();
+    }
 
-    for(set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+    for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
       size_t* mem = *iter;
       mem -= EXTRA_BUF_SIZE + 1;
       free(mem);

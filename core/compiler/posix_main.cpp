@@ -1,7 +1,7 @@
 /***************************************************************************
 * Starting point of the language compiler
 *
-* Copyright (c) 2008-2022, Randy Hollines
+* Copyright (c) 2023, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -40,15 +40,13 @@
 #include <list>
 #include <map>
 
-using namespace std;
-
 /****************************
 * Program start. Parses command
 * line parameters.
 ****************************/
 int main(int argc, char* argv[])
 {
-  wstring usage;
+  std::wstring usage;
   usage += L"Usage: obc -src <source files> <optionals> -dest <output file>\n\n";
   usage += L"Options:\n";
   usage += L"  -src:    [input] source files (separated by commas)\n";
@@ -90,16 +88,16 @@ int main(int argc, char* argv[])
   int status;
   if(argc > 0) {
     // parse command line
-    wstring cmd_line;    
-    map<const wstring, wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
+    std::wstring cmd_line;    
+    std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
     // single command line optional is the source file
     if(argc == 2 && arguments.empty()) {
       arguments[L"src"] = cmd_line.erase(0, 1);
     }
     
-    list<wstring> argument_optionals;
-    for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
+    std::list<std::wstring> argument_optionals;
+    for(std::map<const std::wstring, std::wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
       argument_optionals.push_back(intr->first);
     }
     
@@ -115,7 +113,7 @@ int main(int argc, char* argv[])
 #endif
   } 
   else {
-    wcerr << usage << endl;
+    std::wcerr << usage << std::endl;
     status = USAGE_ERROR;
   }
 

@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parse tree.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,10 +47,10 @@ void Expression::SetMethodCall(MethodCall* call)
 /****************************
  * CharacterString class
  ****************************/
-void CharacterString::AddSegment(const wstring& orig)
+void CharacterString::AddSegment(const std::wstring& orig)
 {
   if(!is_processed) {
-    wstring escaped_str;
+    std::wstring escaped_str;
     int skip = 2;
     for(size_t i = 0; i < orig.size(); ++i) {
       wchar_t c = orig[i];
@@ -165,9 +165,9 @@ void SymbolEntry::SetId(int i)
  * Method class
  ****************************/
 
-wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
+std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
 {
-  wstring name;
+  std::wstring name;
   if(type) {
     // type
     switch(type->GetType()) {
@@ -201,10 +201,10 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
 
     case CLASS_TYPE: {
       name = L"o.";
-      const vector<wstring> uses = program->GetUses();
+      const std::vector<std::wstring> uses = program->GetUses();
 
       // program class check
-      const wstring type_klass_name = type->GetName();
+      const std::wstring type_klass_name = type->GetName();
       Class* prgm_klass = program->GetClass(type_klass_name);
       if(prgm_klass) {
         name += prgm_klass->GetName();
@@ -230,7 +230,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
             name += prgm_enum->GetName();
           }
           else {
-            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
+            const std::wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
             prgm_enum = program->GetEnum(type_klass_name_ext);
             if(prgm_enum) {
               name += type_klass_name_ext;
@@ -259,7 +259,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
             name += lib_enum->GetName();
           }
           else {
-            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
+            const std::wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
             lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, uses);
             if(lib_enum) {
               name += type_klass_name_ext;
@@ -290,7 +290,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
 
     // generics
     if(type->HasGenerics()) {
-      const vector<Type*> generic_types = type->GetGenerics();
+      const std::vector<Type*> generic_types = type->GetGenerics();
       for(size_t i = 0; i < generic_types.size(); ++i) {
         name += L"|" + generic_types[i]->GetName();
       }
@@ -305,10 +305,10 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
   return name;
 }
 
-wstring Method::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, 
+std::wstring Method::EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn, 
                                    Class* klass, ParsedProgram* program, Linker* linker) 
 {                                     
-  wstring encoded_name = L"(";
+  std::wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
     // encode params
     encoded_name += EncodeType(func_params[i], klass, program, linker);
@@ -327,8 +327,8 @@ wstring Method::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
   return encoded_name;
 }
 
-wstring Method::EncodeType(Type* type) {
-  wstring name;
+std::wstring Method::EncodeType(Type* type) {
+  std::wstring name;
   if(type) {
     // type
     switch(type->GetType()) {
@@ -375,7 +375,7 @@ wstring Method::EncodeType(Type* type) {
 
     // generics
     if(type->HasGenerics()) {
-      const vector<Type*> generic_types = type->GetGenerics();
+      const std::vector<Type*> generic_types = type->GetGenerics();
       for(size_t i = 0; i < generic_types.size(); ++i) {
         name += L"|" + generic_types[i]->GetName();
       }
@@ -390,8 +390,8 @@ wstring Method::EncodeType(Type* type) {
   return name;
 }
 
-wstring Method::EncodeUserType(Type* type) {
-  wstring name;
+std::wstring Method::EncodeUserType(Type* type) {
+  std::wstring name;
   if(type) {
     // type
     switch(type->GetType()) {
@@ -426,7 +426,7 @@ wstring Method::EncodeUserType(Type* type) {
     case CLASS_TYPE:
       name = ReplaceSubstring(type->GetName(), L"#", L"->");
       if(type->HasGenerics()) {
-        const vector<frontend::Type*> generic_types = type->GetGenerics();
+        const std::vector<frontend::Type*> generic_types = type->GetGenerics();
         name += L'<';
         for(size_t i = 0; i < generic_types.size(); ++i) {
           frontend::Type* generic_type = generic_types[i];
@@ -441,7 +441,7 @@ wstring Method::EncodeUserType(Type* type) {
 
     case FUNC_TYPE: {
       name = L'(';
-      vector<Type*> func_params = type->GetFunctionParameters();
+      std::vector<Type*> func_params = type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         name += EncodeUserType(func_params[i]);
         if(i + 1 < func_params.size()) {
@@ -505,7 +505,7 @@ void Method::EncodeUserName() {
   // params
   user_name += L'(';
 
-  vector<Declaration*> declaration_list = declarations->GetDeclarations();
+  std::vector<Declaration*> declaration_list = declarations->GetDeclarations();
   for (size_t i = 0; i < declaration_list.size(); ++i) {
     SymbolEntry* entry = declaration_list[i]->GetEntry();
     if(entry) {
@@ -531,7 +531,7 @@ void Method::SetId()
  * StaticArray class
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
-  vector<Expression*> static_array = array->GetElements()->GetExpressions();
+  std::vector<Expression*> static_array = array->GetElements()->GetExpressions();
   for(size_t i = 0; i < static_array.size(); ++i) {
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
@@ -568,7 +568,7 @@ ExpressionList* StaticArray::GetAllElements() {
     // change row/column order    
     if(dim == 2) {
       ExpressionList* temp = TreeFactory::Instance()->MakeExpressionList();
-      vector<Expression*> elements = all_elements->GetExpressions();
+      std::vector<Expression*> elements = all_elements->GetExpressions();
       // update indices
       for(int i = 0; i < cur_width; ++i) {
         for(int j = 0; j < cur_height; ++j) {
@@ -585,7 +585,7 @@ ExpressionList* StaticArray::GetAllElements() {
 
 void StaticArray::GetAllElements(StaticArray* array, ExpressionList* elems)
 {
-  vector<Expression*> static_array = array->GetElements()->GetExpressions();
+  std::vector<Expression*> static_array = array->GetElements()->GetExpressions();
   for(size_t i = 0; i < static_array.size(); ++i) {
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
@@ -601,7 +601,7 @@ void StaticArray::GetAllElements(StaticArray* array, ExpressionList* elems)
 
 void StaticArray::GetSizes(StaticArray* array, int& count)
 {
-  vector<Expression*> static_array = array->GetElements()->GetExpressions();
+  std::vector<Expression*> static_array = array->GetElements()->GetExpressions();
   for(size_t i = 0; i < static_array.size(); ++i) {
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
@@ -612,7 +612,7 @@ void StaticArray::GetSizes(StaticArray* array, int& count)
   }
 }
 
-vector<int> StaticArray::GetSizes() {
+std::vector<int> StaticArray::GetSizes() {
   if(!sizes.size()) {
     int count = 0;
     GetSizes(this, count);
@@ -649,8 +649,8 @@ Declaration* Declaration::Copy() {
 /****************************
  * MethodCall class
  ****************************/
-MethodCall::MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-                       MethodCallType t, const wstring& v, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) 
+MethodCall::MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+                       MethodCallType t, const std::wstring& v, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) 
 {
   mid_line_num = mid_line_pos = -1;
   variable_name = v;
@@ -704,8 +704,8 @@ MethodCall::MethodCall(const wstring& file_name, const int line_num, const int l
  ****************************/
 std::vector<SymbolEntry*> ScopeTable::GetEntries()
 {
-  vector<SymbolEntry*> entries_list;
-  map<const wstring, SymbolEntry*>::iterator iter;
+  std::vector<SymbolEntry*> entries_list;
+  std::map<const std::wstring, SymbolEntry*>::iterator iter;
   for(iter = entries.begin(); iter != entries.end(); ++iter) {
     SymbolEntry* entry = iter->second;
     entries_list.push_back(entry);
@@ -714,9 +714,9 @@ std::vector<SymbolEntry*> ScopeTable::GetEntries()
   return entries_list;
 }
 
-SymbolEntry* ScopeTable::GetEntry(const wstring& name)
+SymbolEntry* ScopeTable::GetEntry(const std::wstring& name)
 {
-  map<const wstring, SymbolEntry*>::iterator result = entries.find(name);
+  std::map<const std::wstring, SymbolEntry*>::iterator result = entries.find(name);
   if(result != entries.end()) {
     return result->second;
   }
@@ -727,7 +727,7 @@ SymbolEntry* ScopeTable::GetEntry(const wstring& name)
 /****************************
  * SymbolTable class
  ****************************/
-SymbolEntry* SymbolTable::GetEntry(const wstring& name)
+SymbolEntry* SymbolTable::GetEntry(const std::wstring& name)
 {
   ScopeTable* tmp = iter_ptr;
   while(tmp) {
@@ -787,23 +787,23 @@ void Class::AssociateMethods()
 
 void Class::AssociateMethod(Method* method)
 {
-  methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
+  methods.insert(std::pair<std::wstring, Method*>(method->GetEncodedName(), method));
 
   // add to unqualified names to list
-  const wstring& encoded_name = method->GetEncodedName();
+  const std::wstring& encoded_name = method->GetEncodedName();
   const size_t start = encoded_name.find(':');
-  if(start != wstring::npos) {
+  if(start != std::wstring::npos) {
     const size_t end = encoded_name.find(':', start + 1);
-    if(end != wstring::npos) {
-      const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-      unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
+    if(end != std::wstring::npos) {
+      const std::wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+      unqualified_methods.insert(std::pair<std::wstring, Method*>(unqualified_name, method));
     }
   }
 }
 
 bool Class::HasDefaultNew()
 {
-  const wstring default_new_str = name + L":New:";
+  const std::wstring default_new_str = name + L":New:";
   for(size_t i = 0; i < method_list.size(); ++i) {
     if(method_list[i]->GetParsedName() == default_new_str) {
       return true;
@@ -816,9 +816,9 @@ bool Class::HasDefaultNew()
 /****************************
  * class Lambda
  ****************************/
-wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
+std::wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 {
-  wstring name;
+  std::wstring name;
   if(type) {
     // type
     switch(type->GetType()) {
@@ -852,10 +852,10 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
     case CLASS_TYPE: {
       name = L"o.";
-      const vector<wstring> uses = program->GetUses();
+      const std::vector<std::wstring> uses = program->GetUses();
 
       // program class check
-      const wstring type_klass_name = type->GetName();
+      const std::wstring type_klass_name = type->GetName();
       Class* prgm_klass = program->GetClass(type_klass_name);
       if(prgm_klass) {
         name += prgm_klass->GetName();
@@ -916,7 +916,7 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
     // generics
     if(type->HasGenerics()) {
-      const vector<Type*> generic_types = type->GetGenerics();
+      const std::vector<Type*> generic_types = type->GetGenerics();
       for(size_t i = 0; i < generic_types.size(); ++i) {
         name += L"|" + generic_types[i]->GetName();
       }
@@ -931,9 +931,9 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
   return name;
 }
 
-wstring Alias::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, ParsedProgram* program, Linker* linker)
+std::wstring Alias::EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn, ParsedProgram* program, Linker* linker)
 {
-  wstring encoded_name = L"(";
+  std::wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
     // encode params
     encoded_name += EncodeType(func_params[i], program, linker);
@@ -955,24 +955,24 @@ wstring Alias::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, Pa
 /****************************
  * class Lambda
  ****************************/
-const vector<wstring> ParsedProgram::GetUses() {
+const std::vector<std::wstring> ParsedProgram::GetUses() {
   // Sort into tiers:
   // 1. System bundles
   // 2. User bundles
   // 3. Library bundles
   if(tiered_use_names.empty()) {
-    vector<wstring> top_level;
-    vector<wstring> mid_level;
-    vector<wstring> bottom_level;
+    std::vector<std::wstring> top_level;
+    std::vector<std::wstring> mid_level;
+    std::vector<std::wstring> bottom_level;
 
     for(size_t i = 0; i < use_names.size(); ++i) {
-      const wstring use_name = use_names[i];
+      const std::wstring use_name = use_names[i];
       if(use_name.rfind(L"System", 0) == 0) {
         top_level.push_back(use_name);
       }
       else {
         for(size_t j = 0; j < bundle_names.size(); ++j) {
-          const wstring bundle_name = bundle_names[j];
+          const std::wstring bundle_name = bundle_names[j];
           if(use_name.rfind(bundle_name, 0) == 0) {
             mid_level.push_back(use_name);
           }
@@ -993,19 +993,21 @@ const vector<wstring> ParsedProgram::GetUses() {
 
 
 #ifdef _DIAG_LIB
-bool ParsedProgram::FindMethodOrClass(const wstring uri, const int line_num, Class*& found_klass, Method*& found_method, SymbolTable*& table)
+bool ParsedProgram::FindMethodOrClass(const std::wstring uri, const int line_num, Class*& found_klass, Method*& found_method, SymbolTable*& table)
 {
+  found_klass = nullptr; found_method = nullptr; table = nullptr;
+
   // bundles
   for(size_t i = 0; i < bundles.size(); ++i) {
     ParsedBundle* bundle = bundles[i];
 
     // classes
-    vector<Class*> klasses = bundle->GetClasses();
+    std::vector<Class*> klasses = bundle->GetClasses();
     for(size_t j = 0; j < klasses.size(); ++j) {
       Class* klass = klasses[j];
       if(klass->GetFileName() == uri) {
         // methods
-        vector<Method*> methods = klass->GetMethods();
+        std::vector<Method*> methods = klass->GetMethods();
         for(size_t k = 0; k < methods.size(); ++k) {
           Method* method = methods[k];
           const int start_line = method->GetLineNumber() - 1;

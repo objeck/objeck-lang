@@ -1,0 +1,7 @@
+Code gen
+* Key off "GDK_AVAILABLE_IN_ALL", prefer GTK4
+* Start with "gtkapplication.h" -> "gtkwidget.h" -> "gtkwindow.h" -> dialogs -> widgets
+* Object model at https://docs.gtk.org/gtk4/
+---
+Windows
+* https://github.com/wingtk/gvsbuild

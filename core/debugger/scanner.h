@@ -35,8 +35,6 @@
 #include "../vm/common.h"
 #include "../shared/sys.h"
 
-using namespace std;
-
 // comment
 #define COMMENT '#'
 #define EXTENDED_COMMENT '~'
@@ -117,7 +115,7 @@ enum TokenType {
 class Token {
  private:
   enum TokenType token_type;
-  wstring ident;
+  std::wstring ident;
 
   INT_VALUE int_lit;
   FLOAT_VALUE double_lit;
@@ -150,7 +148,7 @@ class Token {
     char_lit = c;
   }
 
-  inline void SetIdentifier(wstring i) {
+  inline void SetIdentifier(std::wstring i) {
     ident = i;
   }
 
@@ -170,7 +168,7 @@ class Token {
     return char_lit;
   }
 
-  inline const wstring GetIdentifier() {
+  inline const std::wstring GetIdentifier() {
     return ident;
   }
 
@@ -202,30 +200,30 @@ class Scanner {
   // input characters
   wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  map<const wstring, enum TokenType> ident_map;
+  std::map<const std::wstring, enum TokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
 
   // warning message
   void ProcessWarning() {
-    wcout << L"Parse warning: Unknown token: '" << cur_char << L"'" << endl;
+    std::wcout << L"Parse warning: Unknown token: '" << cur_char << L"'" << std::endl;
   }
 
-  // parsers a character wstring
+  // parsers a character std::wstring
   inline void CheckString(int index) {
-    // copy wstring
+    // copy std::wstring
     const int length = end_pos - start_pos;
-    wstring char_string(buffer, start_pos, length);
-    // set wstring
+    std::wstring char_string(buffer, start_pos, length);
+    // set std::wstring
     tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
     tokens[index]->SetIdentifier(char_string);
   }
 
   // parse an integer
   inline void ParseInteger(int index, int base = 0) {
-    // copy wstring
+    // copy std::wstring
     int length = end_pos - start_pos;
-    wstring ident(buffer, start_pos, length);
+    std::wstring ident(buffer, start_pos, length);
 
     // set token
     wchar_t* end;
@@ -235,20 +233,20 @@ class Scanner {
 
   // parse a double
   inline void ParseDouble(int index) {
-    // copy wstring
+    // copy std::wstring
     const int length = end_pos - start_pos;
-    wstring wident(buffer, start_pos, length);
+    std::wstring wident(buffer, start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_FLOAT_LIT);
-    const string ident = UnicodeToBytes(wident);
+    const std::string ident = UnicodeToBytes(wident);
     tokens[index]->SetFloatLit(atof(ident.c_str()));
   }
 
   // parsers an unicode character
   inline void ParseUnicodeChar(int index) {
-    // copy wstring
+    // copy std::wstring
     const int length = end_pos - start_pos;
-    wstring ident(buffer, start_pos, length);
+    std::wstring ident(buffer, start_pos, length);
     // set token
     wchar_t* end;
     tokens[index]->SetType(TOKEN_CHAR_LIT);
@@ -256,7 +254,7 @@ class Scanner {
   }
 
   // reads a line as input
-  void ReadLine(const wstring &line);
+  void ReadLine(const std::wstring &line);
   // ignore white space
   void Whitespace();
   // next character
@@ -270,7 +268,7 @@ class Scanner {
 
  public:
   // default constructor
-  Scanner(const wstring &line);
+  Scanner(const std::wstring &line);
   // default destructor
   ~Scanner();
 

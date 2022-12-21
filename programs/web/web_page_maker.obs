@@ -24,7 +24,7 @@ class PageMaker {
 			PrintEnd();
 		}
 		else {
-			"-- Unable to Parse! --"->PrintLine();
+			"-- Unable to Parse! --"->ErrorLine();
 		};
 	}
 
