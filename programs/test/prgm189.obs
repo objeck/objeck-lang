@@ -1,0 +1,22 @@
+/*
+compile: obc -src encrypt_7.obs -lib encrypt -dest encrypt_7.obe
+run: obr encrypt_7.obe
+*/
+
+class Encryption {
+    function : Main(args : String[]) ~ Nil {
+        // Hash for SHA256
+        in := "Nas is like..."->ToByteArray();
+        hash := Encryption.Hash->SHA256(in);
+
+        // Hash for MD5
+        in := "The quick brown fox jumped over the lazy dog's back"->ToByteArray();
+        hash := Encryption.Hash->MD5(in);
+        hash->ToHexString()->PrintLine();
+
+        // Hash for RIPEMD160
+        in := "Rosetta Code"->ToByteArray();
+        hash := Encryption.Hash->RIPEMD160(in);
+        hash->ToHexString()->PrintLine();
+    }
+}

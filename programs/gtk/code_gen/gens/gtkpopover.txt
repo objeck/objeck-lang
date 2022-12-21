@@ -1,0 +1,131 @@
+Compiled 8 source classes.
+Linked 23 library classes.
+Wrote target file: 'code_gen.obe'
+---
+file={@file_name}
+version={@version}
+class={@this_name}
+function: 'gtk_popover_get_type'
+function: 'gtk_popover_new'
+function: 'gtk_popover_set_relative_to'
+function: 'gtk_popover_set_pointing_to'
+function: 'gtk_popover_set_position'
+function: 'gtk_popover_set_modal'
+function: 'gtk_popover_bind_model'
+---
+method : public : New(relative_to : GtkWidget) ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(relative_to);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_popover_new", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_popover_new(VMContext& context) {
+		const size* relative_to = (size_t*)APITools_GetObjectValue(context, 1);
+		const size* return_value = gtk_popover_new(relative_to);
+		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	}
+
+---
+method : public : SetRelativeTo(relative_to : GtkWidget) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@popover);
+	array_args[1] := relative_to;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_popover_set_relative_to", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_popover_set_relative_to(VMContext& context) {
+		Gtk_GtkPopover* popover = (GtkPopover*)APITools_GetIntValue(context, 0);
+		const size* relative_to = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_popover_set_relative_to(popover, relative_to);
+	}
+
+---
+method : public : SetPointingTo(rect : GdkRectangle) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@popover);
+	array_args[1] := rect;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_popover_set_pointing_to", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_popover_set_pointing_to(VMContext& context) {
+		Gtk_GtkPopover* popover = (GtkPopover*)APITools_GetIntValue(context, 0);
+		const size* rect = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_popover_set_pointing_to(popover, rect);
+	}
+
+---
+method : public : SetPosition(position : GtkPositionType) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@popover);
+	array_args[1] := position;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_popover_set_position", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_popover_set_position(VMContext& context) {
+		Gtk_GtkPopover* popover = (GtkPopover*)APITools_GetIntValue(context, 0);
+		const size* position = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_popover_set_position(popover, position);
+	}
+
+---
+method : public : SetModal(modal : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@popover);
+	array_args[1] := IntHolder->New(modal ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("gtk_popover_set_modal", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_popover_set_modal(VMContext& context) {
+		Gtk_GtkPopover* popover = (GtkPopover*)APITools_GetIntValue(context, 0);
+		const int modal = APITools_GetIntValue(context, 1);
+		gtk_popover_set_modal(popover, modal);
+	}
+
+---
+method : public : BindModel(model : GMenuModel, action_namespace : String) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@popover);
+	array_args[1] := model;
+	array_args[2] := action_namespace;
+
+	Proxy->GetDllProxy()->CallFunction("gtk_popover_bind_model", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk_popover_bind_model(VMContext& context) {
+		Gtk_GtkPopover* popover = (GtkPopover*)APITools_GetIntValue(context, 0);
+		const size* model = (size_t*)APITools_GetObjectValue(context, 1);
+		const wstring action_namespace = APITools_GetStringValue(context, 2);
+		gtk_popover_bind_model(popover, model, action_namespace);
+	}
+
