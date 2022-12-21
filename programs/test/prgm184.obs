@@ -1,0 +1,9 @@
+class Test {
+	function : Main(args : String []) ~ Nil {
+		Add(131, 17)->PrintLine();
+	}
+
+	function : Add(l : Int, r : Int) ~ Int {
+		return (l / r) + "abc"->Size();
+	}
+}

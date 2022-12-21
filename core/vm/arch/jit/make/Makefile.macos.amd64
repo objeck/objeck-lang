@@ -1,4 +1,4 @@
-ARGS=-O3 -D_OSX -D_X64 -Wall -Wno-unused-function -std=c++11
+ARGS=-O3 -Wall -std=c++17 -D_OSX -D_X64 -Wno-unused-variable -Wno-unused-function
 
 CC=clang++
 AR=ar
@@ -7,9 +7,10 @@ LIB=amd64/jit_common.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
+	cp $(LIB) ../..
 
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< -I../../../lib/openssl/macos/include
 
 clean:
-	rm -f *.o *~ $(LIB)
+	rm -f *.o *~ $(LIB) ../../*.a 

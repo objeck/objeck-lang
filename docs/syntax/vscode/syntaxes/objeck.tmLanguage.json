@@ -61,7 +61,7 @@
 		"primitive-types": {
 			"patterns": [
 				{
-					"match": "\\b(Nil|Bool|Byte|Char|Int|Float|String)\\b",
+					"match": "\\b(Nil|Byte|ByteHolder|Int|IntHolder|Float|FloatHolder|Char|CharHolder|Bool|BoolHolder|String|BaseArrayHolder|BoolArrayHolder|ByteArrayHolder|CharArrayHolder|FloatArrayHolder|IntArrayHolder|StringArrayHolder|Func2Holder|Func3Holder|Func4Holder|FuncHolder)\\b",
 					"name": "storage.type.objeck"
 				}]
 		},

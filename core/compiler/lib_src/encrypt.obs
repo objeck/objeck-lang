@@ -1,6 +1,6 @@
 #~~
 # Objeck encryption routines 
-# Copyright (c) 2013 Randy Hollines
+# Copyright (c) 2023 Randy Hollines
 # 
 # credits/contributor:
 # Greg Canty - Base64 support (http://www.the9375.com/cc/base64/base64.cpp.html)
@@ -41,6 +41,26 @@ bundle Encryption {
 				array_args[1] := ByteArrayHolder->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_hash_sha256", array_args);
+				
+				holder := array_args[0]->As(ByteArrayHolder);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Hash input using SHA-512
+		@param input bytes to hashed
+		@return hashed bytes
+		~#
+		function : SHA512(input : Byte[]) ~ Byte[] {
+			if(input <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayHolder->New(input);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("openssl_hash_sha512", array_args);
 				
 				holder := array_args[0]->As(ByteArrayHolder);
 				return holder->Get();

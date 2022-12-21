@@ -1,7 +1,7 @@
 /***************************************************************************
 * Defines how the intermediate code is written to output files
 *
-* Copyright (c) 2008-2022, Randy Hollines
+* Copyright (c) 2023, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -38,13 +38,12 @@
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 
-using namespace std;
 using namespace instructions;
 
 namespace backend {
   class IntermediateClass;
   
-  wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r);
+  std::wstring ReplaceSubstring(std::wstring s, const std::wstring &f, const std::wstring &r);
   
   /****************************
    * Intermediate class
@@ -59,7 +58,7 @@ namespace backend {
     }
 
   protected:
-    inline void WriteString(const wstring &in, OutputStream& out_stream) {
+    inline void WriteString(const std::wstring &in, OutputStream& out_stream) {
       out_stream.WriteString(in);
     }
 
@@ -95,8 +94,8 @@ namespace backend {
     int operand2;
     int operand3;
     FLOAT_VALUE operand4;
-    wstring operand5;
-    wstring operand6;
+    std::wstring operand5;
+    std::wstring operand6;
     int line_num;
     frontend::Statement* statement;
     frontend::Expression* expression;
@@ -143,7 +142,7 @@ namespace backend {
       operand4 = o4;
     }
 
-    IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, wstring o5) {
+    IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, std::wstring o5) {
       line_num = l;
       statement = s;
       expression = e;
@@ -151,7 +150,7 @@ namespace backend {
       operand5 = o5;
     }
 
-    IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, int o3, wstring o5, wstring o6) {
+    IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, int o3, std::wstring o5, std::wstring o6) {
       line_num = l;
       statement = s;
       expression = e;
@@ -220,7 +219,7 @@ namespace backend {
    ****************************/
   class IntermediateFactory {
     static IntermediateFactory* instance;
-    vector<IntermediateInstruction*> instructions;
+    std::vector<IntermediateInstruction*> instructions;
 
   public:
     static IntermediateFactory* Instance();
@@ -268,13 +267,13 @@ namespace backend {
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(frontend::Statement* s, int l, InstructionType t, wstring o5) {
+    IntermediateInstruction* MakeInstruction(frontend::Statement* s, int l, InstructionType t, std::wstring o5) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, nullptr, l, t, o5);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(frontend::Statement* s, int l, InstructionType t, int o3, wstring o5, wstring o6) {
+    IntermediateInstruction* MakeInstruction(frontend::Statement* s, int l, InstructionType t, int o3, std::wstring o5, std::wstring o6) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, nullptr, l, t, o3, o5, o6);
       instructions.push_back(tmp);
       return tmp;
@@ -310,13 +309,13 @@ namespace backend {
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, wstring o5) {
+    IntermediateInstruction* MakeInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, std::wstring o5) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, t, o5);
       instructions.push_back(tmp);
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, int o3, wstring o5, wstring o6) {
+    IntermediateInstruction* MakeInstruction(frontend::Statement* s, frontend::Expression* e, int l, InstructionType t, int o3, std::wstring o5, std::wstring o6) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, t, o3, o5, o6);
       instructions.push_back(tmp);
       return tmp;
@@ -355,7 +354,7 @@ namespace backend {
       return tmp;
     }
 
-    IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o3, wstring o5, wstring o6) {
+    IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o3, std::wstring o5, std::wstring o6) {
       IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, t, o3, o5, o6);
       instructions.push_back(tmp);
       return tmp;
@@ -375,7 +374,7 @@ namespace backend {
    * Block class
    ****************************/
   class IntermediateBlock : public Intermediate {
-    vector<IntermediateInstruction*> instructions;
+    std::vector<IntermediateInstruction*> instructions;
 
   public:
     IntermediateBlock() {
@@ -388,11 +387,11 @@ namespace backend {
       instructions.push_back(i);
     }
 
-    void AddInstructions(vector<IntermediateInstruction*> &i) {
+    void AddInstructions(std::vector<IntermediateInstruction*> &i) {
       instructions = i;
     }
 
-    void Remove(pair<size_t, size_t> &range) {
+    void Remove(std::pair<size_t, size_t> &range) {
       const size_t start_edit = range.first;
       const size_t end_edit = range.second;
 
@@ -401,7 +400,7 @@ namespace backend {
       }
     }
 
-    vector<IntermediateInstruction*> GetInstructions() {
+    std::vector<IntermediateInstruction*> GetInstructions() {
       return instructions;
     }
 
@@ -424,7 +423,7 @@ namespace backend {
         for(size_t i = 0; i < instructions.size(); ++i) {
           instructions[i]->Debug(i);
         }
-        GetLogger() << L"--" << endl;
+        GetLogger() << L"--" << std::endl;
       }
     }
   };
@@ -434,8 +433,8 @@ namespace backend {
    **************************/
   class IntermediateMethod : public Intermediate {
     int id;
-    wstring name;
-    wstring rtrn_name;
+    std::wstring name;
+    std::wstring rtrn_name;
     int space;
     int params;
     frontend::MethodType type;
@@ -446,12 +445,12 @@ namespace backend {
     bool has_and_or;
     bool is_lambda;
     int instr_count;
-    vector<IntermediateBlock*> blocks;
+    std::vector<IntermediateBlock*> blocks;
     IntermediateDeclarations* entries;
     IntermediateClass* klass;
 
   public:
-    IntermediateMethod(int i, const wstring &n, bool v, bool h, bool l, const wstring &r,
+    IntermediateMethod(int i, const std::wstring &n, bool v, bool h, bool l, const std::wstring &r,
                        frontend::MethodType t, bool nt, bool f, int c, int p,
                        IntermediateDeclarations* e, IntermediateClass* k) {
       id = i;
@@ -491,7 +490,7 @@ namespace backend {
       
       // process instructions
       IntermediateBlock* block = new IntermediateBlock;
-      vector<LibraryInstr*> lib_instructions = lib_method->GetInstructions();
+      std::vector<LibraryInstr*> lib_instructions = lib_method->GetInstructions();
       for(size_t i = 0; i < lib_instructions.size(); ++i) {
         block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(lib_instructions[i]));
       }
@@ -529,7 +528,7 @@ namespace backend {
       space = s;
     }
 
-    wstring GetName() {
+    std::wstring GetName() {
       return name;
     }
 
@@ -558,11 +557,11 @@ namespace backend {
       return params;
     }
 
-    vector<IntermediateBlock*> GetBlocks() {
+    std::vector<IntermediateBlock*> GetBlocks() {
       return blocks;
     }
 
-    void SetBlocks(vector<IntermediateBlock*> b) {
+    void SetBlocks(std::vector<IntermediateBlock*> b) {
       blocks = b;
     }
 
@@ -576,31 +575,31 @@ namespace backend {
    ****************************/
   class IntermediateClass : public Intermediate {
     int id;
-    wstring name;
+    std::wstring name;
     int pid;
-    vector<int> interface_ids;
-    wstring parent_name;
-    vector<wstring> interface_names;
-    vector<wstring> generic_classes;
+    std::vector<int> interface_ids;
+    std::wstring parent_name;
+    std::vector<std::wstring> interface_names;
+    std::vector<std::wstring> generic_classes;
     int cls_space;
     int inst_space;
-    vector<IntermediateBlock*> blocks;
-    vector<IntermediateMethod*> methods;
-    map<int, IntermediateMethod*> method_map;
+    std::vector<IntermediateBlock*> blocks;
+    std::vector<IntermediateMethod*> methods;
+    std::map<int, IntermediateMethod*> method_map;
     IntermediateDeclarations* cls_entries;
     IntermediateDeclarations* inst_entries;
-    map<IntermediateDeclarations*, pair<wstring, int> > closure_entries;
+    std::map<IntermediateDeclarations*, std::pair<std::wstring, int> > closure_entries;
     bool is_lib;
     bool is_interface;
     bool is_public;
     bool is_virtual;
     bool is_debug;
-    wstring file_name;
+    std::wstring file_name;
     
   public:
-    IntermediateClass(int i, const wstring &n, int pi, const wstring &p, vector<int> infs, vector<wstring> in, bool is_inf, bool is_pub,
-                      vector<wstring> gen, bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, IntermediateDeclarations* ie, 
-                      const wstring &fn, bool d) {
+    IntermediateClass(int i, const std::wstring &n, int pi, const std::wstring &p, std::vector<int> infs, std::vector<std::wstring> in, bool is_inf, bool is_pub,
+                      std::vector<std::wstring> gen, bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, IntermediateDeclarations* ie, 
+                      const std::wstring &fn, bool d) {
       id = i;
       name = n;
       pid = pi;
@@ -639,8 +638,8 @@ namespace backend {
       closure_entries = lib_klass->GetLambaEntries();
 
       // process methods
-      map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
-      map<const wstring, LibraryMethod*>::iterator mthd_iter;
+      std::map<const std::wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
+      std::map<const std::wstring, LibraryMethod*>::iterator mthd_iter;
       for(mthd_iter = lib_methods.begin(); mthd_iter != lib_methods.end(); ++mthd_iter) {
         LibraryMethod* lib_method = mthd_iter->second;
         IntermediateMethod* imm_method = new IntermediateMethod(lib_method, this);
@@ -670,7 +669,7 @@ namespace backend {
         tmp = nullptr;
       }
 
-      map<IntermediateDeclarations*, pair<wstring, int> >::iterator entries_iter;
+      std::map<IntermediateDeclarations*, std::pair<std::wstring, int> >::iterator entries_iter;
       for(entries_iter = closure_entries.begin(); entries_iter != closure_entries.end(); ++entries_iter) {
         IntermediateDeclarations* tmp = entries_iter->first;
         delete tmp;
@@ -683,7 +682,7 @@ namespace backend {
       return id;
     }
 
-    const wstring &GetName() {
+    const std::wstring &GetName() {
       return name;
     }
 
@@ -709,7 +708,7 @@ namespace backend {
     
     void AddMethod(IntermediateMethod* m) {
       methods.push_back(m);
-      method_map.insert(pair<int, IntermediateMethod*>(m->GetId(), m));
+      method_map.insert(std::pair<int, IntermediateMethod*>(m->GetId(), m));
     }
 
     void AddBlock(IntermediateBlock* b) {
@@ -717,40 +716,40 @@ namespace backend {
     }
 
     IntermediateMethod* GetMethod(int id) {
-      map<int, IntermediateMethod*>::iterator result = method_map.find(id);
+      std::map<int, IntermediateMethod*>::iterator result = method_map.find(id);
 #ifdef _DEBUG
       assert(result != method_map.end());
 #endif
       return result->second;
     }
 
-    vector<IntermediateMethod*> GetMethods() {
+    std::vector<IntermediateMethod*> GetMethods() {
       return methods;
     }
 
-    void AddClosureDeclarations(const wstring mthd_name, const int mthd_id, IntermediateDeclarations* dclrs) {
-      closure_entries[dclrs] = pair<wstring, int>(mthd_name, mthd_id);
+    void AddClosureDeclarations(const std::wstring mthd_name, const int mthd_id, IntermediateDeclarations* dclrs) {
+      closure_entries[dclrs] = std::pair<std::wstring, int>(mthd_name, mthd_id);
     }
 
     void Write(bool emit_lib, OutputStream& out_stream);
     
     void Debug() {
-      GetLogger() << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << std::endl;
       GetLogger() << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
             << L"'; pid=" << pid << L";\n interface=" << (is_interface ? L"true" : L"false") 
             << L"; virtual=" << is_virtual << L"; num_generics=" << generic_classes.size() 
             << L"; num_methods=" << methods.size() << L"; class_mem_size=" << cls_space 
             << L";\n instance_mem_size=" << inst_space << L"; is_debug=" 
-            << (is_debug  ? L"true" : L"false") << endl;      
-      GetLogger() << endl << "Interfaces:" << endl;
+            << (is_debug  ? L"true" : L"false") << std::endl;      
+      GetLogger() << std::endl << "Interfaces:" << std::endl;
       for(size_t i = 0; i < interface_names.size(); ++i) {
-        GetLogger() << L"\t" << interface_names[i] << endl;
+        GetLogger() << L"\t" << interface_names[i] << std::endl;
       }      
-      GetLogger() << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << std::endl;
       cls_entries->Debug(false);
-      GetLogger() << L"---------------------------------------------------------" << endl;
+      GetLogger() << L"---------------------------------------------------------" << std::endl;
       inst_entries->Debug(false);
-      GetLogger() << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << std::endl;
       for(size_t i = 0; i < blocks.size(); ++i) {
         blocks[i]->Debug();
       }
@@ -765,11 +764,11 @@ namespace backend {
    * EnumItem class
    ****************************/
   class IntermediateEnumItem : public Intermediate {
-    wstring name;
+    std::wstring name;
     INT_VALUE id;
 
   public:
-    IntermediateEnumItem(const wstring &n, const INT_VALUE i) {
+    IntermediateEnumItem(const std::wstring &n, const INT_VALUE i) {
       name = n;
       id = i;
     }
@@ -782,7 +781,7 @@ namespace backend {
     void Write(OutputStream& out_stream);
 
     void Debug() {
-      GetLogger() << L"Item: name='" << name << L"'; id='" << id << endl;
+      GetLogger() << L"Item: name='" << name << L"'; id='" << id << std::endl;
     }
   };
 
@@ -790,12 +789,12 @@ namespace backend {
    * Enum class
    ****************************/
   class IntermediateEnum : public Intermediate {
-    wstring name;
+    std::wstring name;
     INT_VALUE offset;
-    vector<IntermediateEnumItem*> items;
+    std::vector<IntermediateEnumItem*> items;
 
   public:
-    IntermediateEnum(const wstring &n, const INT_VALUE o) {
+    IntermediateEnum(const std::wstring &n, const INT_VALUE o) {
       name = n;
       offset = o;
     }
@@ -804,8 +803,8 @@ namespace backend {
       name = e->GetName();
       offset = e->GetOffset();
       // write items
-      map<const wstring, LibraryEnumItem*> items = e->GetItems();
-      map<const wstring, LibraryEnumItem*>::iterator iter;
+      std::map<const std::wstring, LibraryEnumItem*> items = e->GetItems();
+      std::map<const std::wstring, LibraryEnumItem*>::iterator iter;
       for(iter = items.begin(); iter != items.end(); ++iter) {
         LibraryEnumItem* lib_enum_item = iter->second;
         IntermediateEnumItem* imm_enum_item = new IntermediateEnumItem(lib_enum_item);
@@ -830,9 +829,9 @@ namespace backend {
     void Write(OutputStream& out_stream);
 
     void Debug() {
-      GetLogger() << L"=========================================================" << endl;
-      GetLogger() << L"Enum: name='" << name << L"'; items=" << items.size() << endl;
-      GetLogger() << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << std::endl;
+      GetLogger() << L"Enum: name='" << name << L"'; items=" << items.size() << std::endl;
+      GetLogger() << L"=========================================================" << std::endl;
 
       for(size_t i = 0; i < items.size(); ++i) {
         items[i]->Debug();
@@ -847,15 +846,15 @@ namespace backend {
     static IntermediateProgram* instance;
     int class_id;
     int method_id;
-    vector<wstring> alias_encodings;
-    vector<IntermediateEnum*> enums;
-    vector<IntermediateClass*> classes;
-    map<int, IntermediateClass*> class_map;
-    vector<wstring> char_strings;
-    vector<frontend::IntStringHolder*> int_strings;
-    vector<frontend::FloatStringHolder*> float_strings;
-    vector<wstring> bundle_names;
-    wstring aliases_str;
+    std::vector<std::wstring> alias_encodings;
+    std::vector<IntermediateEnum*> enums;
+    std::vector<IntermediateClass*> classes;
+    std::map<int, IntermediateClass*> class_map;
+    std::vector<std::wstring> char_strings;
+    std::vector<frontend::IntStringHolder*> int_strings;
+    std::vector<frontend::FloatStringHolder*> float_strings;
+    std::vector<std::wstring> bundle_names;
+    std::wstring aliases_str;
     int num_src_classes;
     int num_lib_classes;
     int string_cls_id;
@@ -916,18 +915,18 @@ namespace backend {
 
     void AddClass(IntermediateClass* c) {
       classes.push_back(c);
-      class_map.insert(pair<int, IntermediateClass*>(c->GetId(), c));
+      class_map.insert(std::pair<int, IntermediateClass*>(c->GetId(), c));
     }
 
     IntermediateClass* GetClass(int id) {
-      map<int, IntermediateClass*>::iterator result = class_map.find(id);
+      std::map<int, IntermediateClass*>::iterator result = class_map.find(id);
 #ifdef _DEBUG
       // assert(result != class_map.end());
 #endif
       return result->second;
     }
 
-    void AddAliasEncoding(const wstring &a) {
+    void AddAliasEncoding(const std::wstring &a) {
       alias_encodings.push_back(a);
     }
 
@@ -935,19 +934,19 @@ namespace backend {
       enums.push_back(e);
     }
 
-    vector<IntermediateClass*> GetClasses() {
+    std::vector<IntermediateClass*> GetClasses() {
       return classes;
     }
 
-    void SetCharStrings(vector<wstring> s) {
+    void SetCharStrings(std::vector<std::wstring> s) {
       char_strings = s;
     }
 
-    void SetIntStrings(vector<frontend::IntStringHolder*> s) {
+    void SetIntStrings(std::vector<frontend::IntStringHolder*> s) {
       int_strings = s;
     }
 
-    void SetFloatStrings(vector<frontend::FloatStringHolder*> s) {
+    void SetFloatStrings(std::vector<frontend::FloatStringHolder*> s) {
       float_strings = s;
     }
 
@@ -964,7 +963,7 @@ namespace backend {
       return method_id;
     }
 
-    void SetBundleNames(vector<wstring> &n) {
+    void SetBundleNames(std::vector<std::wstring> &n) {
       bundle_names = n;
     }
 
@@ -972,11 +971,11 @@ namespace backend {
       string_cls_id = i;
     }
 
-    void SetAliasesString(const wstring &a) {
+    void SetAliasesString(const std::wstring &a) {
       aliases_str = a;
     }
 
-    const wstring GetAliasesString() {
+    const std::wstring GetAliasesString() {
       return aliases_str;
     }
 
@@ -984,13 +983,13 @@ namespace backend {
 
     void Debug() {
 /*
-      GetLogger() << L"Strings:" << endl;
+      GetLogger() << L"Strings:" << std::endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
-        GetLogger() << L"string id=" << i << L", size=" << ToString((int)char_strings[i].size()) << endl;
+        GetLogger() << L"string id=" << i << L", size=" << ToString((int)char_strings[i].size()) << std::endl;
       }
-      GetLogger() << endl;
+      GetLogger() << std::endl;
 */
-      GetLogger() << L"Program: enums=" << enums.size() << L", classes=" << classes.size() << L"; start_ids=" << class_id << L"," << method_id << endl;
+      GetLogger() << L"Program: enums=" << enums.size() << L", classes=" << classes.size() << L"; start_ids=" << class_id << L"," << method_id << std::endl;
       // enums
       for(size_t i = 0; i < enums.size(); ++i) {
         enums[i]->Debug();
@@ -1001,8 +1000,8 @@ namespace backend {
       }
     }
 
-    inline wstring ToString(int v) {
-      wostringstream str;
+    inline std::wstring ToString(int v) {
+      std::wostringstream str;
       str << v;
       return str.str();
     }
@@ -1013,17 +1012,17 @@ namespace backend {
    ****************************/
   class FileEmitter {
     IntermediateProgram* program;
-    wstring file_name;
+    std::wstring file_name;
     bool emit_lib;
     bool is_debug;
     bool is_web;
     bool show_asm;
 
-    string ReplaceExt(const string &org, const string &ext) {
-      string str(org);
+    std::string ReplaceExt(const std::string &org, const std::string &ext) {
+      std::string str(org);
       
       size_t i = str.rfind('.', str.size());
-      if(i != string::npos) {
+      if(i != std::string::npos) {
         str.replace(i + 1, ext.size(), ext);
       }
 
@@ -1031,7 +1030,7 @@ namespace backend {
     }
 
   public:
-    FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, bool s, const wstring &n) {
+    FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, bool s, const std::wstring &n) {
       program = p;
       emit_lib = l;
       is_debug = d;

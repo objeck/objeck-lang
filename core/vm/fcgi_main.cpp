@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for FastCGI module
  *
- * Copyright (c) 2012-2020 Randy Hollines
+ * Copyright (c) 2023 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,10 +36,10 @@
  ******************************/
 int main(const int argc, const char* argv[])
 {
-  wstring program_path;
+  std::wstring program_path;
   const char* raw_program_path = FCGX_GetParam("FCGI_CONFIG_PATH", environ);
   if(!raw_program_path) {
-    wcout << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
+    std::wcout << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << std::endl;
     exit(1);
   }
   else {
@@ -47,15 +47,22 @@ int main(const int argc, const char* argv[])
   }
   
 #ifdef _WIN32
+#ifndef _MSYS2_CLANG
   // enable Unicode console support
-  _setmode(_fileno(stdin), _O_U16TEXT);
-  _setmode(_fileno(stdout), _O_U16TEXT);
-
+  if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+    return 1;
+  }
+  
+  if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+    return 1;
+  }
+#endif
+  
   // initialize Winsock
   WSADATA data;
   int version = MAKEWORD(2, 2);
   if(WSAStartup(version, &data)) {
-    wcout << L"Unable to load Winsock 2.2!" << endl;
+    std::wcout << L"Unable to load Winsock 2.2!" << std::endl;
     exit(1);
   }
 #else
@@ -63,7 +70,7 @@ int main(const int argc, const char* argv[])
   char* locale = setlocale(LC_ALL, "");
   std::locale lollocale(locale);
   setlocale(LC_ALL, locale);
-  wcout.imbue(lollocale);
+  std::wcout.imbue(lollocale);
 #else    
   setlocale(LC_ALL, "en_US.utf8");
 #endif
@@ -74,7 +81,7 @@ int main(const int argc, const char* argv[])
 
   // ignore web applications
   if(!loader.IsWeb()) {
-    wcout << L"Please recompile the code to be a web application." << endl;
+    std::wcout << L"Please recompile the code to be a web application." << std::endl;
     exit(1);
   }
 
@@ -85,12 +92,12 @@ int main(const int argc, const char* argv[])
   // locate starting class and method
   StackMethod* mthd = loader.GetStartMethod();
   if(!mthd) {
-    wcout << L"Unable to locate the 'Request(...)' function." << endl;
+    std::wcout << L"Unable to locate the 'Request(...)' function." << std::endl;
     exit(1);
   }
 
 #ifdef _DEBUG
-  wcout << L"### Loaded method: " << mthd->GetName() << L" ###" << endl;
+  std::wcout << L"### Loaded method: " << mthd->GetName() << L" ###" << std::endl;
 #endif
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());

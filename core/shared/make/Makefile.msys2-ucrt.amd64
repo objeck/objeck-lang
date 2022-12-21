@@ -1,0 +1,16 @@
+ARGS=-O3 -Wall -Wno-unused-function -std=c++17
+
+CC=g++
+AR=ar
+SRC=logger.o
+LIB=logger.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+	cp logger.a ../compiler; cp logger.a ../vm; cp logger.a ../release/WindowsLauncher/AppLauncher
+	
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)

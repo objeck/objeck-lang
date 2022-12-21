@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parse tree.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and uses in source and binary forms, with or without
@@ -67,8 +67,6 @@
 #define VAR_CLASS_ID L"System.$Var"
 #define BASE_ARRAY_CLASS_ID L"System.$BaseArray"
 
-using namespace std;
-
 namespace frontend {
   class TreeFactory;
   class Variable;
@@ -113,9 +111,9 @@ namespace frontend {
    ****************************/
   class SymbolEntry : public ParseNode {
     friend class TreeFactory;
-    vector<Variable*> variables;
+    std::vector<Variable*> variables;
     int id;
-    wstring name;
+    std::wstring name;
     Type* type;
     bool is_static;
     bool is_local;
@@ -123,7 +121,7 @@ namespace frontend {
     bool is_param;
     bool is_loaded;
 
-  SymbolEntry(const wstring &file_name, const int line_num, const int line_pos, const wstring &n, Type* t, 
+  SymbolEntry(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &n, Type* t, 
         bool s, bool c, bool e = false) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       id = -1;
@@ -170,7 +168,7 @@ namespace frontend {
       return is_local;
     }
 
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
@@ -186,7 +184,7 @@ namespace frontend {
       variables.push_back(v);
     }
 
-    const vector<Variable*> GetVariables() {
+    const std::vector<Variable*> GetVariables() {
       return variables;
     }
 
@@ -198,9 +196,9 @@ namespace frontend {
    * ScopeTable class
    ****************************/
   class ScopeTable {
-    map<const wstring, SymbolEntry*> entries;
+    std::map<const std::wstring, SymbolEntry*> entries;
     ScopeTable* parent;
-    vector<ScopeTable*> children;
+    std::vector<ScopeTable*> children;
     int child_pos;
 
   public:
@@ -220,16 +218,16 @@ namespace frontend {
       }
     }
 
-    vector<SymbolEntry*> GetEntries();
+    std::vector<SymbolEntry*> GetEntries();
 
-    SymbolEntry* GetEntry(const wstring &name);
+    SymbolEntry* GetEntry(const std::wstring &name);
 
     bool AddEntry(SymbolEntry* e) {
       if(GetEntry(e->GetName())) {
         return false;
       }
       // add
-      entries.insert(pair<wstring, SymbolEntry*>(e->GetName(), e));
+      entries.insert(std::pair<std::wstring, SymbolEntry*>(e->GetName(), e));
       return true;
     }
 
@@ -255,7 +253,7 @@ namespace frontend {
    ****************************/
   class SymbolTable {
     ScopeTable *head, *parse_ptr, *iter_ptr;
-    vector<SymbolEntry*> entries;
+    std::vector<SymbolEntry*> entries;
 
   public:
     SymbolTable() {
@@ -267,11 +265,11 @@ namespace frontend {
       head = nullptr;
     }
 
-    vector<SymbolEntry*> GetEntries() {
+    std::vector<SymbolEntry*> GetEntries() {
       return entries;
     }
 
-    SymbolEntry* GetEntry(const wstring &name);
+    SymbolEntry* GetEntry(const std::wstring &name);
 
     bool AddEntry(SymbolEntry* e, bool is_var = false);
 
@@ -316,8 +314,8 @@ namespace frontend {
    * SymbolTableManager class
    ****************************/
   class SymbolTableManager {
-    stack<SymbolTable*> scope;
-    map<const wstring, SymbolTable*> tables;
+    std::stack<SymbolTable*> scope;
+    std::map<const std::wstring, SymbolTable*> tables;
 
   public:
     SymbolTableManager() {
@@ -325,7 +323,7 @@ namespace frontend {
 
     ~SymbolTableManager() {
       // clean up
-      map<const wstring, SymbolTable*>::iterator iter;
+      std::map<const std::wstring, SymbolTable*>::iterator iter;
       for(iter = tables.begin(); iter != tables.end(); ++iter) {
         SymbolTable* tmp = iter->second;
         delete tmp;
@@ -338,12 +336,12 @@ namespace frontend {
       scope.push(new SymbolTable);
     }
 
-    void PreviousParseScope(const wstring &namescope) {
+    void PreviousParseScope(const std::wstring &namescope) {
       if(GetSymbolTable(namescope)) {
         return;
       }
 
-      tables.insert(pair<wstring, SymbolTable*>(namescope, scope.top()));
+      tables.insert(std::pair<std::wstring, SymbolTable*>(namescope, scope.top()));
       scope.pop();
     }
 
@@ -351,9 +349,9 @@ namespace frontend {
       return scope.top();
     }
 
-    vector<SymbolEntry*> GetEntries(const wstring &namescope) {
-      vector<SymbolEntry*> entries;
-      map<const wstring, SymbolTable*>::iterator result = tables.find(namescope);
+    std::vector<SymbolEntry*> GetEntries(const std::wstring &namescope) {
+      std::vector<SymbolEntry*> entries;
+      std::map<const std::wstring, SymbolTable*>::iterator result = tables.find(namescope);
       if(result != tables.end()) {
         entries = result->second->GetEntries();
       }
@@ -361,14 +359,27 @@ namespace frontend {
       return entries;
     }
 
-    SymbolTable* GetSymbolTable(const wstring &namescope) {
-      map<const wstring, SymbolTable*>::iterator result = tables.find(namescope);
+    SymbolTable* GetSymbolTable(const std::wstring &namescope) {
+      std::map<const std::wstring, SymbolTable*>::iterator result = tables.find(namescope);
       if(result != tables.end()) {
         return result->second;
       }
 
       return nullptr;
     }
+
+#ifdef _DIAG_LIB
+    std::vector<std::wstring> GetNamescopes() {
+      std::vector<std::wstring> namescopes;
+
+      std::map<const std::wstring, SymbolTable*>::iterator iter;
+      for(iter = tables.begin(); iter != tables.end(); ++iter) {
+        namescopes.push_back(iter->first);
+      }
+
+      return namescopes;
+    }
+#endif
   };
 
   /****************************
@@ -378,7 +389,7 @@ namespace frontend {
     int end_line_num;
     int end_line_pos;
   public:
-    Statement(const wstring &f, const int l, const int p, const int el, const int ep) : ParseNode(f, l, p) {
+    Statement(const std::wstring &f, const int l, const int p, const int el, const int ep) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
     }
@@ -402,7 +413,7 @@ namespace frontend {
    ****************************/
   class StatementList {
     friend class TreeFactory;
-    vector<Statement*> statements;
+    std::vector<Statement*> statements;
 
     StatementList() {
     }
@@ -411,7 +422,7 @@ namespace frontend {
     }
 
   public:
-    vector<Statement*> GetStatements() {
+    std::vector<Statement*> GetStatements() {
       return statements;
     }
 
@@ -472,7 +483,7 @@ namespace frontend {
     Class* to_class;
     LibraryClass* to_lib_class;
 
-    Expression(const wstring& file_name, const int line_num, const int line_pos) : ParseNode(file_name, line_num, line_pos) {
+    Expression(const std::wstring& file_name, const int line_num, const int line_pos) : ParseNode(file_name, line_num, line_pos) {
       base_type = eval_type = cast_type = type_of = nullptr;
       method_call = nullptr;
       prev_expr = nullptr;
@@ -480,7 +491,7 @@ namespace frontend {
       to_lib_class = nullptr;
     }
 
-    Expression(const wstring& file_name, const int line_num, const int line_pos, Type* t) : ParseNode(file_name, line_num, line_pos) {
+    Expression(const std::wstring& file_name, const int line_num, const int line_pos, Type* t) : ParseNode(file_name, line_num, line_pos) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
       cast_type = nullptr;
       method_call = nullptr;
@@ -581,7 +592,7 @@ namespace frontend {
    ****************************/
   class ExpressionList {
     friend class TreeFactory;
-    vector<Expression*> expressions;
+    std::vector<Expression*> expressions;
 
     ExpressionList() {
     }
@@ -590,11 +601,11 @@ namespace frontend {
     }
 
   public:
-    const vector<Expression*> GetExpressions() {
+    const std::vector<Expression*> GetExpressions() {
       return expressions;
     }
 
-    const void SetExpressions(const vector<Expression*> e) {
+    const void SetExpressions(const std::vector<Expression*> e) {
       expressions = e;
     }
 
@@ -623,7 +634,7 @@ namespace frontend {
     int cur_height;
     ExpressionList* elements;
     ExpressionList* all_elements;
-    vector<int> sizes;
+    std::vector<int> sizes;
     bool matching_types;
     ExpressionType cur_type;
     bool matching_lengths;
@@ -633,7 +644,7 @@ namespace frontend {
     void GetSizes(StaticArray* array, int &count);
 
   public:
-    StaticArray(const wstring& file_name, const int line_num, const int line_pos, ExpressionList* e) : Expression(file_name, line_num, line_pos) {
+    StaticArray(const std::wstring& file_name, const int line_num, const int line_pos, ExpressionList* e) : Expression(file_name, line_num, line_pos) {
       elements = e;
       all_elements = nullptr;
       matching_types = matching_lengths = true;
@@ -693,7 +704,7 @@ namespace frontend {
 
     ExpressionList* GetAllElements();
 
-    vector<int> GetSizes();
+    std::vector<int> GetSizes();
 
     bool IsMatchingTypes() {
       return matching_types;
@@ -715,13 +726,13 @@ namespace frontend {
   class CharacterStringSegment {
     CharacterStringSegmentType type;
     int id;
-    wstring str;
+    std::wstring str;
     SymbolEntry* entry;
     Method* method;
     LibraryMethod* lib_method;
 
   public:
-    CharacterStringSegment(const wstring &s) {
+    CharacterStringSegment(const std::wstring &s) {
       type = STRING;
       str = s;
       entry = nullptr;
@@ -761,7 +772,7 @@ namespace frontend {
     ~CharacterStringSegment() {
     }
 
-    const wstring GetString() {
+    const std::wstring GetString() {
       return str;
     }
 
@@ -792,11 +803,11 @@ namespace frontend {
   class CharacterString : public Expression {
     friend class TreeFactory;
     bool is_processed;
-    wstring char_string;
-    vector<CharacterStringSegment*> segments;
+    std::wstring char_string;
+    std::vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
 
-    CharacterString(const wstring &file_name, const int line_num, const int line_pos, const wstring &c) : Expression(file_name, line_num, line_pos, Type::CharStringType()) {
+    CharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &c) : Expression(file_name, line_num, line_pos, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
       concat = nullptr;
@@ -829,11 +840,11 @@ namespace frontend {
       return concat;
     }
 
-    const wstring GetString() const {
+    const std::wstring GetString() const {
       return char_string;
     }
 
-    void AddSegment(const wstring &orig);
+    void AddSegment(const std::wstring &orig);
 
     void AddSegment(SymbolEntry* e) {
       e->WasLoaded();
@@ -848,7 +859,7 @@ namespace frontend {
       segments.push_back(new CharacterStringSegment(e, m)); 
     }
 
-    vector<CharacterStringSegment*> GetSegments() {
+    std::vector<CharacterStringSegment*> GetSegments() {
       return segments;
     }
   };
@@ -862,12 +873,12 @@ namespace frontend {
     Expression* left;
     Expression* right;
 
-    CalculatedExpression(const wstring& file_name, const int line_num, const int line_pos, ExpressionType t) : Expression(file_name, line_num, line_pos) {
+    CalculatedExpression(const std::wstring& file_name, const int line_num, const int line_pos, ExpressionType t) : Expression(file_name, line_num, line_pos) {
       left = right = nullptr;
       type = t;
     }
 
-    CalculatedExpression(const wstring& file_name, const int line_num, const int line_pos, ExpressionType t, Expression* lhs, Expression* rhs) : Expression(file_name, line_num, line_pos) {
+    CalculatedExpression(const std::wstring& file_name, const int line_num, const int line_pos, ExpressionType t, Expression* lhs, Expression* rhs) : Expression(file_name, line_num, line_pos) {
       left = lhs;
       right = rhs;
       type = t;
@@ -903,12 +914,12 @@ namespace frontend {
    ****************************/
   class StringConcat : public Expression {
     friend class TreeFactory;
-    list<Expression*> concat_exprs;
+    std::list<Expression*> concat_exprs;
     SymbolEntry* concat;
-    unordered_map<Expression*, Method*> method_to_string;
-    unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
+    std::unordered_map<Expression*, Method*> method_to_string;
+    std::unordered_map<Expression*, LibraryMethod*> lib_method_to_string;
     
-    StringConcat(list<Expression*> e, unordered_map<Expression*, Method*> ms, unordered_map<Expression*, LibraryMethod*> ls) : Expression(L"", -1, -1) {
+    StringConcat(std::list<Expression*> e, std::unordered_map<Expression*, Method*> ms, std::unordered_map<Expression*, LibraryMethod*> ls) : Expression(L"", -1, -1) {
       concat_exprs = e;
       method_to_string = ms;
       lib_method_to_string = ls;
@@ -925,7 +936,7 @@ namespace frontend {
       return STR_CONCAT_EXPR;
     }
 
-    list<Expression*> GetExpressions() {
+    std::list<Expression*> GetExpressions() {
       return concat_exprs;
     }
 
@@ -953,16 +964,16 @@ namespace frontend {
   class Variable : public Expression {
     friend class TreeFactory;
     int id;
-    wstring name;
+    std::wstring name;
     ExpressionList* indices;
     SymbolEntry* entry;
     OperationAssignment* pre_operation;
     bool checked_pre_operation;
     OperationAssignment* post_operation;
     bool checked_post_operation;
-    vector<Type*> concrete_types;
+    std::vector<Type*> concrete_types;
 
-    Variable(const wstring& file_name, const int line_num, const int line_pos, const wstring& n) : Expression(file_name, line_num, line_pos) {
+    Variable(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& n) : Expression(file_name, line_num, line_pos) {
       name = n;
       indices = nullptr;
       entry = nullptr;
@@ -975,7 +986,7 @@ namespace frontend {
     }
 
   public:
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
@@ -1003,7 +1014,7 @@ namespace frontend {
       indices = i;
     }
 
-    const vector<Type*> GetConcreteTypes() {
+    const std::vector<Type*> GetConcreteTypes() {
       return concrete_types;
     }
 
@@ -1011,7 +1022,7 @@ namespace frontend {
       return concrete_types.size() > 0;
     }
 
-    void SetConcreteTypes(vector<Type*>& c) {
+    void SetConcreteTypes(std::vector<Type*>& c) {
       concrete_types = c;
     }
 
@@ -1063,7 +1074,7 @@ namespace frontend {
     friend class TreeFactory;
     bool value;
 
-    BooleanLiteral(const wstring &file_name, const int line_num, const int line_pos, bool v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
+    BooleanLiteral(const std::wstring &file_name, const int line_num, const int line_pos, bool v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
       value = v;
     }
 
@@ -1086,7 +1097,7 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const wstring& file_name, const int line_num, const int line_pos) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
+    NilLiteral(const std::wstring& file_name, const int line_num, const int line_pos) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
     }
 
     ~NilLiteral() {
@@ -1105,7 +1116,7 @@ namespace frontend {
     friend class TreeFactory;
     wchar_t value;
 
-    CharacterLiteral(const wstring& file_name, const int line_num, const int line_pos, wchar_t v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
+    CharacterLiteral(const std::wstring& file_name, const int line_num, const int line_pos, wchar_t v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
       value = v;
     }
 
@@ -1129,7 +1140,7 @@ namespace frontend {
     friend class TreeFactory;
     INT_VALUE value;
 
-  IntegerLiteral(const wstring &file_name, const int line_num, const int line_pos, INT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+  IntegerLiteral(const std::wstring &file_name, const int line_num, const int line_pos, INT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
       value = v;
     }
 
@@ -1153,7 +1164,7 @@ namespace frontend {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-  FloatLiteral(const wstring &file_name, const int line_num, const int line_pos, FLOAT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
+  FloatLiteral(const std::wstring &file_name, const int line_num, const int line_pos, FLOAT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
       value = v;
     }
 
@@ -1179,7 +1190,7 @@ namespace frontend {
     Expression* if_expression;
     Expression* else_expression;
 
-    Cond(const wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) : Expression(file_name, line_num, line_pos) {
+    Cond(const std::wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) : Expression(file_name, line_num, line_pos) {
       expression = c;
       if_expression = s;
       else_expression = e;
@@ -1217,7 +1228,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    Return(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+    Return(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       expression = e;
     }
 
@@ -1245,7 +1256,7 @@ namespace frontend {
     friend class TreeFactory;
     StatementList* statements;
     
-    Leaving(const wstring& file_name, const int line_num, const int line_pos, 
+    Leaving(const std::wstring& file_name, const int line_num, const int line_pos, 
             const int end_line_num, const int end_line_pos, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       statements = s;
     }
@@ -1270,7 +1281,7 @@ namespace frontend {
     friend class TreeFactory;
     StatementType type;
 
-    Break(const wstring& file_name, const int line_num, const int line_pos,
+    Break(const std::wstring& file_name, const int line_num, const int line_pos,
           const int end_line_num, const int end_line_pos, StatementType t) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       type = t;
     }
@@ -1294,7 +1305,7 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const wstring& file_name, const int line_num, const int line_pos, 
+    If(const std::wstring& file_name, const int line_num, const int line_pos, 
        const int end_line_num, const int end_line_pos, Expression* e, StatementList* s, If* n = nullptr) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       expression = e;
       if_statements = s;
@@ -1336,11 +1347,11 @@ namespace frontend {
    ****************************/
   class EnumItem : public ParseNode {
     friend class TreeFactory;
-    wstring name;
+    std::wstring name;
     int id;
     Enum* eenum;
 
-    EnumItem(const wstring& file_name, const int line_num, const int line_pos, const wstring& n, Enum* e) : ParseNode(file_name, line_num, line_pos) {
+    EnumItem(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& n, Enum* e) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       id = -1;
       eenum = e;
@@ -1350,7 +1361,7 @@ namespace frontend {
     }
     
   public:
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
@@ -1372,15 +1383,13 @@ namespace frontend {
    ****************************/
   class Alias : public ParseNode {
     friend class TreeFactory;
-    wstring name;
-    map<const wstring, Type*> aliases;
-    wstring encoded_name;
+    std::wstring name;
+    std::map<const std::wstring, Type*> aliases;
+    std::wstring encoded_name;
+    std::wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
+    std::wstring EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn, ParsedProgram* program, Linker* linker);
 
-    wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
-
-    wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, ParsedProgram* program, Linker* linker);
-
-    Alias(const wstring& file_name, const int line_num, const int line_pos, const wstring& n) : ParseNode(file_name, line_num, line_pos) {
+    Alias(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& n) : ParseNode(file_name, line_num, line_pos) {
       name = n;
     }
 
@@ -1388,7 +1397,7 @@ namespace frontend {
     }
 
   public:
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
@@ -1396,7 +1405,7 @@ namespace frontend {
       if(encoded_name.empty()) {
         encoded_name += name;
         encoded_name += L'|';
-        map<const wstring, Type*>::iterator iter;
+        std::map<const std::wstring, Type*>::iterator iter;
         for(iter = aliases.begin(); iter != aliases.end(); ++iter) {
           encoded_name += iter->first;
           encoded_name += L'|';
@@ -1406,21 +1415,21 @@ namespace frontend {
       }
     }
 
-    const wstring GetEncodedName() {
+    const std::wstring GetEncodedName() {
       return encoded_name;
     }
 
-    bool AddType(const wstring &n, Type *t) {
+    bool AddType(const std::wstring &n, Type *t) {
       if(GetType(n)) {
         return false;
       }
 
-      aliases.insert(pair<const wstring, Type*>(n, t));
+      aliases.insert(std::pair<const std::wstring, Type*>(n, t));
       return true;
     }
 
-    Type* GetType(const wstring& n) {
-      map<const wstring, Type*>::iterator result = aliases.find(n);
+    Type* GetType(const std::wstring& n) {
+      std::map<const std::wstring, Type*>::iterator result = aliases.find(n);
       if(result != aliases.end()) {
         return result->second;
       }
@@ -1436,19 +1445,19 @@ namespace frontend {
     friend class TreeFactory;
     int end_line_num;
     int end_line_pos;
-    wstring name;
+    std::wstring name;
     int offset;
     int index;
-    map<const wstring, EnumItem*> items;
+    std::map<const std::wstring, EnumItem*> items;
 
-    Enum(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n, int o) : ParseNode(f, l, p) {
+    Enum(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, int o) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
       index = offset = o;
     }
 
-    Enum(const wstring& f, const int l, const int p, const int el, const int ep, const wstring &n) : ParseNode(f, l, p) {
+    Enum(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring &n) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
@@ -1481,7 +1490,7 @@ namespace frontend {
       }
       
       e->SetId(index++);
-      items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
+      items.insert(std::pair<const std::wstring, EnumItem*>(e->GetName(), e));
       return true;
     }
     
@@ -1491,12 +1500,12 @@ namespace frontend {
       }
 
       e->SetId(value);
-      items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
+      items.insert(std::pair<const std::wstring, EnumItem*>(e->GetName(), e));
       return true;
     }
     
-    EnumItem* GetItem(const wstring &i) {
-      map<const wstring, EnumItem*>::iterator result = items.find(i);
+    EnumItem* GetItem(const std::wstring &i) {
+      std::map<const std::wstring, EnumItem*>::iterator result = items.find(i);
       if(result != items.end()) {
         return result->second;
       }
@@ -1504,7 +1513,7 @@ namespace frontend {
       return nullptr;
     }
 
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
@@ -1512,7 +1521,7 @@ namespace frontend {
       return offset;
     }
 
-    map<const wstring, EnumItem*> GetItems() {
+    std::map<const std::wstring, EnumItem*> GetItems() {
       return items;
     }
     
@@ -1527,13 +1536,13 @@ namespace frontend {
   class Select : public Statement {
     friend class TreeFactory;
     Assignment* eval_assignment;
-    map<int, StatementList*> label_statements;
-    vector<StatementList*> statement_lists;
-    map<ExpressionList*, StatementList*> statement_map;
+    std::map<int, StatementList*> label_statements;
+    std::vector<StatementList*> statement_lists;
+    std::map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-    Select(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
-           Assignment* e, map<ExpressionList*, StatementList*> s, vector<StatementList*> sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+    Select(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
+           Assignment* e, std::map<ExpressionList*, StatementList*> s, std::vector<StatementList*> sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       eval_assignment = e;
       statement_map = s;
       statement_lists = sl;
@@ -1544,11 +1553,11 @@ namespace frontend {
     }
 
   public:
-    void SetLabelStatements(map<int, StatementList*> s) {
+    void SetLabelStatements(std::map<int, StatementList*> s) {
       label_statements = s;
     }
 
-    map<int, StatementList*> GetLabelStatements() {
+    std::map<int, StatementList*> GetLabelStatements() {
       return label_statements;
     }
 
@@ -1560,11 +1569,11 @@ namespace frontend {
       return eval_assignment;
     }
 
-    map<ExpressionList*, StatementList*> GetStatements() {
+    std::map<ExpressionList*, StatementList*> GetStatements() {
       return statement_map;
     }
 
-    vector<StatementList*> GetStatementLists() {
+    std::vector<StatementList*> GetStatementLists() {
       return statement_lists;
     }
 
@@ -1581,7 +1590,7 @@ namespace frontend {
     StatementList* statements;
 
   public:
-  CriticalSection(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* v, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+  CriticalSection(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* v, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       variable = v;
       statements = s;
     }
@@ -1612,7 +1621,7 @@ namespace frontend {
     Statement* update_stmt;
     StatementList* statements;
 
-    For(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
+    For(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
         Statement* pre, Expression* cond, Statement* update, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       pre_stmt = pre;
       cond_expr = cond;
@@ -1653,7 +1662,7 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-  DoWhile(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
+  DoWhile(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
           Expression* e, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       expression = e;
       statements = s;
@@ -1684,7 +1693,7 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-    While(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* e, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+    While(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* e, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       expression = e;
       statements = s;
     }
@@ -1713,7 +1722,7 @@ namespace frontend {
     friend class TreeFactory;
     int id;
 
-    SystemStatement(const wstring& file_name, const int line_num, const int line_pos, 
+    SystemStatement(const std::wstring& file_name, const int line_num, const int line_pos, 
                     const int end_line_num, const int end_line_pos, int i) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       id = i;
     }
@@ -1738,7 +1747,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    SimpleStatement(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+    SimpleStatement(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       expression = e;
     }
 
@@ -1762,7 +1771,7 @@ namespace frontend {
     friend class TreeFactory;
 
   public:
-    EmptyStatement(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+    EmptyStatement(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
     }
     
     ~EmptyStatement() {
@@ -1783,14 +1792,14 @@ namespace frontend {
     Variable* variable;
     Expression* expression;
     
-    Assignment(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
+    Assignment(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
                Assignment* c, Variable* v, Expression* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       child = c;
       variable = v;
       expression = e;
     }
 
-    Assignment(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
+    Assignment(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
                Variable* v, Expression* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       child = nullptr;
       variable = v;
@@ -1830,7 +1839,7 @@ namespace frontend {
     StatementType stmt_type;
     bool is_string_concat;
 
-    OperationAssignment(const wstring& file_name, const int line_num, const int line_pos, 
+    OperationAssignment(const std::wstring& file_name, const int line_num, const int line_pos, 
                         const int end_line_num, const int end_line_pos, Variable* v, Expression* e, StatementType t) : Assignment(file_name, line_num, line_pos, end_line_num, end_line_pos, v, e) {
       stmt_type = t;
       is_string_concat = false;
@@ -1866,14 +1875,14 @@ namespace frontend {
     Assignment* assignment;
     Declaration* child;
 
-    Declaration(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+    Declaration(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                 SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       entry = e;
       child = c;
       assignment = a;
     }
 
-    Declaration(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+    Declaration(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                 SymbolEntry* e, Declaration* c) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       entry = e;
       child = c;
@@ -1919,7 +1928,7 @@ namespace frontend {
    ****************************/
   class DeclarationList {
     friend class TreeFactory;
-    vector<Declaration*> declarations;
+    std::vector<Declaration*> declarations;
 
     DeclarationList() {
     }
@@ -1928,7 +1937,7 @@ namespace frontend {
     }
 
   public:
-    vector<Declaration*> GetDeclarations() {
+    std::vector<Declaration*> GetDeclarations() {
       return declarations;
     }
 
@@ -1947,12 +1956,12 @@ namespace frontend {
     int mid_line_num;
     int mid_line_pos;
     int id;
-    wstring name;
-    wstring parsed_name;
-    wstring user_name;
-    wstring encoded_name;
-    wstring encoded_return;
-    wstring parsed_return;
+    std::wstring name;
+    std::wstring parsed_name;
+    std::wstring user_name;
+    std::wstring encoded_name;
+    std::wstring encoded_return;
+    std::wstring parsed_return;
     StatementList* statements;
     DeclarationList* declarations;
     Type* return_type;
@@ -1966,11 +1975,11 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
 #ifdef _DIAG_LIB
-    vector<Expression*> diagnostic_expressions;
-    vector<MethodCall*> diagnostic_method_calls;
+    std::vector<Expression*> diagnostic_expressions;
+    std::vector<MethodCall*> diagnostic_method_calls;
 #endif
     
-    Method(const wstring& f, const int l, const int p, const int ml, const int mp, const wstring& n,
+    Method(const std::wstring& f, const int l, const int p, const int ml, const int mp, const std::wstring& n,
            MethodType m, bool s, bool c) : ParseNode(f, l, p) {
       mid_line_num = ml;
       mid_line_pos = mp;
@@ -1989,7 +1998,7 @@ namespace frontend {
       original = nullptr;
     }
 
-    Method(const wstring& f, const int l, const int p, const int ml, const int mp, const wstring& n) : ParseNode(f, l, p) {
+    Method(const std::wstring& f, const int l, const int p, const int ml, const int mp, const std::wstring& n) : ParseNode(f, l, p) {
       mid_line_num = ml;
       mid_line_pos = mp;
       end_line_num = end_line_pos = -1;
@@ -2010,18 +2019,18 @@ namespace frontend {
     ~Method() {
     }
 
-    wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
+    std::wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
 
-    wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
+    std::wstring EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn,
                                Class* klass, ParsedProgram* program, Linker* linker);
 
-    wstring EncodeType(Type* type);
+    std::wstring EncodeType(Type* type);
 
-    wstring EncodeUserType(Type* type);
+    std::wstring EncodeUserType(Type* type);
 
-    wstring ReplaceSubstring(wstring s, const wstring f, const wstring &r) {
+    std::wstring ReplaceSubstring(std::wstring s, const std::wstring f, const std::wstring &r) {
       const size_t index = s.find(f);
-      if(index != string::npos) {
+      if(index != std::string::npos) {
         s.replace(index, f.size(), r);
       }
 
@@ -2079,7 +2088,7 @@ namespace frontend {
       parsed_name = name + L':';
 
       // params
-      vector<Declaration*> declaration_list = declarations->GetDeclarations();
+      std::vector<Declaration*> declaration_list = declarations->GetDeclarations();
       for(size_t i = 0; i < declaration_list.size(); ++i) {
         SymbolEntry* entry = declaration_list[i]->GetEntry();
         if(entry) {
@@ -2097,7 +2106,7 @@ namespace frontend {
       encoded_name = name + L':';
 
       // params
-      vector<Declaration*> declaration_list = declarations->GetDeclarations();
+      std::vector<Declaration*> declaration_list = declarations->GetDeclarations();
       for(size_t i = 0; i < declaration_list.size(); ++i) {
         SymbolEntry* entry = declaration_list[i]->GetEntry();
         if(entry) {
@@ -2154,11 +2163,11 @@ namespace frontend {
       return symbol_table;
     }
 
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
-    const wstring GetParsedName() {
+    const std::wstring GetParsedName() {
       if(parsed_name.size() == 0) {
         EncodeSignature();
       }
@@ -2166,7 +2175,7 @@ namespace frontend {
       return parsed_name;
     }
 
-    const wstring GetUserName() {
+    const std::wstring GetUserName() {
       if(user_name.size() == 0) {
         EncodeUserName();
       }
@@ -2174,15 +2183,15 @@ namespace frontend {
       return user_name;
     }
 
-    const wstring GetEncodedName() const {
+    const std::wstring GetEncodedName() const {
       return encoded_name;
     }
 
-    const wstring GetParsedReturn() const {
+    const std::wstring GetParsedReturn() const {
       return parsed_return;
     }
 
-    const wstring GetEncodedReturn() {
+    const std::wstring GetEncodedReturn() {
       if(encoded_return.size() == 0) {
         EncodeSignature();
       }
@@ -2219,11 +2228,11 @@ namespace frontend {
     }
 
 #ifdef _DIAG_LIB
-    void SetExpressions(vector<Expression*> e) {
+    void SetExpressions(std::vector<Expression*> e) {
       diagnostic_expressions = e;
     }
 
-    vector <Expression*> GetExpressions() {
+    std::vector <Expression*> GetExpressions() {
       return diagnostic_expressions;
     }
 
@@ -2231,7 +2240,7 @@ namespace frontend {
       diagnostic_method_calls.push_back(method_call);
     }
 
-    vector <MethodCall*> GetMethodCalls() {
+    std::vector <MethodCall*> GetMethodCalls() {
       return diagnostic_method_calls;
     }
 #endif
@@ -2246,34 +2255,34 @@ namespace frontend {
     int end_line_pos;
     int id;
     int lambda_id;
-    wstring name;
-    wstring parent_name;
-    multimap<const wstring, Method*> unqualified_methods;
-    map<const wstring, Method*> methods;
-    vector<Method*> method_list;
+    std::wstring name;
+    std::wstring parent_name;
+    std::multimap<const std::wstring, Method*> unqualified_methods;
+    std::map<const std::wstring, Method*> methods;
+    std::vector<Method*> method_list;
     int next_method_id;
-    vector<Statement*> statements;
+    std::vector<Statement*> statements;
     SymbolTable* symbol_table;
     Class* parent;
     LibraryClass* lib_parent;
-    vector<Class*> interfaces;
-    vector<LibraryClass*> lib_interfaces;
-    vector<Class*> children;
+    std::vector<Class*> interfaces;
+    std::vector<LibraryClass*> lib_interfaces;
+    std::vector<Class*> children;
     bool is_virtual;
     bool is_generic;
     bool was_called;
     bool is_interface;
     bool is_public;
     MethodCall* anonymous_call;
-    vector<wstring> interface_names;
-    vector<Class*> generic_classes;
+    std::vector<std::wstring> interface_names;
+    std::vector<Class*> generic_classes;
     Type* generic_interface;
 #ifdef _DIAG_LIB
-    vector<Expression*> diagnostic_expressions;
+    std::vector<Expression*> diagnostic_expressions;
 #endif
 
-    Class(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n, const wstring& pn,
-          vector<wstring> &e, vector<Class*> g, bool s, bool i) : ParseNode(f, l, p) {
+    Class(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, const std::wstring& pn,
+          std::vector<std::wstring> &e, std::vector<Class*> g, bool s, bool i) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
@@ -2293,8 +2302,8 @@ namespace frontend {
       generic_interface = nullptr;
     }
 
-    Class(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n,
-          const wstring &pn, vector<wstring> &e) : ParseNode(f, l, p) {
+    Class(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n,
+          const std::wstring &pn, std::vector<std::wstring> &e) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
@@ -2313,7 +2322,7 @@ namespace frontend {
       generic_interface = nullptr;
     }
     
-    Class(const wstring& f, const int l, const int p, const int el, const int ep, const wstring& n, bool g) : ParseNode(f, l, p) {
+    Class(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, bool g) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
@@ -2371,7 +2380,7 @@ namespace frontend {
       return was_called;
     }
 
-    void SetGenericInterface(const wstring &n) {
+    void SetGenericInterface(const std::wstring &n) {
       generic_interface = TypeFactory::Instance()->MakeType(CLASS_TYPE, n);
       interface_names.push_back(n);
     }
@@ -2380,24 +2389,24 @@ namespace frontend {
       return generic_interface;
     }
 
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
-    wstring GetBundleName() {
+    std::wstring GetBundleName() {
       const size_t index = name.find_last_of(L'.');
-      if(index != string::npos) {
+      if(index != std::string::npos) {
         return name.substr(0, index);
       }
 
       return L"Default";
     }
 
-    const wstring GetParentName() const {
+    const std::wstring GetParentName() const {
       return parent_name;
     }
 
-    void SetParentName(wstring n) {
+    void SetParentName(std::wstring n) {
       parent_name = n;
     }
 
@@ -2418,7 +2427,7 @@ namespace frontend {
     }
     
     bool AddMethod(Method* m) {
-      const wstring parsed_name = m->GetParsedName();
+      const std::wstring parsed_name = m->GetParsedName();
       for(size_t i = 0; i < method_list.size(); ++i) {
         if(method_list[i]->GetParsedName() == parsed_name) {
           return false;
@@ -2454,7 +2463,7 @@ namespace frontend {
       return !generic_classes.empty();
     }
 
-    int GenericIndex(const wstring& n) {
+    int GenericIndex(const std::wstring& n) {
       for(size_t i = 0; i < generic_classes.size(); ++i) {
         if(n == generic_classes[i]->GetName()) {
           return (int)i;
@@ -2464,11 +2473,11 @@ namespace frontend {
       return -1;
     }
 
-    const vector<Class*> GetGenericClasses() {
+    const std::vector<Class*> GetGenericClasses() {
       return generic_classes;
     }
 
-    void SetGenericClasses(const vector<Class*> &g) {
+    void SetGenericClasses(const std::vector<Class*> &g) {
       generic_classes = g;
     }
 
@@ -2476,16 +2485,16 @@ namespace frontend {
       return generic_interface != nullptr;
     }
 
-    vector<wstring> GetInterfaceNames() {
+    std::vector<std::wstring> GetInterfaceNames() {
       return interface_names;
     }
 
-    const vector<wstring> GetGenericStrings() {
-      vector<wstring> generic_strings;
+    const std::vector<std::wstring> GetGenericStrings() {
+      std::vector<std::wstring> generic_strings;
 
       for(size_t i = 0; i < generic_classes.size(); ++i) {
         Class* generic_class = generic_classes[i];
-        wstring generic_string = generic_class->GetName();
+        std::wstring generic_string = generic_class->GetName();
         generic_string += L'|';
         if(generic_class->HasGenericInterface()) {
           generic_string += generic_class->GetGenericInterface()->GetName();
@@ -2496,7 +2505,7 @@ namespace frontend {
       return generic_strings;
     }
 
-    Class* GetGenericClass(const wstring& n) {
+    Class* GetGenericClass(const std::wstring& n) {
       const int index = GenericIndex(n);
       if(index > -1) {
         return generic_classes[index];
@@ -2509,7 +2518,7 @@ namespace frontend {
       return is_generic;
     }
 
-    vector<Class*> GetGenericNames() {
+    std::vector<Class*> GetGenericNames() {
       return generic_classes;
     }
 
@@ -2517,12 +2526,12 @@ namespace frontend {
       statements.push_back(s);
     }
 
-    vector<Statement*> GetStatements() {
+    std::vector<Statement*> GetStatements() {
       return statements;
     }
 
-    Method* GetMethod(const wstring &n) {
-      map<const wstring, Method*>::iterator result = methods.find(n);
+    Method* GetMethod(const std::wstring &n) {
+      std::map<const std::wstring, Method*>::iterator result = methods.find(n);
       if(result != methods.end()) {
         return result->second;
       }
@@ -2530,11 +2539,11 @@ namespace frontend {
       return nullptr;
     }
 
-    vector<Method*> GetUnqualifiedMethods(const wstring &n) {
-      vector<Method*> results;
-      pair<multimap<const wstring, Method*>::iterator, multimap<const wstring, Method*>::iterator> result;
+    std::vector<Method*> GetUnqualifiedMethods(const std::wstring &n) {
+      std::vector<Method*> results;
+      std::pair<std::multimap<const std::wstring, Method*>::iterator, std::multimap<const std::wstring, Method*>::iterator> result;
       result = unqualified_methods.equal_range(n);
-      multimap<const wstring, Method*>::iterator iter = result.first;
+      std::multimap<const std::wstring, Method*>::iterator iter = result.first;
       for(iter = result.first; iter != result.second; ++iter) {
         results.push_back(iter->second);
       }
@@ -2542,15 +2551,15 @@ namespace frontend {
       return results;
     }
 
-    vector<Method*> GetAllUnqualifiedMethods(const wstring &n) {
+    std::vector<Method*> GetAllUnqualifiedMethods(const std::wstring &n) {
       if(n == L"New") {
         return GetUnqualifiedMethods(n);
       }
 
-      vector<Method*> results = GetUnqualifiedMethods(n);
+      std::vector<Method*> results = GetUnqualifiedMethods(n);
       Class* next = parent;
       while(next) {
-        vector<Method*> next_results = next->GetUnqualifiedMethods(n);
+        std::vector<Method*> next_results = next->GetUnqualifiedMethods(n);
         for(size_t i = 0; i < next_results.size(); ++i) {
           results.push_back(next_results[i]);
         }
@@ -2559,7 +2568,7 @@ namespace frontend {
       return results;
     }
 
-    const vector<Method*> GetMethods() {
+    const std::vector<Method*> GetMethods() {
       return method_list;
     }
 
@@ -2579,19 +2588,19 @@ namespace frontend {
       return lib_parent;
     }
 
-    void SetInterfaces(vector<Class*>& i) {
+    void SetInterfaces(std::vector<Class*>& i) {
       interfaces = i;
     }
 
-    vector<Class*> GetInterfaces() {
+    std::vector<Class*> GetInterfaces() {
       return interfaces;
     }
 
-    void SetLibraryInterfaces(vector<LibraryClass*>& i) {
+    void SetLibraryInterfaces(std::vector<LibraryClass*>& i) {
       lib_interfaces = i;
     }
 
-    vector<LibraryClass*> GetLibraryInterfaces() {
+    std::vector<LibraryClass*> GetLibraryInterfaces() {
       return lib_interfaces;
     }
 
@@ -2599,7 +2608,7 @@ namespace frontend {
       children.push_back(c);
     }
 
-    vector<Class*> GetChildren() {
+    std::vector<Class*> GetChildren() {
       return children;
     }
 
@@ -2614,11 +2623,11 @@ namespace frontend {
     }
 
 #ifdef _DIAG_LIB
-    void SetExpressions(vector<Expression*> e) {
+    void SetExpressions(std::vector<Expression*> e) {
       diagnostic_expressions = e;
     }
 
-    vector < Expression*> GetExpressions() {
+    std::vector < Expression*> GetExpressions() {
       return diagnostic_expressions;
     }
 #endif
@@ -2636,8 +2645,8 @@ namespace frontend {
     LibraryClass* original_lib_klass;
     LibraryMethod* lib_method;
     LibraryEnumItem* lib_enum_item;
-    wstring variable_name;
-    wstring method_name;
+    std::wstring variable_name;
+    std::wstring method_name;
     ExpressionList* expressions;
     SymbolEntry* entry;
     MethodCallType call_type;
@@ -2648,15 +2657,15 @@ namespace frontend {
     bool is_func_def;
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
-    vector<Type*> concrete_types;
+    std::vector<Type*> concrete_types;
     int mid_line_num;
     int mid_line_pos;
 
-    MethodCall(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-               MethodCallType t, const wstring &v, ExpressionList* e);
+    MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+               MethodCallType t, const std::wstring &v, ExpressionList* e);
 
-    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
-               const int end_line_num, const int end_line_pos, const wstring& v, const wstring& m, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
+               const int end_line_num, const int end_line_pos, const std::wstring& v, const std::wstring& m, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
       mid_line_num = ml;
       mid_line_pos = mp;
       variable_name = v;
@@ -2678,8 +2687,8 @@ namespace frontend {
       anonymous_klass = nullptr;
     }
 
-    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring& v,
-               const wstring &m) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring& v,
+               const std::wstring &m) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
       mid_line_num = mid_line_pos = -1;
       variable_name = v;
       call_type = ENUM_CALL;
@@ -2700,8 +2709,8 @@ namespace frontend {
       anonymous_klass = nullptr;
     }
     
-    MethodCall(const wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
-               const int end_line_num, const int end_line_pos, Variable* v, const wstring& m,
+    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
+               const int end_line_num, const int end_line_pos, Variable* v, const std::wstring& m,
                ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
       mid_line_num = ml;
       mid_line_pos = mp;
@@ -2777,11 +2786,11 @@ namespace frontend {
       return array_type;
     }
 
-    const wstring GetVariableName() const {
+    const std::wstring GetVariableName() const {
       return variable_name;
     }
 
-    void SetVariableName(const wstring v) {
+    void SetVariableName(const std::wstring v) {
       variable_name = v;
     }
 
@@ -2801,11 +2810,11 @@ namespace frontend {
       return entry;
     }
 
-    const wstring GetMethodName() const {
+    const std::wstring GetMethodName() const {
       return method_name;
     }
 
-    const vector<Type*> GetConcreteTypes() {
+    const std::vector<Type*> GetConcreteTypes() {
       return concrete_types;
     }
 
@@ -2813,7 +2822,7 @@ namespace frontend {
       return concrete_types.size() > 0;
     }
 
-    void SetConcreteTypes(vector<Type*> &c) {
+    void SetConcreteTypes(std::vector<Type*> &c) {
       concrete_types  = c;
     }
 
@@ -2833,7 +2842,7 @@ namespace frontend {
       expressions = e;
     }
 
-    void SetEnumItem(EnumItem* i, const wstring &enum_name) {
+    void SetEnumItem(EnumItem* i, const std::wstring &enum_name) {
       enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
@@ -2848,7 +2857,7 @@ namespace frontend {
       }
     }
 
-    void SetLibraryEnumItem(LibraryEnumItem* i, const wstring &enum_name) {
+    void SetLibraryEnumItem(LibraryEnumItem* i, const std::wstring &enum_name) {
       lib_enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
@@ -2912,14 +2921,14 @@ namespace frontend {
     int end_line_num;
     int end_line_pos;
     Type* type;
-    wstring name;
+    std::wstring name;
     Method* method;
     ExpressionList* parameters;
     MethodCall* method_call;
-    vector<pair<SymbolEntry*, SymbolEntry*> > copies;
+    std::vector<std::pair<SymbolEntry*, SymbolEntry*> > copies;
     
   public:
-    Lambda(const wstring& file_name, const int line_num, const int line_pos, const int el, const int ep, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num, line_pos) {
+    Lambda(const std::wstring& file_name, const int line_num, const int line_pos, const int el, const int ep, Type* t, const std::wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num, line_pos) {
       end_line_num = el;
       end_line_pos = ep;
       type = t;
@@ -2936,7 +2945,7 @@ namespace frontend {
       return LAMBDA_EXPR;
     }
 
-    const wstring GetName() {
+    const std::wstring GetName() {
       return name;
     }
 
@@ -2977,7 +2986,7 @@ namespace frontend {
     }
     
     void AddClosure(SymbolEntry* var_entry, SymbolEntry* capture_entry) {
-      copies.push_back(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
+      copies.push_back(std::pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
     }
 
     inline bool HasClosure(SymbolEntry* capture_entry) {
@@ -2994,7 +3003,7 @@ namespace frontend {
       return nullptr;
     }
 
-    vector<pair<SymbolEntry*, SymbolEntry*> > GetClosures() {
+    std::vector<std::pair<SymbolEntry*, SymbolEntry*> > GetClosures() {
       return copies;
     }
   };
@@ -3004,15 +3013,15 @@ namespace frontend {
    ****************************/
   class TreeFactory {
     static TreeFactory* instance;
-    vector<ParseNode*> nodes;
-    vector<Statement*> statements;
-    vector<Expression*> expressions;
-    vector<DeclarationList*> declaration_lists;
-    vector<StatementList*> statement_lists;
-    vector<ExpressionList*> expression_lists;
-    vector<MethodCall*> calls;
-    vector<SymbolEntry*> entries;
-    vector<Declaration*> declarations;
+    std::vector<ParseNode*> nodes;
+    std::vector<Statement*> statements;
+    std::vector<Expression*> expressions;
+    std::vector<DeclarationList*> declaration_lists;
+    std::vector<StatementList*> statement_lists;
+    std::vector<ExpressionList*> expression_lists;
+    std::vector<MethodCall*> calls;
+    std::vector<SymbolEntry*> entries;
+    std::vector<Declaration*> declarations;
 
     TreeFactory() {
     }
@@ -3093,65 +3102,65 @@ namespace frontend {
       instance = nullptr;
     }
 
-    Alias* MakeAlias(const wstring& file_name, const int line_num, const int line_pos, const wstring& name) {
+    Alias* MakeAlias(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& name) {
       Alias* tmp = new Alias(file_name, line_num, line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name, int offset) {
+    Enum* MakeEnum(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name, int offset) {
       Enum* tmp = new Enum(file_name, line_num, line_pos, end_line_num, end_line_pos, name, offset);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name) {
+    Enum* MakeEnum(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name) {
       Enum* tmp = new Enum(file_name, line_num, line_pos, end_line_num, end_line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
     
-    EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const int line_pos, const wstring &name, Enum* e) {
+    EnumItem* MakeEnumItem(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &name, Enum* e) {
       EnumItem* tmp = new EnumItem(file_name, line_num, line_pos, name, e);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name,
-                     const wstring &parent_name, vector<wstring> interfaces, 
-         vector<Class*> generics, bool is_public, bool is_interface) {
+    Class* MakeClass(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name,
+                     const std::wstring &parent_name, std::vector<std::wstring> interfaces, 
+         std::vector<Class*> generics, bool is_public, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, line_pos, end_line_num, end_line_pos, name, parent_name, interfaces, generics, is_public, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name,
-                     const wstring &parent_name, vector<wstring> interfaces) {
+    Class* MakeClass(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name,
+                     const std::wstring &parent_name, std::vector<std::wstring> interfaces) {
       Class* tmp = new Class(file_name, line_num, line_pos, end_line_num, end_line_pos, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const wstring &name, bool is_generic) {
+    Class* MakeClass(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name, bool is_generic) {
       Class* tmp = new Class(file_name, line_num, line_pos, end_line_num, end_line_pos, name, is_generic);
       nodes.push_back(tmp);
       return tmp;
     }
     
-    Method* MakeMethod(const wstring &file_name, const int line_num, const int line_pos, const int mid_line_num, const int mid_line_pos, const wstring &name,
+    Method* MakeMethod(const std::wstring &file_name, const int line_num, const int line_pos, const int mid_line_num, const int mid_line_pos, const std::wstring &name,
                        MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, line_pos, mid_line_num, mid_line_pos, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Method* MakeMethod(const wstring& file_name, const int line_num, const int line_pos, const int mid_line_num, const int mid_line_pos, const wstring& name) {
+    Method* MakeMethod(const std::wstring& file_name, const int line_num, const int line_pos, const int mid_line_num, const int mid_line_pos, const std::wstring& name) {
       Method* tmp = new Method(file_name, line_num, line_pos, mid_line_num, mid_line_pos, name);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Type* t, const wstring &n, Method* m, ExpressionList* p) {
+    Lambda* MakeLambda(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Type* t, const std::wstring &n, Method* m, ExpressionList* p) {
       Lambda* tmp = new Lambda(file_name, line_num, line_pos, end_line_num, end_line_pos, t, n, m, p);
       nodes.push_back(tmp);
       return tmp;
@@ -3175,232 +3184,232 @@ namespace frontend {
       return tmp;
     }
     
-    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, instructions::InstructionType instr) {
+    SystemStatement* MakeSystemStatement(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, instructions::InstructionType instr) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, line_pos, end_line_num, end_line_pos, instr);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, instructions::Traps trap) {
+    SystemStatement* MakeSystemStatement(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, instructions::Traps trap) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, line_pos, end_line_num, end_line_pos, trap);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SimpleStatement* MakeSimpleStatement(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* expression) {
+    SimpleStatement* MakeSimpleStatement(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* expression) {
       SimpleStatement* tmp = new SimpleStatement(file_name, line_num, line_pos, end_line_num, end_line_pos, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    EmptyStatement* MakeEmptyStatement(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos) {
+    EmptyStatement* MakeEmptyStatement(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos) {
       EmptyStatement*  tmp = new EmptyStatement(file_name, line_num, line_pos, end_line_num, end_line_pos);
       statements.push_back(tmp);
       return tmp;
     }
 
-    StringConcat* MakeStringConcat(list<Expression*> e, unordered_map<Expression*, Method*> ms, unordered_map<Expression*, LibraryMethod*> ls) {
+    StringConcat* MakeStringConcat(std::list<Expression*> e, std::unordered_map<Expression*, Method*> ms, std::unordered_map<Expression*, LibraryMethod*> ls) {
       StringConcat* tmp = new StringConcat(e, ms, ls);
       expressions.push_back(tmp);
       return tmp;
     }
     
-    Variable* MakeVariable(const wstring &file_name, const int line_num, const int line_pos, const wstring &name) {
+    Variable* MakeVariable(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &name) {
       Variable* tmp = new Variable(file_name, line_num, line_pos, name);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Cond* MakeCond(const wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) {
+    Cond* MakeCond(const std::wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) {
       Cond* tmp = new Cond(file_name, line_num, line_pos, c, s, e);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    StaticArray* MakeStaticArray(const wstring &file_name, const int line_num, const int line_pos, ExpressionList* exprs) {
+    StaticArray* MakeStaticArray(const std::wstring &file_name, const int line_num, const int line_pos, ExpressionList* exprs) {
       StaticArray* tmp = new StaticArray(file_name, line_num, line_pos, exprs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, SymbolEntry* entry,
+    Declaration* MakeDeclaration(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, SymbolEntry* entry,
                                  Declaration* child, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, line_pos, end_line_num, end_line_pos, entry, child, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, SymbolEntry* entry, Assignment* assign) {
+    Declaration* MakeDeclaration(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, SymbolEntry* entry, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, line_pos, end_line_num, end_line_pos, entry, nullptr, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, SymbolEntry* entry, Declaration* child) {
+    Declaration* MakeDeclaration(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, SymbolEntry* entry, Declaration* child) {
       Declaration* tmp = new Declaration(file_name, line_num, line_pos, end_line_num, end_line_pos, entry, child);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, const int line_num, const int line_pos,
+    CalculatedExpression* MakeCalculatedExpression(const std::wstring &file_name, const int line_num, const int line_pos,
                                                    ExpressionType type, Expression* lhs, Expression* rhs) {
       CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, line_pos, type, lhs, rhs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, const int line_num, const int line_pos, ExpressionType type) {
+    CalculatedExpression* MakeCalculatedExpression(const std::wstring &file_name, const int line_num, const int line_pos, ExpressionType type) {
       CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, line_pos, type);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(const wstring &file_name, const int line_num, const int line_pos, INT_VALUE value) {
+    IntegerLiteral* MakeIntegerLiteral(const std::wstring &file_name, const int line_num, const int line_pos, INT_VALUE value) {
       IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    FloatLiteral* MakeFloatLiteral(const wstring &file_name, const int line_num, const int line_pos, FLOAT_VALUE value) {
+    FloatLiteral* MakeFloatLiteral(const std::wstring &file_name, const int line_num, const int line_pos, FLOAT_VALUE value) {
       FloatLiteral* tmp = new FloatLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterLiteral* MakeCharacterLiteral(const wstring &file_name, const int line_num, const int line_pos, wchar_t value) {
+    CharacterLiteral* MakeCharacterLiteral(const std::wstring &file_name, const int line_num, const int line_pos, wchar_t value) {
       CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const wstring &file_name, const int line_num, const int line_pos, const wstring &char_string) {
+    CharacterString* MakeCharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &char_string) {
       CharacterString* tmp = new CharacterString(file_name, line_num, line_pos, char_string);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    NilLiteral* MakeNilLiteral(const wstring &file_name, const int line_num, const int line_pos) {
+    NilLiteral* MakeNilLiteral(const std::wstring &file_name, const int line_num, const int line_pos) {
       NilLiteral* tmp = new NilLiteral(file_name, line_num, line_pos);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    BooleanLiteral* MakeBooleanLiteral(const wstring &file_name, const int line_num, const int line_pos, bool boolean) {
+    BooleanLiteral* MakeBooleanLiteral(const std::wstring &file_name, const int line_num, const int line_pos, bool boolean) {
       BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, line_pos, boolean);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, const int line_pos, 
+    MethodCall* MakeMethodCall(const std::wstring &file_name, const int line_num, const int line_pos, 
                                const int end_line_num, const int end_line_pos, MethodCallType type,
-                               const wstring &value, ExpressionList* exprs) {
+                               const std::wstring &value, ExpressionList* exprs) {
       MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, type, value, exprs);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos, 
+    MethodCall* MakeMethodCall(const std::wstring& file_name, const int line_num, const int line_pos, 
                                const int mid_line_num, const int mid_line_pos,
                                const int end_line_num, const int end_line_pos, 
-                               const wstring& v, const wstring& m, ExpressionList* e) {
+                               const std::wstring& v, const std::wstring& m, ExpressionList* e) {
       MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos, end_line_num, end_line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos,
+    MethodCall* MakeMethodCall(const std::wstring& file_name, const int line_num, const int line_pos,
                                const int mid_line_num, const int mid_line_pos,
                                const int end_line_num, const int end_line_pos,
-                               Variable* v, const wstring& m, ExpressionList* e) {
+                               Variable* v, const std::wstring& m, ExpressionList* e) {
       MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos, end_line_num, end_line_pos, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, const int line_pos, 
+    MethodCall* MakeMethodCall(const std::wstring& file_name, const int line_num, const int line_pos, 
                                const int end_line_num, const int end_line_pos, 
-                               const wstring& v, const wstring& m) {
+                               const std::wstring& v, const std::wstring& m) {
       MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m);
       calls.push_back(tmp);
       return tmp;
     }
 
-    If* MakeIf(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
+    If* MakeIf(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
                Expression* expression, StatementList* if_statements, If* next = nullptr) {
       If* tmp = new If(file_name, line_num, line_pos, end_line_num, end_line_pos, expression, if_statements, next);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Break* MakeBreakContinue(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementType type) {
+    Break* MakeBreakContinue(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementType type) {
       Break* tmp = new Break(file_name, line_num, line_pos, end_line_num, end_line_pos, type);
       statements.push_back(tmp);
       return tmp;
     }
 
-    DoWhile* MakeDoWhile(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+    DoWhile* MakeDoWhile(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                          Expression* expression, StatementList* stmts) {
       DoWhile* tmp = new DoWhile(file_name, line_num, line_pos, end_line_num, end_line_pos, expression, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    While* MakeWhile(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+    While* MakeWhile(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                      Expression* expression, StatementList* stmts) {
       While* tmp = new While(file_name, line_num, line_pos, end_line_num, end_line_pos, expression, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    For* MakeFor(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Statement* pre_stmt, Expression* cond_expr,
+    For* MakeFor(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Statement* pre_stmt, Expression* cond_expr,
                  Statement* update_stmt, StatementList* stmts) {
       For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmt, cond_expr, update_stmt, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* var, StatementList* stmts) {
+    CriticalSection* MakeCriticalSection(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* var, StatementList* stmts) {
       CriticalSection* tmp = new CriticalSection(file_name, line_num, line_pos, end_line_num, end_line_pos, var, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Select* MakeSelect(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Assignment* eval_assignment,
-                       map<ExpressionList*, StatementList*> statement_map, 
-                       vector<StatementList*> statement_lists, StatementList* other) {
+    Select* MakeSelect(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Assignment* eval_assignment,
+                       std::map<ExpressionList*, StatementList*> statement_map, 
+                       std::vector<StatementList*> statement_lists, StatementList* other) {
       Select* tmp = new Select(file_name, line_num, line_pos, end_line_num, end_line_pos, eval_assignment,
                                statement_map, statement_lists, other);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Return* MakeReturn(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* expression) {
+    Return* MakeReturn(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Expression* expression) {
       Return* tmp = new Return(file_name, line_num, line_pos, end_line_num, end_line_pos, expression);
       statements.push_back(tmp);
       return tmp;
     }
     
-    Leaving* MakeLeaving(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementList* stmts) {
+    Leaving* MakeLeaving(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementList* stmts) {
       Leaving* tmp = new Leaving(file_name, line_num, line_pos, end_line_num, end_line_pos, stmts);
       statements.push_back(tmp);
       return tmp;
     }
     
-    Assignment* MakeAssignment(const wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+    Assignment* MakeAssignment(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                                Assignment* child, Variable* variable, Expression* expression) {
       Assignment* tmp = new Assignment(file_name, line_num, line_pos, end_line_num, end_line_pos, child, variable, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Assignment* MakeAssignment(const wstring &file_name, const int line_num, const int line_pos, 
+    Assignment* MakeAssignment(const std::wstring &file_name, const int line_num, const int line_pos, 
                                const int end_line_num, const int end_line_pos, Variable* variable, Expression* expression) {
       Assignment* tmp = new Assignment(file_name, line_num, line_pos, end_line_num, end_line_pos, variable, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    OperationAssignment* MakeOperationAssignment(const wstring &file_name, const int line_num, const int line_pos, 
+    OperationAssignment* MakeOperationAssignment(const std::wstring &file_name, const int line_num, const int line_pos, 
                                                  const int end_line_num, const int end_line_pos, Variable* variable, 
                                                  Expression* expression, StatementType stmt_type) {
       OperationAssignment* tmp = new OperationAssignment(file_name, line_num, line_pos, end_line_num, end_line_pos, variable, expression, stmt_type);
@@ -3408,14 +3417,14 @@ namespace frontend {
       return tmp;
     }
 
-    SymbolEntry* MakeSymbolEntry(const wstring& file_name, const int line_num, const int line_pos, 
-                                 const wstring& n, Type* t, bool s, bool c, bool e = false) {
+    SymbolEntry* MakeSymbolEntry(const std::wstring& file_name, const int line_num, const int line_pos, 
+                                 const std::wstring& n, Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(file_name, line_num, line_pos, n, t, s, c, e);
       entries.push_back(tmp);
       return tmp;
     }
     
-    SymbolEntry* MakeSymbolEntry(const wstring &n, Type* t, bool s, bool c, bool e = false) {
+    SymbolEntry* MakeSymbolEntry(const std::wstring &n, Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(t ? t->GetFileName() : L"", t ? t->GetLineNumber() : -1, t ? t->GetLinePosition() : -1, n, t, s, c, e);
       entries.push_back(tmp);
       return tmp;
@@ -3426,7 +3435,7 @@ namespace frontend {
    * ParsedBundle class
    ****************************/
   class ParsedBundle : public ParseNode {
-    wstring name;
+    std::wstring name;
     int line_num; 
     int line_pos;
     int end_line_num;
@@ -3434,17 +3443,17 @@ namespace frontend {
 
     SymbolTableManager* symbol_table;
 
-    unordered_map<wstring, Alias*> aliases;
-    vector<Alias*> aliases_list;
+    std::unordered_map<std::wstring, Alias*> aliases;
+    std::vector<Alias*> aliases_list;
 
-    unordered_map<wstring, Enum*> enums;
-    vector<Enum*> enum_list;
+    std::unordered_map<std::wstring, Enum*> enums;
+    std::vector<Enum*> enum_list;
 
-    unordered_map<wstring, Class*> classes;
-    vector<Class*> class_list;
+    std::unordered_map<std::wstring, Class*> classes;
+    std::vector<Class*> class_list;
 
   public:
-    ParsedBundle(const wstring& f, const int l, const int p, wstring &n, SymbolTableManager *t) : ParseNode(f, l, p) {
+    ParsedBundle(const std::wstring& f, const int l, const int p, std::wstring &n, SymbolTableManager *t) : ParseNode(f, l, p) {
       name = n;
       symbol_table = t;
       line_num = l;
@@ -3472,17 +3481,17 @@ namespace frontend {
       end_line_pos = ep;
     }
 
-    const wstring GetName() const {
+    const std::wstring GetName() const {
       return name;
     }
 
     void AddEnum(Enum* e) {
-      enums.insert(pair<wstring, Enum*>(e->GetName(), e));
+      enums.insert(std::pair<std::wstring, Enum*>(e->GetName(), e));
       enum_list.push_back(e);
     }
     
-    Enum* GetEnum(const wstring &e) {
-      unordered_map<wstring, Enum*>::iterator result = enums.find(e);
+    Enum* GetEnum(const std::wstring &e) {
+      std::unordered_map<std::wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
         return result->second;
       }
@@ -3491,12 +3500,12 @@ namespace frontend {
     }
 
     void AddLambdas(Alias* a) {
-      aliases.insert(pair<wstring, Alias*>(a->GetName(), a));
+      aliases.insert(std::pair<std::wstring, Alias*>(a->GetName(), a));
       aliases_list.push_back(a);
     }
 
-    Alias* GetAlias(const wstring& a) {
-      unordered_map<wstring, Alias*>::iterator result = aliases.find(a);
+    Alias* GetAlias(const std::wstring& a) {
+      std::unordered_map<std::wstring, Alias*>::iterator result = aliases.find(a);
       if(result != aliases.end()) {
         return result->second;
       }
@@ -3505,12 +3514,12 @@ namespace frontend {
     }
 
     void AddClass(Class* cls) {
-      classes.insert(pair<wstring, Class*>(cls->GetName(), cls));
+      classes.insert(std::pair<std::wstring, Class*>(cls->GetName(), cls));
       class_list.push_back(cls);
     }
 
-    Class* GetClass(const wstring &n) {
-      unordered_map<wstring, Class*>::iterator result = classes.find(n);
+    Class* GetClass(const std::wstring &n) {
+      std::unordered_map<std::wstring, Class*>::iterator result = classes.find(n);
       if(result != classes.end()) {
         return result->second;
       }
@@ -3518,15 +3527,15 @@ namespace frontend {
       return nullptr;
     }
 
-    const vector<Alias*> GetAliases() {
+    const std::vector<Alias*> GetAliases() {
       return aliases_list;
     }
 
-    const vector<Enum*> GetEnums() {
+    const std::vector<Enum*> GetEnums() {
       return enum_list;
     }
 
-    const vector<Class*> GetClasses() {
+    const std::vector<Class*> GetClasses() {
       return class_list;
     }
 
@@ -3537,13 +3546,13 @@ namespace frontend {
 
   struct int_string_comp {
     bool operator() (IntStringHolder* lhs, IntStringHolder* rhs) const {
-      return tie(lhs->length, lhs->value) < tie(rhs->length, rhs->value);
+      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
     }
   };
 
   struct float_string_comp {
     bool operator() (FloatStringHolder* lhs, FloatStringHolder* rhs) const {
-      return tie(lhs->length, lhs->value) < tie(rhs->length, rhs->value);
+      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
     }
   };
 
@@ -3551,27 +3560,27 @@ namespace frontend {
    * ParsedProgram class
    ****************************/
   class ParsedProgram {
-    map<IntStringHolder*, int, int_string_comp> int_string_ids;
-    vector<IntStringHolder*> int_strings;
+    std::map<IntStringHolder*, int, int_string_comp> int_string_ids;
+    std::vector<IntStringHolder*> int_strings;
 
-    map<FloatStringHolder*, int, float_string_comp> float_string_ids;
-    vector<FloatStringHolder*> float_strings;
+    std::map<FloatStringHolder*, int, float_string_comp> float_string_ids;
+    std::vector<FloatStringHolder*> float_strings;
 
-    map<wstring, int> char_string_ids;
-    vector<wstring> char_strings;
+    std::map<std::wstring, int> char_string_ids;
+    std::vector<std::wstring> char_strings;
     
-    map<wstring, vector<wstring> > file_uses;
-    vector<wstring> use_names;
-    vector<wstring> tiered_use_names;
+    std::map<std::wstring, std::vector<std::wstring> > file_uses;
+    std::vector<std::wstring> use_names;
+    std::vector<std::wstring> tiered_use_names;
 
-    vector<ParsedBundle*> bundles;
-    vector<wstring> bundle_names;
+    std::vector<ParsedBundle*> bundles;
+    std::vector<std::wstring> bundle_names;
     Class* start_class;
     Method* start_method;
     Linker* linker; // deleted elsewhere
 #ifdef _DIAG_LIB
-    vector<wstring> error_strings;
-    vector<wstring> warning_strings;
+    std::vector<std::wstring> error_strings;
+    std::vector<std::wstring> warning_strings;
 #endif
 
   public:
@@ -3597,27 +3606,27 @@ namespace frontend {
     }
 
 #ifdef _DIAG_LIB
-    const vector<wstring> GetErrorStrings() {
+    const std::vector<std::wstring> GetErrorStrings() {
       return error_strings;
     }
 
-    const void SetErrorStrings(vector<wstring> msgs) {
+    const void SetErrorStrings(std::vector<std::wstring> msgs) {
       error_strings = msgs;
     }
     
-    const vector<wstring> GetWarningStrings() {
+    const std::vector<std::wstring> GetWarningStrings() {
       return warning_strings;
     }
     
-    const void SetWarningStrings(vector<wstring> msgs) {
+    const void SetWarningStrings(std::vector<std::wstring> msgs) {
       warning_strings = msgs;
     }
 
-    bool FindMethodOrClass(const wstring uri, const int line_num, Class* &found_klass, Method* &found_method, SymbolTable*& table);
+    bool FindMethodOrClass(const std::wstring uri, const int line_num, Class* &found_klass, Method* &found_method, SymbolTable*& table);
 
 #endif
     
-    wstring GetFileName() const {
+    std::wstring GetFileName() const {
       if(file_uses.size() > 0) {
         return file_uses.begin()->first;
       }
@@ -3625,15 +3634,15 @@ namespace frontend {
       return L"unknown";
     }
 
-    void AddUse(wstring u, const wstring &f) {
-      vector<wstring> uses;
+    void AddUse(std::wstring u, const std::wstring &f) {
+      std::vector<std::wstring> uses;
       uses.push_back(u);
       AddUses(uses, f);
     }
 
-    void AddUses(vector<wstring> &u, const wstring &f) {
+    void AddUses(std::vector<std::wstring> &u, const std::wstring &f) {
       for(size_t i = 0; i < u.size(); ++i) {
-        vector<wstring>::iterator found = find(use_names.begin(), use_names.end(), u[i]);
+        std::vector<std::wstring>::iterator found = find(use_names.begin(), use_names.end(), u[i]);
         if(found == use_names.end()) {
           use_names.push_back(u[i]);
         }
@@ -3641,18 +3650,18 @@ namespace frontend {
       file_uses[f] = u;
     }
 
-    bool HasBundleName(const wstring &name) {
+    bool HasBundleName(const std::wstring &name) {
       if(name.back() != L'#') {
-        vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
+        std::vector<std::wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
         return found != bundle_names.end();
       }
 
       return true;
     }
 
-    const vector<wstring> GetUses();
+    const std::vector<std::wstring> GetUses();
 
-    const vector<wstring> GetUses(const wstring &f) {
+    const std::vector<std::wstring> GetUses(const std::wstring &f) {
       return file_uses[f];
     }
 
@@ -3661,7 +3670,7 @@ namespace frontend {
       bundles.push_back(b);
     }
 
-    ParsedBundle* GetBundle(const wstring n) {
+    ParsedBundle* GetBundle(const std::wstring n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         ParsedBundle* bundle = bundles[i];
         if(bundle->GetName() == n) {
@@ -3672,11 +3681,11 @@ namespace frontend {
       return nullptr;
     }
 
-    const vector<ParsedBundle*> GetBundles() {
+    const std::vector<ParsedBundle*> GetBundles() {
       return bundles;
     }
 
-    void AddIntString(vector<Expression*> &int_elements, int id) {
+    void AddIntString(std::vector<Expression*> &int_elements, int id) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
       for(size_t i = 0; i < int_elements.size(); ++i) {
         int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
@@ -3686,11 +3695,11 @@ namespace frontend {
       holder->value = int_array;
       holder->length = (int)int_elements.size();
 
-      int_string_ids.insert(pair<IntStringHolder*, int>(holder, id));
+      int_string_ids.insert(std::pair<IntStringHolder*, int>(holder, id));
       int_strings.push_back(holder);
     }
 
-    int GetIntStringId(vector<Expression*> &int_elements) {
+    int GetIntStringId(std::vector<Expression*> &int_elements) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
       for(size_t i = 0; i < int_elements.size(); ++i) {
         int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
@@ -3700,7 +3709,7 @@ namespace frontend {
       holder->value = int_array;
       holder->length = (int)int_elements.size();
 
-      map<IntStringHolder*, int, int_string_comp>::iterator result = int_string_ids.find(holder);
+      std::map<IntStringHolder*, int, int_string_comp>::iterator result = int_string_ids.find(holder);
       if(result != int_string_ids.end()) {
         delete[] holder->value;
         holder->value = nullptr;  
@@ -3718,11 +3727,11 @@ namespace frontend {
       return -1;
     }
 
-    vector<IntStringHolder*> GetIntStrings() {
+    std::vector<IntStringHolder*> GetIntStrings() {
       return int_strings;
     }
 
-    void AddFloatString(vector<Expression*> &float_elements, int id) {
+    void AddFloatString(std::vector<Expression*> &float_elements, int id) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
       for(size_t i = 0; i < float_elements.size(); ++i) {
         float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
@@ -3732,11 +3741,11 @@ namespace frontend {
       holder->value = float_array;
       holder->length = (int)float_elements.size();
 
-      float_string_ids.insert(pair<FloatStringHolder*, int>(holder, id));
+      float_string_ids.insert(std::pair<FloatStringHolder*, int>(holder, id));
       float_strings.push_back(holder);
     }
 
-    int GetFloatStringId(vector<Expression*> &float_elements) {
+    int GetFloatStringId(std::vector<Expression*> &float_elements) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
       for(size_t i = 0; i < float_elements.size(); ++i) {
         float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
@@ -3746,7 +3755,7 @@ namespace frontend {
       holder->value = float_array;
       holder->length = (int)float_elements.size();
 
-      map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);
+      std::map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);
       if(result != float_string_ids.end()) {
         delete[] holder->value;
         holder->value = nullptr;  
@@ -3764,17 +3773,17 @@ namespace frontend {
       return -1;
     }
 
-    vector<FloatStringHolder*> GetFloatStrings() {
+    std::vector<FloatStringHolder*> GetFloatStrings() {
       return float_strings;
     }
 
-    void AddCharString(const wstring &s, int id) {
-      char_string_ids.insert(pair<wstring, int>(s, id));
+    void AddCharString(const std::wstring &s, int id) {
+      char_string_ids.insert(std::pair<std::wstring, int>(s, id));
       char_strings.push_back(s);
     }
 
-    int GetCharStringId(const wstring &s) {
-      map<wstring, int>::iterator result = char_string_ids.find(s);
+    int GetCharStringId(const std::wstring &s) {
+      std::map<std::wstring, int>::iterator result = char_string_ids.find(s);
       if(result != char_string_ids.end()) {
         return result->second;
       }
@@ -3782,11 +3791,11 @@ namespace frontend {
       return -1;
     }
 
-    vector<wstring> GetCharStrings() {
+    std::vector<std::wstring> GetCharStrings() {
       return char_strings;
     }
 
-    Class* GetClass(const wstring &n) {
+    Class* GetClass(const std::wstring &n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Class* klass = bundles[i]->GetClass(n);
         if(klass) {
@@ -3797,7 +3806,7 @@ namespace frontend {
       return nullptr;
     }
 
-    Enum* GetEnum(const wstring &n) {
+    Enum* GetEnum(const std::wstring &n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Enum* e = bundles[i]->GetEnum(n);
         if(e) {
@@ -3808,7 +3817,7 @@ namespace frontend {
       return nullptr;
     }
 
-    Alias* GetAlias(const wstring& n) {
+    Alias* GetAlias(const std::wstring& n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Alias* a = bundles[i]->GetAlias(n);
         if(a) {

@@ -1323,16 +1323,26 @@ bundle Data.JSON {
 		}
 		
 		#~
-		Format the element into a JSON string
+		Stringify the JSON element
 		@return JSON string
 		~#
 		method : public : ToString() ~ String {
 			output := String->New();
-			Format(output);		
+			Format(output, false, 0);		
+			return output;
+		}
+
+		#~
+		Stringify and format the JSON element
+		@return formatted JSON string
+		~#
+		method : public : ToFormattedString() ~ String {
+			output := String->New();
+			Format(output, true, 0);		
 			return output;
 		}
 		
-		method : Format(output : String) ~ Nil {
+		method : Format(output : String, pretty : Bool, depth : Int) ~ Nil {
 			select(@type) {
 				label JsonElement->JsonType->STRING: {
 					if(@value <> Nil) {
@@ -1363,11 +1373,27 @@ bundle Data.JSON {
 				label JsonElement->JsonType->ARRAY: {
 					if(@array_elems <> Nil) {
 						output->Append('[');
+						if(pretty) {
+							output->Append('\n');
+							depth += 1;
+							FormatPadding(output, depth);
+						};
+
 						each(i : @array_elems) {
-							@array_elems->Get(i)->Format(output);
+							@array_elems->Get(i)->Format(output, pretty, depth);
 							if(i + 1 < @array_elems->Size()) {
 								output->Append(',');
+								if(pretty) {
+									output->Append('\n');
+									FormatPadding(output, depth);
+								};
 							};
+						};
+
+						if(pretty) {
+							output->Append('\n');
+							depth -= 1;
+							FormatPadding(output, depth);
 						};
 						output->Append(']');
 					};
@@ -1376,21 +1402,49 @@ bundle Data.JSON {
 				label JsonElement->JsonType->OBJECT: {
 					if(@map_elems <> Nil) {
 						output->Append('{');
+						if(pretty) {
+							output->Append('\n');
+							depth += 1;
+							FormatPadding(output, depth);
+						};
+
 						keys := @map_elems->GetKeys()<String>;
 						each(i : keys) {
 							key := keys->Get(i);
-							value := @map_elems->Find(key);							
+							value := @map_elems->Find(key);	
+
 							output->Append('"');
 							output->Append(key);
 							output->Append("\":");
-							value->As(JsonElement)->Format(output);
+							if(pretty) {
+								output->Append(' ');
+							};
+
+							value->As(JsonElement)->Format(output, pretty, depth);
 							if(i + 1 < @map_elems->Size()) {
 								output->Append(',');
+								if(pretty) {
+									output->Append('\n');
+									FormatPadding(output, depth);
+								};
 							};
 						};
+
+						if(pretty) {
+							output->Append('\n');
+							depth -= 1;
+							FormatPadding(output, depth);
+						};
 						output->Append('}');
+
 					};
 				}
+			};
+		}
+
+		method : FormatPadding(output : String, depth : Int) ~ Nil {
+			each(i : depth) {
+				output->Append('\t');
 			};
 		}
 		

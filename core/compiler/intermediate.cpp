@@ -2,7 +2,7 @@
  * Translates a parse tree into an intermediate format.  This format
  * is used for optimizations and target output.
  *
- * Copyright (c) 2008-2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,11 +39,11 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
 {
   select = s;
   emitter = e;
-  map<int, StatementList*> label_statements = select->GetLabelStatements();
+  std::map<int, StatementList*> label_statements = select->GetLabelStatements();
   values = new int[label_statements.size()];
   // map and sort values
   int i = 0;
-  map<int, StatementList*>::iterator iter;
+  std::map<int, StatementList*>::iterator iter;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     values[i] = iter->first;
     value_label_map[iter->first] = ++emitter->conditional_label;
@@ -111,12 +111,12 @@ void SelectArrayTree::Emit()
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
   // write statements
-  map<int, StatementList*> label_statements = select->GetLabelStatements();
-  map<int, StatementList*>::iterator iter;
+  std::map<int, StatementList*> label_statements = select->GetLabelStatements();
+  std::map<int, StatementList*>::iterator iter;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
-    vector<Statement*> statements = statement_list->GetStatements();
+    std::vector<Statement*> statements = statement_list->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       emitter->EmitStatement(statements[i]);
     }
@@ -126,7 +126,7 @@ void SelectArrayTree::Emit()
   if(select->GetOther()) {
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, other_label));
     StatementList* statement_list = select->GetOther();
-    vector<Statement*> statements = statement_list->GetStatements();
+    std::vector<Statement*> statements = statement_list->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       emitter->EmitStatement(statements[i]);
     }
@@ -202,7 +202,7 @@ void IntermediateEmitter::Translate()
   int class_id = 0;
   
 #ifndef _SYSTEM
-  vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
+  std::vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
   for(size_t i = 0; i < lib_classes.size(); ++i) {
     LibraryClass* lib_class = lib_classes[i];    
     // find "System.String"
@@ -219,7 +219,7 @@ void IntermediateEmitter::Translate()
   // resolve referenced interfaces
   for(size_t i = 0; i < lib_classes.size(); ++i) {
     LibraryClass* lib_class = lib_classes[i]; 
-    vector<wstring> interface_names = lib_class->GetInterfaceNames();
+    std::vector<std::wstring> interface_names = lib_class->GetInterfaceNames();
     for(size_t j = 0; j < interface_names.size(); ++j) {
       LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], parsed_program->GetUses());
       if(inf_klass) {
@@ -230,9 +230,9 @@ void IntermediateEmitter::Translate()
 #endif
   
   // process bundles
-  vector<ParsedBundle*> bundles = parsed_program->GetBundles();
+  std::vector<ParsedBundle*> bundles = parsed_program->GetBundles();
   for(size_t i = 0; i < bundles.size(); ++i) {
-    vector<Class*> classes = bundles[i]->GetClasses();
+    std::vector<Class*> classes = bundles[i]->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       classes[j]->SetId(class_id++);
     }
@@ -266,12 +266,12 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
     // resolve external libraries
     linker->ResolveExternalMethodCalls();
     // write enums
-    vector<LibraryEnum*> lib_enums = linker->GetAllEnums();
+    std::vector<LibraryEnum*> lib_enums = linker->GetAllEnums();
     for(size_t i = 0; i < lib_enums.size(); ++i) {
       imm_program->AddEnum(new IntermediateEnum(lib_enums[i]));
     }
     // write classes
-    vector<LibraryClass*> lib_classes = linker->GetAllClasses();
+    std::vector<LibraryClass*> lib_classes = linker->GetAllClasses();
     for(size_t i = 0; i < lib_classes.size(); ++i) {
       if(is_lib || lib_classes[i]->GetCalled()) {
         LibraryClass* parent_class = linker->SearchClassLibraries(lib_classes[i]->GetParentName(), parsed_program->GetUses());
@@ -286,24 +286,24 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
  ****************************/
 void IntermediateEmitter::EmitStrings()
 {
-  vector<wstring> char_string_values = parsed_program->GetCharStrings();
-  vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
-  vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
+  std::vector<std::wstring> char_string_values = parsed_program->GetCharStrings();
+  std::vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
+  std::vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
   
   Linker* linker = parsed_program->GetLinker();
   if(linker && !is_lib) {
-    vector<Library*> libraries = linker->GetAllUsedLibraries();
+    std::vector<Library*> libraries = linker->GetAllUsedLibraries();
     
     // create master list of library strings
-    vector<wstring> lib_char_string_values;
-    vector<IntStringHolder*> lib_int_string_values;
-    vector<FloatStringHolder*> lib_float_string_values;
+    std::vector<std::wstring> lib_char_string_values;
+    std::vector<IntStringHolder*> lib_int_string_values;
+    std::vector<FloatStringHolder*> lib_float_string_values;
 
     for(size_t i = 0; i < libraries.size(); ++i) {
       Library* library = libraries[i];
 
       // char string processing
-      vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
+      std::vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         // check for duplicate
         bool found = false;
@@ -312,13 +312,13 @@ void IntermediateEmitter::EmitStrings()
             found = true;
           }
         }
-        // add wstring
+        // add string
         if(!found) {
           lib_char_string_values.push_back(char_str_insts[i]->value);
         }
       }      
       // int string processing
-      vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
+      std::vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         // check for duplicates
         bool found = false;
@@ -327,13 +327,13 @@ void IntermediateEmitter::EmitStrings()
             found = true;
           }
         }
-        // add wstring
+        // add string
         if(!found) {
           lib_int_string_values.push_back(int_str_insts[i]->value);
         }
       }
       // float string processing
-      vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
+      std::vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         // check for duplicates
         bool found = false;
@@ -342,7 +342,7 @@ void IntermediateEmitter::EmitStrings()
             found = true;
           }
         }
-        // add wstring
+        // add string
         if(!found) {
           lib_float_string_values.push_back(float_str_insts[i]->value);
         }
@@ -358,7 +358,7 @@ void IntermediateEmitter::EmitStrings()
           found = true;
         }
       }
-      // add wstring
+      // add string
       if(!found) {
         char_string_values.push_back(lib_char_string_values[i]);
       }
@@ -371,7 +371,7 @@ void IntermediateEmitter::EmitStrings()
           found = true;
         }
       }
-      // add wstring
+      // add string
       if(!found) {
         int_string_values.push_back(lib_int_string_values[i]);
       }
@@ -384,7 +384,7 @@ void IntermediateEmitter::EmitStrings()
           found = true;
         }
       }
-      // add wstring
+      // add string
       if(!found) {
         float_string_values.push_back(lib_float_string_values[i]);
       }
@@ -395,12 +395,12 @@ void IntermediateEmitter::EmitStrings()
       Library* library = libraries[i];
 
       // char string processing
-      vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
+      std::vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         bool found = false;
         for(size_t j = 0; !found && j < char_string_values.size(); ++j) {
           if(char_str_insts[i]->value == char_string_values[j]) {
-            vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
+            std::vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); ++k) {
               instrs[k]->SetOperand((int)j);
             }
@@ -412,12 +412,12 @@ void IntermediateEmitter::EmitStrings()
 #endif
       }
       // int string processing
-      vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
+      std::vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         bool found = false;
         for(size_t j = 0; !found && j < int_string_values.size(); ++j) {
           if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
-            vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
+            std::vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); ++k) {
               instrs[k]->SetOperand((int)j);
             }
@@ -429,12 +429,12 @@ void IntermediateEmitter::EmitStrings()
 #endif
       }
       // float string processing
-      vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
+      std::vector<FloatStringInstruction*> float_str_insts = library->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         bool found = false;
         for(size_t j = 0; !found && j < float_string_values.size(); ++j) {
           if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
-            vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
+            std::vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); ++k) {
               instrs[k]->SetOperand((int)j);
             }
@@ -459,20 +459,20 @@ void IntermediateEmitter::EmitStrings()
 void IntermediateEmitter::EmitBundles()
 {
   // translate program into intermediate form process bundles
-  vector<wstring> bundle_names;
-  vector<ParsedBundle*> bundles = parsed_program->GetBundles();
+  std::vector<std::wstring> bundle_names;
+  std::vector<ParsedBundle*> bundles = parsed_program->GetBundles();
   for(size_t i = 0; i < bundles.size(); ++i) {
     parsed_bundle = bundles[i];
     bundle_names.push_back(parsed_bundle->GetName());
 
     // emit alias
-    vector<Alias*> aliases = parsed_bundle->GetAliases();
+    std::vector<Alias*> aliases = parsed_bundle->GetAliases();
     for(size_t j = 0; j < aliases.size(); ++j) {
       imm_program->AddAliasEncoding(aliases[j]->GetEncodedName());
     }
 
     // emit enums and consts
-    vector<Enum*> enums = parsed_bundle->GetEnums();
+    std::vector<Enum*> enums = parsed_bundle->GetEnums();
     for(size_t j = 0; j < enums.size(); ++j) {
       IntermediateEnum* eenum = EmitEnum(enums[j]);
       if(eenum) {
@@ -481,7 +481,7 @@ void IntermediateEmitter::EmitBundles()
     }
 
     // emit classes
-    vector<Class*> classes = parsed_bundle->GetClasses();
+    std::vector<Class*> classes = parsed_bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       if(is_lib || classes[j]->GetCalled()) {
         IntermediateClass* klass = EmitClass(classes[j]);
@@ -502,9 +502,9 @@ IntermediateEnum* IntermediateEmitter::EmitEnum(Enum* eenum)
   cur_line_num = eenum->GetLineNumber();
   
   IntermediateEnum* imm_eenum = new IntermediateEnum(eenum->GetName(), eenum->GetOffset());
-  map<const wstring, EnumItem*>items =  eenum->GetItems();
+  std::map<const std::wstring, EnumItem*>items =  eenum->GetItems();
   // copy items
-  map<const wstring, EnumItem*>::iterator iter;
+  std::map<const std::wstring, EnumItem*>::iterator iter;
   for(iter = items.begin(); iter != items.end(); ++iter) {
     imm_eenum->AddItem(new IntermediateEnumItem(iter->second->GetName(), iter->second->GetId()));
   }
@@ -527,20 +527,20 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   
   // entries
 #ifdef _DEBUG
-  GetLogger() << L"---------- Intermediate ---------" << endl;
-  GetLogger() << L"Class variables (class): name=" << klass->GetName() << endl;
+  GetLogger() << L"---------- Intermediate ---------" << std::endl;
+  GetLogger() << L"Class variables (class): name=" << klass->GetName() << std::endl;
 #endif
   IntermediateDeclarations* cls_entries = new IntermediateDeclarations;
   int cls_space = CalculateEntrySpace(cls_entries, true);
   
 #ifdef _DEBUG
-  GetLogger() << L"Class variables (instance): name=" << klass->GetName() << endl;
+  GetLogger() << L"Class variables (instance): name=" << klass->GetName() << std::endl;
 #endif
   IntermediateDeclarations* inst_entries = new IntermediateDeclarations;
   int inst_space = CalculateEntrySpace(inst_entries, false);
   
   // set parent id
-  wstring parent_name;
+  std::wstring parent_name;
   int pid = -1;
   Class* parent = current_class->GetParent();
   if(parent) {
@@ -556,21 +556,21 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   }
 
   // process interfaces
-  vector<int> interface_ids;
-  vector<Class*> interfaces = current_class->GetInterfaces();
+  std::vector<int> interface_ids;
+  std::vector<Class*> interfaces = current_class->GetInterfaces();
   for(size_t i = 0; i < interfaces.size(); ++i) {
     interface_ids.push_back(interfaces[i]->GetId());
   }
-  vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
+  std::vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
   for(size_t i = 0; i < lib_interfaces.size(); ++i) {
     interface_ids.push_back(lib_interfaces[i]->GetId());
   }
 
   // get short file name
-  const wstring &file_name = current_class->GetFileName();
+  const std::wstring &file_name = current_class->GetFileName();
   size_t offset = file_name.rfind(L"/\\");
-  wstring short_file_name;
-  if(offset == wstring::npos) {
+  std::wstring short_file_name;
+  if(offset == std::wstring::npos) {
     short_file_name = file_name;
   }
   else {
@@ -584,13 +584,13 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   NewBlock();
   
   // declarations
-  vector<Statement*> statements = klass->GetStatements();
+  std::vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
     EmitDeclaration(static_cast<Declaration*>(statements[i]));
   }
 
   // methods
-  vector<Method*> methods = klass->GetMethods();
+  std::vector<Method*> methods = klass->GetMethods();
   for(size_t i = 0; i < methods.size(); ++i) {
     imm_klass->AddMethod(EmitMethod(methods[i]));
   }
@@ -614,18 +614,18 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   IntermediateDeclarations* entries = new IntermediateDeclarations;
 
 #ifdef _DEBUG
-  GetLogger() << L"Method variables (local): name=" << method->GetName() << endl;
+  GetLogger() << L"Method variables (local): name=" << method->GetName() << std::endl;
 #endif
   int space = CalculateEntrySpace(entries, false);
   if(space > LOCAL_SIZE) {
-    const wstring error_msg =  current_method->GetFileName() + L':' + 
+    const std::wstring error_msg =  current_method->GetFileName() + L':' + 
       ToString(current_method->GetLineNumber()) + L": Local space has been exceeded by " + 
       ToString(space - LOCAL_SIZE) + L" bytes.";
-    wcerr << error_msg << endl;
+    std::wcerr << error_msg << std::endl;
     exit(1);
   }
 
-  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   int num_params = 0;
   for(size_t i = 0; i < declarations.size(); ++i) {
     if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
@@ -680,7 +680,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     bool end_return = false;
     StatementList* statement_list = method->GetStatements();
     if(statement_list) {
-      vector<Statement*> statements = statement_list->GetStatements();
+      std::vector<Statement*> statements = statement_list->GetStatements();
       for(size_t i = 0; i < statements.size(); ++i) {
         EmitStatement(statements[i]);
       }
@@ -698,7 +698,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 
     if(method->IsAlt()) {
       Method* original = method->GetOriginal();
-      vector<Declaration*> original_params = original->GetDeclarations()->GetDeclarations();
+      std::vector<Declaration*> original_params = original->GetDeclarations()->GetDeclarations();
 
       const int diff_offset = original->HasAndOr() ? 1 : 0;
       for(size_t i = 0; i < original_params.size(); ++i) {
@@ -743,7 +743,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     // add return statement if one hasn't been added
     if(!end_return) {
       if(method->GetLeaving()) {
-        vector<Statement*> leavings = method->GetLeaving()->GetStatements()->GetStatements();
+        std::vector<Statement*> leavings = method->GetLeaving()->GetStatements()->GetStatements();
         for(size_t i = 0; i < leavings.size(); ++i) {
           EmitStatement(leavings[i]);
         }
@@ -765,7 +765,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
   int closure_space = 0;
   IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations;
-  vector<pair<SymbolEntry*, SymbolEntry*> > closure_copies = lambda->GetClosures();
+  std::vector<std::pair<SymbolEntry*, SymbolEntry*> > closure_copies = lambda->GetClosures();
   for(size_t i = 0; i < closure_copies.size(); ++i) {
     SymbolEntry* entry = closure_copies[i].second;
     switch(entry->GetType()->GetType()) {
@@ -773,13 +773,13 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
         GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
-          << L", dim=" << entry->GetType()->GetDimension() << endl;
+          << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
       }
       else {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
       }
@@ -789,13 +789,13 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     case frontend::BYTE_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": BYTE_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
       }
       else {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
       }
@@ -806,13 +806,13 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
         GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
-          << L", dim=" << entry->GetType()->GetDimension() << endl;
+          << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
       }
       else {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
       }
@@ -822,13 +822,13 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     case frontend::CHAR_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": CHAR_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
       }
       else {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": CHAR_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": CHAR_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
       }
@@ -840,31 +840,31 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       if(entry->GetType()->GetDimension() > 0) {
         if(parsed_program->GetClass(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
         }
         else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
         }
         else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
         else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
         }
         else {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
         }
@@ -873,31 +873,31 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       else {
         if(SearchProgramClasses(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
         }
         else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
         else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
         else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
         else {
 #ifdef _DEBUG
-          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << std::endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
         }
@@ -908,14 +908,14 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     case frontend::FLOAT_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
         closure_space++;
       }
       else {
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_PARM: name=" << entry->GetName() << endl;
+        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_PARM: name=" << entry->GetName() << std::endl;
 #endif
         closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
         closure_space++;
@@ -924,7 +924,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 
     case frontend::FUNC_TYPE:
 #ifdef _DEBUG
-      GetLogger() << L"\t" << entry->GetId() << L": FUNC_PARM: name=" << entry->GetName() << endl;
+      GetLogger() << L"\t" << entry->GetId() << L": FUNC_PARM: name=" << entry->GetName() << std::endl;
 #endif
       closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
       closure_space += 2;
@@ -946,7 +946,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, STOR_INT_VAR, 0, LOCL));
 
     for(size_t i = 0; i < closure_copies.size(); ++i) {
-      pair<SymbolEntry*, SymbolEntry*> copy = closure_copies[i];
+      std::pair<SymbolEntry*, SymbolEntry*> copy = closure_copies[i];
       SymbolEntry* var_entry = copy.first;
       SymbolEntry* capture_entry = copy.second;
 
@@ -1043,7 +1043,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     Declaration* declaration = static_cast<Declaration*>(statement);
     if(declaration->GetChild()) {
       // build stack declarations
-      stack<Declaration*> declarations;
+      std::stack<Declaration*> declarations;
       while(declaration) {
         declarations.push(declaration);
         declaration = declaration->GetChild();
@@ -1078,7 +1078,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     Assignment* assignment = static_cast<Assignment*>(statement);
     if(assignment->GetChild()) {
       // build stack assignments
-      stack<Assignment*> assignments;
+      std::stack<Assignment*> assignments;
       while(assignment) {
         assignments.push(assignment);
         assignment = assignment->GetChild();
@@ -1117,7 +1117,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     }
     // leaving
     if(current_method->GetLeaving()) {
-      vector<Statement*> leavings = current_method->GetLeaving()->GetStatements()->GetStatements();
+      std::vector<Statement*> leavings = current_method->GetLeaving()->GetStatements()->GetStatements();
       for(size_t i = 0; i < leavings.size(); ++i) {
         EmitStatement(leavings[i]);
       }
@@ -1148,13 +1148,13 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
 
   case BREAK_STMT: {
-    const pair<int, int> break_continue_label = break_labels.top();
+    const std::pair<int, int> break_continue_label = break_labels.top();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, JMP, break_continue_label.first, -1));
   }
     break;
 
   case CONTINUE_STMT: {
-    const pair<int, int> break_continue_label = break_labels.top();
+    const std::pair<int, int> break_continue_label = break_labels.top();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, JMP, break_continue_label.second, -1));
   }
     break;
@@ -1172,7 +1172,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
     
   default:
-    wcerr << L"internal error" << endl;
+    std::wcerr << L"internal error" << std::endl;
     exit(1);
   }
   
@@ -2616,8 +2616,8 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
   } 
   else {
     // get statement and value
-    map<int, StatementList*> label_statements = select_stmt->GetLabelStatements();
-    map<int, StatementList*>::iterator iter = label_statements.begin();
+    std::map<int, StatementList*> label_statements = select_stmt->GetLabelStatements();
+    std::map<int, StatementList*>::iterator iter = label_statements.begin();
     int value = iter->first;
     StatementList* statement_list = iter->second;
 
@@ -2640,7 +2640,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     }
 
     // label statements
-    vector<Statement*> statements = statement_list->GetStatements();
+    std::vector<Statement*> statements = statement_list->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       EmitStatement(statements[i]);
     }
@@ -2651,7 +2651,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, other_label));
       StatementList* statement_list = select_stmt->GetOther();
-      vector<Statement*> statements = statement_list->GetStatements();
+      std::vector<Statement*> statements = statement_list->GetStatements();
       for(size_t i = 0; i < statements.size(); ++i) {
         EmitStatement(statements[i]);
       }
@@ -2670,14 +2670,14 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   // continue label
   const int unconditional_continue = ++unconditional_label;
   const int break_label = ++unconditional_label;
-  break_labels.push(pair<int, int>(break_label, unconditional_continue));
+  break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
   
   // conditional expression
   const int conditional = ++conditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, conditional));
 
   // statements
-  vector<Statement*> do_while_statements = do_while_stmt->GetStatements()->GetStatements();
+  std::vector<Statement*> do_while_statements = do_while_stmt->GetStatements()->GetStatements();
   for(size_t i = 0; i < do_while_statements.size(); ++i) {
     EmitStatement(do_while_statements[i]);
   }
@@ -2694,7 +2694,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
 
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   
-  pair<int, int> break_continue_label = break_labels.top();
+  std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, break_continue_label.first));
 }
@@ -2712,12 +2712,12 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   EmitExpression(while_stmt->GetExpression());
   
   const int break_label = ++conditional_label;
-  break_labels.push(pair<int, int>(break_label, unconditional));
+  break_labels.push(std::pair<int, int>(break_label, unconditional));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, break_label, false));
   
 
   // statements
-  vector<Statement*> while_statements = while_stmt->GetStatements()->GetStatements();
+  std::vector<Statement*> while_statements = while_stmt->GetStatements()->GetStatements();
   for(size_t i = 0; i < while_statements.size(); ++i) {
     EmitStatement(while_statements[i]);
   }
@@ -2729,7 +2729,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, unconditional, -1));
   
-  pair<int, int> break_continue_label = break_labels.top();
+  std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();  
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, LBL, break_continue_label.first));
 }
@@ -2752,11 +2752,11 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   // break and continue
   const int break_label = ++conditional_label;
   const int unconditional_continue = ++unconditional_label;
-  break_labels.push(pair<int, int>(break_label, unconditional_continue));
+  break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
   
   // statements
-  vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+  std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
   for(size_t i = 0; i < for_statements.size(); ++i) {
     EmitStatement(for_statements[i]);
   }
@@ -2769,7 +2769,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   // conditional jump
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
   
-  pair<int, int> break_continue_label = break_labels.top();
+  std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, break_continue_label.first));
 }
@@ -2803,7 +2803,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     }
     
     // statements
-    vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
+    std::vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
     for(size_t i = 0; i < if_statements.size(); ++i) {
       EmitStatement(if_statements[i]);
     }
@@ -2823,7 +2823,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
       // label
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, LBL, conditional));
       // statements
-      vector<Statement*> else_statements = if_stmt->GetElseStatements()->GetStatements();
+      std::vector<Statement*> else_statements = if_stmt->GetElseStatements()->GetStatements();
       for(size_t i = 0; i < else_statements.size(); ++i) {
         EmitStatement(else_statements[i]);
       }
@@ -2839,7 +2839,7 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
   cur_line_num = critical_stmt->GetLineNumber();
 
   StatementList* statement_list = critical_stmt->GetStatements();
-  vector<Statement*> statements = statement_list->GetStatements();
+  std::vector<Statement*> statements = statement_list->GetStatements();
 
   EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(critical_stmt, cur_line_num, CRITICAL_START));
@@ -2951,7 +2951,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     bool is_nested = false || expression->GetExpressionType() == CHAR_STR_EXPR;
     while(method_call) {
       // declarations
-      vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+      std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
         EmitClassCast(expressions[i]);
@@ -3248,7 +3248,7 @@ void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, str_concat, cur_line_num, STOR_INT_VAR, concat_entry->GetId(), LOCL));
 
   // append expression
-  list<Expression*> concat_exprs = str_concat->GetExpressions();
+  std::list<Expression*> concat_exprs = str_concat->GetExpressions();
   std::list<Expression*>::iterator iter;
   for(iter = concat_exprs.begin(); iter != concat_exprs.end(); iter++) {
     Expression* concat_expr = *iter;
@@ -3380,7 +3380,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   
   if(array->GetType() != frontend::CLASS_TYPE) {
     // emit dimensions
-    vector<int> sizes = array->GetSizes();
+    std::vector<int> sizes = array->GetSizes();
     for(int i = (int)sizes.size() - 1; i > -1; i--) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
@@ -3413,21 +3413,21 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     }
   }
   else {
-    // create wstring literals
+    // create string literals
     is_str_array = true;
-    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+    std::vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
     for(int i = (int)all_elements.size() - 1; i > -1; i--) {
       EmitCharacterString(static_cast<CharacterString*>(all_elements[i]));
     }
     is_str_array = false;
 
     // emit dimensions
-    vector<int> sizes = array->GetSizes();
+    std::vector<int> sizes = array->GetSizes();
     for(size_t i = 0; i < sizes.size(); ++i) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
     
-    // create wstring array
+    // create string array
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));        
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARYS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, (INT_VALUE)(all_elements.size() + 2)));
@@ -3464,7 +3464,7 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
 }
 
 /****************************
- * Translates character wstring.
+ * Translates character std::wstring.
  * This creates a new byte array
  * and copies content.
  ****************************/
@@ -3472,7 +3472,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
 {
   cur_line_num = char_str->GetLineNumber();
   
-  vector<CharacterStringSegment*> segments = char_str->GetSegments();
+  std::vector<CharacterStringSegment*> segments = char_str->GetSegments();
   for(size_t i = 0; i < segments.size(); ++i) {
     if(i == 0) {
       EmitCharacterStringSegment(segments[i], char_str);
@@ -4650,7 +4650,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
-    vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+    std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
       EmitClassCast(expressions[i]);
@@ -4685,7 +4685,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   // instance
   else if(method_call->GetCallType() == NEW_INST_CALL) {
     // declarations
-    vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+    std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
       EmitClassCast(expressions[i]);
@@ -4704,7 +4704,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
 
       if(is_lib) {
-        const wstring &klass_name = lib_method->GetLibraryClass()->GetName();
+        const std::wstring &klass_name = lib_method->GetLibraryClass()->GetName();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LIB_NEW_OBJ_INST, klass_name));
       } else {
         int klass_id = lib_method->GetLibraryClass()->GetId();
@@ -4717,7 +4717,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   else {
     // declarations
     if(method_call->GetCallingParameters()) {
-      vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+      std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
         EmitClassCast(expressions[i]);
@@ -4737,7 +4737,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
-    vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+    std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     switch(method_call->GetArrayType()->GetType()) {
     case frontend::BYTE_TYPE:
     case frontend::BOOLEAN_TYPE:
@@ -4977,7 +4977,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
  ****************************/
 void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)
 {
-  vector<Expression*> expressions = declarations->GetExpressions();
+  std::vector<Expression*> expressions = declarations->GetExpressions();
   for(size_t i = 0; i < expressions.size(); ++i) {
     EmitExpression(expressions[i]);
   }
@@ -4991,7 +4991,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
 {
   if(table) {
     int var_space = 0;
-    vector<SymbolEntry*> entries = table->GetEntries();
+    std::vector<SymbolEntry*> entries = table->GetEntries();
         
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
@@ -5001,13 +5001,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() 
-      << L", dim=" << entry->GetType()->GetDimension() << endl;
+      << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -5018,13 +5018,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
         case frontend::BYTE_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -5036,13 +5036,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
-      << L", dim=" << entry->GetType()->GetDimension() << endl;
+      << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -5053,13 +5053,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
         case frontend::CHAR_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": CHAR_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": CHAR_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": CHAR_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
           }
@@ -5072,31 +5072,31 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
           if(entry->GetType()->GetDimension() > 0) {
             if(parsed_program->GetClass(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
             else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
             else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             }
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
             else {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             }
@@ -5105,31 +5105,31 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
           else {
             if(SearchProgramClasses(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
             else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             }
             else if(SearchProgramEnums(current_class->GetName() + L"#" + entry->GetType()->GetName())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             }
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
             else {
 #ifdef _DEBUG
-              GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << std::endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             }
@@ -5141,7 +5141,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
         case frontend::FLOAT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": FLOAT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
             entry->SetId(index++);
@@ -5149,7 +5149,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
           } 
           else {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << std::endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
             entry->SetId(index++);
@@ -5159,7 +5159,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
     
         case frontend::FUNC_TYPE:          
 #ifdef _DEBUG
-          GetLogger() << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << std::endl;
 #endif
           declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);
@@ -5190,7 +5190,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
 
   // class
   if(!current_method) {
-    stack<Class*> parents;
+    std::stack<Class*> parents;
 
     // setup dependency order
     Class* parent = current_class->GetParent();
@@ -5213,7 +5213,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
       if(is_static) {
         size += lib_parent->GetClassSpace();
         // update entries
-        vector<IntermediateDeclaration*> lib_cls_dclrs = lib_parent->GetClassEntries()->GetParameters();
+        std::vector<IntermediateDeclaration*> lib_cls_dclrs = lib_parent->GetClassEntries()->GetParameters();
         for(size_t i = 0; i < lib_cls_dclrs.size(); ++i) {
           declarations->AddParameter(lib_cls_dclrs[i]->Copy());
         }
@@ -5221,7 +5221,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
       else {
         size += lib_parent->GetInstanceSpace();
         // update entries
-        vector<IntermediateDeclaration*> lib_inst_dclrs = lib_parent->GetInstanceEntries()->GetParameters();
+        std::vector<IntermediateDeclaration*> lib_inst_dclrs = lib_parent->GetInstanceEntries()->GetParameters();
         for(size_t i = 0; i < lib_inst_dclrs.size(); ++i) {
           declarations->AddParameter(lib_inst_dclrs[i]->Copy());
         }
@@ -5360,13 +5360,13 @@ int IntermediateEmitter::OrphanReturn(MethodCall* method_call)
   return -1;
 }
 
-frontend::Class* IntermediateEmitter::SearchProgramClasses(const wstring& klass_name)
+frontend::Class* IntermediateEmitter::SearchProgramClasses(const std::wstring& klass_name)
 {
   Class* klass = parsed_program->GetClass(klass_name);
   if(!klass) {
     klass = parsed_program->GetClass(parsed_bundle->GetName() + L"." + klass_name);
     if(!klass) {
-      vector<wstring> uses = parsed_program->GetUses();
+      std::vector<std::wstring> uses = parsed_program->GetUses();
       for(size_t i = 0; !klass && i < uses.size(); ++i) {
         klass = parsed_program->GetClass(uses[i] + L"." + klass_name);
       }
@@ -5376,13 +5376,13 @@ frontend::Class* IntermediateEmitter::SearchProgramClasses(const wstring& klass_
   return klass;
 }
 
-frontend::Enum* IntermediateEmitter::SearchProgramEnums(const wstring& eenum_name)
+frontend::Enum* IntermediateEmitter::SearchProgramEnums(const std::wstring& eenum_name)
 {
   Enum* eenum = parsed_program->GetEnum(eenum_name);
   if(!eenum) {
     eenum = parsed_program->GetEnum(parsed_bundle->GetName() + L"." + eenum_name);
     if(!eenum) {
-      vector<wstring> uses = parsed_program->GetUses();
+      std::vector<std::wstring> uses = parsed_program->GetUses();
       for(size_t i = 0; !eenum && i < uses.size(); ++i) {
         eenum = parsed_program->GetEnum(uses[i] + L"." + eenum_name);
       }

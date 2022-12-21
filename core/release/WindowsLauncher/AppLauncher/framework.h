@@ -1,5 +1,5 @@
 /***************************************************************************
- * Copyright (c) 2020-2022, Randy Hollines
+ * Copyright (c) 2020-2023, Randy Hollines
  * All rights reserved.
 ***************************************************************************/
 
@@ -19,7 +19,13 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
+
+#ifdef _MSYS2
+#include <shlobj.h>
+#else
 #include <shlobj_core.h>
+#endif
+
 #include <shlwapi.h>
 #include <string>
 #include <iostream>

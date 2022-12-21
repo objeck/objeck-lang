@@ -1,6 +1,6 @@
 # Objeck
 
-[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/uPBqjWSW)
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/CGWMgCQG)
 [![Download Objeck](https://img.shields.io/sourceforge/dt/objeck-lang.svg)](https://sourceforge.net/projects/objeck-lang/)
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
@@ -63,13 +63,30 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 
 __Building on Linux and macOS__
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
-*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>macos</code> representing the bit version of Linux
+*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>macos</code> for x64 Linux or macOS
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
-*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set paths and find examples
+*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set addtional paths and find examples
 
 __Building on Windows__
-*  With Visual Studio 2022 or later open <code>objeck-lang/care/release/objeck.sln</code>
-*  Ensure build completes successfully (in Release mode)
-*  To build everything, cd to <code>objeck-lang/care/release</code> and run <code>deploy_amd64.cmd deploy</code>
+*  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/x64</code>
+*  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
+*  Ensure the core build completes successfully (in Release mode)
+*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_amd64.cmd</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
-*  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to set paths and find examples
+*  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
+
+__Building under MSYS2 on Windows__
+* Under the UCRT64 shell (best MSYS2 Unicode support)
+  * Package dependencies
+  * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
+  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-ucrt.sh</code>
+  *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-ucrt</code>
+  *  Set the path for to the UCRT64 'bin' directory
+  *  Reference <code>objeck-lang/core/release/deploy-msys2-ucrt/readme.html</code> to set additional paths and find examples
+* Under the Clang64
+  * Package dependencies
+  * <code>pacman --noconfirm -S mingw-w64-clang-x86_64-gcc mingw-w64-clang-x86_64-openssl make mingw-w64-clang-x86_64-SDL2 unzip mingw-w64-clang-x86_64-SDL2_ttf mingw-w64-clang-x86_64-SDL2_mixer mingw-w64-clang-x86_64-SDL2_image mingw-w64-clang-x86_64-unixodbc</code>
+  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-clang.sh</code>
+  *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-clang</code>
+  *  Set the path for to the Clang64 'bin' directory
+  *  Reference <code>objeck-lang/core/release/deploy-msys2-clang/readme.html</code> to set additional paths and find examples

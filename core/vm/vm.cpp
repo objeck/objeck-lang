@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for the VM.
  *
- * Copyright (c) 2008-2013, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ int Execute(const int argc, const char* argv[])
 
     // ignore web applications
     if(loader.IsWeb()) {
-      cerr << L"Web applications must be executed in a FCGI environment." << endl;
+      std::cerr << L"Web applications must be executed in a FCGI environment." << std::endl;
       exit(1);
     }
 
@@ -62,10 +62,10 @@ int Execute(const int argc, const char* argv[])
     intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
     
 #ifdef _DEBUG
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << op_stack[i] << endl;
+        std::wcout << L"dump: value=" << op_stack[i] << std::endl;
       }
     }
 #endif
@@ -75,12 +75,14 @@ int Execute(const int argc, const char* argv[])
     op_stack = nullptr;
     
 #ifdef _SANITIZE
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+#ifdef _DEBUG
+    std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << *(stack_pos + 1) << endl;
+        std::wcout << L"dump: value=" << *(stack_pos + 1) << std::endl;
       }
     }
+#endif
 
     assert(!(*stack_pos));
 
@@ -90,10 +92,8 @@ int Execute(const int argc, const char* argv[])
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
-#ifdef _SANITIZE
     Runtime::StackInterpreter::Clear();
     MemoryManager::Clear();
-#endif
 
     delete intpr;
     intpr = nullptr;
@@ -104,8 +104,8 @@ int Execute(const int argc, const char* argv[])
     
 #ifdef _TIMING    
     clock_t end = clock();
-    wcout << L"---------------------------" << endl;
-    wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
+    std::wcout << L"---------------------------" << std::endl;
+    std::wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
 
     CleanUpCommandLine(argc, commands);

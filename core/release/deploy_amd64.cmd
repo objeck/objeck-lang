@@ -101,7 +101,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy /y ..\win_installers\setup64 .
 	devenv setup.sln /rebuild "Release"
-	signtool sign /f "d:\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
+	signtool sign /f "c:/users/objec/dropbox/personal/signing keys/2022/code/randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"

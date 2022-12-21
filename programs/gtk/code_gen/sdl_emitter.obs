@@ -1,0 +1,325 @@
+use Collection.Generic;
+
+bundle CodeGen {
+	#~
+	Source emitter
+	~#
+	class Emitter {
+		@file_name : String;
+		@this_name : String;
+		@version : String;
+		
+		New(this_name : String, version : String, file_name : String) {
+			@this_name := this_name;
+			@version := version;
+			@file_name := file_name;
+		}
+		
+		method : public : Emit() ~ Nil {
+			version := @version->ToInt();
+
+			"file={@file_name}"->PrintLine();
+			"version={@version}"->PrintLine();
+			"class={@this_name}"->PrintLine();
+
+			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name, version)->Parse();
+			each(i : methods) {
+				"---"->PrintLine();
+				parsed_method := methods->Get(i)->As(ParsedFunction);
+				EmitObjeckCode(parsed_method);
+				EmitCxxCode(parsed_method);
+			};
+		}
+		
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 3) {
+				Emitter->New(args[0], args[1], args[2])->Emit();
+			};
+		}
+		
+		method : GetTypeString(type : ParsedType) ~ String{
+			buffer := "";
+			
+			select(type->GetType()) {
+				label ParsedType->Type->INT: {
+					buffer->Append("Int");
+				}
+				
+				label ParsedType->Type->BOOL: {
+					buffer->Append("Bool");
+				}
+				
+				label ParsedType->Type->CLASS: {
+					buffer->Append(type->GetName());
+				}
+				
+				label ParsedType->Type->VOID_STAR: {
+					buffer->Append("Int");
+				}
+				
+				label ParsedType->Type->CHAR_STAR: {
+					buffer->Append("String");
+				}
+				
+				label ParsedType->Type->VOID: {
+					buffer->Append("Nil");
+				}
+			};
+			
+			return buffer;
+		}
+		
+		method : GetParametersString(parameters : ParsedParameters) ~ String {
+			buffer := "(";
+			
+			i := 0;
+			if(parameters->Size() > 0) {
+				first_parameter := parameters->Get(0);
+				if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & 
+						GetTypeString(first_parameter->GetType())->Equals(@this_name)) {
+					i := 1;
+				};
+			};
+			
+			for(i := i; i < parameters->Size(); i += 1;) {
+				parameter := parameters->Get(i);
+				buffer += parameter->GetName();
+				buffer += " : ";
+				buffer += GetTypeString(parameter->GetType());
+				
+				if(i + 1 < parameters->Size()) {
+					buffer += ", ";
+				};
+			};
+			buffer += ")";
+			
+			return buffer;
+		}
+		
+		method : GetCallingString(parameters : ParsedParameters, newline : Bool := true) ~ String {
+			buffer := "(";
+			
+			for(i := 0; i < parameters->Size(); i += 1;) {
+				parameter := parameters->Get(i);
+				buffer += parameter->GetName();
+				
+				if(i + 1 < parameters->Size()) {
+					buffer += ", ";
+				};
+			};
+			
+			if(newline) {
+				buffer += ");\n";
+			}
+			else {
+				buffer += "));";
+			};
+			
+			return buffer;
+		}
+		
+		method : EmitCxxCode(parsed_method : ParsedFunction) ~ Nil {
+			buffer := "#ifdef _WIN32\n";
+			buffer += "\t__declspec(dllexport)\n";
+			buffer += "#endif\n";
+			buffer += "\tvoid ";
+			buffer += parsed_method->GetCxxName();
+			buffer += "(VMContext& context) {\n";
+			
+			offset := 0;
+			has_return := <>parsed_method->GetReturnType()->GetType() = ParsedType->Type->VOID;
+			parameters := parsed_method->GetParameters();
+			if(has_return) {
+				offset += 1;
+			};
+			
+			each(i : parameters) {
+				parameter := parameters->Get(i);
+				
+				if(i = 0 & parameters->Get(0)->GetType()->GetType() = ParsedType->Type->CLASS & 
+						GetTypeString(parameters->Get(0)->GetType())->Equals(@this_name)) {
+					buffer += "\t\tGtk_";
+					buffer += @this_name;
+					buffer += "* ";
+					buffer += parameter->GetName();
+					buffer += " = (";
+					buffer += @this_name;
+					buffer += "*)APITools_GetIntValue(context, ";
+					buffer += offset;
+					buffer += ");\n";
+				}
+				else {
+					select(parameter->GetType()->GetType()) {
+						label ParsedType->Type->INT:
+						label ParsedType->Type->BOOL: {
+							buffer += "\t\tconst int gtk_";
+							buffer += parameter->GetName();
+							buffer += " = APITools_GetIntValue(context, ";
+							buffer += offset;
+							buffer += ");\n";
+						}
+		
+						label ParsedType->Type->CLASS: {
+							buffer += "\t\tconst size_t* gtk_";
+							buffer += parameter->GetName();
+							buffer += "_obj = (size_t*)APITools_GetObjectValue(context, ";
+							buffer += offset;
+							buffer += ");\n";
+						}
+						
+						label ParsedType->Type->CHAR_STAR: {
+							buffer += "\t\tconst std::string gtk_";
+							buffer += parameter->GetName();
+							buffer += " = UnicodeToBytes(APITools_GetStringValue(context, ";
+							buffer += offset;
+							buffer += "));\n";
+						}
+						
+##					label ParsedType->Type->VOID_STAR:
+					};
+				};
+				## update
+				offset++;
+			};
+			
+			parameter := parsed_method->GetReturnType();
+			select(parameter->GetType()) {
+				label ParsedType->Type->INT:
+				label ParsedType->Type->BOOL: {
+					buffer += "\t\tconst int value = gtk_";
+					buffer += parsed_method->GetFunctionName();
+					buffer += GetCallingString(parameters);
+					buffer += "\t\tAPITools_SetIntValue(context, 0, value);\n";
+				}
+
+				label ParsedType->Type->CLASS: {
+					buffer += "\t\tconst size* value = gtk_";
+					buffer += parsed_method->GetFunctionName();
+					buffer += GetCallingString(parameters);
+					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)value);\n";
+				}
+				
+				label ParsedType->Type->CHAR_STAR: {
+					buffer += "\t\tconst std::wstring value = BytesToUnicode(gtk_";
+					buffer += parsed_method->GetFunctionName();
+					buffer += GetCallingString(parameters, false);
+					buffer += "\n\t\tAPITools_SetStringValue(context, 0, value);\n";
+				}
+							
+				label ParsedType->Type->VOID: {
+					buffer += "\t\t";
+					buffer += parsed_method->GetFunctionName();
+					buffer += GetCallingString(parameters);
+				}	
+				
+##				label ParsedType->Type->VOID_STAR:
+			};
+			
+			buffer += "\t}\n";
+			buffer->PrintLine();
+		}
+		
+		method : EmitObjeckCode(parsed_method : ParsedFunction) ~ Nil {
+			buffer := "method : public : ";
+			buffer += parsed_method->GetObjeckName();
+			buffer += GetParametersString(parsed_method->GetParameters());
+			buffer += " ~ ";
+			buffer += GetTypeString(parsed_method->GetReturnType());
+			buffer += " {\n\t";
+			
+			offset := 0;
+			parameters := parsed_method->GetParameters();
+			if(parsed_method->HasReturn()) {
+				buffer += "array_args := Base->New[";
+				buffer += parameters->Size();
+				buffer += "];\n";
+			}
+			else {
+				offset := 1;
+				buffer += "array_args := Base->New[";
+				buffer += parameters->Size() + 1;
+				buffer += "];\n\t";
+				buffer += "array_args[0] := IntHolder->New();\n";
+			};
+			
+			each(i : parameters) {
+				parameter := parameters->Get(i);
+				if(i = 0) {
+					buffer += "\tarray_args[";
+					buffer += offset;
+					first_parameter := parameters->Get(0);
+					if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & 
+							GetTypeString(first_parameter->GetType())->Equals(@this_name)) {
+						buffer += "] := IntHolder->New(@";
+					}
+					else {
+						buffer += "] := IntHolder->New(";
+					};
+					buffer += parameter->GetName();
+					buffer += ");\n";
+				}
+				else {
+					select(parameter->GetType()->GetType()) {
+						label ParsedType->Type->INT: {
+							buffer += "\tarray_args[";
+							buffer += offset;
+							buffer += "] := IntHolder->New(";
+							buffer += parameter->GetName();
+							buffer += ");\n";
+						}
+						
+						label ParsedType->Type->BOOL: {
+							buffer += "\tarray_args[";
+							buffer += offset;
+							buffer += "] := IntHolder->New(";
+							buffer += parameter->GetName();
+							buffer += " ? 0 : 1);\n";
+						}
+						
+						label ParsedType->Type->CLASS:
+						label ParsedType->Type->CHAR_STAR: {
+							buffer += "\tarray_args[";
+							buffer += offset;
+							buffer += "] := ";
+							buffer += parameter->GetName();
+							buffer += ";\n";
+						}
+						
+						label ParsedType->Type->VOID_STAR: {
+						}
+					};
+				};
+				offset += 1;
+			};
+			
+			buffer += "\n\tProxy->GetDllProxy()->CallFunction(\"";
+			buffer += parsed_method->GetCxxName();
+			buffer += "\", array_args);\n\n";
+			
+			select(parsed_method->GetReturnType()->GetType()) {
+				label ParsedType->Type->INT: {
+					buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+					buffer += "\treturn value->Get();\n";
+				}
+				
+				label ParsedType->Type->BOOL: {
+					buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+					buffer += "\treturn value->Get() = 0 ? false : true;\n";
+				}
+				
+				label ParsedType->Type->CLASS:
+				label ParsedType->Type->CHAR_STAR: {
+					buffer += "\treturn array_args[0];\n";
+				}
+							
+				label ParsedType->Type->VOID: {
+				}	
+				
+##				label ParsedType->Type->VOID_STAR:
+			};
+						
+			buffer += "}\n";
+			buffer->PrintLine();
+		}
+	}
+}
