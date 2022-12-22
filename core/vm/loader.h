@@ -129,7 +129,7 @@ class Loader {
 public:
   Loader(const wchar_t* arg) {
     filename = arg;
-    if(!EndsWith(filename, L".obe")) {
+    if(!EndsWith(filename, L".obe") && !EndsWith(filename, L".obw")) {
       filename += L".obe";
     }
 
