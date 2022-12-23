@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+
+<html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" lang="en">
+    <head><link rel="canonical" href="http://msdn.microsoft.com/en-us/library/t9e807fx(v=vs.110).aspx" />
+        <title>Example: Scanning for HREFs</title>
+
+
+
+
+<meta name="DCS.dcsuri" content="/en-us/library/t9e807fx(d=default,l=en-us,v=vs.110).aspx" />
+
+<meta name="NormalizedUrl" content="http://msdn.microsoft.com/en-us/library/t9e807fx(d=default,l=en-us,v=vs.110).aspx" />
+
+<meta name="ms.normalizedurl" content="http://msdn.microsoft.com/en-us/library/t9e807fx(d=default,l=en-us,v=vs.110).aspx" />
+
+<meta name="DCSext.ProductFamily" content="LIB_DG" />
+
+<meta name="DCSext.Product" content="NDP_CLR" />
+
+<meta name="DCSext.Title" content="Example: Scanning for HREFs" />
+
+<meta name="VotingContextUrl" content="http://msdn.microsoft.com/en-us/library/t9e807fx(d=default,l=en-us,v=vs.110).aspx" />
+
+<meta name="MN" content="EE4293C1-6:57:17 AM" />
+
+<meta name="Search.ShortId" content="t9e807fx" />
+
+<meta name="ms.shortidmsdn" content="t9e807fx" />
+
+<meta name="Ms.Locale" content="en-us" />
+
+
+
+
+
+
+
+
+        
+    <link rel="stylesheet" type="text/css" href="http://i3.msdn.microsoft.com/Combined.css?resources=0:Topic,0:CodeSnippet,0:ProgrammingSelector,0:ExpandableCollapsibleArea,1:CommunityContent,0:TopicNotInScope,0:FeedViewerBasic,0:ImageSprite,2:Header,2:HeaderFooterSprite,3:LinkList,4:PrintExportButton,1:Toc,1:NavigationResize,5:FeedbackCounter,0:VersionSelector,1:LibraryMemberFilter,2:Footer,5:Feedback,3:Base,6:Msdn;/Areas/Epx/Content/Css:0,/Areas/Library/Content:1,/Areas/Centers/Themes/StandardDevCenter/Content:2,/Areas/Epx/Themes/Base/Content:3,/Areas/Library/Themes/Base/Content:4,/Areas/Epx/Shared/Content:5,/Areas/Library/Themes/Msdn/Content:6&amp;amp;hashKey=1EF75A1822EB81D39C53CF6A79470460" /></head>
+    <body class="library">
+        <div id="page">
+            
+            
+  
+            
+        
+    <link type="text/css" rel="stylesheet" />
+    
+    <input type="hidden" id="isHeaderBleeding" value="true" />
+    <div id="ux-header" dir="ltr" class="ltr msdn">
+        
+
+        <header>
+            <div class="row">
+                <div class="top mobile"></div>
+                <div class="left">
+                    <div class="siteLogo">  
+                        
+<a class="msdnLogoImg" href="http://msdn.microsoft.com">
+                             <img src="http://i.msdn.microsoft.com/Areas/Centers/Themes/StandardDevCenter/Content/Images/microsoftLogoForHeader.png" />
+                         </a>
+                                                             
+                        <div data-fragmentName="SiteLogo" id="Fragment_SiteLogo" xmlns="http://www.w3.org/1999/xhtml">
+  <div class="LinkWithImage topImage">
+    <a id="SiteLogo_2152_1" href="http://msdn.microsoft.com">
+      <span>Developer Network</span>
+    </a>
+  </div>
+</div>    
+                    </div>
+                    <div id="grip"></div>
+                </div>
+                
+                <div class="right desktop">
+                    <div class="auxNav">
+                        <div data-fragmentName="Subscriptions" id="Fragment_Subscriptions" xmlns="http://www.w3.org/1999/xhtml">
+  <a href="https://msdn.microsoft.com/subscriptions/manage/hh442900" id="Subscriptions_2153_1" xmlns="http://www.w3.org/1999/xhtml">MSDN subscriptions</a>
+</div>   
+                        <div data-fragmentName="GetTools" id="Fragment_GetTools" xmlns="http://www.w3.org/1999/xhtml">
+  <a href="http://go.microsoft.com/fwlink/?LinkId=309297&amp;clcid=0x409&amp;slcid=0x409" id="GetTools_2153_3" xmlns="http://www.w3.org/1999/xhtml">Get tools</a>
+</div>   
+                        <div id="signIn">
+
+<a class="scarabLink" href="https://login.live.com/login.srf?wa=wsignin1.0&amp;rpsnv=12&amp;ct=1400075837&amp;rver=6.0.5276.0&amp;wp=MCLBI&amp;wlcxt=MSDN%24MSDN%24MSDN&amp;wreply=http%3a%2f%2fmsdn.microsoft.com%2fen-us%2flibrary%2ft9e807fx%2528v%3dvs.110%2529.aspx&amp;lc=1033&amp;id=254354&amp;mkt=en-US" title="Sign in">Sign in</a></div>
+
+    
+
+                    </div>
+                    <div data-fragmentName="SearchBox" id="Fragment_SearchBox" xmlns="http://www.w3.org/1999/xhtml">
+  <div class="SearchBox">
+    <form id="HeaderSearchForm" name="HeaderSearchForm" method="get" onsubmit="return Epx.Controls.SearchBox.searchBoxOnSubmit(this);">
+      <input id="HeaderSearchTextBox" name="query" type="text" maxlength="200" onfocus="Epx.Controls.SearchBox.watermarkFocus(event, this.title)" onblur="Epx.Controls.SearchBox.watermarkBlur(event, this.title)" />
+      <button id="HeaderSearchButton" value="" type="submit" class="header-search-button"></button>
+    </form>
+    
+    
+  </div>
+</div> 
+                </div>
+            </div>
+       
+             <div class="row" id="droor">
+                <div class="left">
+                            <nav>
+            <ul>
+                     <li class="inactive">
+
+                         <a href="http://msdn.microsoft.com/dn308572" title="Home">Home</a>
+
+                     </li>
+                     <li class="inactive">
+
+                         <a href="http://msdn.microsoft.com/dn614592" title="Technologies">Technologies</a>
+                                 <div class="area">
+                                     <div class="arrow"></div>
+                                 </div>
+                                 <div class="subNav">
+                                     <ul>
+                                                 <li><a href="http://msdn.microsoft.com/dn629512" title="Cloud">Cloud</a></li>
+                                                 <li><a href="http://msdn.microsoft.com/dn629516" title="Mobile">Mobile</a></li>
+                                                 <li><a href="http://msdn.microsoft.com/dn629514" title="Web">Web</a></li>
+                                                 <li><a href="http://msdn.microsoft.com/dn629388" title="Business">Business</a></li>
+                                                 <li><a href="http://msdn.microsoft.com/dn629513" title="Data">Data</a></li>
+                                                 <li><a href="http://msdn.microsoft.com/dn629515" title="Gaming">Gaming</a></li>
+                                     </ul>
+                                 </div>
+
+                     </li>
+                     <li class="inactive">
+
+                         <a href="http://msdn.microsoft.com/dn271880" title="Dev centers">Dev centers</a>
+
+                     </li>
+                     <li class="inactive">
+
+                         <a href="http://msdn.microsoft.com/dn338064" title="Connect">Connect</a>
+                                 <div class="area">
+                                     <div class="arrow"></div>
+                                 </div>
+                                 <div class="subNav">
+                                     <ul>
+                                                 <li><a href="http://tech-advisors.msdn.microsoft.com/en-us" title="Tech Advisors">Tech Advisors</a></li>
+                                                 <li><a href="http://events.msdn.microsoft.com/en-us" title="Events">Events</a></li>
+                                                 <li><a href="http://social.msdn.microsoft.com/forums/" title="Forums">Forums</a></li>
+                                     </ul>
+                                 </div>
+
+                     </li>
+                     <li class="inactive">
+
+                         <a href="http://msdn.microsoft.com/dn292944" title="Downloads">Downloads</a>
+                                 <div class="area">
+                                     <div class="arrow"></div>
+                                 </div>
+                                 <div class="subNav">
+                                     <ul>
+                                                 <li><a href="http://msdn.microsoft.com/dn369242" title="Developer tools">Developer tools</a></li>
+                                                 <li><a href="http://msdn.microsoft.com/dn369240" title="SDKs">SDKs</a></li>
+                                                 <li><a href="https://msdn.microsoft.com/subscriptions/manage/hh442900" title="MSDN subscriptions">MSDN subscriptions</a></li>
+                                     </ul>
+                                 </div>
+
+                     </li>
+                     <li class="active current">
+
+                         <a href="http://msdn.microsoft.com/library" title="Library">Library</a>
+
+                     </li>
+                     <li class="inactive">
+
+                         <a href="http://code.msdn.microsoft.com/" title="Samples">Samples</a>
+
+                     </li>
+            </ul>
+          
+        </nav>        
+
+                </div>
+                <div class="right mobile"></div>
+                
+                <div data-fragmentName="SocialLinks" id="Fragment_SocialLinks" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <div class="linkListTitle">Follow us</div>
+    <ul class="links horizontal">
+      <li>
+        <a href="http://www.facebook.com/microsoftdeveloper" target="_blank" id="SocialLinks_2152_4" class="facebook" xmlns="http://www.w3.org/1999/xhtml">http://www.facebook.com/microsoftdeveloper</a>
+      </li>
+      <li>
+        <a href="https://twitter.com/msdev" target="_blank" id="SocialLinks_2152_5" class="twitter" xmlns="http://www.w3.org/1999/xhtml">https://twitter.com/msdev</a>
+      </li>
+      <li>
+        <a href="http://plus.google.com/111221966647232053570/" target="_blank" id="SocialLinks_2152_6" class="googlePlus" xmlns="http://www.w3.org/1999/xhtml">http://plus.google.com/111221966647232053570/</a>
+      </li>
+    </ul>
+  </div>
+</div> 
+                
+                <span id="singleCol"></span>
+                <span id="doubleCol"></span>
+             </div>
+        </header>
+    </div>
+    
+    
+
+        
+    <div class="printExportMenus ltr">
+        <a id="isd_printABook" href="/en-us/library/export/help/?returnUrl=%2fen-us%2flibrary%2ft9e807fx(v%3dvs.110).aspx">
+            Export (<span class="count">0</span>)
+        </a>
+        <a id="isd_print" href="http://msdn.microsoft.com/en-us/library/t9e807fx(d=printer,v=vs.110).aspx" rel="nofollow">
+            Print 
+        </a>
+    </div>
+    
+
+        <div class="printExportMenus ltr">
+        <a id="expandCollapseAll" accesskey="e" href="javascript:void(0)" title="Expand/Collapse all sections by pressing Ctrl + Shift + e">Expand All</a>
+    </div>
+
+    
+
+        
+            <div id="body">
+                
+
+
+
+
+
+
+
+
+    <div id="leftNav">
+
+
+
+<div id="tocnav">
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/ms123401.aspx" id="ms310241_MSDN.10_en-us" mtpsaliasid="" mtpsassetid="5DDC0A78-6B2C-43E3-9C56-55F45C0DFFA5_MSDN.10_en-us" mtpsshortid="ms123401_MSDN.10_en-us" title="MSDN Library">MSDN Library</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/ff361664(v=vs.110).aspx" id="aa139615_MSDN.10_en-us" mtpsaliasid="" mtpsassetid="43e22490-fb00-409c-8301-585a03034ae2_MSDN.10_en-us" mtpsshortid="ff361664_VS.110_en-us" title=".NET Development">.NET Development</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/w0x726c2(v=vs.110).aspx" id="aa139616_MSDN.10_en-us" mtpsaliasid="" mtpsassetid="f61f02f2-2f20-483d-8f56-a9c8f3a54986_MSDN.10_en-us" mtpsshortid="w0x726c2_VS.110_en-us" title=".NET Framework 4.5">.NET Framework 4.5</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/hh156542(v=vs.110).aspx" id="hh781599_VS.110_en-us" mtpsaliasid="" mtpsassetid="26e3d285-24c3-435c-a797-9fe5affb8525_VS.110_en-us" mtpsshortid="hh156542_VS.110_en-us" title="Development Guide">Development Guide</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/ms172157(v=vs.110).aspx" id="hh569857_VS.110_en-us" mtpsaliasid="" mtpsassetid="653da4ba-3752-4d1f-a08a-de017dc86ecc_VS.110_en-us" mtpsshortid="ms172157_VS.110_en-us" title="Application Essentials">Application Essentials</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/7wchwf6k(v=vs.110).aspx" id="hh569856_VS.110_en-us" mtpsaliasid="" mtpsassetid="028d0ce8-ebc2-4a88-a16f-17508f6d0bd6_VS.110_en-us" mtpsshortid="7wchwf6k_VS.110_en-us" title="Base Types">Base Types</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/st9zk29t(v=vs.110).aspx" id="hh569875_VS.110_en-us" mtpsaliasid="" mtpsassetid="d4568ff3-9f83-4549-acd8-47aec2194ac0_VS.110_en-us" mtpsshortid="st9zk29t_VS.110_en-us" title="Manipulating Strings">Manipulating Strings</a>            </div>
+            <div class="toclevel0" data-toclevel="0">
+<a data-tochassubtree="true" href="/en-us/library/hs600312(v=vs.110).aspx" id="hh569881_VS.110_en-us" mtpsaliasid="" mtpsassetid="521b3f6d-f869-42e1-93e5-158c54a6895d_VS.110_en-us" mtpsshortid="hs600312_VS.110_en-us" title=".NET Framework Regular Expressions">.NET Framework Regular Expressions</a>            </div>
+            <div class="toclevel1" data-toclevel="1">
+<a data-tochassubtree="true" href="/en-us/library/kweb790z(v=vs.110).aspx" id="hh569870_VS.110_en-us" mtpsaliasid="" mtpsassetid="e9fd53f2-ed56-4b09-b2ea-e9bc9d65e6d6_VS.110_en-us" mtpsshortid="kweb790z_VS.110_en-us" title="Regular Expression Examples">Regular Expression Examples</a>            </div>
+            <div class="toclevel2 current" data-toclevel="2">
+<a href="/en-us/library/t9e807fx(v=vs.110).aspx" mtpsaliasid="" mtpsassetid="" mtpsshortid="" title="Example: Scanning for HREFs">Example: Scanning for HREFs</a>            </div>
+            <div class="toclevel2" data-toclevel="2">
+<a href="/en-us/library/c8e9427h(v=vs.110).aspx" mtpsaliasid="" mtpsassetid="" mtpsshortid="" title="Example: Changing Date Formats">Example: Changing Date Formats</a>            </div>
+            <div class="toclevel2" data-toclevel="2">
+<a href="/en-us/library/63ew9az0(v=vs.110).aspx" mtpsaliasid="" mtpsassetid="" mtpsshortid="" title="How to: Extract a Protocol and Port Number from a URL">How to: Extract a Protocol and Port Number from a URL</a>            </div>
+            <div class="toclevel2" data-toclevel="2">
+<a href="/en-us/library/844skk0h(v=vs.110).aspx" mtpsaliasid="" mtpsassetid="" mtpsshortid="" title="How to: Strip Invalid Characters from a String">How to: Strip Invalid Characters from a String</a>            </div>
+            <div class="toclevel2" data-toclevel="2">
+<a href="/en-us/library/01escwtf(v=vs.110).aspx" mtpsaliasid="" mtpsassetid="" mtpsshortid="" title="How to: Verify that Strings Are in Valid Email Format">How to: Verify that Strings Are in Valid Email Format</a>            </div>
+</div>
+        
+
+        
+
+        
+        
+        <div id="toc-resizable-ew" class="toc-resizable-ew"></div>
+        
+
+<a id="NavigationResize" href="javascript:void(0)">
+    <img class="cl_nav_resize_open" src="http://i3.msdn.microsoft.com/Areas/Epx/Content/Images/ImageSprite.png" title="Expand" alt="Expand" />
+    <img class="cl_nav_resize_close" src="http://i3.msdn.microsoft.com/Areas/Epx/Content/Images/ImageSprite.png" title="Minimize" alt="Minimize" />
+</a>
+
+
+
+    </div>
+<div id="content" class="content">
+
+
+
+
+
+
+    
+    
+
+    <div id="ratingCounterSeperator" class="cl_lw_vs_seperator" style="display: none;"></div>
+
+    <div id="ratingCounter">
+        <span id="rcA" class="ratingText">
+            2 out of 3 rated this helpful <span id="rateThisPrefix">- </span><a id="rateThisTopic" href="#feedback" title="Rate this topic">Rate this topic</a>
+            
+        </span>
+    </div>
+
+
+        
+<div xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="topic" xmlns="http://www.w3.org/1999/xhtml" xmlns:mtps="http://msdn2.microsoft.com/mtps" xmlns:msxsl="urn:schemas-microsoft-com:xslt" xmlns:cs="http://msdn.microsoft.com/en-us/">
+    <h1 class="title">Example: Scanning for HREFs</h1>
+    
+    <div class="lw_vs">
+      <div id="curversion">
+        <strong>
+            .NET Framework 4.5
+        </strong>
+      </div>
+      <div id="versionclick">
+        <div id="vsseperator" class="cl_lw_vs_seperator"></div>
+        <div>
+          <div>
+            <a id="vsLink" href="javascript:;">
+                        Other Versions
+                    </a>
+          </div>
+          <div class="cl_vs_arrow clip10x10">
+            <img class="cl_lw_vs_arrow" id="vsArrow" alt="" src="http://i3.msdn.microsoft.com/Areas/Epx/Content/Images/ImageSprite.png" />
+          </div>
+        </div>
+        <ul id="vsPanel">
+          <li>
+            <a href="/en-us/library/t9e807fx(v=vs.100).aspx">.NET Framework 4</a>
+          </li>
+          <li>
+            <a href="/en-us/library/t9e807fx(v=vs.85).aspx">.NET Framework 3.0</a>
+          </li>
+          <li>
+            <a href="/en-us/library/t9e807fx(v=vs.71).aspx">.NET Framework 1.1</a>
+          </li>
+          <li>
+            <a href="/en-us/library/t9e807fx(v=vs.90).aspx">.NET Framework 3.5</a>
+          </li>
+          <li>
+            <a href="/en-us/library/t9e807fx(v=vs.80).aspx">.NET Framework 2.0</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div style="clear:both;"></div>
+    
+    <div id="mainSection">
+      <div id="mainBody">
+        <p>
+          
+        </p>
+        <div class="introduction">
+          <p>The following example searches an input string and displays all the href="…" values and their locations in the string. </p>
+        </div>
+        <div>
+          
+          <h2 class="LW_CollapsibleArea_TitleDiv">
+            <div>
+              <a href="javascript:void(0)" class="LW_CollapsibleArea_TitleAhref" title="Collapse">
+                <span class="cl_CollapsibleArea_expanding LW_CollapsibleArea_Img"></span>
+                <span class="LW_CollapsibleArea_Title">The Regex Object</span>
+              </a>
+              <div class="LW_CollapsibleArea_HrDiv">
+                <hr class="LW_CollapsibleArea_Hr" />
+              </div>
+            </div>
+          </h2>
+          <div class="sectionblock">
+            <a id="sectionToggle0">
+              
+            </a>
+            <p>Because the <span class="code">DumpHRefs</span> method can be called multiple times from user code, it uses the <span><span class="input">static</span></span> (<span><span class="input">Shared</span></span> in Visual Basic) <span><a href="http://msdn.microsoft.com/en-us/library/bk1x0726(v=vs.110).aspx">Regex<span xmlns="">.</span>Match(String, String, RegexOptions)</a></span> method. This enables the regular expression engine to cache the regular expression and avoids the overhead of instantiating a new <span><a href="http://msdn.microsoft.com/en-us/library/system.text.regularexpressions.regex(v=vs.110).aspx">Regex</a></span> object each time the method is called. A <span><a href="http://msdn.microsoft.com/en-us/library/system.text.regularexpressions.match(v=vs.110).aspx">Match</a></span> object is then used to iterate through all matches in the string. </p>
+            <div>
+<div id="code-snippet-1" class="codeSnippetContainer" xmlns="">
+    <div class="codeSnippetContainerTabs">
+        <div class="codeSnippetContainerTabActive" dir="ltr"><a>C#</a></div><div class="codeSnippetContainerTab" dir="ltr"><a href="http://msdn.microsoft.com/en-us/library/t9e807fx(v=vs.110).aspx?cs-save-lang=1&amp;cs-lang=vb#code-snippet-1">VB</a></div>
+    </div>
+    <div class="codeSnippetContainerCodeContainer">
+        <div class="codeSnippetToolBar">
+            <div class="codeSnippetToolBarText">
+                <a name="CodeSnippetCopyLink" style="display: none;" title="Copy to clipboard." href="javascript:if (window.epx.codeSnippet)window.epx.codeSnippet.copyCode('CodeSnippetContainerCode_8d2a4447-1e81-448f-ad30-38c31b202886');">Copy</a>
+            </div>
+        </div>
+        <div id="CodeSnippetContainerCode_8d2a4447-1e81-448f-ad30-38c31b202886" class="codeSnippetContainerCode" dir="ltr">
+            <div style="color:Black;"><pre>
+<span style="color:Blue;">private</span> <span style="color:Blue;">static</span> <span style="color:Blue;">void</span> DumpHRefs(<span style="color:Blue;">string</span> inputString) 
+{
+   Match m;
+   <span style="color:Blue;">string</span> HRefPattern = <span style="color:#A31515;">"href\\s*=\\s*(?:[\"'](?&lt;1&gt;[^\"']*)[\"']|(?&lt;1&gt;\\S+))"</span>;
+
+   <span style="color:Blue;">try</span> {
+      m = Regex.Match(inputString, HRefPattern, 
+                      RegexOptions.IgnoreCase | RegexOptions.Compiled, 
+                      TimeSpan.FromSeconds(1));
+      <span style="color:Blue;">while</span> (m.Success)
+      {
+         Console.WriteLine(<span style="color:#A31515;">"Found href "</span> + m.Groups[1] + <span style="color:#A31515;">" at "</span> 
+            + m.Groups[1].Index);
+         m = m.NextMatch();
+      }   
+   }
+   <span style="color:Blue;">catch</span> (RegexMatchTimeoutException) {
+      Console.WriteLine(<span style="color:#A31515;">"The matching operation timed out."</span>);
+   }
+}
+</pre></div>
+            
+        </div>
+    </div>
+</div>
+</div>
+            <p>The following example then illustrates a call to the <span class="code">DumpHRefs</span> method.</p>
+            <div>
+<div id="code-snippet-2" class="codeSnippetContainer" xmlns="">
+    <div class="codeSnippetContainerTabs">
+        <div class="codeSnippetContainerTabActive" dir="ltr"><a>C#</a></div><div class="codeSnippetContainerTab" dir="ltr"><a href="http://msdn.microsoft.com/en-us/library/t9e807fx(v=vs.110).aspx?cs-save-lang=1&amp;cs-lang=vb#code-snippet-2">VB</a></div>
+    </div>
+    <div class="codeSnippetContainerCodeContainer">
+        <div class="codeSnippetToolBar">
+            <div class="codeSnippetToolBarText">
+                <a name="CodeSnippetCopyLink" style="display: none;" title="Copy to clipboard." href="javascript:if (window.epx.codeSnippet)window.epx.codeSnippet.copyCode('CodeSnippetContainerCode_21b0bf88-d247-4877-8079-270b97246988');">Copy</a>
+            </div>
+        </div>
+        <div id="CodeSnippetContainerCode_21b0bf88-d247-4877-8079-270b97246988" class="codeSnippetContainerCode" dir="ltr">
+            <div style="color:Black;"><pre>
+<span style="color:Blue;">public</span> <span style="color:Blue;">static</span> <span style="color:Blue;">void</span> Main()
+{
+   <span style="color:Blue;">string</span> inputString = <span style="color:#A31515;">"My favorite web sites include:&lt;/P&gt;"</span> +
+                        <span style="color:#A31515;">"&lt;A HREF=\"http://msdn2.microsoft.com\"&gt;"</span> +
+                        <span style="color:#A31515;">"MSDN Home Page&lt;/A&gt;&lt;/P&gt;"</span> +
+                        <span style="color:#A31515;">"&lt;A HREF=\"http://www.microsoft.com\"&gt;"</span> +
+                        <span style="color:#A31515;">"Microsoft Corporation Home Page&lt;/A&gt;&lt;/P&gt;"</span> +
+                        <span style="color:#A31515;">"&lt;A HREF=\"http://blogs.msdn.com/bclteam\"&gt;"</span> +
+                        <span style="color:#A31515;">".NET Base Class Library blog&lt;/A&gt;&lt;/P&gt;"</span>;
+   DumpHRefs(inputString);                     
+
+}
+<span style="color:Green;">// The example displays the following output: </span>
+<span style="color:Green;">//       Found href http://msdn2.microsoft.com at 43 </span>
+<span style="color:Green;">//       Found href http://www.microsoft.com at 102 </span>
+<span style="color:Green;">//       Found href http://blogs.msdn.com/bclteam at 176</span>
+</pre></div>
+            
+        </div>
+    </div>
+</div>
+</div>
+            <p>The regular expression pattern <span class="code">href\s*=\s*(?:["'](?&lt;1&gt;[^"']*)["']|(?&lt;1&gt;\S+))</span> is interpreted as shown in the following table.</p>
+            <div class="caption">
+              
+            </div>
+            <div class="tableSection">
+              <table>
+                <tr>
+                  <th>
+                    <p>Pattern</p>
+                  </th>
+                  <th>
+                    <p>Description</p>
+                  </th>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">href</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Match the literal string "href". The match is case-insensitive.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">\s*</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Match zero or more white-space characters.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">=</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Match the equals sign.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">\s*</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Match zero or more white-space characters.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">(?:["'](?&lt;1&gt;[^"']*)"|(?&lt;1&gt;\S+))</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Match one of the following without assigning the result to a captured group:</p>
+                    <ul>
+                      <li>
+                        <p>A quotation mark or apostrophe, followed by zero or more occurrences of any character other than a quotation mark or apostrophe, followed by a quotation mark or apostrophe. The group named <span class="code">1</span> is included in this pattern.</p>
+                      </li>
+                      <li>
+                        <p>One or more non-white-space characters. The group named <span class="code">1</span> is included in this pattern.</p>
+                      </li>
+                    </ul>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">(?&lt;1&gt;[^"']*)</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Assign zero or more occurrences of any character other than a quotation mark or apostrophe to the capturing group named <span class="code">1</span>.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>
+                      <span class="code">"(?&lt;1&gt;\S+)</span>
+                    </p>
+                  </td>
+                  <td>
+                    <p>Assign one or more non-white-space characters to the capturing group named <span class="code">1</span>.</p>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h2 class="LW_CollapsibleArea_TitleDiv">
+            <div>
+              <a href="javascript:void(0)" class="LW_CollapsibleArea_TitleAhref" title="Collapse">
+                <span class="cl_CollapsibleArea_expanding LW_CollapsibleArea_Img"></span>
+                <span class="LW_CollapsibleArea_Title">Match Result Class</span>
+              </a>
+              <div class="LW_CollapsibleArea_HrDiv">
+                <hr class="LW_CollapsibleArea_Hr" />
+              </div>
+            </div>
+          </h2>
+          <div class="sectionblock">
+            <a id="sectionToggle1">
+              
+            </a>
+            <p>The results of a search are stored in the <span><a href="http://msdn.microsoft.com/en-us/library/system.text.regularexpressions.match(v=vs.110).aspx">Match</a></span> class, which provides access to all the substrings extracted by the search. It also remembers the string being searched and the regular expression being used, so it can call the <span><a href="http://msdn.microsoft.com/en-us/library/system.text.regularexpressions.match.nextmatch(v=vs.110).aspx">Match<span xmlns="">.</span>NextMatch</a></span> method to perform another search starting where the last one ended.</p>
+          </div>
+        </div>
+        <div>
+          <h2 class="LW_CollapsibleArea_TitleDiv">
+            <div>
+              <a href="javascript:void(0)" class="LW_CollapsibleArea_TitleAhref" title="Collapse">
+                <span class="cl_CollapsibleArea_expanding LW_CollapsibleArea_Img"></span>
+                <span class="LW_CollapsibleArea_Title">Explicitly Named Captures</span>
+              </a>
+              <div class="LW_CollapsibleArea_HrDiv">
+                <hr class="LW_CollapsibleArea_Hr" />
+              </div>
+            </div>
+          </h2>
+          <div class="sectionblock">
+            <a id="sectionToggle2">
+              
+            </a>
+            <p>In traditional regular expressions, capturing parentheses are automatically numbered sequentially. This leads to two problems. First, if a regular expression is modified by inserting or removing a set of parentheses, all code that refers to the numbered captures must be rewritten to reflect the new numbering. Second, because different sets of parentheses often are used to provide two alternative expressions for an acceptable match, it might be difficult to determine which of the two expressions actually returned a result.</p>
+            <p>To address these problems, the <span><a href="http://msdn.microsoft.com/en-us/library/system.text.regularexpressions.regex(v=vs.110).aspx">Regex</a></span> class supports the syntax <span class="code">(?&lt;name&gt;…)</span> for capturing a match into a specified slot (the slot can be named using a string or an integer; integers can be recalled more quickly). Thus, alternative matches for the same string all can be directed to the same place. In case of a conflict, the last match dropped into a slot is the successful match. (However, a complete list of multiple matches for a single slot is available. See the <span><a href="http://msdn.microsoft.com/en-us/library/system.text.regularexpressions.group.captures(v=vs.110).aspx">Group<span xmlns="">.</span>Captures</a></span> collection for details.)</p>
+          </div>
+        </div>
+        <div>
+          <h2 class="LW_CollapsibleArea_TitleDiv">
+            <div>
+              <a href="javascript:void(0)" class="LW_CollapsibleArea_TitleAhref" title="Collapse">
+                <span class="cl_CollapsibleArea_expanding LW_CollapsibleArea_Img"></span>
+                <span class="LW_CollapsibleArea_Title">See Also</span>
+              </a>
+              <div class="LW_CollapsibleArea_HrDiv">
+                <hr class="LW_CollapsibleArea_Hr" />
+              </div>
+            </div>
+          </h2>
+          <div class="sectionblock">
+            <a id="seeAlsoToggle">
+              
+            </a>
+            <h4 class="subHeading">Other Resources</h4>
+            <div class="seeAlsoStyle">
+              <span>
+                <a href="http://msdn.microsoft.com/en-us/library/hs600312(v=vs.110).aspx">.NET Framework Regular Expressions</a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+
+
+
+<div class="libraryMemberFilter">
+    <div class="filterContainer">
+        <span>Show:</span>
+        <label>
+            <input type="checkbox" class="libraryFilterInherited" checked="checked" value="Inherit" />Inherited
+        </label>
+        <label>
+            <input type="checkbox" class="libraryFilterProtected" checked="checked" value="Protected" />Protected
+        </label>
+    </div>
+</div>
+    
+<input type="hidden" id="libraryMemberFilterEmptyWarning" value="There are no members available with your current filter settings." />
+
+
+ 
+</div>
+
+
+            </div>
+            <div class="clear"></div>
+        
+            
+    
+<input name="__RequestVerificationToken" type="hidden" value="RcF1PRkO75BWKDYFWVYk6TKw-8z3pOAeYlZWKl8f-Id05SJ5MY6c6KZHmWrCOn399xCjd3LA8AQOes1ldrPwvKsOCAc1" />
+<input id="ratingSubmitUrl" type="hidden" value="http://msdn.microsoft.com/en-us/library/feedback/add/t9e807fx(v=vs.110).aspx" />
+<input id="isTopicRated" type="hidden" value="false" />
+
+
+
+
+        
+    <link type="text/css" rel="stylesheet" />
+    
+    <div id="ux-footer" class="" style="" dir="ltr">
+        <footer class="top">
+            <div data-fragmentName="LeftLinks" id="Fragment_LeftLinks" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <div class="linkListTitle">Dev centers</div>
+    <ul class="links">
+      <li>
+        <a href="http://msdn.microsoft.com/windows" id="LeftLinks_2148_1" class="windowsBlue" xmlns="http://www.w3.org/1999/xhtml">Windows</a>
+      </li>
+      <li>
+        <a href="http://dev.windowsphone.com" id="LeftLinks_2148_2" class="windowsPurple" xmlns="http://www.w3.org/1999/xhtml">Windows Phone</a>
+      </li>
+      <li>
+        <a href="http://msdn.microsoft.com/office" id="LeftLinks_2148_3" class="office" xmlns="http://www.w3.org/1999/xhtml">Office</a>
+      </li>
+      <li>
+        <a href="http://msdn.microsoft.com/vstudio" id="LeftLinks_2148_4" class="visualStudio" xmlns="http://www.w3.org/1999/xhtml">Visual Studio</a>
+      </li>
+      <li>
+        <a href="http://developer.nokia.com/" title="Nokia" id="LeftLinks_2148_15" class="nokia" xmlns="http://www.w3.org/1999/xhtml">Nokia</a>
+      </li>
+      <li>
+        <a href="http://azure.microsoft.com/en-us/documentation/" target="_blank" id="LeftLinks_2148_12" xmlns="http://www.w3.org/1999/xhtml">Microsoft Azure</a>
+      </li>
+      <li>
+        <a href="http://msdn.microsoft.com/aa937802" id="LeftLinks_2148_5" xmlns="http://www.w3.org/1999/xhtml">More...</a>
+      </li>
+    </ul>
+  </div>
+</div>    
+            <div id="rightLinks">
+                <div data-fragmentName="CenterLinks1" id="Fragment_CenterLinks1" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <div class="linkListTitle">Learning resources</div>
+    <ul class="links">
+      <li>
+        <a href="http://www.microsoftvirtualacademy.com/" id="CenterLinks1_2151_4" xmlns="http://www.w3.org/1999/xhtml">Microsoft Virtual Academy</a>
+      </li>
+      <li>
+        <a href="http://channel9.msdn.com/" id="CenterLinks1_2151_5" xmlns="http://www.w3.org/1999/xhtml">Channel 9</a>
+      </li>
+      <li>
+        <a href="http://www.interoperabilitybridges.com/" id="CenterLinks1_2151_6" xmlns="http://www.w3.org/1999/xhtml">Interoperability Bridges</a>
+      </li>
+      <li>
+        <a href="http://msdn.microsoft.com/magazine/" id="CenterLinks1_2151_7" xmlns="http://www.w3.org/1999/xhtml">MSDN Magazine</a>
+      </li>
+    </ul>
+  </div>
+</div>
+                <div data-fragmentName="CenterLinks2" id="Fragment_CenterLinks2" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <div class="linkListTitle">Community</div>
+    <ul class="links">
+      <li>
+        <a href="http://social.msdn.microsoft.com/forums/en-us/home" id="CenterLinks2_2151_8" xmlns="http://www.w3.org/1999/xhtml">Forums</a>
+      </li>
+      <li>
+        <a href="http://blogs.msdn.com/b/developer-tools/" id="CenterLinks2_2151_9" xmlns="http://www.w3.org/1999/xhtml">Blogs</a>
+      </li>
+      <li>
+        <a href="http://www.codeplex.com" id="CenterLinks2_2151_10" xmlns="http://www.w3.org/1999/xhtml">Codeplex</a>
+      </li>
+    </ul>
+  </div>
+</div>
+                <div data-fragmentName="CenterLinks3" id="Fragment_CenterLinks3" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <div class="linkListTitle">Support</div>
+    <ul class="links">
+      <li>
+        <a href="http://msdn.microsoft.com/hh361695" id="CenterLinks3_2151_11" xmlns="http://www.w3.org/1999/xhtml">Self support</a>
+      </li>
+      <li>
+        <a href="http://support.microsoft.com/" id="CenterLinks3_2151_12" xmlns="http://www.w3.org/1999/xhtml">Other support options</a>
+      </li>
+    </ul>
+  </div>
+</div>
+                <div data-fragmentName="CenterLinks4" id="Fragment_CenterLinks4" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <div class="linkListTitle">Programs</div>
+    <ul class="links">
+      <li>
+        <a href="http://www.microsoft.com/bizspark/" id="CenterLinks4_2151_13" xmlns="http://www.w3.org/1999/xhtml">BizSpark (for startups)</a>
+      </li>
+      <li>
+        <a href="https://www.dreamspark.com/" id="CenterLinks4_2151_14" xmlns="http://www.w3.org/1999/xhtml">DreamSpark</a>
+      </li>
+      <li>
+        <a href="https://www.microsoft.com/faculty" id="CenterLinks4_2151_15" xmlns="http://www.w3.org/1999/xhtml">Faculty Connection</a>
+      </li>
+      <li>
+        <a href="http://www.microsoft.com/student/" id="CenterLinks4_2151_16" xmlns="http://www.w3.org/1999/xhtml">Microsoft Student</a>
+      </li>
+    </ul>
+  </div>
+</div>
+    
+    <div class="feedbackContainer">
+        <div id="feedbackSection1" class="clear">
+            <div class="left">Did you find this helpful?</div>
+            <div class="left">
+                <div class="left">
+                    <input type="radio" name="feedback" id="feedbackYes" value="1" class="feedbackYesClick" data-enhance="false" /><label class="feedbackYesClick" for="feedbackYes"> Yes</label>
+                </div>
+                <div class="left">
+                    <input type="radio" name="feedback" id="feedbackNo" value="0" class="feedbackNoClick" data-enhance="false" /><label class="feedbackNoClick" for="feedbackNo"> No</label>
+                </div>
+            </div>
+            <a class="rateThisAnchor" name="feedback"></a>
+        </div>
+        <div id="feedbackSection2" class="clear">
+        </div>
+        <div id="feedbackSection3" class="clear">
+                    <div>
+                        <input id="checkboxNo201" name="chkbxNo" type="checkbox" value="201" data-enhance="false" />
+                        <label for="checkboxNo201">Not accurate</label>
+                    </div>
+                    <div>
+                        <input id="checkboxNo202" name="chkbxNo" type="checkbox" value="202" data-enhance="false" />
+                        <label for="checkboxNo202">Not enough depth</label>
+                    </div>
+                    <div>
+                        <input id="checkboxNo203" name="chkbxNo" type="checkbox" value="203" data-enhance="false" />
+                        <label for="checkboxNo203">Need more code examples</label>
+                    </div>
+        </div>
+        <div id="feedbackSection4" class="clear">
+            <div>
+                <textarea id="feedbackTextArea" name="feedbackText" class="TellUsMoreTextBoxSearchLoaded" data-enhance="false">Tell us more...</textarea>
+            </div>
+            <div class="left"><span class="counter">(<span id="feedbackTextCounter">1500</span> characters remaining)</span></div>
+            <div class="right">
+                <button type="button" id="feedbackSubmit" title="Click to Submit Feedback" data-enhance="false">Submit</button>
+            </div>
+        </div>
+        <div id="feedbackSection5">Thank you for your feedback</div>
+        <input id="feedbackValue" type="hidden" value="" />
+        <input id="tellUsMoreText" type="hidden" value="Tell us more..." />
+        <input id="maxTextBoxCharacters" type="hidden" value="1500" />
+        <input type="hidden" id="submitUrl" value="/en-us/msdn/ux/uxservices/feedback/add/footer(v=vs.110)" />
+        <input type="hidden" id="feedbackSiteName" name="feedbackSiteName" value="" />
+        <input type="hidden" id="feedbackPriority" name="feedbackPriority" value="" />
+        <input type="hidden" id="feedbackSourceUrl" name="feedbackSourceUrl" value="" />
+        <input type="hidden" id="ClientIP" name="ClientIP" value="" />
+        <input type="hidden" id="ClientOS" name="ClientOS" value="" />
+        <input type="hidden" id="ClientBrowser" name="ClientBrowser" value="" />
+        <input type="hidden" id="ClientTime" name="ClientTime" value="" />
+        <input type="hidden" id="ClientDate" name="ClientDate" value="" />
+    </div>
+    
+            </div>
+        </footer>
+    
+        <footer class="bottom">
+            <span class="localeContainer">
+                    <form class="selectLocale" id="selectLocaleForm" action="http://msdn.microsoft.com/en-us/selectlocale-dmc">
+        <input type="hidden" name="fromPage" value="http%3a%2f%2fmsdn.microsoft.com%2fen-us%2flibrary%2ft9e807fx(v%3dvs.110).aspx" />
+        <a href="#" onclick="$('#selectLocaleForm').submit();return false;" title="Change your language">United States (English)</a>
+    </form>    
+
+
+            </span>
+        
+            <div data-fragmentName="BottomLinks" id="Fragment_BottomLinks" xmlns="http://www.w3.org/1999/xhtml">
+  
+  <div class="linkList">
+    <ul class="links horizontal">
+      <li>
+        <a href="http://msdn.microsoft.com/newsletter.aspx" id="BottomLinks_2148_7" xmlns="http://www.w3.org/1999/xhtml">Newsletter</a>
+      </li>
+      <li>
+        <a href="http://msdn.microsoft.com/dn529288" id="BottomLinks_2148_8" xmlns="http://www.w3.org/1999/xhtml">Privacy &amp; cookies</a>
+      </li>
+      <li>
+        <a href="http://msdn.microsoft.com/cc300389" id="BottomLinks_2148_9" xmlns="http://www.w3.org/1999/xhtml">Terms of use</a>
+      </li>
+      <li>
+        <a href="http://www.microsoft.com/en-us/legal/intellectualproperty/Trademarks/EN-US.aspx" id="BottomLinks_2148_10" xmlns="http://www.w3.org/1999/xhtml">Trademarks</a>
+      </li>
+    </ul>
+  </div>
+</div>    
+            <span class="logoLegal">
+                <span class="logo"></span>
+                <span class="copyright">© 2014 Microsoft</span>
+            </span>
+        </footer>
+    </div>
+    
+
+
+            <div class="footerPrintView">
+                <div class="footerCopyrightPrintView">© 2014 Microsoft. All rights reserved.</div>
+            </div>
+
+            
+            
+    
+    
+    <input id="tocPaddingPerLevel" type="hidden" value="17" />
+
+
+        
+            <input id="MtpsDevice" type="hidden" value="Default" />
+
+
+<![CDATA[ Third party scripts and code linked to or referenced from this website are licensed to you by the parties that own such code, not by Microsoft.  See ASP.NET Ajax CDN Terms of Use – http://www.asp.net/ajaxlibrary/CDN.ashx. ]]>
+        
+            
+            
+            
+            
+            
+            
+        
+
+
+
+
+
+<noscript><div><img alt="DCSIMG" id="Img1" width="1" height="1" src="http://m.webtrends.com/dcsmgru7m99k7mqmgrhudo0k8_8c6m/njs.gif?dcsuri=/nojavascript&amp;WT.js=No" /></div></noscript>
+
+
+
+
+
+
+
+
+
+<noscript>
+  <a href="http://www.omniture.com" title="Web Analytics">
+    <img src="//msstonojsmsdn.112.2o7.net/b/ss/msstonojsmsdn/1/H.20.2--NS/0" height="1" width="1" border="0" alt="" />
+  </a>
+</noscript>
+
+
+
+
+<div id="globalRequestVerification">
+    <input name="__RequestVerificationToken" type="hidden" value="2cEJXx_JKuiX7c8_zilMC-iHOBhC5TGmcHur1eNMjAZXrxWTY5DoQQiaWO_M1o407uPuRMN68N9EQanUj7fSFxKXQek1" />
+</div>
+
+
+        </div>
+        
+        
+        
+    <script type="text/javascript" class="mtps-injected">
+/*<![CDATA[*/
+(function(window,document){"use strict";function preload(scripts){for(var result=[],script,e,i=0;i<scripts.length;i++)script=scripts[i],script.hasOwnProperty("url")&&(e=document.createElement("script"),e.src=script.url,script.throwaway=e),result.push(script);return result}function inject(scripts,index){var script,elem;if(index>=scripts.length){delete mtps.injectScripts;return}script=scripts[index];elem=document.createElement("script");elem.className="mtps-injected";elem.async=!1;var isLoaded=!1,timeoutId=0,injectNextFnName="",injectNext=elem.onerror=function(){isLoaded||(isLoaded=!0,inject(scripts,index+1),window.clearTimeout(timeoutId),elem.onload=elem.onerror=elem.onreadystatechange=null,injectNextFnName&&delete mtps[injectNextFnName],elem.removeEventListener&&elem.removeEventListener("load",injectNext,!1))};elem.addEventListener?elem.addEventListener("load",injectNext,!1):elem.readyState==="uninitialized"?elem.onreadystatechange=function(){(this.readyState==="loaded"||this.readyState==="complete")&&injectNext()}:elem.onload=injectNext;script.hasOwnProperty("url")?(timeoutId=window.setTimeout(injectNext,12e4),elem.src=script.url):(injectNextFnName="_injectNextScript_"+index,mtps[injectNextFnName]=injectNext,timeoutId=window.setTimeout(injectNext,2e3),elem.text="try {\n"+script.txt+"\n} finally { MTPS."+injectNextFnName+" && MTPS."+injectNextFnName+"(); }");parent.appendChild(elem)}var mtps=window.MTPS||(window.MTPS={}),parent=document.getElementsByTagName("head")[0];mtps.injectScripts=function(scripts){inject(preload(scripts),0)}})(window,document);
+MTPS.injectScripts([
+	{ txt: "/**/\r\n(window.MTPS || (window.MTPS = {})).cdnDomains || (window.MTPS.cdnDomains = { \r\n\t\"image\": \"http://i.msdn.microsoft.com\", \r\n\t\"js\": \"http://i2.msdn.microsoft.com\", \r\n\t\"css\": \"http://i3.msdn.microsoft.com\", \r\n\t\"xap\": \"http://msdn.microsoft.com\"\r\n});\r\n/**/" },
+	{ url: "http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.2.min.js" },
+	{ txt: "//\n  var literalNormalizedUrl = \u0027/en-us/library/t9e807fx(l=en-us,v=vs.110).aspx\u0027;\n  var wt_nvr_ru = \u0027WT_NVR_RU\u0027;\n  var wt_fpcdom = \u0027.microsoft.com\u0027;\n  var wt_domlist = \u0027msdn.microsoft.com\u0027;\n  var wt_pathlist = \u0027\u0027;\n  var wt_paramlist = \u0027DCSext.mtps_devcenter\u0027;\n  var wt_siteid = \u0027MSDN\u0027;\n  var gDomain = \u0027m.webtrends.com\u0027;\n  var gDcsId = \u0027dcsmgru7m99k7mqmgrhudo0k8_8c6m\u0027;\n  var gFpc = \u0027WT_FPC\u0027;\n\n\n\n  if (document.cookie.indexOf(gFpc + \"=\") == -1) {\n    var wtidJs = document.createElement(\"script\");\n    wtidJs.src = \"//\" + gDomain + \"/\" + gDcsId + \"/wtid.js\";\n    document.getElementsByTagName(\"head\")[0].appendChild(wtidJs);\n  }\n\n\n\n  var detectedLocale = \u0027en-us\u0027;\n  var wtsp = \u0027msdnlib_dotnet\u0027;\n  var gTrackEvents = \u00270\u0027;\n/**/" },
+	{ txt: "/**/\n  var omni_guid = \"b4c1389c-afa7-4af9-8891-dcbf954a3145\";\n/**/" },
+	{ txt: "//\n\n            window.appInsightsId = \u002760854590-027a-4ae4-98be-2741a40f355f\u0027;\n            //" },
+	{ url: "http://i2.msdn.microsoft.com/Combined.js?resources=0:Utilities,1:Layout,2:Header,2:Footer,3:Feedback,0:Topic,4:webtrendsscript,5:omni_rsid_MSDN,0:AppInsightsPerf,6:SearchBox;/Areas/Epx/Content/Scripts:0,/Areas/Centers/Themes/Base/Content:1,/Areas/Centers/Themes/StandardDevCenter/Content:2,/Areas/Epx/Shared/Content:3,/Areas/Global/Content/Webtrends/resources:4,/Areas/Global/Content/Omniture/resources/MSDN:5,/Areas/Epx/Themes/Base/Content:6\u0026amp;hashKey=5ED483CE4D1C4F29BB3535DBA07833E0" },
+	{ url: "http://i1.services.social.microsoft.com/search/Widgets/SearchBox.jss?boxid=HeaderSearchTextBox\u0026btnid=HeaderSearchButton\u0026brand=Msdn\u0026loc=en-us\u0026focusOnInit=false\u0026emptyWatermark=true\u0026searchButtonTooltip=Search MSDN" },
+	{ url: "http://i2.msdn.microsoft.com/Combined.js?resources=0:PrintExportButton,1:Toc,1:NavigationResize,2:FeedbackCounter;/Areas/Library/Themes/Base/Content:0,/Areas/Library/Content:1,/Areas/Epx/Shared/Content:2\u0026amp;hashKey=66872A62A3ED5011793DE8DC80B4968C" },
+	{ txt: "MTPS = window.MTPS || {}; MTPS.LocalizedStrings = window.MTPS.LocalizedStrings || {}; MTPS.LocalizedStrings.ExpandButtonTooltip = \u0027Expand\u0027; MTPS.LocalizedStrings.CollapseButtonTooltip = \u0027Collapse\u0027; MTPS.LocalizedStrings.EnhancedExpandTooltip = \u0027Click to expand. Double-click to expand all.\u0027; MTPS.LocalizedStrings.EnhancedCollapseTooltip = \u0027Click to collapse. Double-click to collapse all.\u0027; MTPS.LocalizedStrings.ExpandAllButtonTooltip = \u0027Expand All\u0027; MTPS.LocalizedStrings.CollapseAllButtonTooltip = \u0027Collapse All\u0027;" },
+	{ url: "http://i2.msdn.microsoft.com/Combined.js?resources=0:LibraryMemberFilter,1:Toc_Fixed,1:CodeSnippet,1:TopicNotInScope,1:CollapsibleArea,1:VersionSelector,0:TableWithPreTag,1:SurveyBroker;/Areas/Library/Content:0,/Areas/Epx/Content/Scripts:1\u0026amp;hashKey=F62C70F4C6EF988B27B7743D990E77D5" },
+	{ txt: "$(document).ready(function() {\n        try {\n            var token = $(\"#globalRequestVerification input[name=\u0027__RequestVerificationToken\u0027]\").clone();\n            $(\"#siteFeedbackForm\").append(token);\n        } catch(err) {\n            \n        }\n    });" }
+]);
+
+/*]]>*/
+</script></body>
+</html>

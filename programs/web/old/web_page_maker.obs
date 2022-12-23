@@ -1,0 +1,81 @@
+use System.IO.Filesystem;
+use Data.XML;
+
+class PageMaker {
+	@parser : XmlParser;
+	@html_buffer : String;
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			maker := PageMaker->New(args[0]);
+			maker->Make();
+		};
+	}
+
+	New(file : String) {
+		@parser := XmlParser->New(FileReader->ReadFile(file));
+		@html_buffer := "";
+	}
+
+	method : Make() ~ Nil {
+		if(@parser->Parse()) {
+			PrintStart();
+			TraverseTag(@parser->GetRoot());
+			PrintEnd();
+		}
+		else {
+			"-- Unable to Parse! --"->ErrorLine();
+		};
+	}
+
+	method : TraverseTag(element : XmlElement) ~ Nil {
+		name := element->GetName();
+		if(name->Equals("code")) {
+			PrintHtml();
+			
+			content := element->GetContent();
+			if(content <> Nil & content->Size() > 0) {
+				content->PrintLine();
+			};
+		}
+		else {
+			PrintTag(element);
+		};
+	}
+
+	method : PrintTag(element : XmlElement) ~ Nil {
+		name := element->GetName();
+		@html_buffer += "<{$name}>";
+		
+		content := element->GetContent();
+		if(content <> Nil & content->Size() > 0) {
+			@html_buffer += content;
+		};
+		
+		children := element->GetChildren()<XmlElement>;
+		each(i : children) {
+			TraverseTag(children->Get(i));
+		};
+		@html_buffer += "</{$name}>";
+	}
+
+	method : PrintStart() ~ Nil {
+		@html_buffer += "use Web.FastCgi; use Web.HTTP;	class FastCgiModule { function : Action(req : Request, res : Response) ~ Nil { ";
+		@html_buffer->Print();
+		@html_buffer := "";
+	}
+
+	method : PrintHtml() ~ Nil {
+		"res->AddBody(\""->Print();
+		@html_buffer->Print();
+		"\");"->PrintLine();
+		@html_buffer := "";
+	}
+
+	method : PrintEnd() ~ Nil {
+		PrintHtml();
+		@html_buffer += "res->Submit();	} }";
+		@html_buffer->Print();
+		@html_buffer := "";
+	}
+}
