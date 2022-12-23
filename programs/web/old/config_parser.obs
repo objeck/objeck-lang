@@ -1,0 +1,35 @@
+use IO;
+use XML;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				parser := XmlParser->New(FileReader->ReadFile(args[0]));
+				if(parser->Parse()) {
+					env := parser->FindElements("/fcgi/enviroment");
+					if(env <> Nil) {
+						cont := env->Get(0)->As(XmlElement)->FindElements("/enviroment/controller");
+						if(cont <> Nil) {
+							cont->Get(0)->As(XmlElement)->GetContent()->PrintLine();
+						};
+
+						encode := env->Get(0)->As(XmlElement)->FindElements("/enviroment/encoding");
+						if(encode <> Nil) {
+							encode->Get(0)->As(XmlElement)->GetContent()->PrintLine();
+						};
+
+						pages := parser->FindElements("/fcgi/pages/page");
+						if(pages <> Nil) {
+pages->Size()->PrintLine();
+						};
+					};
+				}
+				else {
+					parser->GetError()->PrintLine();
+				};
+			};
+		}
+	}
+}
+
