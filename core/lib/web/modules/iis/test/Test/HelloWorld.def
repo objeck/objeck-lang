@@ -1,0 +1,3 @@
+LIBRARY "HelloWorld"  
+EXPORTS  
+    RegisterModule
