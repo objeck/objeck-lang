@@ -21,6 +21,9 @@
   <ItemGroup>
     <ClCompile Include="..\objeck_web_module.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\objeck_web_module.def" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
