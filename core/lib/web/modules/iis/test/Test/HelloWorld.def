@@ -1,3 +1,0 @@
-LIBRARY "Test"  
-EXPORTS  
-    RegisterModule
