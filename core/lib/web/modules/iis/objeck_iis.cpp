@@ -26,7 +26,7 @@ public:
       size_t find_pos = buffer_str.find_last_of('\\');
       if(find_pos != std::wstring::npos) {
         std::wstring base_path = buffer_str.substr(0, find_pos); base_path += L"\\config.ini";
-        // read ini file
+        // read ini entry
         GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, max_size, base_path.c_str());
       }
       
