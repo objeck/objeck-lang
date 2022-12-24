@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include "sys.h"
+#include "loader.h"
+#include "interpreter.h"
 
 // Create the module class.
 class ObjeckIIS : public CHttpModule
@@ -14,32 +16,63 @@ class ObjeckIIS : public CHttpModule
 public:
   std::string m_html;
   bool is_ok;
+  Runtime::StackInterpreter* intpr;
+  size_t* op_stack; long* stack_pos;
 
   ObjeckIIS() {
     is_ok = false;
 
-    HMODULE module = GetModuleHandle(L"objeck_iis");
+    HMODULE module = GetModuleHandle("objeck_iis");
     if(module) {
       const size_t max_size = 512;
-      wchar_t buffer[max_size] = {0};
-      if(!GetModuleFileName(module, (LPWSTR)buffer, max_size)) {
-        std::wstring buffer_str(buffer);
+      char buffer[max_size] = {0};
+      if(!GetModuleFileName(module, (LPSTR)buffer, max_size)) {
+        std::string buffer_str(buffer);
         size_t find_pos = buffer_str.find_last_of('\\');
         if(find_pos != std::wstring::npos) {
-          std::wstring base_path = buffer_str.substr(0, find_pos); base_path += L"\\config.ini";
+          std::string base_path = buffer_str.substr(0, find_pos); 
+          base_path += "\\config.ini";
           // read ini entry
-          GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, max_size, base_path.c_str());
+          GetPrivateProfileString("objeck", "program", "(none)", (LPSTR)&buffer, max_size, base_path.c_str());
+          
+          // load program
+          Loader loader(BytesToUnicode(buffer).c_str());
+          loader.Load();
+          m_html = "--- Loaded ---";
+
+
+          // ignore non-web applications
+          if(!loader.IsWeb()) {
+            std::wcout << L"Please recompile the code to be a web application." << std::endl;
+            exit(1);
+          }
+
+          intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+          Runtime::StackInterpreter::AddThread(intpr);
+
+          op_stack = new size_t[OP_STACK_SIZE];
+          stack_pos = new long;
         }
 
-        m_html = UnicodeToBytes(buffer);
-        m_html += "... DSP";
         is_ok = true;
       }
     }
   }
 
   ~ObjeckIIS() {
+    delete stack_pos;
+    stack_pos = nullptr;
 
+    delete[] op_stack;
+    op_stack = nullptr;
+
+    delete intpr;
+    intpr = nullptr;
+  }
+
+  void LoadProgam(const std::wstring &name) {
+    Loader loader(name.c_str());
+    loader.Load();
   }
 
   REQUEST_NOTIFICATION_STATUS OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider)
@@ -56,7 +89,7 @@ public:
       response->Clear();
       
       // Set the MIME type to plain text.
-      const std::string header = "text/html";
+      const std::string header = "text/plain";
       response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
 
       // Create and set the data chunk.
