@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <sal.h>
 #include <httpserv.h>
+#include <psapi.h>
 
 #include <iostream>
 #include "sys.h"
@@ -14,10 +15,14 @@ public:
   std::string m_html;
 
   ObjeckIIS() {
+    wchar_t buffer1[513] = {0};
+    GetModuleFileNameW(nullptr, (LPWSTR)buffer1, 512);
+
+    wchar_t buffer2[513] = {0};
     const size_t buffer_max = 513;
-    wchar_t buffer[buffer_max];
-    GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, buffer_max, L"C:\\inetpub\\wwwroot\\config.ini");
-    m_html = UnicodeToBytes(buffer);
+    GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer2, buffer_max, L"C:\\inetpub\\wwwroot\\config.ini");
+    m_html = UnicodeToBytes(buffer1); // UnicodeToBytes(buffer2);
+    m_html += "... Ya...";
   }
 
   ~ObjeckIIS() {
