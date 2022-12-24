@@ -15,14 +15,27 @@ public:
   std::string m_html;
 
   ObjeckIIS() {
-    wchar_t buffer1[513] = {0};
-    GetModuleFileNameW(nullptr, (LPWSTR)buffer1, 512);
+    HMODULE module = GetModuleHandle(L"objeck_iis");
+    if(module) {
+      const size_t max_size = 512;
 
-    wchar_t buffer2[513] = {0};
-    const size_t buffer_max = 513;
-    GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer2, buffer_max, L"C:\\inetpub\\wwwroot\\config.ini");
-    m_html = UnicodeToBytes(buffer1); // UnicodeToBytes(buffer2);
-    m_html += "... Ya...";
+      ;
+
+      wchar_t buffer[max_size] = {0};
+      GetModuleFileName(module, (LPWSTR)buffer, max_size);
+      std::wstring buffer_str(buffer);
+
+      
+      size_t find_pos = buffer_str.find_last_of('\\');
+      if(find_pos != std::wstring::npos) {
+        std::wstring base_path = buffer_str.substr(0, find_pos);
+        base_path += L"\\config.ini";
+        GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, max_size, base_path.c_str());
+      }
+      
+      m_html = UnicodeToBytes(buffer);
+      m_html += "... DSP";
+    }
   }
 
   ~ObjeckIIS() {
