@@ -14,8 +14,9 @@
 class ObjeckIIS : public CHttpModule
 {
 public:
-  std::string m_html;
   bool is_ok;
+  std::string html_out;
+
   Runtime::StackInterpreter* intpr;
   size_t* op_stack; long* stack_pos;
 
@@ -38,7 +39,7 @@ public:
           // load program
           Loader loader(BytesToUnicode(buffer).c_str());
           loader.Load();
-          m_html = "--- Loaded ---";
+          html_out = "--- Loaded ---";
 
 
           // ignore non-web applications
@@ -60,14 +61,16 @@ public:
   }
 
   ~ObjeckIIS() {
-    delete stack_pos;
-    stack_pos = nullptr;
+    if(is_ok) {
+      delete stack_pos;
+      stack_pos = nullptr;
 
-    delete[] op_stack;
-    op_stack = nullptr;
+      delete[] op_stack;
+      op_stack = nullptr;
 
-    delete intpr;
-    intpr = nullptr;
+      delete intpr;
+      intpr = nullptr;
+    }
   }
 
   void LoadProgam(const std::wstring &name) {
@@ -95,8 +98,8 @@ public:
       // Create and set the data chunk.
       HTTP_DATA_CHUNK data_chunk;
       data_chunk.DataChunkType = HttpDataChunkFromMemory;
-      data_chunk.FromMemory.pBuffer = (PVOID)m_html.c_str();
-      data_chunk.FromMemory.BufferLength = (USHORT)m_html.size();
+      data_chunk.FromMemory.pBuffer = (PVOID)html_out.c_str();
+      data_chunk.FromMemory.BufferLength = (USHORT)html_out.size();
 
       // Insert the data chunk into the response.
       DWORD sent;
