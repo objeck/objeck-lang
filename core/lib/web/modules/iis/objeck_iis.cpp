@@ -19,17 +19,14 @@ public:
     if(module) {
       const size_t max_size = 512;
 
-      ;
-
       wchar_t buffer[max_size] = {0};
       GetModuleFileName(module, (LPWSTR)buffer, max_size);
       std::wstring buffer_str(buffer);
 
-      
       size_t find_pos = buffer_str.find_last_of('\\');
       if(find_pos != std::wstring::npos) {
-        std::wstring base_path = buffer_str.substr(0, find_pos);
-        base_path += L"\\config.ini";
+        std::wstring base_path = buffer_str.substr(0, find_pos); base_path += L"\\config.ini";
+        // read ini file
         GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, max_size, base_path.c_str());
       }
       
