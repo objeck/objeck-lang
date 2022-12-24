@@ -4,7 +4,8 @@
 #include <sal.h>
 #include <httpserv.h>
 
-#include <string>
+#include <iostream>
+#include "sys.h"
 
 // Create the module class.
 class ObjeckIIS : public CHttpModule
@@ -13,7 +14,10 @@ public:
   std::string m_html;
 
   ObjeckIIS() {
-    m_html = "<html><h2>Guess Who's Back?</h2></ html>";
+    const size_t buffer_max = 513;
+    wchar_t buffer[buffer_max];
+    GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, buffer_max, L"C:\\inetpub\\wwwroot\\config.ini");
+    m_html = UnicodeToBytes(buffer);
   }
 
   ~ObjeckIIS() {
