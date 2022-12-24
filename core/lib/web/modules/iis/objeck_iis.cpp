@@ -53,9 +53,9 @@ public:
 
           op_stack = new size_t[OP_STACK_SIZE];
           stack_pos = new long;
-        }
 
-        is_ok = true;
+          is_ok = true;
+        }
       }
     }
   }
