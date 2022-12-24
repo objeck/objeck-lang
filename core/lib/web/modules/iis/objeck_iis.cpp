@@ -13,25 +13,28 @@ class ObjeckIIS : public CHttpModule
 {
 public:
   std::string m_html;
+  bool is_ok;
 
   ObjeckIIS() {
+    is_ok = false;
+
     HMODULE module = GetModuleHandle(L"objeck_iis");
     if(module) {
       const size_t max_size = 512;
-
       wchar_t buffer[max_size] = {0};
-      GetModuleFileName(module, (LPWSTR)buffer, max_size);
-      std::wstring buffer_str(buffer);
+      if(!GetModuleFileName(module, (LPWSTR)buffer, max_size)) {
+        std::wstring buffer_str(buffer);
+        size_t find_pos = buffer_str.find_last_of('\\');
+        if(find_pos != std::wstring::npos) {
+          std::wstring base_path = buffer_str.substr(0, find_pos); base_path += L"\\config.ini";
+          // read ini entry
+          GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, max_size, base_path.c_str());
+        }
 
-      size_t find_pos = buffer_str.find_last_of('\\');
-      if(find_pos != std::wstring::npos) {
-        std::wstring base_path = buffer_str.substr(0, find_pos); base_path += L"\\config.ini";
-        // read ini entry
-        GetPrivateProfileString(L"objeck", L"program", L"(none)", (LPWSTR)&buffer, max_size, base_path.c_str());
+        m_html = UnicodeToBytes(buffer);
+        m_html += "... DSP";
+        is_ok = true;
       }
-      
-      m_html = UnicodeToBytes(buffer);
-      m_html += "... DSP";
     }
   }
 
