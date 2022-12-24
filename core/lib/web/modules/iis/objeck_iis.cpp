@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <sal.h>
 #include <httpserv.h>
+
 #include <string>
 
 // Create the module class.
@@ -24,39 +25,32 @@ public:
     UNREFERENCED_PARAMETER(pProvider);
 
     // Retrieve a pointer to the response.
-    IHttpRequest* pHttpRequest = pHttpContext->GetRequest();
-    IHttpResponse* pHttpResponse = pHttpContext->GetResponse();
+    IHttpRequest* request = pHttpContext->GetRequest();
+    IHttpResponse* response = pHttpContext->GetResponse();
 
     // Test for an error.
-    if(pHttpRequest && pHttpResponse) {
+    if(request && response) {
       // Clear the existing response.
-      pHttpResponse->Clear();
+      response->Clear();
       
       // Set the MIME type to plain text.
-      pHttpResponse->SetHeader(HttpHeaderContentType, "text/html", (USHORT)strlen("text/html"), TRUE);
+      const std::string header = "text/html";
+      response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
 
-      // Create a data chunk.
-      HTTP_DATA_CHUNK dataChunk;
-      
-      // Set the chunk to a chunk in memory.
-      dataChunk.DataChunkType = HttpDataChunkFromMemory;
-      
-      // Buffer for bytes written of data chunk.
-      DWORD cbSent;
-
-      // Set the chunk to the buffer.
-      dataChunk.FromMemory.pBuffer = (PVOID)m_html.c_str();
-      
-      // Set the chunk size to the buffer size.
-      dataChunk.FromMemory.BufferLength = (USHORT)m_html.size();
+      // Create and set the data chunk.
+      HTTP_DATA_CHUNK data_chunk;
+      data_chunk.DataChunkType = HttpDataChunkFromMemory;
+      data_chunk.FromMemory.pBuffer = (PVOID)m_html.c_str();
+      data_chunk.FromMemory.BufferLength = (USHORT)m_html.size();
 
       // Insert the data chunk into the response.
-      HRESULT hr = pHttpResponse->WriteEntityChunks(&dataChunk, 1, FALSE, TRUE, &cbSent);
+      DWORD sent;
+      const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
 
       // Test for an error.
-      if(FAILED(hr)) {
+      if(FAILED(result)) {
         // Set the HTTP status.
-        pHttpResponse->SetStatus(500, "Server Error", 0, hr);
+        response->SetStatus(500, "Server Error", 0, result);
       }
 
       // End additional processing.
@@ -88,14 +82,13 @@ public:
     else {
       // Return a pointer to the module.
       *ppModule = pModule;
-      pModule = NULL;
+      pModule = nullptr;
       // Return a success status.
       return S_OK;
     }
   }
 
-  void
-    Terminate()
+  void Terminate()
   {
     // Remove the class from memory.
     delete this;
