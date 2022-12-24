@@ -20,6 +20,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\shared\logger.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\arch\jit\jit_common.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\arch\memory.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\arch\win32\win32.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\common.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\interpreter.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\loader.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\vm.cpp" />
+    <ClCompile Include="..\..\..\..\..\vm\win_main.cpp" />
     <ClCompile Include="..\objeck_iis.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -27,6 +36,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\..\shared\logger.h" />
+    <ClInclude Include="..\..\..\..\..\vm\arch\jit\amd64\jit_amd_lp64.h" />
+    <ClInclude Include="..\..\..\..\..\vm\arch\jit\jit_common.h" />
+    <ClInclude Include="..\..\..\..\..\vm\arch\memory.h" />
+    <ClInclude Include="..\..\..\..\..\vm\arch\win32\win32.h" />
+    <ClInclude Include="..\..\..\..\..\vm\common.h" />
+    <ClInclude Include="..\..\..\..\..\vm\interpreter.h" />
+    <ClInclude Include="..\..\..\..\..\vm\lib_api.h" />
+    <ClInclude Include="..\..\..\..\..\vm\loader.h" />
+    <ClInclude Include="..\..\..\..\..\vm\vm.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -54,14 +72,14 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
