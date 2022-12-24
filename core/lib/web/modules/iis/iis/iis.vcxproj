@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\..\shared\logger.cpp" />
     <ClCompile Include="..\objeck_iis.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -79,9 +80,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>objeck_iis</TargetName>
+    <IncludePath>C:\Users\objec\Documents\Code\objeck-lang\core\lib\zlib\win;C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\win\include;C:\Users\objec\Documents\Code\objeck-lang\core\shared;C:\Users\objec\Documents\Code\objeck-lang\core\vm;C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>objeck_iis</TargetName>
+    <IncludePath>C:\Users\objec\Documents\Code\objeck-lang\core\lib\zlib\win;C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\win\include;C:\Users\objec\Documents\Code\objeck-lang\core\shared;C:\Users\objec\Documents\Code\objeck-lang\core\vm;C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
