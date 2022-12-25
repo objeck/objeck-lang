@@ -9,44 +9,37 @@ class ObjeckIIS : public CHttpModule
 public:
   bool is_ok;
   std::string html_out;
-
   Runtime::StackInterpreter* intpr;
-  size_t* op_stack; long* stack_pos;
+
+  size_t* op_stack; 
+  long* stack_pos;
 
   ObjeckIIS() {
     is_ok = false;
+    intpr = nullptr;
 
     HMODULE module = GetModuleHandle("objeck_iis");
     if(module) {
-html_out = "--- 0 ---\n";
       const size_t buffer_max = 512;
       char buffer[buffer_max] = {0};
       if(GetModuleFileName(module, (LPSTR)buffer, buffer_max)) {
-html_out += "--- 1 ---\n";
         std::string buffer_str(buffer);
         size_t find_pos = buffer_str.find_last_of('\\');
         if(find_pos != std::wstring::npos) {
           std::string config_file_path = buffer_str.substr(0, find_pos); 
           config_file_path += "\\config.ini";
 
-html_out += "--- 2 ---\n";
-html_out += config_file_path;
-
-
           std::map<std::string, std::string> key_values = GetKeyValues(config_file_path);
+          const std::string progam_path = key_values["progam_path"];
+          const std::string install_path = key_values["install_path"];
+#ifdef _DEBUG
+          DebugEnvironment(progam_path, install_path);
+#endif
 
-html_out += "\n--- 3 ---\n";
-html_out += key_values["program"];
-
-html_out += "\n--- 4 ---\n";
-html_out += key_values["lib_path"];
-
-
-/*
           // load program
-          Loader loader(BytesToUnicode(buffer).c_str());
+          Loader loader(BytesToUnicode(progam_path).c_str());
           loader.Load();
-html_out += "--- Loaded ---";
+html_out += "--- Progam loaded! ---";
 
           // ignore non-web applications
           if(!loader.IsWeb()) {
@@ -59,7 +52,9 @@ html_out += "--- Loaded ---";
 
           op_stack = new size_t[OP_STACK_SIZE];
           stack_pos = new long;
-*/
+
+          // TODO: continue...
+
           is_ok = true;
         }
       }
@@ -79,6 +74,14 @@ html_out += "--- Loaded ---";
     }
   }
 
+  void DebugEnvironment(const std::string &progam_path, const std::string & install_path) {
+    html_out = "program=";
+    html_out += progam_path;
+    html_out += "\ninstall_path=";
+    html_out += install_path;
+    html_out += "\n";
+  }
+
   std::map<std::string, std::string> GetKeyValues(const std::string& filename)
   {
     std::map<std::string, std::string> key_values;
@@ -87,7 +90,7 @@ html_out += "--- Loaded ---";
     std::ifstream file_in(filename.c_str());
     if(file_in.good()) {
       std::getline(file_in, line);
-      while(!line.empty()) {
+      while(!file_in.eof()) {
         size_t index = line.find('=');
         if(index != std::string::npos) {
           const std::string key = line.substr(0, index);
