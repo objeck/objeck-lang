@@ -45,6 +45,7 @@
     <ClInclude Include="..\..\..\..\..\vm\lib_api.h" />
     <ClInclude Include="..\..\..\..\..\vm\loader.h" />
     <ClInclude Include="..\..\..\..\..\vm\vm.h" />
+    <ClInclude Include="..\objeck_iis.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -101,11 +102,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>objeck_iis</TargetName>
-    <IncludePath>C:\Users\objec\Documents\Code\objeck-lang\core\lib\zlib\win;C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\win\include;C:\Users\objec\Documents\Code\objeck-lang\core\shared;C:\Users\objec\Documents\Code\objeck-lang\core\vm;C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\..\lib\zlib\win;..\..\..\..\..\lib\openssl\win\include;..\..\..\..\..\..\core\shared;..\..\..\..\..\..\core\vm;..\..\..\..\..\..\core\vm\arch;..\..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\..\..\..\lib\zlib\win\x64;..\..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>objeck_iis</TargetName>
-    <IncludePath>C:\Users\objec\Documents\Code\objeck-lang\core\lib\zlib\win;C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\win\include;C:\Users\objec\Documents\Code\objeck-lang\core\shared;C:\Users\objec\Documents\Code\objeck-lang\core\vm;C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\..\lib\zlib\win;..\..\..\..\..\lib\openssl\win\include;..\..\..\..\..\..\core\shared;..\..\..\..\..\..\core\vm;..\..\..\..\..\..\core\vm\arch;..\..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\..\..\..\lib\zlib\win\x64;..\..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -158,6 +161,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
+      <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -179,6 +183,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
+      <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
