@@ -1,14 +1,7 @@
 // <Snippet1>
-#define _WINSOCKAPI_
-#include <windows.h>
-#include <sal.h>
-#include <httpserv.h>
-#include <psapi.h>
 
-#include <iostream>
-#include "sys.h"
-#include "loader.h"
-#include "interpreter.h"
+#define _WINSOCKAPI_
+#include "objeck_iis.h"
 
 // Create the module class.
 class ObjeckIIS : public CHttpModule
@@ -25,22 +18,35 @@ public:
 
     HMODULE module = GetModuleHandle("objeck_iis");
     if(module) {
-      const size_t max_size = 512;
-      char buffer[max_size] = {0};
-      if(!GetModuleFileName(module, (LPSTR)buffer, max_size)) {
+html_out = "--- 0 ---\n";
+      const size_t buffer_max = 512;
+      char buffer[buffer_max] = {0};
+      if(GetModuleFileName(module, (LPSTR)buffer, buffer_max)) {
+html_out += "--- 1 ---\n";
         std::string buffer_str(buffer);
         size_t find_pos = buffer_str.find_last_of('\\');
         if(find_pos != std::wstring::npos) {
-          std::string base_path = buffer_str.substr(0, find_pos); 
-          base_path += "\\config.ini";
-          // read ini entry
-          GetPrivateProfileString("objeck", "program", "(none)", (LPSTR)&buffer, max_size, base_path.c_str());
-          
+          std::string config_file_path = buffer_str.substr(0, find_pos); 
+          config_file_path += "\\config.ini";
+
+html_out += "--- 2 ---\n";
+html_out += config_file_path;
+
+
+          std::map<std::string, std::string> key_values = GetKeyValues(config_file_path);
+
+html_out += "\n--- 4 ---\n";
+html_out += key_values["program"];
+
+html_out += "\n--- 5 ---\n";
+html_out += key_values["lib_path"];
+
+
+/*
           // load program
           Loader loader(BytesToUnicode(buffer).c_str());
           loader.Load();
-          html_out = "--- Loaded ---";
-
+html_out += "--- Loaded ---";
 
           // ignore non-web applications
           if(!loader.IsWeb()) {
@@ -53,7 +59,7 @@ public:
 
           op_stack = new size_t[OP_STACK_SIZE];
           stack_pos = new long;
-
+*/
           is_ok = true;
         }
       }
@@ -71,6 +77,30 @@ public:
       delete intpr;
       intpr = nullptr;
     }
+  }
+
+  std::map<std::string, std::string> GetKeyValues(const std::string& filename)
+  {
+    std::map<std::string, std::string> key_values;
+
+    std::string line;
+    std::ifstream file_in(filename.c_str());
+    if(file_in.good()) {
+      std::getline(file_in, line);
+      while(!line.empty()) {
+        size_t index = line.find('=');
+        if(index != std::string::npos) {
+          const std::string key = line.substr(0, index);
+          index++;
+          const std::string value = line.substr(index, line.size() - index);
+          key_values.insert(std::pair<std::string, std::string>(key, value));
+        }
+        // update
+        std::getline(file_in, line);
+      }
+    }
+
+    return key_values;
   }
 
   void LoadProgam(const std::wstring &name) {
