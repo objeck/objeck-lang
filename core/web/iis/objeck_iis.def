@@ -1,0 +1,3 @@
+LIBRARY "objeck_iis"  
+EXPORTS  
+    RegisterModule
