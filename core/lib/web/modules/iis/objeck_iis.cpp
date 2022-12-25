@@ -35,10 +35,10 @@ html_out += config_file_path;
 
           std::map<std::string, std::string> key_values = GetKeyValues(config_file_path);
 
-html_out += "\n--- 4 ---\n";
+html_out += "\n--- 3 ---\n";
 html_out += key_values["program"];
 
-html_out += "\n--- 5 ---\n";
+html_out += "\n--- 4 ---\n";
 html_out += key_values["lib_path"];
 
 
