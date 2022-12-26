@@ -8,17 +8,16 @@ ObjeckIIS::ObjeckIIS() {
   intpr = nullptr;
 
   std::map<std::string, std::string> key_values = LoadConfiguration();
-  const std::string progam_path = key_values["program_path"]; 
-  std::string lib_install_path = key_values["lib_path"];
-  std::string lib_name = key_values["lib_name"];
+  const std::string progam_path = key_values["program_path"];
+  std::string install_path = key_values["install_path"];
 #ifdef _DEBUG
-  const std::string debug_path = lib_install_path + "\\iis_debug.txt";
+  const std::string debug_path = install_path + "\\iis_debug.txt";
   OpenLogger(debug_path);
-  DebugEnvironment(progam_path, lib_install_path, lib_name);
+  DebugEnvironment(progam_path, install_path);
 #endif
   
   // TODO: check for end '\' and add in '\lib\' Windows-only coding
-  SetEnvironmentVariable("OBJECK_LIB_PATH", lib_install_path.c_str());
+  SetEnvironmentVariable("OBJECK_LIB_PATH", install_path.c_str());
 
   // load program
   Loader loader(BytesToUnicode(progam_path).c_str());
@@ -133,10 +132,9 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
   return RQ_NOTIFICATION_CONTINUE;
 }
 
-void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name) {
+void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path) {
   GetLogger() << "Progam path='" << progam_path.c_str() << "'" << std::endl;
-  GetLogger() << "Library path='" << install_path.c_str() << "'" << std::endl;
-  GetLogger() << "Library name='" << lib_name.c_str() << "'" << std::endl;
+  GetLogger() << "Install path='" << install_path.c_str() << "'" << std::endl;
   GetLogger() << "---" << std::endl;
 }
 
