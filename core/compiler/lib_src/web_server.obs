@@ -7,7 +7,7 @@ bundle Web.Server {
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := System.API.DllProxy->New("libobjk_web_iis");
+				@lib_proxy := System.API.DllProxy->New("libobjk_gtk3");
 			};
 
 			return @lib_proxy;
