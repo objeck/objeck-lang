@@ -1,12 +1,5 @@
-#~
-# compile: obc -src hello_0.obs
-# run: obr hello_0.obe
-~#
-
-class Hello {
-  function : Action(req : Web.FastCgi.Request, res : Web.FastCgi.Response) ~ Nil {
-    "Hello World" → PrintLine();
-    "Καλημέρα κόσμε" → PrintLine();
-    "こんにちは 世界" → PrintLine();
+class HelloWeb {
+  function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
+    res->WriteString("Hello World!");
   }
 }
