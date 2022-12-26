@@ -1,16 +1,19 @@
 /***************************************************************************
+ * IIS server support for Objeck
+ *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
+ *
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck Team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -27,50 +30,55 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __OBJECK_IIS_H__
-#define __OBJECK_IIS_H__
+#define _WINSOCKAPI_
 
 #include <windows.h>
 #include <sal.h>
 #include <httpserv.h>
+#include <string>
+#include "../../../vm/lib_api.h"
+#include "../../../shared/sys.h"
 
-#include "memory.h"
-#include "loader.h"
-#include "interpreter.h"
-#include "sys.h"
-#include "logger.h"
-
+extern "C" {
+  //
+// initialize library
 //
-// IIS server
-//
-class ObjeckIIS : public CHttpModule {
-  std::string install_path;
-
-  Runtime::StackInterpreter* intpr;
-  size_t* op_stack;
-  long* stack_pos;
-
-  void DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name);
-  std::map<std::string, std::string> LoadConfiguration();
-
-public:
-  ObjeckIIS();
-  ~ObjeckIIS();
-
-  void StartInterpreter(StackProgram* program);
-  void StopInterpreter(StackProgram* program);
-
-  REQUEST_NOTIFICATION_STATUS OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider);
-};
-
-// Module factory
-class ObjeckIISFactory : public IHttpModuleFactory {
-
-public:
-  HRESULT GetHttpModule(OUT CHttpModule** ppModule, IN IModuleAllocator* pAllocator);
-  void Terminate();
-};
-
-HRESULT __stdcall RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo* pModuleInfo, IHttpServer* pGlobalInfo);
-
+#ifdef _WIN32
+  __declspec(dllexport)
 #endif
+  void load_lib() {
+  }
+
+  //
+  // release library
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void unload_lib() {
+  }
+
+  //
+  // IIS response functions
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_response_append_string(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
+    const std::string data = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    // create check
+    HTTP_DATA_CHUNK data_chunk;
+    data_chunk.DataChunkType = HttpDataChunkFromMemory;
+    data_chunk.FromMemory.pBuffer = (PVOID)data.c_str();
+    data_chunk.FromMemory.BufferLength = (USHORT)data.size();
+
+    // write response
+    DWORD sent;
+    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
+    if(result != S_OK) {
+      response->SetStatus(500, "Server Error", 0, result);
+    }
+  }
+}
