@@ -39,7 +39,9 @@
 #include "interpreter.h"
 #include "sys.h"
 
-// Web action class
+//
+// IIS server
+//
 class ObjeckIIS : public CHttpModule {
   bool is_ok;
   std::string html_out;
@@ -50,7 +52,6 @@ class ObjeckIIS : public CHttpModule {
 
   void DebugEnvironment(const std::string& progam_path, const std::string& install_path);
   std::map<std::string, std::string> LoadConfiguration();
-  void LoadProgam(const std::wstring& name);
 
 public:
   ObjeckIIS();
