@@ -64,16 +64,7 @@ extern "C" {
 #endif
   void web_write_string(VMContext& context) {
     IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
-    const std::string str = UnicodeToBytes(APITools_GetStringValue(context, 2));
-
-    HTTP_DATA_CHUNK data_chunk;
-    data_chunk.DataChunkType = HttpDataChunkFromMemory;
-    data_chunk.FromMemory.pBuffer = (PVOID)str.c_str();
-    data_chunk.FromMemory.BufferLength = (USHORT)str.size();
-
-    DWORD sent;
-    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
-    APITools_SetIntValue(context, 0, result == S_OK ? 1 : 0);
+    // APITools_SetIntValue(context, 0, (size_t)gtk_application_get_active_window(application));
   }
 }
 
