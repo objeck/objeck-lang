@@ -16,7 +16,7 @@ ObjeckIIS::ObjeckIIS() {
   DebugEnvironment(progam_path, install_path);
 #endif
   
-  // TODO: check for end '\' and add in '\lib\'
+  // TODO: check for end '\' and add in '\lib\' Windows-only coding
   SetEnvironmentVariable("OBJECK_LIB_PATH", install_path.c_str());
 
   // load program
