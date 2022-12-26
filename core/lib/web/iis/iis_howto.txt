@@ -8,7 +8,7 @@ IIS Setup
 * Click 'Ok'
 ---
 * Open "Internet Information Services Manager (IIS)"
-	- Chick "Sites" \ "Default Web Site"
+	- Click "Sites" \ "Default Web Site"
 	- Right click and choose "Edit Binding", Port
 	- Change the port value to "8080" 
 	- Close dialog
@@ -35,5 +35,8 @@ Install Module
 	- Click on "Request Restrictions" and uncheck "Invoke handler only if request is mapped to"
 	- Select Access and choose "Execute"
 	- Click, Ok and Ok
+* Copy the config.ini file to the root docs directory (i.e. "\inetpub\wwwroot")
+	* Right-click Click "Sites" \ "Default Web Site" and "Switch to Content View"
+	* "Edit Permissions..." to allow "IIS_IUSERS" to write to debug log information to the directory
 * Select the top level of the Connection tree control
 	- On the upper right check "Restart"
