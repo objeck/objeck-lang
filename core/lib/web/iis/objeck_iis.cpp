@@ -8,7 +8,7 @@ ObjeckIIS::ObjeckIIS() {
   intpr = nullptr;
 
   std::map<std::string, std::string> key_values = LoadConfiguration();
-  const std::string progam_path = key_values["progam_path"];
+  const std::string progam_path = key_values["program_path"];
   const std::string install_path = key_values["install_path"];
 #ifdef _DEBUG
   const std::string debug_path = install_path + "\\iis_debug.txt";
