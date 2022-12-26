@@ -116,9 +116,7 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
     // Insert the data chunk into the response.
     DWORD sent;
     const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
-
-    // Test for an error.
-    if(FAILED(result)) {
+    if(result != S_OK) {
       // Set the HTTP status.
       response->SetStatus(500, "Server Error", 0, result);
     }
