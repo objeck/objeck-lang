@@ -50,7 +50,7 @@ class ObjeckIIS : public CHttpModule {
   size_t* op_stack;
   long* stack_pos;
 
-  void DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name);
+  void DebugEnvironment(const std::string& progam_path, const std::string& install_path);
   std::map<std::string, std::string> LoadConfiguration();
 
 public:
