@@ -1,2 +1,2 @@
 C:\Users\objec\Documents\Code\objeck-lang\core\lib\web\iis\iis\x64\Debug\objeck_iis.dll
-C:\Users\objec\Documents\Code\objeck-lang\core\lib\web\iis\iis_web\x64\Debug\objeck_iis.dll
+C:\Users\objec\Documents\Code\objeck-lang\core\lib\web\iis\iis_web\x64\Debug\objeck_iis_web.dll
