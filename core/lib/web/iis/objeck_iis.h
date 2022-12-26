@@ -38,13 +38,13 @@
 #include "loader.h"
 #include "interpreter.h"
 #include "sys.h"
+#include "logger.h"
 
 //
 // IIS server
 //
 class ObjeckIIS : public CHttpModule {
-  bool is_ok;
-  std::string html_out;
+  std::string install_path;
 
   Runtime::StackInterpreter* intpr;
   size_t* op_stack;
