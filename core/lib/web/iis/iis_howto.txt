@@ -8,7 +8,7 @@ IIS Setup
 * Click 'Ok'
 ---
 * Open "Internet Information Services Manager (IIS)"
-	- Chick "Sites" \ "Default Web Site"
+	- Click "Sites" \ "Default Web Site"
 	- Right click and choose "Edit Binding", Port
 	- Change the port value to "8080" 
 	- Close dialog
@@ -37,3 +37,10 @@ Install Module
 	- Click, Ok and Ok
 * Select the top level of the Connection tree control
 	- On the upper right check "Restart"
+---
+* Copy the "config.ini" file to the root docs directory (i.e. "\inetpub\wwwroot")
+	- Right-click Click "Sites" \ "Default Web Site" and "Switch to Content View"
+	- "Edit Permissions..." to allow "IIS_IUSERS" to write to debug log information to the directory
+* Edit the "config.ini"
+	- Add the full "program_path", which should point to a *.obw file
+	- Add the "install_path", which should point to the Objeck install directory
