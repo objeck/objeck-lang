@@ -43,4 +43,4 @@ Install Module
 	- "Edit Permissions..." to allow "IIS_IUSERS" to write to debug log information to the directory
 * Edit the "config.ini"
 	- Add the full "program_path", which should point to a *.obw file
-	- Add the full "install_path", which should point to the Objeck install directory
+	- Add the "install_path", which should point to the Objeck install directory
