@@ -5,25 +5,29 @@
 // IIS server module
 //
 ObjeckIIS::ObjeckIIS() {
-  is_ok = false;
   intpr = nullptr;
 
   std::map<std::string, std::string> key_values = LoadConfiguration();
   const std::string progam_path = key_values["progam_path"];
   const std::string install_path = key_values["install_path"];
-
+#ifdef _DEBUG
+  const std::string debug_path = install_path + "\\iis_debug.txt";
+  OpenLogger(debug_path);
   DebugEnvironment(progam_path, install_path);
+#endif
 
   // load program
   Loader loader(BytesToUnicode(progam_path).c_str());
   loader.Load();
-html_out += "--- Progam loaded! ---";
 
   // ignore non-web applications
   if(!loader.IsWeb()) {
-    std::wcout << L"Please recompile the code to be a web application." << std::endl;
+    GetLogger() << L"Please recompile the code to be a web application." << std::endl;
     exit(1);
   }
+#ifdef _DEBUG
+  GetLogger() << "Loaded program: '" << progam_path.c_str() << "'" << std::endl;
+#endif
 
   intpr = new Runtime::StackInterpreter(Loader::GetProgram());
   Runtime::StackInterpreter::AddThread(intpr);
@@ -31,9 +35,6 @@ html_out += "--- Progam loaded! ---";
   op_stack = new size_t[OP_STACK_SIZE];
   stack_pos = new long;
 
-  // TODO: continue...
-
-  is_ok = true;
 }
 
 ObjeckIIS::~ObjeckIIS() {
@@ -45,7 +46,9 @@ ObjeckIIS::~ObjeckIIS() {
 
   delete intpr;
   intpr = nullptr;
-  }
+
+  CloseLogger();
+}
 
 std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
 {
@@ -59,11 +62,11 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
       std::string buffer_str(buffer);
       size_t find_pos = buffer_str.find_last_of('\\');
       if(find_pos != std::wstring::npos) {
-        std::string config_file_path = buffer_str.substr(0, find_pos);
-        config_file_path += "\\config.ini";
+        install_path = buffer_str.substr(0, find_pos);
+        install_path += "\\config.ini";
 
         std::string line;
-        std::ifstream file_in(config_file_path.c_str());
+        std::ifstream file_in(install_path.c_str());
         if(file_in.good()) {
           std::getline(file_in, line);
           while(!file_in.eof()) {
@@ -94,13 +97,15 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
   IHttpResponse* response = pHttpContext->GetResponse();
 
   // Test for an error.
-  if(request && response) {
+  if(intpr && request && response) {
     // Clear the existing response.
     response->Clear();
       
     // Set the MIME type to plain text.
     const std::string header = "text/plain";
     response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
+
+    const std::string html_out = "Hello World, Getting Things Ready...";
 
     // Create and set the data chunk.
     HTTP_DATA_CHUNK data_chunk;
@@ -127,11 +132,9 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
 }
 
 void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path) {
-  html_out += "program=";
-  html_out += progam_path;
-  html_out += "\ninstall_path=";
-  html_out += install_path;
-  html_out += "\n";
+  GetLogger() << "Progam path='" << progam_path.c_str() << "'" << std::endl;
+  GetLogger() << "Install path='" << install_path.c_str() << "'" << std::endl;
+  GetLogger() << "---" << std::endl;
 }
 
 //
