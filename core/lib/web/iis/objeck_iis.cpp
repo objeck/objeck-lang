@@ -66,10 +66,10 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
       size_t find_pos = buffer_str.find_last_of('\\');
       if(find_pos != std::wstring::npos) {
         install_path = buffer_str.substr(0, find_pos);
-        install_path += "\\config.ini";
+        const std::string config_file_path = install_path + "\\config.ini";
 
         std::string line;
-        std::ifstream file_in(install_path.c_str());
+        std::ifstream file_in(config_file_path.c_str());
         if(file_in.good()) {
           std::getline(file_in, line);
           while(!file_in.eof()) {
