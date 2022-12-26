@@ -1,31 +1,29 @@
 #define _WINSOCKAPI_
-
 #include "objeck_iis.h"
 
 //
-// IIS module
+// IIS server module
 //
 ObjeckIIS::ObjeckIIS() {
   is_ok = false;
   intpr = nullptr;
 
-  std::map<std::string, std::string> key_values = ObjeckIIS::LoadConfiguration();
+  std::map<std::string, std::string> key_values = LoadConfiguration();
   const std::string progam_path = key_values["progam_path"];
   const std::string install_path = key_values["install_path"];
+
+  DebugEnvironment(progam_path, install_path);
 
   // load program
   Loader loader(BytesToUnicode(progam_path).c_str());
   loader.Load();
-  html_out += "--- Progam loaded! ---";
+html_out += "--- Progam loaded! ---";
 
   // ignore non-web applications
   if(!loader.IsWeb()) {
     std::wcout << L"Please recompile the code to be a web application." << std::endl;
     exit(1);
   }
-
-  html_out += "\n--- Is Web... ---";
-
 
   intpr = new Runtime::StackInterpreter(Loader::GetProgram());
   Runtime::StackInterpreter::AddThread(intpr);
@@ -37,6 +35,17 @@ ObjeckIIS::ObjeckIIS() {
 
   is_ok = true;
 }
+
+ObjeckIIS::~ObjeckIIS() {
+  delete stack_pos;
+  stack_pos = nullptr;
+
+  delete[] op_stack;
+  op_stack = nullptr;
+
+  delete intpr;
+  intpr = nullptr;
+  }
 
 std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
 {
@@ -72,34 +81,8 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
       }
     }
   }
-
+    
   return key_values;
-}
-
-ObjeckIIS::~ObjeckIIS() {
-  if(is_ok) {
-    delete stack_pos;
-    stack_pos = nullptr;
-
-    delete[] op_stack;
-    op_stack = nullptr;
-
-    delete intpr;
-    intpr = nullptr;
-  }
-}
-
-void ObjeckIIS::DebugEnvironment(const std::string &progam_path, const std::string & install_path) {
-  html_out = "program=";
-  html_out += progam_path;
-  html_out += "\ninstall_path=";
-  html_out += install_path;
-  html_out += "\n";
-}
-
-void ObjeckIIS::LoadProgam(const std::wstring &name) {
-  Loader loader(name.c_str());
-  loader.Load();
 }
 
 REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider)
@@ -143,6 +126,14 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
   return RQ_NOTIFICATION_CONTINUE;
 }
 
+void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path) {
+  html_out += "program=";
+  html_out += progam_path;
+  html_out += "\ninstall_path=";
+  html_out += install_path;
+  html_out += "\n";
+}
+
 //
 // Module factory
 //
@@ -173,7 +164,8 @@ void ObjeckIISFactory::Terminate()
   delete this;
 }
 
-HRESULT RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo* pModuleInfo, IHttpServer* pGlobalInfo)
+// Create the module's exported registration function.
+HRESULT __stdcall RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo* pModuleInfo, IHttpServer* pGlobalInfo)
 {
   UNREFERENCED_PARAMETER(dwServerVersion);
   UNREFERENCED_PARAMETER(pGlobalInfo);
@@ -181,3 +173,4 @@ HRESULT RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo* pModu
   // Set the request notifications and exit.
   return pModuleInfo->SetRequestNotifications(new ObjeckIISFactory, RQ_BEGIN_REQUEST, 0);
 }
+// </Snippet1>

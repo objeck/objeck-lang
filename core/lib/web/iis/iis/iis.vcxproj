@@ -19,31 +19,31 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\..\shared\logger.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\arch\jit\jit_common.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\arch\memory.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\arch\win32\win32.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\common.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\interpreter.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\loader.cpp" />
-    <ClCompile Include="..\..\..\..\..\vm\vm.cpp" />
+    <ClCompile Include="..\..\..\..\shared\logger.cpp" />
+    <ClCompile Include="..\..\..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" />
+    <ClCompile Include="..\..\..\..\vm\arch\jit\jit_common.cpp" />
+    <ClCompile Include="..\..\..\..\vm\arch\memory.cpp" />
+    <ClCompile Include="..\..\..\..\vm\arch\win32\win32.cpp" />
+    <ClCompile Include="..\..\..\..\vm\common.cpp" />
+    <ClCompile Include="..\..\..\..\vm\interpreter.cpp" />
+    <ClCompile Include="..\..\..\..\vm\loader.cpp" />
+    <ClCompile Include="..\..\..\..\vm\vm.cpp" />
     <ClCompile Include="..\objeck_iis.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="objeck_iis.def" />
+    <None Include="..\objeck_iis.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\..\shared\logger.h" />
-    <ClInclude Include="..\..\..\..\..\vm\arch\jit\amd64\jit_amd_lp64.h" />
-    <ClInclude Include="..\..\..\..\..\vm\arch\jit\jit_common.h" />
-    <ClInclude Include="..\..\..\..\..\vm\arch\memory.h" />
-    <ClInclude Include="..\..\..\..\..\vm\arch\win32\win32.h" />
-    <ClInclude Include="..\..\..\..\..\vm\common.h" />
-    <ClInclude Include="..\..\..\..\..\vm\interpreter.h" />
-    <ClInclude Include="..\..\..\..\..\vm\lib_api.h" />
-    <ClInclude Include="..\..\..\..\..\vm\loader.h" />
-    <ClInclude Include="..\..\..\..\..\vm\vm.h" />
+    <ClInclude Include="..\..\..\..\shared\logger.h" />
+    <ClInclude Include="..\..\..\..\vm\arch\jit\amd64\jit_amd_lp64.h" />
+    <ClInclude Include="..\..\..\..\vm\arch\jit\jit_common.h" />
+    <ClInclude Include="..\..\..\..\vm\arch\memory.h" />
+    <ClInclude Include="..\..\..\..\vm\arch\win32\win32.h" />
+    <ClInclude Include="..\..\..\..\vm\common.h" />
+    <ClInclude Include="..\..\..\..\vm\interpreter.h" />
+    <ClInclude Include="..\..\..\..\vm\lib_api.h" />
+    <ClInclude Include="..\..\..\..\vm\loader.h" />
+    <ClInclude Include="..\..\..\..\vm\vm.h" />
     <ClInclude Include="..\objeck_iis.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -101,13 +101,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>objeck_iis</TargetName>
-    <IncludePath>..\..\..\..\..\lib\zlib\win;..\..\..\..\..\lib\openssl\win\include;..\..\..\..\..\..\core\shared;..\..\..\..\..\..\core\vm;..\..\..\..\..\..\core\vm\arch;..\..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\..\..\..\lib\zlib\win\x64;..\..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;..\..\..\..\..\core\shared;..\..\..\..\..\core\vm;..\..\..\..\..\core\vm\arch;..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>objeck_iis</TargetName>
-    <IncludePath>..\..\..\..\..\lib\zlib\win;..\..\..\..\..\lib\openssl\win\include;..\..\..\..\..\..\core\shared;..\..\..\..\..\..\core\vm;..\..\..\..\..\..\core\vm\arch;..\..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\..\..\..\lib\zlib\win\x64;..\..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;..\..\..\..\..\core\shared;..\..\..\..\..\core\vm;..\..\..\..\..\core\vm\arch;..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -122,7 +122,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -142,7 +142,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -159,7 +159,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
       <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -181,7 +181,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
       <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
