@@ -96,29 +96,8 @@ void ObjeckIIS::StartInterpreter(StackProgram* program)
   op_stack = new size_t[OP_STACK_SIZE];
   stack_pos = new long;
 
-/*  
-  // execute method
-  (*stack_pos) = 0;
-
-  // create request and response
-  size_t* req_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Request",  op_stack, *stack_pos, false);
-  size_t* res_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Response", op_stack, *stack_pos, false);
-
-  if(req_obj && res_obj) {
-    req_obj[0] = (size_t)in;
-    req_obj[1] = (size_t)envp;
-
-    res_obj[0] = (size_t)out;
-    res_obj[1] = (size_t)err;
-
-    // set method calling parameters
-    op_stack[0] = (size_t)req_obj;
-    op_stack[1] = (size_t)res_obj;
-    *stack_pos = 2;
-
-    // execute method
-    intpr->Execute(op_stack, stack_pos, 0, mthd, nullptr, false);
-  */
+  
+  
 }
 
 void ObjeckIIS::StopInterpreter(StackProgram* program)
@@ -146,7 +125,41 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
   IHttpResponse* response = pHttpContext->GetResponse();
 
   // Test for an error.
-  if(/*intpr &&*/ request && response) {
+  if(intpr && request && response) {
+    // execute method
+    (*stack_pos) = 0;
+
+    // create request and response
+    size_t* req_obj = MemoryManager::AllocateObject(L"Web.Server.Request", op_stack, *stack_pos, false);
+    size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
+
+    if(req_obj && res_obj) {
+      req_obj[0] = (size_t)request;
+      res_obj[0] = (size_t)response;
+
+      // set method calling parameters
+      op_stack[0] = (size_t)req_obj;
+      op_stack[1] = (size_t)response;
+      *stack_pos = 2;
+
+      // execute method
+/*
+      response->Clear();
+      intpr->Execute(op_stack, stack_pos, 0, mthd, nullptr, false);
+*/
+    }
+
+    // End additional processing.
+    return RQ_NOTIFICATION_FINISH_REQUEST;
+
+    
+    
+    
+    
+    
+    
+    
+    /*
     // Clear the existing response.
     response->Clear();
       
@@ -169,9 +182,10 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
       // Set the HTTP status.
       response->SetStatus(500, "Server Error", 0, result);
     }
-
-    // End additional processing.
-    return RQ_NOTIFICATION_FINISH_REQUEST;
+*/
+  }
+  else {
+    // TODO: error message in HTML
   }
 
   // Return processing to the pipeline.
