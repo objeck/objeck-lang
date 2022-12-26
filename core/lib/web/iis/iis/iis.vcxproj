@@ -52,7 +52,7 @@
     <ProjectGuid>{ed83d4a9-f861-4bb2-833d-147da37eeabc}</ProjectGuid>
     <RootNamespace>iis</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>objeck_iis</ProjectName>
+    <ProjectName>iis_server</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
