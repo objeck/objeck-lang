@@ -2,18 +2,6 @@
 Support for web servers
 ~#
 bundle Web.Server {
-	class Proxy {
-		@lib_proxy : static : System.API.DllProxy;
-		
-		function : GetDllProxy() ~ System.API.DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := System.API.DllProxy->New("libobjk_gtk3");
-			};
-
-			return @lib_proxy;
-		}
-	}
-
 	#~
 	Interface required to implementing handling classes
 	~#
@@ -49,18 +37,6 @@ bundle Web.Server {
 		@handle : Int;
 		
 		New() {			
-		}
-
-		method : public : WriteString(str : String) ~ Bool {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@handle);
-			array_args[2] := str;
-
-			Proxy->GetDllProxy()->CallFunction("web_write_string", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
 		}
 	}
 }
