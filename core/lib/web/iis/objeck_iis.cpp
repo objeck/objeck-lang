@@ -1,4 +1,5 @@
 #define _WINSOCKAPI_
+
 #include "objeck_iis.h"
 
 //
@@ -33,12 +34,7 @@ ObjeckIIS::ObjeckIIS() {
   GetLogger() << "Loaded program: '" << progam_path.c_str() << "'" << std::endl;
 #endif
 
-  intpr = new Runtime::StackInterpreter(Loader::GetProgram());
-  Runtime::StackInterpreter::AddThread(intpr);
-
-  op_stack = new size_t[OP_STACK_SIZE];
-  stack_pos = new long;
-
+  StartInterpreter(Loader::GetProgram());
 }
 
 ObjeckIIS::~ObjeckIIS() {
@@ -90,6 +86,55 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
   }
     
   return key_values;
+}
+
+void ObjeckIIS::StartInterpreter(StackProgram* program)
+{
+  intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+  Runtime::StackInterpreter::AddThread(intpr);
+
+  op_stack = new size_t[OP_STACK_SIZE];
+  stack_pos = new long;
+
+/*  
+  // execute method
+  (*stack_pos) = 0;
+
+  // create request and response
+  size_t* req_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Request",  op_stack, *stack_pos, false);
+  size_t* res_obj = MemoryManager::AllocateObject(L"Web.FastCgi.Response", op_stack, *stack_pos, false);
+
+  if(req_obj && res_obj) {
+    req_obj[0] = (size_t)in;
+    req_obj[1] = (size_t)envp;
+
+    res_obj[0] = (size_t)out;
+    res_obj[1] = (size_t)err;
+
+    // set method calling parameters
+    op_stack[0] = (size_t)req_obj;
+    op_stack[1] = (size_t)res_obj;
+    *stack_pos = 2;
+
+    // execute method
+    intpr->Execute(op_stack, stack_pos, 0, mthd, nullptr, false);
+  */
+}
+
+void ObjeckIIS::StopInterpreter(StackProgram* program)
+{
+  // clean up
+  delete[] op_stack;
+  op_stack = nullptr;
+
+  delete stack_pos;
+  stack_pos = nullptr;
+
+  Runtime::StackInterpreter::RemoveThread(intpr);
+  Runtime::StackInterpreter::HaltAll();
+
+  delete intpr;
+  intpr = nullptr;
 }
 
 REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider)
