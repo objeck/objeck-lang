@@ -17,5 +17,4 @@ make -f make/Makefile.amd64
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 ./obc -src lib_src/query.obs -tar lib -lib csv,xml,misc,regex,gen_collect -opt s3 -dest ../lib/query.obl
 ./obc -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
-./obc -src lib_src/web_server.obs -tar lib -dest ../lib/web_server.obl
 ./obc -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
