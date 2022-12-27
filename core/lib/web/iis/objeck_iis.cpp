@@ -17,6 +17,12 @@ ObjeckIIS::ObjeckIIS() {
 #ifdef _DEBUG
   const std::string debug_path = install_path + "\\iis_debug.txt";
   OpenLogger(debug_path);
+
+#ifdef _DEBUG
+  tmp_cout = std::wcout.rdbuf();
+  std::wcout.rdbuf(GetLogger().rdbuf());
+#endif
+
   DebugEnvironment(progam_path, install_path, lib_name);
 #endif
   
@@ -56,6 +62,8 @@ ObjeckIIS::ObjeckIIS() {
 }
 
 ObjeckIIS::~ObjeckIIS() {
+  std::wcout.rdbuf(tmp_cout);
+
   delete stack_pos;
   stack_pos = nullptr;
 
@@ -154,9 +162,15 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
 #ifdef _DEBUG
     GetLogger() << "--- 0 ---" << std::endl;
 #endif
-/*
+
     // create request and response
     size_t* req_obj = MemoryManager::AllocateObject(L"Web.Server.Request", op_stack, *stack_pos, false);
+
+#ifdef _DEBUG
+    GetLogger() << "--- 1 ---" << std::endl;
+#endif
+/*    
+    
     size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
 
 
