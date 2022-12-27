@@ -7,6 +7,8 @@
 //
 ObjeckIIS::ObjeckIIS() {
   intpr = nullptr;
+  op_stack = nullptr;
+  stack_pos = nullptr;
 
   std::map<std::string, std::string> key_values = LoadConfiguration();
   const std::string progam_path = key_values["program_path"];
@@ -21,6 +23,10 @@ ObjeckIIS::ObjeckIIS() {
   // TODO: check for end '\' and add in '\lib\' Windows-only coding
   SetEnvironmentVariable("OBJECK_LIB_PATH", install_path.c_str());
 
+#ifdef _DEBUG
+  GetLogger() << "Loading program: '" << progam_path.c_str() << "'" << std::endl;
+#endif
+
   // load program
   Loader loader(BytesToUnicode(progam_path).c_str());
   loader.Load();
@@ -30,8 +36,20 @@ ObjeckIIS::ObjeckIIS() {
     GetLogger() << L"Please recompile the code to be a web application." << std::endl;
     exit(1);
   }
+
 #ifdef _DEBUG
-  GetLogger() << "Loaded program: '" << progam_path.c_str() << "'" << std::endl;
+  GetLogger() << "Program loaded and checked" << std::endl;
+#endif
+
+  // get execution method
+  method = loader.GetStartMethod();
+  if(!method) {
+    GetLogger() <<L"Unable to locate the 'Action(...)' function." << std::endl;
+    exit(1);
+  }
+
+#ifdef _DEBUG
+  GetLogger() << "Load method: '" << UnicodeToBytes(method->GetName()).c_str() << "'" << std::endl;
 #endif
 
   StartInterpreter(Loader::GetProgram());
@@ -62,7 +80,7 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
       std::string buffer_str(buffer);
       size_t find_pos = buffer_str.find_last_of('\\');
       if(find_pos != std::wstring::npos) {
-        install_path = buffer_str.substr(0, find_pos);
+        const std::string install_path = buffer_str.substr(0, find_pos);
         const std::string config_file_path = install_path + "\\config.ini";
 
         std::string line;
@@ -96,8 +114,9 @@ void ObjeckIIS::StartInterpreter(StackProgram* program)
   op_stack = new size_t[OP_STACK_SIZE];
   stack_pos = new long;
 
-  
-  
+#ifdef _DEBUG
+  GetLogger() << "Initialized interpreter" << std::endl;
+#endif
 }
 
 void ObjeckIIS::StopInterpreter(StackProgram* program)
@@ -126,12 +145,20 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
 
   // Test for an error.
   if(intpr && request && response) {
+#ifdef _DEBUG
+    GetLogger() << "Starting..." << std::endl;
+#endif
     // execute method
     (*stack_pos) = 0;
 
+#ifdef _DEBUG
+    GetLogger() << "--- 0 ---" << std::endl;
+#endif
+/*
     // create request and response
     size_t* req_obj = MemoryManager::AllocateObject(L"Web.Server.Request", op_stack, *stack_pos, false);
     size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
+
 
     if(req_obj && res_obj) {
       req_obj[0] = (size_t)request;
@@ -143,53 +170,56 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
       *stack_pos = 2;
 
       // execute method
-/*
       response->Clear();
       intpr->Execute(op_stack, stack_pos, 0, mthd, nullptr, false);
-*/
     }
+
+
 
     // End additional processing.
     return RQ_NOTIFICATION_FINISH_REQUEST;
-
-    
-    
-    
-    
-    
-    
-    
-    /*
-    // Clear the existing response.
-    response->Clear();
-      
-    // Set the MIME type to plain text.
-    const std::string header = "text/plain";
-    response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
-
-    const std::string html_out = "Hello World, Getting Things Ready...";
-
-    // Create and set the data chunk.
-    HTTP_DATA_CHUNK data_chunk;
-    data_chunk.DataChunkType = HttpDataChunkFromMemory;
-    data_chunk.FromMemory.pBuffer = (PVOID)html_out.c_str();
-    data_chunk.FromMemory.BufferLength = (USHORT)html_out.size();
-
-    // Insert the data chunk into the response.
-    DWORD sent;
-    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
-    if(result != S_OK) {
-      // Set the HTTP status.
-      response->SetStatus(500, "Server Error", 0, result);
-    }
 */
+
+#ifdef _DEBUG
+    GetLogger() << "Finishing..." << std::endl;
+#endif
   }
   else {
-    // TODO: error message in HTML
+    SetContentType("text/plain", response);
+    WriteResponseString("Unable to service request", response);
+    return RQ_NOTIFICATION_FINISH_REQUEST;
   }
 
+  SetContentType("text/plain", response);
+  WriteResponseString("Inching forward..", response);
+  return RQ_NOTIFICATION_FINISH_REQUEST;
+
   // Return processing to the pipeline.
-  return RQ_NOTIFICATION_CONTINUE;
+  // return RQ_NOTIFICATION_CONTINUE;
+}
+
+void ObjeckIIS::SetContentType(const std::string header, IHttpResponse* response)
+{
+  response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
+}
+
+bool ObjeckIIS::WriteResponseString(const std::string data, IHttpResponse* response)
+{
+  // create check
+  HTTP_DATA_CHUNK data_chunk;
+  data_chunk.DataChunkType = HttpDataChunkFromMemory;
+  data_chunk.FromMemory.pBuffer = (PVOID)data.c_str();
+  data_chunk.FromMemory.BufferLength = (USHORT)data.size();
+
+  // write response
+  DWORD sent;
+  const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
+  if(result != S_OK) {
+    response->SetStatus(500, "Server Error", 0, result);
+    return false;
+  }
+
+  return true;
 }
 
 void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name) {

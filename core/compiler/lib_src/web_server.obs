@@ -38,7 +38,8 @@ bundle Web.Server {
 	class Request {
 		@handle : Int;
 
-		
+		New() {
+		}
 	}
 
 	#~
@@ -47,14 +48,25 @@ bundle Web.Server {
 	class Response {
 		@handle : Int;
 		
-		method : public : AppendString(str : String) ~ Bool {
+		New() {
+		}
+		
+		method : public : SetContentType(type : String) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@handle);
+			array_args[1] := type;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
+		}
+
+		method : public : AppendString(data : String) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@handle);
-			array_args[2] := str;
+			array_args[2] := data;
 
 			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
-			
+
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;
 		}

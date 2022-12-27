@@ -81,4 +81,14 @@ extern "C" {
       response->SetStatus(500, "Server Error", 0, result);
     }
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_response_set_content_type(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 0);
+    const std::string header = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
+  }
 }
