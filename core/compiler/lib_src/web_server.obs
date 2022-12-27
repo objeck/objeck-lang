@@ -7,7 +7,7 @@ bundle Web.Server {
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := System.API.DllProxy->New("libobjk_gtk3");
+				@lib_proxy := System.API.DllProxy->New("libobjk_iis");
 			};
 
 			return @lib_proxy;
@@ -50,7 +50,7 @@ bundle Web.Server {
 		
 		New() {
 		}
-		
+
 		method : public : SetContentType(type : String) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@handle);
@@ -59,13 +59,25 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
 		}
 
-		method : public : AppendString(data : String) ~ Bool {
+		method : public : AppendBody(data : String) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@handle);
 			array_args[2] := data;
 
 			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : AppendBody(data : Byte[]) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@handle);
+			array_args[2] := ByteArrayHolder->New(data);
+
+			Proxy->GetDllProxy()->CallFunction("web_response_append_bytes", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;
