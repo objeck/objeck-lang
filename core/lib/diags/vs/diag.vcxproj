@@ -30,6 +30,9 @@
     <ClInclude Include="..\..\..\shared\logger.h" />
     <ClInclude Include="..\diags.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\web\iis\iis_server.def" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{02A51378-6430-4B82-B596-ABA250DCA15B}</ProjectGuid>

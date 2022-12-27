@@ -60,4 +60,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\web\iis\iis_server.def" />
+  </ItemGroup>
 </Project>

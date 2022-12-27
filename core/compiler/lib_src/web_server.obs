@@ -1,0 +1,86 @@
+#~
+Support for web servers
+~#
+bundle Web.Server {
+	class Proxy {
+		@lib_proxy : static : System.API.DllProxy;
+		
+		function : GetDllProxy() ~ System.API.DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := System.API.DllProxy->New("libobjk_iis");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	#~
+	Interface required to implementing handling classes
+	~#
+	interface Handler {
+		#~
+		Accepts a forwarding request from another handler instance
+		@param req request wrapper
+		@param res response wrapper
+		~#
+		function : virtual : Forward(req : Request, res : Response) ~ Nil;
+		#~
+		Handles a direct request
+		@param req request wrapper
+		@param res response wrapper
+		~#
+		function : virtual : Request(res : Request, req : Response) ~ Nil;
+	}
+
+	#~
+	Web request
+	~#
+	class Request {
+		@handle : Int;
+
+		New() {
+		}
+	}
+
+	#~
+	Web Response 
+	~#
+	class Response {
+		@handle : Int;
+		
+		New() {
+		}
+
+		method : public : SetContentType(type : String) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@handle);
+			array_args[1] := type;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
+		}
+
+		method : public : AppendBody(data : String) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@handle);
+			array_args[2] := data;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : AppendBody(data : Byte[]) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@handle);
+			array_args[2] := ByteArrayHolder->New(data);
+
+			Proxy->GetDllProxy()->CallFunction("web_response_append_bytes", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+	}
+}
