@@ -163,4 +163,21 @@ extern "C" {
 		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
 		APITools_SetIntValue(context, 0, (size_t)gtk_window_get_focus(window));
 	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_default_widget(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, (size_t)gtk_window_get_default_widget(window));
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_transient_for(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size_t* gtk_parent_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		gtk_window_set_transient_for(window, (GtkWindow*)gtk_parent_obj[0]);
+	}
 }

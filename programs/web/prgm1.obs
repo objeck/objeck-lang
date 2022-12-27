@@ -1,4 +1,0 @@
-use Web.FastCgi; use Web.HTTP;	class FastCgiModule { function : Forward(req : Request, res : Response) ~ Nil {} function : Request(req : Request, res : Response) ~ Nil { res->AddBody("<html><title></title><body>");
-res->AddBody("foo");
-res->AddBody("</body></html>");
-res->Submit();	} }
