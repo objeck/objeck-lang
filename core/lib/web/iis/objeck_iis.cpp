@@ -57,19 +57,27 @@ ObjeckIIS::~ObjeckIIS() {
   std::wcout.rdbuf(tmp_wcout);
   std::wcout.rdbuf(tmp_werr);
 
-  delete stack_pos;
-  stack_pos = nullptr;
+  StopInterpreter();
+  CloseLogger();
+}
 
+void ObjeckIIS::StopInterpreter()
+{
+  Runtime::StackInterpreter::RemoveThread(intpr);
+  Runtime::StackInterpreter::HaltAll();
+
+  // clean up
   delete[] op_stack;
   op_stack = nullptr;
 
-  delete loader;
-  intpr = nullptr;
+  delete stack_pos;
+  stack_pos = nullptr;
 
   delete intpr;
-  loader = nullptr;
+  intpr = nullptr;
 
-  CloseLogger();
+  delete loader;
+  loader = nullptr;
 }
 
 std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
@@ -132,22 +140,6 @@ void ObjeckIIS::StartInterpreter()
 #ifdef _DEBUG
   GetLogger() << "--- Initialized interpreter ---" << std::endl;
 #endif
-}
-
-void ObjeckIIS::StopInterpreter()
-{
-  // clean up
-  delete[] op_stack;
-  op_stack = nullptr;
-
-  delete stack_pos;
-  stack_pos = nullptr;
-
-  Runtime::StackInterpreter::RemoveThread(intpr);
-  Runtime::StackInterpreter::HaltAll();
-
-  delete intpr;
-  intpr = nullptr;
 }
 
 REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider)
