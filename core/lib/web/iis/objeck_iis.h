@@ -44,9 +44,8 @@
 // IIS server
 //
 class ObjeckIIS : public CHttpModule {
-  std::string install_path;
-
   Runtime::StackInterpreter* intpr;
+  StackMethod* method;
   size_t* op_stack;
   long* stack_pos;
 
@@ -59,6 +58,9 @@ public:
 
   void StartInterpreter(StackProgram* program);
   void StopInterpreter(StackProgram* program);
+
+  bool WriteResponseString(const std::string data, IHttpResponse* response);
+  void SetContentType(const std::string header, IHttpResponse* response);
 
   REQUEST_NOTIFICATION_STATUS OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider);
 };
