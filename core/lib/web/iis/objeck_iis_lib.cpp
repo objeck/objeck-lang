@@ -1,12 +1,11 @@
 /***************************************************************************
- * IIS server support for Objeck
+ * IIS ISAPI client module
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *
  *
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
@@ -41,8 +40,8 @@
 
 extern "C" {
   //
-// initialize library
-//
+  // initialize library
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -88,7 +87,7 @@ extern "C" {
     DWORD sent;
     const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
     if(result != S_OK) {
-      response->SetStatus(500, "Server Error", 0, result);
+      response->SetStatus(500, "Server Error in Objeck Module", 0, result);
     }
   }
 
@@ -110,7 +109,11 @@ extern "C" {
     DWORD sent;
     const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
     if(result != S_OK) {
-      response->SetStatus(500, "Server Error", 0, result);
+      response->SetStatus(500, "Server Error in Objeck Module", 0, result);
     }
   }
+
+  //
+  // IIS request functions
+  //
 }

@@ -25,7 +25,7 @@ ObjeckIIS::ObjeckIIS() {
   tmp_werr = std::wcerr.rdbuf();
   std::wcerr.rdbuf(GetLogger().rdbuf());
 
-  DebugEnvironment(progam_path, install_path, lib_name);
+  LogSetupEnvironment(progam_path, install_path, lib_name);
 #endif
   
   // TODO: check for end '\' and add in '\lib\' Windows-only coding
@@ -234,7 +234,7 @@ bool ObjeckIIS::WriteResponseString(const std::string data, IHttpResponse* respo
   return true;
 }
 
-void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name) {
+void ObjeckIIS::LogSetupEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name) {
   GetLogger() << "--- Progam path='" << progam_path.c_str() << "' ---" << std::endl;
   GetLogger() << "--- Library path='" << install_path.c_str() << "' ---" << std::endl;
   GetLogger() << "--- Library name='" << lib_name.c_str() << "' ---" << std::endl;

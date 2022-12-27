@@ -1,7 +1,9 @@
 /***************************************************************************
+ * IIS ISAPI server module
+ * 
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -55,7 +57,7 @@ class ObjeckIIS : public CHttpModule {
   std::wstreambuf* tmp_werr;
 #endif
 
-  void DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name);
+  void LogSetupEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name);
   std::map<std::string, std::string> LoadConfiguration();
 
 public:
@@ -71,7 +73,9 @@ public:
   REQUEST_NOTIFICATION_STATUS OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider);
 };
 
-// Module factory
+//
+// Server module factory
+//
 class ObjeckIISFactory : public IHttpModuleFactory {
 
 public:
@@ -79,6 +83,9 @@ public:
   void Terminate();
 };
 
+//
+// Entrypoint
+//
 HRESULT __stdcall RegisterModule(DWORD dwServerVersion, IHttpModuleRegistrationInfo* pModuleInfo, IHttpServer* pGlobalInfo);
 
 #endif
