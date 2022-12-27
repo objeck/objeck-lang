@@ -201,7 +201,7 @@ method : public : GetFocus() ~ GtkWidget {
 		APITools_SetObjectValue(context, 0, (CAST*)value);
 	}
 
-=== TODO ===
+---
 method : public : GetDefaultWidget() ~ GtkWidget {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
@@ -240,7 +240,7 @@ method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
 		window_set_transient_for(window, parent);
 	}
 
----
+=== TODO ===
 method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New(@window);
