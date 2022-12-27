@@ -916,7 +916,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
     // web program
     else if(is_web) {
-      const std::wstring web_str = current_class->GetName() + L":Action:o.Web.FastCgi.Request,o.Web.FastCgi.Response,";
+      const std::wstring web_str = current_class->GetName() + L":Action:o.Web.Server.Request,o.Web.Server.Response,";
       if(method->GetEncodedName() == web_str) {
         if(web_found) {
           ProcessError(method, L"The 'Action(args)' function has already been defined");
