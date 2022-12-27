@@ -67,14 +67,14 @@ void ObjeckIIS::StopInterpreter()
   Runtime::StackInterpreter::HaltAll();
 
   // clean up
+  delete intpr;
+  intpr = nullptr;
+
   delete[] op_stack;
   op_stack = nullptr;
 
   delete stack_pos;
   stack_pos = nullptr;
-
-  delete intpr;
-  intpr = nullptr;
 
   delete loader;
   loader = nullptr;
