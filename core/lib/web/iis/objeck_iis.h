@@ -44,8 +44,10 @@
 // IIS server
 //
 class ObjeckIIS : public CHttpModule {
+  Loader* loader;
   Runtime::StackInterpreter* intpr;
   StackMethod* method;
+  
   size_t* op_stack;
   long* stack_pos;
 #ifdef _DEBUG
@@ -59,8 +61,8 @@ public:
   ObjeckIIS();
   ~ObjeckIIS();
 
-  void StartInterpreter(StackProgram* program);
-  void StopInterpreter(StackProgram* program);
+  void StartInterpreter();
+  void StopInterpreter();
 
   bool WriteResponseString(const std::string data, IHttpResponse* response);
   void SetContentType(const std::string header, IHttpResponse* response);
