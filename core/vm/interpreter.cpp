@@ -2650,9 +2650,6 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 typedef void (*lib_func_def) (VMContext& callbacks);
 void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
-#ifdef _DEBUG
-  std::wcout << L"stack oper: shared LIBRARY_FUNC_CALL; call_pos=" << (*call_stack_pos) << std::endl;
-#endif 
   size_t* instance = (size_t*)(*frame)->mem[0];
   size_t* str_obj = (size_t*)(*frame)->mem[1];
   size_t* array = (size_t*)str_obj[0];
@@ -2668,6 +2665,10 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
   const std::wstring wstr((wchar_t*)(array + 3));
   size_t* args = (size_t*)(*frame)->mem[2];
   lib_func_def ext_func;
+
+#ifdef _DEBUG
+  std::wcout << L"stack oper: shared LIBRARY_FUNC_CALL; call_pos=" << (*call_stack_pos) << "; function='" << wstr << L"'" << std::endl;
+#endif
 
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];

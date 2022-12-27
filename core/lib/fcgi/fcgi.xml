@@ -1,7 +1,0 @@
-<fcgi>
-	<pages>
-		<page path="a/b">p1.obw</page>
-		<page path="c/d">p2.obw</page>
-		<page path="e/f">p3.obw</page>
-	</pages>
-</fcgi>
