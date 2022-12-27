@@ -4,8 +4,12 @@
 ~#
 
 class Hello {
+  @value : static : Int;
+
   function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
+    @value += 1;
+
     res->SetContentType("text/html");
-    res->AppendBody("<html>Objeck is Back on the Web!</html>");
+    res->AppendBody("<html>Objeck is Back on the Web! <b>{$@value}</b></html>");
   }
 }
