@@ -64,7 +64,17 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void web_response_append_string(VMContext& context) {
+  void web_response_set_content_type(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 0);
+    const std::string header = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void web_response_append_string(VMContext& context) {
     IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
     const std::string data = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
@@ -85,10 +95,22 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void web_response_set_content_type(VMContext& context) {
-    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 0);
-    const std::string header = UnicodeToBytes(APITools_GetStringValue(context, 1));
+  void web_response_append_bytes(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
+    size_t* byte_array = APITools_GetObjectValue(context, 2);
+    unsigned char* bytes = APITools_GetByteArray(byte_array);
 
-    response->SetHeader(HttpHeaderContentType, header.c_str(), (USHORT)header.size(), TRUE);
+    // create check
+    HTTP_DATA_CHUNK data_chunk;
+    data_chunk.DataChunkType = HttpDataChunkFromMemory;
+    data_chunk.FromMemory.pBuffer = (PVOID)bytes;
+    data_chunk.FromMemory.BufferLength = (USHORT)sizeof(bytes);
+
+    // write response
+    DWORD sent;
+    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
+    if(result != S_OK) {
+      response->SetStatus(500, "Server Error", 0, result);
+    }
   }
 }

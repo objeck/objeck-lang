@@ -19,17 +19,23 @@ ObjeckIIS::ObjeckIIS() {
   const std::string debug_path = install_path + "\\iis_debug.txt";
   OpenLogger(debug_path);
 
-  tmp_cout = std::wcout.rdbuf();
+  tmp_wcout = std::wcout.rdbuf();
   std::wcout.rdbuf(GetLogger().rdbuf());
+
+  tmp_werr = std::wcerr.rdbuf();
+  std::wcerr.rdbuf(GetLogger().rdbuf());
 
   DebugEnvironment(progam_path, install_path, lib_name);
 #endif
   
   // TODO: check for end '\' and add in '\lib\' Windows-only coding
-  SetEnvironmentVariable("OBJECK_LIB_PATH", install_path.c_str());
+  if(_wputenv_s(L"OBJECK_LIB_PATH", BytesToUnicode(install_path).c_str())) {
+    GetLogger() << L">>> Unable to set OBJECK_LIB_PATH=" << install_path.c_str() << std::endl;
+    exit(1);
+  }
 
 #ifdef _DEBUG
-  GetLogger() << "Loading program: '" << progam_path.c_str() << "'" << std::endl;
+  GetLogger() << "--- Loading program: '" << progam_path.c_str() << "' ---" << std::endl;
 #endif
   // load program
   loader = new Loader(BytesToUnicode(progam_path).c_str());
@@ -41,14 +47,15 @@ ObjeckIIS::ObjeckIIS() {
     exit(1);
   }
 #ifdef _DEBUG
-  GetLogger() << "Program loaded and checked" << std::endl;
+  GetLogger() << "--- Program loaded and checked ---" << std::endl;
 #endif
 
   StartInterpreter();
 }
 
 ObjeckIIS::~ObjeckIIS() {
-  std::wcout.rdbuf(tmp_cout);
+  std::wcout.rdbuf(tmp_wcout);
+  std::wcout.rdbuf(tmp_werr);
 
   delete stack_pos;
   stack_pos = nullptr;
@@ -113,7 +120,7 @@ void ObjeckIIS::StartInterpreter()
   }
 
 #ifdef _DEBUG
-  GetLogger() << "Load method: '" << UnicodeToBytes(method->GetName()).c_str() << "'" << std::endl;
+  GetLogger() << "--- Load method: '" << UnicodeToBytes(method->GetName()).c_str() << "' ---" << std::endl;
 #endif
 
   intpr = new Runtime::StackInterpreter(Loader::GetProgram());
@@ -123,7 +130,7 @@ void ObjeckIIS::StartInterpreter()
   stack_pos = new long;
 
 #ifdef _DEBUG
-  GetLogger() << "Initialized interpreter" << std::endl;
+  GetLogger() << "--- Initialized interpreter ---" << std::endl;
 #endif
 }
 
@@ -154,62 +161,53 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
   // Test for an error.
   if(intpr && request && response) {
 #ifdef _DEBUG
-    GetLogger() << "Starting..." << std::endl;
+    GetLogger() << "--- Starting call... ---" << std::endl;
 #endif
     // execute method
     (*stack_pos) = 0;
 
-#ifdef _DEBUG
-    GetLogger() << "--- 0 ---" << std::endl;
-#endif
-
     // create request and response
     size_t* req_obj = MemoryManager::AllocateObject(L"Web.Server.Request", op_stack, *stack_pos, false);
+    req_obj[0] = (size_t)request;
+
     size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
-
-#ifdef _DEBUG
-    GetLogger() << "--- 4 ---: request=" << req_obj << ", response=" << res_obj << std::endl;
-#endif
-/*    
-    
-
+    res_obj[0] = (size_t)response;
 
     if(req_obj && res_obj) {
+#ifdef _DEBUG
+      GetLogger() << "--- Starting method call ---" << std::endl;
+#endif
       req_obj[0] = (size_t)request;
       res_obj[0] = (size_t)response;
 
       // set method calling parameters
       op_stack[0] = (size_t)req_obj;
-      op_stack[1] = (size_t)response;
+      op_stack[1] = (size_t)res_obj;
       *stack_pos = 2;
 
       // execute method
       response->Clear();
-      intpr->Execute(op_stack, stack_pos, 0, mthd, nullptr, false);
-    }
-
-
-
-    // End additional processing.
-    return RQ_NOTIFICATION_FINISH_REQUEST;
-*/
+      intpr->Execute(op_stack, stack_pos, 0, method, nullptr, false);
 
 #ifdef _DEBUG
-    GetLogger() << "Finishing..." << std::endl;
+      GetLogger() << "--- Ended method call: stack_pos" << *stack_pos << " --- " << std::endl;
+#endif
+    }
+    else {
+      return RQ_NOTIFICATION_CONTINUE;
+    }
+#ifdef _DEBUG
+    GetLogger() << "--- Fin. ---" << std::endl;
 #endif
   }
   else {
-    SetContentType("text/plain", response);
-    WriteResponseString("Unable to service request", response);
+    SetContentType("text/html", response);
+    WriteResponseString("<htm><b>Was unable to initialize enviroment...</b></html>", response);
     return RQ_NOTIFICATION_FINISH_REQUEST;
   }
 
-  SetContentType("text/plain", response);
-  WriteResponseString("Inching forward..", response);
+  // end request
   return RQ_NOTIFICATION_FINISH_REQUEST;
-
-  // Return processing to the pipeline.
-  // return RQ_NOTIFICATION_CONTINUE;
 }
 
 void ObjeckIIS::SetContentType(const std::string header, IHttpResponse* response)
@@ -237,10 +235,10 @@ bool ObjeckIIS::WriteResponseString(const std::string data, IHttpResponse* respo
 }
 
 void ObjeckIIS::DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name) {
-  GetLogger() << "Progam path='" << progam_path.c_str() << "'" << std::endl;
-  GetLogger() << "Library path='" << install_path.c_str() << "'" << std::endl;
-  GetLogger() << "Library name='" << lib_name.c_str() << "'" << std::endl;
-  GetLogger() << "---" << std::endl;
+  GetLogger() << "--- Progam path='" << progam_path.c_str() << "' ---" << std::endl;
+  GetLogger() << "--- Library path='" << install_path.c_str() << "' ---" << std::endl;
+  GetLogger() << "--- Library name='" << lib_name.c_str() << "' ---" << std::endl;
+  GetLogger() << "===" << std::endl;
 }
 
 //
