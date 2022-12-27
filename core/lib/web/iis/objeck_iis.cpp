@@ -2,63 +2,70 @@
 
 #include "objeck_iis.h"
 
+Loader* ObjeckIIS::loader = nullptr;
+Runtime::StackInterpreter* ObjeckIIS::intpr = nullptr;
+StackMethod* ObjeckIIS::method = nullptr;
+
+size_t* ObjeckIIS::op_stack = nullptr;
+long* ObjeckIIS::stack_pos = nullptr;
+
 //
 // IIS server module
 //
 ObjeckIIS::ObjeckIIS() {
-  intpr = nullptr;
-  op_stack = nullptr;
-  stack_pos = nullptr;
-
-  std::map<std::string, std::string> key_values = LoadConfiguration();
-  const std::string progam_path = key_values["program_path"];
-  std::string install_path = key_values["install_path"];
-  std::string lib_name = key_values["lib_name"];
+  if(!intpr) {
+    std::map<std::string, std::string> key_values = LoadConfiguration();
+    const std::string progam_path = key_values["program_path"];
+    std::string install_path = key_values["install_path"];
+    std::string lib_name = key_values["lib_name"];
 
 #ifdef _DEBUG
-  const std::string debug_path = install_path + "\\iis_debug.txt";
-  OpenLogger(debug_path);
+    const std::string debug_path = install_path + "\\iis_debug.txt";
+    OpenLogger(debug_path);
 
-  tmp_wcout = std::wcout.rdbuf();
-  std::wcout.rdbuf(GetLogger().rdbuf());
+    tmp_wcout = std::wcout.rdbuf();
+    std::wcout.rdbuf(GetLogger().rdbuf());
 
-  tmp_werr = std::wcerr.rdbuf();
-  std::wcerr.rdbuf(GetLogger().rdbuf());
+    tmp_werr = std::wcerr.rdbuf();
+    std::wcerr.rdbuf(GetLogger().rdbuf());
 
-  LogSetupEnvironment(progam_path, install_path, lib_name);
+    LogSetupEnvironment(progam_path, install_path, lib_name);
 #endif
-  
-  // TODO: check for end '\' and add in '\lib\' Windows-only coding
-  if(_wputenv_s(L"OBJECK_LIB_PATH", BytesToUnicode(install_path).c_str())) {
-    GetLogger() << L">>> Unable to set OBJECK_LIB_PATH=" << install_path.c_str() << std::endl;
-    exit(1);
+
+    // TODO: check for end '\' and add in '\lib\' Windows-only coding
+    if(_wputenv_s(L"OBJECK_LIB_PATH", BytesToUnicode(install_path).c_str())) {
+      GetLogger() << L">>> Unable to set OBJECK_LIB_PATH=" << install_path.c_str() << std::endl;
+      exit(1);
+    }
+
+#ifdef _DEBUG
+    GetLogger() << "--- Loading program: '" << progam_path.c_str() << "' ---" << std::endl;
+#endif
+    // load program
+    loader = new Loader(BytesToUnicode(progam_path).c_str());
+    loader->Load();
+
+    // ignore non-web applications
+    if(!loader->IsWeb()) {
+      GetLogger() << L">>> Please recompile the code to be a web application <<<" << std::endl;
+      exit(1);
+    }
+#ifdef _DEBUG
+    GetLogger() << "--- Program loaded and checked ---" << std::endl;
+#endif
+
+    StartInterpreter();
   }
-
-#ifdef _DEBUG
-  GetLogger() << "--- Loading program: '" << progam_path.c_str() << "' ---" << std::endl;
-#endif
-  // load program
-  loader = new Loader(BytesToUnicode(progam_path).c_str());
-  loader->Load();
-
-  // ignore non-web applications
-  if(!loader->IsWeb()) {
-    GetLogger() << L">>> Please recompile the code to be a web application <<<" << std::endl;
-    exit(1);
-  }
-#ifdef _DEBUG
-  GetLogger() << "--- Program loaded and checked ---" << std::endl;
-#endif
-
-  StartInterpreter();
 }
 
 ObjeckIIS::~ObjeckIIS() {
+  /* TODO: factory?
   std::wcout.rdbuf(tmp_wcout);
   std::wcout.rdbuf(tmp_werr);
 
   StopInterpreter();
   CloseLogger();
+  */
 }
 
 void ObjeckIIS::StopInterpreter()
