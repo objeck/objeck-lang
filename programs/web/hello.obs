@@ -5,7 +5,7 @@
 
 class Hello {
   function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
-    res->SetContentType("text/plain");
+    res->SetContentType("text/html");
     res->AppendBody("<html>Objeck is Back on the Web!</html>");
   }
 }
