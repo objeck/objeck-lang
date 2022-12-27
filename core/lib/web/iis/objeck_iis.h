@@ -46,15 +46,15 @@
 // IIS server
 //
 class ObjeckIIS : public CHttpModule {
- static Loader* loader;
- static Runtime::StackInterpreter* intpr;
- static StackMethod* method;
+  static Loader* loader;
+  static Runtime::StackInterpreter* intpr;
+  static StackMethod* method;
   
- static size_t* op_stack;
- static long* stack_pos;
+  static size_t* op_stack;
+  static long* stack_pos;
 #ifdef _DEBUG
-  std::wstreambuf* tmp_wcout;
-  std::wstreambuf* tmp_werr;
+  static std::wstreambuf* tmp_wcout;
+  static std::wstreambuf* tmp_werr;
 #endif
 
   void LogSetupEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name);
@@ -65,7 +65,7 @@ public:
   ~ObjeckIIS();
 
   void StartInterpreter();
-  void StopInterpreter();
+  static void StopInterpreter();
 
   bool WriteResponseString(const std::string data, IHttpResponse* response);
   void SetContentType(const std::string header, IHttpResponse* response);
