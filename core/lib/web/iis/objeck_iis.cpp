@@ -9,6 +9,11 @@ StackMethod* ObjeckIIS::method = nullptr;
 size_t* ObjeckIIS::op_stack = nullptr;
 long* ObjeckIIS::stack_pos = nullptr;
 
+#ifdef _DEBUG
+std::wstreambuf* ObjeckIIS::tmp_wcout;
+std::wstreambuf* ObjeckIIS::tmp_werr;
+#endif
+
 //
 // IIS server module
 //
@@ -59,17 +64,17 @@ ObjeckIIS::ObjeckIIS() {
 }
 
 ObjeckIIS::~ObjeckIIS() {
-  /* TODO: factory?
-  std::wcout.rdbuf(tmp_wcout);
-  std::wcout.rdbuf(tmp_werr);
-
-  StopInterpreter();
-  CloseLogger();
-  */
 }
 
 void ObjeckIIS::StopInterpreter()
 {
+#ifdef _DEBUG
+  std::wcout.rdbuf(tmp_wcout);
+  std::wcout.rdbuf(tmp_werr);
+#endif
+
+  StopInterpreter();
+
   Runtime::StackInterpreter::RemoveThread(intpr);
   Runtime::StackInterpreter::HaltAll();
 
@@ -266,7 +271,7 @@ HRESULT ObjeckIISFactory::GetHttpModule(OUT CHttpModule** ppModule, IN IModuleAl
 
 void ObjeckIISFactory::Terminate()
 {
-  // Remove the class from memory.
+  ObjeckIIS::StopInterpreter();
   delete this;
 }
 
