@@ -14,14 +14,13 @@ ObjeckIIS::ObjeckIIS() {
   const std::string progam_path = key_values["program_path"];
   std::string install_path = key_values["install_path"];
   std::string lib_name = key_values["lib_name"];
+
 #ifdef _DEBUG
   const std::string debug_path = install_path + "\\iis_debug.txt";
   OpenLogger(debug_path);
 
-#ifdef _DEBUG
   tmp_cout = std::wcout.rdbuf();
   std::wcout.rdbuf(GetLogger().rdbuf());
-#endif
 
   DebugEnvironment(progam_path, install_path, lib_name);
 #endif
@@ -32,33 +31,20 @@ ObjeckIIS::ObjeckIIS() {
 #ifdef _DEBUG
   GetLogger() << "Loading program: '" << progam_path.c_str() << "'" << std::endl;
 #endif
-
   // load program
-  Loader loader(BytesToUnicode(progam_path).c_str());
-  loader.Load();
+  loader = new Loader(BytesToUnicode(progam_path).c_str());
+  loader->Load();
 
   // ignore non-web applications
-  if(!loader.IsWeb()) {
-    GetLogger() << L"Please recompile the code to be a web application." << std::endl;
+  if(!loader->IsWeb()) {
+    GetLogger() << L">>> Please recompile the code to be a web application <<<" << std::endl;
     exit(1);
   }
-
 #ifdef _DEBUG
   GetLogger() << "Program loaded and checked" << std::endl;
 #endif
 
-  // get execution method
-  method = loader.GetStartMethod();
-  if(!method) {
-    GetLogger() <<L"Unable to locate the 'Action(...)' function." << std::endl;
-    exit(1);
-  }
-
-#ifdef _DEBUG
-  GetLogger() << "Load method: '" << UnicodeToBytes(method->GetName()).c_str() << "'" << std::endl;
-#endif
-
-  StartInterpreter(Loader::GetProgram());
+  StartInterpreter();
 }
 
 ObjeckIIS::~ObjeckIIS() {
@@ -70,8 +56,11 @@ ObjeckIIS::~ObjeckIIS() {
   delete[] op_stack;
   op_stack = nullptr;
 
-  delete intpr;
+  delete loader;
   intpr = nullptr;
+
+  delete intpr;
+  loader = nullptr;
 
   CloseLogger();
 }
@@ -114,8 +103,19 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
   return key_values;
 }
 
-void ObjeckIIS::StartInterpreter(StackProgram* program)
+void ObjeckIIS::StartInterpreter()
 {
+  // get execution method
+  method = loader->GetStartMethod();
+  if(!method) {
+    GetLogger() << L">>> Unable to locate the 'Action(...)' function. <<<" << std::endl;
+    exit(1);
+  }
+
+#ifdef _DEBUG
+  GetLogger() << "Load method: '" << UnicodeToBytes(method->GetName()).c_str() << "'" << std::endl;
+#endif
+
   intpr = new Runtime::StackInterpreter(Loader::GetProgram());
   Runtime::StackInterpreter::AddThread(intpr);
 
@@ -127,7 +127,7 @@ void ObjeckIIS::StartInterpreter(StackProgram* program)
 #endif
 }
 
-void ObjeckIIS::StopInterpreter(StackProgram* program)
+void ObjeckIIS::StopInterpreter()
 {
   // clean up
   delete[] op_stack;
@@ -165,13 +165,13 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
 
     // create request and response
     size_t* req_obj = MemoryManager::AllocateObject(L"Web.Server.Request", op_stack, *stack_pos, false);
+    size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
 
 #ifdef _DEBUG
-    GetLogger() << "--- 1 ---" << std::endl;
+    GetLogger() << "--- 4 ---: request=" << req_obj << ", response=" << res_obj << std::endl;
 #endif
 /*    
     
-    size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
 
 
     if(req_obj && res_obj) {
