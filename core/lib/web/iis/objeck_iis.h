@@ -46,12 +46,12 @@
 // IIS server
 //
 class ObjeckIIS : public CHttpModule {
-  Loader* loader;
-  Runtime::StackInterpreter* intpr;
-  StackMethod* method;
+ static Loader* loader;
+ static Runtime::StackInterpreter* intpr;
+ static StackMethod* method;
   
-  size_t* op_stack;
-  long* stack_pos;
+ static size_t* op_stack;
+ static long* stack_pos;
 #ifdef _DEBUG
   std::wstreambuf* tmp_wcout;
   std::wstreambuf* tmp_werr;
