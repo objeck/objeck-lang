@@ -51,7 +51,8 @@ class ObjeckIIS : public CHttpModule {
   size_t* op_stack;
   long* stack_pos;
 #ifdef _DEBUG
-  std::wstreambuf* tmp_cout;
+  std::wstreambuf* tmp_wcout;
+  std::wstreambuf* tmp_werr;
 #endif
 
   void DebugEnvironment(const std::string& progam_path, const std::string& install_path, const std::string& lib_name);
