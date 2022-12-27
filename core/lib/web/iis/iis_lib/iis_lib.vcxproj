@@ -77,13 +77,13 @@
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>libobjk_iis</TargetName>
-    <OutDir>$(ProjectDir)\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>libobjk_iis</TargetName>
-    <OutDir>$(ProjectDir)\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -143,7 +143,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;IISLIB_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
