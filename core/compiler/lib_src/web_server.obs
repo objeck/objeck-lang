@@ -7,6 +7,7 @@ bundle Web.Server {
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
+				# TODO: set value in web server module config and use 'Runtime->GetProperty()'
 				@lib_proxy := System.API.DllProxy->New("libobjk_iis");
 			};
 
@@ -64,7 +65,7 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_request_get_method", array_args);
 			req_method := array_args[0]->As(String);
 
-			# TODO: faster way put into a hash?
+			# TODO: faster way put into a hash, Nginx uses a integer value
 			if(req_method->Equals("GET")) {
 				return Request->Method->GET;
 			}
