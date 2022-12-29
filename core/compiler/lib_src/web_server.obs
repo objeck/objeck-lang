@@ -38,7 +38,80 @@ bundle Web.Server {
 	class Request {
 		@handle : Int;
 
-		New() {
+		#~
+		Web request method
+		~#
+		enum Method {
+			GET,
+			HEAD,
+			POST,
+			PUT,
+			DELETE,
+			CONNECT,
+			OPTIONS,
+			TRACE,
+			PATCH
+		}
+
+		#~
+		Gets the request method
+		@return request method
+		~#
+		method : public : GetMethod() ~ Request->Method {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("web_request_get_method", array_args);
+			req_method := array_args[0]->As(String);
+
+			# TODO: faster way put into a hash?
+			if(req_method->Equals("GET")) {
+				return Request->Method->GET;
+			}
+			else if(req_method->Equals("HEAD")) {
+				return Request->Method->HEAD;
+			}
+			else if(req_method->Equals("POST")) {
+				return Request->Method->POST;
+			}
+			else if(req_method->Equals("PUT")) {
+				return Request->Method->PUT;
+			}
+			else if(req_method->Equals("DELETE")) {
+				return Request->Method->DELETE;
+			}
+			else if(req_method->Equals("CONNECT")) {
+				return Request->Method->CONNECT;
+			}
+			else if(req_method->Equals("OPTIONS")) {
+				return Request->Method->OPTIONS;
+			}
+			else if(req_method->Equals("TRACE")) {
+				return Request->Method->TRACE;
+			}
+			else {
+				return Request->Method->PATCH;
+			};
+		}
+
+		#~
+		Get a HTTP header
+		@param name header name
+		@return header value
+		~#
+		method : public : GetHeader(name : String) ~ String {
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@handle);
+			array_args[2] := name;
+
+			Proxy->GetDllProxy()->CallFunction("web_request_get_header", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		method : public : ReadBody() ~ String {
+			return Nil;
 		}
 	}
 
@@ -48,9 +121,10 @@ bundle Web.Server {
 	class Response {
 		@handle : Int;
 		
-		New() {
-		}
-
+		#~
+		Set the content type
+		@param type content type
+		~#
 		method : public : SetContentType(type : String) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@handle);
@@ -59,7 +133,12 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
 		}
 
-		method : public : AppendBody(data : String) ~ Bool {
+		#~
+		Writes a string response to the message body
+		@param date string response
+		@return number of bytes sent
+		~#
+		method : public : WriteBody(data : String) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@handle);
@@ -68,10 +147,15 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			return value->Get();
 		}
 
-		method : public : AppendBody(data : Byte[]) ~ Bool {
+		#~
+		Writes a byte array response to the message body
+		@param date byte array response
+		@return number of bytes sent
+		~#
+		method : public : WriteBody(data : Byte[]) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@handle);
@@ -80,7 +164,7 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_response_append_bytes", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			return value->Get();
 		}
 	}
 }

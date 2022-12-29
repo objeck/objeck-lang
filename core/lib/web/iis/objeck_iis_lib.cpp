@@ -73,7 +73,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void web_response_append_string(VMContext& context) {
+  void web_response_append_string(VMContext& context) {
     IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
     const std::string data = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
@@ -84,11 +84,13 @@ extern "C" {
     data_chunk.FromMemory.BufferLength = (USHORT)data.size();
 
     // write response
-    DWORD sent;
-    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
+    DWORD bytes_sent;
+    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &bytes_sent);
     if(result != S_OK) {
       response->SetStatus(500, "Server Error in Objeck Module", 0, result);
     }
+
+    APITools_SetIntValue(context, 0, bytes_sent);
   }
 
 #ifdef _WIN32
@@ -106,14 +108,38 @@ extern "C" {
     data_chunk.FromMemory.BufferLength = (USHORT)sizeof(bytes);
 
     // write response
-    DWORD sent;
-    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &sent);
+    DWORD bytes_sent;
+    const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &bytes_sent);
     if(result != S_OK) {
       response->SetStatus(500, "Server Error in Objeck Module", 0, result);
     }
+
+    APITools_SetIntValue(context, 0, bytes_sent);
   }
 
   //
   // IIS request functions
   //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_request_get_header(VMContext& context) {
+    IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    USHORT value_length;
+    PCSTR value = request->GetHeader(name.c_str(), &value_length);
+
+    if(value_length > 0) {
+      APITools_SetStringValue(context, 0, BytesToUnicode(value));
+    }
+    else {
+      APITools_SetStringValue(context, 0, L"");
+    }
+  }
+
+  void web_request_get_method(VMContext& context) {
+    IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
+    APITools_SetStringValue(context, 0, BytesToUnicode(request->GetHttpMethod()));
+  }
 }
