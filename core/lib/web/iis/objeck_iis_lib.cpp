@@ -168,7 +168,7 @@ extern "C" {
 
     // read bytes and update buffer
     DWORD buffer_size = LARGE_BUFFER_MAX;
-    char buffer[LARGE_BUFFER_MAX] = {0};
+    unsigned char buffer[LARGE_BUFFER_MAX] = {0};
     while(request->GetRemainingEntityBytes()) {
       DWORD bytes_read = 0;
       const HRESULT result = request->ReadEntityBody(buffer, buffer_size, FALSE, &bytes_read);
