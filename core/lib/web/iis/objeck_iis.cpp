@@ -38,11 +38,11 @@ ObjeckIIS::ObjeckIIS() {
 #endif
 
     // TODO: check for end '\' and add in '\lib\' Windows-only coding
-    if(_wputenv_s(L"OBJECK_LIB_PATH", BytesToUnicode(install_path).c_str())) {
+    if(_putenv_s("OBJECK_LIB_PATH", install_path.c_str())) {
       GetLogger() << L">>> Unable to set OBJECK_LIB_PATH=" << install_path.c_str() << std::endl;
       exit(1);
     }
-
+    
 #ifdef _DEBUG
     GetLogger() << "--- Loading program: '" << progam_path.c_str() << "' ---" << std::endl;
 #endif
@@ -55,6 +55,9 @@ ObjeckIIS::ObjeckIIS() {
       GetLogger() << L">>> Please recompile the code to be a web application <<<" << std::endl;
       exit(1);
     }
+
+    loader->GetProgram()->SetProperty(L"OBJECK_LIB_WEB_SERVER", BytesToUnicode(lib_name));
+
 #ifdef _DEBUG
     GetLogger() << "--- Program loaded and checked ---" << std::endl;
 #endif
@@ -72,9 +75,7 @@ void ObjeckIIS::StopInterpreter()
   std::wcout.rdbuf(tmp_wcout);
   std::wcout.rdbuf(tmp_werr);
 #endif
-
-  StopInterpreter();
-
+  
   Runtime::StackInterpreter::RemoveThread(intpr);
   Runtime::StackInterpreter::HaltAll();
 
@@ -110,8 +111,8 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
         std::string line;
         std::ifstream file_in(config_file_path.c_str());
         if(file_in.good()) {
-          std::getline(file_in, line);
-          while(!file_in.eof()) {
+          do {
+            std::getline(file_in, line);
             size_t index = line.find('=');
             if(index != std::string::npos) {
               const std::string key = line.substr(0, index);
@@ -119,9 +120,8 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
               const std::string value = line.substr(index, line.size() - index);
               key_values.insert(std::pair<std::string, std::string>(key, value));
             }
-            // update
-            std::getline(file_in, line);
           }
+          while(!file_in.eof());
         }
       }
     }
