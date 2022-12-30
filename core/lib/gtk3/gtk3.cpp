@@ -176,8 +176,20 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 	void window_set_transient_for(VMContext& context) {
-		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
-		const size_t* gtk_parent_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_parent_obj = APITools_GetObjectValue(context, 1);
 		gtk_window_set_transient_for(window, (GtkWindow*)gtk_parent_obj[0]);
 	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_attached_to(VMContext& context) {
+		GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* widget_obj = APITools_GetObjectValue(context, 1);
+		
+		gtk_window_set_attached_to(window, (GtkWidget*)widget_obj[0]);
+	}
 }
+
+
