@@ -141,7 +141,7 @@ method : public : GetRole() ~ String {
 		APITools_SetStringValue(context, 0, value);
 	}
 
-===
+---
 method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New(@window);
@@ -181,7 +181,7 @@ method : public : ActivateFocus() ~ Bool {
 		APITools_SetIntValue(context, 0, value);
 	}
 
-===
+---
 method : public : GetFocus() ~ GtkWidget {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
@@ -240,7 +240,7 @@ method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
 		window_set_transient_for(window, parent);
 	}
 
-=== TODO ===
+---
 method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New(@window);
@@ -259,7 +259,7 @@ method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
 		window_set_attached_to(window, attach_widget);
 	}
 
----
+=== TODO ===
 method : public : SetTypeHint(hint : GdkWindowTypeHint) ~ Nil {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New(@window);
