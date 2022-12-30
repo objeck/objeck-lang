@@ -59,8 +59,9 @@ bundle Web.Server {
 		@return request method
 		~#
 		method : public : GetMethod() ~ Request->Method {
-			array_args := Base->New[1];
+			array_args := Base->New[2];
 			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@handle);
 
 			Proxy->GetDllProxy()->CallFunction("web_request_get_method", array_args);
 			req_method := array_args[0]->As(String);
