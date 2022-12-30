@@ -97,12 +97,12 @@ bundle Web.Server {
 
 			return array_args[0]->As(String);
 		}
-
+		
 		#~
 		Reads the request body (i.e. POST)
 		@return request body
 		~#
-		method : public : ReadBody() ~ Byte[] { # TODO: needs to be a byte array
+		method : public : ReadBody() ~ Byte[] {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(@request);
