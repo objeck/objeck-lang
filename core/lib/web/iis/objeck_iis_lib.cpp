@@ -117,6 +117,17 @@ extern "C" {
     APITools_SetIntValue(context, 0, bytes_sent);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_response_set_header(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 2));
+    const std::string value = UnicodeToBytes(APITools_GetStringValue(context, 3));
+
+    APITools_SetIntValue(context, 0, response->SetHeader(name.c_str(), value.c_str(), (USHORT)value.size(), TRUE) == S_OK);
+  }
+
   //
   // IIS request functions
   //

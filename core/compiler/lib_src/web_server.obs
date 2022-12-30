@@ -7,8 +7,7 @@ bundle Web.Server {
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
-				# TODO: set value in web server module config and use 'Runtime->GetProperty()'
-				@lib_proxy := System.API.DllProxy->New("libobjk_iis");
+				@lib_proxy := System.API.DllProxy->New(Runtime->GetProperty("OBJECK_LIB_WEB_SERVER"));
 			};
 
 			return @lib_proxy;
@@ -96,6 +95,10 @@ bundle Web.Server {
 			};
 		}
 
+		method : public : GetRemoteAddress() ~ String {
+			return Nil;	
+		}
+
 		#~
 		Get a HTTP header
 		@param name header name
@@ -112,6 +115,7 @@ bundle Web.Server {
 			return array_args[0]->As(String);
 		}
 
+		# TODO
 		method : public : ReadBody() ~ String {
 			return Nil;
 		}
@@ -167,6 +171,20 @@ bundle Web.Server {
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
+		}
+
+		# TODO
+		method : public : SetHeader(name : String, value : String) ~ Bool {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@handle);
+			array_args[2] := name;
+			array_args[3] := value;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_set_header", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
 		}
 	}
 }
