@@ -9,7 +9,10 @@ class Hello {
   function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
     @value += 1;
 
+    action := req->GetMethod()->As(Int);
+    cache :=  req->GetHeader("Cache-Control");
+
     res->SetContentType("text/html");
-    res->AppendBody("<html>Objeck is Back on the Web! <b>{$@value}</b></html>");
+    res->WriteBody("<html>Action={$action}, Cache={$cache}</html>");
   }
 }
