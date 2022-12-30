@@ -15,24 +15,6 @@ bundle Web.Server {
 	}
 
 	#~
-	Interface required to implementing handling classes
-	~#
-	interface Handler {
-		#~
-		Accepts a forwarding request from another handler instance
-		@param req request wrapper
-		@param res response wrapper
-		~#
-		function : virtual : Forward(req : Request, res : Response) ~ Nil;
-		#~
-		Handles a direct request
-		@param req request wrapper
-		@param res response wrapper
-		~#
-		function : virtual : Request(res : Request, req : Response) ~ Nil;
-	}
-
-	#~
 	Web request
 	~#
 	class Request {
