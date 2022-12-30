@@ -18,7 +18,8 @@ bundle Web.Server {
 	Web request
 	~#
 	class Request {
-		@handle : Int;
+		@request : Int;
+		@response : Int;
 
 		#~
 		Web request method
@@ -42,7 +43,7 @@ bundle Web.Server {
 		method : public : GetMethod() ~ Request->Method {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@request);
 
 			Proxy->GetDllProxy()->CallFunction("web_request_get_method", array_args);
 			req_method := array_args[0]->As(String);
@@ -89,7 +90,7 @@ bundle Web.Server {
 		method : public : GetHeader(name : String) ~ String {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@request);
 			array_args[2] := name;
 
 			Proxy->GetDllProxy()->CallFunction("web_request_get_header", array_args);
@@ -101,8 +102,16 @@ bundle Web.Server {
 		Reads the request body (i.e. POST)
 		@return request body
 		~#
-		method : public : ReadBody() ~ String {
-			return Nil;
+		method : public : ReadBody() ~ Byte[] { # TODO: needs to be a byte array
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+			array_args[2] := IntHolder->New(@response);
+
+			Proxy->GetDllProxy()->CallFunction("web_request_read_body", array_args);
+
+			value := array_args[0]->As(ByteArrayHolder);
+			return value->Get();
 		}
 	}
 
@@ -110,7 +119,7 @@ bundle Web.Server {
 	Web Response 
 	~#
 	class Response {
-		@handle : Int;
+		@response : Int;
 		
 		#~
 		Set the content type
@@ -118,7 +127,7 @@ bundle Web.Server {
 		~#
 		method : public : SetContentType(type : String) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@handle);
+			array_args[0] := IntHolder->New(@response);
 			array_args[1] := type;
 
 			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
@@ -132,7 +141,7 @@ bundle Web.Server {
 		method : public : WriteBody(data : String) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@response);
 			array_args[2] := data;
 
 			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
@@ -149,7 +158,7 @@ bundle Web.Server {
 		method : public : WriteBody(data : Byte[]) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@response);
 			array_args[2] := ByteArrayHolder->New(data);
 
 			Proxy->GetDllProxy()->CallFunction("web_response_append_bytes", array_args);
@@ -167,7 +176,7 @@ bundle Web.Server {
 		method : public : SetHeader(name : String, value : String) ~ Bool {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@response);
 			array_args[2] := name;
 			array_args[3] := value;
 

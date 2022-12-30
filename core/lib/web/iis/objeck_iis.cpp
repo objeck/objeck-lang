@@ -99,9 +99,8 @@ std::map<std::string, std::string> ObjeckIIS::LoadConfiguration()
 
   HMODULE module = GetModuleHandle("objeck_iis");
   if(module) {
-    const size_t buffer_max = 512;
-    char buffer[buffer_max] = {0};
-    if(GetModuleFileName(module, (LPSTR)buffer, buffer_max)) {
+    char buffer[SMALL_BUFFER_MAX] = {0};
+    if(GetModuleFileName(module, (LPSTR)buffer, SMALL_BUFFER_MAX)) {
       std::string buffer_str(buffer);
       size_t find_pos = buffer_str.find_last_of('\\');
       if(find_pos != std::wstring::npos) {
@@ -173,6 +172,7 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
     // create request and response
     size_t* req_obj = MemoryManager::AllocateObject(L"Web.Server.Request", op_stack, *stack_pos, false);
     req_obj[0] = (size_t)request;
+    req_obj[1] = (size_t)response;
 
     size_t* res_obj = MemoryManager::AllocateObject(L"Web.Server.Response", op_stack, *stack_pos, false);
     res_obj[0] = (size_t)response;

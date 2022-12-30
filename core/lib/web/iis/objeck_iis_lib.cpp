@@ -84,7 +84,7 @@ extern "C" {
     data_chunk.FromMemory.BufferLength = (USHORT)data.size();
 
     // write response
-    DWORD bytes_sent;
+    DWORD bytes_sent = 0;
     const HRESULT result = response->WriteEntityChunks(&data_chunk, 1, FALSE, TRUE, &bytes_sent);
     if(result != S_OK) {
       response->SetStatus(500, "Server Error in Objeck Module", 0, result);
@@ -155,5 +155,41 @@ extern "C" {
   void web_request_get_method(VMContext& context) {
     IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
     APITools_SetStringValue(context, 0, BytesToUnicode(request->GetHttpMethod()));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_request_read_body(VMContext& context) {
+    IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 2);
+
+    std::vector<unsigned char> read_body;
+
+    // read bytes and update buffer
+    DWORD buffer_size = LARGE_BUFFER_MAX;
+    char buffer[LARGE_BUFFER_MAX] = {0};
+    while(request->GetRemainingEntityBytes()) {
+      DWORD bytes_read = 0;
+      const HRESULT result = request->ReadEntityBody(buffer, buffer_size, FALSE, &bytes_read);
+      if(result != S_OK && ((result & 0x0000FFFF) != ERROR_HANDLE_EOF)) {
+        response->SetStatus(500, "Server Error in Objeck Module", 0, result);
+        APITools_SetStringValue(context, 0, L"");
+        return;
+      }
+
+      read_body.insert(read_body.end(), buffer, buffer + bytes_read);
+    }
+
+    // allocate byte array and copy data
+    size_t* array = APITools_MakeByteArray(context, read_body.size());
+    unsigned char* byte_array = (unsigned char*)(array + 3);
+    memcpy(byte_array, read_body.data(), read_body.size() * sizeof(unsigned char));
+
+    // create 'ByteArrayHolder' holder
+    size_t* byte_obj = context.alloc_obj(L"System.ByteArrayHolder", context.op_stack, *context.stack_pos, false);
+    byte_obj[0] = (size_t)array;
+
+    APITools_SetObjectValue(context, 0, byte_obj);
   }
 }
