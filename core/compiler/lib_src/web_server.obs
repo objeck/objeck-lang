@@ -79,6 +79,7 @@ bundle Web.Server {
 			};
 		}
 
+		# TODO: 
 		method : public : GetRemoteAddress() ~ String {
 			return Nil;	
 		}
