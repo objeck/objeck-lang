@@ -1,5 +1,5 @@
 #~
-Support for web servers
+Support for web servers. Note, implementation of this library for different web servers is specified via configuration.
 ~#
 bundle Web.Server {
 	class Proxy {
@@ -100,7 +100,7 @@ bundle Web.Server {
 		}
 
 		#~
-		Get a HTTP header
+		Gets a HTTP header
 		@param name header name
 		@return header value
 		~#
@@ -115,7 +115,10 @@ bundle Web.Server {
 			return array_args[0]->As(String);
 		}
 
-		# TODO
+		#~
+		Reads the request body (i.e. POST)
+		@return request body
+		~#
 		method : public : ReadBody() ~ String {
 			return Nil;
 		}
@@ -173,7 +176,12 @@ bundle Web.Server {
 			return value->Get();
 		}
 
-		# TODO
+		#~
+		Sets a HTTP header
+		@param name header name
+		@param value header value
+		@return true successful, false otherwise
+		~#
 		method : public : SetHeader(name : String, value : String) ~ Bool {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
@@ -183,8 +191,8 @@ bundle Web.Server {
 
 			Proxy->GetDllProxy()->CallFunction("web_response_set_header", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			rvalue := array_args[0]->As(IntHolder);
+			return rvalue->Get() = 0 ? false : true;
 		}
 	}
 }
