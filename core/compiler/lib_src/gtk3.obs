@@ -265,7 +265,7 @@ bundle GTK3 {
 
 		#~
 		Removes the accelerator group
-		@param the GtkAccelGroup
+		@param accel_group the GtkAccelGroup
 		~#
 		method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 			array_args := Base->New[2];

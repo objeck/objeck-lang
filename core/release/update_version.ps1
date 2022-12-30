@@ -11,7 +11,6 @@ $version_windows = $version.Replace(".", ",")
 # update source version header
 (Get-Content ..\shared\version.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_NUMBER@", $version_number } | Set-Content ..\shared\version.h
 (Get-Content code_doc64.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content code_doc64.cmd
-(Get-Content code_doc.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content code_doc.cmd
 
 # update debain build files
 (Get-Content debian\build.in) | ForEach-Object { $_ -replace "@VERSION@", $version_posix } | Set-Content debian\build.sh
