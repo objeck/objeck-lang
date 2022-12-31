@@ -1,5 +1,0 @@
-sudo apt-get install build-essential git emacs libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev
-
-apt-cache search ^libsdl | grep 2.
-
-sudo apt install xserver-xorg-input-synaptics-hwe-18.04
