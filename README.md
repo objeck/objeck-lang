@@ -50,7 +50,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 ## Screenshots
 | <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
 | :---: | :----: | :---: | :---: | :---: |
-![alt text](images/web/comp.png "Visual Studio Code") | ![alt text](images/web/debug.jpg "Command line debugger") | ![alt text](images/web/crawler.png "Web Crawler") | ![alt text](images/web/2d_game.jpg "Platformer") | ![alt text](images/web/launch.png "Windows Launcher") |
+![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
 
 ## Platform Architecture
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
@@ -59,7 +59,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 * [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
-![alt text](images/toolchain.svg "Objeck System Architecture")
+![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
 __Building on Linux and macOS__
 *  Install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
