@@ -5,7 +5,7 @@ Various programs, which range from games to debug code. Please refer to the inde
 | Directory | Description |
 | --- | ----------- |
 | deploy | Programs that ship with the distribution |
-| frameworks | Prototype code that exercises various frameworks |
+| frameworks | Prototype code that exercises various frameworks (SDL2, GTK2, ODBC, etc.) |
 | langs | Simple languages written in Objeck |
 | test | Debug code |
 | test/aoc | [Advent of Code](https://adventofcode.com/) |
