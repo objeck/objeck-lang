@@ -1,0 +1,15 @@
+ARGS=-O3 -Wall -Wno-unused-function -std=c++11
+
+CC=g++
+SRC=launcher.o
+EXE=obn
+
+$(EXE): $(OBJ_LIBS) $(SRC) 
+	$(CC) -m64 -o $(EXE) $(SRC) -lz
+
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+
+clean:
+	rm -f $(EXE) *.o *~
