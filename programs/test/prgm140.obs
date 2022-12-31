@@ -1,9 +1,0 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		string := "function \\tD : \\tMain(args : \\tString[]) ~ Nil {";
-
-		if(args->Size() = 1) {
-			GetIdent(args[0]->ToInt(), string)->PrintLine();
-		};
-	}
-}

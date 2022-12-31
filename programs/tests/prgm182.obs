@@ -1,0 +1,68 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		tape := "-9/3+8+2+-3+1*2+8+-5";
+#		tape := "-1--1";
+		if(args->Size() = 1) {
+			tape := args[0];
+		};
+		
+		acum := 0; oper : Char;
+		each(i : tape) {
+			char := GetChar(i, tape);
+			next_char := GetChar(i + 1, tape);
+			
+			value : Int;
+			do_oper := false;
+			if(char = '-' & (i = 0 | next_char->IsDigit())) {
+				value := -1 * (next_char - '0')->ToInt();
+				if(i = 0) {
+					acum := value;
+				};
+				i += 1;
+				do_oper := true;				
+			}
+			else if(char->IsDigit()) {
+				value := (char - '0')->ToInt();
+				if(i = 0) {
+					acum := value;
+				};
+				do_oper := true;			
+			};
+
+			if(do_oper) {
+				select(oper) {
+					label '+' {
+						acum += value;
+					}
+
+					label '-' {
+						acum -= value;
+					}
+
+					label '*' {
+						acum *= value;
+					}
+
+					label '/' {
+						acum /= value;
+					}
+				};
+
+				oper := '\0';
+			}
+			else {
+				oper := char;
+			};
+		};
+
+		"result={$acum}"->PrintLine();
+	}
+
+	function : GetChar(index : Int, tape : String) ~ Char {
+		if(index < tape->Size()) {
+			return tape->Get(index);
+		};
+
+		return '\0';
+	}
+}

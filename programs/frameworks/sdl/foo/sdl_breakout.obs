@@ -1,0 +1,707 @@
+use Game.SDL2;
+
+class Sprite {
+	@renderer : Renderer;
+	@font : Font;
+	@texture : Texture;
+	@width : Int;
+	@height : Int;
+	@render_quad : Rect;
+	@frames : Int;
+
+	New(renderer : Renderer, frames : Int := 1, font : Font := Nil) {
+		@renderer := renderer;
+		@frames := frames;
+		@font := font;
+		@render_quad := Rect->New();
+	}
+
+	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
+		Free();
+
+		textSurface := @font->RenderTextSolid(textureText, textColor);
+		if(textSurface->IsNull()) {
+			"Unable to render text surface!"->ErrorLine();
+			return false;
+		};
+
+		texture := textSurface->CreateTexture(@renderer);
+		@width := textSurface->GetW();
+		@height := textSurface->GetH();
+		
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
+	method : public : LoadFromFile(path : String) ~ Bool {
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load image {$path}"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
+		
+		loadedSurface->Free();
+		@texture := texture;
+
+		return @texture <> Nil;
+	}
+
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+		@texture->SetColorMod(red, green, blue);
+	}
+
+	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
+		@texture->SetBlendMode(blending);
+	}
+	
+	method : public : SetAlpha(alpha : Int) ~ Nil {
+		@texture->SetAlphaMod(alpha );
+	}
+
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+			center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+		@render_quad->SetX(x);
+		@render_quad->SetY(y);
+		@render_quad->SetW(@width);
+		@render_quad->SetH(@height);
+		
+		if(clip <> Nil)	{
+			@render_quad->SetW(clip->GetW());
+			@render_quad->SetH(clip->GetH());
+		};
+
+		@renderer->CopyEx(@texture, clip, @render_quad, angle, center, flip );
+	}
+
+	method : public : GetWidth() ~ Int {
+		return @width / @frames;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+}
+
+consts Environment {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600,
+	FPS := 30,
+	RED_ZONE := 60
+}
+
+class Paddle {
+	FRAME_RATE : static : Int;
+		
+	@window : Window;
+	@renderer : Renderer;
+
+	@paddle_sprite : Sprite;
+	@paddle_views : Rect[];
+	@paddle_rect : Rect;
+
+	@background : Sprite;
+	@grass : Sprite;
+
+	@bisket_x_start : Int;
+	@bisket_y_start : Int;
+	@bisket_y_end : Int;
+	@bisket_sprite : Sprite;
+	@biskets : Bool[,];
+
+	@ball_sprite : Sprite;
+	@score_texture : Sprite;
+	@high_score_texture : Sprite;
+	@score_color : Color;
+	
+	@ball_x : Int;
+	@ball_y : Int;
+	@ball_x_dir : Int;
+	@ball_y_dir : Int;
+	@ball_speed : Int;
+	@ball_angle : Float;
+
+	@paddle_x : Int;
+	@paddle_y : Int;
+
+	@joystick : Joystick;
+
+	@music : MixMusic;
+	@hit_chunk : MixChunk;
+	@bounce_chunk : MixChunk;
+	@howel_chunk : MixChunk;
+	@crunch_chunk : MixChunk;
+
+	@playing : Bool;
+	@score : Int;
+	@high_score : Int;
+	
+	function : Main(args : String[]) ~ Nil {
+		game := Paddle->New();
+		game->Run();
+	}
+
+	New() {
+	}
+
+	method : Run() ~ Nil {
+		if(<>Init()) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		if(<>LoadMedia()) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+
+		FRAME_RATE := 1000 / Environment->FPS->As(Int);
+		JOYSTICK_DEAD_ZONE := 8000;
+		
+		quit := false;
+		e := Event->New();
+		x_dir : Float := 0;
+
+		MixMusic->VolumeMusic(96);
+		Reset();
+
+		frame := 0;
+
+		while(<>quit) {
+			start := Timer->GetTicks();
+
+			if(@playing & frame >= Environment->FPS->As(Int) * 10) {
+				@score += 15;
+				UpdateScore();
+
+				if(MapEmpty()) {
+					MapBuild();
+				};
+
+				frame := 0;
+			};
+
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				}
+				else if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
+					# Motion on controller 0
+					if( e->GetJAxis()->GetWhich() = 0 ) {						
+						# X axis motion
+						if( e->GetJAxis()->GetAxis() = 0 )	{
+							# Left of dead zone
+							if( e->GetJAxis()->GetValue() < (-1 * JOYSTICK_DEAD_ZONE) ) {
+								x_dir := -1;
+							}
+							# Right of dead zone
+							else if( e->GetJAxis()->GetValue() > JOYSTICK_DEAD_ZONE ) {
+								x_dir := 1;
+							}
+							else {
+								x_dir := 0;
+							};
+						};
+					};
+				}
+				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+					@music->FadeInMusic(-1, 1500);
+					@playing := true;
+				};
+			};
+
+			if(x_dir = -1) {
+				if(@paddle_x > 0) {
+					@paddle_x -= @ball_speed * 1.5;
+					if(@paddle_x < 0) {
+						@paddle_x := 0;
+					};
+				};
+			}
+			else if(x_dir = 1) {
+				if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
+					@paddle_x += @ball_speed * 1.5;
+					if(@paddle_x + @paddle_sprite->GetWidth() > Environment->SCREEN_WIDTH->As(Int)) {
+						@paddle_x := Environment->SCREEN_WIDTH->As(Int) - @paddle_sprite->GetWidth();
+					};
+				};
+			};
+
+			Paddle(Keyboard->GetState());
+			Ball();
+			Render();
+			
+			end := start - Timer->GetTicks();
+			if(end < FRAME_RATE) {
+				Timer->Delay(FRAME_RATE - end);
+			};
+			frame += 1;
+		};
+
+		e->Free();
+
+		Quit();
+	}
+
+	method : native : Paddle(key_states : Byte[]) ~ Nil {
+		if(@playing) {
+			if(key_states[Scancode->SDL_SCANCODE_LEFT] <> 0 ) {
+				if(@paddle_x > 0) {
+					@paddle_x -= @ball_speed;
+					if(@paddle_x < 0) {
+						@paddle_x := 0;
+					};
+				};
+			}
+			else if(key_states[Scancode->SDL_SCANCODE_RIGHT] <> 0) {
+				if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
+					@paddle_x += @ball_speed;
+					if(@paddle_x + @paddle_sprite->GetWidth() > Environment->SCREEN_WIDTH->As(Int)) {
+						@paddle_x := Environment->SCREEN_WIDTH->As(Int) - @paddle_sprite->GetWidth();
+					};
+				};
+			};
+		}
+		else if(key_states[Scancode->SDL_SCANCODE_UP] <> 0) {
+			@music->FadeInMusic(-1, 1500);
+			@playing := true;
+		};
+	}
+
+	method : Reset() ~ Nil {
+		MixMusic->Halt();
+
+		if(@score > @high_score) {
+			@high_score := @score;
+			UpdateHighScore();
+		};
+		@score := 0;
+		UpdateScore();
+
+		@ball_speed := 5;
+
+		@ball_x_dir := 1;
+		@ball_y_dir := -1;
+
+		@ball_x := Environment->SCREEN_WIDTH->As(Int) / 2 - @ball_sprite->GetWidth() / 2;
+		@ball_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
+			@ball_sprite->GetHeight() - Environment->RED_ZONE->As(Int) - 1;
+
+		@paddle_x := Environment->SCREEN_WIDTH->As(Int) / 2 - @paddle_sprite->GetWidth() / 2;
+		@paddle_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
+			Environment->RED_ZONE->As(Int);
+
+		@paddle_rect := @paddle_views[0];
+
+		@bisket_x_start := 100;
+		@bisket_y_start := 20;
+
+		MapBuild();
+
+		@playing := false;
+	}
+
+	method : MapEmpty() ~ Bool {
+		dims := @biskets->Size();
+		for(a := 0; a < dims[0]; a += 1;) {
+			for(b := 0; b < dims[1]; b += 1;) {
+				if(@biskets[a,b]) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	method : native : MapBuild() ~ Nil {
+		rand_map := (Float->Random() * 100.0)->As(Int) % 3;
+		if(rand_map = 0) {
+			dims := @biskets->Size();
+			for(a := 0; a < dims[0]; a += 1;) {
+				for(b := 0; b < dims[1]; b += 1;) {
+					@biskets[a,b] := true;
+				};
+			};
+		}
+		else if(rand_map = 1) {
+			@biskets[0,1] := true;
+			@biskets[0,2] := true;
+			@biskets[0,3] := true;
+			@biskets[0,4] := true;
+
+			@biskets[1,0] := true;
+			@biskets[2,0] := true;
+			@biskets[3,0] := true;
+			@biskets[4,0] := true;
+
+			@biskets[5,1] := true;
+			@biskets[5,2] := true;
+			@biskets[5,3] := true;
+			@biskets[5,4] := true;
+
+			@biskets[1,5] := true;
+			@biskets[2,5] := true;
+			@biskets[3,5] := true;
+			@biskets[4,5] := true;
+		}
+		else {
+			@biskets[0,2] := true;
+			@biskets[0,3] := true;
+
+			@biskets[1,1] := true;
+			@biskets[1,2] := true;
+			@biskets[1,3] := true;
+			@biskets[1,4] := true;
+			
+			@biskets[2,0] := true;
+			@biskets[2,1] := true;
+			@biskets[2,2] := true;
+			@biskets[2,3] := true;
+			@biskets[2,4] := true;
+			@biskets[2,5] := true;
+
+			@biskets[3,2] := true;
+			@biskets[3,3] := true;
+
+			@biskets[4,2] := true;
+			@biskets[4,3] := true;
+
+			@biskets[5,2] := true;
+			@biskets[5,3] := true;
+		};
+	}
+
+	method : native : Ball() ~ Nil {
+		if(<>@playing) {
+			return;
+		};
+
+		# hit top
+		if(@ball_y <= 0) {
+			@bounce_chunk->PlayChannel(-1, 0);
+			@ball_y_dir := 1;
+		}
+		# hit bottom
+		else if(@ball_y + @ball_sprite->GetHeight() >= Environment->SCREEN_HEIGHT->As(Int)) {
+			@howel_chunk->PlayChannel(-1, 0);
+			Reset();
+			return;
+		};
+
+		# hit left
+		if(@ball_x <= 0) {
+			@bounce_chunk->PlayChannel(-1, 0);
+			@ball_x_dir := 1;
+		}
+		# hit right
+		else if(@ball_x + @ball_sprite->GetWidth() >= Environment->SCREEN_WIDTH->As(Int)) {
+			@bounce_chunk->PlayChannel(-1, 0);
+			@ball_x_dir := -1;
+		}
+		# UNHARD CODE
+		else if(@ball_y <= @bisket_y_end & @ball_y >= @bisket_y_start) {
+			ball_left := @ball_x;
+			ball_right := @ball_x + @ball_sprite->GetWidth();
+
+			bisket_y := @bisket_y_start;
+			dims := @biskets->Size();
+			for(a := 0; a < dims[0]; a += 1;) {
+				bisket_bottom := bisket_y + @bisket_sprite->GetWidth();
+
+				bisket_x := @bisket_x_start;
+				for(b := 0; b < dims[1]; b += 1;) {
+					bisket_left := bisket_x;
+					bisket_right := bisket_x + @bisket_sprite->GetWidth();
+
+					if(@biskets[a,b] & @ball_y <= bisket_bottom &
+							ball_left <= bisket_right & ball_right >=  bisket_left) {
+						@crunch_chunk->PlayChannel(-1, 0);
+						@biskets[a,b] := false;
+						@ball_y_dir := 1;
+						@score += 10;
+						UpdateScore();
+					};
+
+					bisket_x += @bisket_sprite->GetWidth();
+				};
+				bisket_y += @bisket_sprite->GetHeight();
+			};		
+		}
+		else {	
+			y_bounds := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - Environment->RED_ZONE->As(Int);
+			ball_bottom := @ball_y + @ball_sprite->GetHeight();
+			if(ball_bottom >= y_bounds & y_bounds + @paddle_sprite->GetHeight() > ball_bottom) {
+				ball_left := @ball_x;
+				ball_right := @ball_x + @ball_sprite->GetWidth();
+
+				paddle_left := @paddle_x;
+				paddle_right := @paddle_x + @paddle_sprite->GetWidth();
+
+				if(ball_left <= paddle_right & ball_right >= paddle_left) {
+					@hit_chunk->PlayChannel(-1, 0);
+
+					rand_frame := (Float->Random() * 100.0)->As(Int) % 10;
+					if(rand_frame < 2) {
+						@paddle_rect := @paddle_views[2];
+					}
+					else if(rand_frame < 4) {
+						@paddle_rect := @paddle_views[1];
+					}
+					else {
+						@paddle_rect := @paddle_views[0];
+					};
+					
+					@score += 5;
+					UpdateScore();
+
+					@ball_y_dir := -1;
+					
+					rand_dir := (Float->Random() * 100.0)->As(Int) % 5;
+					@ball_x += @ball_x_dir * @ball_speed + rand_dir;
+
+					rand_speed := (Float->Random() * 100.0)->As(Int) % 10;
+					if(rand_speed < 3) {
+						if(@ball_speed > 5) {
+							@ball_speed -= 1;
+						};
+					}
+					else if(rand_speed > 7) {
+						@ball_speed += 2;
+					};
+				};
+			};
+		};
+
+		@ball_x += @ball_x_dir * @ball_speed;
+		@ball_y += @ball_y_dir * @ball_speed;
+
+		if(@ball_angle >= 360.0) {
+			@ball_angle := 0;	
+		};
+		@ball_angle += 30.0;
+	}
+
+	method : Render() ~ Nil {
+		@renderer->Clear();
+		@background->Render(0, 0);
+
+		y := @bisket_y_start;
+		dims := @biskets->Size();
+		for(a := 0; a < dims[0]; a += 1;) {
+			x := @bisket_x_start;
+			for(b := 0; b < dims[1]; b += 1;) {
+				if(@biskets[a,b]) {
+					@bisket_sprite->Render(x, y);					
+				};
+				x += @bisket_sprite->GetWidth();
+			};
+			y += @bisket_sprite->GetHeight();
+		};
+		@bisket_y_end := y;		
+
+		@ball_sprite->Render(@ball_x, @ball_y, Nil, @ball_angle);
+		@paddle_sprite->Render(@paddle_x, @paddle_y, @paddle_rect);
+		@score_texture->Render(10, 10);
+		@high_score_texture->Render(10, 40);
+
+		@grass->Render(0, Environment->SCREEN_HEIGHT->As(Int) - Environment->RED_ZONE->As(Int));
+		
+		@renderer->Present();
+	}
+
+	method : Init() ~ Bool {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int) or 
+				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
+				HardwareFlags->SDL_INIT_JOYSTICK->As(Int)) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		if(Joystick->Number() < 1) {
+			"Warning: No joysticks connected!"->PrintLine();
+		};
+		@joystick := Joystick->New(0);
+
+		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 			
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, Environment->SCREEN_WIDTH->As(Int), 
+			Environment->SCREEN_HEIGHT->As(Int), WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		@renderer := Renderer->New(@window, -1, 
+			(RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC)->As(Int));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		@bisket_sprite := Sprite->New(@renderer);
+		@biskets := Bool->New[6, 6];
+
+		@paddle_sprite := Sprite->New(@renderer, 3);
+		@paddle_views := Rect->New[3];
+		@paddle_views[0] := Rect->New(0, 0, 122, 27);
+		@paddle_views[1] := Rect->New(122, 0, 122, 27);
+		@paddle_views[2] := Rect->New(244, 0, 123, 27);
+
+		@ball_sprite := Sprite->New(@renderer);
+		@background := Sprite->New(@renderer);
+		@grass := Sprite->New(@renderer);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
+			return false;
+		};
+
+		if(Font->Init() < 0) {
+			"SDL_ttf could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		@font := Font->New("images/digital.ttf", 28);
+		if(@font->IsNull()) {
+			"Failed to load font!"->ErrorLine();
+			return false;
+		};
+		@score_texture := Sprite->New(@renderer, 1, @font);
+		@high_score_texture := Sprite->New(@renderer, 1, @font);
+		
+		return true;
+	}
+
+	method : UpdateScore() ~ Bool {
+		if(<>@score_texture->LoadFromRenderedText("Score: {$@score}", @score_color)) {
+			"Failed to render text texture!"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	method : UpdateHighScore() ~ Bool {
+		if(<>@high_score_texture->LoadFromRenderedText("High: {$@high_score}", @score_color)) {
+			"Failed to render text texture!"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+	
+	method : LoadMedia() ~ Bool {
+		if(<>@background->LoadFromFile("images/dog.png")) {
+			return false;
+		};
+
+		if(<>@grass->LoadFromFile("images/grass.png")) {
+			return false;
+		};
+
+		if(<>@paddle_sprite->LoadFromFile("images/paddle.png")) {
+			return false;
+		};
+
+		if(<>@bisket_sprite->LoadFromFile("images/bisket.png")) {
+			return false;
+		};
+
+		if(<>@ball_sprite->LoadFromFile("images/ball.png")) {
+			return false;
+		};
+
+		@score_color := Color->New(28, 28, 28);
+
+		@music := MixMusic->New("audio/music.wav");
+		if(@music->IsNull()) {
+			return false;
+		};
+
+		@hit_chunk := MixChunk->New("audio/hit.wav");
+		if(@hit_chunk->IsNull()) {
+			return false;
+		};
+
+		@bounce_chunk := MixChunk->New("audio/bounce.wav");
+		if(@bounce_chunk->IsNull()) {
+			return false;
+		};
+
+		@howel_chunk := MixChunk->New("audio/howel.wav");
+		if(@howel_chunk->IsNull()) {
+			return false;
+		};
+
+		@crunch_chunk := MixChunk->New("audio/crunch.wav");
+		if(@crunch_chunk->IsNull()) {
+			return false;
+		};
+		
+		return true;
+	}
+	
+	method : LoadTexture(path : String) ~ Texture {
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load image: {$path}"->ErrorLine();
+			return Nil;
+		};
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return Nil;
+		};
+
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	method : Quit() ~ Nil {
+		@joystick->Free();
+		@paddle_sprite->Free();
+		@bisket_sprite->Free();
+		@background->Free();
+		@grass->Free();
+		@ball_sprite->Free();
+		@score_texture->Free();
+		@high_score_texture->Free();
+		@renderer->Destroy();
+		@window->Destroy();
+
+		Mixer->Quit();
+		Image->Quit();
+		Font->Quit();
+		Core->Quit();
+	}
+}

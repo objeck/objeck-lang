@@ -1,0 +1,155 @@
+use Collection.Generic;
+
+class AoC {
+	enum Play {
+		Rock,
+		Paper,
+		Scissors
+	}
+
+	enum Outcome {
+		Lose,
+		Draw,
+		Win
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			plays := Vector->New()<Pair<IntHolder, IntHolder>>;
+
+			reader := System.IO.Filesystem.FileReader->New(args[0]);
+			line := reader->ReadLine();
+			while(line <> Nil) {
+				if(<>line->Trim()->IsEmpty()) {
+					parts := line->Split(" ");
+
+					opponent_play : Play;
+					select(parts[0]->Get(0)) {
+						label 'A' {
+							opponent_play := Play->Rock;
+						}
+
+						label 'B' {
+							opponent_play := Play->Paper;
+						}
+
+						label 'C' {
+							opponent_play := Play->Scissors;
+						}
+					};
+
+					your_play : Play;
+					select(parts[1]->Get(0)) {
+						label 'X' {
+							your_play := Play->Rock;
+						}
+
+						label 'Y' {
+							your_play := Play->Paper;
+						}
+
+						label 'Z' {
+							your_play := Play->Scissors;
+						}
+					};
+
+					play := Pair->New(opponent_play->As(Int), your_play->As(Int))<IntHolder, IntHolder>;
+					plays->AddBack(play);
+				};
+
+				line := reader->ReadLine();
+			};
+
+			total_points := 0;
+
+			each(i : plays) {
+				play := plays->Get(i)<Pair<IntHolder, IntHolder>>;
+
+				opponent_play := play->GetFirst()->Get()->As(Play);
+				your_play := play->GetSecond()->Get()->As(Play);
+
+				outcome : Outcome;
+				select(your_play) {
+					label Play->Rock {
+						outcome := Outcome->Lose;
+						"Lose"->PrintLine();
+					}
+
+					label Play->Paper {
+						outcome := Outcome->Draw;
+						"Draw"->PrintLine();
+					}
+
+					label Play->Scissors {
+						outcome := Outcome->Win;
+						"Win"->PrintLine();
+					}
+				};
+
+				shape_points : Int;
+				your_play := FixPlay(opponent_play, your_play, outcome);
+				select(your_play) {
+					label Play->Rock {
+						shape_points := 1;
+					}
+
+					label Play->Paper {
+						shape_points := 2;
+					}
+
+					label Play->Scissors {
+						shape_points := 3;
+					}
+				};
+
+				play_points := PlayRound(opponent_play, your_play);
+				round_points := (shape_points + play_points);
+				"{$shape_points} + {$play_points}: total={$round_points}\n---"->PrintLine();
+
+				total_points += round_points;
+			};
+			"{$total_points}"->PrintLine();
+		};
+	}
+
+	function : FixPlay(opponent_play : Play, your_play : Play, outcome : Outcome) ~ Play {
+		if(outcome = Outcome->Draw) {
+			return opponent_play;
+		}
+		else if(outcome = Outcome->Lose) {
+			if(opponent_play = Play->Rock) {
+				return Play->Scissors;
+			}
+			else if(opponent_play = Play->Scissors) {
+				return Play->Paper;
+			}
+			else {
+				return Play->Rock;
+			};
+		}
+		else {
+			if(opponent_play = Play->Rock) {
+				return Play->Paper;
+			}
+			else if(opponent_play = Play->Scissors) {
+				return Play->Rock;
+			}
+			else {
+				return Play->Scissors;
+			};
+		};
+	}
+
+	function : PlayRound(opponent_play : Play, your_play : Play) ~ Int {
+		if(opponent_play = your_play) {
+			return 3;
+		}
+		else if((opponent_play = Play->Rock & your_play = Play->Scissors) | 
+				(opponent_play = Play->Scissors & your_play = Play->Paper) | 
+				(opponent_play = Play->Paper & your_play = Play->Rock)) {
+			return 0;
+		};
+		
+		return 6;
+	}
+}

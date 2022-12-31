@@ -1,0 +1,43 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			A();
+		}
+
+#		function : native : A() ~ Nil {
+		function : A() ~ Nil {
+			"Hello"->Size()->PrintLine();
+			"Hello"->Size()->PrintLine();
+			(9/3)->PrintLine();
+#			"Hello"->Size()->Foo();
+#			10->PrintLine();
+			3->PrintLine();
+#~
+			c : System.String := "Hello";
+			ccc : System.String := B();
+			C();
+			c->PrintLine();
+			ccc->PrintLine();
+			"Done."->PrintLine();
+			"memory types: 	----- JIT method: addr=0034BF78"->Size();
+~#
+		}
+
+		function : B() ~ Char[] {
+			c : System.String := "A string 0.";
+			ccc : System.String := "A string 2.";
+			c->PrintLine();
+			ccc->Size();
+			
+			return ccc->ToCharArray();
+		}
+
+		function : C() ~ Nil {
+#		function : native : C() ~ Nil {
+			13->PrintLine();
+			c : System.String := "A string.";
+			c->PrintLine();		
+			"memory types: 	----- JIT method: addr=0034BF78"->PrintLine();
+		}
+	}
+}

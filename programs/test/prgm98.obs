@@ -1,8 +1,0 @@
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			value := 10 * 2 - 7;
-			value->PrintLine();
-		}
-	}
-}

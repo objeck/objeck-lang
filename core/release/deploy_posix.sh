@@ -128,8 +128,6 @@ mkdir core/release/deploy/examples/media
 cp programs/deploy/*.obs core/release/deploy/examples
 cp programs/deploy/media/*.png core/release/deploy/examples/media
 cp programs/deploy/media/*.wav core/release/deploy/examples/media
-cp -aR programs/doc core/release/deploy/examples
-cp -aR programs/tiny core/release/deploy/examples
 
 cd core/release
 

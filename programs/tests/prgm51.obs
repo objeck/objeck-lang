@@ -1,0 +1,79 @@
+use System.Concurrency;
+
+bundle Default {
+	class MyThread from Thread {
+		@m : static : ThreadMutex;
+		@x : static : Int;
+		@y : static : Int;
+		
+		New(name : String) {
+			Parent(name);
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			DoStuff();
+		}
+		
+		function : Init() ~ Nil {
+			@m := ThreadMutex->New("m0");
+			@m->GetName()->PrintLine();	
+		}
+		
+		function : DoStuff() ~ Nil {
+			critical(@m) {
+				@x += 1;
+				@y += @x * 2;
+				@x->PrintLine();
+				@y->PrintLine();					
+			};			
+		}
+	}
+
+	class Hello {
+		New() {
+		}
+
+		function : Main(args : System.String[]) ~ Nil {
+#~
+			array := Int->New[3];
+			array[0] := 13;
+			j := array[0];
+			j->PrintLine();
+~#
+			Run();
+#~			
+			MyThread->Init();
+			MyThread->DoStuff();
+~#			
+		}
+
+		function : Run() ~ Nil {
+			s := "Hello";
+			MyThread->Init();
+			
+			t0 := MyThread->New("t0");	
+			t1 := MyThread->New("t1");	
+			t2 := MyThread->New("t2");	
+				
+			for(i := 0; i < 10; i += 1;) {
+				t0->Execute(s->As(Base));
+				t1->Execute(s->As(Base));
+				t2->Execute(s->As(Base));
+		
+				t0->Join();
+				t1->Join();
+				t2->Join();				
+			};
+			
+			"Fin."->PrintLine();
+
+#~			
+			t0->Join();
+			t1->Join();
+			t2->Join();
+			
+			"Fin."->PrintLine();
+~#			
+		}
+	}
+}

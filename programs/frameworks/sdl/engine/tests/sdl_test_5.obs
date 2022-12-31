@@ -1,0 +1,423 @@
+#~
+# 2D smooth scrolling
+# 
+# compiler: obc -src sdl_test_5.obs -lib collect.obl,sdl_game.obl,sdl2.obl -dest sdl_test_5.obe
+# run: obr game2d.obe
+~#
+
+use Game.SDL2;
+use Game.Framework;
+use Collection.Generic;
+
+class Demo {
+	@framework : GameFramework;
+	@player : Player;
+	@level : Level;
+
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Scroll Test");
+		@framework->SetClearColor(Color->New(0, 0, 255));
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			@player := Player->New(@framework->AddRectangle(40, 60));
+			@level := Level->New(@player, @framework);
+
+			quit := false;
+			e := @framework->GetEvent();
+			while(<>quit) {
+				@framework->FrameStart();
+				@framework->Clear();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+
+					ProcessInput(e);
+				};
+
+				# update
+				@player->Update();
+				@level->Update();
+
+				shift := @level->GetShiftLeft();
+				if(@player->GetRight() >= 500) {
+					diff := @player->GetRight() - 500;
+					@player->SetRight(500);
+					if(shift > -1500) {
+						@level->ShiftWorld(-1 * diff);
+					};
+				};
+
+				if(@player->GetLeft() <= 120) {
+					diff := 120 - @player->GetLeft();
+					@player->SetLeft(120);
+					if(shift < 0) {
+						@level->ShiftWorld(diff);
+					};
+				};
+				
+				# draw
+				@player->Draw();
+				@level->Draw();
+
+				# show
+				@framework->Show();
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : public : ProcessInput(e : Event) ~ Nil {
+		if(e->GetType() = EventType->SDL_KEYDOWN) {
+			select(e->GetKey()->GetKeysym()->GetScancode()) {		
+				label Scancode->SDL_SCANCODE_LEFT: {
+					@player->GoLeft();
+				}
+
+				label Scancode->SDL_SCANCODE_RIGHT: {
+					@player->GoRight();
+				}
+
+				label Scancode->SDL_SCANCODE_UP: {
+					@player->Jump();
+				}
+			};
+		}
+		else if(e->GetType() = EventType->SDL_KEYUP) {
+		   	code := e->GetKey()->GetKeysym()->GetScancode();
+		   	
+		   	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeLeft() < 0) {
+		   		@player->Stop();
+			};
+
+			if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeLeft() > 0) {
+				@player->Stop();
+			};
+		};
+	}
+}
+
+class Player {
+	@rect : Rectangle;
+	@change_x : Float;
+	@change_y : Float;
+	@platforms : Vector<StaticPlatform>;
+
+	New(rect : Rectangle) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(255, 0, 0));
+		@rect->SetLeft(120);
+	}
+
+	method : public : GetRect() ~ Rectangle {
+		return @rect; 
+	}
+
+	method : public : GetLeft() ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight() ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : SetLeft(x : Int) ~ Nil {
+		@rect->SetLeft(x);
+	}
+
+	method : public : SetRight(x2 : Int) ~ Nil {
+		@rect->SetRight(x2);
+	}
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@platforms := level->GetPlatforms()<StaticPlatform>;
+	}
+
+	method : public : ChangeLeft()  ~ Int {
+		return @change_x;
+	}
+
+	method : public : GoLeft()  ~ Nil {
+		@change_x := -6;
+	}
+
+	method : public : GoRight()  ~ Nil {
+		@change_x := 6;
+	}
+
+	method : public : Stop() ~ Nil {
+		@change_x := 0;
+	}
+
+	method : public : Jump()  ~ Nil {
+		@rect->AddY(2);
+		bottom := Level->Collides(@self, @platforms);
+		@rect->AddY(-2);
+ 
+ 		if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
+			@change_y := -10;
+		};
+	}
+
+	method : public : native : Update()  ~ Nil {
+		Gravity();
+
+		# Move left/right
+		@rect->AddX(@change_x);
+
+		collides := Level->Collisions(@self, @platforms);
+		each(i : collides) {
+			platform := collides->Get(i);
+			if(@change_x > 0) {
+				@rect->SetRight(platform->GetLeft());
+			}
+			# moving left
+			else if(@change_x < 0) {
+				@rect->SetLeft(platform->GetRight());
+			};
+		};
+				
+		# Move up/down
+		@rect->AddY(@change_y);
+		each(i : @platforms) {
+			platform := @platforms->Get(i);
+			if(platform->Collides(@rect)) {
+				# moving right
+				if(@change_y > 0) {
+					@rect->SetBottom(platform->GetTop());
+				}
+				# moving left
+				else if(@change_y < 0) {
+					@rect->SetTop(platform->GetBottom());
+				};
+
+				# Stop our vertical movement
+				@change_y := 0;
+
+				if(platform->TypeOf(MovingPlatform)) {
+					@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
+				};
+			};
+		};				
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Gravity()  ~ Nil {
+		if(@change_y = 0) {
+			@change_y := 1;
+		}
+		else {
+			@change_y += .35;
+		};
+
+		# See if we are on the ground.
+		if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
+			@change_y := 0;
+			@rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
+		};
+	}
+}
+
+class StaticPlatform {
+	@rect : Rectangle;
+
+	New(x : Int, y : Int, rect : Rectangle) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(0, 255, 0));
+		@rect->Set(x, y);
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
+class MovingPlatform from StaticPlatform {
+	@change_x : Int;
+	@change_y : Int;
+	@boundary_top : Int;
+	@boundary_bottom : Int;
+	@boundary_left : Int;
+	@boundary_right : Int;
+	@player : Player;
+	@level : Level;
+
+	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
+		Parent(x, y, rect);
+		@rect->SetColor(Color->New(255, 255, 0));
+		@player := player;
+		@level := level;
+
+		@boundary_top := 75;
+		@boundary_bottom := 550;
+		@change_y := 1;
+	}
+
+	method : public : GetChangeLeft() ~ Int {
+		return @change_x;
+	}
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@level := level;
+	}
+
+	method : public : native : Update()  ~ Nil {
+		@rect->AddX(@change_x);
+
+		if(Collides(@player->GetRect())) {
+			if(@change_x < 0) {
+				@player->GetRect()->SetRight(@rect->GetLeft());
+			}
+			else {
+				@player->GetRect()->SetLeft(@rect->GetRight());
+ 			};
+		};
+
+		@rect->AddY(@change_y);
+		if(Collides(@player->GetRect())) { 
+			if(@change_y < 0) {
+				@player->GetRect()->SetBottom(@rect->GetTop());
+			}
+			else {
+				@player->GetRect()->SetTop(@rect->GetBottom());
+			};
+		};
+
+		if(@rect->GetBottom() > @boundary_bottom | @rect->GetTop() < @boundary_top) {
+			@change_y *= -1;
+		};
+
+		cur_pos := @rect->GetLeft() - @level->GetShiftLeft();
+		if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+			@change_x *= -1;
+		};
+	}
+}
+
+class Level {
+	@player : Player;
+	@platforms : Vector<StaticPlatform>;
+	@shift_x : Int;
+
+	New(player : Player, framework : GameFramework) {
+		@player := player;
+		@platforms := Vector->New()<StaticPlatform>;
+
+		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
+		@platforms->AddBack(StaticPlatform->New(600, 500, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(StaticPlatform->New(400, 400, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(StaticPlatform->New(1005, 400, framework->AddRectangle(100, 50)));
+#~		
+		@platforms->AddBack(StaticPlatform->New(850, 600, framework->AddRectangle(210, 70)));
+		@platforms->AddBack(StaticPlatform->New(1025, 500, framework->AddRectangle(210, 70)));	
+		@platforms->AddBack(StaticPlatform->New(1250, 300, framework->AddRectangle(210, 70)));
+~#
+		@player->SetLevel(@self);
+	}
+
+	function : Collides(player : Player, obstacles : Vector<StaticPlatform>) ~ Bool {
+		each(i : obstacles) {
+			obstacle := obstacles->Get(i);
+			if(obstacle->Collides(player->GetRect())) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	function : Collisions(player : Player, obstacles : Vector<StaticPlatform>) ~ Vector<StaticPlatform> {
+		collides := Vector->New()<StaticPlatform>;
+
+		each(i : obstacles) {
+			obstacle := obstacles->Get(i);
+			if(obstacle->Collides(player->GetRect())) {
+				collides->AddBack(obstacle);
+			};
+		};
+
+		return collides;
+	}
+
+	method : public : GetShiftLeft() ~ Int {
+		return @shift_x;
+	}
+
+	method : public : ShiftWorld(shift_x : Int) ~ Nil {
+		@shift_x += shift_x;
+
+		each(i : @platforms) {
+			platform := @platforms->Get(i);
+			platform->AddX(shift_x);
+		};
+	}
+
+	method : public : GetPlatforms() ~ Vector<StaticPlatform> {
+		return @platforms;
+	}
+
+	method : public : Update()  ~ Nil {
+		each(i : @platforms) {
+			platform := @platforms->Get(i);
+			if(platform->TypeOf(MovingPlatform)) {
+				@platforms->Get(i)->As(MovingPlatform)->Update();
+			};
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		each(i : @platforms) {
+			@platforms->Get(i)->Draw();
+		};
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}

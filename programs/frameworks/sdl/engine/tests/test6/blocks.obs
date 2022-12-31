@@ -1,0 +1,132 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Block {
+	@id : Int;
+	@pos : Position;
+	@sprite_sheet : ImageSprite;
+	@render_rect : Rect;
+	@hide : Bool;
+
+	New(type : Int, x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite) {
+		@id := type;
+		@pos := Position->New(x, y, render_rect->GetW(), render_rect->GetH());
+		@render_rect := render_rect;
+		@sprite_sheet := sprite_sheet;
+	}
+
+	method : public : GetId() ~ Int {
+		return @id;
+	}
+
+	method : public : SetHide(hide : Bool) ~ Nil {
+		@hide := hide;
+	}
+
+	method : public : GetHide() ~ Bool {
+		return @hide;
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@pos->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @pos->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @pos->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @pos->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @pos->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		if(<>@hide) {
+			@sprite_sheet->SetPostion(@pos);
+			@sprite_sheet->Render(@render_rect);
+		};
+	}
+
+	method : public : LeftSlope()  ~ Bool {
+		return @id = 29 | @id = 63 | @id = 42  | @id = 32 | @id = 34 | @id = 105;
+	}
+
+	method : public : RightSlope()  ~ Bool {
+		return @id = 5 | @id = 8 | @id = 39 | @id = 95 | @id = 63;
+	}
+
+	method : public : Collides(sprite : ImageSprite) ~ Bool {
+		return @pos->Overlaps(sprite->GetPosition());
+	}
+}
+
+class MovingBlock from Block {
+	@player : Player;
+    @level : Level;
+
+	@change_x : Int;
+    @change_y : Int;
+
+    @max_top : Int;
+    @max_bottom : Int;
+    @max_left : Int;
+    @max_right : Int;
+    
+	New(type : Int, x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite, player : Player, level : Level) {
+		Parent(type, x, y, render_rect, sprite_sheet);
+		@player := player;
+		@level := level;
+
+		@max_top := 100;
+    	@max_bottom := 500;
+    	@change_y := 1;
+	}
+
+	method : public : GetChangeLeft() ~ Int {
+		return @change_x;
+	}
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@level := level;
+	}
+
+	method : public : native : Update()  ~ Nil {
+		@pos->AddX(@change_x);
+		
+		if(Collides(@player->GetRect())) {
+			if(@change_x < 0) {
+                @player->GetRect()->SetRight(@pos->GetLeft());
+            }
+            else {
+            	@player->GetRect()->SetLeft(@pos->GetRight());
+ 			};
+		};
+
+		@pos->AddY(@change_y);
+		if(Collides(@player->GetRect())) { 
+			if(@change_y < 0) {
+                @player->GetRect()->SetBottom(@pos->GetTop());
+			}
+            else {
+				@player->GetRect()->SetTop(@pos->GetBottom());
+            };
+		};
+
+		if(@pos->GetBottom() > @max_bottom | @pos->GetTop() < @max_top) {
+			@change_y *= -1;
+		};
+		
+		cur_pos := @pos->GetLeft() - @level->GetShift();
+        if(cur_pos < @max_left | cur_pos > @max_right) {
+			@change_x *= -1;
+        };
+	}
+}

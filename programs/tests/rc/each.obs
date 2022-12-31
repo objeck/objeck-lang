@@ -1,0 +1,14 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Run();
+	}
+
+	function : native : Run() ~ Nil {		
+		fruits := ["Apple", "Banana", "Coconut"];
+		each(i : fruits) {
+			fruits[i]->PrintLine();
+		};
+	}
+}

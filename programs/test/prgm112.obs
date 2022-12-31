@@ -1,6 +1,0 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		output := System.Runtime->CommandOutput("dir"); 
-		output[15]->PrintLine();
-	}
-}

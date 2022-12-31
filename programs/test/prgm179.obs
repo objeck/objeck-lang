@@ -1,8 +1,0 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		Runtime->GetInstallDir()->PrintLine();
-		Runtime->GetUserDir()->PrintLine();
-		Runtime->GetTempDir()->PrintLine();
-		Runtime->GetProperty("native_launcher")->PrintLine();
-	}
-}

@@ -1,0 +1,26 @@
+bundle Default {
+	class Foo {
+		@value : Int;
+
+		method : public : native : Set(value : Int) ~ Nil {
+			@value := value;
+		}
+	}
+	
+	class Bar {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
+#			foo : Foo;
+#			foo->Set(10);
+
+			aa : Int[] := Int->New[3];
+			aa[-1]->PrintLine();
+			aa[0]->PrintLine();
+			aa[1]->PrintLine();
+			aa[2]->PrintLine();
+		}
+	}
+}

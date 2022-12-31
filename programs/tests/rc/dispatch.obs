@@ -1,0 +1,48 @@
+interface Language {
+	method : virtual : public : Hi() ~ String;
+}
+
+class English implements Language {
+	New() {
+	}
+
+	method : public : Hi() ~ String {
+		return "Hello";
+	}
+}
+	
+class French implements Language {
+	New() {}
+	method : public : Hi() ~ String {
+		return "Salut";
+	}
+}
+	
+class Swahili implements Language {
+	New() {}
+	method : public : Hi() ~ String {
+		return "Habari";
+	}
+}
+	
+class Dispatch {
+	function : Main(args : String[]) ~ Nil {
+		langs := Language->New[4];	
+		langs[0] := Class->Instance("English")->As(Language);
+		langs[1] := Class->Instance("French")->As(Language);
+		langs[2] := Class->Instance("Klingon")->As(Language);
+		langs[3] := Class->Instance("Swahili")->As(Language);
+
+		each(i : langs) {
+			if(langs[i] <> Nil) {
+				lang := langs[i]->GetClass()->GetName();
+				hi := langs[i]->Hi();
+				IO.Console->Print("In ")->Print(lang)->Print(": ")->PrintLine(hi);
+			}
+			else {
+				"Unknown: ???"->PrintLine();
+			};
+		};
+	}
+}
+

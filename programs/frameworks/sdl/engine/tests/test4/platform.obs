@@ -1,0 +1,542 @@
+use Game.SDL2;
+use Game.Engine;
+use Collection;
+
+class Platform {
+	@engine : GameEngine;
+	@hard_quit : Bool;
+	@quit_game : Bool;
+	@game_map : Int[,];
+	@frame_count : Int;
+
+	@player : Player;
+	@block1 : ImageSprite;
+	@block2 : ImageSprite;
+	@block3 : ImageSprite;
+	@block4 : ImageSprite;
+
+	@hamburger : AnimatedImageSprite;
+	@hamburger_frame : Int;
+
+	@gem : AnimatedImageSprite;
+	@gem_frame : Int;
+	
+	@enemies : List;
+	@bullets : Vector;
+
+	@time : Int;
+	@time_text : TextSprite;
+
+	@score : Int;
+	@score_text : TextSprite;
+
+	@bullet_fired : Bool;
+
+	@hit_left : Bool;
+	@hit_right : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		platform := Platform->New();
+		
+		while(platform->StartGame()) {
+			platform->Run();
+		};
+
+		platform->Free();
+	}
+
+	New() {
+		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Four");		
+	}
+
+	method : Free() ~ Nil {
+		@engine->Quit();
+	}
+
+	method : public : GetEngine() ~ GameEngine {
+		return @engine;
+	}
+
+	method : public : GetMap() ~ Int[,] {
+		return @game_map;
+	}
+
+	method : public : GetFrameCount() ~ Int {
+		return @frame_count;
+	}
+
+	method : public : EndGame() ~ Nil {
+		@quit_game := true;
+	}
+
+	method : public : GotHamburger() ~ Nil {
+		@score += 10;
+	}
+
+	method : public : GotGem() ~ Nil {
+		@score += 25;
+	}
+
+	method : public : SetHitRight(hit_right : Bool) ~ Nil {
+		@hit_right := hit_right;
+	}
+
+	method : public : SetHitLeft(hit_left : Bool) ~ Nil {
+		@hit_left := hit_left;
+	}
+
+	method : StartGame() ~ Bool {
+		e := @engine->GetEvent();
+
+		font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 36);
+		red_color := Color->New(255, 0, 0);
+		black_color := Color->New(255, 255, 255);
+		play_text := @engine->AddTextSprite();
+		play_text->SetFont(font);
+
+		quit_text := @engine->AddTextSprite();
+		quit_text->SetFont(font);
+
+		index := 0;
+
+		quit := false;
+		while(<>quit & <>@hard_quit) {
+			@engine->FrameStart();
+			
+			# process input
+			
+			while(e->Poll() <> 0) {
+				if(e->GetType() = EventType->SDL_QUIT) {
+					@hard_quit := true;
+				}
+				else if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+					if(e->GetJHat()->GetWhich() = 0 ) {
+						select(e->GetJHat()->GetValue()) {
+							label 1:
+							label 4: {
+								if(index = 0) {
+									index := 1;
+								}
+								else {
+									index := 0;
+								};
+							}			
+						};
+					};
+				}
+				# keyboard
+				else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+			        select(e->GetKey()->GetKeysym()->GetScancode()) {
+			        	label Scancode->SDL_SCANCODE_UP:
+			            label Scancode->SDL_SCANCODE_DOWN: {
+			            	if(index = 0) {
+								index := 1;
+							}
+							else {
+								index := 0;
+							};
+			            }
+
+			            label Scancode->SDL_SCANCODE_RETURN: {
+			            	return index = 0 ? true : false;
+			            }
+
+			            label Scancode->SDL_SCANCODE_P: {
+			            	return true;
+			            }
+
+			            label Scancode->SDL_SCANCODE_Q:
+			            label Scancode->SDL_SCANCODE_ESCAPE: {
+							return false;
+			            }
+			        };
+				}
+				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+					# 'a' button
+					if(e->GetJButton()->GetButton() = 0) {
+						return index = 0 ? true : false; 
+					};
+				};
+			};
+
+			if(index = 0) {
+				play_text->RenderedText("(P)lay!", red_color);
+				quit_text->RenderedText("(Q)uit");
+			}
+			else {
+				play_text->RenderedText("(P)lay!");
+				quit_text->RenderedText("(Q)uit", red_color);
+			};
+
+			@engine->Clear();
+
+			play_text->Render(Values->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 - 32);
+			quit_text->Render(Values->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 + 32);
+
+			@engine->FrameEnd();
+
+			@engine->Show();
+		};
+
+		leaving {
+			@engine->FreeShapes();
+		};
+
+		return false;
+	}
+
+	method : Run() ~ Nil {
+		if(@engine->IsOk()) {
+			@game_map := CreateMap();
+
+			if(@game_map <> Nil) {
+				@block1 := @engine->AddImageSprite("images/block1.png");
+				@block2 := @engine->AddImageSprite("images/block2.png");
+				@block3 := @engine->AddImageSprite("images/block3.png");
+				@block4 := @engine->AddImageSprite("images/block4.png");
+
+				@score_text := @engine->AddTextSprite();
+				@time_text := @engine->AddTextSprite();
+				@time := 45;
+				@time_text->RenderedText("Time: {$@time}");
+				
+				@player := Player->New(@self);
+
+				Enemy->Init(@self);		
+				@enemies := List->New();
+
+
+				@hamburger := @engine->AddAnimatedImageSprite("images/food.png", 5);
+				@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
+				
+				Bullet->Init(@self);
+				@bullets := Vector->New();
+			
+				e := @engine->GetEvent();
+
+				@quit_game := false;
+				while(<>@quit_game & <>@hard_quit) {
+					@engine->FrameStart();
+					
+					# process input
+					while(e->Poll() <> 0) {
+						if(e->GetType() = EventType->SDL_QUIT) {
+							@hard_quit := true;
+						};
+						ProcessInput(e);
+					};
+
+					HandleEvents();
+					Render();
+
+					@engine->FrameEnd();
+				};
+			}
+			else {
+				"--- Error Initializing Game Environment ---"->ErrorLine();
+				@hard_quit := true;
+				return;
+			};	
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			@hard_quit := true;
+			return;
+		};
+
+		leaving {
+			@engine->FreeShapes();
+		};
+	}
+	
+	method : public : ProcessInput(e : Event) ~ Nil {
+		# Joystick
+		if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+			if(e->GetJHat()->GetWhich() = 0 ) {
+				select(e->GetJHat()->GetValue()) {
+					# release pad
+					label 0: {
+						@player->SetXVelocity(0);
+					}
+
+					# right pad
+					label 2: {
+		            	@player->SetXVelocity(1);
+					}
+
+					# left pad
+					label 8: {
+						@player->SetXVelocity(-1);
+					}					
+				};
+			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+			# 'a' button
+			if(e->GetJButton()->GetButton() = 0) {
+           		@player->Jump();
+			}
+			# 'b' button
+			else if(e->GetJButton()->GetButton() = 1) {
+				if(<>@bullet_fired) {
+        			@bullet_fired := true;
+        		};
+			};
+		}
+		# keyboard
+		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	        	label Scancode->SDL_SCANCODE_UP: {
+	        		@player->SetYVelocity(1);
+#~	        		
+	        		if(<>@bullet_fired) {
+	        			@bullet_fired := true;
+	        		};
+~#	        		
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	        		@player->SetYVelocity(-1);
+	        	}
+
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	if(<>@hit_left) {
+	            		@player->SetXVelocity(-1);
+	            	}
+	            	else {
+	            		@player->SetXVelocity(0);
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	if(<>@hit_right) {
+	            		@player->SetXVelocity(1);
+	            	}
+	            	else {
+	            		@player->SetYVelocity(-1);
+"**** BOOM 2 ****"->PrintLine();	            		
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_SPACE: {
+	            	@player->Jump();
+	            }
+
+	            label Scancode->SDL_SCANCODE_Q:
+	            label Scancode->SDL_SCANCODE_ESCAPE: {
+					@quit_game := true;
+			    }
+	        };
+	    }
+	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
+	        	label Scancode->SDL_SCANCODE_LEFT:
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@player->SetXVelocity(0);
+	            }
+
+	            label Scancode->SDL_SCANCODE_UP:
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@player->SetYVelocity(0);
+	            }
+	        };
+	    };   
+	}
+
+	method : native : HandleEvents() ~ Nil {
+		@frame_count += 1;
+		if(@frame_count >= @engine->GetFps()) {
+			@frame_count := 0;
+		};
+
+		@score_text->RenderedText("Score: {$@score}");
+		if(@frame_count % @engine->GetFps() = 0) {
+			@time -= 1;
+			if(@time < 0) {
+				@player->SetAlive(false);
+			}
+			else {
+				@time_text->RenderedText("Time: {$@time}");
+			};
+		};
+
+		if(@frame_count % 5 = 0) {
+			@hamburger_frame += 1;
+			if(@hamburger_frame >= @hamburger->GetClipCount()) {
+				@hamburger_frame := 0;
+			};
+		};
+
+		if(@frame_count % 5 = 0) {
+			@gem_frame += 1;
+			if(@gem_frame >= @gem->GetClipCount()) {
+				@gem_frame := 0;
+			};
+		};
+
+		@player->HandleEvents();
+
+		if(@bullet_fired & @bullets->Size() < 6) {
+			@bullets->AddBack(Bullet->New(@player->GetRelX() + 16, 
+				@player->GetRelY() + 32, @player->GetFacingRight() ? 1 : -1));
+			@bullet_fired := false;
+		};
+
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			enemy := @enemies->Get()->As(Enemy);			
+			# out of range
+			if(enemy->GetRelX() < 0 | <>enemy->IsAlive()) {
+				@enemies->Remove();
+			}
+			else {
+				enemy->HandleEvents(@player);
+			};
+
+			# check bullet
+			each(i : @bullets) {
+				bullet := @bullets->Get(i)->As(Bullet);
+				bullet->HandleEvents(enemy, @player);
+			};
+
+			@enemies->Next();
+		};
+
+
+		if(@enemies->Size() = 0) {
+			each(i : @bullets) {
+				bullet := @bullets->Get(i)->As(Bullet);
+				bullet->HandleEvents(Nil->As(Enemy), @player);
+			};
+		};
+	}
+
+	method : Render() ~ Nil {
+		# render background
+		@player->RenderBackground();
+		
+		# calculate camera view
+		dims := @game_map->Size();		
+		start_x := @player->GetMapX() / Values->BLOCK_WIDTH;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+
+		end_x := start_x + Values->SCREEN_BLOCK_WIDTH + 1;
+		if(end_x > dims[1]) {
+			end_x := dims[1];
+		};
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
+			rel_x := x * Values->BLOCK_WIDTH - @player->GetMapX();
+			for(y := 0; y < dims[0]; y += 1;) {
+				rel_y := y * Values->BLOCK_HEIGHT;
+				select(@game_map[y, x]) {
+					label 1: {
+						@block1->Render(rel_x, rel_y);
+					}
+
+					label 2: {
+						@block2->Render(rel_x, rel_y);
+					}
+
+					label 3: {
+						@block3->Render(rel_x, rel_y);
+					}
+
+					label 4: {
+						@block4->Render(rel_x, rel_y);
+					}
+
+					label 5: {
+						@hamburger->Render(rel_x, rel_y, @hamburger_frame);
+					}
+
+					label 6: {
+						@gem->Render(rel_x, rel_y, @gem_frame);
+					}
+
+					label 7: {
+						if(y < 24) {
+							@enemies->AddBack(Enemy->New(rel_x, rel_y));
+							@game_map[y, x] := 0;
+						};
+					}
+				};
+			};
+		};
+
+		# render player
+		@player->RenderPlayer();
+
+		# render enemy
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			@enemies->Get()->As(Enemy)->Render();
+			@enemies->Next();
+		};
+
+
+		# render bullets
+		each(i : @bullets) {
+			bullet := @bullets->Get(i)->As(Bullet);
+			bullet->Render();
+		};
+
+		@score_text->Render(Values->SCREEN_WIDTH - 128, 16);
+		@time_text->Render(Values->SCREEN_WIDTH - 128, 36);
+		
+		@engine->Show();
+	}
+
+	method : native : CreateMap() ~ Int[,] {
+		reader := System.IO.Filesystem.FileReader->New("../../../../programs/sdl/engine/tests/test4/map.dat");
+		leaving {
+			reader->Close();
+		};
+
+		line := reader->ReadString();
+		map_dims := line->Split(" ");
+
+		if(map_dims <> Nil & map_dims->Size() = 2) {
+			x_max := map_dims[0]->ToInt();
+			y_max := map_dims[1]->ToInt();
+
+			if(x_max <> Values->SCREEN_BLOCK_HEIGHT | y_max % Values->SCREEN_BLOCK_WIDTH <> 0) {
+				return Nil;
+			};
+
+			game_map := Int->New[x_max, y_max];
+
+			x := 0;
+			line := reader->ReadString();
+			while(line <> Nil) {
+				y := 0;
+				each(i : line) {
+					c := line->Get(i);
+					if(c <> ' ') {
+						game_map[x, y] := c - '0';
+						y += 1;
+					};
+				};
+				x += 1;
+				line := reader->ReadString();
+			};
+
+			return game_map;
+		};
+		
+		return Nil;
+	}
+}
+
+consts Values {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 640,
+	BLOCK_WIDTH := 32,
+	BLOCK_HEIGHT := 32,
+	SCREEN_BLOCK_WIDTH := 25,
+	SCREEN_BLOCK_HEIGHT := 20,
+	SPEED := 3
+}

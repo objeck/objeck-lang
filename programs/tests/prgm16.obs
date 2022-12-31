@@ -1,0 +1,66 @@
+use System;
+
+bundle Default {
+	enum Color := -3 {
+		Red,
+		Green,
+		Blue
+	}
+	
+	class Test {
+		function : native : Main(args : System.String[]) ~ Nil {
+			Color->Green->PrintLine();
+			Run();
+		}
+
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
+			10->PrintLine();
+#			Color->Green;
+			Color->Green->PrintLine();
+
+#			b : Float := 3.141;
+		
+#			for(i : Int := 0; i < 10; i := i + 1;) {
+				select(Color->Green) {
+					other: {
+						"objeck"->PrintLine();
+					}
+					
+					label 3: {
+						3->PrintLine();
+					}		
+
+					label 4:
+					label Color->Green:
+					label 7: {
+						(4 + 5)->PrintLine();
+					}		
+					
+					label 6: {
+						6->PrintLine();
+					}		
+
+					label 8: {
+						8->PrintLine();
+					}	
+				};
+#			};
+			
+			for(i : Int := 0; i < 10; i := i + 1;) {
+				if(i = 2) {
+					i->PrintLine();
+				};
+			};
+			# i : Int := 3;
+			
+			# Test->VALUE_2->PrintLine();
+
+			xx : Int[] := Int->New[7];
+			for(i : Int := 0; i < xx->Size(); i := i + 1;) {
+				xx[i] := i * 5;
+			};
+			(xx[4] + xx[5])->PrintLine();
+		}
+	}
+}

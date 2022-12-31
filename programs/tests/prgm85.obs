@@ -1,0 +1,32 @@
+﻿bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+#			b : Base := "hello";
+			x := Collection.Vector->New();
+			x->AddBack(IntHolder->New(13));
+			x->AddBack(IntHolder->New(7));
+			b : Base := x;
+#			b : String := "hello";
+			b->As(Collection.Vector)->Size()->PrintLine();
+#~
+			b->As(String)->Find(1, 'l')->PrintLine();
+#			x := b->Find(1, 'l');
+#			b->PrintLine();
+
+
+			c : String := "hello";
+			y := c->Find(1, 'l');
+			y->PrintLine();
+			c->PrintLine();
+
+
+
+#			ss : String[] := String->New[1];
+			ss : String[];
+			
+			ss[0] := "world";
+			ss[0]->PrintLine();
+~#
+		}
+	}
+}

@@ -1,0 +1,109 @@
+#~
+Credit: https://github.com/gameprogcpp/code/tree/master/Chapter02
+// ----------------------------------------------------------------
+// From Game Programming in C++ by Sanjay Madhav
+// Copyright (C) 2017 Sanjay Madhav. All rights reserved.
+// 
+// Released under the BSD License
+// See LICENSE in root directory for full details.
+// ----------------------------------------------------------------
+~#
+
+use Collection;
+use Game.Framework;
+
+class Actor {
+	@state : State;
+	@position : Vector2;
+	@scale : Float;
+	@rotation : Float;
+	@components : Vector;
+	@game : Game;
+
+	enum State {
+		EActive,
+		EPaused,
+		EDead
+	}
+
+	New(game : Game) {
+		@game := game;
+		@components := Vector->New();
+	}
+
+	method : public : Free() ~ Nil {
+		@game->RemoveActor(@self);
+		each(i : @components) {
+			@components->Get(i)->As(Component)->Free();
+		};
+	}
+
+	# Getters/setters
+	method : public : GetPosition() ~ Vector2 { return @position; }
+	method : public : SetPosition(position : Vector2) ~ Nil { @position := position; }
+	method : public : GetScale() ~ Float { return @scale; }
+	method : public : SetScale(scale : Float) ~ Nil { @scale := scale; }
+	method : public : GetRotation() ~ Float { return @rotation; }
+	method : public : SetRotation(rotation : Float) ~ Nil { @rotation := rotation; }
+	method : public : GetState() ~ State { return @state; }
+	method : public : SetState(state : State) ~ Nil { @state := state; }
+	method : public : GetGame() ~ Game { return @game; }
+
+	method : public : Update(delta_time : Float) ~ Nil {
+		if(@state = State->EActive) {			
+#			UpdateComponents(delta_time);
+#			UpdateActor(delta_time);
+		};
+	}
+
+	method : public : Draw(renderer : Renderer) ~ Nil {
+		each(i : @components) {
+			component := @components->Get(i)->As(Component);
+			if(component->TypeOf(BGSpriteComponent)) {
+				component->As(SpriteComponent)->Draw(renderer);
+			};
+		};
+	}
+
+	method : UpdateComponents(delta_time : Float) ~ Nil {
+		each(i : @components) {
+			@components->Get(i)->As(Component)->Update(delta_time);
+		};
+	}
+
+	method : UpdateActor(delta_time : Float) ~ Nil {
+#		"bits on floor"->PrintLine();
+	}
+
+	method : public : AddComponent(component : Component) ~ Nil {
+		order := component->GetUpdateOrder();
+
+"--- Added ---"->PrintLine();
+#~
+		found := false;	i : Int;
+		for(i := 0; <>found & i < @components->Size(); i += 1;) {
+			compare := @components->Get(i)->As(Component);
+			if(order < compare->GetUpdateOrder()) {
+				found := true;
+			};
+		};
+
+		@components->Set(component, i);
+~#
+		@components->AddBack(component);		
+	}
+
+	method : public : RemoveComponent(component : Component) ~ Nil {
+		found := false;	i : Int;
+		for(i := 0; <>found & i < @components->Size(); i += 1;) {
+			compare := @components->Get(i)->As(Component);
+			if(compare = component) {
+				found := true;
+			};
+		};
+
+		if(found) {
+			@components->Remove(i);
+		};
+	}
+}

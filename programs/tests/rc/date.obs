@@ -1,0 +1,20 @@
+use System.IO;
+use System.Time;
+
+class CurrentDate {
+	function : Main(args : String[]) ~ Nil {
+		t := Date->New();
+		Console->Print(t->GetYear())->Print("-")->Print(t->GetMonth())->Print("-")->PrintLine(t->GetDay());
+		Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+		t->AddHours(62);
+		Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+
+		t := Date->New(true);
+		Console->Print(t->GetYear())->Print("-")->Print(t->GetMonth())->Print("-")->PrintLine(t->GetDay());
+		Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+
+		t := Date->New(5, 11, 2010, false);
+		Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->PrintLine(t->GetYear());
+		t->IsSavingsTime()->PrintLine();
+	}
+}

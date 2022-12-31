@@ -1,0 +1,108 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Demo {
+	@framework : GameFramework;
+	@quit : Bool;
+
+	@mouse_pos : Vector2;
+	@x_pos : IntHolder;
+	@y_pos : IntHolder;
+
+	@follower : ImageSprite;
+	@follower_vel : Vector2;
+	@follower_acc : Vector2;
+	@follower_pos : Vector2;
+
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
+		@framework->SetClearColor(Color->New(0, 0, 255));
+
+		@follower := @framework->AddImageSprite("media/images/arrow.png");
+		@follower_vel := Vector2->New();
+		@follower_pos := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
+		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
+
+		@mouse_pos := Vector2->New();
+		@x_pos := IntHolder->New();
+		@y_pos := IntHolder->New();
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			e := @framework->GetEvent();
+			while(<>@quit) {
+				Start();
+				
+				Input(e);
+				Update();
+				Draw();
+				
+ 				End();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : Start() ~ Nil {
+		@framework->FrameStart();
+		@framework->Clear();
+	}
+
+	method : End() ~ Nil {
+		@framework->Show();
+		@framework->FrameEnd();
+	}
+
+	method : Input(e : Event) ~ Nil {
+		# process input
+		while(e->Poll() <> 0) {
+			if(e->GetType() = EventType->SDL_QUIT) {
+				@quit := true;
+			};
+
+		    if(e->GetType() = EventType->SDL_MOUSEMOTION) {
+				Cursor->GetMouseState(@x_pos, @y_pos);
+				@mouse_pos->Set(@x_pos->Get(), @y_pos->Get());
+			};
+		};
+	}
+
+	method : public : Update() ~ Nil {
+		@follower_acc := Vector2->Sub(@mouse_pos, @follower_pos);
+		@follower_acc->Normalize();
+
+		angle := Float->ArcTan2(-1 * @mouse_pos->GetY(), @mouse_pos->GetX());
+		angle := -1 * Float->ToDegrees(angle);
+		@follower->SetAngle(angle);
+		@follower_acc->Mul(0.5);
+
+		@follower_vel->Add(@follower_acc);
+#		@follower_vel->Limit(0.125);
+		@follower_pos->Add(@follower_vel);
+		@follower_vel->Zero();
+
+		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
+	}
+
+	method : public : Draw() ~ Nil {
+		@follower->Render();
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}

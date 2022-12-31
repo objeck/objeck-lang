@@ -1,0 +1,121 @@
+use System.IO;
+use System.IO.Filesystem;
+use Collection;
+
+bundle Default {  
+  class Parser {
+    function : Main(args : String[]) ~ Nil {
+      if(args->Size() = 1) {
+        Parse(args[0]);
+      };
+    }
+    
+    function : native : Parse(file : String) ~ Nil {
+      reserved := StringMap->New();
+      reserved->Insert("method", "keyword: method");
+      reserved->Insert("function", "keyword: function");
+      reserved->Insert("Int", "keyword: Int");
+      reserved->Insert("Float", "keyword: Float");
+      reserved->Insert("class", "keyword: class");
+      reserved->Insert("bundle", "keyword: bundle");
+      reserved->Insert("native", "keyword: native");
+
+      line_num := 0;
+      reader := FileReader->New(file);
+      while(reader->IsEOF() <> true) {
+        line := reader->ReadString();
+        line_num := line_num + 1;
+                  
+        i := 0;  
+        while(i < line->Size()) {    
+          # skip whitespace
+          while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+            i += 1;
+          };
+          
+          # parse the line
+          if(i < line->Size()) {
+            # word
+            if(line->Get(i)->IsChar() = true) {
+              string := "";
+              while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+                string->Append(line->Get(i));
+                i += 1;
+              };
+            
+              result := reserved->Find(string)->As(String);
+              if(result <> Nil) {
+                Console->PrintLine(result);
+              }
+              else {
+                Console->Print("string/var:'")->Print(string)->PrintLine("'");
+              };
+            }
+            # number
+            else if(line->Get(i)->IsDigit() = true) {
+              number := "";
+              is_dec := false;
+              while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
+                if(line->Get(i) = '.') {
+                  is_dec := true;
+                };
+                number->Append(line->Get(i));
+                i += 1;
+              };
+    
+              if(is_dec) {
+                Console->Print("decimal '")->Print(number)->PrintLine("'");
+              }
+              else {
+                Console->Print("integer '")->Print(number)->PrintLine("'");
+              };
+            }
+            # other
+            else {
+              select(line->Get(i)) {
+                label '(': {
+                  "opren"->PrintLine();
+                }
+                
+                label ')': {
+                  "cpren"->PrintLine();
+                }
+  
+                label '{': {
+                  "ocbrace"->PrintLine();
+                }
+        
+                label '}': {
+                "ccbrace"->PrintLine();
+                }
+                
+                label '/': {
+                  "div"->PrintLine();
+                }
+    
+                label '*': {
+                  "mul"->PrintLine();
+                }
+    
+                label '+': {
+                "add"->PrintLine();
+                }
+    
+                label '-': {
+                  "sub"->PrintLine();
+                }
+#~              
+                other: {
+                  Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
+                }
+~#
+              };
+              i += 1;
+            };  
+          };
+        };
+      };
+      reader->Close();
+    }
+  }
+}

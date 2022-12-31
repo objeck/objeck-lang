@@ -1,6 +1,0 @@
-bundle Default {
-	class Foo {
-		function : Main(args : System.String[]) ~ Nil {
-		}
-	}
-}
