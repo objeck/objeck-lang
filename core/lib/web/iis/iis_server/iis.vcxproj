@@ -28,10 +28,7 @@
     <ClCompile Include="..\..\..\..\vm\interpreter.cpp" />
     <ClCompile Include="..\..\..\..\vm\loader.cpp" />
     <ClCompile Include="..\..\..\..\vm\vm.cpp" />
-    <ClCompile Include="..\objeck_iis.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\objeck_iis.def" />
+    <ClCompile Include="objeck_iis.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\shared\logger.h" />
@@ -44,7 +41,10 @@
     <ClInclude Include="..\..\..\..\vm\lib_api.h" />
     <ClInclude Include="..\..\..\..\vm\loader.h" />
     <ClInclude Include="..\..\..\..\vm\vm.h" />
-    <ClInclude Include="..\objeck_iis.h" />
+    <ClInclude Include="objeck_iis.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="objeck_iis.def" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -104,6 +104,7 @@
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;..\..\..\..\..\core\shared;..\..\..\..\..\core\vm;..\..\..\..\..\core\vm\arch;..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>objeck_iis</TargetName>
@@ -124,7 +125,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -144,7 +145,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -161,9 +162,13 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
       <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /y $(ProjectDir)$(Platform)\$(Configuration)\objeck_iis.dll .. &amp;&amp; copy /y $(ProjectDir)\config.ini ..</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -183,7 +188,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>..\objeck_iis.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>objeck_iis.def</ModuleDefinitionFile>
       <AdditionalDependencies>libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;libz-static.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
