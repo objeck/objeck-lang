@@ -182,7 +182,7 @@ extern "C" {
     }
 
     // allocate byte array and copy data
-    size_t* array = APITools_MakeByteArray(context, read_body.size());
+    size_t* array = APITools_MakeByteArray(context, (long)read_body.size());
     unsigned char* byte_array = (unsigned char*)(array + 3);
     memcpy(byte_array, read_body.data(), read_body.size() * sizeof(unsigned char));
 

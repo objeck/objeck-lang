@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\objeck_iis_lib.cpp">
+    <ClCompile Include="objeck_iis_lib.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
