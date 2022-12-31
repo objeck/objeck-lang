@@ -1,0 +1,208 @@
+use Game.SDL2;
+use Game.Engine;
+
+class Enemy {
+	@enemy : static : AnimatedImageSprite;
+	@platform : static : Platform;
+	@game_map : static : Int[,];
+	
+	@frame : Int;
+	@x_rel_position : Int;
+	@y_rel_position : Int;
+	
+	@x_velocity : Int;
+	@y_velocity : Int;
+	@at_bottom : Bool;
+
+	@is_alive : Bool;
+
+	function : Init(platform : Platform) ~ Nil {
+		@platform := platform;
+		@game_map := @platform->GetMap();
+		@enemy := @platform->GetEngine()->AddAnimatedImageSprite("images/totem_walk.png", 7);
+	}
+
+	New(x : Int, y : Int) {
+		@x_rel_position := x;
+		@y_rel_position := y;
+		@is_alive := true;
+	}
+
+	method : public : GetRelX() ~ Int {	
+		return @x_rel_position;
+	}
+
+	method : public : GetRelY() ~ Int {	
+		return @y_rel_position;
+	}
+
+	method : public : SetRelX(x_rel_position : Int) ~ Nil {	
+		@x_rel_position := x_rel_position;
+	}
+
+	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
+		@x_velocity := x_velocity;
+	}
+
+	method : public : SetYVelocity(y_velocity : Int) ~ Nil {
+		@y_velocity := y_velocity;
+	}
+
+	method : public : IsAlive() ~ Bool {
+		return @is_alive;
+	}
+
+	method : public : SetAlive(is_alive : Bool) ~ Nil {
+		@is_alive := is_alive;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @enemy->GetHeight();
+	}
+
+	method : public : GetWidth() ~ Int {
+		return @enemy->GetWidth();
+	}
+
+	method : public : native : HandleEvents(player : Player) ~ Nil {
+		frame_count := @platform->GetFrameCount();
+
+		if(@is_alive) {
+			if(@y_velocity = 1) {
+				@y_rel_position -= Values->SPEED * 2;
+			}
+			else if(@y_velocity = -1) {
+				@y_rel_position += Values->SPEED * 2;
+			};
+
+			if(<>BlockCollision(player->GetMapX())) {
+				if(frame_count % 5 = 0 & <>@at_bottom) {				
+					@y_velocity := -1;
+				};
+
+				if(frame_count % 7 = 0) {
+					@frame += 1;
+					if(@frame >= @enemy->GetClipCount() - 3) {
+						@frame := 0;
+					};
+				};
+
+				camera_shift := player->GetCameraShift();
+				if(@x_velocity = 1) {
+					if(camera_shift = 1) {
+						@x_rel_position += Values->SPEED / 4;	
+					}
+					else if(camera_shift = -1) {
+						@x_rel_position += Values->SPEED * 2;	
+					}
+					else {
+						@x_rel_position += Values->SPEED;
+					};
+				}
+				else if(@x_velocity = -1) {
+					if(camera_shift = 1) {
+						@x_rel_position -= Values->SPEED * 2;	
+					}
+					else if(camera_shift = -1) {
+						@x_rel_position -= Values->SPEED / 4;	
+					}
+					else {
+						@x_rel_position -= Values->SPEED;
+					};
+				};
+			};
+
+			if(PlayerCollision(player)) {
+				player->SetAlive(false);
+			};
+		};
+	}
+	
+	method : native : PlayerCollision(player : Player) ~ Bool {
+		player_rel_x := player->GetRelX();
+		player_rel_y := player->GetRelY();
+		player_rel_x2 := player_rel_x + player->GetWidth();
+		player_rel_y2 := player_rel_y + player->GetHeight();
+
+		rel_y := @y_rel_position + 8;
+		rel_y2 := rel_y + @enemy->GetHeight() - 8;
+		rel_x := @x_rel_position + 8;
+		rel_x2 := rel_x + Values->BLOCK_WIDTH - 8;
+
+		if(rel_x2 > player_rel_x & rel_x < player_rel_x2 & 
+				rel_y2 > player_rel_y & rel_y < player_rel_y2) {			
+			return true;
+		};
+
+		return false;
+	}
+
+	method : native : BlockCollision(x_position : Int) ~ Bool {
+		dims := @game_map->Size();
+
+		start_x := x_position / Values->BLOCK_WIDTH - 2;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+		
+		end_x := start_x + 28; # could be calculated using screen and block width
+		if(end_x >= dims[1]) {
+			end_x := dims[1] - 1;
+		};
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
+			block_rel_x := x * Values->BLOCK_WIDTH - x_position;
+			for(y := 0; y < dims[0]; y += 1;) {
+				block_rel_y := y * Values->BLOCK_HEIGHT;
+
+				type := @game_map[y, x];
+				if(type > 0 & type < 5) {
+					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
+					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
+
+					rel_y := @y_rel_position;
+					rel_y2 := rel_y + @enemy->GetHeight();
+					rel_x := @x_rel_position;
+					rel_x2 := rel_x + Values->BLOCK_WIDTH;
+
+					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
+							rel_y2 > block_rel_y & rel_y < block_rel_y2) {
+
+						# top
+						if(@y_velocity = 1) {
+							@y_rel_position += Values->SPEED * 3;
+							@y_velocity := 0;
+						}
+						# bottom
+						else if(@y_velocity = -1) {
+							@y_rel_position -= Values->SPEED * 3;
+							@y_velocity := 0;
+							@x_velocity := 1;
+							@at_bottom := true;
+						};
+
+						# right
+						if(@x_velocity = 1) {
+							@x_rel_position -= Values->SPEED * 3;
+							@x_velocity := -1;
+						}
+						# left
+						else if(@x_velocity = -1) {
+							@x_rel_position += Values->SPEED * 3;
+							@x_velocity := 1;
+						};
+
+						return true;
+					};
+				};
+			};
+		};
+
+		return false;
+	}
+
+	method : public : Render() ~ Nil {
+		@enemy->Render(@x_rel_position, @y_rel_position, @frame);
+	}
+}

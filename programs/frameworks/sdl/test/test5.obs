@@ -1,0 +1,54 @@
+use Game.SDL2;
+use Game.Framework;
+
+class Demo {
+	@framework : GameFramework;
+	
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Debug");
+		@framework->SetClearColor(Color->New(0, 0, 120));
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			quit := false;
+			e := @framework->GetEvent();
+			
+			Window->ShowSimpleMessageBox(MessageBoxFlags->SDL_MESSAGEBOX_INFORMATION, "Hiya", "Dope", Nil);
+			
+			while(<>quit) {
+				@framework->FrameStart();
+				@framework->Clear();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+				};
+
+
+				# show
+				@framework->Show();
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}

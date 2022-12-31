@@ -1,0 +1,68 @@
+#~
+Credit: https://github.com/gameprogcpp/code/tree/master/Chapter02
+// ----------------------------------------------------------------
+// From Game Programming in C++ by Sanjay Madhav
+// Copyright (C) 2017 Sanjay Madhav. All rights reserved.
+// 
+// Released under the BSD License
+// See LICENSE in root directory for full details.
+// ----------------------------------------------------------------
+~#
+
+use Collection;
+use Game.SDL2;
+
+class AnimSpriteComponent from SpriteComponent {
+	# All textures in the animation
+	@anim_textures : Vector;
+	# Current frame displayed
+	@curr_frame : Float;
+	# Animation frame rate
+	@anim_fps : Float;
+
+	New(owner : Actor) {
+		Parent(owner, 100);
+		@anim_textures := Vector->New();
+	}
+
+	New(owner : Actor, draw_order : Int) {
+		Parent(owner, draw_order);
+		@anim_textures := Vector->New();
+	}
+
+	# Update animation every frame (overriden from component)
+	method : public : Update(delta_time : Float) ~ Nil {
+		@parent->Update(delta_time);
+
+		if(@anim_textures->Size() > 0) {
+			# Update the current frame based on frame rate
+			# and delta time
+			@curr_frame += @anim_fps * delta_time;
+
+			# Wrap current frame if needed
+			while (@curr_frame >= @anim_textures->Size()) {
+				@curr_frame -= @anim_textures->Size();
+			};
+
+			# Set the current texture
+			SetTexture(@anim_textures->Get(@curr_frame)->As(Texture));
+		};
+	}
+
+	# Set the textures used for animation
+	method : public : SetAnimTextures(textures : Vector) ~ Nil {
+		@anim_textures := textures;
+
+
+		if(@anim_textures->Size() > 0) {
+			# Set the active texture to first frame
+			@curr_frame := 0.0;
+			tex := @anim_textures->Get(0)->As(Texture);
+			SetTexture(tex);
+		};
+	}
+
+	# Set/get the animation FPS
+	method : public : GetAnimFPS() ~ Float { return @anim_fps; }
+	method : public : SetAnimFPS(fps : Float) ~ Nil { @anim_fps := fps; }
+}

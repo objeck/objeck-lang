@@ -1,0 +1,233 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+use Data.CSV;
+use Data.JSON;
+
+class Level {
+	@player : Player;
+	@blocks : Vector;
+	@sprite_sheet : ImageSprite;
+	@shift_x : Int;
+
+	New(player : Player, framework : GameFramework, media_path : String) {
+		@player := player;
+		@blocks := Vector->New();
+
+		sprite_path := String->New(media_path);
+		sprite_path += "/media/tiles_spritesheet.png";
+		@sprite_sheet := framework->AddImageSprite(sprite_path, Color->New(0, 0, 0));
+				
+		map_path := String->New(media_path);	
+		map_path += "/media/map.csv";
+
+		attrib_path := String->New(media_path);	
+		attrib_path += "/media/tiles_spritesheet.json";
+
+		LoadLevel(map_path, attrib_path);
+
+		@player->SetLevel(@self);
+	}
+
+	function : Collides(player : Player, blocks : Vector) ~ Bool {
+		each(i : blocks) {
+        	block := blocks->Get(i)->As(Block);
+			
+			if(block->Collides(player->GetRect())) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	function : Collisions(player : Player, blocks : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : blocks) {
+			block := blocks->Get(i)->As(Block);
+			if(block->Collides(player->GetRect())) {
+				if(block->GetId() = 37) {
+					block->SetHide(true);	
+				}
+				else {
+					collides->AddBack(block);
+				};
+			};
+    	};
+
+		return collides;
+    }
+
+    method : public : LoadLevel(map_path : String, attrib_path : String) ~ Nil {
+    	block_map := IntMap->New();
+    	block_attribs := Attribs->New(attrib_path);
+
+    	table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(map_path));
+    	if(table->IsParsed()) {
+    		each(i : table) {
+    			row := table->Get(i);
+    			each(j : row) {
+    				value := row->Get(j);
+    				y := i * (Game->BLOCK_WIDTH - 2);
+    				x := j * (Game->BLOCK_HEIGHT - 2);
+    				
+    				id := value->ToInt();
+    				if(id > -1) {					
+	    				rect := block_map->Find(id)->As(Rect);
+	    				if(rect = Nil) { 
+		    				y_pos := id / 12;
+		    				x_pos := id % 12;
+
+							if(id = 6 | id = 124 | id = 123) {
+								attribs := block_attribs->GetAttribs(id);
+
+								a_x := x_pos * Game->BLOCK_WIDTH;
+								a_y := y_pos * Game->BLOCK_HEIGHT;
+								a_w := Game->BLOCK_WIDTH;
+								a_h := Game->BLOCK_HEIGHT;
+
+								a_y += attribs->GetY();
+								a_h := attribs->GetHeight();
+
+								rect := Rect->New(a_x, a_y, a_w, a_h);
+							}
+							else {
+		    					rect := Rect->New(x_pos * Game->BLOCK_WIDTH, y_pos * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		    				};
+
+		    				block_map->Insert(id, rect);
+		    			};
+		    			
+
+		    			if(id = 6 | id = 124) {
+		    				@blocks->AddBack(MovingBlock->New(id, x, y, rect, @sprite_sheet, @player, @self));
+		    			}
+		    			else {
+		    				@blocks->AddBack(Block->New(id, x, y, rect, @sprite_sheet));
+		    			};
+	    			};
+	    		};
+    		};
+    	};
+    }
+
+	method : public : GetShift() ~ Int {
+		return @shift_x;
+	}
+
+	method : public : ShiftWorld(shift_x : Int) ~ Nil {
+		@shift_x += shift_x;
+
+		each(i : @blocks) {
+			block := @blocks->Get(i)->As(Block);
+			block->AddX(shift_x);
+		};
+	}
+
+	method : public : GetBlocks() ~ Vector {
+		return @blocks;
+	}
+
+	method : public : Update()  ~ Nil {
+		each(i : @blocks) {
+			block := @blocks->Get(i);
+			if(block->TypeOf(MovingBlock)) {
+				@blocks->Get(i)->As(MovingBlock)->Update();
+			};
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		each(i : @blocks) {
+			block := @blocks->Get(i)->As(Block);			
+			if(block->TypeOf(MovingBlock)) {
+				block->As(MovingBlock)->Draw();
+			}
+			else {
+				block->Draw();
+			};
+		};
+	}
+}
+
+
+class Attribs {
+	@root : JsonElement;
+	@tiles : JsonElement;
+
+	New(name : String) {		
+		doc := System.IO.Filesystem.FileReader->ReadFile(name);
+		if(doc <> Nil) {
+			@root := JsonParser->New(doc)->Parse();
+			@tiles := GetTiles();			
+		}
+		else {
+			"--- Unable to open doc ---"->ErrorLine();
+		};
+	}
+
+	method : GetTiles() ~ JsonElement {		
+		if(@root <> Nil) {
+			tiles := @root->Get("tiles");
+			if(tiles <> Nil & tiles->GetType() = JsonType->OBJECT) {
+				return tiles;
+			}
+			else {
+				"--- Unable to get 'tiles' ---"->ErrorLine();
+			};
+		};
+
+		return Nil;
+	}
+
+	method : public : GetAttribs(id : Int) ~ BlockAttrib {		
+		if(@tiles <> Nil) {
+			BlockAttribs := @tiles->Get(id->ToString());
+			if(BlockAttribs <> Nil) {
+				x := BlockAttribs->FindElements("objectgroup/objects/[0]/x")->GetValue();
+				y := BlockAttribs->FindElements("objectgroup/objects/[0]/y")->GetValue();
+				height := BlockAttribs->FindElements("objectgroup/objects/[0]/height")->GetValue();
+				width := BlockAttribs->FindElements("objectgroup/objects/[0]/width")->GetValue();
+
+				return BlockAttrib->New(x, y, height, width);
+			};
+		};
+
+		return Nil;
+	}
+}
+
+class BlockAttrib {
+	@x : Int;
+	@y : Int;
+	@height : Int;
+	@width : Int;
+
+	New(x : String, y : String, height : String, width : String) {
+		@x := x->ToInt();
+		@y := y->ToInt();
+		@height := height->ToInt();
+		@width := width->ToInt();
+	}
+
+	method : public : GetX() ~ Int {
+		return @x;
+	}
+
+	method : public : GetY() ~ Int {
+		return @y;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@x}, {$@y}, {$@height}, {$@width}";
+	}
+}

@@ -1,0 +1,21 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			string := "Hello...";
+			string->Size()->PrintLine();
+			string->PrintLine();
+
+			input := IO.Console->ReadString();
+			input->GetClass()->GetName()->PrintLine();
+
+			if(input->StartsWith("Hi")) {
+				"they said hi :)"->PrintLine();
+			}
+			else {
+				"they didn't say hi :("->PrintLine();
+			};
+
+#			h := Class->New("aa");
+		}
+	}
+}

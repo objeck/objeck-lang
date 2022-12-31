@@ -1,0 +1,34 @@
+use System.IO;
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {		
+#		function : Run() ~ Nil {		
+#~
+			ints := IntVector->New();
+			ints->AddBack(23);
+			ints->AddBack(145);
+			ints->AddBack(17);
+			ints->AddBack(8);
+~#
+			ints := Int->New[3];
+			ints[0] := 3;
+			ints[1] := 9;
+			ints[2] := 1;
+
+			each(i : ints) {
+				Console->Print(i)->Print(": ")->PrintLine(ints[i]);
+			};
+
+			things := ["Apple", "Banana", "Coconut"];
+			each(i : things) {
+				things[i]->PrintLine();
+			};
+		}
+	}
+}

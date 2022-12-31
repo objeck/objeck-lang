@@ -1,0 +1,112 @@
+use IO;
+
+bundle RegEx {
+	enum TokenType := -32 {
+		ZERO_MORE,
+		ONE_MORE,
+		ZERO_ONE,
+		CONCAT,
+		ALTERN
+	}
+	
+	class RegEx {
+		@input : String;
+		@index : Int;
+		@buffer_max : Int;
+
+		New(input : String) {
+			@input := input;
+			@buffer_max := 256;
+		}
+
+		method : public : Parse() ~ Int[] {
+			output := Int->New[@buffer_max];
+			index := 0;
+		
+			index := 0;
+			concat_count := 0;
+			each(i : @input) {
+				char := @input->Get(i);
+				select(char) {
+					label '*': {
+						if(concat_count = 0) {
+							return Nil;
+						};
+						
+						output[index] := TokenType->ZERO_MORE;
+						index +=1;				
+						concat_count -= 1;
+					}
+					
+					label '|': {
+						
+						concat_count := 0;
+					}
+					
+					other: {
+						if(concat_count > 1) {
+							output[index] := TokenType->CONCAT;
+							index +=1;				
+							concat_count -= 1;
+						};
+						output[index] := char;
+						index +=1;
+						
+						concat_count += 1;
+					}
+				};
+			};
+			
+			while(concat_count > 1) {
+				output[index] := TokenType->CONCAT;
+				index +=1;				
+				concat_count -= 1;
+			};
+			
+			DumpInput(output);
+			
+			return Nil;
+		}
+		
+		method : DumpInput(input : Int[]) ~ Nil {
+			if(input = Nil) {
+				return;
+			};
+			
+			each(i : input) {
+				value := input[i];
+				select(value) {
+					label TokenType->ZERO_MORE: {
+						'*'->PrintLine();
+					}
+					
+					label TokenType->ONE_MORE: {
+					}
+					
+					label TokenType->ZERO_ONE: {
+					}
+					
+					label TokenType->CONCAT: {
+						'.'->PrintLine();
+					}
+					
+					label TokenType->ALTERN: {
+					}
+					
+					other: {
+						char := value->As(Char);
+						if(char = 0) {
+							return;
+						};
+						char->PrintLine();
+					}
+				};
+			};
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			regex := RegEx->New(args[0]);
+			regex->Parse();
+		}
+	}
+}

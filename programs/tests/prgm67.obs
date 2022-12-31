@@ -1,0 +1,49 @@
+bundle Default {
+	class Bar {
+		a : Int;
+		b : Float;
+
+		New() {
+			a := 11;	
+			b := 333.3;
+		}
+
+		method : public : Add(x : Int) ~ Int {
+			return a + b * x;
+		}
+	}
+
+	class Hello {
+		@g : Bar;
+		@h : Int;
+
+		New() {
+			@g := Bar->New();
+			@h := 22;
+		}
+
+		function : Main(args : System.String[]) ~ Nil {
+			h := Hello->New();
+			h->Run();
+		}
+
+		method : public : Run() ~ Nil {
+			Run(@g);
+		}
+
+		method : native : Run(b : Bar) ~ Nil {
+			10->PrintLine();
+			Foo(8)->PrintLine();
+			b->Add(@h)->PrintLine();
+		}
+
+		method : Foo(v : Int) ~ Int {
+			if(v < 10) {
+				v *= v;
+				return v;
+			};
+
+			return -1;
+		}
+	}
+}

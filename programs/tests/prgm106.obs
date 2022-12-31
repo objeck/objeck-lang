@@ -1,0 +1,9 @@
+class Bar {
+	function : Main(args : String[]) ~ Nil {
+		Foo->Calc(\Func->Calc : (a, b) => a + b);
+		Foo->Calc(\Func->Calc : (a, b) => a * b);
+
+		foo : \Func->Matrix := Int->New[2,2];
+		Foo->Calc2(foo);
+	}
+}

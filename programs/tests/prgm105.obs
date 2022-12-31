@@ -1,0 +1,5 @@
+class Foo {
+	function : Main(a : String[]) ~ Nil {
+		"foo bar"->PrintLine();
+	}
+}

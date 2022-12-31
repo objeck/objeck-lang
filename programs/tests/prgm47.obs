@@ -1,0 +1,19 @@
+use System.IO.Filesystem;
+
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+
+		# function : Run() ~ Nil {		
+		function : native : Run() ~ Nil {		
+			vv := Directory->List("../..");
+			vv->Size()->PrintLine();
+			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
+				v : System.String := vv[i];
+				v->PrintLine();
+			};
+		}
+	}
+}

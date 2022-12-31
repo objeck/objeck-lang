@@ -77,8 +77,6 @@ mkdir core/release/deploy-msys2-clang/examples/media
 cp programs/deploy/*.obs core/release/deploy-msys2-clang/examples
 cp programs/deploy/media/*.png core/release/deploy-msys2-clang/examples/media
 cp programs/deploy/media/*.wav core/release/deploy-msys2-clang/examples/media
-cp -aR programs/doc core/release/deploy-msys2-clang/examples
-cp -aR programs/tiny core/release/deploy-msys2-clang/examples
 
 cd core/release
 

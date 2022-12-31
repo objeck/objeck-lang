@@ -1,0 +1,45 @@
+use System.IO.Filesystem;
+use Query.RegEx;
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			matches := GetFiles(args[0], args[1]);
+			each(i : matches) {
+				matches->Get(i)->As(String)->PrintLine();
+			};
+		};
+	}
+
+	function : GetFiles(path : String, expr : String) ~ Vector {
+		matches := Vector->New();
+
+		regex := RegEx->New(expr);
+		GetFiles(path, regex, matches);
+
+		return matches;
+	}
+
+	function : GetFiles(path : String, regex : RegEx, matches : Vector) ~ Nil {
+		files := Directory->List(path);
+		each(i : files) {
+			file := files[i];
+			if(<>file->StartsWith('.')) {
+				dir_path := String->New(path);
+				dir_path += '/';
+				dir_path += file;
+				
+				if(Directory->Exists(dir_path)) {
+					GetFiles(dir_path, regex, matches);
+				}
+				else if(File->Exists(dir_path)) {
+					full_name := File->GetFullName(dir_path);
+					if(regex->MatchExact(full_name)) {
+						matches->AddBack(full_name);
+					};
+				};
+			};
+		};
+	}
+}

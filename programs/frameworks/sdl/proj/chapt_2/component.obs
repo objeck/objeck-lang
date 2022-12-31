@@ -1,0 +1,45 @@
+#~
+Credit: https://github.com/gameprogcpp/code/tree/master/Chapter02
+// ----------------------------------------------------------------
+// From Game Programming in C++ by Sanjay Madhav
+// Copyright (C) 2017 Sanjay Madhav. All rights reserved.
+// 
+// Released under the BSD License
+// See LICENSE in root directory for full details.
+// ----------------------------------------------------------------
+~#
+
+class Component {
+	@owner : Actor;
+	@update_order : Int;
+
+	New(owner : Actor) {
+		@owner := owner;
+		@update_order := 100;
+
+		@owner->AddComponent(@self);
+	}
+
+	New(owner : Actor, update_order : Int) {
+		@owner := owner;
+		@update_order := update_order;
+
+		@owner->AddComponent(@self);
+	}
+
+	method : public : Free() ~ Nil {
+		@owner->RemoveComponent(@self);
+	}
+
+	method : public : HashID() ~ Int {
+		return @update_order;
+	}
+
+	method : GetOwner() ~ Actor {
+		return @owner;
+	}
+
+	method : public : virtual : Update(delta_time : Float) ~ Nil;
+
+	method : public : GetUpdateOrder() ~ Int { return @update_order; }
+}

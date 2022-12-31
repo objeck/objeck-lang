@@ -1,0 +1,25 @@
+use HTTP;
+use Collection;
+
+class HttpTest {
+	function : Main(args : String[]) ~ Nil {
+		client := HttpClient->New();
+		
+		# enable cookies
+		client->CookiesEnabled(true);
+
+		# request creates a cookie
+		lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create");
+		each(i : lines) {
+			line := lines->Get(i)->As(String);
+			line->PrintLine();
+		};
+
+		# request sends back cookie
+		lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi");
+		each(i : lines) {
+			line := lines->Get(i)->As(String);
+			line->PrintLine();
+		};
+	}
+}

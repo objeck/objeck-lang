@@ -1,0 +1,87 @@
+use System.IO;
+use System.IO.Filesystem;
+
+bundle Default {	
+	class Hello {
+		New() {
+		}
+
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+		function : native : Run() ~ Nil {
+			reader := FileReader->New("../compiler/test_src/prgm1.obs");
+			line_num := 0;
+			while(reader->IsEOF() <> true) {
+				line := reader->ReadString();
+				line_num := line_num + 1;
+									
+				i := 0;	
+				while(i < line->Size()) {		
+					# skip whitespace
+					while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+						i := i + 1;
+					};
+					
+					# word
+					if(line->Get(i)->IsChar() = true) {
+						string := "";
+						while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+							string->Append(line->Get(i));
+							i := i + 1;
+						};
+						"string '"->Print(); string->Print(); "'"->PrintLine();
+					}
+					# number
+					else if(line->Get(i)->IsDigit() = true) {
+						number := "";
+						while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
+							number->Append(line->Get(i));
+							i := i + 1;
+						};
+						"number '"->Print(); number->PrintLine(); "'"->PrintLine();
+					}
+					# other'c
+					else {
+						select(line->Get(i)) {
+							label '(': {
+								"opren"->PrintLine();
+							}
+							
+							label ')': {
+								"cpren"->PrintLine();
+							}
+
+							label '[': {
+								"obrace"->PrintLine();
+							}
+							
+							label ']': {
+								"cbrace"->PrintLine();
+							}			
+
+							
+							label '{': {
+								"ocbrace"->PrintLine();
+							}
+				
+							label '}': {
+								"ccbrace"->PrintLine();
+							}
+							
+							label '#': {
+								"pound"->PrintLine();
+							}
+							
+							other: {
+								"'"->Print(); line->Get(i)->Print(); "'"->PrintLine();
+							}
+						};
+						i := i + 1;
+					};
+				};
+			};
+			reader->Close();
+		}
+	}
+}

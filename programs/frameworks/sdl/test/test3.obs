@@ -1,0 +1,243 @@
+use Collection.Generic;
+
+class PathFinder {
+	@grid : Char[,];
+	@unfound : Point;
+	@path : Vector<Point>;
+	
+	New() {
+		@grid := Char->New[8,8];
+		@path := Vector->New()<Point>;
+		@unfound := Point->New(-1, -1);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		finder := PathFinder->New();
+		finder->Find();
+	}
+
+	method : Find() ~ Nil {
+		dims := @grid->Size();
+		x_max := dims[0];
+		y_max := dims[1];
+
+		#start and end
+		start := Point->New(Int->Random(0, 2),Int->Random(0, 2));
+		@grid[start->GetX(),start->GetY()] := 'S';
+		
+		end := Point->New(x_max - Int->Random(1, 2), y_max - Int->Random(1, 2));
+		@grid[end->GetX(),end->GetY()] := 'E';
+
+		Distance(start, end);
+		
+		for(i := 0; i < (x_max * y_max) / 4; i += 1;) {
+			x := Int->Random(0, x_max - 1);
+			y := Int->Random(0, y_max - 1);
+			if(<>start->Equals(x,y) & <>end->Equals(x,y)) {
+				@grid[x, y] := 'X';
+			};
+		};
+
+		# show initial grid
+		PrintGrid();
+		start->ToString()->PrintLine();
+
+		@path->AddBack(start);
+		point := Find(start, end);
+		while(point <> Nil & point->GetX() <> -1) {
+# point->ToString()->PrintLine();
+			@path->AddBack(point);
+			point := Find(point, end);
+		};
+		
+		UpdatePath(@path);
+
+		end->ToString()->PrintLine();
+
+		PrintGrid();
+
+		if(point = @unfound) {
+			"\n*** No Solution ***"->PrintLine();
+		};
+	}
+
+	method : Find(pos : Point, end : Point) ~ Point {
+		x := pos->GetX();
+		y := pos->GetY();
+
+		dims := @grid->Size();
+		x_max := dims[0];
+		y_max := dims[1];
+
+		dir : Point;
+		if(x > -1 & y > -1 & x < x_max & y < y_max) {
+# "pos: {$x}, {$y}"->PrintLine();
+
+			# check left/right/up/down
+			can_move_left := CheckMove(x - 1, y);
+			can_move_right := CheckMove(x + 1, y);
+			can_move_up := CheckMove(x, y - 1);
+			can_move_down := CheckMove(x, y + 1);
+
+# "move: left={$can_move_left}, right={$can_move_right}, up={$can_move_up}, down={$can_move_down}"->PrintLine();
+			
+			# find best move
+			min_dist := (x_max * y_max)->ToFloat();
+			if(can_move_left) {
+				point := Point->New(x - 1, y);
+				test := Distance(point, end);
+# "left: {$min_dist} to {$test}"->PrintLine();
+				if(test <= min_dist) {
+					min_dist := test;
+					dir := point;
+				};
+			};
+
+			if(can_move_right) {
+				point := Point->New(x + 1, y);
+				test := Distance(point, end);
+# "right: {$min_dist} to {$test}"->PrintLine();				
+				if(test <= min_dist) {
+					min_dist := test;
+					dir := point;
+				};
+			};
+
+			if(can_move_up) {
+				point := Point->New(x, y - 1);
+				test := Distance(point, end);
+# "up: {$min_dist} to {$test}"->PrintLine();				
+				if(test <= min_dist) {
+					min_dist := test;
+					dir := point;
+				};
+			};
+
+			if(can_move_down) {
+				point := Point->New(x, y + 1);
+				test := Distance(point, end);
+# "down: {$min_dist} to {$test}"->PrintLine();				
+				if(test <= min_dist) {
+					min_dist := test;
+					dir := point;
+				};
+			};
+
+# "-------------"->PrintLine();
+
+			if(dir <> Nil) {
+				return dir->Equals(end) ? Nil : dir;
+			};
+		};
+
+		return @unfound;
+	}
+
+	method : CheckMove(x : Int, y : Int) ~ Bool {
+		dims := @grid->Size();
+		x_max := dims[0];
+		y_max := dims[1];
+
+		if(x < 0 | x >= x_max | y < 0 | y >= y_max) {
+			return false;
+		};
+
+		if(@grid[x, y] = 'X') {
+			return false;
+		};
+
+		each(i : @path) {
+			point := @path->Get(i);
+			if(point->Equals(x, y)) {
+i->PrintLine();				
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	method : UpdatePath(@path : Vector<Point>) ~ Nil {
+		step := '0';
+		for(i := 1; i < @path->Size(); i += 1;) {
+			point := @path->Get(i);
+			@grid[point->GetX(), point->GetY()] := step++;
+			if(step = '9') {
+				step := '0';
+			};
+		};
+	}
+
+	method : Distance(a : Point, b : Point) ~ Float {
+		x_norm := Float->Power(a->GetX()->ToFloat() - b->GetX()->ToFloat(), 2.0);
+		y_norm := Float->Power(a->GetY()->ToFloat() - b->GetY()->ToFloat(), 2.0);
+
+		return (x_norm + y_norm)->SquareRoot();
+	}
+
+	method : PrintGrid() ~ Nil {
+		"=============================="->PrintLine();
+		dims := @grid->Size();
+
+		for(i := 0; i < dims[1]; i +=1;) {
+			for(j := 0; j < dims[0]; j +=1;) {
+				value := @grid[j,i];
+				if(value = '\0') {
+					"-, "->Print();
+				}
+				else {
+					"{$value}, "->Print();
+				};
+			};
+			'\n'->Print();
+		};
+
+		"=============================="->PrintLine();
+	}
+}
+
+class Point {
+	@x : Int;
+	@y : Int;
+
+	New(x : Int, y : Int) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Int {
+		return @x;
+	}
+
+	method : public : SetX(x : Int) ~ Nil {
+		@x := x;
+	}
+
+	method : public : GetY() ~ Int {
+		return @y;
+	}
+
+	method : public : SetY(y : Int) ~ Nil {
+		@y := y;
+	}
+
+	method : public : Equals(x : Int, y : Int) ~ Bool {
+		if(@x = x & @y = y) {
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : Equals(point : Point) ~ Bool {
+		if(point->GetX() = @x & point->GetY() = @y) {
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : ToString() ~ String {
+		return "[{$@x}, {$@y}]";
+	}
+}

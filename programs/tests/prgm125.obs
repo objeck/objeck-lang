@@ -1,0 +1,32 @@
+﻿use RegEx;
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			regex := RegEx->New(".*string");
+			regex->Match("I am a string");
+			if(regex->MatchExact(".*string")) {
+				"ends with 'string'"->PrintLine();
+			};
+
+#			regex := RegEx->New("a*b");
+#			matches := regex->Find("aaababbbbcdeabbbbdefxyz");
+#			regex->ReplaceAll("aaababbbbcdeabbbbdefxyz", "*")->PrintLine();
+			regex := RegEx->New(".*bad");
+			matches := regex->Find("aaabadbbbcdeabbbbdefxyzaabad");
+			each(i : matches) {
+				matches->Get(i)->As(String)->PrintLine();
+			};
+#~
+				regex->ReplaceFirst(args[1], "****")->PrintLine();
+				regex->ReplaceAll(args[1], "****")->PrintLine();
+				regex->FindFirst(args[1])->PrintLine();
+				matches := regex->Find(args[1]);
+				each(i : matches) {
+					matches->Get(i)->As(String)->PrintLine();
+				};
+~#
+		}
+	}
+}

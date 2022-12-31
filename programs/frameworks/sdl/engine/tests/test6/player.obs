@@ -1,0 +1,139 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Player {
+	@rect : AnimatedImageSprite;
+	@change_x : Float;
+	@change_y : Float;
+	@level : Level;
+	@blocks : Vector;
+
+	New(rect : AnimatedImageSprite) {
+		@rect := rect;
+		@rect->SetLeft(120);
+	}
+
+	method : public : GetRect() ~ AnimatedImageSprite {
+		return @rect; 
+	}
+
+	method : public : GetLeft() ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight() ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : SetLeft(x : Int) ~ Nil {
+		@rect->SetLeft(x);
+	}
+
+	method : public : SetRight(x2 : Int) ~ Nil {
+		@rect->SetRight(x2);
+	}
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@level := level;
+		@blocks := @level->GetBlocks();
+	}
+
+	method : public : ChangeLeft()  ~ Int {
+		return @change_x;
+	}
+
+	method : public : GoLeft()  ~ Nil {
+		@change_x := -6;
+	}
+
+	method : public : GoRight()  ~ Nil {
+		@change_x := 6;
+	}
+
+	method : public : Stop() ~ Nil {
+		@change_x := 0;
+	}
+
+	method : public : Jump()  ~ Nil {
+		@rect->AddY(2);
+		bottom := Level->Collides(@self, @blocks);
+        @rect->AddY(-2);
+ 
+        if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
+			@change_y := -10;
+        };
+	}
+
+	method : public : native : Update()  ~ Nil {
+		Gravity();
+
+		# Move left/right
+        @rect->AddX(@change_x);
+        collides := Level->Collisions(@self, @blocks);
+        each(i : collides) {
+        	block := collides->Get(i)->As(Block);
+
+        	if(block->GetBottom() - @rect->GetTop() > @rect->GetHeight()) {
+	        	# moving right
+				if(@change_x > 0) {
+					if(<>block->LeftSlope() & <>block->RightSlope()) {
+	    				@rect->SetRight(block->GetLeft());
+	    			};
+	            }
+	    		# moving left
+	            else if(@change_x < 0) {
+					if(<>block->LeftSlope() & <>block->RightSlope()) {
+	            		@rect->SetLeft(block->GetRight());
+	            	};
+	            };
+			};
+        };
+		
+		# Move up/down
+        @rect->AddY(@change_y);
+		collides := Level->Collisions(@self, @blocks);
+        each(i : collides) {
+        	block := collides->Get(i)->As(Block);
+
+        	if(block->Collides(@rect)) {
+        		# moving down
+        		if(@change_y > 0) {
+        			@rect->SetBottom(block->GetTop());
+                }
+        		# moving up
+                else if(@change_y < 0) {
+                	@rect->SetTop(block->GetBottom());
+		        };
+
+	            # Stop our vertical movement
+            	@change_y := 0;
+#~
+	            if(block->TypeOf(MovingBlock)) {
+	            	@rect->AddX(block->As(MovingBlock)->GetChangeLeft());
+	            };
+~#	            
+        	};
+        };				
+	}
+
+	method : public : Draw()  ~ Nil {
+		index := Int->Abs((@level->GetShift() + @rect->GetLeft()) / 30 % @rect->GetClipCount());
+		@rect->Render(index);
+	}
+
+	method : public : Gravity()  ~ Nil {
+        if(@change_y = 0) {
+            @change_y := 1;
+        }
+        else {
+			@change_y += .48;
+        };
+
+        # See if we are on the ground.
+        if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
+            @change_y := 0;
+            @rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
+        };
+	}
+}

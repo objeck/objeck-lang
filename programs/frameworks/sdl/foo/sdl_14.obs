@@ -1,0 +1,260 @@
+#~
+Lesson 14
+http://lazyfoo.net/tutorials/SDL/14_animated_sprites_and_vsync/index.php
+~#
+
+use SDL2;
+
+class LTexture {
+	@renderer : Renderer;
+	@texture : Texture;
+	@width : Int;
+	@height : Int;
+
+	New(renderer : Renderer) {
+		@renderer := renderer;
+	}
+
+	# Loads image at specified path
+	method : public : LoadFromFile(path : String) ~ Bool {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
+		loadedSurface->Free();
+		@texture := texture;
+
+		return @texture <> Nil;
+	}
+
+	# Deallocates texture
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+		@texture->SetColorMod(red, green, blue);
+	}
+
+	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
+		# Set blending function
+		@texture->SetBlendMode(blending);
+	}
+	
+	method : public : SetAlpha(alpha : Int) ~ Nil {
+		# Modulate texture alpha
+		@texture->SetAlphaMod(alpha );
+	}
+
+	# Renders texture at given point
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil) ~ Nil {
+		renderQuad := Rect->New(x, y, @width, @height);
+
+		if(clip <> Nil)	{
+			renderQuad->SetW(clip->GetW());
+			renderQuad->SetH(clip->GetH());
+		};
+
+		@renderer->Copy(@texture, clip, renderQuad);
+	}
+
+	# Gets image dimensions
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+}
+
+class Test {
+	@window : static : Window;
+	@renderer : static : Renderer;
+	@sprite_sheet_texture : static : LTexture;
+	@sprite_clips : static : Rect[];
+	
+	SCREEN_WIDTH : static : Int;
+	SCREEN_HEIGHT : static : Int;
+	WALKING_ANIMATION_FRAMES : static : Int;
+	
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
+
+		# Top left corner viewport
+		topLeftViewport := Rect->New(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+		# Top right viewport
+		topRightViewport := Rect->New(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+		# Bottom viewport
+		bottomViewport := Rect->New(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+		
+		frame := 0;
+		rate := 30;
+
+		# Event handler
+		e := Event->New();
+
+		# While application is running
+		while(<>quit) {
+			start := Timer->GetTicks();
+
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				};
+			};
+
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			# Render current frame
+			current_clip := @sprite_clips[frame / 4];
+			@sprite_sheet_texture->Render(
+				(SCREEN_WIDTH - current_clip->GetW()) / 2, 
+				(SCREEN_HEIGHT - current_clip->GetH()) / 2, 
+				current_clip);
+
+			time := start - Timer->GetTicks();
+			if(time < rate) {
+				Timer->Delay(rate - time);
+			};
+
+			# Update screen
+			@renderer->Present();
+
+			# Go to next frame
+			frame += 1;
+
+			# Cycle animation
+			if(frame / 4 >= WALKING_ANIMATION_FRAMES) {
+				frame := 0;
+			};			
+		};
+		e->Free();
+
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+		WALKING_ANIMATION_FRAMES := 4;
+
+		# Initialize SDL
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int)) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 			
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, 
+			(RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC)->As(Int));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		@sprite_clips := Rect->New[WALKING_ANIMATION_FRAMES];
+		@sprite_sheet_texture := LTexture->New(@renderer);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		return true;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		if(<>@sprite_sheet_texture->LoadFromFile( "images/foo.png")) {
+			return false;
+		};
+
+		# Set sprite clips
+		@sprite_clips[0] := Rect->New(0, 0, 65, 205);
+		@sprite_clips[1] := Rect->New(64, 0, 64, 205);
+		@sprite_clips[2] := Rect->New(128, 0, 64, 205);
+		@sprite_clips[3] := Rect->New(196, 0, 64, 205);
+
+		return true;
+	}
+	
+	function : LoadTexture(path : String) ~ Texture {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return Nil;
+		};
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return Nil;
+		};
+
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	function : Close() ~ Nil {
+		@sprite_sheet_texture->Free();
+		@renderer->Destroy();
+		@window->Destroy();
+
+		# Quit SDL subsystems
+		Image->Quit();
+		Core->Quit();
+	}
+}

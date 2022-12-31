@@ -1,0 +1,233 @@
+#~
+Lesson 11
+http://lazyfoo.net/tutorials/SDL/11_clip_rendering_and_sprite_sheets/index.php
+~#
+
+use SDL;
+
+class LTexture {
+	@renderer : Renderer;
+	@texture : Texture;
+	@width : Int;
+	@height : Int;
+
+	New(renderer : Renderer) {
+		@renderer := renderer;
+	}
+
+	# Loads image at specified path
+	method : public : LoadFromFile(path : String) ~ Bool {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
+		loadedSurface->Free();
+		@texture := texture;
+
+		return @texture <> Nil;
+	}
+
+	# Deallocates texture
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	# Renders texture at given point
+	method : public : Render(x : Int, y : Int, clip : Rect) ~ Nil {
+		renderQuad := Rect->New(x, y, @width, @height);
+
+		if(clip <> Nil)	{
+			renderQuad->SetW(clip->GetW());
+			renderQuad->SetH(clip->GetH());
+		};
+
+		@renderer->Copy(@texture, clip, renderQuad);
+	}
+
+	# Gets image dimensions
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+}
+
+class Test {
+	@window : static : Window;
+
+	@renderer : static : Renderer;
+
+	@sprite_sheet_texture : static : LTexture;
+	@sprite_clips : static : Rect[];
+
+	SCREEN_WIDTH : static : Int;
+	SCREEN_HEIGHT : static : Int;
+	
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
+
+		# Top left corner viewport
+		topLeftViewport := Rect->New(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+		# Top right viewport
+		topRightViewport := Rect->New(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+		# Bottom viewport
+		bottomViewport := Rect->New(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+		
+		# Event handler
+		e := Event->New();
+
+		# While application is running
+		while(<>quit) {
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
+					quit := true;
+				};
+			};
+
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			# Render top left sprite
+			@sprite_sheet_texture->Render(0, 0, @sprite_clips[ 0 ] );
+
+			# Render top right sprite
+			@sprite_sheet_texture->Render( SCREEN_WIDTH - @sprite_clips[ 1 ]->GetW(), 0, @sprite_clips[ 1 ] );
+
+			# Render bottom left sprite
+			@sprite_sheet_texture->Render( 0, SCREEN_HEIGHT - @sprite_clips[ 2 ]->GetH(), @sprite_clips[ 2 ] );
+
+			# Render bottom right sprite
+			@sprite_sheet_texture->Render( SCREEN_WIDTH - @sprite_clips[ 3 ]->GetW(), SCREEN_HEIGHT - @sprite_clips[ 3 ]->GetH(), @sprite_clips[ 3 ] );
+
+			# Update screen
+			@renderer->Present();
+		};
+		e->Free();
+
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+		
+		# Initialize SDL
+		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		@sprite_sheet_texture := LTexture->New(@renderer);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		return true;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		if(<>@sprite_sheet_texture->LoadFromFile( "images/dots.png")) {
+			return false;
+		};
+
+		@sprite_clips := Rect->New[4];
+		@sprite_clips[0] := Rect->New(0, 0, 100, 100);
+		@sprite_clips[1] := Rect->New(100, 0, 100, 100);
+		@sprite_clips[2] := Rect->New(0, 100, 100, 100);
+		@sprite_clips[3] := Rect->New(100, 100, 100, 100);
+
+		return true;
+	}
+	
+	function : LoadTexture(path : String) ~ Texture {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return Nil;
+		};
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return Nil;
+		};
+
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	function : Close() ~ Nil {
+		@sprite_sheet_texture->Free();
+		@renderer->Destroy();
+		@window->Destroy();
+
+		# Quit SDL subsystems
+		Image->Quit();
+		Core->Quit();
+	}
+}

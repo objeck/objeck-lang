@@ -1,0 +1,309 @@
+method : public : Create(renderer : Renderer, format : Int, access : Int, w : Int, h : Int) ~ Texture {
+        array_args := Base->New[6];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(renderer);
+        array_args[2] := IntHolder->New(format);
+        array_args[3] := IntHolder->New(access);
+        array_args[4] := IntHolder->New(w);
+        array_args[5] := IntHolder->New(h);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_create", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_create(VMContext& context) {
+                const long* renderer = (long*)APITools_GetObjectValue(context, 1);
+                const int format = APITools_GetIntValue(context, 2);
+                const int access = APITools_GetIntValue(context, 3);
+                const int w = APITools_GetIntValue(context, 4);
+                const int h = APITools_GetIntValue(context, 5);
+                const long* return_value = SDL_CreateTexture(renderer, format, access, w, h);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Query(format : Int, access : Int, w : Int, h : Int) ~ Int {
+        array_args := Base->New[6];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := IntHolder->New(format);
+        array_args[3] := IntHolder->New(access);
+        array_args[4] := IntHolder->New(w);
+        array_args[5] := IntHolder->New(h);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_query", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_query(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const int format = APITools_GetIntValue(context, 2);
+                const int access = APITools_GetIntValue(context, 3);
+                const int w = APITools_GetIntValue(context, 4);
+                const int h = APITools_GetIntValue(context, 5);
+                const int return_value = SDL_QueryTexture(texture, format, access, w, h);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := IntHolder->New(r);
+        array_args[3] := IntHolder->New(g);
+        array_args[4] := IntHolder->New(b);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_set_color_mod", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_set_color_mod(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const int r = APITools_GetIntValue(context, 2);
+                const int g = APITools_GetIntValue(context, 3);
+                const int b = APITools_GetIntValue(context, 4);
+                const int return_value = SDL_SetTextureColorMod(texture, r, g, b);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetColorMod(r : Int, g : Int, b : Int) ~ Int {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := IntHolder->New(r);
+        array_args[3] := IntHolder->New(g);
+        array_args[4] := IntHolder->New(b);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_get_color_mod", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_get_color_mod(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const int r = APITools_GetIntValue(context, 2);
+                const int g = APITools_GetIntValue(context, 3);
+                const int b = APITools_GetIntValue(context, 4);
+                const int return_value = SDL_GetTextureColorMod(texture, r, g, b);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetAlphaMod(alpha : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := IntHolder->New(alpha);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_set_alpha_mod", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_set_alpha_mod(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const int alpha = APITools_GetIntValue(context, 2);
+                const int return_value = SDL_SetTextureAlphaMod(texture, alpha);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetAlphaMod(alpha : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := IntHolder->New(alpha);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_get_alpha_mod", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_get_alpha_mod(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const int alpha = APITools_GetIntValue(context, 2);
+                const int return_value = SDL_GetTextureAlphaMod(texture, alpha);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := blendMode;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_set_blend_mode", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_set_blend_mode(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const long* blendMode = (long*)APITools_GetObjectValue(context, 2);
+                const int return_value = SDL_SetTextureBlendMode(texture, blendMode);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetBlendMode(blendMode : BlendMode) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := blendMode;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_get_blend_mode", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_get_blend_mode(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const long* blendMode = (long*)APITools_GetObjectValue(context, 2);
+                const int return_value = SDL_GetTextureBlendMode(texture, blendMode);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Update(rect : Rect, pixels : Int, pitch : Int) ~ Int {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := rect;
+        array_args[4] := IntHolder->New(pitch);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_update", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_update(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const long* rect = (long*)APITools_GetObjectValue(context, 2);
+                const int pitch = APITools_GetIntValue(context, 4);
+                const int return_value = SDL_UpdateTexture(texture, rect, pixels, pitch);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+************************
+method : public : UpdateYUV(rect : Rect, Yplane : Int, Ypitch : Int, Uplane : Int, Upitch : Int, Vplane : Int, Vpitch : Int) ~ Int {
+        array_args := Base->New[9];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(@texture);
+        array_args[2] := rect;
+        array_args[3] := IntHolder->New(Yplane);
+        array_args[4] := IntHolder->New(Ypitch);
+        array_args[5] := IntHolder->New(Uplane);
+        array_args[6] := IntHolder->New(Upitch);
+        array_args[7] := IntHolder->New(Vplane);
+        array_args[8] := IntHolder->New(Vpitch);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_updateyuv", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_updateyuv(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 1);
+                const long* rect = (long*)APITools_GetObjectValue(context, 2);
+                const int Yplane = APITools_GetIntValue(context, 3);
+                const int Ypitch = APITools_GetIntValue(context, 4);
+                const int Uplane = APITools_GetIntValue(context, 5);
+                const int Upitch = APITools_GetIntValue(context, 6);
+                const int Vplane = APITools_GetIntValue(context, 7);
+                const int Vpitch = APITools_GetIntValue(context, 8);
+                const int return_value = SDL_UpdateYUVTexture(texture, rect, Yplane, Ypitch, Uplane, Upitch, Vplane, Vpitch);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Unlock() ~ Nil {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New(@texture);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_unlock", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_unlock(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 0);
+                SDL_UnlockTexture(texture);
+        }
+
+---
+
+method : public : Destroy() ~ Nil {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New(@texture);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_texture_destroy", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_texture_destroy(VMContext& context) {
+                SDL_Texture* texture = (Texture*)APITools_GetIntValue(context, 0);
+                SDL_DestroyTexture(texture);
+        }
+

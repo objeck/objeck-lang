@@ -1,0 +1,33 @@
+bundle Default {
+	class FindPrime {
+		function : Main(args : System.String[]) ~ Nil {
+#			Run(400); 
+			Run(4000000); 
+		}
+
+#		function : Run(topCandidate : Int) ~ Nil {
+		function : native : Run(topCandidate : Int) ~ Nil {
+			candidate : Int := 2;
+			while(candidate <= topCandidate) {
+				trialDivisor : Int := 2;
+				prime : Int := 1;
+				
+				found : Bool := true;
+				while(trialDivisor * trialDivisor <= candidate & found) {
+					if(candidate % trialDivisor = 0) {
+						prime := 0;
+						found := false;
+					}
+					else {
+						trialDivisor := trialDivisor + 1;
+					};
+				};
+				
+				if(found) {
+					candidate->PrintLine();
+				};
+				candidate := candidate + 1;
+			};
+		}
+	}
+}

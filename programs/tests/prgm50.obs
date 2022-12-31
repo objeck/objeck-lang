@@ -1,0 +1,24 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {		
+			(3 + One())->PrintLine();		
+#			(3 * Two(true))->PrintLine();		
+		}
+
+		function : One() ~ Int {
+			return 1;
+		}
+
+		function : Two(v : Bool) ~ Int {
+			if(v)  {
+				return 2;
+			};
+
+			return 3;
+		}
+	}
+}

@@ -1,0 +1,10 @@
+class Test {
+	foo : Collection.Generic.Vector<Abc>;
+	
+	New() {
+		foo := Collection.Generic.Vector->New()<Abc>;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+	}
+}

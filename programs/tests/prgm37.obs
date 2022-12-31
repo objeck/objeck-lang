@@ -1,0 +1,95 @@
+# R. Hollines
+# AA binary balanced use tree
+
+use System;
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run(args);
+			"Fin"->PrintLine();
+		}
+		
+#		function : native : Run() ~ Nil {
+		function : Run(args : System.String[]) ~ Nil {
+#~
+			tree : Map := Map->New();
+			s : System.String := System.String->New("Boxer");
+			tree->Insert(s->As(System.Compare) ~ 
+				IntHolder->New(23)->As(System.Base));
+
+			s := System.String->New("Anderson");
+			tree->Insert(s->As(System.Compare),
+				IntHolder->New(13)->As(System.Base));
+
+			s := System.String->New("Pug");
+			tree->Insert(s->As(System.Compare),
+				IntHolder->New(7)->As(System.Base));
+
+			s := System.String->New("Boston");
+			tree->Insert(s->As(System.Compare),
+				IntHolder->New(33)->As(System.Base));
+
+			s := System.String->New("Bangel");
+			tree->Insert(s->As(System.Compare),
+				IntHolder->New(4)->As(System.Base));
+
+			s := System.String->New(args[0]);
+			tree->Insert(s->As(System.Compare),
+				IntHolder->New(11)->As(System.Base));
+~#
+
+			tree : Map := Map->New();
+			for(i : Int := 0; i < 1000; i := i + 1;) {
+				v : IntHolder := IntHolder->New(i);
+				s : System.String := System.String->New("Pug-");
+				s->Append((i + 2)->ToString()->ToCharArray());
+				tree->Insert(v->As(System.Compare), s->As(System.Base));
+			};
+
+			f : IntHolder := IntHolder->New(5);
+			s : System.String := tree->Find(f->As(System.Compare));
+			if(s <> Nil) {
+				s->PrintLine();
+			};
+			
+			v : IntHolder := IntHolder->New(10);
+			tree->Remove(v->As(System.Compare));
+			
+			v := IntHolder->New(5);
+			tree->Remove(v->As(System.Compare));
+			
+			v := IntHolder->New(55);
+			tree->Remove(v->As(System.Compare));
+
+			vv : Vector := tree->GetKeys();
+			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
+				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
+			};
+			"---------------------"->PrintLine();
+
+
+			ss := StringMap->New();
+			ss->Insert("Trend", "Trend"->As(Base));
+			ss->Insert("Anderson", "Anderson"->As(Base));
+			ss->Insert("Zen", "Zen"->As(Base));
+			ss->Insert("Morph", "Morph"->As(Base));
+			ss->Insert("Boxer", "Boxer"->As(Base));
+			ss->Insert("And", "And"->As(Base));
+
+			x := ss->GetValues();
+			each(i : x) {
+				y := x->Get(i)->As(String);
+				y->PrintLine();
+			};
+#~
+			vv := tree->GetValues();
+			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
+				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
+			};		
+			vv->Size()->PrintLine();
+~#
+		}
+	}
+}

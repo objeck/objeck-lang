@@ -1,0 +1,16 @@
+﻿use System.IO.Net;
+
+class SSLSocket {
+	function : Main(args : String[]) ~ Nil {
+		socket := TCPSecureSocket->New("www.google.com", 443);
+		if(socket->IsOpen()) {
+			socket->WriteString("GET / HTTP/1.1\nHost:google.com\nUser Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)\nConnection: Close\n\n");
+			line := socket->ReadString();
+			while(line <> Nil & line->Size() > 0) {
+				line->PrintLine();	
+				line := socket->ReadString();
+			};
+			socket->Close();
+		};
+	}
+}

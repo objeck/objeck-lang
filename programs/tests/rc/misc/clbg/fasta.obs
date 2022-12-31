@@ -1,0 +1,216 @@
+#~
+ The Great Computer Language Shootout 
+ http://shootout.alioth.debian.org/
+ 
+ modified by Randy Hollines
+~#
+
+use System.IO;
+
+bundle Default {
+	class Fasta {
+		IM : static : Int;
+		IA : static : Int;
+		IC : static : Int;
+		last : static : Int;
+		
+		LINE_LENGTH : static : Int;
+		ALU : static : String;
+		ALUB : static : Char[];
+		IUB : static : Frequency[];
+		HomoSapiens : static : Frequency[];
+
+		BUFFER_SIZE : static : Int;
+		index : static : Int;
+		bbuffer : static : Char[];
+
+		function : Init() ~ Nil {
+			IM := 139968;
+			IA := 3877;
+			IC := 29573;
+			last := 42;
+			LINE_LENGTH := 60;
+			
+			ALU := "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
+			ALUB := ALU->ToCharArray();
+			
+			IUB := Frequency->New[15];		
+			IUB[0] := Frequency->New('a', 0.27);
+			IUB[1] := Frequency->New('c', 0.12);
+			IUB[2] := Frequency->New('g', 0.12);
+			IUB[3] := Frequency->New('t', 0.27);
+			
+			IUB[4] := Frequency->New('B', 0.02);
+			IUB[5] := Frequency->New('D', 0.02);
+			IUB[6] := Frequency->New('H', 0.02);
+			IUB[7] := Frequency->New('K', 0.02);
+			IUB[8] := Frequency->New('M', 0.02);
+			IUB[9] := Frequency->New('N', 0.02);
+			IUB[10] := Frequency->New('R', 0.02);
+			IUB[11] := Frequency->New('S', 0.02);
+			IUB[12] := Frequency->New('V', 0.02);
+			IUB[13] := Frequency->New('W', 0.02);
+			IUB[14] := Frequency->New('Y', 0.02);
+
+			HomoSapiens := Frequency->New[4];
+			HomoSapiens[0] := Frequency->New('a', 0.3029549426680d);
+			HomoSapiens[1] := Frequency->New('c', 0.1979883004921d);
+			HomoSapiens[2] := Frequency->New('g', 0.1975473066391d);
+			HomoSapiens[3] := Frequency->New('t', 0.3015094502008d);
+
+			BUFFER_SIZE := 1024;
+			index := 0;
+			bbuffer := Char->New[BUFFER_SIZE];
+		}
+
+		# pseudo-random number generator
+		function : native : Random(max : Float) ~ Float {
+			last := (last * IA + IC) % IM;
+			return max * last / IM;
+		}
+
+		function : native : MakeCumulative(a : Frequency[]) ~ Nil {
+			cp := 0.0;
+			each(i : a) {
+				cp += a[i]->GetP();
+				a[i]->SetP(cp);
+			};
+		}
+		            
+		# naive
+		function : native : SelectRandom(a : Frequency[]) ~ Char {
+			len := a->Size();
+			r := Random(1.0);
+			for(i := 0; i < len; i+=1;) {
+				if (r < a[i]->GetP()) {
+					return a[i]->GetC();
+				};
+			};
+	
+			return a[len - 1]->GetC();
+		}
+
+		function : native : MakeRandomFasta(id :String, desc : String, a : Frequency[], n : Int) ~ Nil {
+			index := 0;
+			m := 0;
+
+			descStr := ">";
+			descStr->Append(id);
+			descStr->Append(" ");
+			descStr->Append(desc);
+			descStr->Append('\n');
+
+			descStr->Print();
+			while (n > 0) {
+				if (n < LINE_LENGTH) {
+					m := n;
+				}  
+				else {
+					m := LINE_LENGTH;
+				};
+
+				if(BUFFER_SIZE - index < m) {
+					Console->WriteBuffer(0, index, bbuffer);
+					index := 0;
+				};
+
+				for (i := 0; i < m; i+=1;) {
+					bbuffer[index] := SelectRandom(a);
+					index+=1;
+				};
+				bbuffer[index] := '\n';
+				index+=1;
+				n -= LINE_LENGTH;
+			};
+			
+			if(index <> 0) {
+				Console->WriteBuffer(0, index, bbuffer);
+			};	
+		}
+
+		function : native : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
+			index := 0;
+			m := 0;
+			k := 0;
+			kn := ALUB->Size();
+			
+			descStr := ">";
+			descStr->Append(id);
+			descStr->Append(" ");
+			descStr->Append(desc);
+			descStr->Append('\n');
+			descStr->Print();
+
+			while (n > 0) {
+				if (n < LINE_LENGTH) {
+					m := n; 
+				}
+				else {
+					m := LINE_LENGTH;
+				};
+
+				if(BUFFER_SIZE - index < m) {
+					Console->WriteBuffer(0, index, bbuffer);
+					index := 0;
+				};
+
+				for (i := 0; i < m; i+=1;) {
+					if(k = kn) {
+						k := 0;
+					};
+					bbuffer[index] := ALUB[k];
+					index+=1;
+					k+=1;
+				};
+				bbuffer[index] := '\n';
+				index+=1;
+				n -= LINE_LENGTH;
+			};
+			
+			if(index <> 0) {
+				Console->WriteBuffer(0, index, bbuffer);
+			};
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			Init();
+			MakeCumulative(HomoSapiens);
+			MakeCumulative(IUB);
+
+			n := 25000000;
+			if (args->Size() > 0) {
+				n := args[0]->ToInt();
+			};
+			
+			MakeRepeatFasta("ONE", "Homo sapiens alu", ALU, n * 2);
+			MakeRandomFasta("TWO", "IUB ambiguity codes", IUB, n * 3);
+			MakeRandomFasta("THREE", "Homo sapiens frequency", HomoSapiens, n * 5);
+		}
+	}
+	
+	class Frequency {
+		@c : Char;
+		@p : Float;
+
+		New(c : Char, p : Float) {
+			@c := c;
+			@p := p;
+		}
+
+		method : public : GetP() ~ Float {
+			return @p;
+		}
+
+		method : public : SetP(p : Float) ~ Nil {
+			@p := p;
+		}
+
+		method : public : GetC() ~ Char {
+			return @c;
+		}
+
+		method : public : SetC(c : Char) ~ Nil {
+			@c := c;
+		}
+	}
+}

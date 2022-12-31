@@ -1,0 +1,20 @@
+use System.IO;
+use ODBC;
+
+bundle Default {
+	class SqlTest {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
+			conn := Connection->New("test", "root", "");	
+			if(conn->IsOpen()) {
+				sql := "INSERT INTO test.class (name, description, credits) VALUES ('cs-310', 'compiler design', 5)";
+				count := conn->Update(sql);
+				IO.Console->Print(count)->PrintLine(" row(s) updated");
+				conn->Close();
+			};
+		}
+	}
+}
