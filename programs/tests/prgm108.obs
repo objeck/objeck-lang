@@ -1,0 +1,11 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Foo()->PrintLine();
+	}
+
+	function : Foo() ~ Int {
+#		return IntHolder->New(13);
+		h := IntHolder->New(13);
+		return h;
+	}
+}

@@ -1,0 +1,724 @@
+#~
+Objeck HTML code documentation system
+Copyright (c) 2014, 2019 Randy Hollines
+~#
+
+use System.IO.Filesystem;
+use Collection.Generic;
+
+class HtmlMaker {
+	@parser : SnippetParser;
+	@css_path : String;
+	@version : String;
+	@bundle_block : BundleSnippet;
+	
+	#~
+	DOC ME
+	~#
+	New(args : String[]) {
+		@css_path := args[0];
+		@version := args[1];
+		@parser := SnippetParser->New(args);
+	}
+	
+	#~
+	DOC ME
+	~#
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() > 2) {
+			HtmlMaker->New(args)->Make();
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : Make() ~ Bool {
+		if(<>@parser->Parse()) {
+			"--- Unable to parse source file ---"->ErrorLine();
+			return false;
+		};
+		
+		class_css_path := String->New(@css_path);
+		class_css_path += '/';
+		class_css_path += "class_header.dat";
+		class_header := FileReader->ReadFile(class_css_path);
+		if(class_header = Nil) {
+			"--- Unable load header CSS template ---"->ErrorLine();
+			return false;
+		};
+		
+		classes_css_path := String->New(@css_path);
+		classes_css_path += '/';
+		classes_css_path += "classes_header.dat";
+		classes_header := FileReader->ReadFile(classes_css_path);
+		if(classes_header = Nil) {
+			"--- Unable load classes CSS template ---"->ErrorLine();
+			return false;
+		};
+		
+		bundle_css_path := String->New(@css_path);
+		bundle_css_path += '/';
+		bundle_css_path += "bundles_header.dat";
+		bundle_header := FileReader->ReadFile(bundle_css_path);
+		if(bundle_header = Nil) {
+			"--- Unable load bundle CSS template ---"->ErrorLine();
+			return false;
+		};
+
+		title_css_path := String->New(@css_path);
+		title_css_path += '/';
+		title_css_path += "title_header.dat";
+		title_header := FileReader->ReadFile(title_css_path);
+		if(title_header = Nil) {
+			"--- Unable load title CSS template ---"->ErrorLine();
+			return false;
+		};
+
+		## create class list doc
+		CreateClassIndexHtml(@parser->GetBundles(), classes_header);
+		
+		## create bundle doc
+		CreateBundleIndexHtml(@parser->GetBundles(), title_header, bundle_header);
+	
+		## bundles
+		bundles := @parser->GetBundles();
+		bundle_keys := bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			@bundle_block := bundles->Find(bundle_keys->Get(i));
+			##  classes
+			classes := @bundle_block->GetClasses();
+			class_keys := classes->GetKeys()<String>;
+			each(j : class_keys) {
+				class_block := classes->Find(class_keys->Get(j));
+				if(class_block <> Nil) {
+					CreateClassHtml(class_block, class_header);
+				};
+			};
+			
+			##  enums
+			enums := @bundle_block->GetEnums();
+			enum_keys := enums->GetKeys()<String>;
+			each(j : enum_keys) {
+				##  enum
+				enum_block := enums->Find(enum_keys->Get(j));
+				if(enum_block <> Nil) {
+					CreateEnumHtml(enum_block, class_header);
+				};
+			};			
+		};
+		
+		return true;
+	}
+
+	#~
+	DOC ME
+	~#
+	method : CreateBundleIndexHtml(bundles : Map<String, BundleSnippet>, title_header : String, class_header : String) ~ Nil {		
+		temp := "";
+		each(i : @version) {
+			c := @version->Get(i);
+			if(c->IsDigit()) {
+				temp += c;
+			};
+		};
+		file_name := "../html/version.txt";
+		out := FileWriter->New(file_name);
+		out->WriteString(temp);
+		out->Close();
+
+		title := String->New(title_header);
+		title += "<div class='title'><h1>Objeck</h1><strong>a programming language</strong>";
+		title += "<p><small>v{$@version}</small></div>";
+		title += "</body></html>";
+		file_name := "../html/title.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(title);
+		out->Close();
+
+		html := String->New(class_header);
+		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
+		bundle_keys := bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			bundle_block := bundles->Find(bundle_keys->Get(i));
+			if(bundle_block->GetDesc() <> Nil) {
+				html += "<tr><td>@bundle_name</td><td>@bundle_desc</td></tr>";
+				sec_a := "<a href='classes.html#";
+				sec_a += bundle_block->GetName()->ToLower();
+				sec_a += "' target='nav'>";
+				sec_a += bundle_block->GetName();
+				sec_a += "</a>";
+				html := html->ReplaceAll("@bundle_name", sec_a);
+				html := html->ReplaceAll("@bundle_desc", bundle_block->GetDesc());
+			};
+		};
+		html += "</table>";
+
+		html += "</body></html>";
+		file_name := "../html/bundles.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateClassIndexHtml(bundles : Map<String, BundleSnippet>, header : String) ~ Nil {
+		html := String->New(header);
+		
+		##  bundles
+		bundle_keys := bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			bundle_block := bundles->Find(bundle_keys->Get(i));
+			##  class description
+			if(bundle_block->IsParsed()) {
+				sec_a := "<a id='@short_link'><strong>@bundle_name</strong>";
+				sec_a := sec_a->ReplaceAll("@bundle_name", bundle_block->GetName());
+				sec_a := sec_a->ReplaceAll("@short_link", bundle_block->GetName()->ToLower());
+				html += sec_a;
+				
+				sec_b := "<ul>";
+				classes := bundle_block->GetClasses();
+				class_keys := classes->GetKeys()<String>;			
+				each(j : class_keys) {
+					##  class
+					class_block := classes->Find(class_keys->Get(j));
+					if(class_block->IsParsed()) {
+						sec_b += "<li><a href='";
+						
+						file_name := class_block->GetBundleName()->ToLower();
+						file_name += '-';
+						file_name += class_block->GetFileName()->ToLower();
+						link_name := String->New(file_name)->ReplaceAll("&gt;", "$");;
+						link_name += ".html";
+
+						sec_b->Append(link_name->ToLower());
+						sec_b += "' target='main'>";
+						if(class_block->IsInterface()) {
+							sec_b->Append("<i>");
+							sec_b->Append(class_block->GetName());
+							sec_b->Append("</i>");
+						}
+						else {
+							sec_b->Append(class_block->GetName());
+						};
+						sec_b += "</a></li>";
+					};
+				};
+				
+				enums := bundle_block->GetEnums();
+				enum_keys := enums->GetKeys()<String>;
+				each(j : enum_keys) {
+					##  enum
+					enum_block := enums->Find(enum_keys->Get(j));
+					if(enum_block <> Nil) {
+						sec_b += "<li><a href='";
+						
+						file_name := enum_block->GetBundleName()->ToLower();
+						file_name += '-';
+						file_name += enum_block->GetName()->ToLower();
+						link_name := String->New(file_name)->ReplaceAll("&gt;", "$");
+						link_name += ".html";
+
+						sec_b->Append(link_name->ToLower());
+						sec_b += "' target='main'>";
+						sec_b->Append(enum_block->GetName());
+						sec_b->Append(" (#)");
+						sec_b += "</a></li>";
+						
+					};
+				};
+				
+				sec_b += "</ul>";			
+				html += sec_b;
+			};
+		};
+		
+		html += "</body></html>";
+		file_name := "../html/classes.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();		
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateClassHtml(class_block : ClassSnippet, header : String) ~ Nil {
+		##  class description
+		html := String->New(header);		
+		html += "<a href='index.html' target='_parent'>All Bundles</a><hr/>";
+		
+		sec_b : String;
+		if(class_block->IsInterface()) {
+			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+		}
+		else {
+			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+		};
+		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
+		sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
+		html += sec_b;
+
+		sec_h := "";
+		from_name := class_block->GetFrom();
+		implemented_names := class_block->GetImplemented();
+		
+		if(class_block->IsInterface()) {
+			sec_h += "<p><i>Interface</i></p>";
+		};
+		
+		if(from_name <> Nil) {
+			from_name := GetTypeLink(from_name);
+			sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
+			sec_h := sec_h->ReplaceAll("@parent_class_desc", from_name);
+		};
+		
+		if(implemented_names->Size() > 0) {
+			sec_h += "<p>Implements: <i>";
+			each(j : implemented_names) {
+				implemented_name := GetTypeLink(implemented_names->Get(j));
+				sec_h += implemented_name;
+				if(j + 1 < implemented_names->Size()) {
+					sec_h += ", ";
+				};
+			};
+			sec_h += "</i></p>";
+		};
+		html += sec_h;					
+
+		##  list of operations
+		sec_c := "";					
+		func_names := class_block->GetFunctionNames();
+		if(func_names->Size() > 0) {
+			sec_c += "<strong>Operations</strong><ul>";
+
+			each(j : func_names) {
+				short_name := func_names->Get(j);
+				if(short_name->Equals("New")) {
+					sec_c += "<li><a href='#";
+					
+					link_name := String->New(class_block->GetShortName());
+					link_name += '-';
+					link_name += short_name;
+
+					sec_c->Append(link_name->ToLower());
+					sec_c += "'>";
+					sec_c->Append(short_name);
+					sec_c += "</a></li>";
+				};
+			};
+
+			each(j : func_names) {
+				short_name := func_names->Get(j);
+				if(<>short_name->Equals("New")) {
+					sec_c += "<li><a href='#";
+
+					link_name := String->New(class_block->GetShortName());
+					link_name += '-';
+					link_name += short_name;
+
+					sec_c->Append(link_name->ToLower());
+					sec_c += "'>";
+					sec_c->Append(short_name);
+					sec_c += "</a></li>";
+				};
+			};
+			sec_c += "</ul><hr/>";
+		};
+		html += sec_c;
+		
+		##  detailed operations
+		FormatFunctions(class_block->GetShortName(), "New", class_block->GetFunctions("New"), html);
+		each(j : func_names) {
+			short_name := func_names->Get(j);
+			if(<>short_name->Equals("New")) {
+				FormatFunctions(class_block->GetShortName(), short_name, class_block->GetFunctions(short_name), html);
+			};
+		};
+		html += "</body></html>";
+	
+		file_name := "../html/";
+		file_name += class_block->GetBundleName()->ToLower();
+		file_name += '-';
+		file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+		file_name += ".html";
+		
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, header : String) ~ Nil {
+		##  class description
+		html := String->New(header);
+		sec_b := "<h2>@enum_name</h2><p>@enum_desc</p>";
+		sec_b := sec_b->ReplaceAll("@enum_name", enum_block->GetName());
+		sec_b := sec_b->ReplaceAll("@enum_desc", enum_block->GetDesc());
+		html += sec_b;
+
+		sec_c := "<strong>Items</strong><ul>";		
+		items := enum_block->GetItems();
+		each(j : items) {
+			item := items->Get(j);
+			sec_c += "<li>";
+			sec_c += item;
+			if(j = 0 & enum_block->GetId() <> Nil) {
+				sec_c += " = ";
+				sec_c += enum_block->GetId();
+			};
+			sec_c += "</li>";
+		};
+		sec_c += "</ul>";
+		html += sec_c;
+	
+		html += "</body></html>";
+	
+		file_name := "../html/";
+		file_name += enum_block->GetBundleName()->ToLower();
+		file_name += '-';
+		file_name += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
+		file_name += ".html";
+		
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+
+	method : GetGenericLink(start : Int, type_name : String) ~ String {
+		cls_name := type_name->SubString(start);			
+		start += 4;
+		end := type_name->FindLast('&');
+		generic_name := type_name->SubString(start, end - start);
+
+		# process class
+		file_name := "";
+		class_block := GetClassBlock(cls_name);
+		if(class_block <> Nil) {
+			file_name += "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+			file_name += ".html' target='main'>";
+			file_name += cls_name;
+			file_name += "</a>";				
+		}
+		else {
+			file_name += cls_name;
+		};
+
+		file_name += "&lt;";		
+		GetLinkParams(generic_name, file_name);
+		file_name += "&gt;";
+
+		return file_name;
+	}
+
+	
+	method : GetFunctionLink(type_name : String) ~ String {
+		file_name := "(";
+		
+		end := type_name->Find(')');
+		cls_names := type_name->SubString(1, end - 1);
+		if(cls_names = Nil) {
+			return type_name;
+		};
+
+		GetLinkParams(cls_names, file_name);
+
+		end += 2;
+		file_name += ")~";
+		
+		rtrn_name := type_name->SubString(end, type_name->Size() - end);
+		GetLink(rtrn_name, file_name);
+
+		return file_name;
+	}
+	
+	method : GetLinkParams(params_name : String, file_name : String) ~ Nil {
+		# procsss generics
+		generic_names := params_name->Split(",");
+		if(generic_names->Size() > 0) {
+			is_inner : Bool;
+			each(i : generic_names) {
+				name := generic_names[i];
+				inner_generic_names := name->Split("&lt;");
+				if(inner_generic_names->Size() > 0) {
+					is_inner := true;
+					each(j : inner_generic_names) {
+						inner_generic_name := inner_generic_names[j];
+						GetLink(inner_generic_name, file_name);
+						# TODO: fix for more nesting...
+						if(j = 0) {
+							file_name += "&lt;";
+						}
+						else {
+							file_name += ',';
+						};
+					};
+				}
+				else {
+					name := name->ReplaceAll("&gt;", "");
+					GetLink(name, file_name);
+					file_name += ',';
+				};
+			};
+
+			file_name->Pop();
+			if(is_inner) {
+				file_name += "&gt;";
+			};
+		}
+		else {
+			# procsss generics
+			generic_names := params_name->Split("&lt;");
+			if(generic_names->Size() > 0) {
+				each(i : generic_names) {
+					name := generic_names[i];
+					GetLink(name, file_name);
+					file_name += ',';
+				};
+				file_name->Pop();
+			}
+			else {
+				class_block := GetClassBlock(params_name);
+				if(class_block <> Nil) {
+					file_name += "<a href='";
+					file_name += class_block->GetBundleName()->ToLower();
+					file_name += '-';
+					file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+					file_name += ".html' target='main'>";
+					file_name += params_name;
+					file_name += "</a>";				
+				}
+				else {
+					file_name += params_name;
+				};
+			};
+		};
+	}
+
+
+	method : GetLink(name : String, file_name : String) ~ Nil {
+		class_block := GetClassBlock(name);
+		if(class_block <> Nil) {
+			file_name += "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+			file_name += ".html' target='main'>";
+			file_name += name;
+			file_name += "</a>";				
+		}
+		else {
+			file_name += name;
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : GetTypeLink(type_name : String) ~ String {
+		class_block : ClassSnippet;
+				
+		index := type_name->FindLast('.');
+		if(index > -1) {
+			index += 1;
+			type_name := type_name->SubString(index, type_name->Size() - index);
+		};
+
+		array : Bool; # count all returns
+		array_count : Int;
+		index := type_name->Find('[');
+		full_type_name := String->New(type_name);
+		if(index > -1) {
+			array_count := type_name->Count(',');
+			type_name := type_name->SubString(index);
+			array := true;
+		};
+
+		start := type_name->Find('&');
+		if(start > - 1 & type_name->Find('-') < 0) {
+			value := GetGenericLink(start, type_name);
+			if(array_count > 0) {
+				value += '[';
+				for(i := 1; i < array_count; i +=1;) {
+					value += ',';
+				};
+				value += ']';
+			};
+
+			return value;
+		};
+
+		if(type_name->Has('(')) {
+			value := GetFunctionLink(type_name);
+			if(array_count > 0) {
+				value += '[';
+				for(i := 1; i < array_count; i +=1;) {
+					value += ',';
+				};
+				value += ']';
+			};
+
+			return value;
+		};
+
+		class_block := GetClassBlock(type_name);
+		if(class_block <> Nil) {
+			file_name := "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+			file_name += ".html' target='main'>";
+			file_name += full_type_name;
+			file_name += "</a>";
+
+			return file_name;
+		}
+		else {
+			enum_block := GetBundleEnum(@bundle_block->GetName(), type_name);
+			if(enum_block <> Nil) {
+				file_name := "<a href='";
+				file_name += enum_block->GetBundleName()->ToLower();
+				file_name += '-';
+				file_name += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
+				file_name += ".html' target='main'>";
+				file_name += full_type_name;
+				file_name += "</a>";
+				
+				return file_name;
+			};
+		};
+
+		return type_name;
+	}
+
+	method : GetClassBlock(type_name : String) ~ ClassSnippet {
+		class_block := GetBundleClass(@bundle_block->GetName(), type_name);
+		
+		if(class_block = Nil) {		
+			class_block := GetBundleClass("System", type_name);
+			if(class_block = Nil) {	
+				class_block := GetBundleClass("System.Introspection", type_name);
+				if(class_block = Nil) {	
+					class_block := GetBundleClass("System.Date", type_name);
+					if(class_block = Nil) {	
+						class_block := GetBundleClass("Collection.Generic", type_name);
+					};
+				};
+			};
+		};
+
+		uses := @bundle_block->GetUses();
+		for(i := 0; class_block = Nil & i < uses->Size(); i += 1;) {
+			use_name := uses->Get(i);
+			if(class_block = Nil) {		
+				class_block := GetBundleClass(use_name, type_name);
+			};
+		};
+
+		return class_block;
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : GetBundleClass(bundle_name : String, class_name : String) ~ ClassSnippet {
+		bundles := @parser->GetBundles()<String, BundleSnippet>;
+		lookup_bundle := bundles->Find(bundle_name);
+		if(lookup_bundle <> Nil) {
+			return lookup_bundle->GetClasses()->Find(class_name);
+		}
+		else {
+			return Nil;
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumConstSnippet {
+		bundles := @parser->GetBundles()<String, BundleSnippet>;
+		lookup_bundle := bundles->Find(bundle_name);
+		if(lookup_bundle <> Nil) {
+			return lookup_bundle->GetEnums()->Find(enum_name);
+		}
+		else {
+			return Nil;
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : FormatFunctions(class_name : String, short_name : String, funcs : Vector<FuncSnippet>, html : String) ~ Nil {
+		if(funcs <> Nil) {
+			sec_d := "<h3>@short_name</h3><a id='@short_link'></a>";
+			link_name := String->New(class_name);
+			link_name += '-';
+			link_name += short_name;
+
+			sec_d := sec_d->ReplaceAll("@short_name", short_name);
+			sec_d := sec_d->ReplaceAll("@short_link", link_name->ToLower());
+			html += sec_d;
+
+			each(k : funcs) {
+				func := funcs->Get(k)->As(FuncSnippet);
+				sec_e := "<p><strong>@func_desc</strong></p><code>@func_signature</code>";
+				sec_e := sec_e->ReplaceAll("@func_signature", func->GetSignature());
+				sec_e := sec_e->ReplaceAll("@func_desc", func->GetDesc());
+				html += sec_e;
+
+				param_tags := func->GetParamTags();
+				params := func->GetParams();
+				sec_f := "";
+				if(params->Size() > 0) {
+					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
+					sec_f += "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
+					sec_f += "Description</th></tr>";
+			
+					each(l : params) {
+						param := params->Get(l)->As(SnippetType);
+						param_tag := param_tags->Find(param->GetName())->As(SnippetTag);
+						if(param_tag <> Nil & <>param_tag->IsIgnore()) {
+							sec_f += "<tr><td>@param_name</td><td>@param_type</td><td>@param_desc</td></tr>";
+							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
+							sec_f := sec_f->ReplaceAll("@param_type", GetTypeLink(param->GetTypeName()));
+							sec_f := sec_f->ReplaceAll("@param_desc", param_tag->GetDesc());
+						}
+						else if(param_tag = Nil) {
+							func_name := func->GetSignature();
+							"*** Missing parameter: class='{$class_name}' function='{$func_name}' ***"->PrintLine();
+						};
+					};
+					sec_f += "</table>";
+				};
+				html += sec_f;
+
+				## TODO:
+				sec_g := "";
+				
+				if(params->Size() > 0 & func->GetReturnTag() <> Nil) {
+					sec_g += "<br/>";
+				};
+				
+				if(func->GetReturnTag() <> Nil) {
+					sec_g += "<div style='padding: 5px 10px; font-size: 13px'>Return</div>";
+					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
+					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
+					if(func->GetReturnType() <> Nil) {
+						sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
+					};
+					sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());
+					sec_g += "<br/>";
+				};
+				html += sec_g;
+			};
+		};
+	}
+}

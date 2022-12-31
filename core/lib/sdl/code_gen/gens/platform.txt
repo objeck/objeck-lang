@@ -1,0 +1,18 @@
+method : public : Get() ~ String {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_platform_get", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_platform_get(VMContext& context) {
+		const wstring return_value = SDL_GetPlatform();
+		APITools_SetStringValue(context, 0, return_value);
+	}
+
+---

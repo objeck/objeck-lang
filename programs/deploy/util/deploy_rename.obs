@@ -1,0 +1,45 @@
+class DeployUtil {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2 ) {
+			dir_path := args[0];
+			if(<>dir_path->EndsWith(System.IO.Filesystem.Directory->GetSlash())) {
+				dir_path += System.IO.Filesystem.Directory->GetSlash();
+			};
+			version := args[1];
+
+			if(version->Count('.') = 2 & System.IO.Filesystem.Directory->Exists(dir_path)) {
+				dir_files := System.IO.Filesystem.Directory->List(dir_path);
+				
+				count := 0;
+				"In directory: '{$dir_path}':\n---"->PrintLine();
+				each(i : dir_files) {
+					dir_filename := dir_files[i];
+					
+					match_str := "_0.0.0.";
+					search_index := dir_filename->Find(match_str);
+					if(<>search_index->IsNeg()) {
+						filename_start := dir_filename->SubString(search_index);
+						end_index := search_index + match_str->Size();
+						filename_end := dir_filename->SubString(end_index, dir_filename->Size() - end_index);
+						new_filename := filename_start + '_' + version + '.' + filename_end;
+
+						if(System.IO.Filesystem.File->Rename(dir_path + dir_filename, dir_path + new_filename)) {
+							"\tRenamed: '{$dir_filename}' to '{$new_filename}'"->PrintLine();
+							count += 1;
+						}
+						else {
+							">>> Error: Unable to rename: '{$dir_filename}' to '{$new_filename}' <<<"->PrintLine();
+						};
+					};
+				};
+				"---\n{$count} qualifying file(s) renamed"->PrintLine();
+			}
+			else {
+				">>> Error: Invalid dir_path='{$dir_path}' or version='{$version}' <<<"->ErrorLine();
+			};
+		}
+		else {
+			">>> Error: Missing parameters: dir, version <<<"->ErrorLine();
+		};
+	}
+}

@@ -1,0 +1,88 @@
+bundle Default {
+	interface Registration {
+		method : virtual : public : GetColor() ~ String;
+		method : virtual : public : GetMake() ~ String;
+		method : virtual : public : GetModel() ~ String;
+	}
+
+	enum EngineType {
+		Gas,
+		Hybrid,
+		Electric,
+		Warp
+	}
+	
+	class Vehicle {
+		@wheels : Int;
+		@color : String;
+		@engine_type : EngineType;
+	
+		New(wheels : Int, color : String, engine_type : EngineType) {
+			@wheels := wheels;	
+			@color := color;	
+			@engine_type := engine_type;
+		}
+
+		method : public : GetColor() ~ String {
+			return @color;
+		}
+
+		method : public : GetEngine() ~ EngineType {
+			return @engine_type;
+		}
+	}
+		
+	class StarShip from Vehicle implements Registration {
+		New() {
+			Parent(13, "Metal Fuschia", EngineType->Warp); 
+		}
+
+		method : public : GetMake() ~ String {
+			return "Excelsior";
+		}
+
+		method : public : GetModel() ~ String {
+			return "NX-2000";
+		}
+		
+		method : public : EchoDescription() ~ Nil {
+			"Partying with the Borg, they brought drinks!"->PrintLine();
+		}
+	}
+
+	class Pinto from Vehicle implements Registration {
+		New() {
+			Parent();
+		}
+
+		method : public : GetMake() ~ String {
+			return "Ford";
+		}
+
+		method : public : GetModel() ~ String {
+			return "Pinto";
+		}
+	}
+	
+	class VehicleTest {
+		function : Main(args : String[]) ~ Nil {
+			pinto := Pinto->New();
+			star_ship := StarShip->New();
+
+			type_of := pinto->TypeOf(Vehicle);
+			type_of->PrintLine();
+
+			type_of := star_ship->TypeOf(Vehicle);
+			type_of->PrintLine();
+
+			type_of := pinto->TypeOf(StarShip);
+			type_of->PrintLine();
+
+			registration := star_ship->As(Registration);
+			registration->GetMake()->PrintLine();
+			registration->GetColor()->PrintLine();
+			enterprise := registration->As(StarShip);
+			enterprise->EchoDescription();
+		}			
+	}
+}

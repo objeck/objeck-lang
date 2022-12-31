@@ -1,5 +1,0 @@
-class Test  {
-	function : Main(args : String[]) ~ Nil {
-		System.IO.Standard->Print("Hello")->Flush();
-	}
-}

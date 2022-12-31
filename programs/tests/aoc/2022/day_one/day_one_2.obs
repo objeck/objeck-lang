@@ -1,0 +1,34 @@
+class AoC {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			elves_total_calories := Collection.Generic.CompareVector->New()<IntHolder>;
+
+			elf_total_calories := 0;
+			reader := System.IO.Filesystem.FileReader->New(args[0]);
+
+			line := reader->ReadLine();
+			while(line <> Nil) {
+				if(line->IsEmpty()) {
+					
+					elves_total_calories->AddBack(elf_total_calories);
+					elf_total_calories := 0;
+				}
+				else {
+					elf_total_calories += line->ToInt();
+				};
+
+				line := reader->ReadLine();
+			};
+
+			elves_total_calories->Sort();
+			top_three_elves_total := 0;
+			for(i := elves_total_calories->Size() - 3; i < elves_total_calories->Size(); i += 1;) {
+				elf_total_calories := elves_total_calories->Get(i);
+				"Elf {$i}: {$elf_total_calories}"->PrintLine();
+				top_three_elves_total += elf_total_calories;
+			};
+			"---"->PrintLine();
+			top_three_elves_total->PrintLine();
+		};
+	}
+}

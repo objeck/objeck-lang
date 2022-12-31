@@ -1,0 +1,28 @@
+class Foo {
+	New() {}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		f := Foo();
+		b := Bar();
+		f += b;	
+#		f->Append(b);
+		f += b->Get(1);
+		f += 101;
+		f += ", ";
+		f += 1.33;
+		f->PrintLine();
+		b += "wft? ";
+		b += Foo->New();
+		b->PrintLine();
+	}
+
+	function : Foo() ~ String {
+		return "foo";
+	}
+
+	function : Bar() ~ String {
+		return "+bar";
+	}
+}

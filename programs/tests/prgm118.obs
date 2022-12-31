@@ -1,0 +1,16 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+#			value := "25000000"->ToInt();
+#			if(value <> 2500000) {
+
+			value := "2500"->ToInt();
+			if(value <> 2500) {
+				"not equal"->PrintLine();
+			}
+			else {
+				"equal"->PrintLine();
+			};
+		}
+	}
+}

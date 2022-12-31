@@ -1,0 +1,9 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Enemy {
+	enum Type {
+		RANGER
+	}
+}

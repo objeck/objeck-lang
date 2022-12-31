@@ -1,0 +1,53 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			ff : Float[,] := Float->New[2,3];
+			ff[0,2] := 3;
+			ff[1,2] := 34.50;
+		
+			Run(ff);
+		}
+		
+#		function : Run(ff : Float[,]) ~ Nil {
+		function : native : Run(ff : Float[,]) ~ Nil {
+#		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
+#		function : Run() ~ Nil {
+
+			c : Char[] := Char->New[10];		
+			b : Bool := false;
+			if(c[1] = '#') {
+				"true"->PrintLine();
+			}
+			else {
+				"false"->PrintLine();
+			};
+
+
+			y : System.String := System.String->New("22675");
+			x : Int := y->ToInt();
+			x->PrintLine();	
+
+			ss := Char->New[4];
+
+			ss[2]->PrintLine();
+			ss->PrintLine();
+			x->PrintLine();	
+
+			f : Float := 13.3;
+			a : Int := 34 / f;
+			a->PrintLine();		
+			ss[2]->PrintLine();
+			a->PrintLine();
+			(a + ss[2])->PrintLine(); 
+
+			ss := Char->New[4];		
+			ff[1,2]->PrintLine();
+			ss[3] := ff[0,2] * ff[1,2] - ff[0,0];
+			ff[1,2]->PrintLine();
+			ss->PrintLine();
+		
+			(3.3->As(Int) * 3.3->As(Int))->PrintLine();		
+		}
+	}
+}

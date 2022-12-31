@@ -52,10 +52,6 @@ del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs deploy_arm64\examples\
 xcopy /e ..\..\programs\deploy\media\*.png deploy_arm64\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav deploy_arm64\examples\media\
-xcopy /e ..\..\programs\doc\* deploy_arm64\examples\doc\
-xcopy /e ..\..\programs\tiny\* deploy_arm64\examples\tiny\
-del  /s /q ..\..\programs\tiny\*.obe
-del  /s /q ..\..\programs\tiny\*.e
 
 REM build and update docs
 mkdir deploy_arm64\doc 

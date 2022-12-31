@@ -1,0 +1,153 @@
+use Game.SDL2;
+use Game.Engine;
+
+class Bullet {
+	@bullet : static : ImageSprite;
+	@platform : static : Platform;
+	@game_map : static : Int[,];
+	
+	@x_rel_position : Int;
+	@y_rel_position : Int;
+	
+	@x_velocity : Int;
+	@y_velocity : Int;
+
+	@is_alive : Bool;
+	
+	function : Init(platform : Platform) ~ Nil {
+		@platform := platform;
+		@game_map := @platform->GetMap();
+		@bullet := @platform->GetEngine()->AddImageSprite("images/bullet.png");
+	}
+
+	New(x : Int, y : Int, x_velocity : Int) {
+		@x_rel_position := x;
+		@y_rel_position := y;
+		@x_velocity := x_velocity;
+
+		@is_alive := true;
+	}
+
+	method : public : IsAlive() ~ Bool {
+		return @is_alive;
+	}
+
+	method : public : native : HandleEvents(enemy : Enemy, player : Player) ~ Nil {
+		frame_count := @platform->GetFrameCount();
+
+		@bullet->SetFlip(player->GetFlip());
+
+		if(@x_velocity = 1) {
+			@x_rel_position += Values->SPEED * 2;
+		}
+		else if(@x_velocity = -1) {
+			@x_rel_position -= Values->SPEED * 2;
+		};
+
+		if(<>BlockCollision(player->GetMapX())) {
+			camera_shift := player->GetCameraShift();
+			
+			if(@x_velocity = 1) {
+				if(camera_shift = 1) {
+					@x_rel_position += Values->SPEED / 4;	
+				}
+				else if(camera_shift = -1) {
+					@x_rel_position += Values->SPEED * 2;	
+				}
+				else {
+					@x_rel_position += Values->SPEED;
+				};
+			}
+			else if(@x_velocity = -1) {
+				if(camera_shift = 1) {
+					@x_rel_position -= Values->SPEED * 2;	
+				}
+				else if(camera_shift = -1) {
+					@x_rel_position -= Values->SPEED / 4;	
+				}
+				else {
+					@x_rel_position -= Values->SPEED;
+				};
+			};
+		};
+
+		if(BlockCollision(player->GetMapX())) {
+			@is_alive := false;
+			@x_rel_position := -128;
+			@y_rel_position := -128;
+
+		};
+
+		if(enemy <> Nil & EnemyCollision(enemy)) {
+			@is_alive := false;
+			@x_rel_position := -128;
+			@y_rel_position := -128;
+			enemy->SetAlive(false);
+		};
+	}
+
+
+	method : native : EnemyCollision(enemy : Enemy) ~ Bool {
+		enemy_rel_x := enemy->GetRelX();
+		enemy_rel_y := enemy->GetRelY();
+		enemy_rel_x2 := enemy_rel_x + enemy->GetWidth();
+		enemy_rel_y2 := enemy_rel_y + enemy->GetHeight();
+
+		rel_y := @y_rel_position;
+		rel_y2 := rel_y + @bullet->GetHeight();
+		rel_x := @x_rel_position;
+		rel_x2 := rel_x + Values->BLOCK_WIDTH;
+
+		if(rel_x2 > enemy_rel_x & rel_x < enemy_rel_x2 & 
+				rel_y2 > enemy_rel_y & rel_y < enemy_rel_y2) {
+			return true;
+		};
+
+		return false;
+	}
+
+	method : native : BlockCollision(x_position : Int) ~ Bool {
+		dims := @game_map->Size();
+
+		start_x := x_position / Values->BLOCK_WIDTH - 2;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+		
+		end_x := start_x + 28; # could be calculated using screen and block width
+		if(end_x >= dims[1]) {
+			end_x := dims[1] - 1;
+		};
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
+			block_rel_x := x * Values->BLOCK_WIDTH - x_position;
+			for(y := 0; y < dims[0]; y += 1;) {
+				block_rel_y := y * Values->BLOCK_HEIGHT;
+				
+				type := @game_map[y, x];
+				if(type > 0 & type < 5) {
+					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
+					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
+
+					rel_y := @y_rel_position;
+					rel_y2 := rel_y + @bullet->GetHeight();
+					rel_x := @x_rel_position;
+					rel_x2 := rel_x + Values->BLOCK_WIDTH;
+
+					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
+						rel_y2 > block_rel_y & rel_y < block_rel_y2) {
+
+						return true;
+					};
+				};
+			};
+		};
+
+		return false;
+	}
+
+	method : public : Render() ~ Nil {
+		@bullet->Render(@x_rel_position, @y_rel_position);
+	}
+}

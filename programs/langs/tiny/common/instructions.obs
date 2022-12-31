@@ -1,0 +1,52 @@
+class Instruction {
+	@type : Instruction → Type;
+	@value : Int;
+	
+	enum Type ← -96 {
+		PUTS,
+		PUTI,
+		PUTC,
+		PRINT,
+		ST,
+		LD,
+		JZ,
+		JP,
+		PUSH,
+		AND,
+		OR,
+		LT,
+		GT,
+		LE,
+		GE,
+		EQ,
+		NEQ,
+		NEG,
+		NOT,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD
+	}
+	
+	New(type : Instruction → Type) {
+		@type ← type;
+	}
+	
+	New(type : Instruction → Type, value : Int) {
+		@type ← type;
+		@value ← value;
+	}
+	
+	method : public : GetType() ~ Instruction → Type {
+		return @type;
+	}
+	
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+	
+	method : public : SetValue(value : Int) ~ Nil {
+		@value ← value;
+	}
+}

@@ -1,0 +1,513 @@
+use Game.SDL2;
+use Game.Framework;
+
+class Chalkboard {
+	@framework : GameFramework;
+	@is_sound : Bool;
+
+	# score
+	@score_star : ImageSprite;
+	@score_index : Int;
+
+	@score_tries : Int;
+	@card_score_font : Font;
+	@score_tries_text : TextSprite;
+
+	# final score
+	@game_score_images : ImageSprite[];
+	@game_score_text : TextSprite;
+	
+	# card
+	@card : Rectangle;
+	
+	@card_text_font : Font;
+	@card_text_color : Color;
+
+	@card_text_mul_sign : TextSprite;
+	@card_text_eql_sign : TextSprite;
+	
+	# buttons
+	@card_button_font : Font;
+
+	@check_button : Rectangle;
+	@check_button_text : TextSprite;
+
+	@clear_button : Rectangle;
+	@clear_button_text : TextSprite;
+
+	# problem
+	@card_text_top : TextSprite;
+	@card_string_top : String;
+
+	@card_text_bottom : TextSprite;
+	@card_string_bottom : String;
+
+	# answer
+	@card_answer_box_font : Font;
+	@card_answer_box : Rectangle;
+	@card_answer_text : TextSprite;
+	@card_answer_string : String;
+
+	# number table
+	@card_num_line_text : TextSprite;
+	@card_num_line_string : String;
+	
+	# mouse input
+	@mouse_x : IntHolder;
+	@mouse_y : IntHolder;
+	@mouse_pos : Point;
+
+	# sounds
+	@cheer_chunk : MixChunk;
+	@aww_chunk : MixChunk;
+
+	function : Main(args : String[]) ~ Nil {
+		flash_cards : Chalkboard;
+		
+		if(args->Size() = 1) {
+			flash_cards := Chalkboard->New(true);
+		}
+		else {
+			flash_cards := Chalkboard->New(false);
+		};
+
+		flash_cards->Run();
+	}
+
+	New(is_sound : Bool) {
+		@is_sound := is_sound;
+		@framework := GameFramework->New(GameValues->SCREEN_WIDTH, GameValues->SCREEN_HEIGHT, "Multiplication");
+		@framework->BuildFromFile("../config/config.json");
+		@framework->SetClearColor(@framework->GetColor("bg-color"));
+		
+		LoadMedia();
+		BuildCard();
+		WireInput();
+		Reset();
+	}
+
+	method : LoadMedia() ~ Nil {
+		@card_button_font := @framework->GetFont("card-button-font");
+		@card_text_font := @framework->GetFont("card-text-font");
+		@card_answer_box_font := @framework->GetFont("card-answer-box-font");
+		@card_score_font := @framework->GetFont("card-score-font");
+
+		# score stars
+		@score_star := @framework->GetImageSprite("score-star");
+
+		# load audio
+		@cheer_chunk := @framework->GetMixChunk("cheer-chunk");
+		@aww_chunk := @framework->GetMixChunk("aww-chunk");
+
+		# adjust volume
+		Mixer->Volume(-1, 16);
+	}
+
+	method : BuildCard() ~ Nil {
+		@card_text_color := @framework->GetColor("card-text-color");
+
+		# card
+		@card := @framework->AddRectangle(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);
+		@card->SetColor(@framework->GetColor("card-color"));
+		@card->SetFill(true);
+
+		# tries
+		@score_tries_text := @framework->AddTextSprite();
+		@score_tries_text->SetFont(@card_score_font);
+
+		# check button
+		@check_button := @framework->GetRectangle("check-button");
+		@check_button_text := @framework->GetTextSprite("check-button-text");
+
+		# clear button
+		@clear_button := @framework->GetRectangle("clear-button");
+		@clear_button_text := @framework->GetTextSprite("clear-button-text");
+
+		# sign
+		@card_text_mul_sign := @framework->GetTextSprite("card-text-mul-sign");
+		@card_text_eql_sign := @framework->GetTextSprite("card-text-eql-sign");
+
+		@card_answer_text := @framework->AddTextSprite();
+		@card_answer_text->SetFont(@card_answer_box_font);
+
+		# number line
+		@card_num_line_text := @framework->AddTextSprite();
+		@card_num_line_text->SetFont(@card_button_font);
+
+		# problem
+		@card_text_top := @framework->AddTextSprite();
+		@card_text_top->SetFont(@card_text_font);
+		
+		@card_text_bottom := @framework->AddTextSprite();
+		@card_text_bottom->SetFont(@card_text_font);
+
+		# answer
+		@card_answer_box := @framework->AddRectangle(GameValues->SCREEN_PADDING * 4.5, GameValues->SCREEN_PADDING * 2.5);
+		@card_answer_box->SetColor(@framework->GetColor("card-answer-color"));
+
+		# final score
+		@game_score_images := ImageSprite->New[2];
+		@game_score_images[0] := @framework->GetImageSprite("thumbs-up");
+		@game_score_images[1] := @framework->GetImageSprite("thumbs-down");
+
+		@game_score_text := @framework->AddTextSprite();
+		@game_score_text->SetFont(@card_score_font);
+	}
+
+	method : WireInput() ~ Nil {
+		@mouse_x := IntHolder->New();
+		@mouse_y := IntHolder->New();
+		@mouse_pos := Point->New(0, 0);
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			e := @framework->GetEvent();
+						
+			quit := false;
+			while(<>quit) {
+				@framework->FrameStart();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					}
+					# keyboard
+					else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+				        KeyboardInput(e);
+				    }
+				    # mouse
+				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONDOWN) {				    	
+				    	MouseInput(e);
+				    }
+				    else if(e->GetType() = EventType->SDL_MOUSEBUTTONUP) {
+				    	@check_button->SetFill(true);
+				    	@clear_button->SetFill(true);
+				    }
+					else if(@score_tries = 0 & e->GetType() = EventType->SDL_MOUSEMOTION) {
+						Cursor->GetMouseState(@mouse_x, @mouse_y);
+						@mouse_pos->SetX(@mouse_x->Get());
+						@mouse_pos->SetY(@mouse_y->Get());
+
+						if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+		    				@clear_button->SetFill(false);
+		    			}
+		    			else {
+		    				@clear_button->SetFill(true);
+		    			};
+		    		};
+				};
+
+				Render();
+
+				frame_count += 1;
+				if(frame_count >= @framework->GetFps()) {					
+					frame_count := 0;
+				};
+
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@cheer_chunk->Free();
+			@aww_chunk->Free();
+			@framework->Quit();
+		};
+	}
+
+	method : KeyboardInput(e : Event) ~ Nil {
+		if(@score_tries > 0) {
+			select(e->GetKey()->GetKeysym()->GetScancode()) {
+				label Scancode->Scancode->SDL_SCANCODE_ESCAPE: {
+					ClearInput();
+					@clear_button->SetFill(true);
+				}
+
+	            label Scancode->SDL_SCANCODE_RETURN:
+				label Scancode->SDL_SCANCODE_KP_ENTER: {
+					CheckProblem();
+					@check_button->SetFill(true);
+				}
+
+				label Scancode->SDL_SCANCODE_BACKSPACE:
+	        	label Scancode->SDL_SCANCODE_DELETE: {
+	        		ClearInput();
+	            }
+
+				label Scancode->SDL_SCANCODE_0:
+	        	label Scancode->SDL_SCANCODE_KP_0: {
+	        		if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('0');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_1:
+	            label Scancode->SDL_SCANCODE_KP_1: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('1');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_2:
+	            label Scancode->SDL_SCANCODE_KP_2: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('2');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_3:
+	            label Scancode->SDL_SCANCODE_KP_3: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('3');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_4:
+	            label Scancode->SDL_SCANCODE_KP_4: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('4');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_5:
+	            label Scancode->SDL_SCANCODE_KP_5: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('5');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_6:
+	            label Scancode->SDL_SCANCODE_KP_6: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('6');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_7:
+	            label Scancode->SDL_SCANCODE_KP_7: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('7');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_8:
+	            label Scancode->SDL_SCANCODE_KP_8: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('8');
+	            	};
+	            }
+
+	            label Scancode->SDL_SCANCODE_9:
+	            label Scancode->SDL_SCANCODE_KP_9: {
+	            	if(@card_answer_string->Size() < 3) {
+	            		@card_answer_string->Append('9');
+	            	};
+	            }
+			};
+		};
+	}
+
+	method : MouseInput(e : Event) ~ Nil {
+		Cursor->GetMouseState(@mouse_x, @mouse_y);
+		@mouse_pos->SetX(@mouse_x->Get());
+		@mouse_pos->SetY(@mouse_y->Get());
+
+		if(@check_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+			CheckProblem();
+		}
+		else if(@clear_button->GetPosition()->GetRect()->PointIn(@mouse_pos)) {
+			if(@score_tries > 0) {
+				ClearInput();
+			}
+			else {
+				Reset();
+			};
+		};
+	}
+
+	method : CheckProblem() ~ Nil {
+		if(@score_tries > 0) {
+			answer := @card_answer_string->ToInt();
+			if(answer <> 0) {
+				top := @card_string_top->ToInt();
+				bottom := @card_string_bottom->ToInt();
+
+				if(top * bottom = answer) {
+					@score_index += 1;
+					if(@is_sound) {
+						@cheer_chunk->PlayChannel(-1, 0);
+					};
+				}
+				else if(@is_sound) {
+					@aww_chunk->PlayChannel(-1, 0);
+				};
+
+				@score_tries -= 1;
+				text := @score_tries->ToString();
+				text += " chances";
+				@score_tries_text->RenderedText(text, @framework->GetColor("card-answer-color"));
+
+				NextProblem();
+			};
+		};
+	}
+
+	method : ClearInput() ~ Nil {
+		if(@score_tries > 0) {
+			@card_answer_string := " ";
+		};
+	}
+
+	method : GenerateProblem() ~ Nil {
+		v1 := Int->Random(2, 3);
+		v2 := Int->Random(1, 9);
+
+		if(Int->Random(0, 1) = 0) {
+			@card_string_top := v1->ToString();
+			@card_string_bottom := v2->ToString();
+		}
+		else {
+			@card_string_top := v2->ToString();
+			@card_string_bottom := v1->ToString();
+		};
+
+		# number line
+		tmp := v1;
+		@card_num_line_string := tmp->ToString();
+		@card_num_line_string->Append("'s: "); 
+		for(i := 1; i <= 10; i++;) {
+			@card_num_line_string->Append(tmp);
+			if(i + 1 <= 10) {
+				@card_num_line_string->Append(", ");
+			};
+			tmp += v1;
+		};
+	}
+
+	method : NextProblem() ~ Nil {
+		ClearInput();
+		GenerateProblem();
+	}
+
+	method : Reset() ~ Nil {
+		@score_index := 0;
+		@score_tries := 10;
+
+		text := @score_tries->ToString();
+		text += " chances";
+		@score_tries_text->RenderedText(text, @framework->GetColor("card-answer-color"));
+
+		@clear_button->SetFill(true);
+		@clear_button_text->RenderedText("Clear");
+
+		NextProblem();
+	}
+
+	method : Render() ~ Nil {
+		@framework->Clear();
+
+		if(@score_tries > 0) {
+			RenderGame();
+		}
+		else {
+			RenderFinalScore();
+		};
+
+		@framework->Show();
+	}
+
+	method : RenderGame() ~ Nil {
+		# score_boxes
+		offset := GameValues->SCREEN_PADDING * 3;
+		each(i : @score_index) {
+			@score_star->Render(GameValues->SCREEN_PADDING * i + offset, GameValues->SCREEN_PADDING);
+			offset += 15;
+		};
+
+		@score_tries_text->Render(GameValues->SCREEN_WIDTH - GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_PADDING / 3);
+
+		# card
+		@card->Render(GameValues->SCREEN_PADDING, GameValues->SCREEN_PADDING * 3);
+
+		# number line
+		@card_num_line_text->RenderedText(@card_num_line_string, @framework->GetColor("card-answer-color"));
+		@card_num_line_text->Render(GameValues->SCREEN_WIDTH / 2 - @card_num_line_text->GetWidth() / 2, GameValues->SCREEN_PADDING * 3.25);
+
+		# problem and inputs
+		RenderProblem();
+		RenderInputs();
+
+		# sign
+		@card_text_mul_sign->Render(GameValues->SCREEN_PADDING * 6, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+
+		@card_text_eql_sign->Render(GameValues->SCREEN_PADDING * 10, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		
+		# clear button
+		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button->GetWidth() / 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);
+		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 4);
+
+		# check button
+		@check_button->Render(GameValues->SCREEN_WIDTH / 2 - @check_button->GetWidth() / 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 2.75);
+		@check_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @check_button_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 2.75);
+	}
+
+	method : RenderProblem() ~ Nil {
+		@card_text_top->RenderedText(@card_string_top, @card_text_color);
+		@card_text_top->Render(GameValues->SCREEN_PADDING * 4, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+
+		@card_text_bottom->RenderedText(@card_string_bottom, @card_text_color);
+		@card_text_bottom->Render(GameValues->SCREEN_PADDING * 8, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+	}
+
+	method : RenderInputs() ~ Nil {
+		@card_answer_box->Render(GameValues->SCREEN_PADDING * 12, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+
+		@card_answer_text->RenderedText(@card_answer_string);
+		if(@card_answer_string->Size() > 2) {
+			@card_answer_text->Render(GameValues->SCREEN_PADDING * 13, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		}
+		else {
+			@card_answer_text->Render(GameValues->SCREEN_PADDING * 13.5, GameValues->SCREEN_HEIGHT - GameValues->SCREEN_PADDING * 8);
+		};
+	}
+
+	method : RenderFinalScore() ~ Nil {
+		score := @score_index * 10;
+		score_text := "Score is {$score}%, ";
+		if(score >= 80) {
+			score_text += "amazing job!";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else if(score < 80 & score >= 70) {
+			score_text += "well done!";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else if(score < 70 & score >= 50) {
+			score_text += "good effort.";
+			@game_score_images[0]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[0]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		}
+		else {
+			score_text += "let's try again...";
+			@game_score_images[1]->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_images[1]->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 6);
+		};
+		@game_score_text->RenderedText(score_text, @card_text_color);
+
+		@game_score_text->Render(GameValues->SCREEN_WIDTH / 2 - @game_score_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * 3);
+
+		@clear_button->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * -1);
+		@clear_button_text->RenderedText("Retry");
+		@clear_button_text->Render(GameValues->SCREEN_WIDTH / 2 - @clear_button_text->GetWidth() / 2, GameValues->SCREEN_HEIGHT / 2 - GameValues->SCREEN_PADDING * -1);
+	}
+
+	consts GameValues {
+		SCREEN_WIDTH := 630,
+		SCREEN_HEIGHT := 400,
+		SCREEN_PADDING := 30
+	}
+}

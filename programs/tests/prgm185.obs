@@ -1,0 +1,10 @@
+class PostTest {
+	function : Main(args : String[]) ~ Nil {
+		headers := Collection.Generic.Map->New()<String, String>;
+		headers->Insert("Authorization", "Basic " + Encryption.Encrypt->Base64("twilio:ahoy!"));
+		
+		Web.HTTP.HttpsClient->PostAll("https://ptsv2.com/t/fziwh-1667699098/post", 
+			"{\"name\":\"John\", \"age\":30, \"car\":null}", 
+			"application/json", headers)->PrintLine();
+	}
+}

@@ -1,0 +1,1111 @@
+method : public : LinkedVersion() ~ version {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_linked_version", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_linked_version(VMContext& context) {
+                const long* return_value = IMG_Linked_Version();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Init(flags : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(flags);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_init", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_init(VMContext& context) {
+                const int flags = APITools_GetIntValue(context, 1);
+                const int return_value = IMG_Init(flags);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Quit() ~ Nil {
+        array_args := Base->New[0];
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_quit", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_quit(VMContext& context) {
+                IMG_Quit();
+        }
+
+---
+method : public : LoadTypedRW(src : RWops, freesrc : Int, type : String) ~ Surface {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+        array_args[2] := IntHolder->New(freesrc);
+        array_args[3] := type;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load_typedrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load_typedrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int freesrc = APITools_GetIntValue(context, 2);
+                const wstring type = APITools_GetStringValue(context, 3);
+                const long* return_value = IMG_LoadTyped_RW(src, freesrc, type);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Load(file : String) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(file);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load(VMContext& context) {
+                const wstring file = APITools_GetStringValue(context, 1);
+                const long* return_value = IMG_Load(file);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadTexture(renderer : Renderer, file : String) ~ Texture {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(renderer);
+        array_args[2] := file;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load_texture", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load_texture(VMContext& context) {
+                const long* renderer = (long*)APITools_GetObjectValue(context, 1);
+                const wstring file = APITools_GetStringValue(context, 2);
+                const long* return_value = IMG_LoadTexture(renderer, file);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadTextureTypedRW(renderer : Renderer, src : RWops, freesrc : Int, type : String) ~ Texture {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(renderer);
+        array_args[2] := src;
+        array_args[3] := IntHolder->New(freesrc);
+        array_args[4] := type;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load_texture_typedrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load_texture_typedrw(VMContext& context) {
+                const long* renderer = (long*)APITools_GetObjectValue(context, 1);
+                const long* src = (long*)APITools_GetObjectValue(context, 2);
+                const int freesrc = APITools_GetIntValue(context, 3);
+                const wstring type = APITools_GetStringValue(context, 4);
+                const long* return_value = IMG_LoadTextureTyped_RW(renderer, src, freesrc, type);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : isICO(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isico", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isico(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isICO(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isBMP(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isbmp", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isbmp(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isBMP(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isJPG(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isjpg", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isjpg(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isJPG(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isPCX(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_ispcx", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_ispcx(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isPCX(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isPNM(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_ispnm", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_ispnm(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isPNM(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isTIF(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_istif", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_istif(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isTIF(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isXPM(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isxpm", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isxpm(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isXPM(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isWEBP(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_iswebp", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_iswebp(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isWEBP(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : LoadICORW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadicorw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadicorw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadICO_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadBMPRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadbmprw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadbmprw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadBMP_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadJPGRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadjpgrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadjpgrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadJPG_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadPCXRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadpcxrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadpcxrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadPCX_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadPNMRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadpnmrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadpnmrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadPNM_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadTGARW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadtgarw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadtgarw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadTGA_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadXCFRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadxcfrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadxcfrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadXCF_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadXVRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadxvrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadxvrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadXV_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : SavePNG(surface : Surface, file : String) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(surface);
+        array_args[2] := file;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_savepng", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_savepng(VMContext& context) {
+                const long* surface = (long*)APITools_GetObjectValue(context, 1);
+                const wstring file = APITools_GetStringValue(context, 2);
+                const int return_value = IMG_SavePNG(surface, file);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SaveJPG(surface : Surface, file : String, quality : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(surface);
+        array_args[2] := file;
+        array_args[3] := IntHolder->New(quality);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_savejpg", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_savejpg(VMContext& context) {
+                const long* surface = (long*)APITools_GetObjectValue(context, 1);
+                const wstring file = APITools_GetStringValue(context, 2);
+                const int quality = APITools_GetIntValue(context, 3);
+                const int return_value = IMG_SaveJPG(surface, file, quality);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+
+D:\Code\objeck-lang\core\release\deploy\bin>cd ..\..
+
+D:\Code\objeck-lang\core\release>build_sdl.cmd "Image" "D:\Code\objeck-lang\core\lib\sdl\include\SDL_image.h" > image.txt
+
+D:\Code\objeck-lang\core\release>build_sdl.cmd "Image" "D:\Code\objeck-lang\core\lib\sdl\include\SDL_image.h"
+
+D:\Code\objeck-lang\core\release>cd deploy\bin
+
+D:\Code\objeck-lang\core\release\deploy\bin>obc -src ..\..\..\..\programs\sdl\code_gen\sdl_emitter.obs,..\..\..\..\programs\sdl\code_gen\sdl_parser.obs,..\..\..\..\programs\sdl\code_gen\sdl_scanner.obs -lib collect.obl -dest ..\..\sdl_code_gen.obe
+Compiled 8 source classes.
+Linked 20 library classes.
+Wrote target file: '..\..\sdl_code_gen.obe'
+
+D:\Code\objeck-lang\core\release\deploy\bin>obr ..\..\sdl_code_gen.obe "Image" "D:\Code\objeck-lang\core\lib\sdl\include\SDL_image.h"
+Lets go!
+25
+method : public : LinkedVersion() ~ version {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_linked_version", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_linked_version(VMContext& context) {
+                const long* return_value = IMG_Linked_Version();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Init(flags : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(flags);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_init", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_init(VMContext& context) {
+                const int flags = APITools_GetIntValue(context, 1);
+                const int return_value = IMG_Init(flags);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Quit() ~ Nil {
+        array_args := Base->New[0];
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_quit", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_quit(VMContext& context) {
+                IMG_Quit();
+        }
+
+---
+method : public : LoadTypedRW(src : RWops, freesrc : Int, type : String) ~ Surface {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+        array_args[2] := IntHolder->New(freesrc);
+        array_args[3] := type;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load_typedrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load_typedrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int freesrc = APITools_GetIntValue(context, 2);
+                const wstring type = APITools_GetStringValue(context, 3);
+                const long* return_value = IMG_LoadTyped_RW(src, freesrc, type);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Load(file : String) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(file);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load(VMContext& context) {
+                const wstring file = APITools_GetStringValue(context, 1);
+                const long* return_value = IMG_Load(file);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadTexture(renderer : Renderer, file : String) ~ Texture {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(renderer);
+        array_args[2] := file;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load_texture", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load_texture(VMContext& context) {
+                const long* renderer = (long*)APITools_GetObjectValue(context, 1);
+                const wstring file = APITools_GetStringValue(context, 2);
+                const long* return_value = IMG_LoadTexture(renderer, file);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadTextureTypedRW(renderer : Renderer, src : RWops, freesrc : Int, type : String) ~ Texture {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(renderer);
+        array_args[2] := src;
+        array_args[3] := IntHolder->New(freesrc);
+        array_args[4] := type;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_load_texture_typedrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_load_texture_typedrw(VMContext& context) {
+                const long* renderer = (long*)APITools_GetObjectValue(context, 1);
+                const long* src = (long*)APITools_GetObjectValue(context, 2);
+                const int freesrc = APITools_GetIntValue(context, 3);
+                const wstring type = APITools_GetStringValue(context, 4);
+                const long* return_value = IMG_LoadTextureTyped_RW(renderer, src, freesrc, type);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : isICO(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isico", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isico(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isICO(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isBMP(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isbmp", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isbmp(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isBMP(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isJPG(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isjpg", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isjpg(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isJPG(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isPCX(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_ispcx", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_ispcx(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isPCX(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isPNM(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_ispnm", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_ispnm(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isPNM(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isTIF(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_istif", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_istif(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isTIF(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isXPM(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_isxpm", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_isxpm(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isXPM(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : isWEBP(src : RWops) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_iswebp", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_iswebp(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const int return_value = IMG_isWEBP(src);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : LoadICORW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadicorw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadicorw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadICO_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadBMPRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadbmprw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadbmprw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadBMP_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadJPGRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadjpgrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadjpgrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadJPG_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadPCXRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadpcxrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadpcxrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadPCX_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadPNMRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadpnmrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadpnmrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadPNM_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadTGARW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadtgarw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadtgarw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadTGA_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadXCFRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadxcfrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadxcfrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadXCF_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadXVRW(src : RWops) ~ Surface {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_loadxvrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_loadxvrw(VMContext& context) {
+                const long* src = (long*)APITools_GetObjectValue(context, 1);
+                const long* return_value = IMG_LoadXV_RW(src);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : SavePNG(surface : Surface, file : String) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(surface);
+        array_args[2] := file;
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_savepng", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_savepng(VMContext& context) {
+                const long* surface = (long*)APITools_GetObjectValue(context, 1);
+                const wstring file = APITools_GetStringValue(context, 2);
+                const int return_value = IMG_SavePNG(surface, file);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SaveJPG(surface : Surface, file : String, quality : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(surface);
+        array_args[2] := file;
+        array_args[3] := IntHolder->New(quality);
+
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("sdl_image_savejpg", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_image_savejpg(VMContext& context) {
+                const long* surface = (long*)APITools_GetObjectValue(context, 1);
+                const wstring file = APITools_GetStringValue(context, 2);
+                const int quality = APITools_GetIntValue(context, 3);
+                const int return_value = IMG_SaveJPG(surface, file, quality);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---

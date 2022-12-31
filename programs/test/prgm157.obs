@@ -1,8 +1,0 @@
-use System.IO.Net;
-
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		addresses := TCPSocket->Resolve("objk.io");
-		addresses->Size()->PrintLine();
-	}
-}
