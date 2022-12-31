@@ -1,0 +1,19 @@
+#~
+# compile: obc -src hello_0.obs
+# run: obr hello_0.obe
+~#
+
+class Hello {
+  @value : static : Int;
+
+  function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
+    if(req->GetMethod() = Web.Server.Request->Method->GET) {
+      res->WriteBody("<html><body><form method='post'><label for='fname'>First name:</label><br/> <input type='text' id='fname' name='fname'/><br/> <label for='lname'>Last name:</label><br/><input type='text' id='lname' name='lname'/><br/><br/><input type='submit' value='Submit'/></form></body></html>");
+    }
+    else {
+      posted := String->New(req->ReadBody());
+      fname := req->GetHeader("fname");
+      res->WriteBody("<html><body>Posted raw=<pre>{$posted}</pre>, First name=<pre>{$fname}</pre></body></html>");
+    };
+  }
+}
