@@ -699,10 +699,6 @@ bundle System {
 			string->Append(c);
 			return string;
 		}
-
-		function : native : ToString(c : Char[]) ~ String {
-			return String->New(c);
-		}
 	}
 	
 	#~
@@ -3815,6 +3811,44 @@ bundle System {
 			};
 			
 			return parsed_strings;
+		}
+
+
+		#~
+		Splits a string based upon delimiter
+		@param delim splitting delimiter
+		@return array of split sub strings 
+		~#
+		method : public : native : Split(delim : Char) ~ String[] {
+			count := 0;
+			
+			each(i : @pos) {
+				if(@string[i] = delim) {
+					count += 1;
+				};
+			};
+
+			if(count <> 0) {
+				count += 1;
+			};
+
+			strings := String->New[count];
+
+			start := count := 0;
+			each(i : @pos) {
+				char := @string[i];
+
+				if(char = delim) {
+					strings[count++] := String->New(@string, start, i - start);
+					start := i + 1;
+				};
+			};
+
+			if(start <> 0) {
+				strings[count++] := String->New(@string, start, @string->Size() - start);
+			};
+
+			return strings;
 		}
 		
 		#~

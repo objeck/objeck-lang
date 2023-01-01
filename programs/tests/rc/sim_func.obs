@@ -1,0 +1,35 @@
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
+			org_ints := IntVector->New([2, 4, 6, 8]);
+			int_values := org_ints->Apply(Math->Square(Int) ~ Int);
+			each(i : int_values) {
+				int_values->Get(i)->PrintLine();
+			};
+
+			org_floats := FloatVector->New([3.2, 4.45, 6.13, 8.17]);
+			float_values := org_floats->Apply(Math->Square(Float) ~ Float);
+			each(i : float_values) {
+				float_values->Get(i)->PrintLine();
+			};
+		}
+	}
+
+	class Math {
+		function : native : Square(value : Int) ~ Int {
+			return value * value;
+		}
+		
+
+		function : native : Square(value : Float) ~ Float {
+			return value * value;
+		}
+	}
+}
+

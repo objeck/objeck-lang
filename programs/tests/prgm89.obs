@@ -1,0 +1,35 @@
+﻿use Collection;
+
+class EthiopianMultiplication {
+	function : Main(args : String[]) ~ Nil {
+		"1st number: "->Print();
+		first := IO.Console->ReadString()->ToInt();
+		"2nd number: "->Print();
+		second := IO.Console->ReadString()->ToInt();
+		"----"->PrintLine();
+		Mul(first, second)->PrintLine();
+	}
+	
+	function : native : Mul(first : Int, second : Int) ~ Int {
+		if(first < 0){
+			first := -1 * first;
+			second := -1 * second;
+		};
+		
+		sum := isEven(first)? 0 : second;
+		do {
+			first := first >> 1;
+			second := second << 1;
+			if(isEven(first) = false){
+				sum += second;
+			};
+		}
+		while(first > 1);
+		
+		return sum;
+	}
+	
+	function : isEven(num : Int) ~ Bool {
+		return (num and 1) = 0;
+	}
+}

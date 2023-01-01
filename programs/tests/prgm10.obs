@@ -1,0 +1,103 @@
+bundle Default {
+  class Bar from Foo {
+    foos : Foo[];
+	
+    New(@foo: Foo) {
+      Parent(@foo->GetValue1(), @foo->GetValue2());
+      foos := Foo->New[4];
+      foos[0] := Foo->New(1, 1->As(Float));
+      foos[1] := Foo->New(2, 2->As(Float));
+      foos[2] := Foo->New(3, 3->As(Float));
+      foos[3] := Foo->New(4, 4->As(Float));
+    }
+    
+    method : public : native : DoStuff() ~ Float {
+      a : Int := 13;
+      return value1 * a - value2;
+    }
+
+    method : public : GetFoo() ~ Foo {
+      return foos[1];
+    }
+  }
+  
+  class Blah {
+  }
+
+  class Foo {
+    value1 : Int;
+    value2 : Float;
+    
+    New(@value1 : Int, @value2 : Float) {
+      value1 := @value1;
+      value2 := @value2;
+    }
+    
+    method : public : GetValue1() ~ Int {
+      return value1;
+    }
+    
+    method : public : GetValue2() ~ Float {
+      return value2;
+    }
+  }
+  
+  class Test {
+    function : Main(args : System.String[]) ~ Nil {
+      Run();
+    }
+    
+#     function : Run() ~ Nil {
+    function : native : Run() ~ Nil {
+      foo : Foo := Foo->New(7, 3.1415);
+      foo->GetValue2()->PrintLine();
+      
+      bar : Bar := Bar->New(foo);
+#~
+      bar->DoStuff()->PrintLine();
+      bar->GetFoo()->GetValue1()->PrintLine();
+
+      f : Foo := bar->GetFoo();
+      f->GetValue1()->PrintLine();
+~#
+
+      select(10) {
+          label 7: {
+            cc : System.String := "seven";
+            cc->PrintLine();
+          }
+          
+          other: {
+            cc : System.String := "other";
+            cc->PrintLine();
+          }
+      };
+      
+      string : System.String := "Hello World!";
+      for(i : Int := 0; i < string->Size(); i := i + 1;) {
+        select(string->Get(i)) {
+          label 'H': {
+            cc : System.String := "Hello";
+            cc->PrintLine();
+          }
+          
+          label 'J': {
+            cc : System.String := "Doggie";
+            cc->PrintLine();
+          }
+          
+          label ' ': {
+            cc : System.String := "Huh?";
+            cc->PrintLine();
+          }
+          
+          other: {
+            cc : System.String := "other";
+            cc->PrintLine();
+          }
+        };
+      };
+      "Done."->PrintLine();
+    }
+  }
+}

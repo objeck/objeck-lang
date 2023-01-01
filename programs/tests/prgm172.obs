@@ -1,0 +1,7 @@
+class Test  {
+	function : Main(args : String[]) ~ Nil {
+		s : System.IO.Net.TCPSecureSocket;
+		i : System.IO.InputStream := s;
+		i->ReadByte();
+	}
+}

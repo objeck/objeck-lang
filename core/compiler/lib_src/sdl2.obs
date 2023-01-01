@@ -737,7 +737,6 @@ bundle Game.SDL2 {
 			array_args[1] := IntHolder->New(index);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_display_get_video_driver", array_args);
-
 			return array_args[0]->As(String);
 		}
 

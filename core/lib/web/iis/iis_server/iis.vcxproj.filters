@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\objeck_iis.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\shared\logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -45,16 +42,11 @@
     <ClCompile Include="..\..\..\..\vm\vm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\objeck_iis.def">
+    <ClCompile Include="objeck_iis.cpp">
       <Filter>Source Files</Filter>
-    </None>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\objeck_iis.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\shared\logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -85,5 +77,13 @@
     <ClInclude Include="..\..\..\..\vm\vm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="objeck_iis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="objeck_iis.def">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

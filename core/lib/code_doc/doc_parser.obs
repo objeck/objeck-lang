@@ -1,0 +1,1423 @@
+#~
+Objeck HTML code documentation system
+Copyright (c) 2014-2019 Randy Hollines
+~#
+
+use System.IO;
+use System.IO.Filesystem;
+use Collection.Generic;
+
+class SnippetParser {
+	@buffer : String;
+	@buffer_index : Int;
+	@cur_char : Char;
+	@nxt_char : Char;
+	@files : String[];
+	@uses : Vector<String>;
+	@bundles : Map<String, BundleSnippet>;
+	@class_inf_block : ClassSnippet;
+	@level : Int;
+	@class_level : Int;
+	@bundle_block : BundleSnippet;
+	@in_comment : Bool;
+	@in_lit : Bool;
+	
+	New(files : String[]) {
+		@files := files;	
+		@bundles := Map->New()<String, BundleSnippet>;
+		@level := 0;
+	}
+	
+	method : public : GetBundles() ~ Map<String, BundleSnippet> {
+		return @bundles;
+	}
+	
+	method : public : GetAllClasses() ~ Vector<ClassSnippet> {
+		all_classes := Vector->New()<ClassSnippet>;
+		
+		bundle_keys := @bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			bundle_block := @bundles->Find(bundle_keys->Get(i));
+			classes := bundle_block->GetClasses();
+			class_keys := classes->GetKeys()<String>;
+			each(j : class_keys) {
+				klass := classes->Find(class_keys->Get(j));
+				if(klass <> Nil) {
+					all_classes->AddBack(klass);
+				};
+			};
+		};
+				
+		return all_classes;
+	}
+	
+	method : public : GetAllEnums() ~ Vector<EnumConstSnippet> {
+		all_enums := Vector->New()<EnumConstSnippet>;
+		
+		bundle_keys := @bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			bundle_block := @bundles->Find(bundle_keys->Get(i));
+			enums := bundle_block->GetEnums();
+			enum_keys := enums->GetKeys()<String>;
+			each(j : enum_keys) {
+				eenum := enums->Find(enum_keys->Get(j));
+				if(eenum <> Nil) {
+					all_enums->AddBack(eenum);
+				};
+			};
+		};
+				
+		return all_enums;
+	}
+
+	method : NextChar() ~ Nil {
+		if(@buffer_index < @buffer->Size()) {
+			@cur_char := @buffer->Get(@buffer_index);
+			@buffer_index += 1;
+			if(@buffer_index < @buffer->Size()) {
+				@nxt_char := @buffer->Get(@buffer_index);
+			}
+			else {
+				@nxt_char := '\0';
+			};
+		}
+		else {
+			@cur_char := '\0';
+			@nxt_char := '\0';
+		};
+	}
+
+	method : ParseWhiteSpace() ~ Nil {
+		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n')) {
+			NextChar();
+		};
+	}
+
+	method : ParseIdent() ~ String {
+		ParseWhiteSpace();
+
+		ident := "";
+		done := false;
+		while(<>done) {
+			select(@cur_char) {
+				label ' ':
+				label '\r':
+				label '\n':
+				label '{':
+				label '}':
+				label ':':
+				label ',':
+				label '(':
+				label ')':
+				label '~':
+				label '#':
+				label '\0': {
+					done := true;
+				}				
+				other: {
+					ident->Append(@cur_char);
+					NextChar();
+				}
+			};
+		};
+		
+		return ident->Trim();
+	}
+
+	method : public : native : ParseUse(block : String) ~ Nil {
+		block := " use ";
+		while(@cur_char <> '\0' & @cur_char <> '#') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(' ');
+
+		use_lines := block->Split(";");
+		each(i : use_lines) {
+			use_line := use_lines[i]->Trim();
+			use_parts := use_line->Split(" ");
+			if(use_parts <> Nil & use_parts->Size() = 2) {
+				use_part := use_parts[1]->Trim();
+				if(use_part->EndsWith(';')) {
+					use_part->Pop();
+				};
+				@uses->AddBack(use_part);
+			};
+		};
+		
+		block := "";		
+	}
+	
+	method : public : native : ParseBundle(block : String) ~ Nil {
+		block->Append(" bundle ");
+		while(@cur_char <> '\0' & @cur_char <> '{' & @cur_char <> ';') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(" {");
+		
+		bundle_block := BundleSnippet->New(block, @uses);
+		if(bundle_block->IsParsed()) {
+			SetBundle(bundle_block);
+		}
+		else {
+			"*** Unable to parse bundle block. text='{$block}' ***"->ErrorLine();
+		};
+
+		block := "";
+	}
+
+	method : public : native : ParseEnumConst(block : String, is_consts : Bool) ~ Nil {
+		if(is_consts) {
+			block->Append(" consts ");
+		}
+		else {
+			block->Append(" enum ");
+		};
+
+		while(@cur_char <> '\0' & @cur_char <> '}') {
+			block->Append(@cur_char);
+			CheckLevel();
+			NextChar();
+		};
+		block->Append(" }");					
+		
+		enum_block := EnumConstSnippet->New(block, is_consts);
+		if(enum_block->IsParsed()) {
+			block_name := enum_block->GetName();
+			if(is_consts) {
+				"\tProcessed consts: name='{$block_name}'"->PrintLine();
+			}
+			else {
+				"\tProcessed enum: name='{$block_name}'"->PrintLine();
+			};
+			enum_block->SetBundleName(@bundle_block->GetName());
+			@bundle_block->AddEnum(enum_block);
+		}
+		else {
+			"*** Unable to parse enum/consts block. Text='{$block}' ***"->ErrorLine();
+		};
+
+		block := "";
+	}
+
+	method : public : native : ParseClassFunction(name : String, block : String) ~ Nil {
+		block->Append(' ');
+		block->Append(name);
+		block->Append(' ');
+		while(@cur_char <> '\0' & @cur_char <> '{' & @cur_char <> ';') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(" {");
+
+		if(name->Equals("class")) {
+			@class_inf_block := ClassSnippet->New(block, false);
+			if(@class_inf_block->IsParsed()) {
+				class_inf_name := @class_inf_block->GetShortName();
+				@class_inf_block->SetBundleName(@bundle_block->GetName());
+				"\tProcessed class: name='{$class_inf_name}'"->PrintLine();
+				@bundle_block->AddClass(@class_inf_block);
+			}
+			else if(<>block->Has("private")) {
+				"*** Unable to parse class block. Text='{$block}' ***"->ErrorLine();
+			};
+		}
+		else if(name->Equals("interface")) {
+			@class_inf_block := ClassSnippet->New(block, true);
+			if(@class_inf_block->IsParsed()) {
+				class_inf_name := @bundle_block->GetName();
+				@class_inf_block->SetBundleName(class_inf_name);
+				"\tProcessed interface: name='{$class_inf_name}'"->PrintLine();
+				@bundle_block->AddInterface(@class_inf_block);
+			}
+			else {
+				"*** Unable to parse interface block. Text='{$block}' ***"->ErrorLine();
+			};
+		}
+		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
+			if(<>@class_inf_block->AddFunction(block) & <>block->StartsWith("#~~")) {
+				"ERROR: '{$block}'"->ErrorLine();
+			};
+		};
+		block := "";
+	}
+
+	method : CheckLevel() ~ Nil {
+		if(@cur_char = '\'' & @nxt_char <> '"') {
+			@in_comment := <>@in_comment;
+		}
+		else if(@cur_char = '\'' & @nxt_char <> '\\') {
+			@in_lit := <>@in_lit;
+		};
+	
+		if(<>@in_comment & <>@in_lit) {
+			if(@cur_char = '{') {
+				@level += 1;
+			}
+			else if(@cur_char = '}') {
+				@level -= 1;
+			};
+		};
+	}
+
+	method : SetBundle(bundle_block : BundleSnippet) ~ Nil {
+		found := @bundles->Find(bundle_block->GetName())->As(BundleSnippet);
+		if(found <> Nil) {
+			@bundle_block := found;
+		}
+		else {
+			@bundles->Insert(bundle_block->GetName(), bundle_block);
+			@bundle_block := bundle_block;
+		};
+	}
+	
+	method : public : native : Parse() ~ Bool {
+		for(i := 2; i < @files->Size(); i += 1;) {
+			file := @files[i];
+			
+			if(<>file->EndsWith(".obs")) {
+				return false;
+			};
+		
+			@buffer := FileReader->ReadFile(file);
+			if(@buffer = Nil) {
+				return false;
+			};	
+			@buffer_index := 0;	
+
+			"['{$file}']"->PrintLine();
+			@uses := Vector->New()<String>;
+
+			state := 0;
+			start := 0;
+			bundle_block := BundleSnippet->New(@uses);
+			bundle_block->SetName("Default");
+			SetBundle(bundle_block);
+
+			block := "";
+			NextChar();
+			ParseWhiteSpace();
+			while(@cur_char <> '\0') {
+				# states 1-3 for outer classes and enums
+				if(state = 2) {
+					ident := ParseIdent();
+					if(ident->Equals("bundle")) {
+						ParseBundle(block);				
+					}
+					else if(ident->Equals("use")) {
+						ParseUse(block);				
+					}
+					else if(ident->Equals("class") | ident->Equals("interface")) {
+						ParseClassFunction(ident, block);
+					}
+					else if(ident->Equals("enum")) {
+						ParseEnumConst(block, false);
+					}
+					else if(ident->Equals("consts")) {
+						ParseEnumConst(block, true);
+					}
+					else if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
+						ParseClassFunction(ident, block);
+					};
+					state := 0;
+				};
+			
+				if(@cur_char = '#' & @nxt_char = '~') {
+					state := 1;
+					start := @buffer_index - 1;
+				}
+				else if(state = 1 & @cur_char = '~' & @nxt_char = '#') {
+					block := @buffer->SubString(start, @buffer_index - start + 1);
+					state := 2;
+					NextChar();
+				}
+				# uncommented 'bundle' tag
+				else if(@cur_char = 'b' & @nxt_char = 'u') {
+					ident := ParseIdent();
+					if(ident->Equals("bundle")) {
+						@bundle_name := ParseIdent();
+						if(@bundle_name->Size() > 0) {
+							bundle_block := BundleSnippet->New(@uses);
+							bundle_block->SetName(@bundle_name);
+							SetBundle(bundle_block);
+						};
+					};
+				};
+				CheckLevel();
+			
+				NextChar();
+			};
+		};
+		
+		return true;	
+	}
+}
+
+class Snippet {
+	@buffer : String;
+	@buffer_index : Int;
+	@cur_char : Char;
+	@nxt_char : Char;
+	@parsed : Bool;
+	
+	New(buffer : String) {
+		@buffer := buffer;
+		@buffer_index := 0;
+		@parsed := false;
+		NextChar();
+	}
+	
+	method : NextChar() ~ Nil {
+		if(@buffer_index < @buffer->Size()) {
+			@cur_char := @buffer->Get(@buffer_index);
+			@buffer_index += 1;
+			if(@buffer_index < @buffer->Size()) {
+				@nxt_char := @buffer->Get(@buffer_index);
+			}
+			else {
+				@nxt_char := '\0';
+			};
+		}
+		else {
+			@cur_char := '\0';
+			@nxt_char := '\0';
+		};
+	}
+	
+	method : ParseWhiteSpace() ~ Nil {
+		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | 
+			@cur_char = '\r' | @cur_char = '\n')) {
+			NextChar();
+		};
+	}
+
+	method : MatchCommentStart() ~ Bool {
+		ParseWhiteSpace();
+		match := @cur_char = '#' & @nxt_char = '~';
+		if(match) {
+			NextChar();	NextChar();
+			return true;
+		};
+		
+		return false;
+	}
+
+	method : MatchCommentEnd() ~ Bool {
+		ParseWhiteSpace();
+		match := @cur_char = '~' & @nxt_char = '#';
+		if(match) {
+			NextChar();	NextChar();
+			return true;
+		};
+		
+		return false;
+	}
+	
+	method : MatchChar(char : Char) ~ Bool {
+		ParseWhiteSpace();
+		
+		match := @cur_char = char;
+		if(match) {
+			NextChar();
+			return true;
+		};
+		
+		return false;
+	}
+
+	method : MatchIdent(ident : String) ~ Bool {
+		return ParseIdent()->Equals(ident);
+	}
+
+	method : MatchEitherIdent(checks : String[]) ~ Bool {
+		ident := ParseIdent();
+		each(i : checks) {
+			if(checks[i]->Equals(ident)) {
+				return true;
+			};
+		};
+		
+		return false;
+	}
+
+	method : ParseIdent() ~ String {
+		ParseWhiteSpace();
+
+		ident := "";
+		done := false;
+		while(<>done) {
+			select(@cur_char) {
+				label ' ':
+				label '\r':
+				label '\n':
+				label '{':
+				label '}':
+				label ':':
+				label '(':
+				label ')':
+				label '~':
+				label '#':
+				label '<':
+				label '>':
+				label '\0': {
+					done := true;
+				}
+				
+				other: {
+					ident->Append(@cur_char);
+					NextChar();
+				}
+			};
+		};
+		
+		ident := ident->Trim();
+		if(ident->EndsWith(',')) {
+			ident->Pop();
+		};
+		
+		return ident;
+	}
+	
+	method : ParseDesc() ~ String {
+		ParseWhiteSpace();
+		
+		ident := "";
+		done := false;
+		while(<>done) {
+			select(@cur_char) {
+				label ' ':
+				label '\t':
+				label '\r':
+				label '\n': {
+					ParseWhiteSpace();
+					ident->Append(' ');
+				}
+				label '~':
+				label '@':
+				label '\0': {
+					done := true;
+				}				
+				other: {
+					ident->Append(@cur_char);
+					NextChar();
+				}
+			};
+		};
+		
+		return ident->Trim();
+	}
+
+	function : GetShortName(name : String) ~ String {
+		if(name <> Nil) {
+			index := name->FindLast('.');
+			if(index > -1) {
+				index += 1;
+				return name->SubString(index, name->Size() - index);
+			};
+
+			index := name->Find('&');
+			if(index > -1) {
+				return name->SubString(index);
+			};
+		};
+
+		return name;
+	}	
+
+	method : public : virtual : IsParsed() ~ Bool;
+
+	method : virtual : Parse() ~ Bool;
+}
+
+class BundleSnippet from Snippet {
+	@name : String;
+	@desc : String;
+	@classes : Map<String, ClassSnippet>;
+	@enums : Map<String, EnumConstSnippet>;
+	@uses : Vector<String>;
+
+	New(uses : Vector<String>) {
+		Parent("");
+		@uses := uses;
+		@classes := Map->New()<String, ClassSnippet>;
+		@enums := Map->New()<String, EnumConstSnippet>;
+	}
+
+	New(buffer : String, uses : Vector<String>) {
+		Parent(buffer);
+		@uses := uses;
+		@classes := Map->New()<String, ClassSnippet>;
+		@enums := Map->New()<String, EnumConstSnippet>;
+		@parsed := Parse();
+	}
+	
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+
+	method : public : GetUses() ~ Vector<String> {
+		return @uses;
+	}
+
+	method : public : SetName(name : String) ~ Nil {
+		@name := name;
+	}
+	
+	method: public : AddClass(class_block : ClassSnippet) ~ Nil {
+		@classes->Insert(class_block->GetShortName(), class_block);
+	}
+
+	method: public : GetClasses() ~ Map<String, ClassSnippet> {
+		return @classes;
+	}
+
+	method: public : AddEnum(enum_block : EnumConstSnippet) ~ Nil {
+		@enums->Insert(enum_block->GetName(), enum_block);
+	}
+
+	method: public : GetEnums() ~ Map<String, EnumConstSnippet> {
+		return @enums;
+	}
+
+	method: public : AddInterface(inf_block : ClassSnippet) ~ Nil {
+		@classes->Insert(inf_block->GetName(), inf_block);
+	}
+
+	method : native : Parse() ~ Bool {
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		@desc := ParseDesc();
+		if(<>MatchCommentEnd()) {
+			return false;
+		};
+		if(<>MatchIdent("bundle")) {
+			return false;
+		};
+		
+		@name := ParseIdent();
+		if(@name->Size() > 0) {
+			return true;
+		};
+
+		return false;
+	}
+}
+
+class EnumConstSnippet from Snippet {
+	@name : String;
+	@is_consts : Bool;
+	@id : String;
+	@desc : String;
+	@klass : String;
+	@items : Vector<String>;
+	@block_name : String;
+	
+	New(buffer : String, is_consts : Bool) {
+		Parent(buffer);
+		@is_consts := is_consts;
+		@items := Vector->New()<String>;
+		@parsed := Parse();
+	}
+
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : IsConsts() ~ Bool {
+		return @is_consts;
+	}
+	
+	method : public : GetId() ~ String {
+		return @id;
+	}
+
+	method : public : GetClass() ~ String {
+		return @klass;
+	}
+
+	method : public : GetItems() ~ Vector<String> {
+		return @items;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+	
+	method : public : SetBundleName(block_name : String) ~ Nil {
+		@block_name := block_name;
+	}
+
+	method : public : GetBundleName() ~ String {
+		return @block_name;
+	}
+
+	method : native : Parse() ~ Bool {
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		@desc := ParseDesc();	
+
+		# parse tags		
+		type := ParseIdent();
+		if(type->Size() > 0) {
+			if(type->Equals("@class")) {
+				@klass := ParseIdent();
+				if(@klass->Size() = 0) {
+					return false;
+				};
+			};
+		};
+		
+		if(<>MatchCommentEnd()) {
+			return false;
+		};
+
+		idents := ["enum", "consts"];
+		if(<>(MatchEitherIdent(idents))) {
+			return false;
+		};
+
+		@name := ParseIdent();
+		if(@name->Size() = 0) {
+			return false;
+		};
+
+		if(@klass <> Nil) {
+			@klass += "-&gt;";
+			@klass += @name;
+			@name := @klass;
+		};
+		
+		if(<>@is_consts & MatchChar(':')) {
+			if(MatchChar('=')) {
+				@id := ParseIdent();
+				if(@id->Size() = 0) {
+					return false;
+				};
+			}
+			else {
+				return false;
+			};
+		};
+		
+		if(<>MatchChar('{')) {
+			return false;
+		};
+
+		# items
+		while(@cur_char <> '}') {
+			item_name := ParseIdent();
+			if(item_name->Size() = 0) {
+				return false;
+			};
+
+			if(@is_consts) {
+				item_name += " = ";
+				if(<>MatchChar(':')) {
+					return false;
+				};
+
+				if(<>MatchChar('=')) {
+					return false;
+				};
+				value := ParseIdent();
+
+				if(value->Size() = 0) {
+					return false;
+				};
+				item_name += value->ToInt();
+			};
+
+			@items->AddBack(item_name);
+
+			MatchChar(',');
+		};
+		
+		return true;
+	}
+}
+
+class ClassSnippet from Snippet {
+	@name : String;
+	@short_name : String;
+	@file_name : String;
+	@html_name : String;
+	@block_name : String;
+	@from_class : String;
+	@desc : String;
+	@funcs : Map<String, Vector<FuncSnippet> >;
+	@implemented : Vector<String>;
+	@is_inf : Bool;
+	@is_generic : Bool;
+	
+	New(buffer : String, is_inf : Bool) {
+		Parent(buffer);
+		@is_inf := is_inf;
+		@funcs := Map->New()<String, Vector<FuncSnippet> >;
+		@implemented := Vector->New()<String>;
+		@parsed := Parse();
+	}
+
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
+	method : public : IsInterface() ~ Bool {
+		return @is_inf;
+	}
+
+	method : public : GetImplemented() ~ Vector<String> {
+		return @implemented;
+	}
+	
+	method : public : GetShortName() ~ String {
+		if(@short_name = Nil) {
+			@short_name := GetShortName(@name);
+		};
+
+		return @short_name;
+	}
+
+	method : public : GetFileName() ~ String {
+		if(@file_name = Nil) {
+			@file_name := @name->ReplaceAll("&lt;", "_");
+			@file_name := @file_name->ReplaceAll("&gt;", "_");
+			@file_name := @file_name->ReplaceAll(":", "-");
+			@file_name := @file_name->ReplaceAll(",", "_");
+		};
+
+		return @file_name;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+	
+	method : public : SetBundleName(block_name : String) ~ Nil {
+		@block_name := block_name;
+	}
+
+	method : public : GetBundleName() ~ String {
+		return @block_name;
+	}
+	
+	method : public : GetFrom() ~ String {
+		return GetShortName(@from_class);
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+
+	method : public : AddEnum(block : String) ~ Nil {
+	}
+
+	method : public : AddFunction(block : String) ~ Bool {
+		func := FuncSnippet->New(block);
+		if(func->IsParsed()) {
+			funcs := @funcs->Find(func->GetName());
+			if(funcs = Nil) {
+				funcs := Vector->New()<FuncSnippet>;
+				@funcs->Insert(func->GetName(), funcs);
+			};
+			funcs->AddBack(func);
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : GetFunctionNames() ~ Vector<String> {
+		return @funcs->GetKeys()<String>;
+	}
+
+	method : public : GetFunctions(name : String) ~ Vector<FuncSnippet> {
+		return @funcs->Find(name)<FuncSnippet>;
+	}
+	
+	method : public : GetAllFunctions() ~ Vector<FuncSnippet> {
+		all_funcs := Vector->New()<FuncSnippet>;
+		
+		keys := @funcs->GetKeys()<String>;
+		each(i : keys) {
+			funcs := @funcs->Find(keys->Get(i));
+			each(j : funcs) {
+				all_funcs->AddBack(funcs->Get(j));
+			};
+		};
+				
+		return all_funcs;
+	}
+
+	method : ParseInterfaces() ~ Nil {
+		ident := ParseIdent();
+		
+		while(ident->Size() > 0) {
+			@implemented->AddBack(GetShortName(ident));
+			MatchChar(',');
+			ident := ParseIdent();
+		};	
+	}
+
+	method : ParseName() ~ String {
+		start := ParseIdent();
+
+		if(MatchChar('<')) {
+			start += "&lt;";
+			
+			mid := ParseIdent();
+			while(mid->Size() > 0) {
+				start += mid;
+				if(MatchChar(':')) {
+					start += ':';
+					mid := ParseIdent();
+					if(mid->Size() > 0) {
+						start += mid;
+					};
+				};
+				start += ',';
+				mid := ParseIdent();
+			};
+			start->Pop();
+
+			start += "&gt;";
+			@is_generic := true;
+		};
+
+		return start;
+	}
+
+	method : public : IsGeneric() ~ Bool {
+		return @is_generic;
+	}
+
+	method : native : Parse() ~ Bool {
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		@desc := ParseDesc();
+		if(<>MatchCommentEnd()) {
+			return false;
+		};
+
+		if(<>MatchEitherIdent(["class", "interface"])) {
+			return false;
+		};
+		
+		@name := ParseName();
+		if(@name->Size() = 0) {
+			return false;
+		};
+		
+		if(@name->Get(0) = '$') {
+			@name := @name->SubString(1, @name->Size() - 1);
+		};
+
+		ident := ParseIdent(); 
+		if(ident->Equals("from")) {
+			@from_class := ParseIdent();
+			if(@from_class->Size() = 0) {
+				return false;
+			};
+		};
+		
+		if(@is_generic) {
+			NextChar();
+			ident := ParseIdent(); 
+		};
+
+		if(ident->Equals("implements")) {
+			ParseInterfaces();
+		};
+		
+		return true;
+	}
+}
+
+class FuncSnippet from Snippet {
+	@name : String;
+	@signature : String;
+	@desc : String;
+	@tags : Map<String, SnippetTag>;
+	@return_type : SnippetType;
+	@return_tag : SnippetTag;
+	@func_types : Vector<SnippetType>;
+	@is_func : Bool;
+	@is_private : Bool;
+	@is_native : Bool;
+	@is_virtual : Bool;
+	@is_new : Bool;
+	@types : static : Map<String, IntHolder>;
+	@ignore_params : Bool;
+	
+	New(buffer : String) {
+		Parent(buffer);
+		Initialize();
+		
+		@name := "";
+		@desc := "";
+		@tags := Map->New()<String, SnippetTag>;
+		@func_types := Vector->New()<SnippetType>;
+		@is_private := true;
+
+		@parsed := Parse();
+	}
+	
+	function : Initialize() ~ Nil {
+		if(@types = Nil) {
+			@types := Map->New()<String, IntHolder>;
+			@types->Insert("Byte", IntHolder->New(SnippetType->Type->BYTE));
+			@types->Insert("Char", IntHolder->New(SnippetType->Type->CHAR));
+			@types->Insert("Int", IntHolder->New(SnippetType->Type->INT));
+			@types->Insert("Float", IntHolder->New(SnippetType->Type->FLOAT));
+			@types->Insert("Nil", IntHolder->New(SnippetType->Type->NIL));
+		};
+	}
+	
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetSignature() ~ String {
+		if(@signature = Nil) {
+			@signature := "";
+			
+			if(@is_new) {
+				@signature->Append("New");
+			}
+			else {
+				if(@is_func) {
+					@signature->Append("function : ");
+				}
+				else {
+					@signature->Append("method : ");
+				};
+				
+				if(<>@is_func) {
+					if(@is_private) {
+						@signature->Append("private : ");
+					}
+					else {
+						@signature->Append("public : ");
+					};
+				};
+		
+				if(@is_native) {
+					@signature->Append("native : ");
+				};
+				
+				if(@is_virtual) {
+					@signature->Append("virutal : ");
+				};
+		
+				@signature->Append(@name);
+			};
+			@signature->Append('(');
+
+			if(<>@ignore_params) {
+				each(i : @func_types) {
+					func_type := @func_types->Get(i);
+					param_tag := @tags->Find(func_type->GetName());
+					if(param_tag <> Nil & <>param_tag->IsIgnore()) {
+						@signature->Append(func_type->GetName());
+						@signature->Append(':');
+						@signature->Append(func_type->GetTypeName());
+						
+						if(i + 1 < @func_types->Size()) {
+							@signature->Append(", ");
+						};
+					};
+				};
+			};
+
+			if(@is_new) {
+				@signature->Append(')');
+			}
+			else {
+				@signature->Append(") ~ ");
+				@signature->Append(@return_type->GetTypeName());
+			};
+		};
+		
+		return @signature;
+	}
+
+	method : public : GetReturnTag() ~ SnippetTag {
+		return @return_tag;
+	}
+
+	method : public : GetReturnType() ~ SnippetType {
+		return @return_type;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+
+	method : public : GetParamTags() ~ Map<String, SnippetTag> {
+		return @tags;
+	}
+	
+	method : public : GetParams() ~ Vector<SnippetType> {
+		if(@ignore_params) {
+			return Vector->New()<SnippetType>;
+		}
+		else {
+			return @func_types;
+		};
+	}
+	
+	method : native : Parse() ~ Bool {
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		@desc := ParseDesc();	
+
+		# parse tags		
+		are_tags := true;
+		while(@cur_char <> '\0' & are_tags) {
+			type := ParseIdent();
+			if(type->Size() > 0) {
+				if(type->Equals("@param")) {
+					tag_name := ParseIdent();
+					if(tag_name->Size() = 0) {
+						return false;
+					};
+
+					tag_desc := ParseDesc();
+					if(tag_desc->Size() = 0) {
+						return false;
+					};
+					tag := SnippetTag->New(tag_name, tag_desc, false);
+					@tags->Insert(tag->GetName(), tag);
+				}
+				else if(type->Equals("@ignore-param")) {
+					tag_name := ParseIdent();
+					if(tag_name->Size() = 0) {
+						return false;
+					};
+					tag := SnippetTag->New(tag_name, "", true);
+					@tags->Insert(tag->GetName(), tag);
+				}
+				else if(type->Equals("@ignore-params")) {
+					@ignore_params := true;
+				}
+				else if(type->Equals("@return")) {
+					tag_desc := ParseDesc();
+					if(tag_desc->Size() = 0) {
+						return false;
+					};
+					@return_tag := SnippetTag->New(tag_desc);
+				}
+				else {
+					return false;
+				};
+			}
+			else {
+				are_tags := false;
+			};
+		};
+
+		if(<>MatchCommentEnd()) {
+			return false;
+		};
+		
+		# parse function
+		func_type := ParseIdent();
+		if(func_type->Size() > 0) {
+			if(func_type->Equals("function")) {
+				@is_func := true;
+			}
+			else if(func_type->Equals("method")) {
+				@is_func := false;
+			}
+			else if(func_type->Equals("New")) {
+				@is_new := true;
+				@is_func := false;
+			}
+			else {
+				return false;
+			};
+		};
+
+		if(@is_new) {
+			@name := "New";
+		}
+		else {
+			while(MatchChar(':')) {
+				meta := ParseIdent();
+				if(meta->Size() > 0) {
+					if(meta->Equals("public")) {
+						@is_private := false;
+					}
+					else if(meta->Equals("private")) {
+						@is_private := true;
+					}
+					else if(meta->Equals("native")) {
+						@is_native := true;
+					}
+					else if(meta->Equals("virtual")) {
+						@is_virtual := true;
+					}
+					else {
+						@name := meta;
+					};
+				};
+			};
+		};
+		
+		if(@name = Nil | <>MatchChar('(')) {
+			return false;
+		};
+		
+		# function parameters
+		while(@cur_char <> ')') {
+			param_name := ParseIdent();
+			if(param_name->Size() = 0) {
+				return false;
+			};
+		
+			if(<>MatchChar(':')) {
+				return false;
+			};
+		
+			type_param := ParseType(param_name);
+			if(type_param <> Nil) {
+				@func_types->AddBack(type_param);
+				MatchChar(',');
+			};
+		};
+		
+		if(<>MatchChar(')')) {
+			return false;
+		};
+		
+		if(<>@is_new) {
+			if(<>MatchChar('~')) {
+				return false;
+			};
+
+			# return type
+			rtrn_name := ParseName();
+			if(rtrn_name->IsEmpty()) {
+				func_rtrn_type := ParseType(rtrn_name);
+				if(func_rtrn_type = Nil) {
+					return false;
+				};
+				rtrn_name := func_rtrn_type->GetTypeName();
+			};
+
+			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
+			if(rtrn_type <> Nil) {
+				@return_type := SnippetType->New("", rtrn_name, rtrn_type->Get()->As(SnippetType->Type));
+			}
+			else {
+				@return_type := SnippetType->New("", rtrn_name, SnippetType->Type->CLASS);
+			};
+		};
+		
+		return true;
+	}
+
+	method : ParseName() ~ String {
+		start := ParseIdent();
+
+		tick := 1;
+		if(MatchChar('<')) {
+			start += "&lt;";
+			mid := ParseIdent();
+						
+			while(mid->Size() > 0) {
+				start += mid;
+				if(MatchChar(':')) {
+					start += ':';
+					mid := ParseIdent();
+					if(mid->Size() > 0) {
+						start += mid;
+					};
+				}
+				else if(MatchChar('<')) {
+					start += "&lt;";
+ 					mid := ParseIdent();
+					if(mid->Size() > 0) {
+						start += mid;
+						tick += 1;
+					};
+				};
+				start += ',';
+				mid := ParseIdent();
+			};
+			start->Pop();
+			NextChar();
+
+			each(i : tick) {
+				start += "&gt;";
+			};
+		}
+		else if(MatchChar('>')) {
+			start += "&gt;";
+			start += ParseIdent();
+		}
+		else if(MatchChar(':')) {
+			while(@cur_char <> ',' & @cur_char <> ')') {
+			 	NextChar();
+			 };
+		};
+
+		return start;
+	}
+	
+	method : ParseType(param_name : String) ~ SnippetType {
+		type_name := "";
+
+		if(MatchChar('(')) {
+			type_name->Append('(');
+
+			if(ParseFuncType(type_name)) {
+				return SnippetType->New(GetShortName(param_name), type_name, SnippetType->Type->FUNC);
+			}
+			else {
+				return Nil;
+			};
+		}
+		else {
+			ident := ParseName();
+			if(ident->Size() = 0) {
+				return Nil;
+			};
+			type_name->Append(ident);
+			
+			param_type := @types->Find(type_name);
+			if(param_type <> Nil) {
+				return SnippetType->New(param_name, type_name, param_type->Get()->As(SnippetType->Type));
+			}
+			else {
+				return SnippetType->New(param_name, type_name, SnippetType->Type->CLASS);
+			};
+		};
+	}
+	
+	method : ParseFuncType(type_name : String) ~ Bool {
+		ident := ParseName();
+		while(ident->Size() > 0) {
+			type_name->Append(ident);				
+			type_name->Append(',');
+			ident := ParseName();
+		};
+
+		if(type_name->EndsWith(',')) {
+			type_name->Pop();
+		};
+
+		if(<>MatchChar(')')) {
+			return false;
+		};
+		type_name->Append(')');
+
+		if(<>MatchChar('~')) {
+			return false;
+		};
+		type_name->Append('~');
+
+		ident := ParseName();
+		if(ident->Size() = 0) {
+			return false;
+		};
+		type_name->Append(ident);
+		
+		return true;
+	}
+}
+
+class SnippetTag {
+	enum Type {
+		PARAM,
+		RETURN
+	}	
+	
+	@type : SnippetTag->Type;
+	@name : String;
+	@desc : String;
+	@ignore : Bool;
+
+	New(name : String, desc : String, ignore : Bool) {
+		@type := Type->PARAM;
+		@name := name;
+		@desc := desc;
+		@ignore := ignore;
+	}
+
+	New(desc : String) {
+		@type := Type->RETURN;
+		@name := "";
+		@desc := desc;
+	}
+	
+	method : public : GetType() ~ SnippetTag->Type {
+		return @type;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+
+	method : public : IsIgnore() ~ Bool {
+		return @ignore;
+	}
+}
+
+class SnippetType {
+	enum Type {
+		BYTE,
+		CHAR,
+		INT,
+		FLOAT,
+		CLASS,
+		FUNC,
+		NIL
+	}
+	
+	@name : String;
+	@type_name : String;		
+	@type : SnippetType->Type;
+	
+	New(name : String, type_name : String, type : SnippetType->Type) {
+		@name := name;
+		@type_name := type_name;
+		@type := type;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetTypeName() ~ String {
+		return @type_name;
+	}
+
+	method : public : GetType() ~ SnippetType->Type {
+		return @type;
+	}
+}

@@ -1,0 +1,45 @@
+﻿use Data.JSON;
+
+bundle Default {
+	class Json {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				input := IO.File.FileReader->ReadFile(args[0]);
+				if(input <> Nil) {
+					parser := JsonParser->New(input);
+					root := parser->Parse();
+					if(root <> Nil) {
+						if(root->GetType() = JsonType->OBJECT) {
+							result := root->Get("result");
+							if(result <> Nil & result->GetType() = JsonType->OBJECT) {
+								custom_fields := result->Get("customFieldValues");
+								if(custom_fields <> Nil & custom_fields->GetType() = JsonType->ARRAY) {
+									IO.Console->Print("field count=")->PrintLine(custom_fields->Size());										
+									each(i : custom_fields) {
+										custom_field := custom_fields->Get(i);
+										if(custom_field <> Nil & custom_field->GetType() = JsonType->OBJECT) {								
+											# get id
+											id := custom_field->Get("customfieldId");
+											if(id <> Nil & id->GetType() = JsonType->STRING) {
+												IO.Console->Print("\tid=")->PrintLine(id->GetValue());
+											};
+											# get values
+											values := custom_field->Get("values");
+											if(values <> Nil & values->GetType() = JsonType->ARRAY) {
+												each(j : values) {
+													value := values->Get(j);
+													IO.Console->Print("\tvalue=")->PrintLine(value->GetValue());
+												};
+											};
+										};
+										"\t----------"->PrintLine();
+									};
+								};
+							};
+						};	
+					};
+				};
+			};
+		}
+	}
+}

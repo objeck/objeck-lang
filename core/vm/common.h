@@ -903,7 +903,6 @@ class StackProgram {
 #ifdef _WIN32
   static std::wstring GetProperty(const std::wstring& key) {
     std::wstring value;
-
     EnterCriticalSection(&prop_cs);
 
     if(properties_map.size() == 0) {
@@ -914,8 +913,8 @@ class StackProgram {
     if(find != properties_map.end()) {
       value = find->second;
     }
-    LeaveCriticalSection(&prop_cs);
 
+    LeaveCriticalSection(&prop_cs);
     return value;
   }
 

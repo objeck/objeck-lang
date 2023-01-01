@@ -1,0 +1,12 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		""->ToFloat()->PrintLine();
+		""->ToInt()->PrintLine();
+       
+		"xyz"->ToFloat()->PrintLine();
+		"xyz"->ToInt()->PrintLine();
+
+		"3.14159265"->ToInt()->PrintLine();		
+		"3141"->ToFloat()->PrintLine();		
+	}
+}

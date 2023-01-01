@@ -1,0 +1,27 @@
+use Database.ODBC;
+
+bundle Default {
+	class SqlTest {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
+			conn := Connection->New("foo", "", "");
+			if(conn->IsOpen()) {
+				rs := conn->Select("SELECT * FROM Person");
+				if(rs <> Nil) {
+					while(rs->Next()) {
+						rs->GetInt(1)->PrintLine();
+						rs->GetVarchar("first")->PrintLine();
+						rs->GetVarchar(3)->PrintLine();
+						rs->GetInt(4)->PrintLine();
+						"---"->PrintLine();
+					};
+					rs->Close();
+				};
+				conn->Close();
+			};
+		}
+	}
+}

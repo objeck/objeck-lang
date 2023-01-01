@@ -1,0 +1,21 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+#~		
+		z := 20;
+		g := 8;
+		z := 66;
+		y := g + 13 * z;
+		y->PrintLine();
+~#
+		z := 20;
+		y := 13;
+		y := 7;
+		y := 3;
+		z := z * args->Size() + y;
+		z->PrintLine();
+	}
+
+	function : Bar(a : Int) ~ Int {
+		return 13 + a;
+	}
+}

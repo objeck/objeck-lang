@@ -1,6 +1,0 @@
-class Test {
-	function : Main(a : String[]) ~ Nil {
-		b := 7; c := 13;
-		"{$b, {$c}"->PrintLine();
-	}
-}

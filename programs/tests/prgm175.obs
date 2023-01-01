@@ -1,0 +1,10 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		a := 13;
+		(a + 4)->PrintLine();
+		if(a < 10) {
+			"< 10"->PrintLine();
+		};
+		a->PrintLine();
+	}
+}

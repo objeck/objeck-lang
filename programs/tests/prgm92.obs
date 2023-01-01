@@ -1,0 +1,26 @@
+﻿class Test {
+	function : Foo() ~ Int {
+		return 33;
+	}
+
+	function : Fie(a : Int := 7, b : Int := Foo()) ~ Int {
+		return a+b;
+	}
+
+	function : Fum(a : Int, b : Int := a, c : Int := 7) ~ Nil {
+		(a*b*c)->PrintLine();
+	}
+
+	function : native : Two(str : String, size : Int := str->Size()) ~ Nil {
+		size->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Fie()->PrintLine();
+		Fum(10, 5);
+		Fum(10);
+
+		Two("Chains");
+		Two("Chains", 101);
+	}
+}

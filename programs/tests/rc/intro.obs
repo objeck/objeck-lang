@@ -1,0 +1,30 @@
+use System.IO;
+
+bundle Default {
+	class Introspection {
+		function : Main(args : String[]) ~ Nil {
+			s := Class->Instance("System.String");
+			c := s->GetClass();
+			Console->Print("class=")->PrintLine(c->GetName());
+			m := c->GetMethods();
+			each(i : m) {
+				Console->Print("method=")->PrintLine(m[i]->GetName());
+				b := m[i]->GetName()->Equals("New");
+				Console->Print("is constructor=")->PrintLine(b);
+
+				p := m[i]->GetParameters();
+				Console->Print("number of parameters=")->PrintLine(p->Size());
+				each(j : p) {
+					"------"->PrintLine();
+					a := p[j];
+					Console->Print("  parameter type=")->PrintLine(a->GetType()->As(Int));
+					Console->Print("  parameter dim=")->PrintLine(a->GetDimension());
+					if(a->GetType() = TypeId->CLASS) {
+						Console->Print("  parameter class name=")->PrintLine(a->GetClassName());
+					};
+				};
+				"======"->PrintLine();
+			};
+		}
+	}
+}

@@ -1,0 +1,15 @@
+bundle Default {
+	class Hello {
+    	function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+    	function : Foo(x : Int, y : Float) ~ Nil {
+			(x * y)->PrintLine();
+		}
+
+    	function : Run() ~ Nil {
+			Foo(3, 4.5 * 9.5);
+		}
+	}
+}

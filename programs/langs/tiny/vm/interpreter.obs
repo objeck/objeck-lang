@@ -1,0 +1,295 @@
+use System.IO.Filesystem;
+use Collection.Generic;
+
+class Interpreter {
+	@instructions : Vector<Instruction>;
+	@strings : String[];
+	@file : String;
+	
+	function : Main(args : String[]) ~ Nil {
+		if(args → Size() = 1) {
+			interpreter ← Interpreter → New(args[0]);
+			interpreter → Load();	
+			interpreter → Run();
+		};
+	}
+	
+	New(file : String) {
+		@file ← file;
+		@instructions ← Vector → New()<Instruction>;
+	}
+	
+	method : native : Run() ~ Nil  {
+		varibles ← Int → New[16];
+		calc_stack ← Stack → New()<IntHolder>;
+		
+		pc ← 0;
+		while(pc < @instructions → Size()) {
+			instruction ← @instructions → Get(pc);
+			select(instruction → GetType()) {
+
+				label Instruction → Type → PUTS: {
+					@strings[calc_stack → Pop()] → Print();
+					pc += 1;
+				}
+
+				label Instruction → Type → PUTI: {
+					calc_stack → Pop() → Print();
+					pc += 1;
+				}
+				
+				label Instruction → Type → PUTC: {
+					calc_stack → Pop() → Get() → As(Char) → Print();
+					pc += 1;
+				}
+			
+				label Instruction → Type → ST: {
+					index ← instruction → GetValue();
+					varibles[index] ← calc_stack → Pop();
+					pc += 1;
+				}
+				
+				label Instruction → Type → LD: {
+					index ← instruction → GetValue();
+					calc_stack → Push(varibles[index]);
+					pc += 1;
+				}
+				
+				label Instruction → Type → JZ: {
+					if(calc_stack → Pop() = 0) {
+						pc ← instruction → GetValue();
+					}
+					else {
+						pc += 1;
+					};
+				}
+				
+				label Instruction → Type → JP: {
+					pc ← instruction → GetValue();
+				}
+				
+				label Instruction → Type → PUSH: {
+					calc_stack → Push(instruction → GetValue());
+					pc += 1;
+				}
+				
+				label Instruction → Type → AND: {
+					value := ((calc_stack → Pop()  → Get() <> 0) & (calc_stack → Pop()  → Get() <> 0));
+					calc_stack → Push( value ? 1 : 0);
+					pc += 1;
+				}
+				
+				label Instruction → Type → OR: {
+					value := ((calc_stack → Pop()  → Get() <> 0) | (calc_stack → Pop()  → Get() <> 0));
+					calc_stack → Push( value ? 1 : 0);
+					pc += 1;
+				}
+				
+				label Instruction → Type → LT: {
+					calc_stack → Push((calc_stack → Pop()  → Get() < calc_stack → Pop()) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → GT: {
+					calc_stack → Push((calc_stack → Pop()  → Get() > calc_stack → Pop()) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → LE: {
+					calc_stack → Push((calc_stack → Pop()  → Get() <= calc_stack → Pop()) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → GE: {
+					calc_stack → Push((calc_stack → Pop()  → Get() >= calc_stack → Pop()) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → EQ: {
+					calc_stack → Push((calc_stack → Pop()  → Get() = calc_stack → Pop()) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → NEQ: {
+					calc_stack → Push((calc_stack → Pop()  → Get() <> calc_stack → Pop()) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → NOT: {
+					calc_stack → Push((calc_stack → Pop()  → Get() = 0) → As(Int));
+					pc += 1;
+				}
+				
+				label Instruction → Type → NEG: {
+					calc_stack → Push(calc_stack → Pop()  → Get() * -1);
+					pc += 1;
+				}
+				
+				label Instruction → Type → ADD: {
+					calc_stack → Push(calc_stack → Pop()  → Get() + calc_stack → Pop());
+					pc += 1;
+				}
+				
+				label Instruction → Type → SUB: {
+					calc_stack → Push(calc_stack → Pop()  → Get() - calc_stack → Pop());
+					pc += 1;
+				}
+				
+				label Instruction → Type → MUL: {
+					calc_stack → Push(calc_stack → Pop()  → Get() * calc_stack → Pop());
+					pc += 1;
+				}
+				
+				label Instruction → Type → DIV: {
+					calc_stack → Push(calc_stack → Pop()  → Get() / calc_stack → Pop());
+					pc += 1;
+				}
+				
+				label Instruction → Type → MOD: {
+					calc_stack → Push(calc_stack → Pop()  → Get() % calc_stack → Pop());
+					pc += 1;
+				}
+			};
+		};
+		
+		"---" → PrintLine();
+		calc_stack → Size() → PrintLine();
+	}
+	
+	method : native : Load() ~ Nil {
+		reader ← FileReader → New(@file);	
+		leaving {
+			reader → Close();
+		};
+		
+		line ← reader → ReadLine() → Trim();
+		string_count ← line → ToInt();		
+		@strings ← String → New[string_count];
+		for(i ← 0; i < string_count; i += 1;) {
+			string ← "";
+			line ← reader → ReadLine();
+			each(j : line) {
+				c ← line → Get(j);
+				if(c = '\\' & j + 1 < line → Size()) {
+					n ← line → Get(j + 1);
+					select(n) {
+						label 'n': {
+							string += '\n';
+							j += 1;
+						}
+						
+						label 'r': {
+							string += '\r';
+							j += 1;
+						}
+						
+						label 't': {
+							string += '\t';
+							j += 1;
+						}
+						
+						other: {
+							string += '\\';
+						}
+					};
+				}
+				else {
+					string += c;
+				};
+			};
+			@strings[i] ← string;
+		};
+
+		while(<>reader → IsEOF()) {
+			line ← reader → ReadLine();
+			opers ← line → Split("\t");
+			if(opers <> Nil) {
+				if(opers → Size() = 2) {
+					name ← opers[1];
+					if(name → Equals("lt")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → LT));
+					} 
+					else if(name → Equals("gt")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → GT));
+					}
+					else if(name → Equals("le")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → LE));
+					}
+					else if(name → Equals("eq")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → EQ));
+					}
+					else if(name → Equals("neq")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → NEQ));
+					}
+					else if(name → Equals("neg")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → NEG));
+					}
+					else if(name → Equals("not")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → NOT));
+					}
+					else if(name → Equals("and")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → AND));
+					}
+					else if(name → Equals("or")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → OR));
+					}
+					else if(name → Equals("add")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → ADD));
+					}
+					else if(name → Equals("sub")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → SUB));
+					} 
+					else if(name → Equals("mul")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → MUL));
+					} 
+					else if(name → Equals("div")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → DIV));
+					} 
+					else if(name → Equals("mod")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → MOD));
+					}
+					else if(name → Equals("putc")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → PUTC));
+					}
+					else if(name → Equals("puts")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → PUTS));
+					}
+					else if(name → Equals("puti")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → PUTI));
+					}
+					else {
+						"### Unknown instruction: {$name} ####" → ErrorLine();
+						System.Runtime → Exit(1);
+					};
+				}
+				else if(opers → Size() = 3) {
+					name ← opers[1];
+					value ← opers[2] → ToInt();
+					if(name → Equals("st")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → ST, value));
+					}
+					else if(name → Equals("ld")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → LD, value));
+					}
+					else if(name → Equals("jz")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → JZ, value));
+					}
+					else if(name → Equals("jp")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → JP, value));
+					}
+					else if(name → Equals("push")) {
+						@instructions → AddBack(Instruction → New(Instruction → Type → PUSH, value));
+					}
+					else {
+						"### Unknown instruction: {$name} ####" → ErrorLine();
+						System.Runtime → Exit(1);
+					};
+				}
+				else {
+					"### Invalid instruction ####" → ErrorLine();
+					System.Runtime → Exit(1);
+				};
+			};
+		};
+	}
+}

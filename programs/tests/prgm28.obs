@@ -1,0 +1,29 @@
+use System.Base;
+use System.Car;
+
+bundle Default {
+	class Bar {
+		value : Int;
+		New() {
+			value := 13;
+		}
+
+		method : public : native : Get() ~ Int {
+			return value;
+		}
+	}
+
+	class Foo {
+		function : Main(args : System.String[]) ~ Nil {
+			DoStuff();
+		}
+
+		function : native : DoStuff() ~ Nil {
+#		function : DoStuff() ~ Nil {
+			"Hello World"->PrintLine();
+
+			b : Bar := Bar->New();
+			b->Get()->PrintLine();	
+		}
+	}
+}

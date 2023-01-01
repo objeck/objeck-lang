@@ -1,0 +1,11 @@
+bundle Default {
+	class Hello {
+    	function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+    	function : Run() ~ Nil {
+			Runtime->GetPlatform()->PrintLine();
+		}
+	}
+}

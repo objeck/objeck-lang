@@ -1,0 +1,85 @@
+
+bundle Default {
+  class Bar from Foo {
+    New(@foo: Foo) {
+      Parent(@foo->GetValue1(), @foo->GetValue2());
+    }
+    
+#    method : public : native : DoStuff() ~ Float {
+    method : public : DoStuff() ~ Float {
+      a : Int := 13;
+      return value1 * a - value2;
+    }
+  }
+  
+  class Foo {
+    value1 : Int;
+    value2 : Float;
+    
+    New(@value1 : Int, @value2 : Float) {
+      value1 := @value1;
+      value2 := @value2;
+    }
+    
+    method : public : GetValue1() ~ Int {
+      return value1;
+    }
+    
+    method : public : GetValue2() ~ Float {
+      return value2;
+    }
+  }
+  
+  class Test {
+    function : Main(args : System.String[]) ~ Nil {
+      Run();
+    }
+    
+    function : Run() ~ Nil {
+#    function : native : Run() ~ Nil {
+      foo : Foo := Foo->New(7, 3.1415);
+      foo->GetValue2()->PrintLine();
+      
+      bar : Bar := Bar->New(foo);
+      bar->DoStuff()->PrintLine();
+      
+      select(10) {
+          label 7: {
+            cc : System.String := "seven";
+            cc->PrintLine();
+          }
+          
+          other: {
+            cc : System.String := "other";
+            cc->PrintLine();
+          }
+      };
+      
+      string : System.String := "Hello World!";
+      for(i : Int := 0; i < string->Size(); i := i + 1;) {
+        select(string->Get(i)) {
+          label 'H': {
+            cc : System.String := "Hello";
+            cc->PrintLine();
+          }
+          
+          label 'J': {
+            cc : System.String := "Doggie";
+            cc->PrintLine();
+          }
+          
+          label ' ': {
+            cc : System.String := "Huh?";
+            cc->PrintLine();
+          }
+          
+          other: {
+            cc : System.String := "other";
+            cc->PrintLine();
+          }
+        };
+      };
+      "Done."->PrintLine();
+    }
+  }
+}

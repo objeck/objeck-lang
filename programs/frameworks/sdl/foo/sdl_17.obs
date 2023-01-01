@@ -1,0 +1,387 @@
+#~
+Lesson 17
+http:# lazyfoo.net/tutorials/SDL/17_mouse_events/index.php
+~#
+
+use Game.SDL2;
+
+class LButton {
+	@position : Point;
+	@current_sprite : LButtonSprite;
+	@button_sprite_sheet_texture : LTexture;
+	@sprite_clips : Rect[];
+	@x : IntHolder;
+	@y : IntHolder;
+
+	enum LButtonSprite {
+		BUTTON_SPRITE_MOUSE_OUT,
+		BUTTON_SPRITE_MOUSE_OVER_MOTION,
+		BUTTON_SPRITE_MOUSE_DOWN,
+		BUTTON_SPRITE_MOUSE_UP,
+		BUTTON_SPRITE_TOTAL
+	}
+
+	New(button_sprite_sheet_texture : LTexture, sprite_clips : Rect[]) {
+		@button_sprite_sheet_texture := button_sprite_sheet_texture;
+		@sprite_clips := sprite_clips;
+		@position := Point->New();
+		@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_OUT;
+		@x := IntHolder->New();
+		@y := IntHolder->New();
+	}
+
+	# Sets top left position
+	method : public : SetPosition(x : Int, y : Int) ~ Nil {
+		@position->SetX(x);
+		@position->SetY(y);
+	}
+
+	# Handles mouse event
+	method : public : HandleEvent(e : Event) ~ Nil {
+		# If mouse event happened
+		if(e->GetType() = EventType->SDL_MOUSEMOTION | 
+			e->GetType() = EventType->SDL_MOUSEBUTTONDOWN |
+			e->GetType() = EventType->SDL_MOUSEBUTTONUP) {
+
+			Cursor->GetMouseState(@x, @y);
+
+			# Check if mouse is in button
+			inside := true;
+
+			# Mouse is left of the button
+			if( @x->Get() < @position->GetX() ) {
+				inside := false;
+			}
+			# Mouse is right of the button
+			else if( @x->Get() > @position->GetX() + Meta->BUTTON_WIDTH->As(Int)) {
+				inside := false;
+			}
+			# Mouse above the button
+			else if( @y->Get() < @position->GetY() ) {
+				inside := false;
+			}
+			# Mouse below the button
+			else if( @y->Get() > @position->GetY() + Meta->BUTTON_HEIGHT->As(Int)) {
+				inside := false;
+			};
+
+			# Mouse is outside button
+			if(<>inside) {
+				@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_OUT;
+			}
+			# Mouse is inside button
+			else {
+				# Set mouse over sprite
+				select( e->GetType() ) {
+					label EventType->SDL_MOUSEMOTION: {
+						@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_OVER_MOTION;
+					}
+				
+					label EventType->SDL_MOUSEBUTTONDOWN: {
+						@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_DOWN;
+					}
+					
+					label EventType->SDL_MOUSEBUTTONUP: {
+						@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_UP;
+					}
+				};
+			};
+		};
+
+		state := Keyboard->GetState();
+		if(state[Scancode->SDL_SCANCODE_R] <> 0) {
+			"-- R Pushed --"->PrintLine();
+		}
+		else if(state[Scancode->SDL_SCANCODE_H] <> 0) {
+			"-- H Pushed --"->PrintLine();
+		};
+	}
+	
+	# Shows button sprite
+	method : public : Render() ~ Nil {
+		# Show current button sprite
+		@button_sprite_sheet_texture->Render(@position->GetX(), @position->GetY(), @sprite_clips[@current_sprite]);
+	}
+}
+
+class LTexture {
+	@renderer : Renderer;
+	@font : Font;
+	@texture : Texture;
+	@width : Int;
+	@height : Int;
+
+	New(renderer : Renderer, font : Font := Nil) {
+		@renderer := renderer;
+		@font := font;
+	}
+
+	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
+		Free();
+
+		# Render text surface
+		textSurface := @font->RenderTextSolid(textureText, textColor);
+		if(textSurface->IsNull()) {
+			"Unable to render text surface!"->ErrorLine();
+			return false;
+		};
+
+		texture := textSurface->CreateTexture(@renderer);
+		@width := textSurface->GetW();
+		@height := textSurface->GetH();
+		
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
+	# Loads image at specified path
+	method : public : LoadFromFile(path : String) ~ Bool {
+		Free();
+
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
+		
+		loadedSurface->Free();
+
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
+	# Deallocates texture
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+		@texture->SetColorMod(red, green, blue);
+	}
+
+	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
+		# Set blending function
+		@texture->SetBlendMode(blending);
+	}
+	
+	method : public : SetAlpha(alpha : Int) ~ Nil {
+		# Modulate texture alpha
+		@texture->SetAlphaMod(alpha );
+	}
+
+	# Renders texture at given point
+	method : public : Render(x : Int, y : Int, 
+			clip : Rect := Nil, 
+			angle : Float := 0.0, 
+			center : Point := Nil, 
+			flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+		render_quad := Rect->New(x, y, @width, @height);
+
+		if(clip <> Nil)	{
+			render_quad->SetW(clip->GetW());
+			render_quad->SetH(clip->GetH());
+		};
+
+		@renderer->CopyEx(@texture, clip, render_quad, angle, center, flip );
+	}
+
+	# Gets image dimensions
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+}
+
+consts Meta { 
+	SCREEN_WIDTH := 640,
+	SCREEN_HEIGHT := 480,
+	BUTTON_WIDTH := 300,
+	BUTTON_HEIGHT := 200,
+	TOTAL_BUTTONS := 4
+}
+
+class Test {
+	@window : static : Window;
+	@renderer : static : Renderer;
+	@button_sprite_sheet_texture : static : LTexture;
+	@buttons : static : LButton[];	
+	@sprite_clips : static : Rect[];
+
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
+
+		# Event handler
+		e := Event->New();
+
+		# While application is running
+		while(<>quit) {
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				};
+
+				# Handle button events
+				each(i : @buttons) {
+					@buttons[ i ]->HandleEvent( e );
+				};
+			};
+			
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			# Render buttons
+			each(i : @buttons) {
+				@buttons[ i ]->Render();
+			};
+
+			# Update screen
+			@renderer->Present();
+		};
+
+		e->Free();
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+
+		# Initialize SDL
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			640, 480, WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, 
+			(RendererFlags->SDL_RENDERER_ACCELERATED->As(Int) and RendererFlags->SDL_RENDERER_PRESENTVSYNC->As(Int)));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		@sprite_clips := Rect->New[LButton->LButtonSprite->BUTTON_SPRITE_TOTAL];
+		each(i : @sprite_clips) {
+			@sprite_clips[i] := Rect->New();
+		};
+
+		@button_sprite_sheet_texture := LTexture->New(@renderer);
+
+		@buttons := LButton->New[LButton->LButtonSprite->BUTTON_SPRITE_TOTAL];
+		each(i : @buttons) {
+			@buttons[i] := LButton->New(@button_sprite_sheet_texture, @sprite_clips);
+		};
+		
+		return true;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		if(<>@button_sprite_sheet_texture->LoadFromFile("images/button.png")) {
+			"Failed to load button sprite texture"->ErrorLine();
+			return false;
+		};
+
+		# Set sprites
+		sprite_total := LButton->LButtonSprite->BUTTON_SPRITE_TOTAL->As(Int);
+		for( i := 0; i < sprite_total; i += 1; ) {
+			@sprite_clips[ i ]->SetX(0); 
+			@sprite_clips[ i ]->SetY(i * 200);
+			@sprite_clips[ i ]->SetW(Meta->BUTTON_WIDTH);
+			@sprite_clips[ i ]->SetH(Meta->BUTTON_HEIGHT);
+		};
+
+		# Set buttons in corners
+		@buttons[ 0 ]->SetPosition( 0, 0 );
+		@buttons[ 1 ]->SetPosition( Meta->SCREEN_WIDTH->As(Int) - Meta->BUTTON_WIDTH->As(Int), 0 );
+		@buttons[ 2 ]->SetPosition( 0, Meta->SCREEN_HEIGHT->As(Int) - Meta->BUTTON_HEIGHT->As(Int) );
+		@buttons[ 3 ]->SetPosition( Meta->SCREEN_WIDTH->As(Int) - Meta->BUTTON_WIDTH->As(Int), 
+			Meta->SCREEN_HEIGHT->As(Int) - Meta->BUTTON_HEIGHT->As(Int) );
+
+		return true;
+	}
+	
+	function : LoadTexture(path : String) ~ Texture {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return Nil;
+		};
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return Nil;
+		};
+
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	function : Close() ~ Nil {
+		@button_sprite_sheet_texture->Free();
+		@renderer->Destroy();
+		@window->Destroy();
+
+		# Quit SDL subsystems
+		Image->Quit();
+		Core->Quit();
+	}
+}

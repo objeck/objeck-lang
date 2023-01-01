@@ -1,0 +1,30 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+
+#		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
+#			(5-9/3*2)->PrintLine();
+			(3*2-7)->PrintLine();
+			i : Int := 0;
+			while(i < 5) {
+				"Bar!"->PrintLine();
+				i := i + 1;
+			};
+
+			i := 0;
+			while(i < 5) {
+				str : Char[] := Char->New[4];
+				str[0] := 'B';
+				str[1] := 'a';
+				str[2] := 'r';
+				str[3] := '!';
+				str->PrintLine();
+
+				i := i + 1;
+			};
+		}
+	}
+}

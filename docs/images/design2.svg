@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 775 375" width="775pt" height="375pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata> Produced by OmniGraffle 7.2.2 
+    <dc:date>2017-02-25 07:08:29 +0000</dc:date>
+  </metadata>
+  <defs>
+    <filter id="Shadow" filterUnits="userSpaceOnUse">
+      <feGaussianBlur in="SourceAlpha" result="blur" stdDeviation="1.308"/>
+      <feOffset in="blur" result="offset" dx="0" dy="2"/>
+      <feFlood flood-color="black" flood-opacity=".5" result="flood"/>
+      <feComposite in="flood" in2="offset" operator="in"/>
+    </filter>
+    <font-face font-family="Helvetica" font-size="10" units-per-em="1000" underline-position="-75.68359" underline-thickness="49.316406" slope="0" x-height="522.9492" cap-height="717.28516" ascent="770.0195" descent="-229.98047" font-weight="500">
+      <font-face-src>
+        <font-face-name name="Helvetica"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M -8 0 L 0 3 L 0 -3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="DimensionArrow_Marker" viewBox="-1 -9 15 18" markerWidth="15" markerHeight="18" color="black">
+      <g>
+        <path d="M 0 0 L 12.000001 0 M 12.000001 7.500001 L 12.000001 -7.500001 M 0 3.0000002 L 10.500001 0 L 0 -3.0000002" fill="none" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="DimensionArrow_Marker_2" viewBox="-14 -9 15 18" markerWidth="15" markerHeight="18" color="black">
+      <g>
+        <path d="M 0 0 L -12.000001 0 M -12.000001 -7.500001 L -12.000001 7.500001 M 0 -3.0000002 L -10.500001 0 L 0 3.0000002" fill="none" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <font-face font-family="Helvetica" font-size="12" units-per-em="1000" underline-position="-75.68359" underline-thickness="49.316406" slope="0" x-height="522.9492" cap-height="717.28516" ascent="770.0195" descent="-229.98047" font-weight="500">
+      <font-face-src>
+        <font-face-name name="Helvetica"/>
+      </font-face-src>
+    </font-face>
+  </defs>
+  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Canvas 1</title>
+    <g>
+      <title>Layer 1</title>
+      <g>
+        <xl:use xl:href="#id19_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id11_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id21_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id22_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id24_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id25_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id29_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id31_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id32_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id35_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id36_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id37_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id40_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id41_Graphic" filter="url(#Shadow)"/>
+        <xl:use xl:href="#id46_Graphic" filter="url(#Shadow)"/>
+      </g>
+      <g id="id19_Graphic">
+        <rect x="95.5" y="94" width="90" height="36" fill="white"/>
+        <rect x="95.5" y="94" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(100.5 106)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="21.376953" y="10" textLength="37.246094">Scanner</tspan>
+        </text>
+      </g>
+      <g id="id11_Graphic">
+        <rect x="100" y="24" width="81" height="35" fill="white"/>
+        <path d="M 100 24 L 181 24 M 181 59 L 100 59" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(105 35.5)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="6.31543" y="10" textLength="58.36914">Source Code</tspan>
+        </text>
+      </g>
+      <line x1="140.5" y1="59" x2="140.5" y2="84.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <g id="id21_Graphic">
+        <rect x="236.5" y="94" width="90" height="36" fill="white"/>
+        <rect x="236.5" y="94" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(241.5 106)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="26.381836" y="10" textLength="27.236328">Linker</tspan>
+        </text>
+      </g>
+      <g id="id22_Graphic">
+        <rect x="241" y="24" width="81" height="35" fill="white"/>
+        <path d="M 241 24 L 322 24 M 322 59 L 241 59" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(246 35.5)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="5.2094727" y="10" textLength="60.581055">Library Linker</tspan>
+        </text>
+      </g>
+      <line x1="281.5" y1="59" x2="281.5" y2="84.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <g id="id24_Graphic">
+        <rect x="95.5" y="165" width="90" height="36" fill="white"/>
+        <rect x="95.5" y="165" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(100.5 177)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="25.273438" y="10" textLength="29.453125">Parser</tspan>
+        </text>
+      </g>
+      <g id="id25_Graphic">
+        <rect x="236.5" y="165" width="90" height="36" fill="white"/>
+        <rect x="236.5" y="165" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(241.5 171)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="16.096191" y="10" textLength="50.58594">Contextual </tspan>
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="20.546875" y="22" textLength="41.68457">Analyser </tspan>
+        </text>
+      </g>
+      <line x1="140.5" y1="130" x2="140.5" y2="155.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="281.5" y1="130" x2="281.5" y2="155.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="185.5" y1="183" x2="226.6" y2="183" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <g id="id29_Graphic">
+        <rect x="377.5" y="165" width="90" height="36" fill="white"/>
+        <rect x="377.5" y="165" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(382.5 171)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="12.207031" y="10" textLength="58.36426">Intermediate </tspan>
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="4.145508" y="22" textLength="74.487305">Code Generator </tspan>
+        </text>
+      </g>
+      <line x1="326.5" y1="183" x2="367.6" y2="183" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <g id="id31_Graphic">
+        <rect x="518.5" y="165" width="90" height="36" fill="white"/>
+        <rect x="518.5" y="165" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(523.5 171)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="14.70459" y="10" textLength="53.36914">Local Code </tspan>
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="18.608398" y="22" textLength="51.118164">Optimizer   </tspan>
+        </text>
+      </g>
+      <g id="id32_Graphic">
+        <rect x="659.5" y="165" width="90" height="36" fill="white"/>
+        <rect x="659.5" y="165" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(664.5 177)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="8.879395" y="10" textLength="6.1083984">T</tspan>
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="13.879395" y="10" textLength="57.24121">arget Emitter</tspan>
+        </text>
+      </g>
+      <line x1="467.5" y1="183" x2="508.6" y2="183" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="608.5" y1="183" x2="649.6" y2="183" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <g id="id35_Graphic">
+        <rect x="664" y="241" width="81" height="35" fill="white"/>
+        <path d="M 664 241 L 745 241 M 745 276 L 664 276" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(669 252.5)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="1.8720703" y="10" textLength="70.03418">VM Executable </tspan>
+        </text>
+      </g>
+      <g id="id36_Graphic">
+        <rect x="518.5" y="240" width="90" height="36" fill="white"/>
+        <rect x="518.5" y="240" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(523.5 252)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="11.750488" y="10" textLength="13.886719">JIT</tspan>
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="25.461426" y="10" textLength="42.788086"> Compiler</tspan>
+        </text>
+      </g>
+      <g id="id37_Graphic">
+        <rect x="659.5" y="316" width="90" height="36" fill="white"/>
+        <rect x="659.5" y="316" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(664.5 328)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="24.431152" y="10" textLength="31.137695">Loader</tspan>
+        </text>
+      </g>
+      <g id="id40_Graphic">
+        <rect x="377.5" y="279" width="90" height="36" fill="white"/>
+        <rect x="377.5" y="279" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(382.5 291)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x=".8203125" y="10" textLength="78.359375">Memory Manager</tspan>
+        </text>
+      </g>
+      <g id="id41_Graphic">
+        <rect x="518.5" y="316" width="90" height="36" fill="white"/>
+        <rect x="518.5" y="316" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(523.5 328)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="16.933594" y="10" textLength="46.13281">Interpreter</tspan>
+        </text>
+      </g>
+      <line x1="704.5" y1="201" x2="704.5" y2="231.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="704.5" y1="276" x2="704.5" y2="306.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="659.5" y1="334" x2="618.4" y2="334" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="563.5" y1="306.1" x2="563.5" y2="285.9" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <g id="id46_Graphic">
+        <rect x="236.5" y="279" width="90" height="36" fill="white"/>
+        <rect x="236.5" y="279" width="90" height="36" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(241.5 291)" fill="black">
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="9.431152" y="10" textLength="40.566406">Host OS </tspan>
+          <tspan font-family="Helvetica" font-size="10" font-weight="500" x="49.450684" y="10" textLength="21.118164">APIs</tspan>
+        </text>
+      </g>
+      <path d="M 518.5 258 L 506.6 258 L 422.5 258 L 422.5 279 L 422.5 267.1 L 422.5 269.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 518.5 334 L 506.6 334 L 422.5 334 L 422.5 315 L 422.5 326.9 L 422.5 324.9" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 518.5 258 L 506.6 258 L 281.5 258 L 281.5 279 L 281.5 267.1 L 281.5 269.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 518.5 334 L 506.6 334 L 281.5 334 L 281.5 315 L 281.5 326.9 L 281.5 324.9" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="66.11881" y1="35.999413" x2="67.88119" y2="214.00059" marker-end="url(#DimensionArrow_Marker)" marker-start="url(#DimensionArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(2.7824383 107.72892)" fill="black">
+        <tspan font-family="Helvetica" font-size="12" font-weight="500" x="4.7420774" y="11" textLength="48.01172">Compiler</tspan>
+      </text>
+      <line x1="68.19275" y1="244.49845" x2="69.80725" y2="345.00155" marker-end="url(#DimensionArrow_Marker)" marker-start="url(#DimensionArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(9.855725 286.544)" fill="black">
+        <tspan font-family="Helvetica" font-size="12" font-weight="500" x="6.965224" y="11" textLength="8.003906">V</tspan>
+        <tspan font-family="Helvetica" font-size="12" font-weight="500" x="14.758193" y="11" textLength="29.34375">irtual </tspan>
+        <tspan font-family="Helvetica" font-size="12" font-weight="500" x="1.1878805" y="25" textLength="48.691406">Machine </tspan>
+      </text>
+    </g>
+  </g>
+</svg>

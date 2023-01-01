@@ -1,0 +1,82 @@
+#~
+Credit: https://github.com/gameprogcpp/code/tree/master/Chapter02
+// ----------------------------------------------------------------
+// From Game Programming in C++ by Sanjay Madhav
+// Copyright (C) 2017 Sanjay Madhav. All rights reserved.
+// 
+// Released under the BSD License
+// See LICENSE in root directory for full details.
+// ----------------------------------------------------------------
+~#
+
+use Collection;
+use Game.SDL2;
+use Game.Framework;
+
+class BGSpriteComponent from SpriteComponent {
+	@bg_textures : Vector;
+	@screen_size : Vector2;
+	@scroll_speed : Float;
+
+	New(owner : Actor) {
+		Parent(owner, 10);
+
+		@bg_textures := Vector->New();
+		@screen_size := Vector2->New();
+		owner->AddComponent(@self);
+	}
+
+	New(owner : Actor, draw_order : Int) {
+		Parent(owner, draw_order);
+
+		@bg_textures := Vector->New();
+		@screen_size := Vector2->New();
+	}
+
+	method : public : Update(delta_time : Float) ~ Nil {
+		@parent->Update(delta_time);
+
+		each(i : @bg_textures) {
+			bg := @bg_textures->Get(i)->As(BGTexture);
+			
+			# Update the x offset
+			bg->GetOffset()->AddX(@scroll_speed * delta_time);
+
+			# If this is completely off the screen, reset offset to
+			# the right of the last bg texture
+			if(bg->GetOffset()->GetX() < -1 * @screen_size->GetX()) {
+				bg->GetOffset()->SetX((@bg_textures->Size() - 1) * @screen_size->GetX() - 1);
+			};
+		};
+	}
+
+	method : public : Draw(renderer : Renderer) ~ Nil {
+		each(i : @bg_textures) {
+			bg := @bg_textures->Get(i)->As(BGTexture);
+
+			# Assume screen size dimensions
+			w : Int := @screen_size->GetX();
+			h : Int := @screen_size->GetY();
+			# Center the rectangle around the position of the owner
+			x : Int := GetOwner()->GetPosition()->GetX() - w / 2.0 + bg->GetOffset()->GetX();
+			y : Int := GetOwner()->GetPosition()->GetY() - h / 2.0 + bg->GetOffset()->GetY();
+			dest_rect := Rect->New(x, y, w, h);
+
+			# Draw this background
+			renderer->Copy(
+				bg->GetTexture(),
+				Nil,
+				dest_rect);
+		};
+	}
+
+	# Set the textures used for the background
+	method : public : SetBGTextures(textures : Vector) ~ Nil {
+		@bg_textures := textures;
+	}
+
+	# Get/set screen size and scroll speed
+	method : public : SetScreenSize(size : Vector2) ~ Nil { @screen_size := size; }
+	method : public : SetScrollSpeed(speed : Float) ~ Nil { @scroll_speed := speed; }
+	method : public : GetScrollSpeed() ~ Float { return @scroll_speed; }	
+}

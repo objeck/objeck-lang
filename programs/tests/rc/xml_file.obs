@@ -1,0 +1,26 @@
+use System.IO;
+use System.IO.Filesystem;
+use XML;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				parser := XmlParser->New(FileReader->ReadFile(args[0]));
+				if(parser->Parse()) {
+					results := parser->FindElements("/nutrition/food[last()]/calories[fat]");
+					if(results <> Nil) {
+						each(i : results) {					
+							element := results->Get(i)->As(XmlElement);
+							element->GetAttribute("total")->GetValue()->PrintLine();
+						};
+					};
+				}
+				else {
+					parser->GetError()->PrintLine();
+				};
+			};
+		}
+	}
+}
+

@@ -1,0 +1,114 @@
+use System.IO.Filesystem;
+
+class Brainfu_k {
+	@instrs : String; @instr_ptr : Int; 
+	@mem : Byte[]; @mem_ptr : Int;
+	@input : String; @input_ptr : Int;
+	
+	New(program : String, size : Int) {
+		@instrs := program;
+		@mem := Byte → New[size];	
+	}
+	
+	function : Main(args : String[]) ~ Nil {
+		if(args → Size() = 1) {
+			Brainfu_k → New(Scan(args[0]), 32 * 1024) → Execute();
+		};
+	}
+	
+	function : Scan(file : String) ~ String {
+		buffer := "";
+		reader := FileReader → New(file);
+		while(<>reader → IsEOF()) {
+			line := reader → ReadLine();
+			each(i : line) {
+				char := line → Get(i);
+				select(char) {
+					label '>': label '<': label '+':
+					label '-': label '.': label ',':
+					label '[': label ']': {
+						buffer += char;
+					}
+					label '#': { i := line → Size();	}
+				};
+			};
+		};
+		
+		return buffer;
+	}
+	
+	method : Execute() ~ Nil {
+		@instrs → PrintLine();
+	
+		while(@instr_ptr < @instrs → Size()) {
+			instr := @instrs → Get(@instr_ptr);
+			select(instr) {
+				label '>': { @mem_ptr += 1; }
+				label '<': { @mem_ptr -= 1; }
+				label '+': { @mem[@mem_ptr] := @mem[@mem_ptr] + 1; }
+				label '-': { @mem[@mem_ptr] := @mem[@mem_ptr] - 1; }
+				label '.': { value := @mem[@mem_ptr] → As(Char); value → Print(); }				
+				label ',': { 
+					in := Read(); 
+					if(in <> 0) { @mem[@mem_ptr] := in; }
+					else { Runtime → Exit(0); };
+				}
+				label '[': { Forward(); }
+				label ']': { Backward(); }
+			};
+			@instr_ptr += 1;
+		};
+	}
+	
+	method : Forward() ~ Nil {
+		depth := 0;
+		if(@mem[@mem_ptr] = 0) {
+			do {
+				instr := @instrs → Get(@instr_ptr);
+				if(instr = '[') {
+					depth += 1;
+				}
+				else if(instr = ']') {
+					depth -= 1;
+					if(depth = 0) { return; };
+				};
+				@instr_ptr += 1;
+			}
+			while(@instr_ptr < @instrs → Size());
+			"*** Fu_ked ***" → PrintLine();
+		};
+	}
+	
+	method : Backward() ~ Nil {		
+		depth := 0;
+		if(@mem[@mem_ptr] <> 0) {
+			do {
+				instr := @instrs → Get(@instr_ptr);
+				if(instr = ']') {
+					depth += 1;
+				}
+				else if(instr = '[') {
+					depth -= 1;
+					if(depth = 0) { return; };
+				};
+				@instr_ptr -= 1;
+			}
+			while(@instr_ptr < @instrs → Size());
+			"*** Fu_ked ***" → PrintLine();
+		};
+	}
+	
+	method : Read() ~ Byte {		
+		if(@input = Nil) {
+			@input := System.IO.Standard → ReadLine();
+		};
+		
+		if(@input_ptr < @input → Size()) {
+			in := @input → Get(@input_ptr);
+			@input_ptr += 1;
+			return in;
+		};
+		
+		return 0;
+	}
+}
