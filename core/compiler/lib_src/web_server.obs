@@ -1,5 +1,5 @@
 #~
-Support for web servers
+Support for web servers. Note, shared library implementations (.so, .dll) specified in the 'config.ini' file using the 'lib_name' parameter.
 ~#
 bundle Web.Server {
 	class Proxy {
@@ -7,7 +7,8 @@ bundle Web.Server {
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := System.API.DllProxy->New("libobjk_iis");
+				# shared library implementation fetched from configuration
+				@lib_proxy := System.API.DllProxy->New(Runtime->GetProperty("OBJECK_LIB_WEB_SERVER"));
 			};
 
 			return @lib_proxy;
@@ -15,30 +16,108 @@ bundle Web.Server {
 	}
 
 	#~
-	Interface required to implementing handling classes
-	~#
-	interface Handler {
-		#~
-		Accepts a forwarding request from another handler instance
-		@param req request wrapper
-		@param res response wrapper
-		~#
-		function : virtual : Forward(req : Request, res : Response) ~ Nil;
-		#~
-		Handles a direct request
-		@param req request wrapper
-		@param res response wrapper
-		~#
-		function : virtual : Request(res : Request, req : Response) ~ Nil;
-	}
-
-	#~
 	Web request
 	~#
 	class Request {
-		@handle : Int;
+		@request : Int;
+		@response : Int;
 
-		New() {
+		#~
+		Web request method
+		~#
+		enum Method {
+			GET,
+			HEAD,
+			POST,
+			PUT,
+			DELETE,
+			CONNECT,
+			OPTIONS,
+			TRACE,
+			PATCH
+		}
+
+		#~
+		Gets the request method
+		@return request method
+		~#
+		method : public : GetMethod() ~ Request->Method {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+
+			Proxy->GetDllProxy()->CallFunction("web_request_get_method", array_args);
+			req_method := array_args[0]->As(String);
+
+			# TODO: faster way put into a hash, Nginx uses a integer value
+			if(req_method->Equals("GET")) {
+				return Request->Method->GET;
+			}
+			else if(req_method->Equals("HEAD")) {
+				return Request->Method->HEAD;
+			}
+			else if(req_method->Equals("POST")) {
+				return Request->Method->POST;
+			}
+			else if(req_method->Equals("PUT")) {
+				return Request->Method->PUT;
+			}
+			else if(req_method->Equals("DELETE")) {
+				return Request->Method->DELETE;
+			}
+			else if(req_method->Equals("CONNECT")) {
+				return Request->Method->CONNECT;
+			}
+			else if(req_method->Equals("OPTIONS")) {
+				return Request->Method->OPTIONS;
+			}
+			else if(req_method->Equals("TRACE")) {
+				return Request->Method->TRACE;
+			}
+			else {
+				return Request->Method->PATCH;
+			};
+		}
+
+		# TODO: 
+		method : public : GetRemoteAddress() ~ String {
+			return Nil;	
+		}
+
+		#~
+		Gets a HTTP header
+		@param name header name
+		@return header value
+		~#
+		method : public : GetHeader(name : String) ~ String {
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+			array_args[2] := name;
+
+			Proxy->GetDllProxy()->CallFunction("web_request_get_header", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Reads the request body (i.e. POST)
+		@return request body
+		~#
+		method : public : ReadBody() ~ Byte[] {
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+			array_args[2] := IntHolder->New(@response);
+
+			Proxy->GetDllProxy()->CallFunction("web_request_read_body", array_args);
+
+			value := array_args[0]->As(ByteArrayHolder);
+			return value->Get();
+		}
+
+		function : ParseUrlEncoded(url_encoded : String) ~ Map<String, String> {
+			name_values := url_encoded->Split("&");
 		}
 	}
 
@@ -46,41 +125,71 @@ bundle Web.Server {
 	Web Response 
 	~#
 	class Response {
-		@handle : Int;
+		@response : Int;
 		
-		New() {
-		}
-
+		#~
+		Set the content type
+		@param type content type
+		~#
 		method : public : SetContentType(type : String) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@handle);
+			array_args[0] := IntHolder->New(@response);
 			array_args[1] := type;
 
 			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
 		}
 
-		method : public : AppendBody(data : String) ~ Bool {
+		#~
+		Writes a string response to the message body
+		@param date string response
+		@return number of bytes sent
+		~#
+		method : public : WriteBody(data : String) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@response);
 			array_args[2] := data;
 
 			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			return value->Get();
 		}
 
-		method : public : AppendBody(data : Byte[]) ~ Bool {
+		#~
+		Writes a byte array response to the message body
+		@param date byte array response
+		@return number of bytes sent
+		~#
+		method : public : WriteBody(data : Byte[]) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@handle);
+			array_args[1] := IntHolder->New(@response);
 			array_args[2] := ByteArrayHolder->New(data);
 
 			Proxy->GetDllProxy()->CallFunction("web_response_append_bytes", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			return value->Get();
+		}
+
+		#~
+		Sets a HTTP header
+		@param name header name
+		@param value header value
+		@return true successful, false otherwise
+		~#
+		method : public : SetHeader(name : String, value : String) ~ Bool {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@response);
+			array_args[2] := name;
+			array_args[3] := value;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_set_header", array_args);
+
+			rvalue := array_args[0]->As(IntHolder);
+			return rvalue->Get() = 0 ? false : true;
 		}
 	}
 }

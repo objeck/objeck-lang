@@ -1,0 +1,10 @@
+use System.IO.Filesystem;
+
+class Test {
+	function : Main(a : String[]) ~ Nil {
+		logger := Logger->Instance();		
+		logger->Warn("Hi Ya!");
+		logger->Warn(" Again...");
+		logger->GetWarnFile()->PrintLine();
+	}
+}

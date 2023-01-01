@@ -1,0 +1,357 @@
+method : public : GetMouseFocus() ~ Window {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_mouse_focus", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get_mouse_focus(VMContext& context) {
+                const size* return_value = SDL_GetMouseFocus();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : GetMouseState(x : Int, y : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(x);
+        array_args[2] := IntHolder->New(y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_mouse_state", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get_mouse_state(VMContext& context) {
+                const int x = APITools_GetIntValue(context, 1);
+                const int y = APITools_GetIntValue(context, 2);
+                const int return_value = SDL_GetMouseState(x, y);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetGlobalMouseState(x : Int, y : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(x);
+        array_args[2] := IntHolder->New(y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_global_mouse_state", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get_global_mouse_state(VMContext& context) {
+                const int x = APITools_GetIntValue(context, 1);
+                const int y = APITools_GetIntValue(context, 2);
+                const int return_value = SDL_GetGlobalMouseState(x, y);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetRelativeMouseState(x : Int, y : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(x);
+        array_args[2] := IntHolder->New(y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_relative_mouse_state", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get_relative_mouse_state(VMContext& context) {
+                const int x = APITools_GetIntValue(context, 1);
+                const int y = APITools_GetIntValue(context, 2);
+                const int return_value = SDL_GetRelativeMouseState(x, y);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : WarpMouseInWindow(window : Window, x : Int, y : Int) ~ Nil {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New(window);
+        array_args[1] := IntHolder->New(x);
+        array_args[2] := IntHolder->New(y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_warp_mouse_in_window", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_warp_mouse_in_window(VMContext& context) {
+                const size* window = (size_t*)APITools_GetObjectValue(context, 0);
+                const int x = APITools_GetIntValue(context, 1);
+                const int y = APITools_GetIntValue(context, 2);
+                SDL_WarpMouseInWindow(window, x, y);
+        }
+
+---
+method : public : WarpMouseGlobal(x : Int, y : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(x);
+        array_args[2] := IntHolder->New(y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_warp_mouse_global", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_warp_mouse_global(VMContext& context) {
+                const int x = APITools_GetIntValue(context, 1);
+                const int y = APITools_GetIntValue(context, 2);
+                const int return_value = SDL_WarpMouseGlobal(x, y);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetRelativeMouseMode(enabled : Bool) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(enabled);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_set_relative_mouse_mode", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_set_relative_mouse_mode(VMContext& context) {
+                const int enabled = APITools_GetIntValue(context, 1);
+                const int return_value = SDL_SetRelativeMouseMode(enabled);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : CaptureMouse(enabled : Bool) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(enabled);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_capture_mouse", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_capture_mouse(VMContext& context) {
+                const int enabled = APITools_GetIntValue(context, 1);
+                const int return_value = SDL_CaptureMouse(enabled);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetRelativeMouseMode() ~ Bool {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_relative_mouse_mode", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get_relative_mouse_mode(VMContext& context) {
+                const int return_value = SDL_GetRelativeMouseMode();
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Create(data : Int, mask : Int, w : Int, h : Int, hot_x : Int, hot_y : Int) ~ Cursor {
+        array_args := Base->New[7];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(data);
+        array_args[2] := IntHolder->New(mask);
+        array_args[3] := IntHolder->New(w);
+        array_args[4] := IntHolder->New(h);
+        array_args[5] := IntHolder->New(hot_x);
+        array_args[6] := IntHolder->New(hot_y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_create", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_create(VMContext& context) {
+                const int data = APITools_GetIntValue(context, 1);
+                const int mask = APITools_GetIntValue(context, 2);
+                const int w = APITools_GetIntValue(context, 3);
+                const int h = APITools_GetIntValue(context, 4);
+                const int hot_x = APITools_GetIntValue(context, 5);
+                const int hot_y = APITools_GetIntValue(context, 6);
+                const size* return_value = SDL_CreateCursor(data, mask, w, h, hot_x, hot_y);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : CreateColor(surface : Surface, hot_x : Int, hot_y : Int) ~ Cursor {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(surface);
+        array_args[2] := IntHolder->New(hot_x);
+        array_args[3] := IntHolder->New(hot_y);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_create_color", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_create_color(VMContext& context) {
+                const size* surface = (size_t*)APITools_GetObjectValue(context, 1);
+                const int hot_x = APITools_GetIntValue(context, 2);
+                const int hot_y = APITools_GetIntValue(context, 3);
+                const size* return_value = SDL_CreateColorCursor(surface, hot_x, hot_y);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : CreateSystem(id : SystemCursor) ~ Cursor {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(id);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_create_system", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_create_system(VMContext& context) {
+                const size* id = (size_t*)APITools_GetObjectValue(context, 1);
+                const size* return_value = SDL_CreateSystemCursor(id);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Set() ~ Nil {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New(@cursor);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_set", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_set(VMContext& context) {
+                SDL_Cursor* cursor = (Cursor*)APITools_GetIntValue(context, 0);
+                SDL_SetCursor(cursor);
+        }
+
+---
+method : public : Get() ~ Cursor {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get(VMContext& context) {
+                const size* return_value = SDL_GetCursor();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : GetDefault() ~ Cursor {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_default", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_get_default(VMContext& context) {
+                const size* return_value = SDL_GetDefaultCursor();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Free() ~ Nil {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New(@cursor);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_free", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_free(VMContext& context) {
+                SDL_Cursor* cursor = (Cursor*)APITools_GetIntValue(context, 0);
+                SDL_FreeCursor(cursor);
+        }
+
+---
+method : public : Show(toggle : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(toggle);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_cursor_show", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_cursor_show(VMContext& context) {
+                const int toggle = APITools_GetIntValue(context, 1);
+                const int return_value = SDL_ShowCursor(toggle);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---

@@ -1,0 +1,27 @@
+#~
+Credit: https://github.com/gameprogcpp/code/tree/master/Chapter02
+// ----------------------------------------------------------------
+// From Game Programming in C++ by Sanjay Madhav
+// Copyright (C) 2017 Sanjay Madhav. All rights reserved.
+// 
+// Released under the BSD License
+// See LICENSE in root directory for full details.
+// ----------------------------------------------------------------
+~#
+
+use Collection;
+use Game.SDL2;
+use Game.Framework;
+
+class BGTexture {
+	@texture : Texture;
+	@offset : Vector2;
+
+	New(texture : Texture, offset : Vector2) {
+		@texture := texture;
+		@offset := offset;
+	}
+
+	method : public : GetTexture() ~ Texture { return @texture; }
+	method : public : GetOffset() ~ Vector2 { return @offset; }
+}

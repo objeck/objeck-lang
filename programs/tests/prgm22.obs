@@ -1,0 +1,33 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			DoStuff();
+		}
+
+#		function : native : DoStuff() ~ Nil {
+		function : DoStuff() ~ Nil {
+			x : Color := Color->Black;
+		
+			b : Bool := Dog->Boxer = Dog->Pug;
+			bb : Bool := b & false;
+			b->PrintLine();
+		}
+
+		function : Blah() ~ Color {
+#		function : native : Blah() ~ Color {
+			return Color->Red;
+		}
+	}
+
+	enum Color {
+		Red,
+		Black,
+		Green
+	}
+
+	enum Dog {
+		Pug,
+		Boxer,
+		Terrier
+	}
+}

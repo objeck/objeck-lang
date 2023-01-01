@@ -1,0 +1,48 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+		
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
+			a : Int := 10;
+			if(a = 3) {
+				"three"->PrintLine();
+			};	
+
+			if(a = 2) {
+				"two"->PrintLine();
+			}
+			else {
+				"not two"->PrintLine();	
+			};
+
+
+			if(a = 3) {
+				"three"->PrintLine();
+			}
+			else if(a = 4) {
+				"four"->PrintLine();	
+			};
+
+			if(a = 2) {
+				"two"->PrintLine();
+			}
+			else if(a = 4) {
+				"four"->PrintLine();	
+			}
+			else {
+				"not three"->PrintLine();	
+			};
+
+
+
+#~
+			s : System.String := System.String->New();
+			s->Append("123");
+			s->ToInt()->PrintLine();
+~#
+		}
+	}
+}

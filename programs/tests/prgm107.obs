@@ -1,0 +1,19 @@
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		map := MultiMap->New()<IntHolder, String>;
+		map->Insert(13, "Who");
+		map->Insert(13, "How");
+		map->Insert(7, "Stop");
+		map->Insert(7, "Look");
+		map->Insert(7, "Listen");
+
+		map->Size()->PrintLine();
+
+		values := map->Find(7);
+		values->Size()->PrintLine();
+
+		map->Each(\^(k, v) => "key={$k}, value={$v}"->PrintLine());
+	}
+}

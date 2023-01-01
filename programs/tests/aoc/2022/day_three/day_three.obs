@@ -1,0 +1,80 @@
+use Collection.Generic;
+
+class AoC {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			inputs := ReadInput(args[0])<String>;
+
+			total := 0;
+			each(i : inputs) {
+				input := inputs->Get(i);
+				half_pos := input->Size() / 2;
+
+				# get laft a right halfs
+				left_input := input->SubString(half_pos);
+				right_input := input->SubString(half_pos, input->Size() - half_pos);
+
+				left_input->PrintLine();
+				right_input->PrintLine();
+
+				left_input_set := Set->New()<IntHolder>;
+				each(j : left_input) {
+					left_value := left_input->Get(j);
+
+					value : Int;
+					if(left_value->IsLower()) {
+						value := (left_input->Get(j) - 96)->ToInt();
+					}
+					else {
+						value := (left_input->Get(j) - 38)->ToInt();
+					};
+
+					left_input_set->Insert(value);
+				};
+
+				found := false;
+				for(j := 0; j < right_input->Size() & <>found; j += 1;) {
+					right_value := right_input->Get(j);
+
+					value : Int;
+					if(right_value->IsLower()) {
+						value := (right_input->Get(j) - 96)->ToInt();
+					}
+					else {
+						value := (right_input->Get(j) - 38)->ToInt();
+					};
+
+					
+					if(left_input_set->Has(value)) {
+						total += value;
+						value->PrintLine();
+						found := true;
+					};
+				};
+
+				"---"->PrintLine();
+			};
+			
+			"===\n{$total}"->PrintLine();			
+		};
+	}
+
+	function : ReadInput(file : String) ~ Vector<String> {
+		inputs := Vector->New()<String>;
+
+		reader := System.IO.Filesystem.FileReader->New(file);
+		leaving {
+			reader->Close();
+		};
+
+		line := reader->ReadLine();
+		while(line <> Nil) {
+			if(<>line->IsEmpty()) {
+				inputs->AddBack(line);
+			};
+			line := reader->ReadLine();
+		};
+
+		return inputs;
+	}
+}

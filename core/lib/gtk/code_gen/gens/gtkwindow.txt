@@ -1,0 +1,1163 @@
+Compiled 8 source classes.
+Linked 23 library classes.
+Wrote target file: 'code_gen.obe'
+---
+file={@file_name}
+version={@version}
+class={@this_name}
+function: 'gtk_window_get_type'
+function: 'gtk_window_new'
+function: 'gtk_window_get_title'
+function: 'gtk_window_set_role'
+function: 'gtk_window_get_role'
+function: 'gtk_window_remove_accel_group'
+function: 'gtk_window_activate_focus'
+function: 'gtk_window_get_focus'
+function: 'gtk_window_get_default_widget'
+function: 'gtk_window_set_transient_for'
+function: 'gtk_window_set_attached_to'
+function: 'gtk_window_set_type_hint'
+function: 'gtk_window_set_skip_taskbar_hint'
+function: 'gtk_window_set_skip_pager_hint'
+function: 'gtk_window_set_urgency_hint'
+function: 'gtk_window_set_accept_focus'
+function: 'gtk_window_set_focus_on_map'
+function: 'gtk_window_set_destroy_with_parent'
+function: 'gtk_window_set_hide_titlebar_when_maximized'
+function: 'gtk_window_set_mnemonics_visible'
+function: 'gtk_window_set_focus_visible'
+function: 'gtk_window_set_resizable'
+function: 'gtk_window_set_gravity'
+function: 'gtk_window_set_geometry_hints'
+function: 'gtk_window_get_screen'
+function: 'gtk_window_has_toplevel_focus'
+function: 'gtk_window_get_decorated'
+function: 'gtk_window_get_deletable'
+function: 'gtk_window_get_icon_list'
+function: 'gtk_window_set_icon_name'
+function: 'gtk_window_get_icon'
+function: 'gtk_window_set_default_icon_list'
+function: 'gtk_window_set_default_icon'
+function: 'gtk_window_get_default_icon_name'
+function: 'gtk_window_set_auto_startup_notification'
+function: 'gtk_window_set_modal'
+function: 'gtk_window_list_toplevels'
+function: 'gtk_window_add_mnemonic'
+function: 'gtk_window_mnemonic_activate'
+function: 'gtk_window_get_mnemonic_modifier'
+function: 'gtk_window_propagate_key_event'
+function: 'gtk_window_present_with_time'
+function: 'gtk_window_deiconify'
+function: 'gtk_window_unstick'
+function: 'gtk_window_unmaximize'
+function: 'gtk_window_unfullscreen'
+function: 'gtk_window_close'
+function: 'gtk_window_set_keep_below'
+function: 'gtk_window_begin_move_drag'
+function: 'gtk_window_set_default_size'
+function: 'gtk_window_resize'
+function: 'gtk_window_move'
+function: 'gtk_window_get_group'
+function: 'gtk_window_get_window_type'
+function: 'gtk_window_set_application'
+function: 'gtk_window_set_titlebar'
+function: 'gtk_window_is_maximized'
+---
+method : public : New(type : GtkWindowType) ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(type);
+
+	Proxy->GetDllProxy()->CallFunction("window_new", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_new(VMContext& context) {
+		const size_t* gtk_type_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		const size* value = gtk_window_new(type);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : GetTitle() ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_title", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_title(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const std::wstring value = BytesToUnicode(gtk_window_get_title(window));
+		APITools_SetStringValue(context, 0, value);
+	}
+
+---
+method : public : SetRole(role : String) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := role;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_role", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_role(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const std::string gtk_role = UnicodeToBytes(APITools_GetStringValue(context, 1));
+		window_set_role(window, role);
+	}
+
+---
+method : public : GetRole() ~ String {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_role", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_role(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const std::wstring value = BytesToUnicode(gtk_window_get_role(window));
+		APITools_SetStringValue(context, 0, value);
+	}
+
+---
+method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := accel_group;
+
+	Proxy->GetDllProxy()->CallFunction("window_remove_accel_group", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_remove_accel_group(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_accel_group_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_remove_accel_group(window, accel_group);
+	}
+
+===
+method : public : ActivateFocus() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_activate_focus", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_activate_focus(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const int value = gtk_window_activate_focus(window);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+---
+method : public : GetFocus() ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_focus", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_focus(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_focus(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : GetDefaultWidget() ~ GtkWidget {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_default_widget", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_default_widget(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_default_widget(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := parent;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_transient_for", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_transient_for(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_parent_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_set_transient_for(window, parent);
+	}
+
+---
+method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := attach_widget;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_attached_to", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_attached_to(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_attach_widget_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_set_attached_to(window, attach_widget);
+	}
+
+=== TODO ===
+method : public : SetTypeHint(hint : GdkWindowTypeHint) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := hint;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_type_hint", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_type_hint(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_hint_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_set_type_hint(window, hint);
+	}
+
+---
+method : public : SetSkipTaskbarHint(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_skip_taskbar_hint", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_skip_taskbar_hint(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_skip_taskbar_hint(window, setting);
+	}
+
+---
+method : public : SetSkipPagerHint(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_skip_pager_hint", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_skip_pager_hint(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_skip_pager_hint(window, setting);
+	}
+
+---
+method : public : SetUrgencyHint(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_urgency_hint", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_urgency_hint(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_urgency_hint(window, setting);
+	}
+
+---
+method : public : SetAcceptFocus(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_accept_focus", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_accept_focus(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_accept_focus(window, setting);
+	}
+
+---
+method : public : SetFocusOnMap(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_focus_on_map", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_focus_on_map(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_focus_on_map(window, setting);
+	}
+
+---
+method : public : SetDestroyWithParent(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_destroy_with_parent", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_destroy_with_parent(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_destroy_with_parent(window, setting);
+	}
+
+---
+method : public : SetHideTitlebarWhenMaximized(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_hide_titlebar_when_maximized", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_hide_titlebar_when_maximized(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_hide_titlebar_when_maximized(window, setting);
+	}
+
+---
+method : public : SetMnemonicsVisible(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_mnemonics_visible", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_mnemonics_visible(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_mnemonics_visible(window, setting);
+	}
+
+---
+method : public : SetFocusVisible(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_focus_visible", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_focus_visible(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_focus_visible(window, setting);
+	}
+
+---
+method : public : SetResizable(resizable : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(resizable ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_resizable", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_resizable(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_resizable = APITools_GetIntValue(context, 1);
+		window_set_resizable(window, resizable);
+	}
+
+---
+method : public : SetGravity(gravity : GdkGravity) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := gravity;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_gravity", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_gravity(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_gravity_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_set_gravity(window, gravity);
+	}
+
+---
+method : public : SetGeometryHints(geometry_widget : GtkWidget, geometry : GdkGeometry, geom_mask : GdkWindowHints) ~ Nil {
+	array_args := Base->New[4];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := geometry_widget;
+	array_args[2] := geometry;
+	array_args[3] := geom_mask;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_geometry_hints", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_geometry_hints(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_geometry_widget_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		const size_t* gtk_geometry_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const size_t* gtk_geom_mask_obj = (size_t*)APITools_GetObjectValue(context, 3);
+		window_set_geometry_hints(window, geometry_widget, geometry, geom_mask);
+	}
+
+---
+method : public : GetScreen() ~ GdkScreen {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_screen", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_screen(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_screen(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : HasToplevelFocus() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_has_toplevel_focus", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_has_toplevel_focus(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const int value = gtk_window_has_toplevel_focus(window);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+---
+method : public : GetDecorated() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_decorated", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_decorated(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const int value = gtk_window_get_decorated(window);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+---
+method : public : GetDeletable() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_deletable", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_deletable(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const int value = gtk_window_get_deletable(window);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+---
+method : public : GetIconList() ~ GList {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_icon_list", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_icon_list(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_icon_list(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : SetIconName(name : String) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := name;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_icon_name", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_icon_name(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const std::string gtk_name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+		window_set_icon_name(window, name);
+	}
+
+---
+method : public : GetIcon() ~ GdkPixbuf {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_icon", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_icon(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_icon(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : SetDefaultIconList(list : GList) ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(list);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_default_icon_list", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_default_icon_list(VMContext& context) {
+		const size_t* gtk_list_obj = (size_t*)APITools_GetObjectValue(context, 0);
+		window_set_default_icon_list(list);
+	}
+
+---
+method : public : SetDefaultIcon(icon : GdkPixbuf) ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(icon);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_default_icon", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_default_icon(VMContext& context) {
+		const size_t* gtk_icon_obj = (size_t*)APITools_GetObjectValue(context, 0);
+		window_set_default_icon(icon);
+	}
+
+---
+method : public : GetDefaultIconName() ~ String {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("window_get_default_icon_name", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_default_icon_name(VMContext& context) {
+		const std::wstring value = BytesToUnicode(gtk_window_get_default_icon_name());
+		APITools_SetStringValue(context, 0, value);
+	}
+
+---
+method : public : SetAutoStartupNotification(setting : Bool) ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(setting);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_auto_startup_notification", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_auto_startup_notification(VMContext& context) {
+		const int gtk_setting = APITools_GetIntValue(context, 0);
+		window_set_auto_startup_notification(setting);
+	}
+
+---
+method : public : SetModal(modal : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(modal ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_modal", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_modal(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_modal = APITools_GetIntValue(context, 1);
+		window_set_modal(window, modal);
+	}
+
+---
+method : public : ListToplevels() ~ GList {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("window_list_toplevels", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_list_toplevels(VMContext& context) {
+		const size* value = gtk_window_list_toplevels();
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : AddMnemonic(keyval : Int, target : GtkWidget) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(keyval);
+	array_args[2] := target;
+
+	Proxy->GetDllProxy()->CallFunction("window_add_mnemonic", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_add_mnemonic(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_keyval = APITools_GetIntValue(context, 1);
+		const size_t* gtk_target_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		window_add_mnemonic(window, keyval, target);
+	}
+
+---
+method : public : MnemonicActivate(keyval : Int, modifier : GdkModifierType) ~ Bool {
+	array_args := Base->New[4];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+	array_args[2] := IntHolder->New(keyval);
+	array_args[3] := modifier;
+
+	Proxy->GetDllProxy()->CallFunction("window_mnemonic_activate", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_mnemonic_activate(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const int gtk_keyval = APITools_GetIntValue(context, 2);
+		const size_t* gtk_modifier_obj = (size_t*)APITools_GetObjectValue(context, 3);
+		const int value = gtk_window_mnemonic_activate(window, keyval, modifier);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+---
+method : public : GetMnemonicModifier() ~ GdkModifierType {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_mnemonic_modifier", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_mnemonic_modifier(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_mnemonic_modifier(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : PropagateKeyEvent(event : GdkEventKey) ~ Bool {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+	array_args[2] := event;
+
+	Proxy->GetDllProxy()->CallFunction("window_propagate_key_event", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_propagate_key_event(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size_t* gtk_event_obj = (size_t*)APITools_GetObjectValue(context, 2);
+		const int value = gtk_window_propagate_key_event(window, event);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+---
+method : public : PresentWithTime(timestamp : guint32) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := timestamp;
+
+	Proxy->GetDllProxy()->CallFunction("window_present_with_time", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_present_with_time(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_timestamp_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_present_with_time(window, timestamp);
+	}
+
+---
+method : public : Deiconify() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_deiconify", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_deiconify(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		window_deiconify(window);
+	}
+
+---
+method : public : Unstick() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_unstick", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_unstick(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		window_unstick(window);
+	}
+
+---
+method : public : Unmaximize() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_unmaximize", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_unmaximize(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		window_unmaximize(window);
+	}
+
+---
+method : public : Unfullscreen() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_unfullscreen", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_unfullscreen(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		window_unfullscreen(window);
+	}
+
+---
+method : public : Close() ~ Nil {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_close", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_close(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		window_close(window);
+	}
+
+---
+method : public : SetKeepBelow(setting : Bool) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(setting ? 0 : 1);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_keep_below", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_keep_below(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_setting = APITools_GetIntValue(context, 1);
+		window_set_keep_below(window, setting);
+	}
+
+---
+method : public : BeginMoveDrag(button : Int, root_x : Int, root_y : Int, timestamp : guint32) ~ Nil {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(button);
+	array_args[2] := IntHolder->New(root_x);
+	array_args[3] := IntHolder->New(root_y);
+	array_args[4] := timestamp;
+
+	Proxy->GetDllProxy()->CallFunction("window_begin_move_drag", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_begin_move_drag(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_button = APITools_GetIntValue(context, 1);
+		const int gtk_root_x = APITools_GetIntValue(context, 2);
+		const int gtk_root_y = APITools_GetIntValue(context, 3);
+		const size_t* gtk_timestamp_obj = (size_t*)APITools_GetObjectValue(context, 4);
+		window_begin_move_drag(window, button, root_x, root_y, timestamp);
+	}
+
+---
+method : public : SetDefaultSize(width : Int, height : Int) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(width);
+	array_args[2] := IntHolder->New(height);
+
+	Proxy->GetDllProxy()->CallFunction("window_set_default_size", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_default_size(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_width = APITools_GetIntValue(context, 1);
+		const int gtk_height = APITools_GetIntValue(context, 2);
+		window_set_default_size(window, width, height);
+	}
+
+---
+method : public : Resize(width : Int, height : Int) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(width);
+	array_args[2] := IntHolder->New(height);
+
+	Proxy->GetDllProxy()->CallFunction("window_resize", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_resize(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_width = APITools_GetIntValue(context, 1);
+		const int gtk_height = APITools_GetIntValue(context, 2);
+		window_resize(window, width, height);
+	}
+
+---
+method : public : Move(x : Int, y : Int) ~ Nil {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := IntHolder->New(x);
+	array_args[2] := IntHolder->New(y);
+
+	Proxy->GetDllProxy()->CallFunction("window_move", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_move(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const int gtk_x = APITools_GetIntValue(context, 1);
+		const int gtk_y = APITools_GetIntValue(context, 2);
+		window_move(window, x, y);
+	}
+
+---
+method : public : GetGroup() ~ GtkWindowGroup {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_group", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_group(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_group(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : GetType() ~ GtkWindowType {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_get_window_type", array_args);
+
+	return array_args[0];
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_get_window_type(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const size* value = gtk_window_get_window_type(window);
+		APITools_SetObjectValue(context, 0, (CAST*)value);
+	}
+
+---
+method : public : SetApplication(application : GtkApplication) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := application;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_application", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_application(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_application_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_set_application(window, application);
+	}
+
+---
+method : public : SetTitlebar(titlebar : GtkWidget) ~ Nil {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New(@window);
+	array_args[1] := titlebar;
+
+	Proxy->GetDllProxy()->CallFunction("window_set_titlebar", array_args);
+
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_set_titlebar(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 0);
+		const size_t* gtk_titlebar_obj = (size_t*)APITools_GetObjectValue(context, 1);
+		window_set_titlebar(window, titlebar);
+	}
+
+---
+method : public : IsMaximized() ~ Bool {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("window_is_maximized", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void window_is_maximized(VMContext& context) {
+		Gtk_GtkWindow* window = (GtkWindow*)APITools_GetIntValue(context, 1);
+		const int value = gtk_window_is_maximized(window);
+		APITools_SetIntValue(context, 0, value);
+	}
+
+Compiled 4 source classes.
+Linked 0 library class.
+Wrote target file: '..\..\..\core\lib\gtk3.obl'
+---

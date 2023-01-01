@@ -1,0 +1,16 @@
+use System.IO;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		BitWise(3, 4);
+	}
+
+	function : BitWise(a : Int, b : Int) ~ Nil {
+		Console->Print("a and b: ")->PrintLine(a and b);
+		Console->Print("a or b: ")->PrintLine(a or b);
+		Console->Print("a xor b: ")->PrintLine(a xor b);
+		Console->Print("a xor b: ")->PrintLine(a << b);
+		Console->Print("a xor b: ")->PrintLine(a >> b);
+	}
+}
+

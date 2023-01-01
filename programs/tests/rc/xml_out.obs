@@ -1,0 +1,14 @@
+use XML;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			builder := XmlBuilder->New("root", "1.0");
+			root := builder->GetRoot();
+			element := XmlElement->New(XmlElement->Type->ELEMENT, "element", "Some text here");
+			root->AddChild(element);
+			builder->ToString()->PrintLine();
+		}
+	}
+}
+

@@ -1,0 +1,22 @@
+class Bar from Foo {
+	@id : Int;
+	
+	New() {
+		Parent(3.145);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+	}
+}
+
+class Foo from System.Concurrency.Thread {
+	@value : Float;
+
+	New(value : Float) {
+		Parent();
+		@value := value;
+	}
+
+	method : public : Run(arg : Base) ~ Nil {
+	}
+}

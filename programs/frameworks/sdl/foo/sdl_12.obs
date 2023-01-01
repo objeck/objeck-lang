@@ -1,0 +1,257 @@
+#~
+Lesson 12
+http://lazyfoo.net/tutorials/SDL/12_color_modulation/index.php
+~#
+
+use SDL;
+
+class LTexture {
+	@renderer : Renderer;
+	@texture : Texture;
+	@width : Int;
+	@height : Int;
+
+	New(renderer : Renderer) {
+		@renderer := renderer;
+	}
+
+	# Loads image at specified path
+	method : public : LoadFromFile(path : String) ~ Bool {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
+		loadedSurface->Free();
+		@texture := texture;
+
+		return @texture <> Nil;
+	}
+
+	# Deallocates texture
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+		@texture->SetColorMod(red, green, blue);
+	}
+
+	# Renders texture at given point
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil) ~ Nil {
+		renderQuad := Rect->New(x, y, @width, @height);
+
+		if(clip <> Nil)	{
+			renderQuad->SetW(clip->GetW());
+			renderQuad->SetH(clip->GetH());
+		};
+
+		@renderer->Copy(@texture, clip, renderQuad);
+	}
+
+	# Gets image dimensions
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+}
+
+class Test {
+	@window : static : Window;
+	@renderer : static : Renderer;
+	@modulated_texture : static : LTexture;
+
+	SCREEN_WIDTH : static : Int;
+	SCREEN_HEIGHT : static : Int;
+	
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
+
+		# Top left corner viewport
+		topLeftViewport := Rect->New(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+		# Top right viewport
+		topRightViewport := Rect->New(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+		# Bottom viewport
+		bottomViewport := Rect->New(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+		
+		r := 255;
+		g := 255;
+		b := 255;
+
+		# Event handler
+		e := Event->New();
+
+		# While application is running
+		while(<>quit) {
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = Flags->SDL_QUIT->As(Int)) {
+					quit := true;
+				}
+				else if(e->GetType() = Flags->SDL_KEYDOWN->As(Int)) {
+					select(e->GetKey()->GetKeysym()->GetSym()) {
+						# Increase red
+						label 'q': {
+							r += 32;
+						}
+						
+						# Increase green
+						label 'w': {
+							g += 32;
+						}
+						
+						# Increase blue
+						label 'e': {
+							b += 32;
+						}
+						
+						# Decrease red
+						label 'a': {
+							r -= 32;
+						}
+						
+						# Decrease green
+						label 's': {
+							g -= 32;
+						}
+						
+						# Decrease blue
+						label 'd': {
+							b -= 32;
+						}
+					};
+				};
+			};
+
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			# Modulate and render texture
+			@modulated_texture->SetColor(r, g, b);
+			@modulated_texture->Render(0, 0);
+
+			# Update screen
+			@renderer->Present();
+		};
+		e->Free();
+
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+		
+		# Initialize SDL
+		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		@modulated_texture := LTexture->New(@renderer);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		return true;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		if(<>@modulated_texture->LoadFromFile( "images/colors.png")) {
+			return false;
+		};
+
+		return true;
+	}
+	
+	function : LoadTexture(path : String) ~ Texture {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return Nil;
+		};
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return Nil;
+		};
+
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	function : Close() ~ Nil {
+		@modulated_texture->Free();
+		@renderer->Destroy();
+		@window->Destroy();
+
+		# Quit SDL subsystems
+		Image->Quit();
+		Core->Quit();
+	}
+}

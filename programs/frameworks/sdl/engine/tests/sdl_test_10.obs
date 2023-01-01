@@ -1,0 +1,100 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Demo {
+	@framework : GameFramework;
+	@tile : TitledImageSprite;
+	@quit : Bool;
+				
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
+		@framework->SetClearColor(Color->New(0, 0, 255));
+		@tile := @framework->AddTitledImageSprite("media/images/block1.png", Nil);
+		@tile->AddTile(10, 10);
+		@tile->AddTile(100, 100);
+		@tile->AddTile(150, 150);	
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			e := @framework->GetEvent();
+			@quit := false;
+			while(<>@quit) {
+				Start();
+
+				Input(e);
+				Update();
+				Draw();				
+
+ 				End();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : Start() ~ Nil {
+		@framework->FrameStart();
+		@framework->Clear();
+	}
+
+	method : End() ~ Nil {
+		@framework->Show();
+		@framework->FrameEnd();
+	}
+
+	method : Input(e : Event) ~ Nil {
+		# process input
+		while(e->Poll() <> 0) {
+			if(e->GetType() = EventType->SDL_QUIT) {
+				@quit := true;
+			};
+
+		    if(e->GetType() = EventType->SDL_KEYDOWN) {
+		        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+		            label Scancode->SDL_SCANCODE_LEFT: {
+		            	@tile->AddX(-3);
+		            }
+
+		            label Scancode->SDL_SCANCODE_RIGHT: {
+		            	@tile->AddX(3);
+		            }
+		        };
+		    }
+		    else if(e->GetType() = EventType->SDL_KEYUP) {
+		    	select(e->GetKey()->GetKeysym()->GetScancode()) {
+		    		label Scancode->SDL_SCANCODE_LEFT: {
+		    		}
+
+		    		label Scancode->SDL_SCANCODE_RIGHT: {
+		    		}
+		        };
+		    };
+		};
+	}
+
+	method : public : Update() ~ Nil {
+		# move shaped
+	}
+
+	method : public : Draw() ~ Nil {
+		# draw shapes
+		@tile->Render();
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}

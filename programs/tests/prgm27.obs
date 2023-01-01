@@ -1,0 +1,60 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+#~
+			f : Float := 1201.5;
+			result : Float := f / 1000000.0;
+			if(result > 0.9 & result < 10.0) {
+				"Foo"->PrintLine();
+			}
+			else if(result = 0.0 & f > 1000000.0) {
+				"Bar"->PrintLine();
+			};
+
+~#
+			1201.51->PrintLine();
+			F1();
+
+			str : System.String := 10->ToString();
+			str->Append(" is Ten");
+			str->PrintLine();
+
+			s : System.String := System.String->New("Randy");
+			F2(str, s); 
+
+			str->PrintLine();
+			s->PrintLine();
+
+			F3();
+
+			0xd->PrintLine();
+		}
+
+		function : native : F1() ~ Nil {
+			2313->PrintLine();
+			0->PrintLine();
+			a : Int := 15;
+			a->ToString()->PrintLine();
+
+			string : System.String := 10->ToString();
+			string->Append(" is Ten");
+			string->PrintLine();
+
+			string := true->ToString();
+			string->Append('!');
+			string->PrintLine();
+		}
+
+		function : native : F2(s1 : System.String, s2 : System.String) ~ Nil {
+			s1->Append("222");
+			s2->Append("222");
+		}
+		
+		function : native : F3() ~ Nil {
+			"Fin"->PrintLine();
+			v := 23.5->As(Int);
+			v->ToString()->PrintLine();
+			23->ToString();
+		}
+	}
+}

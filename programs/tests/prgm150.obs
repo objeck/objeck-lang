@@ -1,0 +1,123 @@
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := "aaa";
+		b := "bbb";
+		c := "ccc";
+
+		lru := LruCache->New(2)<String,String>;
+
+		
+
+		lru->Add("a", a);
+		lru->Add("a", a);
+		lru->Add("a", a);
+		lru->Add("a", a);
+
+		lru->Add("b", b);
+		lru->Add("b", b);
+
+		lru->Add("c", c);
+		lru->Add("c", c);
+		lru->Add("c", c);
+		lru->Add("c", c);
+		lru->Add("c", c);
+
+		lru->Add("a", a);
+		lru->Add("b", b);
+
+		lru->Size()->PrintLine();
+
+		pairs := lru->GetKeyValues();
+		each(i : pairs) {
+			pair := pairs->Get(i)<Compare, Base>;
+			pair->GetSecond()->As(String)->PrintLine();
+		};
+	}
+}
+
+class LruCache<K : Compare, S> {
+	@max : Int;
+	@cache : Map<K, S>;
+	@priority : CompareList<K>;
+
+	New(max : Int) {
+		@max := max;
+		@cache := Map->New()<K, S>;
+		@priority := CompareList->New()<K>;
+	}
+
+	method : public : Add(key : K, value : S) ~ Bool {
+		if(@priority->Size() < @max) {
+			if(@cache->Has(key)) {
+				@priority->Find(key);
+				@priority->Remove();
+				@priority->AddFront(key);
+			}
+			else {
+				@cache->Insert(key, value);
+				@priority->AddFront(key);
+			};
+
+			return true;
+		}
+		else if(RemoveLast()) {
+			return Add(key, value);
+		};
+
+		return false;
+	}
+
+	method : public : Remove(key : K) ~ Bool {
+		if(@cache->Has(key)) {
+			@priority->Find(key);
+			@priority->Remove();
+			@cache->Remove(key);
+
+			return true;
+		};
+
+		return false;
+	}
+
+	method : RemoveLast() ~ Bool {
+		if(<>@priority->IsEmpty()) {
+			last := @priority->Back();
+			@priority->RemoveBack();
+			@cache->Remove(last);
+
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : GetKeys() ~ Vector<K> {
+		return @cache->GetKeys()<K>;
+	}
+
+	method : public : GetValues() ~ Vector<S> {
+		return @cache->GetValues()<S>;
+	}
+
+	method : public : GetKeyValues() ~ Vector<Pair<K, S>> {
+		return @cache->GetKeyValues()<Pair<K, S>>;
+	}
+
+	method : public : Find(key : K) ~ S {
+		return @cache->Find(key);
+	}
+
+	method : public : Has(key : K) ~ Bool {
+		return @cache->Find(key) <> Nil;
+	}
+
+	method : public : Size() ~ Int {
+		return @cache->Size();
+	}
+
+	method : public : IsEmpty() ~ Bool {
+		return @cache->IsEmpty();
+	}
+}

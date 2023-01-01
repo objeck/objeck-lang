@@ -1,0 +1,7 @@
+class Arithmetic {
+	function : Main(args : String[]) ~ Nil {
+		for(i := 0; i < args->Size(); i += 1;) {
+			args[i]->PrintLine();
+		};
+	}
+}

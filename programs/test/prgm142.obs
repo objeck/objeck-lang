@@ -1,8 +1,0 @@
-class Test {
-	@value : String;
-	
-	function : Main(args : String[]) ~ Nil {
-#		@value += "z";
-		"-- {$@value} --"->PrintLine();
-	}
-}

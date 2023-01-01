@@ -77,8 +77,6 @@ mkdir core/release/deploy-msys2-ucrt/examples/media
 cp programs/deploy/*.obs core/release/deploy-msys2-ucrt/examples
 cp programs/deploy/media/*.png core/release/deploy-msys2-ucrt/examples/media
 cp programs/deploy/media/*.wav core/release/deploy-msys2-ucrt/examples/media
-cp -aR programs/doc core/release/deploy-msys2-ucrt/examples
-cp -aR programs/tiny core/release/deploy-msys2-ucrt/examples
 
 cd core/release
 
