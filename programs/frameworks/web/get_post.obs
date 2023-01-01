@@ -12,8 +12,8 @@ class Hello {
     }
     else {
       posted := String->New(req->ReadBody());
-      fname := req->GetHeader("fname");
-      res->WriteBody("<html><body>Posted raw=<pre>{$posted}</pre>, First name=<pre>{$fname}</pre></body></html>");
+      mime_type := req->GetHeader("Content-Type");
+      res->WriteBody("<html><body>Posted raw=<pre>{$posted}</pre>, MIME Type=<pre>{$mime_type}</pre></body></html>");
     };
   }
 }
