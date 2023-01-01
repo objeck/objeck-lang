@@ -1,6 +1,9 @@
 #~
 Support for web servers. Note, shared library implementations (.so, .dll) specified in the 'config.ini' file using the 'lib_name' parameter.
 ~#
+
+use Collection.Generic;
+
 bundle Web.Server {
 	class Proxy {
 		@lib_proxy : static : System.API.DllProxy;
@@ -116,9 +119,23 @@ bundle Web.Server {
 			return value->Get();
 		}
 
-		function : ParseUrlEncoded(url_encoded : String) ~ Map<String, String> {
-			name_values := url_encoded->Split("&");
-		}
+		function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
+	        decodings := Map->New()<String, String>;
+
+	        pairs :=  encoding->Split('&');
+	        if(pairs <> Nil) {
+	            each(i : pairs) {
+	                key_value := pairs[i]->Split('=');
+	                if(key_value <> Nil & key_value->Size() = 2) {
+	                    key := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
+	                    value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
+	                    decodings->Insert(key, value);
+	                };
+	            };
+	        };
+
+	        return decodings;
+	    }
 	}
 
 	#~

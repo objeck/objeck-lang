@@ -2,14 +2,15 @@ use Collection.Generic;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        pairs := ParseUrlEncoding("fname=Jim+Jon&lname=James&Mary=a%20b");
-        key_values := pairs->GetKeyValues()<Pair<String, String>>;
-        each(i : key_values) {
-            key_value := key_values->Get(i);
-            key_value->GetFirst()->PrintLine();
-            key_value->GetSecond()->PrintLine();
-            "---"->PrintLine();
-        };
+        encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
+        encoding += "Content-Disposition: form-data; name=\"fname\"\r\n\r\n";
+        encoding += "Randy\"John\"&\\r\n";
+        encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
+        encoding += "Content-Disposition: form-data; name=\"lname\"\r\n\r\n";
+        encoding += "Hollines /www/http/ @\r\n";
+        encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw--";
+
+        encoding->PrintLine();
     }
 
     function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
