@@ -699,10 +699,6 @@ bundle System {
 			string->Append(c);
 			return string;
 		}
-
-		function : native : ToString(c : Char[]) ~ String {
-			return String->New(c);
-		}
 	}
 	
 	#~
