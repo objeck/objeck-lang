@@ -1,40 +1,12 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
-        foo := Split('&', "ab&c&d"->ToCharArray());
-        each(i : foo) {
-            foo[i]->PrintLine();
-        };
-    }
-    
-    function : Split(delim : Char, buffer : Char[]) ~ String[] {
-        count := 0;
-
-        each(i : buffer) {
-            if(buffer[i] = delim) {
-                count += 1;
-            };
+        pairs :=  "fname=Randy+Jason&lname=Hollines"->Split('&');
+        each(i : pairs) {
+            pairs[i] := Web.HTTP.Url->Decode(pairs[i])->ReplaceAll('+', ' ');
         };
 
-        if(count <> 0) {
-            count += 1;
+        each(i : pairs) {
+            pairs[i]->PrintLine();
         };
-
-        strings := String->New[count];
-
-        start := count := 0;
-        each(i : buffer) {
-            char := buffer[i];
-
-            if(char = delim) {
-                strings[count++] := String->New(buffer, start, i - start);
-                start := i + 1;
-            };
-        };
-
-        if(start <> 0) {
-            strings[count++] := String->New(buffer, start, buffer->Size() - start);
-        };
-
-        return strings;
     }
 }
