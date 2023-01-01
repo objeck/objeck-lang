@@ -1,6 +1,6 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
-        pairs :=  "fname=Randy+Jason&lname=Hollines"->Split('&');
+        pairs :=  "fname=Jim+Jon&lname=James&Mary=a%20b"->Split('&');
         each(i : pairs) {
             pairs[i] := Web.HTTP.Url->Decode(pairs[i])->ReplaceAll('+', ' ');
         };
