@@ -115,6 +115,10 @@ bundle Web.Server {
 			value := array_args[0]->As(ByteArrayHolder);
 			return value->Get();
 		}
+
+		function : ParseUrlEncoded(url_encoded : String) ~ Map<String, String> {
+			name_values := url_encoded->Split("&");
+		}
 	}
 
 	#~
