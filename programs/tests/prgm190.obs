@@ -2,6 +2,7 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         pairs :=  "fname=Jim+Jon&lname=James&Mary=a%20b"->Split('&');
         each(i : pairs) {
+            # TODO split '= and decode and store key/value pairs
             pairs[i] := Web.HTTP.Url->Decode(pairs[i])->ReplaceAll('+', ' ');
         };
 
@@ -9,4 +10,7 @@ class Test {
             pairs[i]->PrintLine();
         };
     }
+
+    function : Main(args : String[]) ~ Nil {
+
 }
