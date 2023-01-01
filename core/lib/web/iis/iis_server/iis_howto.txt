@@ -3,6 +3,7 @@ IIS Setup
 * Go to "Turn Windows features on or off"
 * Check "Internet Information Services"
 * Next, go to "Internet Information Services" \ "World Wide Web Services" \ "Application Development Features"
+	- Check "CGI"
 	- Check "ISAPI Extensions"
 	- Check "ISAPI Filters"
 * Click 'Ok'
@@ -12,6 +13,8 @@ IIS Setup
 	- Right click and choose "Edit Binding", Port
 	- Change the port value to "8080" 
 	- Close dialog
+	- Right click and choose "Edit Permission"
+	- Grant "Full Control" of "wwwroot" to the IIS_IUSRS, to allow logging
 ---
 Copy "objeck_iis.dll" to "%windir%\inetpub\wwwroot"
 
@@ -26,6 +29,7 @@ Install Module
 	- Select the path to "objeck_iis.dll"
 	- Use description name "objeck_iis" 
 	- Check "Allow extension path to execute"
+	- Repeat this step for "config.ini" and other files used by the application, checking "Allow extension path to execute" for DLLs
 * Select the top level of the Connection tree control
 	- Select "Handle Mapping" and "Add Module Mapping..."
 	- Set "Request path" to '*'

@@ -1,0 +1,48 @@
+use System;
+
+bundle Default {
+	class X {
+		New() {
+		}
+
+		method : virtual : public : Get() ~ Int;
+	}
+
+	class Y from X {
+		New() {
+			Parent();
+		}
+		
+		method : public : Get() ~ Int {
+			return 13;
+		}
+	}
+
+	class Z from System.Compare {
+		New() {
+			Parent();
+		}
+
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			return 0;
+		}
+
+		method : public : native : HashID() ~ Int {
+			return 0;
+		}
+	}
+	
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+
+			x : Compare[] := Compare->New[10];
+			x->Size()->PrintLine();
+
+#			x : X := X->New();			
+#			xx : Compare := Compare->New();
+
+			y : Y := Y->New();			
+			y->Get()->Print();
+		}
+	}
+}	

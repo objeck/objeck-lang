@@ -1,0 +1,10 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		"0xaa"->PrintLine();
+		13->ToString()->PrintLine();
+	}
+}

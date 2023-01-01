@@ -1,0 +1,72 @@
+﻿
+
+bundle Default {
+	class Foo {
+		c : Char;
+		cc : Char[];
+		s : String;
+
+		New() {
+			cc := Char->New[3];
+			cc[0] := '৵';
+			cc[1] := '৩';
+			cc[2] := 'অ';
+			c := 'Δ';
+			s := "ഠഃbjeck";
+		}
+
+		method : public : GetCC() ~ Char[] {
+			return cc;
+		}
+
+		method : public : GetC() ~ Char {
+			return c;
+		}
+
+		method : public : GetS() ~ String {
+			return s;
+		}
+	}
+
+	class Serial {
+		function : Main(args : System.String[]) ~ Nil {
+			s := IO.Serializer->New();
+			s->Write(Foo->New());
+			s->Write('世');
+			s->Write(101);
+#~
+			s->Write([10.5,2.33,3.145]);
+			out := s->Serialize();
+			s->Write(3.5);
+			s->Write([1,2,3]);
+			s->Write("Objeck"->ToByteArray());
+			s->Write("Καλημέρα κόσμε"->ToCharArray());
+~#
+			out := s->Serialize();
+			
+			d := IO.Deserializer->New(out);
+			f := d->ReadObject()->As(Foo);
+			f->GetCC()->PrintLine();
+			f->GetC()->PrintLine();
+			f->GetS()->PrintLine();
+
+			d->ReadChar()->PrintLine();
+			d->ReadInt()->PrintLine();
+#~
+			dd := d->ReadFloatArray();
+			each(i : dd) {
+				dd[i]->PrintLine();
+			};
+			d->ReadFloat()->PrintLine();
+			ii := d->ReadIntArray();
+			each(i : ii) {
+				ii[i]->PrintLine();
+			};
+			bb := String->New(d->ReadByteArray());
+			cc := String->New(d->ReadCharArray());
+			cc->PrintLine();
+			cc->Get(cc->Size() -1)->PrintLine();
+~#
+		}
+	}
+}

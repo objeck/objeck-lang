@@ -1,0 +1,119 @@
+use System.IO;
+use System.IO.Net;
+use Collection;
+
+bundle Default {
+	class SocketTest {
+		function : Main(args : System.String[]) ~ Nil {
+			Run(args);
+		}
+		
+#		function : native : Run(args : System.String[]) ~ Nil {
+		function : Run(args : System.String[]) ~ Nil {
+			url := args[0];			
+			if(url->StartsWith("http://")) {
+				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+				index := url->Find('/');
+				address := "";
+				location := "/";
+				if(index > -1) {
+					address := url->SubString(index);
+					index->PrintLine();
+					location := url->SubString(index + 1, url->Size() - index - 1);
+				}
+				else {
+					address := url;
+				};
+				
+				socket := TCPSocket->New(address, 80);
+				if(socket->IsOpen()) {
+					get := "GET ";
+					get->Append(location);
+					get->Append(" HTTP/1.1\r\nHost: ");
+					get->Append(address);
+					get->Append("\r\n\r\n");
+					socket->WriteString(get);
+	
+					return_line := socket->ReadString();
+					if(return_line->StartsWith("HTTP/1.1")) {
+						return_line := return_line->SubString("HTTP/1.1"->Size() + 1, return_line->Size() - "HTTP/1.1"->Size() - 1);
+						index := return_line->Find(' ');
+index->PrintLine();						
+						return_code := return_line->SubString(index);
+						return_code->PrintLine();
+					};
+					
+					headers := Map->New();
+					do {
+						line := socket->ReadString();
+						if(line->Size() > 0 & line->StartsWith('<') = false) {
+							index := line->Find(':');
+							name := line->SubString(index);
+							value := line->SubString(index + 1, line->Size() - index - 1);			
+							headers->Insert(name->As(Compare), value->As(Base));
+							
+							name->Trim()->PrintLine();
+							value->Trim()->PrintLine();
+							"------"->PrintLine();
+						};
+					}
+					while(line->StartsWith('<') = false);
+					
+					do {
+						line := socket->ReadString();
+						if(line->Size() > 0) {
+							trim := line->Trim();
+							trim->PrintLine();
+#~											
+							start : Int;
+							end : Int;
+							for(i := 0; i < trim->Size(); i := i + 1;) {
+								# find tag start
+								if(trim->Get(i) = '<') {
+									start := i;
+								};
+		
+								# find tag end
+								if(trim->Get(i) = '>') {
+									end := i;
+									len := i - start;
+									# print tag
+									if(len > 0) {
+										tag := trim->SubString(start + 1, len - 1);
+										if(tag->Size() > 0) {
+											if(tag->Get(0) <> '/') {
+												tag_end := 0;
+												while(tag_end < tag->Size() & 
+													tag->Get(tag_end) <> ' ') {
+													tag_end := tag_end + 1;
+												};
+												"start tag: |"->Print(); tag->SubString(tag_end)->Print(); "|"->PrintLine();			
+											}
+											else {
+												tag_end := 1;
+												while(tag_end < tag->Size() & 
+													tag->Get(tag_end) <> ' ') {
+													tag_end := tag_end + 1;
+												};
+												"end tag: |"->Print(); tag->SubString(1, tag_end - 1)->Print(); "|"->PrintLine();
+											};
+										};											
+									};
+								};
+							};
+~#							
+						};
+						
+					}
+					while(line->Size() > 0);
+					socket->Close();
+				}
+				else {
+					error := "unable to connect to: ";
+					error->Append(address);
+					error->PrintLine();
+				};
+			};			
+		}
+	}
+}

@@ -1,0 +1,14 @@
+use System.IO;
+
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			s := "Hello";
+			c := s->GetClass();
+			m := c->GetMethods();
+			each(i : m) {
+				m[i]->GetName()->PrintLine();
+			};
+		}
+	}
+}

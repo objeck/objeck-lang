@@ -1,0 +1,32 @@
+﻿class Hello {
+	function : Main(args : String[]) ~ Nil {
+		english := Base->New() implements Greetings {
+			New() {}
+			method : public : SayHi() ~ Nil {
+				"Hello World"->PrintLine();
+			}
+		};
+
+		greek := Base->New() implements Greetings {
+			New() {}
+			method : public : SayHi() ~ Nil {
+				"Καλημέρα κόσμε"->PrintLine();
+			}
+		};
+
+		japanese := Base->New() implements Greetings {
+			New() {}
+			method : public : SayHi() ~ Nil {
+				"こんにちは 世界"->PrintLine();
+			}
+		};
+
+		english->SayHi();
+		greek->SayHi();
+		japanese->SayHi();
+	}
+}
+
+interface Greetings {
+	method : virtual : public : SayHi() ~ Nil;
+}

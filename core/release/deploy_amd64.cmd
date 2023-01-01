@@ -21,12 +21,12 @@ copy ..\vm\Release\win64\*.exe deploy64\bin
 copy ..\debugger\Release\win64\*.exe deploy64\bin
 
 REM native launcher
-cd ..\native_launcher
-devenv native_launcher.sln /rebuild "Release|x64"
+cd ..\windows\launcher
+devenv windows\launcher.sln /rebuild "Release|x64"
 copy x64\Release\obn.exe ..\release\deploy64\lib\native\misc
 copy x64\Release\obb.exe ..\release\deploy64\bin
 copy ..\vm\misc\config.prop ..\release\deploy64\lib\native\misc
-cd ..\release
+cd ..\..\release
 
 REM libraries
 del /q deploy64\bin\a.*
@@ -99,7 +99,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
-	copy /y ..\win_installers\setup64 .
+	copy /y ..\windows\setup64 .
 	devenv setup.sln /rebuild "Release"
 	signtool sign /f "c:/users/objec/dropbox/personal/signing keys/2022/code/randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"

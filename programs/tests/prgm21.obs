@@ -1,0 +1,57 @@
+bundle Default {
+	class Foo {
+		@id : Int;
+		@freq : Float;
+		
+		New(id : Int, freq : Float) {
+			@id := id;
+			@freq := freq;
+		}
+		
+		method : public : GetId() ~ Int {
+			return @id;
+		}	
+
+		method : public : GetFreq() ~ Float {
+			return @freq;
+		}	
+
+		method : virtual : public : GetName() ~ System.String;
+	}
+
+	class Bar from System.String {
+		y : Int;
+		z : System.String;
+
+		New() {
+			Parent("xxx");
+		}
+
+		method : public : native : GetName() ~ System.String {
+			x : System.String := System.String->New("John");
+			z := x;
+			return z;
+		}
+	}
+
+	class Goo {
+		method : public : Equal(left : System.Base, right : System.Base) ~ Int {
+			return 0;
+		}
+
+		method : public : Hash() ~ Int {
+			return 13;
+		}
+	}  
+
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			DoStuff();
+		}
+
+		function : native : DoStuff() ~ Nil {
+			bar : Bar := Bar->New();
+			bar->GetName()->PrintLine();
+		}
+	}
+}

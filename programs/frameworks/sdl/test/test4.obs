@@ -1,0 +1,777 @@
+#~
+# 2D smooth scrolling
+# 
+# compiler: obc -src sdl_test_5.obs -lib collect.obl,sdl_game.obl,sdl2.obl -dest sdl_test_5.obe
+# run: obr game2d.obe
+~#
+
+use Game.SDL2;
+use Game.Framework;
+use Collection.Generic;
+
+class Demo {
+	@framework : GameFramework;
+	@player : Player;
+	@enemies : Vector<Enemy>;
+	@level : Level;
+
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Scroll Test");
+		@framework->SetClearColor(Color->New(0, 0, 120));
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			@player := Player->New(@framework->AddRectangle(16, 16), Color->New(255, 0, 0), 1500, Game->SCREEN_HEIGHT / 2);
+			@enemies := Vector->New()<Enemy>;
+			each(i : 10) {
+				color := Color->New(Int->Random(0, 255), Int->Random(0, 255), 200);
+				@enemies->AddBack(Enemy->New(i, @framework->AddRectangle(20, 20), color));
+			};
+			@level := Level->New(@player, @enemies, @framework);
+
+			quit := false;
+			e := @framework->GetEvent();
+			while(<>quit) {
+				@framework->FrameStart();
+				@framework->Clear();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+
+					ProcessInput(e);
+				};
+
+				# update
+				@player->Update();
+
+				each(i :@enemies) {
+					@enemies->Get(i)->Update(@player);
+				};
+				@level->Update();
+
+				# correct for scrolling
+				shift := @level->GetShiftX();
+				if(@player->GetRight() >= 500) {
+					diff := @player->GetRight() - 500;
+					@player->SetRight(500);
+					if(shift > -1500) {
+						@level->ShiftWorld(-diff);
+					};
+				};
+
+				if(@player->GetLeft() <= 120) {
+					diff := 120 - @player->GetLeft();
+					@player->SetLeft(120);
+					if(shift < 0) {
+						@level->ShiftWorld(diff);
+					};
+				};
+				
+				# draw
+				@player->Draw();
+				
+				each(i : @enemies) {
+					@enemies->Get(i)->Draw();
+				};
+				@level->Draw();
+
+				# show
+				@framework->Show();
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : public : ProcessInput(e : Event) ~ Nil {
+		if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
+			if(e->GetJAxis()->GetWhich() = 0 ) {
+				axis := e->GetJAxis()->GetAxis();
+				value := e->GetJAxis()->GetValue();
+
+				# east/west
+				if(axis = 0) {
+					if(value > 4000 & value <= 8000) {
+						@player->GoEast(1);
+					}
+					else if(value > 8000 & value <= 12000) {
+						@player->GoEast(2);
+					}
+					else if(value > 12000) {
+						@player->GoEast(3);
+					}
+					else if(value < -4000 & value >= -8000) {
+						@player->GoWest(2);
+					}
+					else if(value < -8000 & value >= -12000) {
+						@player->GoWest(2);
+					}
+					else if(value < -12000) {
+						@player->GoWest(3);
+					}
+					else if(value > -1000 & value < 1000) {
+						@player->Stop();
+					};
+				}
+				# north/south
+				else if(axis = 1) {
+					if(value > 4000 & value <= 8000) {
+						@player->GoSouth(1);
+					}
+					else if(value > 8000 & value <= 12000) {
+						@player->GoSouth(2);
+					}
+					else if(value > 12000 ) {
+						@player->GoSouth(3);
+					}
+					else if(value < -4000 & value >= -8000) {
+						@player->GoNorth(1);
+					}
+					else if(value < -8000 & value >= -12000) {
+						@player->GoNorth(2);
+					}
+					else if(value < -12000) {
+						@player->GoNorth(3);
+					}
+					else if(value > -1000 & value < 1000) {
+						@player->Stop();
+					};
+				};
+			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+			if(e->GetJButton()->GetButton() = 0) {
+				@player->Shot(@framework, true);
+			}
+			else if(e->GetJButton()->GetButton() = 3) {
+				@player->Shot(@framework, false);;
+			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONUP) {
+			
+		};
+	}
+}
+
+class Enemy from Player {
+	@dist : Float[];
+	@is_dead : Bool;
+
+	New(id : Int, rect : Rectangle, color : Color) {
+		Parent(rect, color, 100, 10 + id * 40);
+		@dist := Float->New[4];
+	}
+
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		if(@is_dead) {
+			return false;
+		};
+
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : Explode() ~ Nil {
+		@is_dead := true;
+	}
+
+	method : public : GetTop() ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom() ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : native : Update(player : Player)  ~ Nil {
+		if(@is_dead) {
+			return;
+		};
+
+		#
+		# find "best" move
+		#
+		rect := GetRect();
+
+		delta := Int->Random(8, 10);
+		@dist[0] := Level->Distance(rect->GetCenterX() - delta, rect->GetCenterY(), player->GetRect());
+		@dist[1] := Level->Distance(rect->GetCenterX() + delta, rect->GetCenterY(), player->GetRect());
+		# north/south
+		@dist[2] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() - delta, player->GetRect());
+		@dist[3] := Level->Distance(rect->GetCenterX(), rect->GetCenterY() + delta, player->GetRect());
+		
+		shorest_index := 0;
+		each(i : @dist) {
+			if(@dist[shorest_index] < @dist[i]) {
+				shorest_index := i;
+			};
+		};
+
+		#
+		# move east/west
+		#
+		if(shorest_index = 0) {
+			@change_x := delta;
+		}
+		else if(shorest_index = 1) {
+			@change_x := -delta;
+		};
+		@acc_x->SetX(@change_x * 0.025);
+		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
+		@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
+		@rect->AddX(@vel_x->GetX());
+		@acc_x->Zero();
+
+		# check east and west collisions
+		platforms := Level->Collisions(@self, @barriers);
+		each(i : platforms) {
+			# move east
+			barrier := platforms->Get(i);
+			if(shorest_index = 0) {
+				@rect->SetRight(barrier->GetLeft());
+			}
+			# moving west
+			else if(shorest_index = 1) {
+				@rect->SetLeft(barrier->GetRight());
+			};
+		};
+
+
+		# check east and west collisions
+		enemies := Level->Collisions(@self, @enemies);
+		each(i : enemies) {
+			# move east
+			enemy := enemies->Get(i);
+			if(enemy <> @self) {
+				if(shorest_index = 0) {
+					@rect->SetRight(enemy->GetLeft());
+				}
+				# moving west
+				else if(shorest_index = 1) {
+					@rect->SetLeft(enemy->GetRight());
+				};
+			};
+		};
+
+		#
+		# move north/south
+		#
+		if(shorest_index = 2) {
+			@change_y := delta;
+		}
+		else if(shorest_index = 3) {
+			@change_y := -delta;
+		};
+		@acc_y->SetY(@change_y * 0.025);
+		@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
+		@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
+		@rect->AddY(@vel_y->GetY());
+		@acc_y->Zero();
+
+		# check top/bottom of screen
+		if(@rect->GetTop() < 0) {
+			@rect->SetTop(0);
+		};
+
+		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
+			@rect->SetBottom(Game->SCREEN_HEIGHT);
+		};
+
+		# check north and south collisions
+		platforms := Level->Collisions(@self, @barriers);
+		each(i : platforms) {
+			# move east
+			barrier := platforms->Get(i);
+			if(shorest_index = 2) {
+				@rect->SetBottom(barrier->GetTop());
+			}
+			# moving west
+			else if(shorest_index = 3) {
+				@rect->SetTop(barrier->GetBottom());
+			};
+		};
+
+		# check east and west collisions
+		enemies := Level->Collisions(@self, @enemies);
+		each(i : enemies) {
+			# move east
+			enemy := enemies->Get(i);
+			if(enemy <> @self) {
+				if(shorest_index = 2) {
+					@rect->SetBottom(enemy->GetTop());
+				}
+				# moving west
+				else if(shorest_index = 3) {
+					@rect->SetTop(enemy->GetBottom());
+				};
+			};
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		if(@is_dead) {
+			return;
+		};
+
+		@rect->Render();
+	}
+}
+
+class Player {
+	@rect : Rectangle;
+		
+	@change_x : Float;
+	@vel_x : Vector2;
+	@acc_x : Vector2;
+
+	@change_y : Float;
+	@vel_y : Vector2;
+	@acc_y : Vector2;
+
+	@barriers : Vector<Barrier>;
+	@enemies : Vector<Enemy>;
+
+	@missles : List<Missle>;
+	@calc_x : Float;
+
+	New(rect : Rectangle, color : Color, start_x : Int, start_y : Int) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(color);
+		@rect->SetLeft(start_x);
+		@rect->SetCenterY(start_y);
+
+		@vel_x := Vector2->New();
+		@acc_x := Vector2->New();
+
+		@vel_y := Vector2->New();
+		@acc_y := Vector2->New();
+
+		@missles := List->New()<Missle>;
+	}
+
+	method : public : Shot(framework : GameFramework, is_up : Bool) ~ Nil {
+		@missles->AddBack(Missle->New(is_up, @calc_x, @rect->GetCenterX(), @rect->GetCenterY(), framework->AddRectangle(4, 4)));
+	}
+
+	method : public : GetMissles() ~ List<Missle> {
+		return @missles;
+	}
+
+	method : public : GetRect() ~ Rectangle {
+		return @rect; 
+	}
+
+	method : public : GetLeft() ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight() ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : SetLeft(x : Int) ~ Nil {
+		@rect->SetLeft(x);
+	}
+
+	method : public : SetRight(x2 : Int) ~ Nil {
+		@rect->SetRight(x2);
+	}
+
+	method : public : SetLevel(level : Level, enemies : Vector<Enemy>)  ~ Nil {
+		@barriers := level->GetBarriers()<Barrier>;
+		@enemies := enemies;
+	}
+
+	method : public : ChangeEastWest()  ~ Int {
+		return @change_x;
+	}
+
+	method : public : ChangeNorthSouth()  ~ Int {
+		return @change_y;
+	}
+
+	method : public : GoWest(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_x := -1.25;
+		}
+		else if(level = 2) {
+			@change_x := -2.75;
+		}
+		else {
+			@change_x := -6.25;
+		};
+	}
+
+	method : public : GoEast(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_x := 1.25;
+		}
+		else if(level = 2) {
+			@change_x := 2.75;
+		}
+		else {
+			@change_x := 6.25;
+		};
+	}
+
+	method : public : Stop() ~ Nil {
+		@change_x := @change_y := 0;
+	}
+
+	method : public : GoNorth(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_y := -1.25;
+		}
+		else if(level = 2) {
+			@change_y := -2.75;
+		}
+		else {
+			@change_y := -6.25;
+		};
+	}
+
+	method : public : GoSouth(level : Int)  ~ Nil {
+		if(level = 1) {
+			@change_y := 1.25;
+		}
+		else if(level = 2) {
+			@change_y := 2.75;
+		}
+		else {
+			@change_y := 6.25;
+		};
+	}
+
+	method : public : native : Update()  ~ Nil {
+		# move east/west
+		@acc_x->SetX(@change_x * 0.195);
+		@acc_x->Add(Vector2->Mul(@vel_x, -0.0925));
+		@vel_x->Add(Vector2->Mul(@acc_x, 0.75));
+		@calc_x := @vel_x->GetX();
+		@rect->AddX(@calc_x);
+		@acc_x->Zero();
+
+		platforms := Level->Collisions(@self, @barriers);
+
+		each(i : platforms) {
+			# move east
+			barrier := platforms->Get(i);
+			if(@vel_x->GetX() > 0) {
+				@rect->SetRight(barrier->GetLeft());
+			}
+			# moving west
+			else if(@vel_x->GetX() <= 0) {
+				@rect->SetLeft(barrier->GetRight());
+			};
+		};
+
+		# move north/south
+		@acc_y->SetY(@change_y * 0.195);
+		@acc_y->Add(Vector2->Mul(@vel_y, -0.0925));
+		@vel_y->Add(Vector2->Mul(@acc_y, 0.75));
+		@rect->AddY(@vel_y->GetY());
+		@acc_y->Zero();
+
+		# check north and south bounds
+		if(@rect->GetTop() <= 0) {
+			@rect->SetTop(0);
+		};
+
+		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
+			@rect->SetBottom(Game->SCREEN_HEIGHT);
+		};
+
+		each(i : @barriers) {
+			barrier := @barriers->Get(i);
+			if(barrier->Collides(@rect)) {
+				# moving south
+				if(@vel_y->GetY() > 0) {
+					@rect->SetBottom(barrier->GetTop());
+				}
+				# moving north
+				else if(@vel_y->GetY() <= 0) {
+					@rect->SetTop(barrier->GetBottom());
+				};
+			};
+		};
+
+		iter := @missles->ForwardIterator()<Missle>;
+		while(iter->More()) {
+			missle := iter->Get()<Missle>;
+
+			if(missle->GetTop() <= 0) {
+				iter->Remove();
+			}
+			else if(missle->GetBottom() > Game->SCREEN_HEIGHT) {
+				iter->Remove();
+			}
+			else if(missle->Collides(@enemies, @barriers)) {
+				iter->Remove();
+			}
+			else {
+				missle->Add(4);
+			};
+
+			# update
+			iter->Next();
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		iter := @missles->ForwardIterator()<Missle>;
+		while(iter->More()) {
+			iter->Get()->Draw();
+			iter->Next();
+		};
+
+		@rect->Render();
+	}
+}
+
+class Barrier {
+	@rect : Rectangle;
+
+	New(x : Int, y : Int, rect : Rectangle) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(0, 255, 0));
+		@rect->Set(x, y);
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
+class Missle {
+	@rect : Rectangle;
+	@is_up : Bool;
+	@vel_x : Float;
+
+	New(is_up : Bool, vel_x : Float, x : Int, y : Int, rect : Rectangle) {
+		@is_up := is_up;
+		@vel_x := vel_x;
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(255, 255, 255));
+		@rect->Set(x, y);
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	# TODO: missle is out-of-range
+	method : public : Add(i : Int)  ~ Nil {
+		if(@vel_x < 0.00001) {
+			if(@is_up) {
+				@rect->AddX(-i);
+				@rect->AddY(i / 2);
+			}
+			else {
+				@rect->AddX(-i);
+				@rect->AddY(-i / 2);
+			};
+		}
+		else if(@vel_x > 0.00001) {
+			if(<>@is_up) {
+				@rect->AddX(i);
+				@rect->AddY(-i / 2);
+			}
+			else {
+				@rect->AddX(i);
+				@rect->AddY(i / 2);
+			};
+		};
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(enemies : Vector<Enemy>, barriers : Vector<Barrier>) ~ Bool {
+		each(i : enemies) {
+			enemy := enemies->Get(i);
+			if(enemy->Collides(@rect)) {
+				enemy->Explode();
+				return true;
+			};
+		};
+
+		each(i : barriers) {
+			barrier := barriers->Get(i);
+			if(barrier->Collides(@rect)) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	method : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
+class Level {
+	@player : Player;
+	@enemies : Vector<Enemy>;
+	@barriers : Vector<Barrier>;
+	@shift_x : Int;
+
+	New(player : Player, enemies : Vector<Enemy>, framework : GameFramework) {
+		@player := player;
+		@enemies := enemies;
+
+		@barriers := Vector->New()<Barrier>;		
+		@barriers->AddBack(Barrier->New(300, 50, framework->AddRectangle(50, 80)));	
+		@barriers->AddBack(Barrier->New(600, 400, framework->AddRectangle(50, 140)));	
+		@barriers->AddBack(Barrier->New(400, 300, framework->AddRectangle(50, 120)));	
+		@barriers->AddBack(Barrier->New(800, 200, framework->AddRectangle(50, 100)));
+
+		@barriers->AddBack(Barrier->New(300 * 2, 50, framework->AddRectangle(50, 80)));	
+		@barriers->AddBack(Barrier->New(600 * 2, 400, framework->AddRectangle(50, 140)));	
+		@barriers->AddBack(Barrier->New(400 * 2, 300, framework->AddRectangle(50, 120)));	
+		@barriers->AddBack(Barrier->New(800 * 2, 200, framework->AddRectangle(50, 100)));
+
+		@player->SetLevel(@self, @enemies);
+
+		each(i : @enemies) {
+			@enemies->Get(i)->SetLevel(@self, @enemies);
+		};
+	}
+
+	function : Collisions(player : Player, obstacles : Vector<Barrier>) ~ Vector<Barrier> {
+		collides := Vector->New()<Barrier>;
+
+		each(i : obstacles) {
+			obstacle := obstacles->Get(i);
+			if(obstacle->Collides(player->GetRect())) {
+				collides->AddBack(obstacle);
+			};
+		};
+
+		return collides;
+	}
+
+	function : Collisions(player : Player, enemies : Vector<Enemy>) ~ Vector<Enemy> {
+		collides := Vector->New()<Enemy>;
+
+		each(i : enemies) {
+			enemy := enemies->Get(i);
+			if(enemy->Collides(player->GetRect())) {
+				collides->AddBack(enemy);
+			};
+		};
+
+		return collides;
+	}
+
+	method : public : GetShiftX() ~ Int {
+		return @shift_x;
+	}
+
+	method : public : ShiftWorld(shift_x : Int) ~ Nil {
+		@shift_x += shift_x;
+
+		iter := @player->GetMissles()->ForwardIterator()<Missle>;
+		while(iter->More()) {
+			iter->Get()->AddX(shift_x);
+			iter->Next();
+		};
+
+		each(i : @enemies) {
+			@enemies->Get(i)->AddX(shift_x);
+		};
+
+		each(i : @barriers) {
+			@barriers->Get(i)->AddX(shift_x);
+		};
+	}
+
+	method : public : GetBarriers() ~ Vector<Barrier> {
+		return @barriers;
+	}
+
+	method : public : native : Update()  ~ Nil {
+		each(i : @barriers) {
+			barrier := @barriers->Get(i);
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		each(i : @barriers) {
+			@barriers->Get(i)->Draw();
+		};
+	}
+
+	function : Distance(a_x : Int, a_y : Int, b : Rectangle) ~ Int {
+		x_norm := a_x - b->GetCenterX();
+		y_norm := a_y - b->GetCenterY();
+		return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}

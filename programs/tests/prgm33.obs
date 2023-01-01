@@ -1,0 +1,39 @@
+# Linked list class for Objeck language
+# R.Hollines
+
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+	
+		function : native : Run() ~ Nil {
+#		function : Run() ~ Nil {
+			list : IntList := IntList->New();
+
+			list->AddBack(12);
+			list->AddBack(13);
+			list->AddBack(18);
+			list->AddFront(1);
+
+			while(list->IsBack() <> true) {
+				list->Get()->PrintLine();
+#				list->Get();
+				list->Next();
+			};
+
+			list->Forward();
+			while(list->IsFront() <> true) {
+				list->Get()->PrintLine();
+				list->Previous();
+			};
+
+			IO.Console->Print("size: ")->PrintLine(list->Size());
+			list->Front()->PrintLine();
+			list->Back()->PrintLine();
+		}		
+	}
+}
+

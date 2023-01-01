@@ -72,5 +72,5 @@ jobs:
       working-directory: ./core/release/deploy/bin
       run: |
           mkdir ../html
-          ./obc -src ../../../../programs/doc/doc_html.obs,../../../../programs/doc/doc_parser.obs -dest code_doc.obe; \
-          ./obr code_doc.obe ../examples/doc/templates 0.0.1 ../../../compiler/lib_src/lang.obs ../../../compiler/lib_src/regex.obs ../../../compiler/lib_src/json.obs ../../../compiler/lib_src/xml.obs ../../../compiler/lib_src/encrypt.obs ../../../compiler/lib_src/odbc.obs ../../../compiler/lib_src/csv.obs ../../../compiler/lib_src/query.obs ../../../compiler/lib_src/sdl2.obs ../../../compiler/lib_src/sdl_game.obs ../../../compiler/lib_src/gen_collect.obs ../../../compiler/lib_src/net.obs ../../../compiler/lib_src/rss.obs ../../../compiler/lib_src/misc.obs
+          ./obc -src ../../../lib/code_doc/doc_html.obs,../../../lib/code_doc/doc_parser.obs -dest code_doc.obe; \
+          ./obr code_doc.obe ../../../lib/code_doc/templates 0.0.1 ../../../compiler/lib_src/lang.obs ../../../compiler/lib_src/regex.obs ../../../compiler/lib_src/json.obs ../../../compiler/lib_src/xml.obs ../../../compiler/lib_src/encrypt.obs ../../../compiler/lib_src/odbc.obs ../../../compiler/lib_src/csv.obs ../../../compiler/lib_src/query.obs ../../../compiler/lib_src/sdl2.obs ../../../compiler/lib_src/sdl_game.obs ../../../compiler/lib_src/gen_collect.obs ../../../compiler/lib_src/net.obs ../../../compiler/lib_src/rss.obs ../../../compiler/lib_src/misc.obs

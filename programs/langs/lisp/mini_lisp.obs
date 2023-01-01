@@ -1,0 +1,1707 @@
+use Collection.Generic;
+
+#~
+Tests:
+- (write 13)
+- (write (+ 13 8))
+- (a 13)(defun a(b)(let ((c 8))(write (+ c b))))
+~#
+class MiniLisp {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := Parser->New(args[0]);
+			functions := parser->Parse()<String, Node>;
+			if(functions <> Nil) {
+				Evaluator->New(functions)->Evaluate();
+			};
+		};
+	}
+}
+
+#--- Evaluator ---
+
+class Evaluator {
+	@exe_stack : Stack<Value>;	
+	@symbol_tables : List<Hash<String, Value>>;
+	@call_stack : Stack<Node>;
+	@functions : Map<String, Node>;
+	@is_debug : Bool;
+
+	New(functions : Map<String, Node>) {
+		@functions := functions;
+		@exe_stack := Stack->New()<Value>;
+		@call_stack := Stack->New()<Node>;
+		@symbol_tables := List->New()<Hash<String, Value>>;
+		@is_debug := true;
+
+		Value->Init();
+	}
+
+	method : public : Evaluate() ~ Nil {
+		if(@is_debug) {
+			"\n--- Evaluate ---"->PrintLine();
+		};
+
+		Evaluate(@functions->Find("$Main"));
+	}
+
+	method : Evaluate(node : Node) ~ Nil {
+		if(node <> Nil) {
+			select(node->GetType()) {
+				label Node->Type->RTRN {
+					if(@call_stack->IsEmpty()) {
+						Runtime->Exit(0);
+					}
+					else {
+						Evaluate(@call_stack->Pop());
+					};
+				}
+
+				label Node->Type->EXPRS {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+					};
+				}
+
+				label Node->Type->COND {
+					done := false;
+					children := node->GetChildren();
+					if(children <> Nil) {
+						for(i := 0; i < children->Size() & <>done; i += 2;) {
+							Evaluate(children->Get(i));
+							cond := @exe_stack->Pop();
+							if(cond->GetType() <> Value->Type->BOOL_TYPE) {
+								"*** Runtime Error: Expected boolean type ***"->ErrorLine();
+								Runtime->Exit(1);
+							};
+
+							if(cond->GetBoolValue()) {
+								Evaluate(children->Get(i + 1));
+								done := true;
+							};
+						};
+					};
+				}
+
+				label Node->Type->VAR {
+					found := false;
+					name := node->GetStringValue();
+
+					@symbol_tables->Rewind();
+					while(@symbol_tables->More() & <>found) {
+						symbol_table := @symbol_tables->Get();
+						
+						value := symbol_table->Find(name);
+						if(value <> Nil) {
+							@exe_stack->Push(value);
+							found := true;
+						};
+
+						@symbol_tables->Next();
+					};
+
+					if(<>found) {
+						"Unable to find variable '{$name}' ***"->ErrorLine();
+						Runtime->Exit(1);
+					};
+				}
+
+				label Node->Type->LET_FUN_DEC: {
+					fun_name := node->GetStringValue();				
+					func := @functions->Find(fun_name);
+					if(func = Nil) {
+						"*** Unidentied function '{$fun_name}' ***"->ErrorLine();
+						Runtime->Exit(1);
+					};
+
+					parms := node->GetChildren();
+					if(parms <> Nil) {
+						each(i : parms) {
+							Evaluate(parms->Get(i));
+						};
+					};
+
+					instrs := func->GetChildren();
+					if(instrs <> Nil) {
+						if(instrs->Size() > 1) {
+							bind_vars := instrs->Get(0)->GetChildren();
+							if(parms = Nil | bind_vars->Size() <> parms->Size()) {
+								"*** Function parameter size mismatch '{$fun_name}' ***"->ErrorLine();
+								Runtime->Exit(1);
+							};
+
+							table := Hash->New()<String, Value>;
+							@symbol_tables->AddFront(table);
+
+							each(i : bind_vars) {
+								bind_var := bind_vars->Get(i);
+
+								var_name := bind_var->GetStringValue();
+								bind_parm := parms->Get(i);
+								if(bind_parm <> Nil) {
+									Evaluate(bind_parm);
+									table->Insert(var_name, @exe_stack->Pop());
+								};
+							};
+
+							@symbol_tables->RemoveFront();
+
+						}
+						else if(parms <> Nil) {
+							"*** Function parameter size mismatch '{$fun_name}' ***"->ErrorLine();
+							Runtime->Exit(1);
+						};
+
+						each(i : instrs) {
+							Evaluate(instrs->Get(i));
+						};
+					};
+
+					@symbol_tables->RemoveFront();
+				}
+
+				label Node->Type->LET {
+					table := Hash->New()<String, Value>;
+					@symbol_tables->AddFront(table);
+					
+					children := node->GetChildren()<Node>;
+					if(children <> Nil) {
+						each(i : children) {
+							child := children->Get(i);
+							if(child->GetType() = Node->Type->LET_FUN_DEC) {
+								name := child->GetStringValue();
+								sub_child := child->GetChildren();
+								if(sub_child <> Nil) {
+									Evaluate(sub_child->Get(0));
+									table->Insert(name, @exe_stack->Pop());
+								};
+							}
+							else {
+								Evaluate(child);
+							};
+						};
+					};
+
+					@symbol_tables->RemoveFront();
+				}
+
+				label Node->Type->BIND_VARS {
+					table := Hash->New()<String, Value>;
+					@symbol_tables->AddFront(table);
+
+					children := node->GetChildren()<Node>;
+					if(children <> Nil) {
+						each(i : children) {
+							name := children->Get(i)->GetStringValue();	
+							table->Insert(name, @exe_stack->Pop());
+						};
+					};
+				}
+
+				label Node->Type->LIST {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						list := Value->New(Value->Type->LIST);
+						each(i : children) {
+							child := @exe_stack->Pop();
+							if(child->GetType() = Value->Type->LIST) {
+								list->AddBackList(child);
+							}
+							else {
+								list->AddBackElement(child);
+							};
+						};
+						@exe_stack->Push(list);
+					};
+				}
+
+				label Node->Type->CONS {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						list := Value->New(Value->Type->LIST);
+						each(i : children) {
+							list->AddBackElement(@exe_stack->Pop());
+						};
+						@exe_stack->Push(list);						
+					};
+				}
+
+# ---- TODO ---
+				label Node->Type->CAR {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+					};
+
+					list := @exe_stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						@exe_stack->Push(list->Car());
+					};
+				}
+
+				label Node->Type->CDR {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+					};
+
+					list := @exe_stack->Pop();
+					if(list->GetType() = Value->Type->LIST) {
+						@exe_stack->Push(list->Cdr());
+					};
+				}
+# ---- END: TODO ---
+
+				label Node->Type->WRITE {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						@exe_stack->Pop()->ToString()->PrintLine();
+					};
+				}
+
+				label Node->Type->LENGTH {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						list := @exe_stack->Pop();
+						@exe_stack->Push(Value->New(list->GetListSize()));
+					};
+				}
+
+				label Node->Type->EMPTY_LIST {
+					@exe_stack->Push(Value->EmptyList());
+				}
+
+				label Node->Type->INT_LIT {
+					@exe_stack->Push(Value->New(node->GetIntValue()));
+				}
+
+				label Node->Type->ADD {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							left->SetIntValue(left->GetIntValue() + right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->MUL {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							left->SetIntValue(left->GetIntValue() * right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->SUB {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						if(children->Size() = 1) {
+							left->SetIntValue(left->GetIntValue() * -1);
+						}
+						else {
+							for(i := 1;	 i < children->Size(); i += 1;) {
+								right := @exe_stack->Pop();
+								left->SetIntValue(left->GetIntValue() - right->GetIntValue());
+							};
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->DIV {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						for(i := children->Size() - 1; i >= 0; i -= 1;) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						if(children->Size() = 1) {
+							left->SetRealValue(1.0 / left->GetIntValue()->ToFloat());
+						}
+						else {
+							for(i := 1;	 i < children->Size(); i += 1;) {
+								right := @exe_stack->Pop();
+								left->SetIntValue(left->GetIntValue() / right->GetIntValue());
+							};
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->EQL {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							# TODO: type checking
+							left->SetBoolValue(left->GetIntValue() = right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				label Node->Type->NEQL {
+					children := node->GetChildren();
+					if(children <> Nil) {
+						reverse(i : children) {
+							Evaluate(children->Get(i));
+						};
+
+						left := @exe_stack->Pop();
+						for(i := 1;	 i < children->Size(); i += 1;) {
+							right := @exe_stack->Pop();
+							# TODO: type checking
+							left->SetBoolValue(left->GetIntValue() <> right->GetIntValue());
+						};
+						@exe_stack->Push(left);
+					};
+				}
+
+				other {
+					type := node->GetType()->As(Int);
+					"Unknown expression ({$type}) ***"->ErrorLine();
+					Runtime->Exit(1);
+				}
+			};
+		};
+	}
+}
+
+class Value {
+	@type : Type;
+	@nil_value : static : Value;
+	@empty_list_value : static : Value;
+	@next_elem : Value;
+	@next_list : Value;
+	@int_value : Int;
+	@bool_value : Bool;
+	@real_value : Float;
+	@str_value : String;
+
+	enum Type := -300 {
+		LIST,
+		NIL_TYPE,
+		INT_TYPE,
+		BOOL_TYPE,
+		REAL_TYPE,
+		STRING_TYPE
+	}
+
+	function : Init() ~ Nil {
+		@nil_value := Value->New(Value->Type->NIL_TYPE);
+		@empty_list_value := Value->New(Value->Type->LIST);
+	}
+
+	New(int_value : Int) {
+		@type := Value->Type->INT_TYPE;
+		@int_value := int_value;
+	}
+
+	New(bool_value : Bool) {
+		@type := Value->Type->BOOL_TYPE;
+		@bool_value := bool_value;
+	}
+
+	New(str_value : String) {
+		@type := Value->Type->STRING_TYPE;
+		@str_value := str_value;
+	}
+
+	New(real_value : Float) {
+		@type := Value->Type->REAL_TYPE;
+		@real_value := real_value;
+	}
+
+	New(type : Value->Type) {
+		@type := type;
+	}
+
+	function : EmptyList() ~ Value {
+		return @empty_list_value;
+	}
+
+	function : NilValue() ~ Value {
+		return @nil_value;
+	}
+
+	method : public : Clone() ~ Value {
+		select(@type) {
+			label Value->Type->LIST {
+
+			}
+			
+			label Value->Type->NIL_TYPE {
+				return Value->New(Value->Type->NIL_TYPE);
+			}
+			
+			label Value->Type->INT_TYPE {
+				return Value->New(@int_value);
+			}
+			
+			label Value->Type->BOOL_TYPE {
+				return Value->New(@bool_value);
+			}
+			
+			label Value->Type->REAL_TYPE {
+				return Value->New(@real_value);
+			}
+			
+			label Value->Type->STRING_TYPE {
+				return Value->New(@str_value);
+			}
+		};
+		
+		return Nil;
+	}
+
+	method : public : GetType() ~ Value->Type {
+		return @type;
+	}
+
+	# list operations
+	method : public : GetNextElement() ~ Value {
+		return @next_elem;
+	}
+
+	method : SetNextElement(next_elem : Value) ~ Nil {
+		@next_elem := next_elem;
+	}
+
+	method : public : GetNextList() ~ Value {
+		return @next_list;
+	}
+	
+	method : SetNextList(next_list : Value) ~ Nil {
+		@next_list := next_list;
+	}
+
+	method : public : AddFrontElement(elem : Value) ~ Nil {
+		if(@next_elem = Nil) {
+			@next_elem := elem;
+		}
+		else {
+			temp := @next_elem;
+			while(temp->GetNextElement() <> Nil) {
+				temp := temp->GetNextElement();
+			};
+
+			if(elem->GetType() = Value->Type->LIST) {
+				temp->SetNextElement(elem->GetNextElement());
+			}
+			else {
+				temp->SetNextElement(elem);
+			};
+		};
+	}
+
+	method : public : AddBackElement(elem : Value) ~ Nil {
+		temp := @next_elem;
+
+		if(elem->GetType() = Value->Type->LIST) {
+			@next_elem := elem->GetNextElement();
+		}
+		else {
+			@next_elem := elem;
+		};
+
+		elem->SetNextElement(temp);
+	}
+
+	method : public : AddFrontList(list : Value) ~ Nil {
+		if(@next_list = Nil) {
+			@next_list := list;
+		}
+		else {
+			temp := @next_list;
+			while(temp->GetNextList() <> Nil) {
+				temp := temp->GetNextList();
+			};
+
+			if(list->GetType() = Value->Type->LIST) {
+				temp->SetNextList(list->GetNextList());
+			}
+			else {
+				temp->SetNextList(list);
+			};
+		};
+	}
+
+	method : public : AddBackList(list : Value) ~ Nil {
+		if(list->GetType() = Value->Type->LIST) {
+			if(@next_list = Nil) {
+				@next_list := list;
+			}
+			else {
+				temp := @next_list;
+				while(temp->GetNextList() <> Nil) {
+					temp := temp->GetNextList();
+				};
+				temp->SetNextList(list);
+			};
+		};
+	}
+
+	method : public : Car() ~ Value {
+		if(@type = Value->Type->LIST) {
+			if(@next_elem <> Nil) {
+				return @next_elem;
+			};
+
+			 if(@next_list <> Nil) {
+			 	return @next_list;
+			 };
+		};
+
+		return NilValue();
+	}
+
+	method : public : Cdr() ~ Value {
+		if(@type = Value->Type->LIST) {
+			if(@next_elem = Nil & @next_list = Nil) {
+				return NilValue();
+			}
+			else {
+				new_list := Value->New(Value->Type->LIST);
+
+				elem := @next_elem;
+				if(elem <> Nil) {
+					elem := elem->GetNextElement();
+					while(elem <> Nil) {
+						new_list->AddFrontElement(elem->Clone());
+						elem := elem->GetNextElement();
+					};
+				};
+				
+				list := @next_list;
+				if(list <> Nil) {
+					list := list->GetNextList();
+					while(list <> Nil) {
+						new_list->AddFrontList(list);
+						list := list->GetNextList();
+					};
+				};
+
+				return new_list;
+			};
+		};
+
+		return NilValue();
+	}
+
+	method : public : GetListSize() ~ Int {
+		if(@type = Value->Type->LIST) {
+			if(@next_elem = Nil & @next_list = Nil) {
+				return 0;
+			}
+			else {
+				count := 0;
+
+				elem := @next_elem;
+				while(elem <> Nil) {
+					count += 1;
+					elem := elem->GetNextElement();
+				};
+				
+				list := @next_list;
+				while(list <> Nil) {
+					count += 1;
+					list := list->GetNextList();
+				};
+
+				return count;
+			};
+		};
+
+		return -1;
+	}
+
+	# atom operations
+	method : public : GetIntValue() ~ Int {
+		return @int_value;
+	}
+
+	method : public : GetBoolValue() ~ Bool {
+		return @bool_value;
+	}
+
+	method : public : SetIntValue(int_value : Int) ~ Nil {
+		@type := Value->Type->INT_TYPE;
+		@int_value := int_value;
+	}
+
+	method : public : SetBoolValue(bool_value : Bool) ~ Nil {
+		@type := Value->Type->BOOL_TYPE;
+		@bool_value := bool_value;
+	}
+
+	method : public : GetRealValue() ~ Float {
+		return @real_value;
+	}
+
+	method : public : SetRealValue(real_value : Float) ~ Nil {
+		@type := Value->Type->REAL_TYPE;
+		@real_value := real_value;
+	}
+
+	# other
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		select(@type) {
+			label Value->Type->INT_TYPE {
+				buffer += @int_value->ToString();
+			}
+
+			label Value->Type->REAL_TYPE {
+				buffer += @real_value->ToString();
+			}
+
+			label Value->Type->BOOL_TYPE {
+				buffer += @bool_value->ToString();
+			}
+
+			label Value->Type->STRING_TYPE {
+				buffer += @str_value;
+			}
+
+			label Value->Type->LIST {
+				if(@next_elem = Nil & @next_list = Nil) {
+					buffer += "NIL";
+				}
+				else {
+					buffer += "(";
+					
+					elem := @next_elem;
+					while(elem <> Nil) {
+						buffer += elem->ToString();
+						elem := elem->GetNextElement();
+						if(elem <> Nil) {
+							buffer += ", ";
+						};
+					};
+
+					list := @next_list;					
+					while(list <> Nil) {
+						buffer += list->ToString();
+						list := list->GetNextList();
+						if(list <> Nil) {
+							buffer += ", ";
+						};
+					};
+
+					buffer += ")";
+				};
+			}
+
+			label Value->Type->NIL_TYPE {
+				buffer += "NIL";
+			}
+		};
+
+		return buffer;
+	}
+}
+
+#--- Parser ---
+
+class Parser {
+	@input : String;
+	@tokens : Vector<Token>;
+	@functions : Map<String, Node>;
+	@token_pos : Int;
+	@level : Int;
+	@error : Bool;
+	@is_debug : Bool;
+	
+	New(input : String) {
+		@input := input;
+		@functions := Map->New()<String, Node>;
+		@is_debug := true;
+	}
+
+	method : public : NextToken() ~ Nil {
+		@token_pos += 1;
+	}
+
+	method : GetTokenType() ~ Token->Type {
+		if(@token_pos < @tokens->Size()) {
+			return @tokens->Get(@token_pos)->GetType();
+		};
+
+		return Token->Type->OTHER;
+	}
+
+	method : Match(type : Token->Type) ~ Bool {
+		return GetTokenType() = type;
+	}
+
+	method : public : Parse() ~ Map<String, Node> {
+		@tokens := Scanner->Scan(@input);
+
+		if(@is_debug) {
+			"--- Input ---\n\"{$@input}\""->PrintLine();
+			
+			"\n--- Tokens ---"->PrintLine();
+			each(i : @tokens) {
+				value := @tokens->Get(i);
+				"{$i}:\t'{$value}'"->PrintLine();
+			};
+			"\n--- Expressions ---"->PrintLine();
+		};
+
+		main := Expressions(0);
+		@functions->Insert("$Main", main);
+
+		if(@is_debug) {
+			if(main <> Nil) {
+				"\n--- Tree ---"->PrintLine();
+				main->ToString()->PrintLine();
+			};
+		};
+
+		return @functions;
+	}
+
+	method : public : Expressions(depth : Int) ~ Node {
+		node := Node->New(Node->Type->EXPRS);
+		
+		while(GetTokenType() = Token->Type->OPRN) {
+			expr := Expression(depth + 1);
+			if(expr = Nil) {
+				return Nil;
+			};
+
+			if(expr->GetType() = Node->Type->DEFUN) {
+				node->AddChild(Node->New(Node->Type->RTRN));
+				@functions->Insert(expr->GetStringValue(), expr);
+			};
+			
+			node->AddChild(expr);
+		};
+
+		
+
+		return node;
+	}
+
+	method : public : Expression(depth : Int) ~ Node {
+		node : Node;
+
+		if(@is_debug) {
+			length := @tokens->Size();
+			"Expression: pos=({$@token_pos},{$length}); depth={$depth}"->PrintLine();
+		};
+
+		is_eval := true;
+		if(Match(Token->Type->QUOTE)) {
+			is_eval := false;
+			NextToken();
+		};
+
+		if(Match(Token->Type->OPRN)) {
+			NextToken();
+			@level += 1;
+			
+			if(@token_pos + 2 < @tokens->Size()) {
+				select(@tokens->Get(@token_pos)->GetType()) {
+					label Token->Type->EQL:
+					label Token->Type->NEQL:
+					label Token->Type->ADD:
+					label Token->Type->SUB:
+					label Token->Type->MUL:
+					label Token->Type->DIV: {
+						if(@is_debug) {
+							"\t[+,-,*,/]"->PrintLine();
+						};
+
+						node := Node->New(GetTokenType());
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+					}
+
+					label Token->Type->LIST_KEYWORD: {
+						if(@is_debug) {
+							"\tList"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->LIST);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+					}
+
+					label Token->Type->COND_KEYWORD: {
+						if(@is_debug) {
+							"\tCond"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->COND);
+						NextToken();
+
+						if(GetTokenType() <> Token->Type->OPRN) {
+							@error := true;
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+
+						cond := Expression(depth + 1);
+						if(cond = Nil) {
+							return Nil;
+						};
+						node->AddChild(cond);
+
+						expressions := Expressions(depth + 1);
+						if(expressions = Nil) {
+							return Nil;
+						};
+						node->AddChild(expressions);
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							@error := true;
+							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+					}
+
+					label Token->Type->DEFUN_KEYWORD: {
+						if(@is_debug) {
+							"\tDefun"->PrintLine();
+						};
+
+						NextToken();
+						if(GetTokenType() <> Token->Type->VAR) {
+							@error := true;
+							"*** Syntax Error: Expected string type (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						value := @tokens->Get(@token_pos)->GetStringValue();						
+						node := Node->New(Node->Type->DEFUN, value);
+						NextToken();
+
+						if(GetTokenType() <> Token->Type->OPRN) {
+							@error := true;
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+
+						parameters := Node->New(Node->Type->BIND_VARS);
+						while(GetTokenType() = Token->Type->VAR) {
+							value := @tokens->Get(@token_pos)->GetStringValue();
+							parameters->AddChild(Node->New(Node->Type->BIND_VAR, value));
+							NextToken();
+						};
+						node->AddChild(parameters);
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							@error := true;
+							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+						
+						expressions := Expressions(depth + 1);
+						if(expressions = Nil) {
+							return Nil;
+						};
+						node->AddChild(expressions);
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							@error := true;
+							"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+						NextToken();
+
+						@functions->Insert(value, expressions);
+					}
+
+					label Token->Type->WRITE_KEYWORD: {
+						if(@is_debug) {
+							"\tWrite"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->WRITE);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
+							@error := true;
+							"*** Syntax Error: The 'write' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}
+
+					label Token->Type->CAR_KEYWORD: {
+						if(@is_debug) {
+							"\tCar"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->CAR);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
+							@error := true;
+							"*** Syntax Error: The 'car' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}
+
+					label Token->Type->CDR_KEYWORD: {
+						if(@is_debug) {
+							"\tCdr"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->CDR);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
+							@error := true;
+							"*** Syntax Error: The 'car' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}					
+
+					label Token->Type->CONS_KEYWORD: {
+						if(@is_debug) {
+							"\tCons"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->CONS);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 2) {
+							@error := true;
+							"*** Syntax Error: The 'cons' operation takes 2 operands (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}
+
+					label Token->Type->LET_KEYWORD: {
+						if(@is_debug) {
+							"\tLet"->PrintLine();
+						};
+
+						NextToken();
+						if(GetTokenType() <> Token->Type->OPRN) {
+							@error := true;
+							"*** Syntax Error: Expected '(' (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+
+						node := Node->New(Node->Type->LET);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(GetTokenType() <> Token->Type->CPRN) {
+							expr := Expression(depth);
+							if(expr = Nil) {
+								return Nil;
+							};
+							node->AddChild(expr);
+							
+							if(GetTokenType() <> Token->Type->CPRN) {
+								@error := true;
+								"*** Syntax Error: Expected ')' (pos={$@token_pos}) ***"->ErrorLine();
+								return Nil;
+							};
+						};
+
+						NextToken();
+					}
+
+					label Token->Type->VAR: {
+						value := @tokens->Get(@token_pos)->GetStringValue();
+						if(@is_debug) {
+							"\tVAR; name={$value}"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->LET_FUN_DEC, value);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+					}
+
+					label Token->Type->LENGTH_KEYWORD: {
+						if(@is_debug) {
+							"\tLength"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->LENGTH);
+						if(<>Operands(node, depth)) {
+							return Nil;
+						};
+
+						if(node->GetChildren() = Nil | node->GetChildren()->Size() <> 1) {
+							@error := true;
+							"*** Syntax Error: The 'length' operation takes 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+							return Nil;
+						};
+					}
+
+					label Token->Type->CPRN: {
+						if(@is_debug) {
+							"\tEmpty_List"->PrintLine();
+						};
+
+						node := Node->New(Node->Type->EMPTY_LIST);
+					}
+
+					other: {
+						token_id := GetTokenType()->As(Int);
+						@error := true;
+						"*** Syntax Error: Unknown operation ({$token_id},{$@token_pos}) ***"->ErrorLine();
+						return Nil;
+					}
+				};
+			}
+			else if(Match(Token->Type->CPRN)) {
+				if(@is_debug) {
+					"\tEmpty_List"->PrintLine();
+				};
+
+				node := Node->New(Node->Type->EMPTY_LIST);
+				NextToken();
+			}
+			else if(Match(Token->Type->VAR)) {
+				value := @tokens->Get(@token_pos)->GetStringValue();						
+				node := Node->New(Node->Type->DEFUN, value);
+				NextToken();
+
+				Operands(node, depth);
+				node := Node->New(Node->Type->LET_FUN_DEC, value);
+			}
+			else {
+				@error := true;
+				"*** Syntax Error: Operation requires at least 1 operand (pos={$@token_pos}) ***"->ErrorLine();
+				return Nil;
+			};
+		}
+		else if(Match(Token->Type->CPRN)) {
+			NextToken();
+			@level -= 1;
+		}
+		else if(Match(Token->Type->INT_LIT)) {
+			value := @tokens->Get(@token_pos)->GetIntValue();
+			if(@is_debug) {
+				"\tInt_Lit; value={$value}"->PrintLine();
+			};
+			node := Node->New(value);
+			NextToken();
+		}
+		else if(Match(Token->Type->VAR)) {
+			value := @tokens->Get(@token_pos)->GetStringValue();
+			if(@is_debug) {
+				"\tVAR; value={$value}"->PrintLine();
+			};
+			node := Node->New(Node->Type->VAR, value);
+			NextToken();
+		}
+		else {
+			token_id := GetTokenType()->As(Int);
+			@error := true;
+			"*** Syntax Error: Unknown token ({$token_id},{$@token_pos}) ***"->ErrorLine();
+			NextToken();
+			return Nil;
+		};
+
+		if(node <> Nil) {
+			node->SetEval(is_eval);
+		};
+
+		return node;
+	}
+
+	method : Operands(node : Node, depth : Int) ~ Bool {
+		NextToken();
+
+		cur_level := @level;
+		do {
+			child := Expression(depth + 1);
+			if(@error) {
+				return false;
+			};
+
+			if(child <> Nil) {
+				node->AddChild(child);
+			};
+		}
+		while(cur_level <= @level);
+
+		return true;
+	}
+}
+
+class Node {
+	@type : Node->Type;
+	@is_eval : Bool;
+	@int_value : Int;
+	@real_value : Float;
+	@str_value : String;
+	@children : Vector<Node>;
+
+	enum Type := -200 {
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		EQL,
+		NEQL,
+		EXPRS,
+		LIST,
+		LET,
+		LET_FUN_DEC,
+		BIND_VARS,
+		BIND_VAR,
+		DEFUN,
+		RTRN,
+		CAR,
+		CDR,
+		CONS,
+		COND,
+		WRITE,
+		LENGTH,
+		EMPTY_LIST,
+		INT_LIT,
+		REAL_LIT,
+		VAR
+	}
+
+	New(int_value : Int) {
+		@type := Node->Type->INT_LIT;
+		@int_value := int_value;
+	}
+
+	New(real_value : Float) {
+		@type := Node->Type->REAL_LIT;
+		@real_value := real_value;
+	}
+
+	New(type : Node->Type, str_value : String) {
+		@type := type;
+		@str_value := str_value;
+	}
+
+	New(type : Node->Type) {
+		@type := type;
+	}
+
+	New(type : Token->Type) {
+		select(type) {
+			label Token->Type->ADD {
+				@type := Node->Type->ADD;
+			}
+
+			label Token->Type->SUB {
+				@type := Node->Type->SUB;
+			}
+			
+			label Token->Type->MUL {
+				@type := Node->Type->MUL;
+			}
+			
+			label Token->Type->DIV {
+				@type := Node->Type->DIV;
+			}
+
+			label Token->Type->EQL {
+				@type := Node->Type->EQL;
+			}
+			
+			label Token->Type->NEQL {
+				@type := Node->Type->NEQL;
+			}
+		};
+	}
+
+	method : public : SetEval(is_eval : Bool) ~ Nil {
+		@is_eval := is_eval;
+	}
+
+	method : public : GetEval() ~ Bool {
+		return @is_eval;
+	}
+
+	method : public : GetType() ~ Node->Type {
+		return @type;
+	}
+
+	method : public : GetIntValue() ~ Int {
+		return @int_value;
+	}
+
+	method : public : GetRealValue() ~ Float {
+		return @real_value;
+	}
+
+	method : public : GetStringValue() ~ String {
+		return @str_value;
+	}
+
+	method : public : AddChild(node : Node) ~ Nil {
+		if(@children = Nil) {
+			@children := Vector->New()<Node>;
+		};
+
+		@children->AddBack(node);
+	}
+
+	method : public : GetChildren() ~ Vector<Node> {
+		return @children;
+	}
+
+	method : public : ToString() ~ String {
+		return ToString(0);
+	}
+
+	method : public : ToString(level : Int) ~ String {
+		buffer := "";
+
+		each(l : level) {
+			buffer += "  ";
+		};
+		buffer += "[";
+
+		select(@type) {
+			label Node->Type->ADD {
+				buffer += "+";
+			}
+
+			label Node->Type->LIST {
+				buffer += "list";
+			}
+
+			label Node->Type->WRITE {
+				buffer += "write";
+			}
+
+			label Node->Type->LENGTH {
+				buffer += "length";
+			}
+
+			label Node->Type->EXPRS {
+				buffer += "expressions";
+			}
+
+			label Node->Type->LET {
+				buffer += "let";
+			}
+
+			label Node->Type->RTRN {
+				buffer += "return";
+			}
+
+			label Node->Type->CAR {
+				buffer += "car";
+			}
+
+			label Node->Type->CDR {
+				buffer += "cdr";
+			}
+
+			label Node->Type->CONS {
+				buffer += "cons";
+			}
+
+			label Node->Type->COND {
+				buffer += "cond";
+			}
+
+			label Node->Type->LET_FUN_DEC {
+				buffer += "let_dec '{$@str_value}'";
+			}
+
+			label Node->Type->DEFUN {
+				buffer += "defun '{$@str_value}'";
+			}
+
+			label Node->Type->EMPTY_LIST {
+				buffer += "empty_list";
+			}
+
+			label Node->Type->SUB {
+				buffer += "-";
+			}
+
+			label Node->Type->MUL {
+				buffer += "*";
+			}
+
+			label Node->Type->DIV {
+				buffer += "/";
+			}
+
+			label Node->Type->INT_LIT {
+				buffer += @int_value->ToString();
+			}
+
+			label Node->Type->REAL_LIT {
+				buffer += @real_value->ToString();
+			}
+
+			label Node->Type->VAR {
+				buffer += @str_value;
+			}
+
+			label Node->Type->EQL {
+				buffer += "=";
+			}
+
+			label Node->Type->NEQL {
+				buffer += "/=";
+			}
+
+			label Node->Type->BIND_VARS {
+				buffer += "bind_vars";
+			}
+
+			label Node->Type->BIND_VAR {
+				buffer += "bind_var '{$@str_value}'";
+			}
+
+			other {
+				id := @type->As(Int);
+				buffer += ">>>({$id})<<<";
+			}
+		};
+
+		if(@children <> Nil) {
+			each(i : @children) {
+				buffer += '\n';
+				buffer += @children->Get(i)->ToString(level + 1);
+			};
+			
+		};
+		buffer += "]";
+
+		return buffer;
+	}
+}
+
+#--- Scanner ---
+
+class Scanner {
+	function : Scan(input : String) ~ Vector<Token> {
+		keywords := Hash->New()<String, IntHolder>;
+		keywords->Insert("let", IntHolder->New(Token->Type->LET_KEYWORD));
+		keywords->Insert("write", IntHolder->New(Token->Type->WRITE_KEYWORD));
+		keywords->Insert("list", IntHolder->New(Token->Type->LIST_KEYWORD));
+		keywords->Insert("cond", IntHolder->New(Token->Type->COND_KEYWORD));
+		keywords->Insert("cons", IntHolder->New(Token->Type->CONS_KEYWORD));
+		keywords->Insert("car", IntHolder->New(Token->Type->CAR_KEYWORD));
+		keywords->Insert("cdr", IntHolder->New(Token->Type->CDR_KEYWORD));
+		keywords->Insert("length", IntHolder->New(Token->Type->LENGTH_KEYWORD));
+		keywords->Insert("defun", IntHolder->New(Token->Type->DEFUN_KEYWORD));
+
+		tokens := Vector->New()<Token>;
+
+		each(i : input) {
+			while(input->Get(i) = ' ' | input->Get(i) = '\r' | input->Get(i) = '\n' | input->Get(i) = '\t') {
+				i += 1;
+			};
+
+			if(input->Get(i)->IsChar()) {
+				start := i;
+				while(input->Get(i)->IsChar() | input->Get(i) = '_') {
+					i += 1;
+				};
+				ident := input->SubString(start, i - start);
+				
+				found := keywords->Find(ident);
+				if(found <> Nil) {
+					tokens->AddBack(Token->New(found->Get()->As(Token->Type)));					
+				}
+				else {
+					tokens->AddBack(Token->New(Token->Type->VAR, ident));
+				};
+
+				i -= 1;
+			}
+			else if(input->Get(i)->IsDigit()) {
+				is_real := false;
+
+				start := i;
+				while(input->Get(i)->IsDigit() | input->Get(i) = '.') {
+					if(input->Get(i) = '.') {
+						is_real := true;
+					};
+					i += 1;
+				};
+
+				value := input->SubString(start, i - start);
+				if(is_real) {
+					tokens->AddBack(Token->New(value->ToFloat()));
+				}
+				else {
+					tokens->AddBack(Token->New(value->ToInt()));
+				};
+				i -= 1;
+			}
+			else {
+				select(input->Get(i)) {
+					label '(' {
+						tokens->AddBack(Token->New(Token->Type->OPRN));
+					}
+
+					label ')' {
+						tokens->AddBack(Token->New(Token->Type->CPRN));
+					}
+
+					label '+' {
+						tokens->AddBack(Token->New(Token->Type->ADD));
+					}
+
+					label '-' {
+						tokens->AddBack(Token->New(Token->Type->SUB));
+					}
+
+					label '*' {
+						tokens->AddBack(Token->New(Token->Type->MUL));
+					}
+
+					label '/' {
+						if(i + 1 < input->Size() & input->Get(i + 1) = '=') {
+							tokens->AddBack(Token->New(Token->Type->NEQL));
+							i += 1;
+						}
+						else {
+							tokens->AddBack(Token->New(Token->Type->DIV));
+						};
+					}
+
+					label '\'' {						
+						tokens->AddBack(Token->New(Token->Type->QUOTE));
+					}
+
+					label '=' {
+						tokens->AddBack(Token->New(Token->Type->EQL));
+					}
+
+					other {
+						tokens->AddBack(Token->New(Token->Type->OTHER));
+					}
+				};
+			};
+		};
+
+		return tokens;
+	}
+}
+
+class Token {
+	@type : Token->Type;
+	@str_value : String;
+	@int_value : Int;
+	@real_value : Float;
+
+	enum Type := -100 {
+		WRITE_KEYWORD,
+		LET_KEYWORD,	
+		LIST_KEYWORD,
+		CONS_KEYWORD,
+		CAR_KEYWORD,
+		CDR_KEYWORD,
+		LENGTH_KEYWORD,
+		COND_KEYWORD,
+		DEFUN_KEYWORD,
+		INT_LIT,
+		REAL_LIT,
+		STR_LIT,
+		VAR,
+		OPRN,
+		CPRN,
+		ADD, 
+		SUB,
+		MUL,
+		DIV,
+		EQL,
+		NEQL,
+		QUOTE,
+		OTHER 
+	}
+
+	New(type : Token->Type) {
+		@type := type;
+	}
+
+	New(type : Token->Type, str_value : String) {
+		@type := type;
+		@str_value := str_value;
+	}
+
+	New(int_value : Int) {
+		@type := Type->INT_LIT;
+		@int_value := int_value;
+	}
+
+	New(real_value : Float) {
+		@type := Type->REAL_LIT;
+		@real_value := real_value;
+	}
+
+	method : public : GetType() ~ Token->Type {
+		return @type;
+	}
+
+	method : public : GetStringValue() ~ String {
+		return @str_value;
+	}
+
+	method : public : GetIntValue() ~ Int {
+		return @int_value;
+	}
+
+	method : public : GetRealValue() ~ Float {
+		return @real_value;
+	}
+
+	method : public : ToString() ~ String {
+		select(@type) {
+			label Type->OPRN {
+				return "(";
+			}
+
+			label Type->CPRN {
+				return ")";
+			}
+			
+			label Type->ADD {
+				return "+";
+			}
+			
+			label Type->SUB {
+				return "-";
+			}
+
+			label Type->MUL {
+				return "*";
+			}
+			
+			label Type->DIV {
+				return "/";
+			}
+
+			label Type->WRITE_KEYWORD {
+				return "write";
+			}
+
+			label Type->LENGTH_KEYWORD {
+				return "length";
+			}
+
+			label Type->LIST_KEYWORD {
+				return "cond";
+			}
+
+			label Type->CONS_KEYWORD {
+				return "cons";
+			}
+
+			label Type->CAR_KEYWORD {
+				return "car";
+			}
+
+			label Type->CDR_KEYWORD {
+				return "cdr";
+			}
+
+			label Type->COND_KEYWORD {
+				return "cond";
+			}
+
+			label Type->LET_KEYWORD {
+				return "let";
+			}
+
+			label Type->DEFUN_KEYWORD {
+				return "defun";
+			}
+
+			label Type->VAR {
+				return "string='{$@str_value}'";
+			}
+			
+			label Type->INT_LIT {
+				value := @int_value->ToString();
+				return "int={$value}";
+			}
+			
+			label Type->REAL_LIT {
+				value := @real_value->ToString();
+				return "real={$value}";
+			}
+
+			label Type->EQL {
+				return "=";
+			}
+
+			label Type->NEQL {
+				return "/=";
+			}
+
+			other {
+				return "<unknown>";
+			}
+		};
+	}
+}

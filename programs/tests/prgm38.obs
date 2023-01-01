@@ -1,0 +1,94 @@
+use System;
+
+bundle Default {
+	# IntHolder
+	class IntHolder from System.Compare {
+		@value : Int;
+
+		New(value : Int) {
+			Parent();
+			@value := value;
+		}
+
+		method : public : Get() ~ Int {
+			return @value;
+		}
+
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			right : IntHolder := rhs->As(IntHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+
+		method : public : native : HashID() ~ Int {
+			return GetInstanceID();
+		}
+	}
+	
+	class TreeNode {
+		@value : System.Compare;
+		@left : TreeNode;
+		@right : TreeNode;
+		@level : Int;
+		
+		New(value : System.Compare, level : Int) {
+			@value := value;
+			@level := level;
+		}
+
+		method : public : Get() ~ System.Compare {
+			return @value;
+		}
+
+		method : public : GetLevel() ~ Int {
+			return @level;
+		}
+
+		method : public : SetLevel(level : Int) ~ Nil {
+			@level := level;
+		}
+
+		method : public : GetLeft() ~ TreeNode {
+			return @left;
+		}
+
+		method : public : SetLeft(left : TreeNode) ~ Nil {
+			@left := left;
+		}
+
+		method : public : GetRight() ~ TreeNode {
+			return @right;
+		}
+
+		method : public : SetRight(right : TreeNode) ~ Nil {
+			@right := right;
+		}
+	}
+	
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+		
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
+			v : IntHolder := IntHolder->New(4);
+			v->HashID()->PrintLine();
+
+			node : TreeNode :=  TreeNode->New(v->As(System.Compare) , 10);
+			node->SetLeft(node);
+			node->SetRight(node);
+			
+			y : Bool := node->GetLevel() = node->GetLeft()->GetLeft()->GetLevel();
+			y->PrintLine();
+
+			23->PrintLine();
+		}
+	}
+}	

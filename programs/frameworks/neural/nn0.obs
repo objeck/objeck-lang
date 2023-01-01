@@ -1,0 +1,100 @@
+use System.Matrix;
+use System.IO.Filesystem;
+use Collection;
+
+class BasicAi {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			lines := ReadLines(args[0]);
+			lines->Size()->PrintLine();
+			"---"->PrintLine();
+
+			value := IntHolder->New();
+			each(i : lines) {
+				input := GetInput(lines->Get(i)->As(String), value);
+				dim := input->Size();
+				rows := dim[0];
+				cols := dim[1];
+				number := value->Get(); 
+
+				"{$rows}, {$cols}: {$number}"->PrintLine();
+				target := GetTarget(number);
+				target->ToString()->PrintLine();
+				"---"->PrintLine();
+			};
+
+			
+		};
+	}
+
+	function : DebugMeta(a : Float[,], b : Float[,]) ~ Nil {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+		
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		"A: [{$a_rows},{$a_cols}]; B: [{$b_rows},{$b_cols}]"->PrintLine();
+	}
+
+	function : GetTarget(number : Int) ~ Float[,] {
+		if(number < 0 | number > 9) {
+			return Nil;
+		};
+
+		targets := Float->New[1, 10];
+		for(j := 0; j < 10; j += 1;) {
+			targets[0, j] := 0.1;
+		};
+
+		targets[0, number] := 0.99;
+
+		return targets;
+	}
+
+	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
+		matrix := Float->New[784, 1];
+
+		row := -1; col := 0;
+		values := line->Split(",");
+
+		index := values[0];
+		value->Set(index->ToInt());
+
+		for(i := 1; i < values->Size(); i += 1;) {
+			matrix[i - 1, 0] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
+		};
+
+		return matrix;
+	}
+
+	function : ReadLines(file : String) ~ Vector {
+		lines := Vector->New();
+
+		reader := FileReader->New(file);
+		leaving {
+			reader->Close();
+		};
+
+		buffer_size := 4096;
+		buffer := Char->New[buffer_size + 1];
+
+		line := "";
+		while(<>reader->IsEOF()) {
+			read := reader->ReadBuffer(0, buffer_size, buffer);
+			for(i := 0; i < read; i += 1;) {
+				if(buffer[i] = '\n') {
+					lines->AddBack(line);
+					line := "";
+				}
+				else if(buffer[i] <> '\r') {
+					line += buffer[i];
+				};
+			};
+		};
+
+		return lines;
+	}
+}

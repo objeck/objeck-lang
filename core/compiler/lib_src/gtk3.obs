@@ -265,7 +265,7 @@ bundle GTK3 {
 
 		#~
 		Removes the accelerator group
-		@param the GtkAccelGroup
+		@param accel_group the GtkAccelGroup
 		~#
 		method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 			array_args := Base->New[2];
@@ -299,6 +299,34 @@ bundle GTK3 {
 			};
 
 			return Nil;
+		}
+
+		method : public : GetDefaultWidget() ~ GtkWidget {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("window_get_default_widget", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return GtkWidget->New(value->Get());
+		}
+		
+		method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := parent;
+
+			Proxy->GetDllProxy()->CallFunction("window_set_transient_for", array_args);
+		}
+		
+		method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := attach_widget;
+
+			Proxy->GetDllProxy()->CallFunction("window_set_attached_to", array_args);
+
 		}
 	}
 

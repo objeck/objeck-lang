@@ -1,9 +1,0 @@
-bundle Default {
-	class Loop {
-		function : Main(args : String[]) ~ Nil {
-			while(true) {
-				"SPAM"->PrintLine();
-			};
-		}
-	}
-}

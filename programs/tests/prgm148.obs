@@ -1,0 +1,20 @@
+use Collection.Generic;
+
+class Foo {
+	New() {}
+
+	method : public : Bar() ~ Int {
+		return 13;
+	}
+}
+
+class Test {
+	function : Main(a : String[]) ~ Nil {
+		foo := Map->New()<String, Vector<Foo>>;
+		fie := foo->GetValues()<Vector<Foo>>;
+		each(i : fie) {
+			fum := fie->Get(i);
+			fum->Bar()->PrintLine();
+		};
+	}
+}

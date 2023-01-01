@@ -1,0 +1,34 @@
+use System.IO.Net;
+use System.Concurrency;
+
+class SocketServer {
+	id : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		server := TCPSocketServer->New(4660);
+		if(server->Listen(5)) {
+			while(true) {
+				client := server->Accept();
+				service := Service->New(id->ToString());
+				service->Execute(client);
+				id += 1;
+			};
+		};
+		server->Close();
+	}
+}
+
+class Service from System.Concurrency.Thread {
+	New(name : String) {
+	  Parent(name);
+	}
+	
+	method : public : Run(param : Base) ~ Nil {
+		client := param->As(TCPSocket);
+		line := client->ReadLine();
+		while(line->Size() > 0 & line->Equals("quit") = false) {
+			line->PrintLine();
+			line := client->ReadLine();
+		};
+	}
+}

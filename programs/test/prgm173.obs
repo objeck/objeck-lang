@@ -1,7 +1,0 @@
-use Web.HTTP;
-
-class HttpsTest {
-	function : Main(args : String[]) ~ Nil {
-		HttpsClient->New()->GetAll("https://www." + "linux.org")->PrintLine();
-	}
-}

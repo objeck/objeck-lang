@@ -1,0 +1,33 @@
+class Test {
+	@a : Int;
+	@b : Float;
+	@c : Int;
+
+	New() {
+		Foo();
+	}
+
+	method : native : Foo() ~ Nil {
+		@a := 13.5;
+		@b := 7.5;
+		@c := 101;
+	}
+	
+	method : Print() ~ Nil {
+		@c *= 3;
+		@a->PrintLine();
+		(@a + @b)->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		each(i : 4096) {
+			x := Test->New();
+			x->Print();
+		};
+
+		each(i : 4096) {
+			y := Test->New();
+			y->Print();
+		};
+	}
+}

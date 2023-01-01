@@ -1,0 +1,11 @@
+﻿use RegEx;
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			test := RegEx->New(args[0]);
+			test->MatchExact(args[1])->PrintLine();
+		}
+	}
+}

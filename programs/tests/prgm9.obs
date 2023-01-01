@@ -1,0 +1,11 @@
+use System.IO.Filesystem;
+
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		f := "./prgm9.obs";
+#		f := ".";
+		File->GetFullName(f)->PrintLine();
+#		Directory->Exists(f)->PrintLine();
+#		File->Exists(f)->PrintLine();
+	}
+}

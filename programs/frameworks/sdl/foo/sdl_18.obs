@@ -1,0 +1,289 @@
+#~
+Lesson 18
+http://lazyfoo.net/tutorials/SDL/18_key_states/index.php
+~#
+
+use Game.SDL2;
+
+class LTexture {
+	@renderer : Renderer;
+	@font : Font;
+	@texture : Texture;
+	@width : Int;
+	@height : Int;
+
+	New(renderer : Renderer, font : Font := Nil) {
+		@renderer := renderer;
+		@font := font;
+	}
+
+	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
+		Free();
+
+		# Render text surface
+		textSurface := @font->RenderTextSolid(textureText, textColor);
+		if(textSurface->IsNull()) {
+			"Unable to render text surface!"->ErrorLine();
+			return false;
+		};
+
+		texture := textSurface->CreateTexture(@renderer);
+		@width := textSurface->GetW();
+		@height := textSurface->GetH();
+		
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
+	# Loads image at specified path
+	method : public : LoadFromFile(path : String) ~ Bool {
+		Free();
+
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
+		
+		loadedSurface->Free();
+
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
+	# Deallocates texture
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+		@texture->SetColorMod(red, green, blue);
+	}
+
+	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
+		# Set blending function
+		@texture->SetBlendMode(blending);
+	}
+	
+	method : public : SetAlpha(alpha : Int) ~ Nil {
+		# Modulate texture alpha
+		@texture->SetAlphaMod(alpha );
+	}
+
+	# Renders texture at given point
+	method : public : Render(x : Int, y : Int, 
+			clip : Rect := Nil, 
+			angle : Float := 0.0, 
+			center : Point := Nil, 
+			flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+		render_quad := Rect->New(x, y, @width, @height);
+
+		if(clip <> Nil)	{
+			render_quad->SetW(clip->GetW());
+			render_quad->SetH(clip->GetH());
+		};
+
+		@renderer->CopyEx(@texture, clip, render_quad, angle, center, flip );
+	}
+
+	# Gets image dimensions
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+}
+
+class Test {
+	@window : static : Window;
+	@renderer : static : Renderer;
+	@press_texture : static : LTexture;
+	@up_texture : static : LTexture;
+	@down_texture : static : LTexture;
+	@left_texture : static : LTexture;
+	@right_texture : static : LTexture;
+
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
+
+		current_texture : LTexture;
+
+		# Event handler
+		e := Event->New();
+
+		# While application is running
+		while(<>quit) {
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				};
+			};
+
+			# Set texture based on current keystate
+			key_states := Keyboard->GetState();
+			if( key_states [ Scancode->SDL_SCANCODE_UP ] <> 0 ) {
+				current_texture := @up_texture;
+			}
+			else if( key_states [ Scancode->SDL_SCANCODE_DOWN ] <> 0 ) {
+				current_texture := @down_texture;
+			}
+			else if( key_states [ Scancode->SDL_SCANCODE_LEFT ] <> 0 ) {
+				current_texture := @left_texture;
+			}
+			else if( key_states [ Scancode->SDL_SCANCODE_RIGHT ] <> 0 ) {
+				current_texture := @right_texture;
+			}
+			else {
+				current_texture := @press_texture;
+			};
+			
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			current_texture->Render( 0, 0 );
+
+			# Update screen
+			@renderer->Present();
+		};
+
+		e->Free();
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialize SDL
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, (RendererFlags->SDL_RENDERER_ACCELERATED
+			and RendererFlags->SDL_RENDERER_PRESENTVSYNC));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		img_flags := ImageFlags->IMG_INIT_PNG;
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		@press_texture := LTexture->New(@renderer);
+		@up_texture := LTexture->New(@renderer);
+		@down_texture := LTexture->New(@renderer);
+		@left_texture := LTexture->New(@renderer);
+		@right_texture := LTexture->New(@renderer);
+ #~ ~#		
+		return true;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		if(<>@press_texture->LoadFromFile("images/press.png")) {
+			"Failed to load press texture!"->ErrorLine();
+			return false;
+		};
+
+		if(<>@up_texture->LoadFromFile("images/up.png")) {
+			"Failed to load press texture!"->ErrorLine();
+			return false;
+		};
+
+		if(<>@down_texture->LoadFromFile("images/down.png")) {
+			"Failed to load press texture!"->ErrorLine();
+			return false;
+		};
+
+		if(<>@left_texture->LoadFromFile("images/left.png")) {
+			"Failed to load press texture!"->ErrorLine();
+			return false;
+		};
+
+		if(<>@right_texture->LoadFromFile("images/right.png")) {
+			"Failed to load press texture!"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+	
+	function : LoadTexture(path : String) ~ Texture {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return Nil;
+		};
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return Nil;
+		};
+
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	function : Close() ~ Nil {
+		@press_texture->Free();
+		@up_texture->Free();
+		@down_texture->Free();
+		@left_texture->Free();
+		@right_texture->Free();
+
+		@renderer->Destroy();
+		@window->Destroy();
+
+		# Quit SDL subsystems
+		Image->Quit();
+		Core->Quit();
+	}
+}

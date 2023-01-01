@@ -1,0 +1,20 @@
+use System;
+
+bundle Default {
+	class Test {
+		function : Main(v : System.String[]) ~ Nil {
+#~
+#			s : String := v[0]->ToInt()->ToString();	
+			i : Int := v[0]->ToInt();
+			i->PrintLine();
+			i->PrintLine();
+
+			s : String := i->ToString();
+			s->Append("!");
+			s->PrintLine();
+~#
+			(v[0]->ToInt() * 3)->PrintLine();
+#			v[0]->ToInt()->PrintLine();
+		}
+	}
+}	

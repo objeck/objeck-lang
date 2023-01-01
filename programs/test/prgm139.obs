@@ -1,6 +1,0 @@
-bundle Foo {
-	class Bar2 {
-		New() {}
-	}
-
-}

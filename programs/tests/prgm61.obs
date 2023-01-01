@@ -1,0 +1,18 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {		
+			s := "../..";
+			i := s->Find('/');
+#			v := s->SubString(i, s->Size() - i);
+#			v := s->SubString(i + 1, s->Size() - i);
+			v := s->SubString(i + 1, s->Size() - i - 1);
+#			v := s->SubString(3, 2);
+			v->PrintLine();
+		}
+	}
+}

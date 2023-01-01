@@ -1,0 +1,29 @@
+use Introspection;
+
+bundle Default {
+  class Foo {
+    New() {
+    }
+
+		method : public : Bar() ~ String {
+			return "Bar";
+		}
+  }
+  
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			x := Class->Instance("Foo")->As(Foo);
+			if(x <> Nil) {
+				x->Bar()->PrintLine();
+			};
+
+			y := Class->Instance("System.String")->As(String);
+			y->Append("Hello Dynamic!");
+			y->Size()->PrintLine();
+		}
+
+		function : Boo(v : String) ~ Base {
+			return "hendrix";
+		}
+	}
+}

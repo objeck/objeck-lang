@@ -1,0 +1,16 @@
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			a := 16 >> 3;
+			a->PrintLine();
+			(47 >> 2)->PrintLine();
+			(a << 4)->PrintLine();
+
+			g := 31;
+			(g * 4)->PrintLine();
+
+			h := 57532;
+			(h / 4)->PrintLine();
+		}
+	}
+}

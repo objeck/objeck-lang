@@ -1,0 +1,1016 @@
+method : public : PixelColor(x : Int, y : Int, color : Color) ~ Int {
+	array_args := Base->New[5];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_pixel_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_pixel_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 4);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = pixelRGBA(renderer, x, y, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HlineColor(x1 : Int, x2 : Int, y : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(x2);
+	array_args[4] := IntHolder->New(y);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_hline_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_hline_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int x2 = (int)APITools_GetIntValue(context, 3);
+		const int y = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+
+		const int return_value = hlineRGBA(renderer, x1, x2, y, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : VlineColor(x : Int, y1 : Int, y2 : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(y2);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_vline_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_vline_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int y2 = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+
+		const int return_value = vlineRGBA(renderer, x, y1, y2, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+
+method : public : RectangleColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_rectangle_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_rectangle_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = rectangleRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+
+method : public : RoundedRectangleColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := IntHolder->New(rad);
+	array_args[7] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_rounded_rectangle_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_rounded_rectangle_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		const int rad = (int)APITools_GetIntValue(context, 6);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 7);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = roundedRectangleRGBA(renderer, x1, y1, x2, y2, rad, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : BoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_box_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_box_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = boxRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+
+method : public : RoundedBoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := IntHolder->New(rad);
+	array_args[7] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_rounded_box_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_rounded_box_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		const int rad = (int)APITools_GetIntValue(context, 6);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 7);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = roundedBoxRGBA(renderer, x1, y1, x2, y2, rad, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+
+method : public : LineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_line_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_line_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = lineRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : AalineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_aaline_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_aaline_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+
+		const int return_value = aalineRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : ThickLineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, width : Int, color : Color) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := IntHolder->New(width);
+	array_args[7] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_thick_line_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_thick_line_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		const int width = (int)APITools_GetIntValue(context, 6);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 7);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = thickLineRGBA(renderer, x1, y1, x2, y2, width, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : CircleColor(x : Int, y : Int, rad : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rad);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_circle_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_circle_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rad = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = circleRGBA(renderer, x, y, rad, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : ArcColor(x : Int, y : Int, rad : Int, start : Int, end : Int, color : Color) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rad);
+	array_args[5] := IntHolder->New(start);
+	array_args[6] := IntHolder->New(end);
+	array_args[7] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_arc_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_arc_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rad = (int)APITools_GetIntValue(context, 4);
+		const int start = (int)APITools_GetIntValue(context, 5);
+		const int end = (int)APITools_GetIntValue(context, 6);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 7);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = arcRGBA(renderer, x, y, rad, start, end, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : AacircleColor(x : Int, y : Int, rad : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rad);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_aacircle_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_aacircle_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rad = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = aacircleRGBA(renderer, x, y, rad, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : FilledCircleColor(x : Int, y : Int, r : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(r);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_circle_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_filled_circle_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int r = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = filledCircleRGBA(renderer, x, y, r, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : EllipseColor(x : Int, y : Int, rx : Int, ry : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rx);
+	array_args[5] := IntHolder->New(ry);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_ellipse_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_ellipse_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rx = (int)APITools_GetIntValue(context, 4);
+		const int ry = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = ellipseRGBA(renderer, x, y, rx, ry, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : AaellipseColor(x : Int, y : Int, rx : Int, ry : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rx);
+	array_args[5] := IntHolder->New(ry);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_aaellipse_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_aaellipse_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rx = (int)APITools_GetIntValue(context, 4);
+		const int ry = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = aaellipseRGBA(renderer, x, y, rx, ry, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : FilledEllipseColor(x : Int, y : Int, rx : Int, ry : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rx);
+	array_args[5] := IntHolder->New(ry);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_ellipse_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_filled_ellipse_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rx = (int)APITools_GetIntValue(context, 4);
+		const int ry = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = filledEllipseRGBA(renderer, x, y, rx, ry, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : PieColor(x : Int, y : Int, rad : Int, start : Int, end : Int, color : Color) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rad);
+	array_args[5] := IntHolder->New(start);
+	array_args[6] := IntHolder->New(end);
+	array_args[7] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_pie_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_pie_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rad = (int)APITools_GetIntValue(context, 4);
+		const int start = (int)APITools_GetIntValue(context, 5);
+		const int end = (int)APITools_GetIntValue(context, 6);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 7);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = pieRGBA(renderer, x, y, rad, start, end, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : FilledPieColor(x : Int, y : Int, rad : Int, start : Int, end : Int, color : Color) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(rad);
+	array_args[5] := IntHolder->New(start);
+	array_args[6] := IntHolder->New(end);
+	array_args[7] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_pie_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_filled_pie_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const int rad = (int)APITools_GetIntValue(context, 4);
+		const int start = (int)APITools_GetIntValue(context, 5);
+		const int end = (int)APITools_GetIntValue(context, 6);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 7);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = filledPieRGBA(renderer, x, y, rad, start, end, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : TrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, color : Color) ~ Int {
+	array_args := Base->New[9];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := IntHolder->New(x3);
+	array_args[7] := IntHolder->New(y3);
+	array_args[8] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_trigon_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_trigon_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		const int x3 = (int)APITools_GetIntValue(context, 6);
+		const int y3 = (int)APITools_GetIntValue(context, 7);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 8);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = trigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : AatrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, color : Color) ~ Int {
+	array_args := Base->New[9];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := IntHolder->New(x3);
+	array_args[7] := IntHolder->New(y3);
+	array_args[8] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_aatrigon_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_aatrigon_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		const int x3 = (int)APITools_GetIntValue(context, 6);
+		const int y3 = (int)APITools_GetIntValue(context, 7);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 8);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = aatrigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : FilledTrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, color : Color) ~ Int {
+	array_args := Base->New[9];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x1);
+	array_args[3] := IntHolder->New(y1);
+	array_args[4] := IntHolder->New(x2);
+	array_args[5] := IntHolder->New(y2);
+	array_args[6] := IntHolder->New(x3);
+	array_args[7] := IntHolder->New(y3);
+	array_args[8] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_trigon_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_filled_trigon_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x1 = (int)APITools_GetIntValue(context, 2);
+		const int y1 = (int)APITools_GetIntValue(context, 3);
+		const int x2 = (int)APITools_GetIntValue(context, 4);
+		const int y2 = (int)APITools_GetIntValue(context, 5);
+		const int x3 = (int)APITools_GetIntValue(context, 6);
+		const int y3 = (int)APITools_GetIntValue(context, 7);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 8);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = filledTrigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+===
+method : public : PolygonColor(vx : Int, vy : Int, n : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(vx);
+	array_args[3] := IntHolder->New(vy);
+	array_args[4] := IntHolder->New(n);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_polygon_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_polygon_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int vx = (int)APITools_GetIntValue(context, 2);
+		const int vy = (int)APITools_GetIntValue(context, 3);
+		const int n = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = polygonRGBA(renderer, vx, vy, n, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : AapolygonColor(vx : Int, vy : Int, n : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(vx);
+	array_args[3] := IntHolder->New(vy);
+	array_args[4] := IntHolder->New(n);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_aapolygon_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_aapolygon_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int vx = (int)APITools_GetIntValue(context, 2);
+		const int vy = (int)APITools_GetIntValue(context, 3);
+		const int n = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = aapolygonRGBA(renderer, vx, vy, n, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : FilledPolygonColor(vx : Int, vy : Int, n : Int, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(vx);
+	array_args[3] := IntHolder->New(vy);
+	array_args[4] := IntHolder->New(n);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_polygon_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_filled_polygon_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int vx = (int)APITools_GetIntValue(context, 2);
+		const int vy = (int)APITools_GetIntValue(context, 3);
+		const int n = (int)APITools_GetIntValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = filledPolygonRGBA(renderer, vx, vy, n, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : TexturedPolygon(vx : Int, vy : Int, n : Int, texture : Surface, texture_dx : Int, texture_dy : Int) ~ Int {
+	array_args := Base->New[8];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(vx);
+	array_args[3] := IntHolder->New(vy);
+	array_args[4] := IntHolder->New(n);
+	array_args[5] := texture;
+	array_args[6] := IntHolder->New(texture_dx);
+	array_args[7] := IntHolder->New(texture_dy);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_textured_polygon", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_textured_polygon(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int vx = (int)APITools_GetIntValue(context, 2);
+		const int vy = (int)APITools_GetIntValue(context, 3);
+		const int n = (int)APITools_GetIntValue(context, 4);
+		const size* texture = (size_t*)APITools_GetObjectValue(context, 5);
+		const int texture_dx = (int)APITools_GetIntValue(context, 6);
+		const int texture_dy = (int)APITools_GetIntValue(context, 7);
+		const int return_value = texturedPolygon(renderer, vx, vy, n, texture, texture_dx, texture_dy);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : BezierColor(vx : Int, vy : Int, n : Int, s : Int, color : Color) ~ Int {
+	array_args := Base->New[7];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(vx);
+	array_args[3] := IntHolder->New(vy);
+	array_args[4] := IntHolder->New(n);
+	array_args[5] := IntHolder->New(s);
+	array_args[6] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_bezier_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_bezier_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int vx = (int)APITools_GetIntValue(context, 2);
+		const int vy = (int)APITools_GetIntValue(context, 3);
+		const int n = (int)APITools_GetIntValue(context, 4);
+		const int s = (int)APITools_GetIntValue(context, 5);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 6);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = bezierRGBA(renderer, vx, vy, n, s, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : CharacterColor(x : Int, y : Int, c : Char, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(c);
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_character_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_character_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = characterRGBA(renderer, x, y, c, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : StringColor(x : Int, y : Int, s : String, color : Color) ~ Int {
+	array_args := Base->New[6];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@renderer);
+	array_args[2] := IntHolder->New(x);
+	array_args[3] := IntHolder->New(y);
+	array_args[4] := s;
+	array_args[5] := color;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_renderer_string_color", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_renderer_string_color(VMContext& context) {
+		SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+		const int x = (int)APITools_GetIntValue(context, 2);
+		const int y = (int)APITools_GetIntValue(context, 3);
+		const wstring s = APITools_GetStringValue(context, 4);
+		
+		SDL_Color color;
+		size_t* color_obj = APITools_GetObjectValue(context, 5);
+		sdl_color_raw_write(&color, color_obj);
+		
+		const int return_value = stringRGBA(renderer, x, y, s, color.r, color.g, color.b, color.a);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---

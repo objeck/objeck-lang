@@ -1,0 +1,6 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		"abcdefgdef"->RemoveAll("def")->PrintLine();
+#		"abcdefgdef"->ReplaceAll("def", "")->PrintLine();
+	}
+}

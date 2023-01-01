@@ -1,0 +1,286 @@
+method : public : GetCount() ~ Int {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_get_count", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_get_count(VMContext& context) {
+		const int return_value = SDL_GetCPUCount();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetCacheLineSize() ~ Int {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_get_cache_line_size", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_get_cache_line_size(VMContext& context) {
+		const int return_value = SDL_GetCPUCacheLineSize();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasRDTSC() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasrdtsc", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hasrdtsc(VMContext& context) {
+		const int return_value = SDL_HasRDTSC();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasAltiVec() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_has_alti_vec", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_has_alti_vec(VMContext& context) {
+		const int return_value = SDL_HasAltiVec();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasMMX() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasmmx", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hasmmx(VMContext& context) {
+		const int return_value = SDL_HasMMX();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : Has3DNow() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_has3d_now", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_has3d_now(VMContext& context) {
+		const int return_value = SDL_Has3DNow();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasSSE() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hassse(VMContext& context) {
+		const int return_value = SDL_HasSSE();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasSSE2() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse2", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hassse2(VMContext& context) {
+		const int return_value = SDL_HasSSE2();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasSSE3() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse3", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hassse3(VMContext& context) {
+		const int return_value = SDL_HasSSE3();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasSSE41() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse41", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hassse41(VMContext& context) {
+		const int return_value = SDL_HasSSE41();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasSSE42() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse42", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hassse42(VMContext& context) {
+		const int return_value = SDL_HasSSE42();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasAVX() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasavx", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hasavx(VMContext& context) {
+		const int return_value = SDL_HasAVX();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : HasAVX2() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasavx2", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hasavx2(VMContext& context) {
+		const int return_value = SDL_HasAVX2();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+====
+---
+method : public : HasNEON() ~ Bool {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasneon", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_hasneon(VMContext& context) {
+		const int return_value = SDL_HasNEON();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetSystemRAM() ~ Int {
+	array_args := Base->New[1];
+	array_args[0] := IntHolder->New();
+
+	Proxy->GetDllProxy()->CallFunction("sdl_cpu_get_systemram", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_cpu_get_systemram(VMContext& context) {
+		const int return_value = SDL_GetSystemRAM();
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---

@@ -1,0 +1,27 @@
+bundle Default {
+	class Hello {
+		function : Foo(a: String, b : String) ~ Nil {
+			a->PrintLine();
+			b->PrintLine();
+		}
+		function : Main(args : String[]) ~ Nil {
+			delim := ";";
+			v := "Hello World! ; hello"->Split(delim);
+			v->Size()->PrintLine();
+#~
+			str := "Hello World! ; hello";
+			x := str->Split("#");
+			if(x->Size() = 0) {
+				x := str->Split(";");
+			};
+
+			if(x->Size() > 0) {
+				x[0]->Size()->PrintLine();
+				x[0]->Pop();
+				x[0]->Size()->PrintLine();
+				IO.Console->Print("'")->Print(x[0])->PrintLine("'");
+			};
+~#
+		}
+	}
+}

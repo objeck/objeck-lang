@@ -1,0 +1,22 @@
+class Test {
+	s : static : Char[];
+	function : Main(args : String[]) ~ Nil {
+		s := ['0', '1', '2', '3'];
+		Test("Hello")->PrintLine();
+	}
+
+	function : native : Test(a : String) ~ String {
+		b := "";
+
+		x := s->Size();
+
+		each(i : a) {
+			b += 'a';
+			b += a->Get(i);
+			b += s[x - 1];
+			b += 'b';
+		};
+
+		return b;
+	}
+}

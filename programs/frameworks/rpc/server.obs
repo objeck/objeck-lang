@@ -1,0 +1,50 @@
+use System.IO.Net;
+use Data.JSON;
+use Collection.Generic;
+
+class Server {
+	function : Main(args : String[]) ~ Nil {
+		server := TCPSocketServer->New(6013);
+		leaving {
+			server->Close();
+		};
+
+		if(server->Listen(5)) {
+			while(true) {
+				client := server->Accept();
+				json :=JsonParser->New(client->ReadLine());
+				if(json->Parse()) {
+					root := json->GetRoot();
+
+					id_elem := root->Get("id");
+					call_elem := root->Get("method");
+					param_elems := root->Get("params");
+
+					if(id_elem <> Nil & call_elem <> Nil & param_elems <> Nil) {
+						id := id_elem->ToString()->ToInt();
+						output := DoSubtract(id, param_elems)->ToString();
+						output += "\r\n";
+						client->WriteString(output);
+					};
+				};
+			};
+		};
+	}
+
+	function : public : DoSubtract(id : Int, param_elems : JsonElement) ~ JsonElement {
+		left := param_elems->Get(0)->GetValue()->ToInt();
+		right := param_elems->Get(1)->GetValue()->ToInt();
+
+		return MakeResult(id, left - right);
+	}
+
+	function : MakeResult(id : Int, result : Int) ~ JsonElement {
+		values := Map->New()<String, JsonElement>;
+
+		values->Insert("jsonrpc", JsonElement->New("2.0"));
+		values->Insert("result", JsonElement->New(result));
+		values->Insert("id", JsonElement->New(id));
+
+		return JsonElement->New(values);
+	}
+}
