@@ -1,16 +1,32 @@
+use Collection.Generic;
+
 class Test {
     function : Main(args : String[]) ~ Nil {
-        pairs :=  "fname=Jim+Jon&lname=James&Mary=a%20b"->Split('&');
-        each(i : pairs) {
-            # TODO split '= and decode and store key/value pairs
-            pairs[i] := Web.HTTP.Url->Decode(pairs[i])->ReplaceAll('+', ' ');
-        };
-
-        each(i : pairs) {
-            pairs[i]->PrintLine();
+        pairs := ParseUrlEncoding("fname=Jim+Jon&lname=James&Mary=a%20b");
+        key_values := pairs->GetKeyValues()<Pair<String, String>>;
+        each(i : key_values) {
+            key_value := key_values->Get(i);
+            key_value->GetFirst()->PrintLine();
+            key_value->GetSecond()->PrintLine();
+            "---"->PrintLine();
         };
     }
 
-    function : Main(args : String[]) ~ Nil {
+    function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
+        decodings := Map->New()<String, String>;
 
+        pairs :=  encoding->Split('&');
+        if(pairs <> Nil) {
+            each(i : pairs) {
+                key_value := pairs[i]->Split('=');
+                if(key_value <> Nil & key_value->Size() = 2) {
+                    key := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
+                    value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
+                    decodings->Insert(key, value);
+                };
+            };
+        };
+
+        return decodings;
+    }
 }
