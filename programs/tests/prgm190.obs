@@ -2,6 +2,9 @@ use Collection.Generic;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
+        encoding := "\r\n\r\n";
+
+#~        
         encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
         encoding += "Content-Disposition: form-data; name=\"fname\"\r\n\r\n";
         encoding += "Randy\"John\"&\\r\n";
@@ -9,8 +12,51 @@ class Test {
         encoding += "Content-Disposition: form-data; name=\"lname\"\r\n\r\n";
         encoding += "Hollines /www/http/ @\r\n";
         encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw--";
+~#
+        
+        ReadLine(encoding);
+    }
 
-        encoding->PrintLine();
+    function : ReadLine(string : String) ~ Nil {
+        start := 0;
+
+        skip := 0;
+        each(i : string) {
+            if(skip > 0) {
+                skip -= 1;
+            }
+            else {
+                char := string->Get(i);
+                if(char = '\r') {
+                    len := i - start;
+                    if(len > 0) {
+                        line := string->SubString(start, len);
+                        "|{$line}|"->PrintLine();
+                    }
+                    else {
+                        "ø"->PrintLine();
+                    };
+
+                    start := i + 1;
+                    if(string->Get(i + 1) = '\n') {
+                        start += 1;
+                    };
+                }
+                else if(char = '\n') {
+i->PrintLine();                    
+                    len := i - start;
+                    if(len > 0) {
+                        line := string->SubString(start, len);
+                        "|{$line}|"->PrintLine();
+                    }
+                    else {
+                        "ø"->PrintLine();
+                    };
+
+                    start := i + 1;
+                };
+            };
+        };
     }
 
     function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {

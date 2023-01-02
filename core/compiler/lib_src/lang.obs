@@ -5525,7 +5525,7 @@ bundle System.IO {
 			STD_ERR_BYTE_ARY;
 		}
 
-        #~
+		#~
 		Reads a string from STDIN
 		@return string read
 		~#
