@@ -2552,11 +2552,11 @@ bundle System {
 		New(string : String) {
 			Parent();
 
+			@max := 5;
+			@string := Char->New[@max];
+			@pos := 0;
+			
 			if(string <> Nil) {
-				@max := 5;
-				@string := Char->New[@max];
-				@pos := 0;
-							
 				Append(string->ToCharArray());
 			};
 		}
@@ -3771,7 +3771,6 @@ bundle System {
 			
 			if(start_index <> 0) {
 				count += 1;
-				SubString(start_index, @pos - start_index);
 			};
 			
 			# second-pass parse tokens
