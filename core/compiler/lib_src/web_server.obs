@@ -158,7 +158,7 @@ bundle Web.Server {
 
 		#~
 		Writes a string response to the message body
-		@param date string response
+		@param data string response
 		@return number of bytes sent
 		~#
 		method : public : WriteBody(data : String) ~ Int {
@@ -175,7 +175,7 @@ bundle Web.Server {
 
 		#~
 		Writes a byte array response to the message body
-		@param date byte array response
+		@param data byte array response
 		@return number of bytes sent
 		~#
 		method : public : WriteBody(data : Byte[]) ~ Int {
