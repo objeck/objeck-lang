@@ -197,7 +197,7 @@ bundle System {
 		@return value
 		~#
 		function : ToChar(v : Byte) ~ Char {
-		        return v->As(Char);
+			return v->As(Char);
 		}
 
 		#~
@@ -206,7 +206,7 @@ bundle System {
 		@return value
 		~#
 		function : ToInt(v : Byte) ~ Int {
-		        return v->As(Int);
+			return v->As(Int);
 		}
 
 		function : Size(v : Byte) ~ Byte {
@@ -446,31 +446,31 @@ bundle System {
 		}
 		
 		#~
-        Returns the Float value
-        @ignore-params
-        @return value
-        ~#
-        function : ToFloat(v : Char) ~ Float {
-                return v->As(Float);
-        }
+		Returns the Float value
+		@ignore-params
+		@return value
+		~#
+		function : ToFloat(v : Char) ~ Float {
+			return v->As(Float);
+		}
 
-        #~
-        Returns the Character value
-        @ignore-params
-        @return value
-        ~#
-        function : ToByte(v : Byte) ~ Byte {
-                return v->As(Byte);
-        }
+		#~
+		Returns the Character value
+		@ignore-params
+		@return value
+		~#
+		function : ToByte(v : Byte) ~ Byte {
+			return v->As(Byte);
+		}
 
-        #~
-        Returns the Int value
-        @ignore-params
-        @return value
-        ~#
-        function : ToInt(v : Char) ~ Int {
-                return v->As(Int);
-        }
+		#~
+		Returns the Int value
+		@ignore-params
+		@return value
+		~#
+		function : ToInt(v : Char) ~ Int {
+			return v->As(Int);
+		}
 		
 		#~
 		Checks if the character is lower-case
@@ -1118,32 +1118,32 @@ bundle System {
 			return v * 180.0 / 3.1415926536;
 		}
 
-        #~
-        Returns the Int value
-        @ignore-params
-        @return value
-        ~#
-        function : ToInt(v : Float) ~ Int {
-                return v->As(Int);
-        }
+		#~
+		Returns the Int value
+		@ignore-params
+		@return value
+		~#
+		function : ToInt(v : Float) ~ Int {
+			return v->As(Int);
+		}
 
-        #~
-        Returns the Character value
-        @ignore-params
-        @return value
-        ~#
-        function : ToByte(v : Float) ~ Byte {
-                return v->As(Byte);
-        }
+		#~
+		Returns the Character value
+		@ignore-params
+		@return value
+		~#
+		function : ToByte(v : Float) ~ Byte {
+			return v->As(Byte);
+		}
 
-        #~
-        Returns the Int value
-        @ignore-params
-        @return value
-        ~#
-        function : ToChar(v : Float) ~ Char {
-                return v->As(Char);
-        }
+		#~
+		Returns the Int value
+		@ignore-params
+		@return value
+		~#
+		function : ToChar(v : Float) ~ Char {
+			return v->As(Char);
+		}
 
 		#~
 		Returns the smallest float value
@@ -2240,37 +2240,36 @@ bundle System {
 	}
 
 	#~
-        Holds an base array
-        ~#
-        class StringArrayHolder {
-                @values : String[];
+	Holds an base array
+	~#
+	class StringArrayHolder {
+		@values : String[];
 
-                #~
-                Copy constructor
-                @param values String array
-                ~#
-                New(values : String[]) {
-                        Parent();
-                        @values := values;
-                }
+		#~
+		Copy constructor
+		@param values String array
+		~#
+		New(values : String[]) {
+		Parent();
+			@values := values;
+		}
 
-                #~
-                Get values
-                @return values
-                ~#
-                method : public : Get() ~ String[] {
-                        return @values;
-                }
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ String[] {
+			return @values;
+		}
 
-                #~
-                Set values
-                @param values String array
-                ~#
-                method : public : Set(values : String[]) ~ Nil {
-                        @values := values;
-                }
-        }
-
+		#~
+		Set values
+		@param values String array
+		~#
+		method : public : Set(values : String[]) ~ Nil {
+			@values := values;
+		}
+	}
 	
 	#~
 	Holds a function of in/out type R
@@ -2525,7 +2524,7 @@ bundle System {
 			return GetInstanceID();
 		}
 	}
-    
+
 	#~
 	Resizeable Unicode string class that supports typical string operations.
 	~#	
@@ -2555,7 +2554,7 @@ bundle System {
 			@max := 5;
 			@string := Char->New[@max];
 			@pos := 0;
-			
+
 			if(string <> Nil) {
 				Append(string->ToCharArray());
 			};
@@ -2961,129 +2960,129 @@ bundle System {
 			return -1;
 		}
 
-        #~
-        Checks to see if the string can be represented as an float
-        @return true if the string can be represented as an float, false otherwise
-        ~#
-        method : public : IsFloat() ~ Bool {
-		    if(@pos > 1) {
-			    count := Count('.');
-			    if(count = 1) {
-				    halves := Split(".");
-								    
-				    count := halves->Size();
-				    if(count = 0) {
-					    for(i := 0; i < @pos - 1; i +=1;) {
-						    c := @string[i];
-						    if(<>(c >= '0' & c <= '9')) {
-							    return false;
-						    };
-					    };
+		#~
+		Checks to see if the string can be represented as an float
+		@return true if the string can be represented as an float, false otherwise
+		~#
+		method : public : IsFloat() ~ Bool {
+			if(@pos > 1) {
+				count := Count('.');
+				if(count = 1) {
+					halves := Split(".");
+									
+					count := halves->Size();
+					if(count = 0) {
+						for(i := 0; i < @pos - 1; i +=1;) {
+							c := @string[i];
+							if(<>(c >= '0' & c <= '9')) {
+								return false;
+							};
+						};
 
-					    return true;
-				    }
-				    else if(count = 2) {
-					    first := halves[0];
-					    second := halves[1];
+						return true;
+					}
+					else if(count = 2) {
+						first := halves[0];
+						second := halves[1];
 
-					    if(first <> Nil & second <> Nil) {
-						    return IsInt(first) & IsInt(second);
-					    }
-					    else {
-						    return IsInt(second);
-					    };
-				    };
-			    };
+						if(first <> Nil & second <> Nil) {
+							return IsInt(first) & IsInt(second);
+						}
+						else {
+							return IsInt(second);
+						};
+					};
+				};
 
-			    return false;
-		    };
+				return false;
+			};
 
-		    return IsInt();
-	    }
-        
-        method : IsInt(str : String) ~ Bool {
-		    # empty string
-		    if(str->Size() > 0) {
-			    i := 0;
+			return IsInt();
+		}
 
-			    if(str->Get(0) = '+' | str->Get(0) = '-') {
-				    i += 1;
-			    };
+		method : IsInt(str : String) ~ Bool {
+			# empty string
+			if(str->Size() > 0) {
+				i := 0;
 
-			    # hex
-			    if(str->Size() > i + 2 & str->Get(i) = '0' & (str->Get(i + 1) = 'x' | str->Get(i + 1) = 'X')) {
-				    for(i := i + 2; i < str->Size(); i +=1;) {
-					    c := str->Get(i);					
-					    first := c >= '0' & c <= '9';
-					    second := c >= 'a' & c <= 'f';
-					    third := c >= 'A' & c <= 'F';
+				if(str->Get(0) = '+' | str->Get(0) = '-') {
+					i += 1;
+				};
 
-					    if(<>first & <>second & <>third) {
-						    return false;
-					    };
-				    };
+				# hex
+				if(str->Size() > i + 2 & str->Get(i) = '0' & (str->Get(i + 1) = 'x' | str->Get(i + 1) = 'X')) {
+					for(i := i + 2; i < str->Size(); i +=1;) {
+						c := str->Get(i);					
+						first := c >= '0' & c <= '9';
+						second := c >= 'a' & c <= 'f';
+						third := c >= 'A' & c <= 'F';
 
-				    return true;
-			    }
-			    # decimal
-			    else if(str->Size() > i) {	
-				    for(i := i; i < str->Size(); i +=1;) {
-					    c := str->Get(i);
-					    if(<>(c >= '0' & c <= '9')) {
-						    return false;
-					    };
-				    };
+						if(<>first & <>second & <>third) {
+							return false;
+						};
+					};
 
-				    return true;
-			    };
-		    };
+					return true;
+				}
+				# decimal
+				else if(str->Size() > i) {	
+					for(i := i; i < str->Size(); i +=1;) {
+						c := str->Get(i);
+						if(<>(c >= '0' & c <= '9')) {
+							return false;
+						};
+					};
 
-		    return false;
-	    }        
+					return true;
+				};
+			};
 
-        #~
-        Checks to see if the string can be represented as an interger
-        @return true if the string can be represented as an interger, false otherwise
-        ~#
-        method : public : native : IsInt() ~ Bool {
-		    # empty string
-		    if(@pos > 0) {
-			    i := 0;
+			return false;
+		}
 
-			    if(@string[0] = '+' | @string[0] = '-') {
-				    i += 1;
-			    };
+		#~
+		Checks to see if the string can be represented as an interger
+		 @return true if the string can be represented as an interger, false otherwise
+		~#
+		method : public : native : IsInt() ~ Bool {
+			# empty string
+			if(@pos > 0) {
+				i := 0;
 
-			    # hex
-			    if(@pos > i + 2 & @string[i] = '0' & (@string[i + 1] = 'x' | @string[i + 1] = 'X')) {
-				    for(i := i + 2; i < @pos; i +=1;) {
-					    c := @string[i];					
-					    first := c >= '0' & c <= '9';
-					    second := c >= 'a' & c <= 'f';
-					    third := c >= 'A' & c <= 'F';
+				if(@string[0] = '+' | @string[0] = '-') {
+					i += 1;
+				};
 
-					    if(<>first & <>second & <>third) {
-						    return false;
-					    };
-				    };
+				# hex
+				if(@pos > i + 2 & @string[i] = '0' & (@string[i + 1] = 'x' | @string[i + 1] = 'X')) {
+					for(i := i + 2; i < @pos; i +=1;) {
+						c := @string[i];					
+						first := c >= '0' & c <= '9';
+						second := c >= 'a' & c <= 'f';
+						third := c >= 'A' & c <= 'F';
 
-				    return true;
-			    }
-			    # decimal
-			    else if(@pos > i) {	
-				    for(i := i; i < @pos; i +=1;) {
-					    c := @string[i];
-					    if(<>(c >= '0' & c <= '9')) {
-						    return false;
-					    };
-				    };
+						if(<>first & <>second & <>third) {
+							return false;
+						};
+					};
 
-				    return true;
-			    };
-		    };
+					return true;
+				}
+				# decimal
+				else if(@pos > i) {	
+					for(i := i; i < @pos; i +=1;) {
+						c := @string[i];
+						if(<>(c >= '0' & c <= '9')) {
+							return false;
+						};
+					};
 
-		    return false;
-	    }
+					return true;
+				};
+			};
+
+			return false;
+		}
 
 		#~
 		Counts the occurrence of a character
@@ -3730,6 +3729,84 @@ bundle System {
 			return String->New(@string, start, end - start + 1);
 		}
 		
+		#~
+		Splits a string into lines
+		@return array of lines
+		~#
+		method : public : native : Lines() ~ String[] {
+			count := 0;
+
+			# count lines
+			start := 0;
+			skip := false;
+			each(i : @pos) {
+				if(skip) {
+					skip := false;
+				}
+				else {
+					if(@string[i] = '\r' & i + 1 < @pos & @string[i + 1] = '\n') {
+						line : String;
+						count += 1;
+
+						# update
+						start := i + 2;
+						skip := true;
+					}
+					else if(@string[i] = '\n' | @string[i] = '\r') {
+						line : String;
+						count += 1;
+
+						# update
+						start := i + 1;
+					};
+				};
+			};
+
+			# response array
+			lines := String->New[count];
+			count := 0;
+
+			# parse lines
+			start := 0;
+			skip := false;
+			each(i : @pos) {
+				if(skip) {
+					skip := false;
+				}
+				else {
+					if(@string[i] = '\r' & i + 1 < @pos & @string[i + 1] = '\n') {
+						line : String;
+						len := i - start;
+						if(len > 0) {
+							lines[count++] := string->SubString(start, len);
+						}
+						else {
+							lines[count++] := String->New();
+						};
+
+						# update
+						start := i + 2;
+						skip := true;
+					}
+					else if(@string[i] = '\n' | @string[i] = '\r') {
+						line : String;
+						len := i - start;
+						if(len > 0) {
+							lines[count++] := string->SubString(start, len);
+						}
+						else {
+							lines[count++] := String->New();
+						};
+
+						# update
+						start := i + 1;
+					};
+				};
+			};
+
+			return lines;
+		}
+
 		#~
 		Splits a string based upon delimiter
 		@param delim splitting delimiter
@@ -4528,7 +4605,7 @@ bundle System.Time {
 		method : public : AddHours(value : Int) ~ Nil {
 			DATE_TIME_ADD_HOURS;
 		}
-   
+
 		#~
 		Add minutes to the date
 		@param value minutes to add
@@ -5459,10 +5536,10 @@ bundle System.IO {
 		@return number of values read
 		~#
 		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-            STD_IN_CHAR_ARY_LEN;
-        }
-    	
-        #~
+			STD_IN_CHAR_ARY_LEN;
+		}
+		 	
+		#~
 		Write a byte buffer to STDOUT
 		@param buffer input buffer
 		@return true if successful, false otherwise
@@ -5531,8 +5608,8 @@ bundle System.IO {
 		function : ReadLine() ~ System.String {
 			console := IO.ConsoleIO->Instance();
 			return console->ReadString();
-		}		
-        
+		}
+
 		#~
 		Writes a value
 		@param b value
@@ -6362,7 +6439,7 @@ bundle System.IO.Filesystem {
 			FILE_FULL_PATH;
 		}
 
-    #~
+		#~
 		Gets the full path name for file
 		@return full path name, Nil otherwise
 		~#
@@ -6387,7 +6464,7 @@ bundle System.IO.Filesystem {
 			FILE_SIZE;
 		}		
 
-        #~
+		#~
 		Returns the size of the file
 		@return size of the file
 		~#
@@ -6404,7 +6481,7 @@ bundle System.IO.Filesystem {
 			return CreateTime(n, false);
 		}
 
-        #~
+		#~
 		Returns the time in which the file was created
 		@return create date
 		~#
@@ -6431,15 +6508,15 @@ bundle System.IO.Filesystem {
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}
 
-        #~
+		#~
 		Returns the time in which the file was created
 		@param gmt true if GMT
 		@return create date
 		~#
 		method : public : CreateTime(gmt : Bool) ~ Date {	
-		    return CreateTime(@name, gmt);
-        }
-        
+			return CreateTime(@name, gmt);
+		}
+
 		#~
 		Returns the time in which the file was modified 
 		@param n file name
@@ -6477,14 +6554,14 @@ bundle System.IO.Filesystem {
 			return AccessedTime(n, false);
 		}
 
-        #~
+		#~
 		Returns the time in which the file was accessed 
 		@return accessed date
 		~#
 		method : public : AccessedTime() ~ Date {
-            return AccessedTime(@name, false);
-        }
-        
+			return AccessedTime(@name, false);
+		}
+
 		#~
 		Returns the time in which the file was accessed 
 		@param n file name
@@ -6504,15 +6581,15 @@ bundle System.IO.Filesystem {
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}
 
-        #~
+		#~
 		Returns the time in which the file was accessed 
 		@param gmt true if GMT
 		@return accessed date
 		~#
 		method : public : AccessedTime(gmt : Bool) ~ Date {
-		    return AccessedTime(@name, gmt);
-        }
-        
+			return AccessedTime(@name, gmt);
+		}
+		
 		#~
 		Deletes a file
 		@param n file name
@@ -6522,7 +6599,7 @@ bundle System.IO.Filesystem {
 			FILE_DELETE;
 		}
 
-        #~
+		#~
 		Deletes a file
 		@return true if file was deleted
 		~#
@@ -6544,7 +6621,7 @@ bundle System.IO.Filesystem {
 			FILE_ACCOUNT_OWNER;
 		}
 
-        #~
+		#~
 		Gets the file owner name
 		@return file owner name
 		~#
@@ -6561,7 +6638,7 @@ bundle System.IO.Filesystem {
 			FILE_GROUP_OWNER;
 		}
 
-        #~
+		#~
 		Gets the file group name
 		@return file group name
 		~#
@@ -6578,7 +6655,7 @@ bundle System.IO.Filesystem {
 			FILE_CAN_READ_WRITE;
 		}
 
-        #~
+		#~
 		Check to see if a file can be read-only
 		@return true if file can be read-only
 		~#
@@ -6595,7 +6672,7 @@ bundle System.IO.Filesystem {
 			FILE_CAN_READ_ONLY;
 		}
 
-        #~
+		#~
 		Check to see if a file can be read
 		@return true if file can be read
 		~#
@@ -6611,8 +6688,8 @@ bundle System.IO.Filesystem {
 		function : IsWriteOnly(n : System.String) ~ Bool {
 			FILE_CAN_WRITE_ONLY;
 		}
-        
-        #~
+
+		#~
 		Check to see if a file can be written
 		@return true if file can be written
 		~#
@@ -6629,7 +6706,7 @@ bundle System.IO.Filesystem {
 			FILE_EXISTS;
 		}
 
-        #~
+		#~
 		Check to see if a file exists
 		@return true if file exists
 		~#
@@ -6937,20 +7014,20 @@ bundle System.IO.Filesystem {
 			@err_mutex := ThreadMutex->New("err-log");
 		}
 
-	        method : RandomPrefix() ~ String {
-	            str := "";
-	            
-	            each(i : 8) {
-	                if(Int->Random(10) % 2 = 0) {
-	                    str->Append(Int->Random('a', 'z')->As(Char));
-	                }
-	                else {
-	                    str->Append(Int->Random('0', '9')->As(Char));
-	                };
-	            };
-	            
-	            return str;
-	        }
+		method : RandomPrefix() ~ String {
+			str := "";
+
+			each(i : 8) {
+				if(Int->Random(10) % 2 = 0) {
+					str->Append(Int->Random('a', 'z')->As(Char));
+				}
+				else {
+					str->Append(Int->Random('0', '9')->As(Char));
+				};
+			};
+
+			return str;
+		}
 
 		#~
 		Gets an instance of the logger
@@ -7431,7 +7508,7 @@ bundle System.IO.Net {
 			@port := port;
 			SOCK_TCP_SSL_CONNECT;
 		}
-        
+
 		#~
 		Returns the connected network address
 		@return return network address
@@ -7601,7 +7678,7 @@ bundle System.IO.Net {
 	class TCPSocketServer {
 		@handle : Int;
 		@port : Int;
-	   
+
 		#~
 		Default constructor
 		@param port server port
@@ -7656,7 +7733,7 @@ bundle System.IO.Net {
 		@key : String;
 		@passwd : String;
 		@port : Int;
-	   	
+
 		#~
 		Default constructor
 		@param cert path to ssl cert
