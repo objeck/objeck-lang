@@ -4,7 +4,7 @@ class Test {
     function : Main(args : String[]) ~ Nil {
 #        encoding := "a\r\ncd\r\nefg\r\n";
 #        encoding := "\r\n\r\n\r\n";
-        encoding := "\n\n\n";
+        encoding := "a\nb\nc\n";
 
 #~        
         encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
