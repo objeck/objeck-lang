@@ -97,7 +97,7 @@ else
 	cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 fi
 
-cd ../../native_launcher
+cd ../../windows/launcher
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64
 else
@@ -113,7 +113,7 @@ fi
 cp obn ../release/deploy/lib/native/misc/
 
 cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
-cd ../release
+cd ../../release
 
 # copy docs
 cd ../..
