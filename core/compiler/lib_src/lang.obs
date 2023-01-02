@@ -3778,7 +3778,7 @@ bundle System {
 						line : String;
 						len := i - start;
 						if(len > 0) {
-							lines[count++] := string->SubString(start, len);
+							lines[count++] := SubString(start, len);
 						}
 						else {
 							lines[count++] := String->New();
@@ -3792,7 +3792,7 @@ bundle System {
 						line : String;
 						len := i - start;
 						if(len > 0) {
-							lines[count++] := string->SubString(start, len);
+							lines[count++] := SubString(start, len);
 						}
 						else {
 							lines[count++] := String->New();
