@@ -4,9 +4,9 @@ class Test {
     function : Main(args : String[]) ~ Nil {
 #        encoding := "a\r\ncd\r\nefg\r\n";
 #        encoding := "\r\n\r\n\r\n";
-        encoding := "a\nb\nc\n";
+#        encoding := "a\nb\nc\n";
 
-#~        
+        
         encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
         encoding += "Content-Disposition: form-data; name=\"fname\"\r\n\r\n";
         encoding += "Randy\"John\"&\\r\n";
@@ -14,14 +14,49 @@ class Test {
         encoding += "Content-Disposition: form-data; name=\"lname\"\r\n\r\n";
         encoding += "Hollines /www/http/ @\r\n";
         encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw--";
-~#
+
         
-        ReadLine(encoding);
+        lines := ReadLines(encoding);
+        each(i : lines) {
+            line := lines[i];
+            "|{$line}|"->PrintLine();
+        };
     }
 
-    function : ReadLine(string : String) ~ Nil {
-        start := 0;
+    function : ReadLines(string : String) ~ String[] {
+        count := 0;
 
+        # count lines
+        start := 0;
+        skip := false;
+        each(i : string) {
+            if(skip) {
+                skip := false;
+            }
+            else {
+                if(string->Get(i) = '\r' & string->Get(i + 1) = '\n') {
+                    line : String;
+                    count += 1;
+
+                    # update
+                    start := i + 2;
+                    skip := true;
+                }
+                else if(string->Get(i) = '\n' | string->Get(i) = '\r') {
+                    line : String;
+                    count += 1;
+
+                    # update
+                    start := i + 1;
+                };
+            };
+        };
+
+        lines := String->New[count];
+        count := 0;
+
+        # parse lines
+        start := 0;
         skip := false;
         each(i : string) {
             if(skip) {
@@ -32,13 +67,11 @@ class Test {
                     line : String;
                     len := i - start;
                     if(len > 0) {
-                        line := string->SubString(start, len);
+                        lines[count++] := string->SubString(start, len);
                     }
                     else {
-                        line := "ø";
+                        lines[count++] := String->New();
                     };
-
-                    "index={$i}, len={$len}, line='{$line}'"->PrintLine();
 
                     # update
                     start := i + 2;
@@ -48,20 +81,19 @@ class Test {
                     line : String;
                     len := i - start;
                     if(len > 0) {
-                        line := string->SubString(start, len);
+                        lines[count++] := string->SubString(start, len);
                     }
                     else {
-                        line := "ø";
+                        lines[count++] := String->New();
                     };
-
-                    "index={$i}, len={$len}, line='{$line}'"->PrintLine();
-
 
                     # update
                     start := i + 1;
                 };
             };
         };
+
+        return lines;
     }
 
     function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
