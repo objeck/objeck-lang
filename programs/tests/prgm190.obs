@@ -2,100 +2,25 @@ use Collection.Generic;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        encoding := "a\r\ncd\r\nefg\r\n";
-#        encoding := "\r\n\r\n\r\n";
-#        encoding := "a\nb\nc\n";
-
-
-#~        
-        encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
+        encoding := "------WebKitFormBoundaryv6DIeo7UWlahIYi8\r\n";
         encoding += "Content-Disposition: form-data; name=\"fname\"\r\n\r\n";
-        encoding += "Randy\"John\"&\\r\n";
-        encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
+        encoding += "Randy\"John\"&\\\r\n";
+        encoding += "------WebKitFormBoundaryv6DIeo7UWlahIYi8\r\n";
         encoding += "Content-Disposition: form-data; name=\"lname\"\r\n\r\n";
         encoding += "Hollines /www/http/ @\r\n";
-        encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw--";
-~#
+        encoding += "------WebKitFormBoundaryv6DIeo7UWlahIYi8--\r\n";
 
-#        lines := ReadLines(encoding);
         lines := encoding->Lines();
         each(i : lines) {
             line := lines[i];
             "|{$line}|"->PrintLine();
         };
+
+        ParseMultipartEncoding(encoding);
     }
 
-    function : ReadLines(string : String) ~ String[] {
-        count := 0;
-
-        # count lines
-        start := 0;
-        skip := false;
-        each(i : string) {
-            if(skip) {
-                skip := false;
-            }
-            else {
-                if(string->Get(i) = '\r' & string->Get(i + 1) = '\n') {
-                    line : String;
-                    count += 1;
-
-                    # update
-                    start := i + 2;
-                    skip := true;
-                }
-                else if(string->Get(i) = '\n' | string->Get(i) = '\r') {
-                    line : String;
-                    count += 1;
-
-                    # update
-                    start := i + 1;
-                };
-            };
-        };
-
-        lines := String->New[count];
-        count := 0;
-
-        # parse lines
-        start := 0;
-        skip := false;
-        each(i : string) {
-            if(skip) {
-                skip := false;
-            }
-            else {
-                if(string->Get(i) = '\r' & string->Get(i + 1) = '\n') {
-                    line : String;
-                    len := i - start;
-                    if(len > 0) {
-                        lines[count++] := string->SubString(start, len);
-                    }
-                    else {
-                        lines[count++] := String->New();
-                    };
-
-                    # update
-                    start := i + 2;
-                    skip := true;
-                }
-                else if(string->Get(i) = '\n' | string->Get(i) = '\r') {
-                    line : String;
-                    len := i - start;
-                    if(len > 0) {
-                        lines[count++] := string->SubString(start, len);
-                    }
-                    else {
-                        lines[count++] := String->New();
-                    };
-
-                    # update
-                    start := i + 1;
-                };
-            };
-        };
-
-        return lines;
+    function : ParseMultipartEncoding(encoding : String) ~ Map<String, String> {
+        return Nil;
     }
 
     function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
