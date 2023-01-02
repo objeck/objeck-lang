@@ -3745,7 +3745,6 @@ bundle System {
 				}
 				else {
 					if(@string[i] = '\r' & i + 1 < @pos & @string[i + 1] = '\n') {
-						line : String;
 						count += 1;
 
 						# update
@@ -3753,7 +3752,6 @@ bundle System {
 						skip := true;
 					}
 					else if(@string[i] = '\n' | @string[i] = '\r') {
-						line : String;
 						count += 1;
 
 						# update
