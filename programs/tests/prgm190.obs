@@ -13,13 +13,35 @@ class Test {
         lines := encoding->Lines();
         each(i : lines) {
             line := lines[i];
-            "|{$line}|"->PrintLine();
+            "{$i}: |{$line}|"->PrintLine();
         };
+
+        "---"->PrintLine();
 
         ParseMultipartEncoding(encoding);
     }
 
     function : ParseMultipartEncoding(encoding : String) ~ Map<String, String> {
+        lines := encoding->Lines();
+        if(lines->Size() > 0) {
+            marker := lines[0];
+            end_maker := marker + "--";
+
+            each(i : lines) {
+                line := lines[i];
+
+                if(line->Equals(marker)) {
+                    "marker: index={$i}"->PrintLine();
+                }
+                else if(line->StartsWith("Content-Disposition: form-data; name=\"")) {
+                    "content marker: index={$i}"->PrintLine();
+                }
+                else if(line->StartsWith(end_maker)) {
+                    "end-marker: index={$i}"->PrintLine();
+                };
+            };
+        };
+
         return Nil;
     }
 
@@ -31,9 +53,9 @@ class Test {
             each(i : pairs) {
                 key_value := pairs[i]->Split('=');
                 if(key_value <> Nil & key_value->Size() = 2) {
-                    key := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
+                    marker := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
                     value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
-                    decodings->Insert(key, value);
+                    decodings->Insert(marker, value);
                 };
             };
         };
