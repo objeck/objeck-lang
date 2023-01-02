@@ -2,11 +2,12 @@ use Collection.Generic;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-#        encoding := "a\r\ncd\r\nefg\r\n";
+        encoding := "a\r\ncd\r\nefg\r\n";
 #        encoding := "\r\n\r\n\r\n";
 #        encoding := "a\nb\nc\n";
 
-        
+
+#~        
         encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
         encoding += "Content-Disposition: form-data; name=\"fname\"\r\n\r\n";
         encoding += "Randy\"John\"&\\r\n";
@@ -14,9 +15,10 @@ class Test {
         encoding += "Content-Disposition: form-data; name=\"lname\"\r\n\r\n";
         encoding += "Hollines /www/http/ @\r\n";
         encoding += "------WebKitFormBoundaryoApq65UWHGEygDnw--";
+~#
 
-        
-        lines := ReadLines(encoding);
+#        lines := ReadLines(encoding);
+        lines := encoding->Lines();
         each(i : lines) {
             line := lines[i];
             "|{$line}|"->PrintLine();
