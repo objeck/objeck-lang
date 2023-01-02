@@ -3,7 +3,8 @@ use Collection.Generic;
 class Test {
     function : Main(args : String[]) ~ Nil {
 #        encoding := "a\r\ncd\r\nefg\r\n";
-        encoding := "\r\n\r\n\r\n";
+#        encoding := "\r\n\r\n\r\n";
+        encoding := "\n\n\n";
 
 #~        
         encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
@@ -43,7 +44,7 @@ class Test {
                     start := i + 2;
                     skip := true;
                 }
-                else if(string->Get(i) = '\n') {
+                else if(string->Get(i) = '\n' | string->Get(i) = '\r') {
                     line : String;
                     len := i - start;
                     if(len > 0) {
@@ -55,21 +56,6 @@ class Test {
 
                     "index={$i}, len={$len}, line='{$line}'"->PrintLine();
 
-
-                    # update
-                    start := i + 1;
-                }
-                else if(string->Get(i) = '\r') {
-                    line : String;
-                    len := i - start;
-                    if(len > 0) {
-                        line := string->SubString(start, len);
-                    }
-                    else {
-                        line := "ø";
-                    };
-
-                    "index={$i}, len={$len}, line='{$line}'"->PrintLine();
 
                     # update
                     start := i + 1;
