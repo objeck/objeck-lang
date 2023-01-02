@@ -29,7 +29,7 @@ xcodebuild -project xcode/Debugger.xcodeproj clean build
 cp xcode/build/Release/obd ../release/deploy/bin
 
 # build native launcher
-cd ../native_launcher
+cd ../windows/launcher
 xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build
 cp xcode/build/Release/obb ../release/deploy/bin
 
@@ -38,7 +38,7 @@ cp xcode/build/Release/obn ../release/deploy/lib/native/misc
 cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
 
 # build libraries
-cd ../lib/openssl
+cd ../../lib/openssl
 xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 
