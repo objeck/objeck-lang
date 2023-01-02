@@ -2,7 +2,7 @@ use Collection.Generic;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        encoding := "\r\n\r\n";
+        encoding := "a\r\nb\r\nc\r\n";
 
 #~        
         encoding := "------WebKitFormBoundaryoApq65UWHGEygDnw\r\n";
@@ -20,38 +20,28 @@ class Test {
     function : ReadLine(string : String) ~ Nil {
         start := 0;
 
-        skip := 0;
+        skip := false;
         each(i : string) {
-            if(skip > 0) {
-                skip -= 1;
+            if(skip) {
+                skip := false;
             }
             else {
-                char := string->Get(i);
-                if(char = '\r') {
+                if(string->Get(i) = '\r' & string->Get(i + 1) = '\n') {
                     len := i - start;
-                    if(len > 0) {
-                        line := string->SubString(start, len);
-                        "|{$line}|"->PrintLine();
-                    }
-                    else {
-                        "ø"->PrintLine();
-                    };
+                    "index={$i}, len={$len}"->PrintLine();
+
+                    start := i + 2;
+                    skip := true;
+                }
+                else if(string->Get(i) = '\n') {
+                    len := i - start;
+                    "index={$i}, len={$len}"->PrintLine();
 
                     start := i + 1;
-                    if(string->Get(i + 1) = '\n') {
-                        start += 1;
-                    };
                 }
-                else if(char = '\n') {
-i->PrintLine();                    
+                else if(string->Get(i) = '\r') {
                     len := i - start;
-                    if(len > 0) {
-                        line := string->SubString(start, len);
-                        "|{$line}|"->PrintLine();
-                    }
-                    else {
-                        "ø"->PrintLine();
-                    };
+                    "index={$i}, len={$len}"->PrintLine();
 
                     start := i + 1;
                 };
