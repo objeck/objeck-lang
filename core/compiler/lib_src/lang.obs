@@ -6803,7 +6803,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Reads bytes into a byte buffer
+		Reads bytes into a character buffer
 		@param offset destination buffer offset
 		@param num number of values to read
 		@param buffer input buffer
@@ -6814,7 +6814,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Reads bytes into a character buffer
+		Reads bytes into a byte buffer
 		@param offset destination buffer offset
 		@param num number of values to read
 		@param buffer input buffer
