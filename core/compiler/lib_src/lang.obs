@@ -409,6 +409,46 @@ bundle System {
 		}
 
 		#~
+		Searches for all occurrences of the byte array
+		@param search byte array to search for
+		@return an array of indexes
+		~#
+		function : FindAll(bytes : Byte[], search : Byte[]) ~ Int[] {
+			buffer_max := 8;
+			buffer := Int->New[buffer_max];
+			
+			count := 0;
+			offset := 0;
+			do {
+				# check
+				offset := Find(bytes, offset, search);
+				# found
+				if(offset > -1) {
+					count += 1;
+					if(count < buffer_max) {
+						buffer[count - 1] := offset;
+					}
+					# copy elements
+					else {
+						temp := Int->New[buffer_max * 2];
+						Runtime->Copy(temp, 0, buffer, 0, buffer_max);
+						buffer_max *= 2;
+						buffer := temp;
+					};
+					offset += search->Size();
+				};
+			}
+			while(offset > -1);
+			
+			results := Int->New[count];
+			each(i : results) {
+				results[i] := buffer[i];
+			};
+
+			return results;
+		}
+
+		#~
 		Searches for the first occurrence of a byte
 		@param bytes byte array to search
 		@param search byte to search for
