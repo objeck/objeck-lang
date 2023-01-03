@@ -5,36 +5,81 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         bytes := FileReader->ReadBinaryFile("multi.dat");
         bytes->Size()->PrintLine();
+        ParseMultipartEncoding(bytes);
     }
 
-    function : ParseMultipartEncoding(encoding : String) ~ Map<String, String> {
-        lines := encoding->Lines();
-        if(lines->Size() > 0) {
-            marker := lines[0];
-            end_maker := marker + "--";
+    function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
+        offset := -1;
+        i := 0;
+        while(offset < 0 & i < encoded->Size()) {
+            byte := encoded[i++];
+            if(byte = '\r' | byte = '\n') {
+                offset := i - 1;
+            };
+        };
 
-            each(i : lines) {
-                line := lines[i];
+        boundary := Byte->New[offset];
+        Runtime->Copy(boundary, 0, encoded, 0, offset)->PrintLine();
+        boundary->Size()->PrintLine();
 
-                if(line->Equals(marker)) {
-                    "marker: index={$i}"->PrintLine();
-                }
-                else if(line->StartsWith("Content-Disposition: form-data; name=\"")) {
-                    "content marker: index={$i}"->PrintLine();
-                }
-                else if(line->StartsWith(end_maker)) {
-                    "end-marker: index={$i}"->PrintLine();
+        Find(encoded, 0, boundary)->PrintLine();
+        Find(encoded, offset, boundary)->PrintLine();
+    }
+
+    function : Find(bytes : Byte[], search : Byte) ~ Int {
+        return Find(bytes, 0, search);
+    }
+    
+    function : Find(bytes : Byte[], offset : Int, search : Byte) ~ Int {
+        if(offset < bytes->Size() & offset > -1) {
+            for(i := offset; i < bytes->Size(); i += 1;) {
+                if(bytes[i] = search) {
+                    return i;
                 };
             };
         };
 
-        return Nil;
+        return -1;
     }
 
-    function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
+    function : Find(bytes : Byte[], search : Byte[]) ~ Int {
+        return Find(bytes, 0, search);
+    }
+    
+    function : Find(bytes : Byte[], offset : Int, search : Byte[]) ~ Int {
+        bytes_size := bytes->Size();
+        search_size := search->Size();
+
+        if(search_size > 0 & offset < bytes_size) {
+            found_index := Find(bytes, offset, search[0]);
+            while(found_index > -1) {
+                j := found_index;
+                match := true;
+                i : Int;
+                for(i := 0; match & i < search_size & j < bytes_size; i += 1;) {
+                    if(search[i] <> bytes[j]) {
+                        match := false;
+                    };
+                    j += 1;
+                };
+                
+                if(match & i = search_size) {
+                    return found_index;
+                };
+                
+                found_index := Find(bytes, found_index + 1, search[0]);
+            };
+
+            return -1;
+        };
+
+        return -1;
+    }
+
+    function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
         decodings := Map->New()<String, String>;
 
-        pairs :=  encoding->Split('&');
+        pairs :=  encoded->Split('&');
         if(pairs <> Nil) {
             each(i : pairs) {
                 key_value := pairs[i]->Split('=');
