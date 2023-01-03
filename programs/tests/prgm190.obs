@@ -20,61 +20,20 @@ class Test {
 
         boundary := Byte->New[offset];
         Runtime->Copy(boundary, 0, encoded, 0, offset)->PrintLine();
-        boundary->Size()->PrintLine();
+        boundary->ToString()->PrintLine();
 
-        encoded->Find(0, boundary)->PrintLine();
-        encoded->Find(offset, boundary)->PrintLine();
-    }
-
-    function : Find(bytes : Byte[], search : Byte) ~ Int {
-        return Find(bytes, 0, search);
-    }
-    
-    function : Find(bytes : Byte[], offset : Int, search : Byte) ~ Int {
-        if(offset < bytes->Size() & offset > -1) {
-            for(i := offset; i < bytes->Size(); i += 1;) {
-                if(bytes[i] = search) {
-                    return i;
-                };
+        offset := 0;
+        do {
+            offset := Byte->Find(encoded, offset, boundary);
+            if(offset > -1) {
+                offset->PrintLine();
+                offset += boundary->Size();
             };
-        };
-
-        return -1;
+        }
+        while(offset > -1);
     }
 
-    function : Find(bytes : Byte[], search : Byte[]) ~ Int {
-        return Find(bytes, 0, search);
-    }
     
-    function : Find(bytes : Byte[], offset : Int, search : Byte[]) ~ Int {
-        bytes_size := bytes->Size();
-        search_size := search->Size();
-
-        if(search_size > 0 & offset < bytes_size) {
-            found_index := Find(bytes, offset, search[0]);
-            while(found_index > -1) {
-                j := found_index;
-                match := true;
-                i : Int;
-                for(i := 0; match & i < search_size & j < bytes_size; i += 1;) {
-                    if(search[i] <> bytes[j]) {
-                        match := false;
-                    };
-                    j += 1;
-                };
-                
-                if(match & i = search_size) {
-                    return found_index;
-                };
-                
-                found_index := Find(bytes, found_index + 1, search[0]);
-            };
-
-            return -1;
-        };
-
-        return -1;
-    }
 
     function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
         decodings := Map->New()<String, String>;
