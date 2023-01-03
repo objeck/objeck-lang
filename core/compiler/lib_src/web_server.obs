@@ -119,6 +119,10 @@ bundle Web.Server {
 			return value->Get();
 		}
 
+		function : ParseMultipartEncoding(encoding : Byte[]) ~ Multipart {
+			return Nil;
+		}
+
 		function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
 	        decodings := Map->New()<String, String>;
 
@@ -136,6 +140,29 @@ bundle Web.Server {
 
 	        return decodings;
 	    }
+	}
+
+	#~
+	Multipart MIME
+	~#
+	class Multipart {
+		@encoding : Byte[];
+		@named_parts : Map<String, Part>;
+		@parts : Vector<Part>;
+
+		New(encoding : Byte[]) {
+			@encoding := encoding;
+			@named_parts := Map->New()<String, Part>;
+			@parts := Vector->New()<Part>;
+		}
+	}
+
+	#~
+	MIME part
+	~#
+	class Part {
+		New() {
+		}
 	}
 
 	#~
