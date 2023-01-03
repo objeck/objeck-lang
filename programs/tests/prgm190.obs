@@ -10,6 +10,9 @@ class Test {
         encoding += "Hollines /www/http/ @\r\n";
         encoding += "------WebKitFormBoundaryv6DIeo7UWlahIYi8--\r\n";
 
+        bytes := Byte->New[3,3];
+        bytes->ToString();
+#~
         lines := encoding->Lines();
         each(i : lines) {
             line := lines[i];
@@ -19,6 +22,7 @@ class Test {
         "---"->PrintLine();
 
         ParseMultipartEncoding(encoding);
+~#        
     }
 
     function : ParseMultipartEncoding(encoding : String) ~ Map<String, String> {
