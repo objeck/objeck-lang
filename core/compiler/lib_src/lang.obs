@@ -409,6 +409,52 @@ bundle System {
 			
 			return out;
 		}
+
+		method : public : native : Find(bytes : Byte[], search : Byte) ~ Int {
+			return Find(bytes, 0, search);
+		}
+		
+		method : public : native : Find(bytes : Byte[], offset : Int, search : Byte) ~ Int {
+			if(offset < offset & offset > -1) {
+				for(i := offset; i < bytes->Size(); i += 1) {
+					if(bytes[i] = search) {
+						return i;
+					}
+				};
+			};
+
+			return -1;
+		}
+
+		method : public : native : Find(bytes : Byte[], offset : Int, search : Byte[]) ~ Int {
+			bytes_size := bytes->Size();
+			search_size := search->Size();
+
+			if(search_size > 0 & offset < bytes_size) {
+				found_index := Find(bytes, offset, search[0]);
+				while(found_index > -1) {
+					j := found_index;
+					match := true;
+					i : Int;
+					for(i := 0; match & i < search_size & j < bytes_size; i += 1;) {
+						if(search[i] <> bytes[j]) {
+							match := false;
+						};
+						j += 1;
+					};
+					
+					if(match & i = search_size) {
+						return found_index;
+					};
+					
+					found_index := Find(bytes, found_index + 1, search[0]);
+				};
+
+				return -1;
+			};
+
+			return -1;
+		}
 	}
 
 	#~
