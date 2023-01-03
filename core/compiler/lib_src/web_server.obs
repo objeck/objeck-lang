@@ -116,7 +116,11 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_request_read_body", array_args);
 
 			value := array_args[0]->As(ByteArrayHolder);
-			return value->Get();
+			if(value <> Nil) {
+				return value->Get();
+			};
+			
+			return Nil;
 		}
 
 		function : ParseMultipartEncoding(encoding : Byte[]) ~ Multipart {
