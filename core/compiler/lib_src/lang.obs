@@ -410,11 +410,11 @@ bundle System {
 			return out;
 		}
 
-		method : public : native : Find(bytes : Byte[], search : Byte) ~ Int {
+		function : native : Find(bytes : Byte[], search : Byte) ~ Int {
 			return Find(bytes, 0, search);
 		}
 		
-		method : public : native : Find(bytes : Byte[], offset : Int, search : Byte) ~ Int {
+		function : native : Find(bytes : Byte[], offset : Int, search : Byte) ~ Int {
 			if(offset < bytes->Size() & offset > -1) {
 				for(i := offset; i < bytes->Size(); i += 1;) {
 					if(bytes[i] = search) {
@@ -426,11 +426,11 @@ bundle System {
 			return -1;
 		}
 
-		method : public : native : Find(bytes : Byte[], search : Byte[]) ~ Int {
+		function : native : Find(bytes : Byte[], search : Byte[]) ~ Int {
 			return Find(bytes, 0, search);
 		}
 		
-		method : public : native : Find(bytes : Byte[], offset : Int, search : Byte[]) ~ Int {
+		function : native : Find(bytes : Byte[], offset : Int, search : Byte[]) ~ Int {
 			bytes_size := bytes->Size();
 			search_size := search->Size();
 
