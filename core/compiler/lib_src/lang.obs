@@ -399,21 +399,32 @@ bundle System {
 			return String->New(buffer, false);
 		}
 		
-		function : native : ToString(b : Byte[]) ~ String {
-			out := String->New();
-
-			each(i : b) {
-				ToString(b[i]);
-				out->Append(ToString(b[i]));
-			};
-			
-			return out;
+		#~
+		Returns a string representation of the byte array
+		@param bytes byte array
+		@return string representation of the byte array
+		~#
+		function : native : ToString(bytes : Byte[]) ~ String {
+			return String->New(bytes);
 		}
 
+		#~
+		Searches for the first occurrence of a byte
+		@param bytes byte array to search
+		@param search byte to search for
+		@return true of found, false otherwise
+		~#
 		function : native : Find(bytes : Byte[], search : Byte) ~ Int {
 			return Find(bytes, 0, search);
 		}
-		
+
+		#~
+		Searches for the first occurrence of a byte
+		@param bytes byte array to search
+		@param offset search offset
+		@param search byte to search for
+		@return true of found, false otherwise
+		~#
 		function : native : Find(bytes : Byte[], offset : Int, search : Byte) ~ Int {
 			if(offset < bytes->Size() & offset > -1) {
 				for(i := offset; i < bytes->Size(); i += 1;) {
@@ -426,10 +437,23 @@ bundle System {
 			return -1;
 		}
 
+		#~
+		Searches for the first occurrence of a byte array
+		@param bytes byte array to search
+		@param search byte array to search for
+		@return index of first occurrence, -1 otherwise
+		~#
 		function : native : Find(bytes : Byte[], search : Byte[]) ~ Int {
 			return Find(bytes, 0, search);
 		}
 		
+		#~
+		Searches for the first occurrence of a byte array
+		@param bytes byte array to search
+		@param offset search offset
+		@param search byte array to search for
+		@return index of first occurrence, -1 otherwise
+		~#
 		function : native : Find(bytes : Byte[], offset : Int, search : Byte[]) ~ Int {
 			bytes_size := bytes->Size();
 			search_size := search->Size();

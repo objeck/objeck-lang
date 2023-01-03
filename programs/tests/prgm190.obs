@@ -22,8 +22,8 @@ class Test {
         Runtime->Copy(boundary, 0, encoded, 0, offset)->PrintLine();
         boundary->Size()->PrintLine();
 
-        Find(encoded, 0, boundary)->PrintLine();
-        Find(encoded, offset, boundary)->PrintLine();
+        encoded->Find(0, boundary)->PrintLine();
+        encoded->Find(offset, boundary)->PrintLine();
     }
 
     function : Find(bytes : Byte[], search : Byte) ~ Int {
