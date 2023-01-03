@@ -10,8 +10,10 @@ class Test {
         encoding += "Hollines /www/http/ @\r\n";
         encoding += "------WebKitFormBoundaryv6DIeo7UWlahIYi8--\r\n";
 
-        bytes := Byte->New[3,3];
-        bytes->ToString();
+        bytes := Byte->New[8];
+        search := Byte->New[2];
+        bytes->Find(0, search)->PrintLine();
+        
 #~
         lines := encoding->Lines();
         each(i : lines) {
