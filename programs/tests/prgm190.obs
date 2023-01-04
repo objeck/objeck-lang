@@ -3,9 +3,7 @@ use System.IO.Filesystem;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        bytes := FileReader->ReadBinaryFile("multi.dat");
-        bytes->Size()->PrintLine();
-        ParseMultipartEncoding(bytes);
+        ParseMultipartEncoding(FileReader->ReadBinaryFile("data/mime.dat"));
     }
 
     function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
@@ -18,22 +16,14 @@ class Test {
             };
         };
 
-        boundary := Byte->New[offset];
-        Runtime->Copy(boundary, 0, encoded, 0, offset)->PrintLine();
-        boundary->ToString()->PrintLine();
-
-        offset := 0;
-        do {
-            offset := Byte->Find(encoded, offset, boundary);
-            if(offset > -1) {
-                offset->PrintLine();
-                offset += boundary->Size();
+        boundary_marker := Byte->New[offset];
+        if(Runtime->Copy(boundary_marker, 0, encoded, 0, offset)) {
+            boundaries := Byte->FindAll(encoded, boundary_marker);
+            each(i : boundaries) {
+                boundaries[i]->PrintLine();
             };
-        }
-        while(offset > -1);
+        };
     }
-
-    
 
     function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
         decodings := Map->New()<String, String>;
