@@ -7,22 +7,54 @@ class Test {
     }
 
     function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
-        offset := -1;
-        i := 0;
-        while(offset < 0 & i < encoded->Size()) {
+        marker := ReadLine(0, encoded);
+        if(marker <> Nil) {
+marker->ToString()->PrintLine();
+            
+            boundry_indexes := Byte->FindAll(encoded, marker);
+            each(i : boundry_indexes) {
+                boundry_index := boundry_indexes[i];
+                match_space := MatchSpace(boundry_index + marker->Size(), encoded);
+                match_closing := MatchClosing(boundry_index + marker->Size(), encoded);
+"{$i}: match_space={$match_space}, match_closing={$match_closing}"->PrintLine();
+                "---"->PrintLine();
+            };
+        };
+    }
+
+    function : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
+        pos := -1;
+        i := offset;
+        while(pos < 0 & i < encoded->Size()) {
             byte := encoded[i++];
             if(byte = '\r' | byte = '\n') {
-                offset := i - 1;
+                pos := i - 1;
             };
         };
 
-        boundary_marker := Byte->New[offset];
-        if(Runtime->Copy(boundary_marker, 0, encoded, 0, offset)) {
-            boundaries := Byte->FindAll(encoded, boundary_marker);
-            each(i : boundaries) {
-                boundaries[i]->PrintLine();
-            };
+        line := Byte->New[pos];
+        if(Runtime->Copy(line, 0, encoded, 0, pos)) {
+            return line;
         };
+
+        return Nil;
+    }
+
+
+    function : MatchSpace(offset : Int, encoded : Byte[]) ~ Bool {
+        if(offset + 1 < encoded->Size()) {
+            return encoded[offset] = '\r' & encoded[offset + 1] = '\n';
+        };
+
+        return false;
+    }
+
+    function : MatchClosing(offset : Int, encoded : Byte[]) ~ Bool {
+        if(offset + 1 < encoded->Size()) {
+            return encoded[offset] = '-' & encoded[offset + 1] = '-';
+        };
+
+        return false;
     }
 
     function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
