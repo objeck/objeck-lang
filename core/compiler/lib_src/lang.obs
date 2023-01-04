@@ -410,6 +410,7 @@ bundle System {
 
 		#~
 		Searches for all occurrences of the byte array
+		@param bytes byte array to search
 		@param search byte array to search for
 		@return an array of indexes
 		~#
@@ -816,6 +817,7 @@ bundle System {
 		
 		#~
 		Searches for all occurrences of the character array
+		@param chars character array to search
 		@param search character array to search for
 		@return an array of indexes
 		~#
