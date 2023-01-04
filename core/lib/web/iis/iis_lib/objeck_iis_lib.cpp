@@ -174,7 +174,7 @@ extern "C" {
       const HRESULT result = request->ReadEntityBody(buffer, buffer_size, FALSE, &bytes_read);
       if(result != S_OK && ((result & 0x0000FFFF) != ERROR_HANDLE_EOF)) {
         response->SetStatus(500, "Server Error in Objeck Module", 0, result);
-        APITools_SetStringValue(context, 0, L"");
+        APITools_SetObjectValue(context, 0, nullptr);
         return;
       }
 
