@@ -26,7 +26,7 @@ if(type_bytes <> Nil) { type_bytes->ToString()->PrintLine(); };
                 boundry_index += type_bytes->Size() - 1;
                 if(MatchSpace(boundry_index, encoded)) {
                     boundry_index += 2;
-"(Read content)"->PrintLine();
+"(Read content); boundry_index to next boundry_index Runtime->Copy(..)"->PrintLine();
                 };
 
                 "---"->PrintLine();
