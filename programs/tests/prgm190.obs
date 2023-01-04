@@ -7,39 +7,52 @@ class Test {
     }
 
     function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
-        marker := ReadLine(0, encoded);
-        if(marker <> Nil) {
-marker->ToString()->PrintLine();
-            
-            boundry_indexes := Byte->FindAll(encoded, marker);
-            each(i : boundry_indexes) {
-                boundry_index := boundry_indexes[i];
-                match_space := MatchSpace(boundry_index + marker->Size(), encoded);
-                match_closing := MatchClosing(boundry_index + marker->Size(), encoded);
+encoded->Size()->PrintLine();
+"==="->PrintLine();        
+        marker_bytes := ReadLine(0, encoded);
+        if(marker_bytes <> Nil) {
+marker_bytes->ToString()->PrintLine();
+
+            marker_indexes := Byte->FindAll(encoded, marker_bytes);
+            each(i : marker_indexes) {
+                boundry_index := marker_indexes[i];
+                boundry_index += marker_bytes->Size();
+                match_space := MatchSpace(boundry_index, encoded);
+                match_closing := MatchClosing(boundry_index, encoded);
 "{$i}: match_space={$match_space}, match_closing={$match_closing}"->PrintLine();
+                boundry_index += 2;
+                type_bytes := ReadLine(boundry_index, encoded);
+if(type_bytes <> Nil) { type_bytes->ToString()->PrintLine(); };
+                boundry_index += type_bytes->Size() - 1;
+                if(MatchSpace(boundry_index, encoded)) {
+                    boundry_index += 2;
+"(Read content)"->PrintLine();
+                };
+
                 "---"->PrintLine();
             };
         };
     }
 
     function : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
-        pos := -1;
-        i := offset;
-        while(pos < 0 & i < encoded->Size()) {
-            byte := encoded[i++];
-            if(byte = '\r' | byte = '\n') {
-                pos := i - 1;
+        if(offset < encoded->Size()) {
+            pos := -1;
+            i := offset;
+            while(pos < 0 & i < encoded->Size()) {
+                byte := encoded[i++];
+                if(byte = '\r') {
+                    pos := i - 1;
+                };
             };
-        };
 
-        line := Byte->New[pos];
-        if(Runtime->Copy(line, 0, encoded, 0, pos)) {
-            return line;
+            line := Byte->New[pos];
+            if(Runtime->Copy(line, 0, encoded, 0, pos)) {
+                return line;
+            };
         };
 
         return Nil;
     }
-
 
     function : MatchSpace(offset : Int, encoded : Byte[]) ~ Bool {
         if(offset + 1 < encoded->Size()) {
@@ -65,9 +78,9 @@ marker->ToString()->PrintLine();
             each(i : pairs) {
                 key_value := pairs[i]->Split('=');
                 if(key_value <> Nil & key_value->Size() = 2) {
-                    marker := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
+                    marker_bytes := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
                     value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
-                    decodings->Insert(marker, value);
+                    decodings->Insert(marker_bytes, value);
                 };
             };
         };
