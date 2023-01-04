@@ -1,40 +1,55 @@
+use Collection.Generic;
+use System.IO.Filesystem;
+
 class Test {
     function : Main(args : String[]) ~ Nil {
-        foo := Split('&', "ab&c&d"->ToCharArray());
-        each(i : foo) {
-            foo[i]->PrintLine();
-        };
+        bytes := FileReader->ReadBinaryFile("multi.dat");
+        bytes->Size()->PrintLine();
+        ParseMultipartEncoding(bytes);
     }
+
+    function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
+        offset := -1;
+        i := 0;
+        while(offset < 0 & i < encoded->Size()) {
+            byte := encoded[i++];
+            if(byte = '\r' | byte = '\n') {
+                offset := i - 1;
+            };
+        };
+
+        boundary := Byte->New[offset];
+        Runtime->Copy(boundary, 0, encoded, 0, offset)->PrintLine();
+        boundary->ToString()->PrintLine();
+
+        offset := 0;
+        do {
+            offset := Byte->Find(encoded, offset, boundary);
+            if(offset > -1) {
+                offset->PrintLine();
+                offset += boundary->Size();
+            };
+        }
+        while(offset > -1);
+    }
+
     
-    function : Split(delim : Char, buffer : Char[]) ~ String[] {
-        count := 0;
 
-        each(i : buffer) {
-            if(buffer[i] = delim) {
-                count += 1;
+    function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
+        decodings := Map->New()<String, String>;
+
+        pairs :=  encoded->Split('&');
+        if(pairs <> Nil) {
+            each(i : pairs) {
+                key_value := pairs[i]->Split('=');
+                if(key_value <> Nil & key_value->Size() = 2) {
+                    marker := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
+                    value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
+                    decodings->Insert(marker, value);
+                };
             };
         };
 
-        if(count <> 0) {
-            count += 1;
-        };
-
-        strings := String->New[count];
-
-        start := count := 0;
-        each(i : buffer) {
-            char := buffer[i];
-
-            if(char = delim) {
-                strings[count++] := String->New(buffer, start, i - start);
-                start := i + 1;
-            };
-        };
-
-        if(start <> 0) {
-            strings[count++] := String->New(buffer, start, buffer->Size() - start);
-        };
-
-        return strings;
+        return decodings;
     }
 }

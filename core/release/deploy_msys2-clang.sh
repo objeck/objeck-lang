@@ -54,7 +54,7 @@ cd ../diags
 ./build_msys2-clang.sh diags
 cp diags.dll ../../release/deploy-msys2-clang/lib/native/libobjk_diags.dll
 
-cd ../../native_launcher
+cd ../../windows/launcher
 make -f make/Makefile.obb.msys2-clang.amd64 clean; make -f make/Makefile.obb.msys2-clang.amd64
 cp obb.exe ../release/deploy-msys2-clang/bin
 
@@ -62,7 +62,7 @@ make -f make/Makefile.obn.msys2-clang.amd64 clean; make -f make/Makefile.obn.msy
 cp obn.exe ../release/deploy-msys2-clang/lib/native/misc
 
 cp ../vm/misc/config.prop ../release/deploy-msys2-clang/lib/native/misc
-cd ../release
+cd ../../release
 
 # copy docs
 cd ../..

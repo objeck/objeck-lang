@@ -1,6 +1,9 @@
 #~
 Support for web servers. Note, shared library implementations (.so, .dll) specified in the 'config.ini' file using the 'lib_name' parameter.
 ~#
+
+use Collection.Generic;
+
 bundle Web.Server {
 	class Proxy {
 		@lib_proxy : static : System.API.DllProxy;
@@ -113,11 +116,56 @@ bundle Web.Server {
 			Proxy->GetDllProxy()->CallFunction("web_request_read_body", array_args);
 
 			value := array_args[0]->As(ByteArrayHolder);
-			return value->Get();
+			if(value <> Nil) {
+				return value->Get();
+			};
+			
+			return Nil;
 		}
 
-		function : ParseUrlEncoded(url_encoded : String) ~ Map<String, String> {
-			name_values := url_encoded->Split("&");
+		function : ParseMultipartEncoding(encoding : Byte[]) ~ Multipart {
+			return Nil;
+		}
+
+		function : ParseUrlEncoding(encoding : String) ~ Map<String, String> {
+	        decodings := Map->New()<String, String>;
+
+	        pairs :=  encoding->Split('&');
+	        if(pairs <> Nil) {
+	            each(i : pairs) {
+	                key_value := pairs[i]->Split('=');
+	                if(key_value <> Nil & key_value->Size() = 2) {
+	                    key := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
+	                    value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
+	                    decodings->Insert(key, value);
+	                };
+	            };
+	        };
+
+	        return decodings;
+	    }
+	}
+
+	#~
+	Multipart MIME
+	~#
+	class Multipart {
+		@encoding : Byte[];
+		@named_parts : Map<String, Part>;
+		@parts : Vector<Part>;
+
+		New(encoding : Byte[]) {
+			@encoding := encoding;
+			@named_parts := Map->New()<String, Part>;
+			@parts := Vector->New()<Part>;
+		}
+	}
+
+	#~
+	MIME part
+	~#
+	class Part {
+		New() {
 		}
 	}
 
@@ -141,7 +189,7 @@ bundle Web.Server {
 
 		#~
 		Writes a string response to the message body
-		@param date string response
+		@param data string response
 		@return number of bytes sent
 		~#
 		method : public : WriteBody(data : String) ~ Int {
@@ -158,7 +206,7 @@ bundle Web.Server {
 
 		#~
 		Writes a byte array response to the message body
-		@param date byte array response
+		@param data byte array response
 		@return number of bytes sent
 		~#
 		method : public : WriteBody(data : Byte[]) ~ Int {
