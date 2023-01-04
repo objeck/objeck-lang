@@ -7,11 +7,11 @@ class Test {
     }
 
     function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
-encoded->Size()->PrintLine();
-"==="->PrintLine();        
+encoding_size := encoded->Size();        
         marker_bytes := ReadLine(0, encoded);
         if(marker_bytes <> Nil) {
-marker_bytes->ToString()->PrintLine();
+str_marker := marker_bytes->ToString();
+"size={$encoding_size}, marker=`{$str_marker}`\n==="->PrintLine();
 
             marker_indexes := Byte->FindAll(encoded, marker_bytes);
             each(i : marker_indexes) {
