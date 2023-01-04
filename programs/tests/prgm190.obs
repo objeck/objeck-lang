@@ -70,7 +70,7 @@ boundry_index->ToHexString()->PrintLine();
 
         content_size := marker_indexes[1] - boundry_index;
         if(@debug) {
-            "(Read content): content_size={$content_size}"->PrintLine();
+            "(Read content): start={$boundry_index} len={$content_size}"->PrintLine();
             "---"->PrintLine();
         };
         boundry_index += content_size;
