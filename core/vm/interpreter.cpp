@@ -829,9 +829,24 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
 
       formatter << value;
       conv = formatter.str();
-  }
+    }
     else {
-      conv = std::to_wstring(value);
+      switch(base) {
+      case 8:
+        formatter << std::oct;
+        break;
+
+      case 10:
+        formatter << std::dec;
+        break;
+
+      case 16:
+        formatter << std::hex;
+        break;
+      }
+
+      formatter << value;
+      conv = formatter.str();
     }
 
 		const size_t max = conv.size() < 32 ? conv.size() : 32;

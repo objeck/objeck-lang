@@ -2,51 +2,95 @@ use Collection.Generic;
 use System.IO.Filesystem;
 
 class Test {
+    @debug : static : Bool;
+
     function : Main(args : String[]) ~ Nil {
+        @debug := true;
         ParseMultipartEncoding(FileReader->ReadBinaryFile("data/mime.dat"));
     }
 
     function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
-encoding_size := encoded->Size();        
+        # read encoding string
         marker_bytes := ReadLine(0, encoded);
-        if(marker_bytes <> Nil) {
-str_marker := marker_bytes->ToString();
-"size={$encoding_size}, marker=`{$str_marker}`\n==="->PrintLine();
+        if(marker_bytes = Nil) {
+            return;
+        };
 
-            marker_indexes := Byte->FindAll(encoded, marker_bytes);
-            each(i : marker_indexes) {
-                boundry_index := marker_indexes[i];
-                boundry_index += marker_bytes->Size();
-                match_space := MatchSpace(boundry_index, encoded);
-                match_closing := MatchClosing(boundry_index, encoded);
-"{$i}: match_space={$match_space}, match_closing={$match_closing}"->PrintLine();
-                boundry_index += 2;
-                type_bytes := ReadLine(boundry_index, encoded);
-if(type_bytes <> Nil) { type_bytes->ToString()->PrintLine(); };
-                boundry_index += type_bytes->Size() - 1;
-                if(MatchSpace(boundry_index, encoded)) {
-                    boundry_index += 2;
-"(Read content); boundry_index to next boundry_index Runtime->Copy(..)"->PrintLine();
-                };
+        if(@debug) {
+            encoding_size := encoded->Size();        
+            str_marker := marker_bytes->ToString();
+            "size={$encoding_size}, marker=`{$str_marker}`"->PrintLine();
+        };
 
-                "---"->PrintLine();
-            };
+        # fetch all markers
+        marker_indexes := Byte->FindAll(encoded, marker_bytes);
+        if(marker_indexes = Nil) {
+            return;
+        };
+
+        if(@debug) {
+            num_markers := marker_indexes->Size();
+            "num_markers={$num_markers}\n==="->PrintLine();
+        };
+
+        # read white space
+        boundry_index := marker_bytes->Size();
+        if(<>MatchSpace(boundry_index, encoded)) {
+            return;
+        };
+        boundry_index += 2;
+
+        # read content line
+boundry_index->ToHexString()->PrintLine();
+
+        content_bytes := ReadLine(boundry_index, encoded);
+        if(content_bytes = Nil) {
+            return;
+        };
+
+        if(@debug) {
+            content_str := content_bytes->ToString();
+            "content_str={$content_str}"->PrintLine();
+        };
+
+        # read white space
+        boundry_index += content_bytes->Size();
+
+        if(<>MatchSpace(boundry_index, encoded)) {
+            return;
+        };
+        boundry_index += 2;
+
+        if(<>MatchSpace(boundry_index, encoded)) {
+            return;
+        };
+        boundry_index += 2;
+boundry_index->ToHexString()->PrintLine();
+
+        if(@debug) {
+            end_index := marker_indexes[1];
+            "(Read content): boundry_index={$boundry_index}, end_index={$end_index}"->PrintLine();
+            "---"->PrintLine();
         };
     }
 
     function : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
-        if(offset < encoded->Size()) {
-            pos := -1;
-            i := offset;
-            while(pos < 0 & i < encoded->Size()) {
+        i := offset;
+        if(i < encoded->Size()) {
+            done := false;
+            read := 0;
+            while(<>done & i < encoded->Size()) {
                 byte := encoded[i++];
                 if(byte = '\r') {
-                    pos := i - 1;
+                    done := true;
+                }
+                else {
+                    read += 1;
                 };
             };
 
-            line := Byte->New[pos];
-            if(Runtime->Copy(line, 0, encoded, 0, pos)) {
+            line := Byte->New[read];
+            if(Runtime->Copy(line, 0, encoded, offset, read)) {
                 return line;
             };
         };
