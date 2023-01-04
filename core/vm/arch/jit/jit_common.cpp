@@ -200,8 +200,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       const size_t base = PopInt(op_stack, stack_pos);
       const long value = (long)PopInt(op_stack, stack_pos);
 
-      std::wstringstream formatter;
       std::wstring conv;
+      std::wstringstream formatter;
 
       const std::wstring int_format = program->GetProperty(L"int:string:format");
       if(!int_format.empty()) {
