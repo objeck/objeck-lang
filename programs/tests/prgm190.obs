@@ -16,7 +16,7 @@ class Test {
                 if(fields->Size() = 3) {
                     file_name_value := fields[2]->Split('=');
                     if(file_name_value->Size() = 2) {
-                        file_name_value[1]->ReplaceAll('"')->PrintLine();
+                        file_name_value[1]->RemoveAll('"')->PrintLine();
                     };
                 };
             };
