@@ -10,7 +10,7 @@ bundle Web.Server {
 		
 		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
-				# shared library implementation fetched from configuration
+				# shared library native implementation (for Nginix, IIS and Apache) fetched from configuration
 				@lib_proxy := System.API.DllProxy->New(Runtime->GetProperty("OBJECK_LIB_WEB_SERVER"));
 			};
 
