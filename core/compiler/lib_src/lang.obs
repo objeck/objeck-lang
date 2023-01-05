@@ -3486,6 +3486,24 @@ bundle System {
 		}
 
 		#~
+		Removes all occurrences the search character
+		@param find character to search for
+		@return new string instance
+		~#
+		method : public : RemoveAll(find : Char) ~ String {
+			buffer := "";
+			
+			for(i := 0; i < @pos; i += 1;) {
+				char := @string[i];
+				if(char <> find) {
+					buffer->Append(char);
+				};
+			};
+
+			return buffer;
+		}
+
+		#~
 		Replaces all occurrences the search string
 		@param find character to search for
 		@param replace character to replace with

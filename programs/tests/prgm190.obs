@@ -9,8 +9,17 @@ class Test {
 
         multipart_content := ParseMultipartEncoding(FileReader->ReadBinaryFile("data/mime.dat"));
         if(multipart_content <> Nil) {
-            multipart_content_size := multipart_content->Size();
-            "===\nParsed {$multipart_content_size} content type(s)."->PrintLine();
+#            "===\nParsed {$multipart_content_size} content type(s)."->PrintLine();
+            each(i : multipart_content) {
+                content_part := multipart_content->Get(i);
+                fields := content_part->GetHeader("Content-Disposition")->Split(';');
+                if(fields->Size() = 3) {
+                    file_name_value := fields[2]->Split('=');
+                    if(file_name_value->Size() = 2) {
+                        file_name_value[1]->ReplaceAll('"')->PrintLine();
+                    };
+                };
+            };
         };
     }
 
@@ -117,7 +126,7 @@ class Test {
 
             if(@debug) {
                 boundry_index_hex := boundry_index->ToHexString();
-                "ending content position=0x{$boundry_index_hex}"->PrintLine();
+                "content ending=0x{$boundry_index_hex}"->PrintLine();
                 "---"->PrintLine();
             };
 
@@ -134,7 +143,7 @@ class Test {
         if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
             if(@debug) {
                 boundry_index_hex := boundry_index->ToHexString();
-                "Fin. (multipart ending position=0x{$boundry_index_hex})"->PrintLine();
+                "Fin. multipart ending=(0x{$boundry_index_hex}){$boundry_index}"->PrintLine();
             };
 
             return multipart_content;
@@ -201,5 +210,13 @@ class ContentType {
     New(content_headers :  Map<String, String>, content : Byte[]) {
         @content_headers := content_headers;
         @content := content;
+    }
+
+    method : public : GetHeader(name : String) ~ String {    
+        return @content_headers->Find(name);
+    }
+
+    method : public : GetContent() ~ Byte[] {
+        return @content;
     }
 }
