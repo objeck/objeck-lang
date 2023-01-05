@@ -16,10 +16,11 @@ class Test {
             return;
         };
 
+        encoding_size := encoded->Size();
         if(@debug) {
-            encoding_size := encoded->Size();        
+            encoding_size_hex := encoding_size->ToHexString();   
             str_marker := marker_bytes->ToString();
-            "size={$encoding_size}, marker=`{$str_marker}`"->PrintLine();
+            "size={$encoding_size_hex}({$encoding_size}), marker=|{$str_marker}|"->PrintLine();
         };
 
         # fetch all markers
@@ -33,60 +34,85 @@ class Test {
             "num_markers={$num_markers}\n==="->PrintLine();
         };
 
-        # read white space
-        boundry_index := marker_bytes->Size();
-        if(<>MatchSpace(boundry_index, encoded)) {
-            return;
-        };
-        boundry_index += 2;
-
-# ----------------
-
-        content_headers := Vector->New()<String>;
-        done := false;
-        do {
-            # read content line
-            content_bytes := ReadLine(boundry_index, encoded);
-            if(content_bytes <> Nil) {            
-                boundry_index += content_bytes->Size();
-                content_str := content_bytes->ToString();
-                if(@debug) {                
-                    "content_str=`{$content_str}`"->PrintLine();
-                };
-                content_headers->AddBack(content_str);
-            }
-            else {
-                done := true;
+        boundry_index := 0;
+        for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
+            boundary_bytes := ReadLine(marker_indexes[i], encoded);
+            if(boundary_bytes = Nil) {
+                return;
             };
+            boundry_index += boundary_bytes->Size();
 
             # read white space
             if(<>MatchSpace(boundry_index, encoded)) {
                 return;
             };
             boundry_index += 2;
-        }
-        while(<>done);
-        
-# ----------------
+ 
+            # ----------------
 
-        content_size := marker_indexes[1] - boundry_index - 2;
-        if(@debug) {
-            "(Content body): start={$boundry_index} len={$content_size}"->PrintLine();
-            "---"->PrintLine();
+            content_headers := Vector->New()<String>;
+            done := false;
+            do {
+                # read content line
+                header_bytes := ReadLine(boundry_index, encoded);
+                if(header_bytes <> Nil) {            
+                    boundry_index += header_bytes->Size();
+                    content_str := header_bytes->ToString();
+                    if(@debug) {                
+                        "header=|{$content_str}|"->PrintLine();
+                    };
+                    content_headers->AddBack(content_str);
+                }
+                else {
+                    done := true;
+                };
+
+                # read white space
+                if(<>MatchSpace(boundry_index, encoded)) {
+                    return;
+                };
+                boundry_index += 2;
+            }
+            while(<>done);
+            
+            # ----------------
+
+            content_size := marker_indexes[i + 1] - boundry_index - 2;
+            if(@debug) {
+                "(Body): start={$boundry_index}, len={$content_size}"->Print();
+            };
+
+            content_bytes := Byte->New[content_size];
+            if(Runtime->Copy(content_bytes, 0, encoded, boundry_index, content_size)) {
+                content_str := String->New(content_bytes);
+                ", content: |{$content_str}|"->PrintLine();
+            };
+            boundry_index += content_bytes->Size();
+
+            # read white space
+            if(<>MatchSpace(boundry_index, encoded)) {
+                return;
+            };
+            boundry_index += 2;
+
+            if(@debug) {
+                boundry_index_hex := boundry_index->ToHexString();
+                "ending content position={$boundry_index_hex}"->PrintLine();
+                "---"->PrintLine();
+            };
         };
 
-        foo := Byte->New[content_size];
-        if(Runtime->Copy(foo, 0, encoded, boundry_index, content_size)) {
-            bar := String->New(foo);
-            "->|{$bar}|<-"->PrintLine();
-        };
-
-        # read end
-        boundry_index += content_size + marker_bytes->Size();        
-        if(<>MatchClosing(boundry_index, encoded)) {
+        boundary_bytes := ReadLine(marker_indexes[marker_indexes->Size() - 1], encoded);
+        if(boundary_bytes = Nil) {
             return;
-        };      
-"---\nFin."->PrintLine();
+        };
+        boundry_index += boundary_bytes->Size();
+
+        boundary_str := boundary_bytes->ToString();
+        if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
+            boundry_index_hex := boundry_index->ToHexString();
+            "Fin. position={$boundry_index_hex}"->PrintLine();
+        };
     }
 
     function : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
