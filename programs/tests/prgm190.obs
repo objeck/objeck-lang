@@ -76,7 +76,7 @@ class Test {
                         header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
                         
                         if(@debug) {
-                            "\theader values: name=|{$header_name}|, value=|{$header_value}|"->PrintLine();
+                            "\tname=|{$header_name}|, value=|{$header_value}|"->PrintLine();
                         };
 
                         if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
