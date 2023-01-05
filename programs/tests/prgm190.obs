@@ -6,27 +6,34 @@ class Test {
 
     function : Main(args : String[]) ~ Nil {
         @debug := true;
-        ParseMultipartEncoding(FileReader->ReadBinaryFile("data/mime.dat"));
+
+        multipart_content := ParseMultipartEncoding(FileReader->ReadBinaryFile("data/mime.dat"));
+        if(multipart_content <> Nil) {
+            multipart_content_size := multipart_content->Size();
+            "===\nParsed {$multipart_content_size} content type(s)."->PrintLine();
+        };
     }
 
-    function : ParseMultipartEncoding(encoded : Byte[]) ~ Nil {
+    function : ParseMultipartEncoding(encoded : Byte[]) ~ Vector<ContentType> {
+        multipart_content := Vector->New()<ContentType>;
+
         # read encoding string
         marker_bytes := ReadLine(0, encoded);
         if(marker_bytes = Nil) {
-            return;
+            return Nil;
         };
 
         encoding_size := encoded->Size();
         if(@debug) {
             encoding_size_hex := encoding_size->ToHexString();   
             str_marker := marker_bytes->ToString();
-            "size={$encoding_size_hex}({$encoding_size}), marker=|{$str_marker}|"->PrintLine();
+            "size=0x{$encoding_size_hex}({$encoding_size}), marker=|{$str_marker}|"->PrintLine();
         };
 
         # fetch all markers
         marker_indexes := Byte->FindAll(encoded, marker_bytes);
         if(marker_indexes = Nil) {
-            return;
+            return Nil;
         };
 
         if(@debug) {
@@ -38,13 +45,13 @@ class Test {
         for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
             boundary_bytes := ReadLine(marker_indexes[i], encoded);
             if(boundary_bytes = Nil) {
-                return;
+                return Nil;
             };
             boundry_index += boundary_bytes->Size();
 
             # read white space
             if(<>MatchSpace(boundry_index, encoded)) {
-                return;
+                return Nil;
             };
             boundry_index += 2;
  
@@ -69,7 +76,7 @@ class Test {
 
                 # read white space
                 if(<>MatchSpace(boundry_index, encoded)) {
-                    return;
+                    return Nil;
                 };
                 boundry_index += 2;
             }
@@ -91,28 +98,36 @@ class Test {
 
             # read white space
             if(<>MatchSpace(boundry_index, encoded)) {
-                return;
+                return Nil;
             };
             boundry_index += 2;
 
             if(@debug) {
                 boundry_index_hex := boundry_index->ToHexString();
-                "ending content position={$boundry_index_hex}"->PrintLine();
+                "ending content position=0x{$boundry_index_hex}"->PrintLine();
                 "---"->PrintLine();
             };
+
+            multipart_content->AddBack(ContentType->New(content_headers, content_bytes));
         };
 
         boundary_bytes := ReadLine(marker_indexes[marker_indexes->Size() - 1], encoded);
         if(boundary_bytes = Nil) {
-            return;
+            return Nil;
         };
         boundry_index += boundary_bytes->Size();
 
         boundary_str := boundary_bytes->ToString();
         if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
-            boundry_index_hex := boundry_index->ToHexString();
-            "Fin. position={$boundry_index_hex}"->PrintLine();
+            if(@debug) {
+                boundry_index_hex := boundry_index->ToHexString();
+                "Fin. (multipart ending position=0x{$boundry_index_hex})"->PrintLine();
+            };
+
+            return multipart_content;
         };
+
+        return Nil;
     }
 
     function : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
@@ -163,5 +178,15 @@ class Test {
         };
 
         return decodings;
+    }
+}
+
+class ContentType {
+    @content_headers : Vector<String>;
+    @content : Byte[];
+
+    New(content_headers : Vector<String>, content : Byte[]) {
+        @content_headers := content_headers;
+        @content := content;
     }
 }
