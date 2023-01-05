@@ -3,11 +3,8 @@ class GetPost {
 
   function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
     if(req->GetMethod() = Web.Server.Request->Method->GET) {
-#      body := "<html><body><form method='post'><label for='fname'>First name:</label><br/> <input type='text' id='fname' name='fname'/><br/> <label for='lname'>Last name:</label><br/><input type='text' id='lname' name='lname'/><br/><br/><input type='submit' value='Submit'/></form></body></html>";
-
-      body := "<html><body><form action='sendConfirmation.php' name='confirmationForm' method='post' enctype='multipart/form-data'><textarea id='confirmationText' class='text' cols='16' rows ='8' name='confirmationText'></textarea><input type='submit' value='Email' class='submitButton'></form></body></html>";
-
-      res->WriteBody(body);
+      path := Runtime->GetProperty("OBJECK_PATH_WEB_SERVER");
+      res->WriteBody(System.IO.Filesystem.FileReader->ReadFile(path + "in.html"));
     }
     else {
       posted := String->New(req->ReadBody());

@@ -1,11 +1,16 @@
-------WebKitFormBoundaryEhntNH1Mf6wYaeA2
-Content-Disposition: form-data; name="confirmationText"
+--2a8ae6ad-f4ad-4d9a-a92c-6d217011fe0f
+Content-Disposition: form-data; name="datafile1"; filename="r.gif"
+Content-Type: image/gif
 
-Hello 
- World
+GIF87a.............,...........D..;
+--2a8ae6ad-f4ad-4d9a-a92c-6d217011fe0f
+Content-Disposition: form-data; name="datafile2"; filename="g.gif"
+Content-Type: image/gif
 
-Again \r
+GIF87a.............,...........D..;
+--2a8ae6ad-f4ad-4d9a-a92c-6d217011fe0f
+Content-Disposition: form-data; name="datafile3"; filename="b.gif"
+Content-Type: image/gif
 
-\n
-???
-------WebKitFormBoundaryEhntNH1Mf6wYaeA2--
+GIF87a.............,...........D..;
+--2a8ae6ad-f4ad-4d9a-a92c-6d217011fe0f--
