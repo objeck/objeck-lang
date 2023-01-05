@@ -36,7 +36,7 @@ class Test {
         if(@debug) {
             encoding_size_hex := encoding_size->ToHexString();   
             str_marker := marker_bytes->ToString();
-            "size=0x{$encoding_size_hex}({$encoding_size}), marker=|{$str_marker}|"->PrintLine();
+            "Multipart: size=0x{$encoding_size_hex}({$encoding_size}), marker=|{$str_marker}|"->Print();
         };
 
         # fetch all markers
@@ -47,7 +47,7 @@ class Test {
 
         if(@debug) {
             num_markers := marker_indexes->Size();
-            "marker count={$num_markers}\n---"->PrintLine();
+            ", marker count={$num_markers}\n---"->PrintLine();
         };
 
         boundry_index := 0;
