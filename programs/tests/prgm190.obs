@@ -147,14 +147,6 @@ class Test {
         return false;
     }
 
-    function : MatchClosing(offset : Int, encoded : Byte[]) ~ Bool {
-        if(offset + 1 < encoded->Size()) {
-            return encoded[offset] = '-' & encoded[offset + 1] = '-';
-        };
-
-        return false;
-    }
-
     function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
         decodings := Map->New()<String, String>;
 
