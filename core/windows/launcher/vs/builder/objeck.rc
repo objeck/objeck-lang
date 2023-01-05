@@ -48,8 +48,8 @@ IDI_ICON1               ICON                    "..\\..\\..\\..\\images\\Gear.ic
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 6,9,2
- PRODUCTVERSION 6,9,2
+ FILEVERSION 2023,1,0
+ PRODUCTVERSION 2023,1,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -67,12 +67,12 @@ BEGIN
             VALUE "Comments", "Objeck Native Binary Builder"
             VALUE "CompanyName", "objeck.org"
             VALUE "FileDescription", "Objeck Native Builder"
-            VALUE "FileVersion", "6.9.2"
+            VALUE "FileVersion", "2023.1.0"
             VALUE "InternalName", "obc"
             VALUE "LegalCopyright", "Copyright (c) 2023 Randy Hollines"
             VALUE "OriginalFilename", "obb.exe"
             VALUE "ProductName", "Objeck Native Builder"
-            VALUE "ProductVersion", "6.9.2"
+            VALUE "ProductVersion", "2023.1.0"
         END
     END
     BLOCK "VarFileInfo"
