@@ -199,7 +199,7 @@ bundle Web.Server {
 	 
 	            # read content headers
 	            done := false;
-	            content_headers := Map->New()<String, String>;
+	            headers := Map->New()<String, String>;
 	            do {
 	                # read content line
 	                header_bytes := ReadLine(boundry_index, encoded);
@@ -219,7 +219,7 @@ bundle Web.Server {
 	                        };
 
 	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
-	                            content_headers->Insert(header_name, header_value);
+	                            headers->Insert(header_name, header_value);
 	                        };
 	                    };
 	                }
@@ -260,7 +260,7 @@ bundle Web.Server {
 	                "---"->PrintLine();
 	            };
 
-	            multipart_content->AddBack(ContentType->New(content_headers, content_bytes));
+	            multipart_content->AddBack(ContentType->New(headers, content_bytes));
 	        };
 
 	        boundary_bytes := ReadLine(marker_indexes[marker_indexes->Size() - 1], encoded);
@@ -319,11 +319,11 @@ bundle Web.Server {
 	Multipart content type
 	~#
 	class ContentType {
-	    @content_headers : Map<String, String>;
+	    @headers : Map<String, String>;
 	    @content : Byte[];
 
-	    New(content_headers :  Map<String, String>, content : Byte[]) {
-	        @content_headers := content_headers;
+	    New(headers :  Map<String, String>, content : Byte[]) {
+	        @headers := headers;
 	        @content := content;
 	    }
 
@@ -333,7 +333,7 @@ bundle Web.Server {
 		@return header value
 		~#
 	    method : public : GetHeader(name : String) ~ String {    
-	        return @content_headers->Find(name);
+	        return @headers->Find(name);
 	    }
 
 	    #~
