@@ -1,4 +1,4 @@
-objeck-lang-amd64 (6.9-2-1) unstable; urgency=low
+objeck-lang-amd64 (2023.1-0-1) unstable; urgency=low
 
   * Optimized stack operations for floating point operations (new)
   * Fixed ODBC “select” bug and added missing ODBC API documentation (bug/high)

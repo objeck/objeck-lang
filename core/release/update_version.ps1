@@ -1,6 +1,9 @@
 # strings
-$version = "6.9.2"
 $year_end = "2023"
+$month_end = "1"
+$version = "0"
+
+$version = "$year_end.$month_end.$version"
 
 # alternative strings
 $version_number = $version.Replace(".", "")
