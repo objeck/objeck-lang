@@ -57,23 +57,31 @@ class Test {
  
             # read content headers
             done := false;
-            content_headers := Vector->New()<String>;
+            content_headers := Map->New()<String, String>;
             do {
                 # read content line
                 header_bytes := ReadLine(boundry_index, encoded);
                 if(header_bytes <> Nil) {            
                     boundry_index += header_bytes->Size();
                     content_str := header_bytes->ToString();
-                    if(@debug) {                
+                    if(@debug) {
                         "header=|{$content_str}|"->PrintLine();
                     };
 
-                    # TODO: parser header names/values
+                    # parser header name/value pair
                     content_str_index := content_str->Find(':');
                     if(content_str_index > 0) {
-                        name := content_str->SubString(content_str_index);
-name->PrintLine();                        
-                        content_headers->AddBack(content_str);
+                        header_name := content_str->SubString(content_str_index);
+                        content_str_index += 2;
+                        header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
+                        
+                        if(@debug) {
+                            "\theader values: name=|{$header_name}|, value=|{$header_value}|"->PrintLine();
+                        };
+
+                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
+                            content_headers->Insert(header_name, header_value);
+                        };
                     };
                 }
                 else {
@@ -187,10 +195,10 @@ name->PrintLine();
 }
 
 class ContentType {
-    @content_headers : Vector<String>;
+    @content_headers : Map<String, String>;
     @content : Byte[];
 
-    New(content_headers : Vector<String>, content : Byte[]) {
+    New(content_headers :  Map<String, String>, content : Byte[]) {
         @content_headers := content_headers;
         @content := content;
     }
