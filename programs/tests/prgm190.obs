@@ -17,7 +17,7 @@ class Test {
                     file_name_value := fields[2]->Split('=');
                     if(file_name_value->Size() = 2) {
                         file_name := file_name_value[1]->RemoveAll('"');
-                        System.IO.Filesystem.FileWriter->WriteFile(file_name, content_part->GetContent());
+                        System.IO.Filesystem.FileWriter->WriteFile("data/" + file_name, content_part->GetContent());
                     };
                 };
             };
