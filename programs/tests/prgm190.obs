@@ -144,7 +144,7 @@ class Test {
         if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
             if(@debug) {
                 boundry_index_hex := boundry_index->ToHexString();
-                "Fin. [ending=(0x{$boundry_index_hex}){$boundry_index}]"->PrintLine();
+                "Fin. ending=0x{$boundry_index_hex}"->PrintLine();
             };
 
             return multipart_content;
