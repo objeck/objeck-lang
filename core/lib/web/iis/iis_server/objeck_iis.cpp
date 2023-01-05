@@ -21,11 +21,14 @@ ObjeckIIS::ObjeckIIS() {
   if(!intpr) {
     std::map<std::string, std::string> key_values = LoadConfiguration();
     const std::string progam_path = key_values["program_path"];
-    std::string install_path = key_values["install_path"];
     std::string lib_name = key_values["lib_name"];
-
+    std::string install_path = key_values["install_path"];
+    if(!install_path.empty() && install_path.back() != '\\') {
+      install_path.push_back('\\');
+    }
+    
 #ifdef _DEBUG
-    const std::string debug_path = install_path + "\\iis_debug.txt";
+    const std::string debug_path = install_path + "iis_debug.txt";
     OpenLogger(debug_path);
 
     tmp_wcout = std::wcout.rdbuf();
@@ -37,7 +40,6 @@ ObjeckIIS::ObjeckIIS() {
     LogSetupEnvironment(progam_path, install_path, lib_name);
 #endif
 
-    // TODO: check for end '\' and add in '\lib\' Windows-only coding
     if(_putenv_s("OBJECK_LIB_PATH", install_path.c_str())) {
       GetLogger() << L">>> Unable to set OBJECK_LIB_PATH=" << install_path.c_str() << std::endl;
       exit(1);
@@ -57,6 +59,7 @@ ObjeckIIS::ObjeckIIS() {
     }
 
     loader->GetProgram()->SetProperty(L"OBJECK_LIB_WEB_SERVER", BytesToUnicode(lib_name));
+    loader->GetProgram()->SetProperty(L"OBJECK_PATH_WEB_SERVER", BytesToUnicode(install_path));
 
 #ifdef _DEBUG
     GetLogger() << "--- Program loaded and checked ---" << std::endl;
