@@ -56,8 +56,8 @@ class Test {
             boundry_index += 2;
  
             # read content headers
-            content_headers := Vector->New()<String>;
             done := false;
+            content_headers := Vector->New()<String>;
             do {
                 # read content line
                 header_bytes := ReadLine(boundry_index, encoded);
@@ -67,9 +67,14 @@ class Test {
                     if(@debug) {                
                         "header=|{$content_str}|"->PrintLine();
                     };
-                    
+
                     # TODO: parser header names/values
-                    content_headers->AddBack(content_str);
+                    content_str_index := content_str->Find(':');
+                    if(content_str_index > 0) {
+                        name := content_str->SubString(content_str_index);
+name->PrintLine();                        
+                        content_headers->AddBack(content_str);
+                    };
                 }
                 else {
                     done := true;
