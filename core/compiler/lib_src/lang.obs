@@ -3492,7 +3492,7 @@ bundle System {
 		~#
 		method : public : RemoveAll(find : Char) ~ String {
 			buffer := "";
-			
+
 			for(i := 0; i < @pos; i += 1;) {
 				char := @string[i];
 				if(char <> find) {
@@ -7118,15 +7118,32 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Write a file's contents into a string
+		Write string to file
 		@param name file name
-		@param content file content
+		@param content string to write
 		@return true if successful, false otherwise
 		~#
 		function : WriteFile(name : String, content : String) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
+				writer->Close();				
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Write bytes to file
+		@param name file name
+		@param bytes to write
+		@return true if successful, false otherwise
+		~#
+		function : WriteFile(name : String, content : Byte[]) ~ Bool {
+			writer : FileWriter := FileWriter->New(name);
+			if(writer->IsOpen()) {
+				writer->WriteBuffer(content);
 				writer->Close();				
 				return true;
 			};
