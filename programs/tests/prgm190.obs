@@ -65,7 +65,7 @@ class Test {
         };
         boundry_index += 2;
 
-        content_size := marker_indexes[1] - boundry_index - 2;
+content_size := marker_indexes[1] - boundry_index - 2; # really do
         if(@debug) {
             "(Read content): start={$boundry_index} len={$content_size}"->PrintLine();
             "---"->PrintLine();
