@@ -1,18 +1,13 @@
 <!DOCTYPE html>
+
 <html>
-	<head>
-		<title>HTML textarea Tag</title>
-	</head>
 	<body>
-		<form action = "/cgi-bin/hello_get.cgi" method = "post">
-			Fill the Detail: 
-			<br/>
-			
-			<textarea rows = "5" cols = "50" name = "description">
-				Enter your name
-			</textarea>
-			
-			<input type = "submit" value = "submit"/>
-		</form>
+
+	<p>Click on the "Choose File" button to upload a file:</p>
+	<form method="post" enctype="multipart/form-data">
+		<input type="file" id="myFile" name="filename">
+		<input type="submit">
+	</form>
+
 	</body>
 </html>

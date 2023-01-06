@@ -7137,7 +7137,7 @@ bundle System.IO.Filesystem {
 		#~
 		Write bytes to file
 		@param name file name
-		@param bytes to write
+		@param content to write
 		@return true if successful, false otherwise
 		~#
 		function : WriteFile(name : String, content : Byte[]) ~ Bool {
