@@ -269,6 +269,12 @@ bundle Web.Server {
 	        };
 	        boundry_index += boundary_bytes->Size();
 
+	        # read white space
+	        if(<>MatchSpace(boundry_index, encoded)) {
+	            return Nil;
+	        };
+	        boundry_index += 2;
+
 	        boundary_str := boundary_bytes->ToString();
 	        if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
 	            if(@debug) {
