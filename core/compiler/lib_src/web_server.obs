@@ -151,7 +151,7 @@ bundle Web.Server {
 		@param encoded encoded bytes
 		@return content parts
 		~#
-	    function : ParseMultipartEncoding(encoded : Byte[]) ~ Vector<ContentType> {
+	    function : native : ParseMultipartEncoding(encoded : Byte[]) ~ Vector<ContentType> {
 	        multipart_content := Vector->New()<ContentType>;
 
 	        # read encoding string
@@ -288,7 +288,7 @@ bundle Web.Server {
 	        return Nil;
 	    }
 
-	    function : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
+	    function : native : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
 	        i := offset;
 	        if(i < encoded->Size()) {
 	            done := false;
@@ -312,7 +312,7 @@ bundle Web.Server {
 	        return Nil;
 	    }
 
-	    function : MatchSpace(offset : Int, encoded : Byte[]) ~ Bool {
+	    function : native : MatchSpace(offset : Int, encoded : Byte[]) ~ Bool {
 	        if(offset + 1 < encoded->Size()) {
 	            return encoded[offset] = '\r' & encoded[offset + 1] = '\n';
 	        };
