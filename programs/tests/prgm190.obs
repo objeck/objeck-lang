@@ -7,17 +7,19 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         @debug := true;
 
-        multipart_content := ParseMultipartEncoding(FileReader->ReadBinaryFile("data/foo.dat"));
-        if(multipart_content <> Nil) {
-            each(i : multipart_content) {
-                content_part := multipart_content->Get(i);
-                fields := content_part->GetHeader("Content-Disposition")->Split(';');
+        if(args->Size() = 1) {
+            multipart_content := ParseMultipartEncoding(FileReader->ReadBinaryFile(args[0]));
+            if(multipart_content <> Nil) {
+                each(i : multipart_content) {
+                    content_part := multipart_content->Get(i);
+                    fields := content_part->GetHeader("Content-Disposition")->Split(';');
 
-                if(fields->Size() = 3) {
-                    file_name_value := fields[2]->Split('=');
-                    if(file_name_value->Size() = 2) {                        
-                        file_name := file_name_value[1]->RemoveAll('"');
-                        System.IO.Filesystem.FileWriter->WriteFile("data/" + file_name, content_part->GetContent());
+                    if(fields->Size() = 3) {
+                        file_name_value := fields[2]->Split('=');
+                        if(file_name_value->Size() = 2) {                        
+                            file_name := file_name_value[1]->RemoveAll('"');
+                            System.IO.Filesystem.FileWriter->WriteFile("data/" + file_name, content_part->GetContent());
+                        };
                     };
                 };
             };
