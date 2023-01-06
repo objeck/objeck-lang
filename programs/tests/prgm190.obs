@@ -137,6 +137,7 @@ class Test {
             multipart_content->AddBack(ContentType->New(content_headers, content_bytes));
         };
 
+        # read ending boundary
         boundary_bytes := ReadLine(marker_indexes[marker_indexes->Size() - 1], encoded);
         if(boundary_bytes = Nil) {
             return Nil;
