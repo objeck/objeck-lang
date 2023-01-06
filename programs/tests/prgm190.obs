@@ -7,14 +7,15 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         @debug := true;
 
-        multipart_content := ParseMultipartEncoding(FileReader->ReadBinaryFile("data/mime.dat"));
+        multipart_content := ParseMultipartEncoding(FileReader->ReadBinaryFile("data/foo.dat"));
         if(multipart_content <> Nil) {
             each(i : multipart_content) {
                 content_part := multipart_content->Get(i);
                 fields := content_part->GetHeader("Content-Disposition")->Split(';');
+
                 if(fields->Size() = 3) {
                     file_name_value := fields[2]->Split('=');
-                    if(file_name_value->Size() = 2) {
+                    if(file_name_value->Size() = 2) {                        
                         file_name := file_name_value[1]->RemoveAll('"');
                         System.IO.Filesystem.FileWriter->WriteFile("data/" + file_name, content_part->GetContent());
                     };
@@ -127,7 +128,7 @@ class Test {
 
             if(@debug) {
                 boundry_index_hex := boundry_index->ToHexString();
-                "part ending=0x{$boundry_index_hex}"->PrintLine();
+                "ending=0x{$boundry_index_hex}"->PrintLine();
                 "---"->PrintLine();
             };
 
@@ -139,6 +140,12 @@ class Test {
             return Nil;
         };
         boundry_index += boundary_bytes->Size();
+
+        # read white space
+        if(<>MatchSpace(boundry_index, encoded)) {
+            return Nil;
+        };
+        boundry_index += 2;
 
         boundary_str := boundary_bytes->ToString();
         if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
