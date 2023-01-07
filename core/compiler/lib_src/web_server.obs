@@ -21,7 +21,6 @@ bundle Web.Server {
 	Web request
 	~#
 	class Request {
-	    @debug : static : Bool;
 		@request : Int;
 		@response : Int;
 
@@ -82,9 +81,32 @@ bundle Web.Server {
 			};
 		}
 
-		# TODO: 
+		#~
+		Gets a the remote address
+		@return remote address
+		~#
 		method : public : GetRemoteAddress() ~ String {
-			return Nil;	
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+
+			Proxy->GetDllProxy()->CallFunction("web_request_remote_address", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Gets a the local address
+		@return local address
+		~#
+		method : public : GetLocalAddress() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+
+			Proxy->GetDllProxy()->CallFunction("web_request_local_address", array_args);
+
+			return array_args[0]->As(String);
 		}
 
 		#~
@@ -161,29 +183,15 @@ bundle Web.Server {
 	        };
 
 	        encoding_size := encoded->Size();
-	        if(@debug) {
-	            encoding_size_hex := encoding_size->ToHexString();   
-	            str_marker := marker_bytes->ToString();
-	            "Multipart: size=0x{$encoding_size_hex}({$encoding_size}), marker=|{$str_marker}|"->Print();
-	        };
-
+	        
 	        # fetch all markers
 	        marker_indexes := Byte->FindAll(encoded, marker_bytes);
 	        if(marker_indexes = Nil) {
 	            return Nil;
 	        };
 
-	        if(@debug) {
-	            num_markers := marker_indexes->Size();
-	            ", marker count={$num_markers}\n---"->PrintLine();
-	        };
-
 	        boundry_index := 0;
 	        for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
-	            if(@debug) {
-	                "[Part {$i}]"->PrintLine();
-	            };
-
 	            boundary_bytes := ReadLine(marker_indexes[i], encoded);
 	            if(boundary_bytes = Nil) {
 	                return Nil;
@@ -213,10 +221,6 @@ bundle Web.Server {
 	                        content_str_index += 2;
 	                        header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
 	                        
-	                        if(@debug) {
-	                            "header: name=|{$header_name}|, value=|{$header_value}|"->PrintLine();
-	                        };
-
 	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
 	                            headers->Insert(header_name, header_value);
 	                        };
@@ -236,10 +240,7 @@ bundle Web.Server {
 	            
 	            # read content
 	            content_size := marker_indexes[i + 1] - boundry_index - 2;
-	            if(@debug) {
-	                "body: start={$boundry_index}, length={$content_size}"->Print();
-	            };
-
+	            
 	            content_bytes := Byte->New[content_size];
 	            if(Runtime->Copy(content_bytes, 0, encoded, boundry_index, content_size)) {
 	                content_str := String->New(content_bytes);
@@ -252,12 +253,6 @@ bundle Web.Server {
 	                return Nil;
 	            };
 	            boundry_index += 2;
-
-	            if(@debug) {
-	                boundry_index_hex := boundry_index->ToHexString();
-	                "part ending=0x{$boundry_index_hex}"->PrintLine();
-	                "---"->PrintLine();
-	            };
 
 	            multipart_content->AddBack(ContentType->New(headers, content_bytes));
 	        };
@@ -277,11 +272,6 @@ bundle Web.Server {
 
 	        boundary_str := boundary_bytes->ToString();
 	        if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
-	            if(@debug) {
-	                boundry_index_hex := boundry_index->ToHexString();
-	                "Fin. ending=0x{$boundry_index_hex}"->PrintLine();
-	            };
-
 	            return multipart_content;
 	        };
 
@@ -404,6 +394,23 @@ bundle Web.Server {
 		}
 
 		#~
+		Redirects a quary URL
+		@param url URL redirect
+		@return number of bytes sent
+		~#
+		method : public : Redirect (url : String) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@response);
+			array_args[2] := url;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_redirect", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
 		Sets a HTTP header
 		@param name header name
 		@param value header value
@@ -418,8 +425,17 @@ bundle Web.Server {
 
 			Proxy->GetDllProxy()->CallFunction("web_response_set_header", array_args);
 
-			rvalue := array_args[0]->As(IntHolder);
-			return rvalue->Get() = 0 ? false : true;
+			result := array_args[0]->As(IntHolder);
+			return result->Get() = 0 ? false : true;
+		}
+
+		#~
+		Clears the entire body response
+		~#
+		method : public : ClearAll() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@response);
+			Proxy->GetDllProxy()->CallFunction("web_response_clear_all", array_args);
 		}
 	}
 }
