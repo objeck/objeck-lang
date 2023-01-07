@@ -125,8 +125,7 @@ extern "C" {
   void web_response_remove_header(VMContext& context) {
     IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
     const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 2));
-    const std::string value = UnicodeToBytes(APITools_GetStringValue(context, 3));
-
+    
     APITools_SetIntValue(context, 0, response->DeleteHeader(name.c_str()) == S_OK);
   }
 
