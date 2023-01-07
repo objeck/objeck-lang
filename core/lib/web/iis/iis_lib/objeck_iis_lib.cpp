@@ -208,7 +208,7 @@ extern "C" {
     while(request->GetRemainingEntityBytes()) {
       DWORD bytes_read = 0;
       const HRESULT result = request->ReadEntityBody(buffer, buffer_size, FALSE, &bytes_read);
-      if(result != S_OK && ((result & 0x0000FFFF) != ERROR_HANDLE_EOF)) {
+      if(result != S_OK && ((result & 0x0000ffff) != ERROR_HANDLE_EOF)) {
         response->SetStatus(500, "Server Error in Objeck Module", 0, result);
         APITools_SetObjectValue(context, 0, nullptr);
         return;
