@@ -38,6 +38,8 @@
 #include "../../../vm/lib_api.h"
 #include "../../../shared/sys.h"
 
+#pragma comment(lib, "Ws2_32.lib")
+
 extern "C" {
   //
   // initialize library
@@ -134,6 +136,40 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void web_request_remote_address(VMContext& context) {
+    IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
+    PSOCKADDR sock_addr = request->GetRemoteAddress();
+
+    if(sock_addr != nullptr) {
+      char buffer[INET_ADDRSTRLEN];
+      inet_ntop(AF_INET, (PSOCKADDR_IN)sock_addr, buffer, INET_ADDRSTRLEN);
+      APITools_SetStringValue(context, 0, BytesToUnicode(buffer));
+    }
+    else {
+      APITools_SetStringValue(context, 0, L"");
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_request_local_address(VMContext& context) {
+    IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
+    PSOCKADDR sock_addr = request->GetLocalAddress();
+
+    if(sock_addr != nullptr) {
+      char buffer[INET_ADDRSTRLEN];
+      inet_ntop(AF_INET, (PSOCKADDR_IN)sock_addr, buffer, INET_ADDRSTRLEN);
+      APITools_SetStringValue(context, 0, BytesToUnicode(buffer));
+    }
+    else {
+      APITools_SetStringValue(context, 0, L"");
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void web_request_get_header(VMContext& context) {
     IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
     const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 2));
@@ -191,5 +227,23 @@ extern "C" {
     byte_obj[0] = (size_t)array;
 
     APITools_SetObjectValue(context, 0, byte_obj);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_response_clear_all(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 0);
+    response->Clear();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void web_response_redirect(VMContext& context) {
+    IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 1);
+    const std::string url = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    APITools_SetIntValue(context, 0, response->Redirect(url.c_str(), TRUE, TRUE) == S_OK);
   }
 }
