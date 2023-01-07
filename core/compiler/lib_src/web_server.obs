@@ -430,6 +430,23 @@ bundle Web.Server {
 		}
 
 		#~
+		Removes a HTTP header
+		@param name header name
+		@return true successful, false otherwise
+		~#
+		method : public : RemoveHeader(name : String) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@response);
+			array_args[2] := name;
+
+			Proxy->GetDllProxy()->CallFunction("web_response_remove_header", array_args);
+
+			result := array_args[0]->As(IntHolder);
+			return result->Get() = 0 ? false : true;
+		}
+
+		#~
 		Clears the entire body response
 		~#
 		method : public : ClearAll() ~ Nil {
