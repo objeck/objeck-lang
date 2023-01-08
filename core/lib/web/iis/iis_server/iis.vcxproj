@@ -100,7 +100,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>objeck_iis</TargetName>
+    <TargetName>obr_web_iis</TargetName>
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;..\..\..\..\..\core\shared;..\..\..\..\..\core\vm;..\..\..\..\..\core\vm\arch;..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
@@ -167,7 +167,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y $(ProjectDir)$(Platform)\$(Configuration)\objeck_iis.dll .. &amp;&amp; copy /y $(ProjectDir)\config.ini ..</Command>
+      <Command>copy /y $(ProjectDir)$(Platform)\$(Configuration)\*.dll .. &amp;&amp; copy /y $(ProjectDir)\config.ini ..</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
