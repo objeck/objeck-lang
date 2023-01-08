@@ -324,9 +324,8 @@ bundle GTK3 {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@window);
 			array_args[1] := attach_widget;
-
+			
 			Proxy->GetDllProxy()->CallFunction("window_set_attached_to", array_args);
-
 		}
 	}
 
