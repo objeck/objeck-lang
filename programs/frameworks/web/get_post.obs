@@ -1,6 +1,4 @@
 class GetPost {
-  @value : static : Int;
-
   function : Action(req : Web.Server.Request, res : Web.Server.Response) ~ Nil {
     path := Runtime->GetProperty("OBJECK_PATH_WEB_SERVER");
 
@@ -13,7 +11,6 @@ class GetPost {
       posted_size := posted->Size();
 
       mime_type := req->GetHeader("Content-Type");
-
       res->WriteBody("<html><body>Posted size={$posted_size}, MIME Type=<pre>{$mime_type}</pre></body></html>");
     };
   }
