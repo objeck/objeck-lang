@@ -76,7 +76,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <TargetName>libobjk_web_iis</TargetName>
+    <TargetName>libobjk_iis</TargetName>
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
