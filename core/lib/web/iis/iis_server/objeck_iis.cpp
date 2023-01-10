@@ -210,11 +210,11 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
   else {
     SetContentType("text/html", response);
     WriteResponseString("<htm><b>Was unable to initialize enviroment...</b></html>", response);
-    return RQ_NOTIFICATION_FINISH_REQUEST;
+    return RQ_NOTIFICATION_CONTINUE;
   }
 
   // end request
-  return RQ_NOTIFICATION_FINISH_REQUEST;
+  return RQ_NOTIFICATION_CONTINUE;
 }
 
 void ObjeckIIS::SetContentType(const std::string header, IHttpResponse* response)
