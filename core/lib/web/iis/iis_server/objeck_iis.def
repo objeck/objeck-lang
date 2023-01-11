@@ -1,3 +1,3 @@
-LIBRARY "objeck_iis"  
+LIBRARY "obr_iis"  
 EXPORTS  
     RegisterModule

@@ -100,14 +100,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>objeck_iis</TargetName>
+    <TargetName>obr_iis</TargetName>
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;..\..\..\..\..\core\shared;..\..\..\..\..\core\vm;..\..\..\..\..\core\vm\arch;..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>objeck_iis</TargetName>
+    <TargetName>obr_iis</TargetName>
     <IncludePath>..\..\..\..\lib\zlib\win;..\..\..\..\lib\openssl\win\include;..\..\..\..\..\core\shared;..\..\..\..\..\core\vm;..\..\..\..\..\core\vm\arch;..\..\..\..\..\core\vm\arch\win32;..\..\..\..\..\core\vm\arch\jit;..\..\..\..\..\core\vm\arch\jit\amd64;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\..\..\lib\zlib\win\x64;..\..\..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
