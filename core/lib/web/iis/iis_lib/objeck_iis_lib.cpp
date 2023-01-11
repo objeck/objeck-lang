@@ -206,6 +206,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void web_request_request_url(VMContext& context) {
+    IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
+    APITools_SetStringValue(context, 0, request->GetRawHttpRequest()->CookedUrl.pAbsPath);
+  }
+  
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void web_request_read_body(VMContext& context) {
     IHttpRequest* request = (IHttpRequest*)APITools_GetIntValue(context, 1);
     IHttpResponse* response = (IHttpResponse*)APITools_GetIntValue(context, 2);

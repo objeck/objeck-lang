@@ -18,7 +18,7 @@ class GetPost {
       };
 
       mime_type := req->GetHeader("Content-Type");
-      res->WriteBody("<html><body>MIME size={$posted_size}, size={$mime_type}<br/> <a href='a.jpg'>MIME image</a></pre></body></html>");
+      res->WriteBody("<html><body>MIME size={$posted_size}, size={$mime_type}<br/> <img src='a.jpg'/></pre></body></html>");
     };
   }
 }
