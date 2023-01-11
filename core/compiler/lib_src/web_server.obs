@@ -85,6 +85,20 @@ bundle Web.Server {
 		Gets a the remote address
 		@return remote address
 		~#
+		method : public : GetRequestUrl() ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntHolder->New(@request);
+
+			Proxy->GetDllProxy()->CallFunction("web_request_request_url", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Gets a the remote address
+		@return remote address
+		~#
 		method : public : GetRemoteAddress() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
