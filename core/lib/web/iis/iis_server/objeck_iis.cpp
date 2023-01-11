@@ -159,7 +159,7 @@ void ObjeckIIS::StartInterpreter()
 REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpContext, IN IHttpEventProvider* pProvider)
 {
   UNREFERENCED_PARAMETER(pProvider);
-
+  
   // Retrieve a pointer to the response.
   IHttpRequest* request = pHttpContext->GetRequest();
   IHttpResponse* response = pHttpContext->GetResponse();
@@ -169,6 +169,15 @@ REQUEST_NOTIFICATION_STATUS ObjeckIIS::OnBeginRequest(IN IHttpContext* pHttpCont
 #ifdef _DEBUG
     GetLogger() << "--- Starting call... ---" << std::endl;
 #endif
+
+    PCWSTR url = request->GetRawHttpRequest()->CookedUrl.pAbsPath;
+#ifdef _DEBUG
+    GetLogger() << "--- URL: " << UnicodeToBytes(url).c_str() << " ---" << std::endl;
+#endif
+    if(!wcsstr(url, L".obw")) {
+      return RQ_NOTIFICATION_CONTINUE;
+    }
+
     // execute method
     (*stack_pos) = 0;
 
