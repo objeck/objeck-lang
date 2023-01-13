@@ -155,7 +155,6 @@ void JitAmd64::RegisterRoot() {
 #ifdef _WIN64
   const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 8;
 #else
-  // TODO: validate on Linux and macOS
   const long offset = org_local_space + RED_ZONE + TMP_REG_5;
 #endif
   // get to stack locals
@@ -432,7 +431,6 @@ void JitAmd64::ProcessInstructions() {
     case MUL_INT:
     case DIV_INT:
     case MOD_INT:
-      // TODO: implement
     case BIT_AND_INT:
     case BIT_OR_INT:
     case BIT_XOR_INT:
