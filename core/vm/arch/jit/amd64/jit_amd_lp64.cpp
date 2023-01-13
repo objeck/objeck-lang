@@ -3782,8 +3782,6 @@ void JitAmd64::shl_reg_reg(Register src, Register dest)
     move_reg_reg(src, RCX);
   }
   
-  // --------------------
-
   // encode
   AddMachineCode(B(dest));
   AddMachineCode(0xd3);
@@ -3796,8 +3794,6 @@ void JitAmd64::shl_reg_reg(Register src, Register dest)
   std::wcout << L"  " << (++instr_count) << L": [shlq %" << GetRegisterName(src) 
         << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
-
-  // --------------------
   
   if(src != RCX) {
     move_mem_reg(TMP_REG_0, RBP, RCX);
@@ -3845,9 +3841,7 @@ void JitAmd64::shr_reg_reg(Register src, Register dest)
     move_reg_mem(RCX, TMP_REG_0, RBP);
     move_reg_reg(src, RCX);
   }
-  
-  // --------------------
-  
+    
   // encode
   AddMachineCode(B(dest));
   AddMachineCode(0xd3);
@@ -3860,8 +3854,6 @@ void JitAmd64::shr_reg_reg(Register src, Register dest)
   std::wcout << L"  " << (++instr_count) << L": [shrq %" << GetRegisterName(RCX) 
         << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
-
-  // --------------------
   
   if(src != RCX) {
     move_mem_reg(TMP_REG_0, RBP, RCX);
