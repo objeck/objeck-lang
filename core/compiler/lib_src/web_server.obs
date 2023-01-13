@@ -228,7 +228,7 @@ bundle Web.Server {
 	                    boundry_index += header_bytes->Size();
 	                    content_str := header_bytes->ToString();
 	                    
-	                    # parser header name/value pair
+	                    # parse header name/value pair
 	                    content_str_index := content_str->Find(':');
 	                    if(content_str_index > 0) {
 	                        header_name := content_str->SubString(content_str_index);
