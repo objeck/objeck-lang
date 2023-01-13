@@ -1,6 +1,6 @@
 # Objeck
 
-[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/CGWMgCQG)
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/zkdzFUX4)
 [![Download Objeck](https://img.shields.io/sourceforge/dt/objeck-lang.svg)](https://sourceforge.net/projects/objeck-lang/)
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
