@@ -59,9 +59,9 @@ make -f make/Makefile.obb.msys2-clang.amd64 clean; make -f make/Makefile.obb.msy
 cp obb.exe ../release/deploy-msys2-clang/bin
 
 make -f make/Makefile.obn.msys2-clang.amd64 clean; make -f make/Makefile.obn.msys2-clang.amd64
-cp obn.exe ../release/deploy-msys2-clang/lib/native/misc
+cp obn.exe ../../release/deploy-msys2-clang/lib/native/misc
 
-cp ../vm/misc/config.prop ../release/deploy-msys2-clang/lib/native/misc
+cp ../../vm/misc/config.prop ../../release/deploy-msys2-clang/lib/native/misc
 cd ../../release
 
 # copy docs
