@@ -54,7 +54,7 @@ cd ../diags
 ./build_msys2-ucrt.sh diags
 cp diags.dll ../../release/deploy-msys2-ucrt/lib/native/libobjk_diags.dll
 
-cd ../../windows/launcher
+cd ../../utils/launcher
 make -f make/Makefile.obb.msys2-ucrt.amd64 clean; make -f make/Makefile.obb.msys2-ucrt.amd64
 cp obb.exe ../release/deploy-msys2-ucrt/bin
 
@@ -90,5 +90,5 @@ if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar
 
-	mv objeck.tar.gz objeck-windows-msys2-x64_0.0.0.tgz
+	mv objeck.tar.gz objeck-utils-msys2-x64_0.0.0.tgz
 fi
