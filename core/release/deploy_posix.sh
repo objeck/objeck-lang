@@ -103,7 +103,7 @@ if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 else
 	make -f make/Makefile.obb.amd64 clean; make -f make/Makefile.obb.amd64
 fi
-cp obb ../release/deploy/bin
+cp obb ../../release/deploy/bin
 
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	make -f make/Makefile.obn.arm64 clean; make -f make/Makefile.obn.arm64
