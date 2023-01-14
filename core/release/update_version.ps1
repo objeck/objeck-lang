@@ -15,13 +15,8 @@ $version_windows = $version.Replace(".", ",")
 (Get-Content ..\shared\version.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_NUMBER@", $version_number } | Set-Content ..\shared\version.h
 (Get-Content code_doc64.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content code_doc64.cmd
 
-# update debain build files
-(Get-Content debian\build.in) | ForEach-Object { $_ -replace "@VERSION@", $version_posix } | Set-Content debian\build.sh
-(Get-Content debian\files\changelog.32.in) | ForEach-Object { $_ -replace "@VERSION_LONG@", $version_posix_long } | Set-Content debian\files\changelog.32
-(Get-Content debian\files\changelog.64.in) | ForEach-Object { $_ -replace "@VERSION_LONG@", $version_posix_long } | Set-Content debian\files\changelog.64
-
 # update window resource files
 (Get-Content ..\compiler\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\compiler\vs\objeck.rc
 (Get-Content ..\vm\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\vm\vs\objeck.rc
 (Get-Content ..\debugger\vs\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\debugger\vs\objeck.rc
-(Get-Content ..\windows\launcher\vs\builder\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\windows\launcher\vs\builder\objeck.rc
+(Get-Content ..\utils\launcher\vs\builder\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR_END@", $year_end } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\utils\launcher\vs\builder\objeck.rc

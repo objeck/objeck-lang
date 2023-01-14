@@ -1,8 +1,0 @@
-objeck-lang-i386 (2023.1-0-1) unstable; urgency=low
-
-  * Optimized stack operations for floating point operations (new)
-  * Fixed ODBC “select” bug and added missing ODBC API documentation (bug/high)
-  * Addressed error checking and Unicode conversation issues with the overloaded "File->WriteBuffer(..)","TCPSocket->WriteBuffer(..)" and "TCPSecureSocket->WriteBuffer(..)" methods (bug/high)
-  * Added missing compiler check for array assignment to array element (bug/medium)
-
- -- Randy Hollines <objeck@gmail.com>  Mon, 9 Feb 2015 17:17:00 -0800
