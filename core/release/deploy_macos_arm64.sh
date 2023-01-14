@@ -31,7 +31,7 @@ cp xcode/build/Release/obd ../release/deploy/bin
 # build native launcher
 cd ../utils/launcher
 xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build
-cp xcode/build/Release/obb ../release/deploy/bin
+cp xcode/build/Release/obb ../../release/deploy/bin
 
 xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build
 cp xcode/build/Release/obn ../../release/deploy/lib/native/misc
