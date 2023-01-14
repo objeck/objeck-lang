@@ -59,9 +59,9 @@ make -f make/Makefile.obb.msys2-ucrt.amd64 clean; make -f make/Makefile.obb.msys
 cp obb.exe ../release/deploy-msys2-ucrt/bin
 
 make -f make/Makefile.obn.msys2-ucrt.amd64 clean; make -f make/Makefile.obn.msys2-ucrt.amd64
-cp obn.exe ../release/deploy-msys2-ucrt/lib/native/misc
+cp obn.exe ../../release/deploy-msys2-ucrt/lib/native/misc
 
-cp ../vm/misc/config.prop ../release/deploy-msys2-ucrt/lib/native/misc
+cp ../../vm/misc/config.prop ../../release/deploy-msys2-ucrt/lib/native/misc
 cd ../../release
 
 # copy docs
