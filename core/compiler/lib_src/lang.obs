@@ -1,7 +1,7 @@
 #~
 Objeck system classes.
 Copyright (c) 2023 Randy Hollines
-note: compile compiler with -D_SYSTEM flag
+note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
 
 #~
