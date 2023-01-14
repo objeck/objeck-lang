@@ -66,8 +66,6 @@ cd ..
 
 REM copy examples
 mkdir deploy64\examples\
-mkdir deploy64\examples\doc\
-mkdir deploy64\examples\tiny\
 
 mkdir deploy64\examples\media\
 del  /s /q ..\..\programs\*.obe
