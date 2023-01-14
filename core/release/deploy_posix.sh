@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ $# -eq 0 ]; then
-	echo "os: 64(linux amd64); rpi(linux arm64); macos (arm64)"
+	echo "os: 64(linux amd64); rpi(linux arm64); macos (macos amd64)"
 	exit 1
 fi
 
