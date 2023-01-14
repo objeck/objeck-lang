@@ -110,9 +110,9 @@ if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 else
 	make -f make/Makefile.obn.amd64 clean; make -f make/Makefile.obn.amd64
 fi
-cp obn ../release/deploy/lib/native/misc/
+cp obn ../../release/deploy/lib/native/misc/
 
-cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
+cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 cd ../../release
 
 # copy docs
