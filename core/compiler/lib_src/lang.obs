@@ -290,12 +290,21 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		#~
+		Set all array elements to zero
+		@param b byte array
+		~#
 		function : native : Clear(b : Byte[]) ~ Nil {
 			each(i : b) {
 				b[i] := 0;
 			};
 		}
 		
+		#~
+		Converts the byte array to a character array
+		@param b array
+		@return character array
+		~#
 		function : ToUnicode(b : Byte[]) ~ Char[] {
 			BYTES_TO_UNICODE;
 		}
@@ -786,12 +795,21 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		#~
+		Set all array elements to zero
+		@param c array
+		~#
 		function : native : Clear(c : Char[]) ~ Nil {
 			each(i : c) {
 				c[i] := 0;
 			};
 		}
 		
+		#~
+		Converts the character array to a byte array
+		@param c character array
+		@return byte array
+		~#
 		function : ToBytes(c : Char[]) ~ Byte[] {		
 			UNICODE_TO_BYTES;
 		}
@@ -1158,6 +1176,10 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		#~
+		Set all array elements to zero
+		@param a array
+		~#
 		function : native : Clear(a : Int[]) ~ Nil {
 			each(i : a) {
 				a[i] := 0;
@@ -1630,6 +1652,10 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		#~
+		Set all array elements to zero
+		@param f array
+		~#
 		function : native : Clear(f : Float[]) ~ Nil {
 			each(i : f) {
 				f[i] := 0.0;
