@@ -29,7 +29,7 @@ xcodebuild -project xcode/Debugger.xcodeproj clean build
 cp xcode/build/Release/obd ../release/deploy/bin
 
 # build native launcher
-cd ../windows/launcher
+cd ../utils/launcher
 xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build
 cp xcode/build/Release/obb ../release/deploy/bin
 
