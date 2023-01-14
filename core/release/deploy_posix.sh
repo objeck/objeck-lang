@@ -97,7 +97,7 @@ else
 	cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 fi
 
-cd ../../windows/launcher
+cd ../../utils/launcher
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64
 else
