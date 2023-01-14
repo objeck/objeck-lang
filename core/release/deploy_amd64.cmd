@@ -24,7 +24,7 @@ REM native launcher
 cd ..\utils\launcher
 devenv utils\launcher.sln /rebuild "Release|x64"
 copy x64\Release\obn.exe ..\..\release\deploy64\lib\native\misc
-copy x64\Release\obb.exe ..\release\deploy64\bin
+copy x64\Release\obb.exe ..\..\release\deploy64\bin
 copy ..\..\vm\misc\config.prop ..\..\release\deploy64\lib\native\misc
 cd ..\..\release
 
@@ -72,10 +72,6 @@ del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs deploy64\examples\
 xcopy /e ..\..\programs\deploy\media\*.png deploy64\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav deploy64\examples\media\
-xcopy /e ..\..\programs\doc\* deploy64\examples\doc\
-xcopy /e ..\..\programs\tiny\* deploy64\examples\tiny\
-del  /s /q ..\..\programs\tiny\*.obe
-del  /s /q ..\..\programs\tiny\*.e
 
 REM build and update docs
 mkdir deploy64\doc 
@@ -93,8 +89,8 @@ if [%1] NEQ [deploy] goto end
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64"
 	xcopy /e deploy64 "%USERPROFILE%\Desktop\objeck-lang-win64"
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
-	copy ..\..\images\setup_icons\*.ico "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
-	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
+	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
+	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy /y ..\utils\setup64 .
