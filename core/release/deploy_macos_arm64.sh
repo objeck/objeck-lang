@@ -34,8 +34,8 @@ xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build
 cp xcode/build/Release/obb ../release/deploy/bin
 
 xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build
-cp xcode/build/Release/obn ../release/deploy/lib/native/misc
-cp ../vm/misc/config.prop ../release/deploy/lib/native/misc
+cp xcode/build/Release/obn ../../release/deploy/lib/native/misc
+cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 
 # build libraries
 cd ../../lib/openssl
