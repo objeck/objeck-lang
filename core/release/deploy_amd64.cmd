@@ -23,9 +23,9 @@ copy ..\debugger\Release\win64\*.exe deploy64\bin
 REM native launcher
 cd ..\utils\launcher
 devenv utils\launcher.sln /rebuild "Release|x64"
-copy x64\Release\obn.exe ..\release\deploy64\lib\native\misc
+copy x64\Release\obn.exe ..\..\release\deploy64\lib\native\misc
 copy x64\Release\obb.exe ..\release\deploy64\bin
-copy ..\vm\misc\config.prop ..\release\deploy64\lib\native\misc
+copy ..\..\vm\misc\config.prop ..\..\release\deploy64\lib\native\misc
 cd ..\..\release
 
 REM libraries
