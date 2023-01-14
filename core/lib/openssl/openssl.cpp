@@ -179,7 +179,7 @@ extern "C" {
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
-    size_t input_size = APITools_GetArraySize(input_array) - 1;
+    int input_size = APITools_GetArraySize(input_array) - 1;
     const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
     size_t* output_holder = APITools_GetIntAddress(context, 0);
 
