@@ -1909,7 +1909,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{0D2262AB-564A-46B2-BB35-8EB129740DBB}"
-        "PackageCode" = "8:{B0D12623-7164-4B18-BD09-0CA2F15CAA6D}"
+        "PackageCode" = "8:{427ABC1A-01C8-429D-882E-8AB8474F1E0D}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -2043,7 +2043,7 @@
         }
         "Shortcut"
         {
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_81F7D17691B14F8EAECF69FB06360709"
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_2798F6778CFE40B88E67EDE16623E1F5"
             {
             "Name" = "8:Objeck"
             "Arguments" = "8:"
