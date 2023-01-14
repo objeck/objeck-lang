@@ -39,7 +39,7 @@
 #include <list>
 #include <vector>
 #include <filesystem>
-#include "../shared/version.h"
+#include "../../shared/version.h"
 
 #ifdef _WIN32
 #include <windows.h>
