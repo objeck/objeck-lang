@@ -4662,8 +4662,8 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     }
 
     if(method_call->GetEnumItem()) {
-      INT_VALUE value = method_call->GetEnumItem()->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, value));
+      long value = method_call->GetEnumItem()->GetId();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, (int)value));
       if(method_call->GetCastType() && method_call->GetCastType()->GetType() == frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, I2F));
       }
@@ -4674,7 +4674,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         EmitVariable(method_call->GetVariable());  
       }
       else if(method_call->GetLibraryEnumItem()) {
-        INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();        
+        long value = method_call->GetLibraryEnumItem()->GetId();        
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, value));
       }
     }
