@@ -588,8 +588,8 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
-    uLong dest_len;
-    char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
+    unsigned long dest_len;
+    char* out = OutputStream::Uncompress(buffer, (unsigned long)buffer_size, dest_len);
     if(!out) {
       std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);
@@ -911,8 +911,8 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
   
   int line_num = -1;
 
-  const uint32_t num_instrs = ReadUnsigned();
-  for(uint32_t i = 0; i < num_instrs; ++i) {
+  const unsigned long num_instrs = ReadUnsigned();
+  for(unsigned long i = 0; i < num_instrs; ++i) {
     if(is_debug) {
       line_num = ReadInt();
     }    
@@ -920,11 +920,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, (INT_VALUE)ReadInt()));
+      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt()));
       break;
       
     case LOAD_CHAR_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_LIT, (INT_VALUE)ReadChar()));
+      instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_LIT, (int)ReadChar()));
       break;
       
     case SHL_INT:
@@ -992,39 +992,39 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case NEW_INT_ARY: {
-      const INT_VALUE dim = ReadInt();
+      const int dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_INT_ARY, dim));
     }
       break;
 
     case NEW_FLOAT_ARY: {
-      const INT_VALUE dim = ReadInt();
+      const int dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_FLOAT_ARY, dim));
     }
       break;
 
     case NEW_BYTE_ARY: {
-      const INT_VALUE dim = ReadInt();
+      const int dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_BYTE_ARY, dim));
 
     }
       break;
 
     case NEW_CHAR_ARY: {
-      const INT_VALUE dim = ReadInt();
+      const int dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_CHAR_ARY, dim));
       
     }
       break;
       
     case NEW_OBJ_INST: {
-      const INT_VALUE obj_id = ReadInt();
+      const int obj_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
 
     case NEW_FUNC_INST: {
-      const INT_VALUE mem_size = ReadInt();
+      const int mem_size = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_FUNC_INST, mem_size));
     }
       break;
@@ -1037,7 +1037,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LBL: {
-      const INT_VALUE id = ReadInt();
+      const int id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LBL, id));
     }
       break;
@@ -1111,13 +1111,13 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case OBJ_INST_CAST: {
-      const INT_VALUE to_id = ReadInt();
+      const int to_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_INST_CAST, to_id));
     }
       break;
 
     case OBJ_TYPE_OF: {
-      const INT_VALUE check_id = ReadInt();
+      const int check_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_TYPE_OF, check_id));
     }
       break;

@@ -66,11 +66,11 @@ namespace backend {
       out_stream.WriteByte(value);
     }
 
-    inline void WriteInt(int32_t value, OutputStream& out_stream) {
+    inline void WriteInt(long value, OutputStream& out_stream) {
       out_stream.WriteInt(value);
     }
 
-    inline void WriteUnsigned(uint32_t value, OutputStream& out_stream) {
+    inline void WriteUnsigned(unsigned long value, OutputStream& out_stream) {
       out_stream.WriteUnsigned(value);
     }
 
