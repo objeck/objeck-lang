@@ -2559,7 +2559,7 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long index = (long)PopInt(op_stack, stack_pos);
-  long* value_str = program->GetIntStrings()[index];
+  int32_t* value_str = program->GetIntStrings()[index];
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {

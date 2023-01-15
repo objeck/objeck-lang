@@ -49,7 +49,7 @@
 
 // memory size for local stack frames
 #define LOCAL_SIZE 1024
-#define INT_VALUE long
+#define INT_VALUE int32_t
 #define INT64_VALUE int64_t
 #define FLOAT_VALUE double
 
