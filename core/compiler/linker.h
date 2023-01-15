@@ -713,18 +713,18 @@ class Library {
   std::vector<FloatStringInstruction*> float_strings;
   std::vector<std::wstring> bundle_names;
   
-  inline int ReadInt() {
-    long value = *((long*)buffer);
+  inline int32_t ReadInt() {
+    int32_t value = *((long*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline void ReadDummyInt() {
-    buffer += sizeof(long);
+    buffer += sizeof(int32_t);
   }
 
-  inline unsigned long ReadUnsigned() {
-    unsigned long value = *((unsigned long*)buffer);
+  inline uint32_t ReadUnsigned() {
+    uint32_t value = *((uint32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
