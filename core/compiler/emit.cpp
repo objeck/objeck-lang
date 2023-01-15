@@ -198,13 +198,15 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
     classes[i]->Write(emit_lib, out_stream);
   }
   
-  std::wcout << L"Compiled " << num_src_classes << (num_src_classes > 1 ? L" source classes" : L" source class");
+  std::wcout << L"Compiled " << num_src_classes << (num_src_classes > 1 ? L" classes" : L" class");
   if(is_debug) {
     std::wcout << L" with debug symbols";
   }
   std::wcout << L'.' << std::endl;
   
-  std::wcout << L"Linked " << num_lib_classes << (num_lib_classes > 1 ? L" library classes." : L" library class.") << std::endl;
+  if(num_lib_classes > 0) {
+    std::wcout << L"Linked " << num_lib_classes << (num_lib_classes > 1 ? L" library classes." : L" library class.") << std::endl;
+  }
 }
 
 /****************************

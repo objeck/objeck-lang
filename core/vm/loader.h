@@ -54,13 +54,13 @@ class Loader {
   std::map<const std::wstring, const int> params;
 
   inline long ReadInt() {
-    long value = *((long*)buffer);
+    int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline unsigned long ReadUnsigned() {
-    unsigned long value = *((unsigned long*)buffer);
+    uint32_t value = *((uint32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }

@@ -354,13 +354,13 @@ public:
     out_buffer.push_back(value);
   }
 
-  inline void WriteInt(long value) {
+  inline void WriteInt(int32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
-  inline void WriteUnsigned(unsigned long value) {
+  inline void WriteUnsigned(int32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
