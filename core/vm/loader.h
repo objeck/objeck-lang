@@ -53,14 +53,14 @@ class Loader {
   bool is_web;
   std::map<const std::wstring, const int> params;
 
-  inline int ReadInt() {
-    int32_t value = *((int32_t*)buffer);
+  inline long ReadInt() {
+    long value = *((long*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
-  inline uint32_t ReadUnsigned() {
-    uint32_t value = *((uint32_t*)buffer);
+  inline unsigned long ReadUnsigned() {
+    unsigned long value = *((unsigned long*)buffer);
     buffer += sizeof(value);
     return value;
   }

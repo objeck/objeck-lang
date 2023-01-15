@@ -472,10 +472,10 @@ void Loader::LoadInitializationCode(StackMethod* method)
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   int line_num = -1;
-  const uint32_t num_instrs = ReadUnsigned();
+  const unsigned long num_instrs = ReadUnsigned();
   StackInstr** mthd_instrs = new StackInstr*[num_instrs];
 
-  for(uint32_t i = 0; i < num_instrs; ++i) {
+  for(unsigned long i = 0; i < num_instrs; ++i) {
     const int type = ReadByte();
     if(is_debug) {
       line_num = ReadInt();

@@ -49,7 +49,7 @@
 
 // memory size for local stack frames
 #define LOCAL_SIZE 1024
-#define INT_VALUE int32_t
+#define INT_VALUE long
 #define INT64_VALUE int64_t
 #define FLOAT_VALUE double
 
@@ -318,8 +318,8 @@ public:
       return false;
     }
 
-    uLong dest_len;
-    char* compressed = Compress(out_buffer.data(), (uLong)out_buffer.size(), dest_len);
+    unsigned long dest_len;
+    char* compressed = Compress(out_buffer.data(), (unsigned long)out_buffer.size(), dest_len);
     if(!compressed) {
       std::wcerr << L"Unable to compress file: '" << file_name << L"'" << std::endl;
       file_out.close();
@@ -354,13 +354,13 @@ public:
     out_buffer.push_back(value);
   }
 
-  inline void WriteInt(int32_t value) {
+  inline void WriteInt(long value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
-  inline void WriteUnsigned(uint32_t value) {
+  inline void WriteUnsigned(unsigned long value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
@@ -394,8 +394,8 @@ public:
   //
   // compresses a stream
   //
-  static char* Compress(const char* src, uLong src_len, uLong &out_len) {
-    const uLong buffer_max = compressBound(src_len);
+  static char* Compress(const char* src, unsigned long src_len, unsigned long &out_len) {
+    const unsigned long buffer_max = compressBound(src_len);
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     out_len = buffer_max;
@@ -412,10 +412,10 @@ public:
   //
   // compresses a stream
   //
-  static char* Uncompress(const char* src, uLong src_len, uLong &out_len) {
-    const uLong buffer_limit = 67108864; // 64 MB
+  static char* Uncompress(const char* src, unsigned long src_len, unsigned long &out_len) {
+    const unsigned long buffer_limit = 67108864; // 64 MB
 
-    uLong buffer_max = src_len << 3;
+    unsigned long buffer_max = src_len << 3;
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     bool success = false;
