@@ -714,17 +714,17 @@ class Library {
   std::vector<std::wstring> bundle_names;
   
   inline int ReadInt() {
-    int32_t value = *((int32_t*)buffer);
+    long value = *((long*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline void ReadDummyInt() {
-    buffer += sizeof(int32_t);
+    buffer += sizeof(long);
   }
 
-  inline uint32_t ReadUnsigned() {
-    uint32_t value = *((uint32_t*)buffer);
+  inline unsigned long ReadUnsigned() {
+    unsigned long value = *((unsigned long*)buffer);
     buffer += sizeof(value);
     return value;
   }

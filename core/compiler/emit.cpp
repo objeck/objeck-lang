@@ -304,7 +304,7 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   entries->Write(is_debug, out_stream);
 
   // write statements
-  uint32_t num_instrs = 0;
+  unsigned long num_instrs = 0;
   for(size_t i = 0; i < blocks.size(); ++i) {
     num_instrs += (int)blocks[i]->GetInstructions().size();
   }
