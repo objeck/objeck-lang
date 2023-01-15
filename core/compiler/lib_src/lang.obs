@@ -3033,6 +3033,7 @@ bundle System {
 				@string := temp;
 			};
 			
+			end := array->Size();	
 			for(i := 0; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
