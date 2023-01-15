@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
   usage += L"  -alt:    [optional][end-flag] use alternative C like syntax\n";
   usage += L"  -debug:  [optional][end-flag] compile with debug symbols\n";
   usage += L"  -strict: [input][end-flag] exclude default system libraries and specify them manually\n";
-  usage += L"\nExample: \"obc -src hello.obs\"\n\nVersion: ";
+  usage += L"\nExample: \"obc hello.obs\"\n\nVersion: ";
   usage += VERSION_STRING;
   
 #if defined(_WIN64) && defined(_WIN32)
