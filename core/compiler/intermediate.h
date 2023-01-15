@@ -70,7 +70,7 @@ class IntermediateEmitter {
   int new_char_str_count; 
   int cur_line_num;
   LibraryClass*  string_cls;
-  int string_cls_id;
+  long string_cls_id;
   std::stack<std::pair<int, int> > break_labels;
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;

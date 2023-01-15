@@ -362,7 +362,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     break;
 
   case LOAD_CHAR_LIT:
-    WriteChar(operand, out_stream);
+    WriteChar((wchar_t)operand, out_stream);
     break;
 
   case instructions::ASYNC_MTHD_CALL:
