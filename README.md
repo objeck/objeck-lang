@@ -6,7 +6,7 @@
 
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
-__News (1/15/2023):__ Happy New Year, everyone! Thank you all for submitting new project ideas. For 2023, I will take Objeck in a different direction and focus on ML utilizing the [TensorFlow](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/c) framework. It will be a fun ride, I am looking for people interested in data science, ML and AI to assist along the way.
+__News (1/15/2023):__ Happy New Year, everyone! Thank you all for submitting new project ideas. For 2023, I will take Objeck in a different direction and focus on ML utilizing the [TensorFlow](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/cc) framework. It will be a fun ride, I am looking for people interested in data science, ML and AI to assist along the way.
 
 ```ruby
 class Hello {
