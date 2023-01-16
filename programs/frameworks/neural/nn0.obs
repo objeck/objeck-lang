@@ -1,6 +1,6 @@
 use System.Matrix;
 use System.IO.Filesystem;
-use Collection;
+use Collection.Generic;
 
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {
@@ -11,7 +11,7 @@ class BasicAi {
 
 			value := IntHolder->New();
 			each(i : lines) {
-				input := GetInput(lines->Get(i)->As(String), value);
+				input := GetInput(lines->Get(i), value);
 				dim := input->Size();
 				rows := dim[0];
 				cols := dim[1];
@@ -22,8 +22,6 @@ class BasicAi {
 				target->ToString()->PrintLine();
 				"---"->PrintLine();
 			};
-
-			
 		};
 	}
 
@@ -57,9 +55,7 @@ class BasicAi {
 	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
 		matrix := Float->New[784, 1];
 
-		row := -1; col := 0;
 		values := line->Split(",");
-
 		index := values[0];
 		value->Set(index->ToInt());
 
@@ -70,8 +66,8 @@ class BasicAi {
 		return matrix;
 	}
 
-	function : ReadLines(file : String) ~ Vector {
-		lines := Vector->New();
+	function : ReadLines(file : String) ~ Vector<String> {
+		lines := Vector->New()<String>;
 
 		reader := FileReader->New(file);
 		leaving {
