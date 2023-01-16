@@ -84,7 +84,7 @@ bundle Web.HTTP {
 		
 		#~
 		Gets port
-		@return por, -1 if not present
+		@return port, -1 if not present
 		~#
 		method : public : GetPort() ~ Int {
 			if(@parsed) {
