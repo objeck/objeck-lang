@@ -6,7 +6,7 @@
 
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
-__News:__ 
+### Latest
 
 _1/16/2023_: I am looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be a one person show. Drop me a note if you are interested.
 
