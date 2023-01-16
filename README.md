@@ -1,8 +1,8 @@
 # Objeck
 
-[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/zkdzFUX4)
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/zkdzFUX4)
 
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
