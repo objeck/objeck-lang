@@ -1,5 +1,4 @@
 # Objeck
-
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
 [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/zkdzFUX4)
@@ -17,7 +16,6 @@ class Hello {
 ```
 
 ### Latest
-
 1/16/2023: Looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be a one person show. Drop me a note if interested.
 
 1/15/2023: Happy New Year, everyone! Thank you all for submitting new project ideas. For 2023, I will take Objeck in a different direction and focus on ML utilizing the [TensorFlow](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/cc) framework. It will be a fun ride, I am looking for people interested in data science, ML and AI to assist along the way.
