@@ -8,7 +8,7 @@ Objeck is an object-oriented programming language with functional features. Obje
 
 ### Latest
 
-_1/16/2023_: Looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be a one person show. Drop me a note if you are interested.
+_1/16/2023_: Looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be a one person show. Drop me a note if interested.
 
  _1/15/2023_: Happy New Year, everyone! Thank you all for submitting new project ideas. For 2023, I will take Objeck in a different direction and focus on ML utilizing the [TensorFlow](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/cc) framework. It will be a fun ride, I am looking for people interested in data science, ML and AI to assist along the way.
 
@@ -24,7 +24,7 @@ class Hello {
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
-__Notable features__
+### Notable Features
 * Object-oriented with functional features
   * Classes, interfaces and first-class functions
   * Generics with type boxing
