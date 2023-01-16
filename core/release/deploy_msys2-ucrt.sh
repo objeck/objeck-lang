@@ -56,7 +56,7 @@ cp diags.dll ../../release/deploy-msys2-ucrt/lib/native/libobjk_diags.dll
 
 cd ../../utils/launcher
 make -f make/Makefile.obb.msys2-ucrt.amd64 clean; make -f make/Makefile.obb.msys2-ucrt.amd64
-cp obb.exe ../release/deploy-msys2-ucrt/bin
+cp obb.exe ../../release/deploy-msys2-ucrt/bin
 
 make -f make/Makefile.obn.msys2-ucrt.amd64 clean; make -f make/Makefile.obn.msys2-ucrt.amd64
 cp obn.exe ../../release/deploy-msys2-ucrt/lib/native/misc
