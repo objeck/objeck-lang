@@ -8,9 +8,9 @@ Objeck is an object-oriented programming language with functional features. Obje
 
 ### Latest
 
-_1/16/2023_: Looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be a one person show. Drop me a note if interested.
+__1/16/2023__: Looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be a one person show. Drop me a note if interested.
 
- _1/15/2023_: Happy New Year, everyone! Thank you all for submitting new project ideas. For 2023, I will take Objeck in a different direction and focus on ML utilizing the [TensorFlow](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/cc) framework. It will be a fun ride, I am looking for people interested in data science, ML and AI to assist along the way.
+ __1/15/2023__: Happy New Year, everyone! Thank you all for submitting new project ideas. For 2023, I will take Objeck in a different direction and focus on ML utilizing the [TensorFlow](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/cc) framework. It will be a fun ride, I am looking for people interested in data science, ML and AI to assist along the way.
 
 ```ruby
 class Hello {
