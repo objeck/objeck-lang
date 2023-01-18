@@ -73,13 +73,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\lib\x86;..\..\..\openssl\win\x86\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\..\..\openssl\win\include;..\..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\lib\x86;..\..\..\..\openssl\win\x86\lib;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_gtk3</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\..\openssl\win\include;..\..\include;..\..\include\harfbuzz;..\..\include\gio-win32-2.0;..\..\include\gtk-3.0;..\..\include\pango-1.0;..\..\include\cairo;..\..\include\gdk-pixbuf-2.0;..\..\include\atk-1.0;..\..\include\glib-2.0;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\openssl\win\include;..\..\include;..\..\include\harfbuzz;..\..\include\gio-win32-2.0;..\..\include\gtk-3.0;..\..\include\pango-1.0;..\..\include\cairo;..\..\include\gdk-pixbuf-2.0;..\..\include\atk-1.0;..\..\include\glib-2.0;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\lib;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_gtk3</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
@@ -87,14 +87,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetName>libobjk_gtk3</TargetName>
-    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\lib\x86;..\..\..\openssl\win\x86\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\..\..\openssl\win\include;..\..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\lib\x86;..\..\..\..\openssl\win\x86\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>libobjk_gtk3</TargetName>
-    <IncludePath>..\..\..\openssl\win\include;..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\lib\x64;..\..\..\openssl\win\x64\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\..\..\openssl\win\include;..\..\..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\lib\x64;..\..\..\..\openssl\win\x64\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
   </PropertyGroup>

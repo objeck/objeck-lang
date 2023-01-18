@@ -31,8 +31,8 @@
  ***************************************************************************/
 
 #include <gtk/gtk.h>
-#include "../../vm/lib_api.h"
-#include "../../shared/sys.h"
+#include "../../../vm/lib_api.h"
+#include "../../../shared/sys.h"
 
 extern "C" {
 	//
