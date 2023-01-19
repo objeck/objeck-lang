@@ -53,7 +53,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 | :---: | :----: | :---: | :---: | :---: |
 ![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
 
-## Platform Architecture
+## Architecture
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
