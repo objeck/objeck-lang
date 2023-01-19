@@ -1,7 +1,13 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			Query.Structured.Table->FromFilesystem("foo", args[0])->Query("select name from foo where name like '%.obl'")->ToString()->PrintLine();
+			table_name := "foo";
+			
+			Query.Structured.Table
+				->FromFilesystem("{$table_name}", args[0])
+				->Query("select name from {$table_name} where name like '%.obl'")
+				->ToString()
+				->PrintLine();
 		};
 	}
 }
