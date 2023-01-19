@@ -345,11 +345,11 @@ class NeuralNetwork {
 	function : ShowProgress(count : Int, max : Int) ~ Nil {
 		done := ((count->As(Float) / max->As(Float)) * 100.0)->As(Int);
 		if(done < 100 & done > 9) {
-			"\b{$done}%\b\b"->Print();	
+			"\b{$done}%\b\b\b"->Print();	
 			System.IO.Standard->Flush();
 		}
 		else if(done >= 1) {
-			"\b{$done}%\b"->Print();	
+			"\b{$done}%\b\b"->Print();	
 			System.IO.Standard->Flush();
 		}
 		else {
