@@ -302,10 +302,8 @@ class NeuralNetwork {
 
 	function : ParseInput(line : String, value : IntHolder) ~ Float[,] {
 		matrix := Float->New[784, 1];
-
-		row := -1; col := 0;
+		
 		values := line->Split(",");
-
 		index := values[0];
 		value->Set(index->ToInt());
 
@@ -348,15 +346,15 @@ class NeuralNetwork {
 		done := ((count->As(Float) / max->As(Float)) * 100.0)->As(Int);
 		if(done < 100 & done > 9) {
 			"\b{$done}%\b\b"->Print();	
-			System.IO.Console->Flush();
+			System.IO.Standard->Flush();
 		}
 		else if(done >= 1) {
 			"\b{$done}%\b"->Print();	
-			System.IO.Console->Flush();
+			System.IO.Standard->Flush();
 		}
 		else {
 			"\b0%\b"->Print();	
-			System.IO.Console->Flush();
+			System.IO.Standard->Flush();
 		};		
 	}
 }

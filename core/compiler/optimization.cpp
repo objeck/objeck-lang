@@ -999,12 +999,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         int local_instr_offset = 1;
         std::vector<IntermediateDeclaration*> current_dclrs = current_entries->GetParameters();
         for(size_t j = 0; j < current_dclrs.size(); ++j) {
-          if(current_dclrs[j]->GetType() == FLOAT_PARM) {
-            local_instr_offset += 2;
-          }
-          else {
-            local_instr_offset++;
-          }
+          local_instr_offset++;
         }
 
         if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
