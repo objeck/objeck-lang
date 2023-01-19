@@ -1,4 +1,4 @@
-## JIT Compiler for ARM64 (Apple Silicon and Raspberry Pi)
+## JIT Compiler for ARM64 (Apple Silicon and Raspberry Pi 64-bit)
 Code now released and stable.
 
 While the instruction set for ARMv7 is very similar to ARMv8 the instruction encoding is very different. There are 32 integer and floating point registers an increase. Values stored in volatile registers need to be saved between function calls. ARMv8 does not support novel conditional instruction execution.
