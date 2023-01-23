@@ -1942,8 +1942,8 @@ bundle Web.HTTP {
 		Parses multipart encoding
 		@return content parts
 		~#
-	    method : public : native : Parse() ~ Vector<MultipartType> {
-	        multipart_content := Vector->New()<MultipartType>;
+	    method : public : native : Parse() ~ Vector<MultipartContent> {
+	        multipart_content := Vector->New()<MultipartContent>;
 
 	        # read encoding string
 	        marker_bytes := ReadLine(0, @encoded);
@@ -2023,7 +2023,7 @@ bundle Web.HTTP {
 	            };
 	            boundry_index += 2;
 
-	            multipart_content->AddBack(MultipartType->New(headers, content_bytes));
+	            multipart_content->AddBack(MultipartContent->New(headers, content_bytes));
 	        };
 
 			# read ending boundary
@@ -2079,11 +2079,11 @@ bundle Web.HTTP {
 	        return false;
 	    }
 	}
-	
+
 	#~
 	Multipart content type
 	~#
-	class MultipartType {
+	class MultipartContent {
 	    @headers : Map<String, String>;
 	    @content : Byte[];
 
@@ -2099,6 +2099,14 @@ bundle Web.HTTP {
 		~#
 	    method : public : GetHeader(name : String) ~ String {    
 	        return @headers->Find(name);
+	    }
+
+	    #~
+		Get MIME content header names
+		@return header names
+		~#
+	    method : public : GetHeaderNames() ~ Vector<String> {    
+	        return @headers->GetKeys()<String>;
 	    }
 
 	    #~
