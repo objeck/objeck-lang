@@ -1942,8 +1942,8 @@ bundle Web.HTTP {
 		Parses multipart encoding
 		@return content parts
 		~#
-	    method : public : native : Parse() ~ Vector<ContentType> {
-	        multipart_content := Vector->New()<ContentType>;
+	    method : public : native : Parse() ~ Vector<MultipartType> {
+	        multipart_content := Vector->New()<MultipartType>;
 
 	        # read encoding string
 	        marker_bytes := ReadLine(0, @encoded);
@@ -2023,7 +2023,7 @@ bundle Web.HTTP {
 	            };
 	            boundry_index += 2;
 
-	            multipart_content->AddBack(ContentType->New(headers, content_bytes));
+	            multipart_content->AddBack(MultipartType->New(headers, content_bytes));
 	        };
 
 			# read ending boundary
@@ -2083,7 +2083,7 @@ bundle Web.HTTP {
 	#~
 	Multipart content type
 	~#
-	class ContentType {
+	class MultipartType {
 	    @headers : Map<String, String>;
 	    @content : Byte[];
 
