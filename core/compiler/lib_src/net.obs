@@ -1731,6 +1731,19 @@ bundle Web.HTTP {
 		method : public : GetReason() ~ String {
 			return @reason;
 		}		
+
+		#~
+		Get the reason string
+		@return reason sting
+		~#
+		method : public : ToString() ~ String {
+			if(@content <> Nil) {
+				content_size := @content->Size();
+				return "code={$@code}, reason={$@reason}, content_size={$content_size}";
+			};
+
+			return "<Nil>";
+		}
 	}
 	
 	#~
@@ -1909,6 +1922,192 @@ bundle Web.HTTP {
 		@return content
 		~#
 		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+	}
+
+	#~
+	Multipart encoding
+	~#
+	class MultipartEncoding {
+		@encoded : Byte[];
+
+		#~
+		Parses multipart encoding
+		@param encoded encoded bytes
+		~#
+		New(encoded : Byte[]) {
+			@encoded := encoded;
+		}
+		
+		#~
+		Parses multipart encoding
+		@return content parts
+		~#
+	    method : public : native : Parse() ~ Vector<ContentType> {
+	        multipart_content := Vector->New()<ContentType>;
+
+	        # read encoding string
+	        marker_bytes := ReadLine(0, @encoded);
+	        if(marker_bytes = Nil) {
+	            return Nil;
+	        };
+
+	        encoding_size := @encoded->Size();
+	        
+	        # fetch all markers
+	        marker_indexes := Byte->FindAll(@encoded, marker_bytes);
+	        if(marker_indexes = Nil) {
+	            return Nil;
+	        };
+
+	        boundry_index := 0;
+	        for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
+	            boundary_bytes := ReadLine(marker_indexes[i], @encoded);
+	            if(boundary_bytes = Nil) {
+	                return Nil;
+	            };
+	            boundry_index += boundary_bytes->Size();
+
+	            # read white space
+	            if(<>MatchSpace(boundry_index, @encoded)) {
+	                return Nil;
+	            };
+	            boundry_index += 2;
+	 
+	            # read content headers
+	            done := false;
+	            headers := Map->New()<String, String>;
+	            do {
+	                # read content line
+	                header_bytes := ReadLine(boundry_index, @encoded);
+	                if(header_bytes <> Nil) {            
+	                    boundry_index += header_bytes->Size();
+	                    content_str := header_bytes->ToString();
+	                    
+	                    # parse header name/value pair
+	                    content_str_index := content_str->Find(':');
+	                    if(content_str_index > 0) {
+	                        header_name := content_str->SubString(content_str_index);
+	                        content_str_index += 2;
+	                        header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
+	                        
+	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
+	                            headers->Insert(header_name, header_value);
+	                        };
+	                    };
+	                }
+	                else {
+	                    done := true;
+	                };
+
+	                # read white space
+	                if(<>MatchSpace(boundry_index, @encoded)) {
+	                    return Nil;
+	                };
+	                boundry_index += 2;
+	            }
+	            while(<>done);
+	            
+	            # read content
+	            content_size := marker_indexes[i + 1] - boundry_index - 2;
+	            
+	            content_bytes := Byte->New[content_size];
+	            if(Runtime->Copy(content_bytes, 0, @encoded, boundry_index, content_size)) {
+	                content_str := String->New(content_bytes);
+	                ", content: |{$content_str}|"->PrintLine();
+	            };
+	            boundry_index += content_bytes->Size();
+
+	            # read white space
+	            if(<>MatchSpace(boundry_index, @encoded)) {
+	                return Nil;
+	            };
+	            boundry_index += 2;
+
+	            multipart_content->AddBack(ContentType->New(headers, content_bytes));
+	        };
+
+			# read ending boundary
+	        boundary_bytes := ReadLine(marker_indexes[marker_indexes->Size() - 1], @encoded);
+	        if(boundary_bytes = Nil) {
+	            return Nil;
+	        };
+	        boundry_index += boundary_bytes->Size();
+
+	        # read white space
+	        if(<>MatchSpace(boundry_index, @encoded)) {
+	            return Nil;
+	        };
+	        boundry_index += 2;
+
+	        boundary_str := boundary_bytes->ToString();
+	        if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
+	            return multipart_content;
+	        };
+
+	        return Nil;
+	    }
+
+	    method : native : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
+	        i := offset;
+	        if(i < encoded->Size()) {
+	            done := false;
+	            read := 0;
+	            while(<>done & i < encoded->Size()) {
+	                byte := encoded[i++];
+	                if(byte = '\r') {
+	                    done := true;
+	                }
+	                else {
+	                    read += 1;
+	                };
+	            };
+
+	            line := Byte->New[read];
+	            if(Runtime->Copy(line, 0, encoded, offset, read)) {
+	                return line;
+	            };
+	        };
+
+	        return Nil;
+	    }
+
+	    method : native : MatchSpace(offset : Int, encoded : Byte[]) ~ Bool {
+	        if(offset + 1 < encoded->Size()) {
+	            return encoded[offset] = '\r' & encoded[offset + 1] = '\n';
+	        };
+
+	        return false;
+	    }
+	}
+	
+	#~
+	Multipart content type
+	~#
+	class ContentType {
+	    @headers : Map<String, String>;
+	    @content : Byte[];
+
+	    New(headers :  Map<String, String>, content : Byte[]) {
+	        @headers := headers;
+	        @content := content;
+	    }
+
+	    #~
+		Get MIME content header
+		@param name header name
+		@return header value
+		~#
+	    method : public : GetHeader(name : String) ~ String {    
+	        return @headers->Find(name);
+	    }
+
+	    #~
+		Get MIME content
+		@return MIME bytes
+		~#
+	    method : public : GetContent() ~ Byte[] {
+	        return @content;
+	    }
 	}
 	   
 	#~
