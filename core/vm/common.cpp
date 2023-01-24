@@ -2213,10 +2213,27 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
       return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
 
     case COMPRESS_ZLIB_BYTES:
-      return CompressBytes(program, inst, op_stack, stack_pos, frame);
+      return CompressZlibBytes(program, inst, op_stack, stack_pos, frame);
 
     case UNCOMPRESS_ZLIB_BYTES:
-      return UncompressBytes(program, inst, op_stack, stack_pos, frame);
+      return UncompressZlibBytes(program, inst, op_stack, stack_pos, frame);
+
+
+
+
+
+
+    case COMPRESS_GZIP_BYTES:
+
+    case UNCOMPRESS_GZIP_BYTES:
+
+    case COMPRESS_BR_BYTES:
+
+    case UNCOMPRESS_BR_BYTES:
+
+
+
+
 
     case CRC32_BYTES:
       return CRC32Bytes(program, inst, op_stack, stack_pos, frame);
@@ -4066,7 +4083,7 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if (!array) {
@@ -4104,26 +4121,7 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   return true;
 }
 
-bool TrapProcessor::CRC32Bytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
-{
-  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
-  }
-
-  // setup buffers
-  const char* in = (char*)(array + 3);
-  const uLong in_len = (uLong)array[2];
-
-  // caculate CRC
-  const uLong crc = crc32(0, (Bytef*)in, in_len);
-  PushInt(crc, op_stack, stack_pos);
-  
-  return true;
-}
-
-bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::UncompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
@@ -4160,6 +4158,46 @@ bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t*
   PushInt((size_t)byte_array, op_stack, stack_pos);
   return true;
 }
+
+bool TrapProcessor::CompressGzipBytes(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::UncompressGzipBytes(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::UncompressBrBytes(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::TrapProcessor::CRC32Bytes(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if (!array) {
+    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+    return false;
+  }
+
+  // setup buffers
+  const char* in = (char*)(array + 3);
+  const uLong in_len = (uLong)array[2];
+
+  // caculate CRC
+  const uLong crc = crc32(0, (Bytef*)in, in_len);
+  PushInt(crc, op_stack, stack_pos);
+
+  return true;
+}
+
 
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {

@@ -2323,6 +2323,30 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case COMPRESS_GZIP_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+        instructions::COMPRESS_GZIP_BYTES);
+      NextToken();
+      break;
+
+    case UNCOMPRESS_GZIP_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+        instructions::UNCOMPRESS_GZIP_BYTES);
+      NextToken();
+      break;
+
+    case COMPRESS_BR_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+        instructions::COMPRESS_BR_BYTES);
+      NextToken();
+      break;
+
+    case UNCOMPRESS_BR_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+        instructions::UNCOMPRESS_BR_BYTES);
+      NextToken();
+      break;
+
     case CRC32_BYTES:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CRC32_BYTES);
