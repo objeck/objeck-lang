@@ -4105,8 +4105,7 @@ bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_
   // create character array
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
-  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
-    ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
@@ -4143,8 +4142,7 @@ bool TrapProcessor::UncompressZlibBytes(StackProgram* program, size_t* inst, siz
   // create character array
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
-  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
-    ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
