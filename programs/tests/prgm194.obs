@@ -1,0 +1,13 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		str := "2001: A Space Odyssey is a 1968 epic science fiction film produced and directed by Stanley Kubrick. The screenplay was written by Kubrick and science fiction author Arthur C. Clarke, and was inspired by Clarke's 1951 short story \"The Sentinel\" and other short stories by Clarke. Clarke also published a novelisation of the film, in part written concurrently with the screenplay, after the film's release. The film stars Keir Dullea, Gary Lockwood, William Sylvester, and Douglas Rain, and follows a voyage by astronauts, scientists and the sentient supercomputer HAL to Jupiter to investigate an alien monolith.";
+		str->Size()->PrintLine();
+
+		compressed := str->ToByteArray()->CompressZlib();
+		compressed->Size()->PrintLine();
+
+		uncompressed := compressed->UncompressZlib();
+		uncompressed->Size()->PrintLine();
+		uncompressed->ToString()->PrintLine();
+	}
+}
