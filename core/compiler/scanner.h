@@ -213,8 +213,8 @@ enum ScannerTokenType {
   STD_ERR_FLUSH,
   CRC32_BYTES,
   // compress
-  COMPRESS_BYTES,
-  UNCOMPRESS_BYTES,
+  COMPRESS_ZLIB_BYTES,
+  UNCOMPRESS_ZLIB_BYTES,
   // file open/close
   FILE_OPEN_READ,
   FILE_OPEN_APPEND,

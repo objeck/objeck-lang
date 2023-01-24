@@ -413,7 +413,7 @@ public:
   // compresses a stream
   //
   static char* Uncompress(const char* src, unsigned long src_len, unsigned long &out_len) {
-    const unsigned long buffer_limit = 67108864; // 64 MB
+    const unsigned long buffer_limit = 268435456; // 256 MB
 
     unsigned long buffer_max = src_len << 3;
     char* buffer = (char*)calloc(buffer_max, sizeof(char));

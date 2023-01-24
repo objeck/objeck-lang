@@ -115,8 +115,8 @@ bundle System {
 		@ignore-params
 		@return compressed bytes
 		~#
-		function : Compress(in : Byte[]) ~ Byte[] {
-			COMPRESS_BYTES;
+		function : CompressZlib(in : Byte[]) ~ Byte[] {
+			COMPRESS_ZLIB_BYTES;
 		}
 
 		#~
@@ -124,8 +124,44 @@ bundle System {
 		@ignore-params
 		@return uncompressed bytes
 		~#
-		function : Uncompress(in : Byte[]) ~ Byte[] {
-			UNCOMPRESS_BYTES;
+		function : UncompressZlib(in : Byte[]) ~ Byte[] {
+			UNCOMPRESS_ZLIB_BYTES;
+		}
+
+		#~
+		Compresses a byte stream using gzip
+		@ignore-params
+		@return compressed bytes
+		~#
+		function : CompressGzip(in : Byte[]) ~ Byte[] {
+			COMPRESS_GZIP_BYTES;
+		}
+
+		#~
+		Uncompresses a byte stream using gzip
+		@ignore-params
+		@return uncompressed bytes
+		~#
+		function : UncompressGzip(in : Byte[]) ~ Byte[] {
+			UNCOMPRESS_GZIP_BYTES;
+		}
+
+		#~
+		Compresses a byte stream using Brotli
+		@ignore-params
+		@return compressed bytes
+		~#
+		function : CompressBr(in : Byte[]) ~ Byte[] {
+			COMPRESS_BR_BYTES;
+		}
+
+		#~
+		Uncompresses a byte stream using Brotli
+		@ignore-params
+		@return uncompressed bytes
+		~#
+		function : UncompressBr(in : Byte[]) ~ Byte[] {
+			UNCOMPRESS_BR_BYTES;
 		}
 
 		#~
@@ -6526,7 +6562,7 @@ bundle System.IO {
 		@return byte stream of the objects that have been serialized
 		~#
 		method : public : Serialize() ~ Byte[] {
-			return Byte->Compress(@buffer);
+			return Byte->CompressZlib(@buffer);
 		}
 	}
 	
@@ -6543,7 +6579,7 @@ bundle System.IO {
 		~#
 		New(buffer : Byte[]) {
 			Parent();
-			@buffer := Byte->Uncompress(buffer);
+			@buffer := Byte->UncompressZlib(buffer);
 			@pos := 0;
 		}
 
