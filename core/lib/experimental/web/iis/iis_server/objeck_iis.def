@@ -1,3 +1,0 @@
-LIBRARY "obr_iis"  
-EXPORTS  
-    RegisterModule
