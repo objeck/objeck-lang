@@ -2311,15 +2311,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case COMPRESS_BYTES:
+    case COMPRESS_ZLIB_BYTES:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::COMPRESS_BYTES);
+                                                               instructions::COMPRESS_ZLIB_BYTES);
       NextToken();
       break;
 
-    case UNCOMPRESS_BYTES:
+    case UNCOMPRESS_ZLIB_BYTES:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::UNCOMPRESS_BYTES);
+                                                               instructions::UNCOMPRESS_ZLIB_BYTES);
       NextToken();
       break;
 
