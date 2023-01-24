@@ -2212,10 +2212,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case DESERL_FLOAT_ARY:
       return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
 
-    case COMPRESS_BYTES:
+    case COMPRESS_ZLIB_BYTES:
       return CompressBytes(program, inst, op_stack, stack_pos, frame);
 
-    case UNCOMPRESS_BYTES:
+    case UNCOMPRESS_ZLIB_BYTES:
       return UncompressBytes(program, inst, op_stack, stack_pos, frame);
 
     case CRC32_BYTES:

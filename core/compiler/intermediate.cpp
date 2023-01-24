@@ -2314,15 +2314,15 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
     //----------- compression methods -----------
-  case instructions::COMPRESS_BYTES:
+  case instructions::COMPRESS_ZLIB_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::COMPRESS_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::COMPRESS_ZLIB_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
-  case instructions::UNCOMPRESS_BYTES:
+  case instructions::UNCOMPRESS_ZLIB_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::UNCOMPRESS_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::UNCOMPRESS_ZLIB_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
