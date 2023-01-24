@@ -447,6 +447,10 @@ void Scanner::CheckIdentifier(int index)
     case STD_ERR_FLOAT:
     case COMPRESS_ZLIB_BYTES:
     case UNCOMPRESS_ZLIB_BYTES:
+    case COMPRESS_GZIP_BYTES:
+    case UNCOMPRESS_GZIP_BYTES:
+    case COMPRESS_BR_BYTES:
+    case UNCOMPRESS_BR_BYTES:
     case CRC32_BYTES:
     case FILE_OPEN_READ:
     case FILE_OPEN_APPEND:
