@@ -455,6 +455,7 @@ public:
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
     stream.opaque = Z_NULL;
+    stream.total_out = 0;
 
     // input
     stream.next_in = (Bytef*)src;
@@ -483,12 +484,6 @@ public:
       return nullptr;
     }
 
-    if(stream.total_out != buffer_max - stream.avail_out) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
     out_len = stream.total_out;
     return buffer;
   }
@@ -501,6 +496,7 @@ public:
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
     stream.opaque = Z_NULL;
+    stream.total_out = 0;
 
     // input
     stream.next_in = (Bytef*)src;
@@ -563,6 +559,7 @@ public:
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
     stream.opaque = Z_NULL;
+    stream.total_out = 0;
 
     // input
     stream.next_in = (Bytef*)src;
@@ -591,12 +588,6 @@ public:
       return nullptr;
     }
 
-    if(stream.total_out != buffer_max - stream.avail_out) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
     out_len = stream.total_out;
     return buffer;
   }
@@ -609,6 +600,7 @@ public:
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
     stream.opaque = Z_NULL;
+    stream.total_out = 0;
 
     // input
     stream.next_in = (Bytef*)src;
