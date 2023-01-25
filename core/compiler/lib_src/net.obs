@@ -1556,6 +1556,13 @@ bundle Web.HTTP {
 		}
 	}
 
+	
+}
+
+#~
+Web server support (-lib net)
+~#
+bundle Web.HTTP.Server {
 	#~
 	HTTP and HTTP web server
 	~#
