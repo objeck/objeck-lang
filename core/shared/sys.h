@@ -530,13 +530,13 @@ public:
       stream.avail_out = buffer_max - stream.total_out;
 
       const int status = inflate(&stream, Z_SYNC_FLUSH);
-      if(status != Z_OK) {
+      if(status == Z_STREAM_END) {
+        success = true;
+      }
+      else if(status != Z_OK) {
         free(buffer);
         buffer = nullptr;
         return nullptr;
-      }
-      else if(status == Z_STREAM_END) {
-        success = true;
       }
     } 
     while(buffer_max < buffer_limit && !success);
@@ -551,24 +551,8 @@ public:
     return buffer;
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   //
-  // gzip stream compression
+  // br (deflate) stream compression
   //
   static char* CompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
     const unsigned long buffer_max = compressBound(src_len);
@@ -654,15 +638,16 @@ public:
       stream.avail_out = buffer_max - stream.total_out;
 
       const int status = inflate(&stream, Z_SYNC_FLUSH);
-      if(status != Z_OK) {
+      if(status == Z_STREAM_END) {
+        success = true;
+      }
+      else if(status != Z_OK) {
         free(buffer);
         buffer = nullptr;
         return nullptr;
       }
-      else if(status == Z_STREAM_END) {
-        success = true;
-      }
-    } while(buffer_max < buffer_limit && !success);
+    } 
+    while(buffer_max < buffer_limit && !success);
 
     if(inflateEnd(&stream) != Z_OK) {
       free(buffer);
