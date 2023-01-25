@@ -209,7 +209,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     in.close();
 
     uLong dest_len;
-    char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
+    char* out = OutputStream::UncompressZlib(buffer, (uLong)buffer_size, dest_len);
     if(!out) {
       std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);

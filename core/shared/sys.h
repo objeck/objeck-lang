@@ -319,7 +319,7 @@ public:
     }
 
     unsigned long dest_len;
-    char* compressed = Compress(out_buffer.data(), (unsigned long)out_buffer.size(), dest_len);
+    char* compressed = CompressZlib(out_buffer.data(), (unsigned long)out_buffer.size(), dest_len);
     if(!compressed) {
       std::wcerr << L"Unable to compress file: '" << file_name << L"'" << std::endl;
       file_out.close();
@@ -392,9 +392,9 @@ public:
   }
 
   //
-  // compresses a stream
+  // zlib stream compression
   //
-  static char* Compress(const char* src, unsigned long src_len, unsigned long &out_len) {
+  static char* CompressZlib(const char* src, unsigned long src_len, unsigned long &out_len) {
     const unsigned long buffer_max = compressBound(src_len);
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
@@ -409,11 +409,8 @@ public:
     return buffer;
   }
 
-  //
-  // compresses a stream
-  //
-  static char* Uncompress(const char* src, unsigned long src_len, unsigned long &out_len) {
-    const unsigned long buffer_limit = 268435456; // 256 MB
+  static char* UncompressZlib(const char* src, unsigned long src_len, unsigned long &out_len) {
+    const unsigned long buffer_limit = 2 << 28; // 512 MB
 
     unsigned long buffer_max = src_len << 3;
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
@@ -438,11 +435,243 @@ public:
         buffer = nullptr;
         return nullptr;
       }
-    } while(buffer_max < buffer_limit && !success);
+    } 
+    while(buffer_max < buffer_limit && !success);
 
     free(buffer);
     buffer = nullptr;
     return nullptr;
+  }
+
+  //
+  // gzip stream compression
+  //
+  static char* CompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
+    const unsigned long buffer_max = compressBound(src_len);
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    // setup stream
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+    // input
+    stream.next_in = (Bytef*)src;
+    stream.avail_in = src_len;
+
+    // output
+    stream.next_out = (Bytef*)buffer;
+    stream.avail_out = buffer_max;
+
+    out_len = buffer_max;
+    if(deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, MAX_WBITS | 16, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    if(deflate(&stream, Z_FINISH) != Z_STREAM_END) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    if(deflateEnd(&stream) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    if(stream.total_out != buffer_max - stream.avail_out) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    out_len = stream.total_out;
+    return buffer;
+  }
+
+  static char* UncompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
+    const unsigned long buffer_limit = 2 << 28; // 512 MB
+
+    // setup stream
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+    // input
+    stream.next_in = (Bytef*)src;
+    stream.avail_in = src_len;
+
+    unsigned long buffer_max = src_len << 3;
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    if(inflateInit2(&stream, MAX_WBITS | 16) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    bool success = false;
+    do {
+      if(stream.total_out >= buffer_max) {
+        char* temp = (char*)calloc(sizeof(char), buffer_max << 1);
+        memcpy(temp, buffer, buffer_max);
+        buffer_max <<= 1;
+
+        free(buffer);
+        buffer = temp;
+      }
+
+      stream.next_out = (Bytef*)(buffer + stream.total_out);
+      stream.avail_out = buffer_max - stream.total_out;
+
+      const int status = inflate(&stream, Z_SYNC_FLUSH);
+      if(status != Z_OK) {
+        free(buffer);
+        buffer = nullptr;
+        return nullptr;
+      }
+      else if(status == Z_STREAM_END) {
+        success = true;
+      }
+    } 
+    while(buffer_max < buffer_limit && !success);
+
+    if(inflateEnd(&stream) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    out_len = stream.total_out;
+    return buffer;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //
+  // gzip stream compression
+  //
+  static char* CompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
+    const unsigned long buffer_max = compressBound(src_len);
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    // setup stream
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+    // input
+    stream.next_in = (Bytef*)src;
+    stream.avail_in = src_len;
+
+    // output
+    stream.next_out = (Bytef*)buffer;
+    stream.avail_out = buffer_max;
+
+    out_len = buffer_max;
+    if(deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    if(deflate(&stream, Z_FINISH) != Z_STREAM_END) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    if(deflateEnd(&stream) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    if(stream.total_out != buffer_max - stream.avail_out) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    out_len = stream.total_out;
+    return buffer;
+  }
+
+  static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
+    const unsigned long buffer_limit = 2 << 28; // 512 MB
+
+    // setup stream
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+    // input
+    stream.next_in = (Bytef*)src;
+    stream.avail_in = src_len;
+
+    unsigned long buffer_max = src_len << 3;
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    if(inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    bool success = false;
+    do {
+      if(stream.total_out >= buffer_max) {
+        char* temp = (char*)calloc(sizeof(char), buffer_max << 1);
+        memcpy(temp, buffer, buffer_max);
+        buffer_max <<= 1;
+
+        free(buffer);
+        buffer = temp;
+      }
+
+      stream.next_out = (Bytef*)(buffer + stream.total_out);
+      stream.avail_out = buffer_max - stream.total_out;
+
+      const int status = inflate(&stream, Z_SYNC_FLUSH);
+      if(status != Z_OK) {
+        free(buffer);
+        buffer = nullptr;
+        return nullptr;
+      }
+      else if(status == Z_STREAM_END) {
+        success = true;
+      }
+    } while(buffer_max < buffer_limit && !success);
+
+    if(inflateEnd(&stream) != Z_OK) {
+      free(buffer);
+      buffer = nullptr;
+      return nullptr;
+    }
+
+    out_len = stream.total_out;
+    return buffer;
   }
 };
 
