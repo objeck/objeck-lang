@@ -562,23 +562,6 @@ class System {
     return platform;
   }
 
-
-  static BOOL CompareWindowsVersion(DWORD dwMajorVersion, DWORD dwMinorVersion)
-  {
-    OSVERSIONINFOEX ver;
-    DWORDLONG dwlConditionMask = 0;
-
-    ZeroMemory(&ver, sizeof(OSVERSIONINFOEX));
-    ver.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-    ver.dwMajorVersion = dwMajorVersion;
-    ver.dwMinorVersion = dwMinorVersion;
-
-    VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_EQUAL);
-    VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_EQUAL);
-
-    return VerifyVersionInfo(&ver, VER_MAJORVERSION | VER_MINORVERSION, dwlConditionMask);
-  }
-
   static BOOL GetOSDisplayString(LPTSTR buffer)
   {
     if(IsWindows11OrGreater()) {
