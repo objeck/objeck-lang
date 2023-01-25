@@ -2010,14 +2010,14 @@ bundle Web.HTTP {
 
 		#~
 		Callback for GET requests
-		@param GET request
+		@param request GET request
 		@return GET request content
 		~#
 		method : virtual : ProcessGet(request : Request) ~ Response;
 
 		#~
 		Callback for POST requests
-		@param GET request
+		@param request GET request
 		@return content
 		~#
 		method : virtual : ProcessPost(request : Request) ~ Response;
@@ -2381,14 +2381,14 @@ bundle Web.HTTP {
 
 		#~
 		Callback for GET requests
-		@param GET request
+		@param request GET request
 		@return content
 		~#
 		method : virtual : ProcessGet(request : Request) ~ Response;
 
 		#~
 		Callback for POST requests
-		@param POST request
+		@param request POST request
 		@return content
 		~#
 		method : virtual : ProcessPost(request : Request) ~ Response;
