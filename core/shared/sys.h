@@ -52,6 +52,8 @@
 #define INT_VALUE int32_t
 #define INT64_VALUE int64_t
 #define FLOAT_VALUE double
+#define COMPRESS_BUFFER_LIMIT 2 << 28 // 512 MB
+
 
 namespace instructions {
   // vm types
@@ -410,9 +412,11 @@ public:
   }
 
   static char* UncompressZlib(const char* src, unsigned long src_len, unsigned long &out_len) {
-    const unsigned long buffer_limit = 2 << 28; // 512 MB
 
-    unsigned long buffer_max = src_len << 3;
+    unsigned long buffer_max = src_len << 2;
+    if(buffer_max > COMPRESS_BUFFER_LIMIT) {
+      buffer_max = COMPRESS_BUFFER_LIMIT;
+    }
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     bool success = false;
@@ -436,7 +440,7 @@ public:
         return nullptr;
       }
     } 
-    while(buffer_max < buffer_limit && !success);
+    while(buffer_max < COMPRESS_BUFFER_LIMIT && !success);
 
     free(buffer);
     buffer = nullptr;
@@ -489,8 +493,6 @@ public:
   }
 
   static char* UncompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
-    const unsigned long buffer_limit = 2 << 28; // 512 MB
-
     // setup stream
     z_stream stream;
     stream.zalloc = Z_NULL;
@@ -502,7 +504,10 @@ public:
     stream.next_in = (Bytef*)src;
     stream.avail_in = src_len;
 
-    unsigned long buffer_max = src_len << 3;
+    unsigned long buffer_max = src_len << 2;
+    if(buffer_max > COMPRESS_BUFFER_LIMIT) {
+      buffer_max = COMPRESS_BUFFER_LIMIT;
+    }
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     if(inflateInit2(&stream, MAX_WBITS | 16) != Z_OK) {
@@ -535,7 +540,7 @@ public:
         return nullptr;
       }
     } 
-    while(buffer_max < buffer_limit && !success);
+    while(buffer_max < COMPRESS_BUFFER_LIMIT && !success);
 
     if(inflateEnd(&stream) != Z_OK) {
       free(buffer);
@@ -593,8 +598,6 @@ public:
   }
 
   static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
-    const unsigned long buffer_limit = 2 << 28; // 512 MB
-
     // setup stream
     z_stream stream;
     stream.zalloc = Z_NULL;
@@ -606,7 +609,10 @@ public:
     stream.next_in = (Bytef*)src;
     stream.avail_in = src_len;
 
-    unsigned long buffer_max = src_len << 3;
+    unsigned long buffer_max = src_len << 2;
+    if(buffer_max > COMPRESS_BUFFER_LIMIT) {
+      buffer_max = COMPRESS_BUFFER_LIMIT;
+    }
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     if(inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
@@ -639,7 +645,7 @@ public:
         return nullptr;
       }
     } 
-    while(buffer_max < buffer_limit && !success);
+    while(buffer_max < COMPRESS_BUFFER_LIMIT && !success);
 
     if(inflateEnd(&stream) != Z_OK) {
       free(buffer);
