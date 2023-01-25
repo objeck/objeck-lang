@@ -3,7 +3,11 @@ Web server as a service
 Copyright (c) 2023 Randy Hollines
 The Town: https://museumca.org/on-view/angela-davis-seize-the-time/
 
-TODO: chunked support?
+TODO: 
+* chunked support?
+* POST support
+* DB connection pooling
+* Ignore DELETE, PATCH, CONNECT and TRACE(?)
 ~#	
 
 use System.IO.Net; 
