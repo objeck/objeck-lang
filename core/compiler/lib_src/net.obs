@@ -1636,9 +1636,9 @@ bundle Web.HTTP {
 				platform := Runtime->GetPlatform();
 				host := TCPSocket->HostName();
 
-		                if(@is_debug) {
+				if(@is_debug) {
 					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
-		                };
+				};
                 
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
@@ -1665,6 +1665,110 @@ bundle Web.HTTP {
 				"Shutting down..."->PrintLine();
 			};
 			Runtime->Exit(0);
+		}
+	}
+
+	#~
+	Web server request
+	~#
+	class Request {
+		@request_url : String;
+		@request_headers : Map<String, String>;
+		@response_headers : Map<String, String>;
+		@buffer : Byte[];
+
+		New(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) {
+			@request_url := request_url;
+			@request_headers := request_headers;
+			@response_headers := response_headers;
+		}
+
+		New(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>, buffer : Byte[]) {
+			@request_url := request_url;
+			@request_headers := request_headers;
+			@response_headers := response_headers;
+			@buffer := buffer;
+		}
+
+		#~
+		Gets the request body
+		@return request body
+		~#
+		method : public : GetBody() ~ String {
+			return @buffer->ToString();
+		}
+
+		#~
+		Gets the request body bytes
+		@return request body bytes
+		~#
+		method : public : GetBodyBytes() ~ Byte[] {
+			return @buffer;
+		}
+
+		#~
+		Sets the content type
+		@param type content type
+		~#
+		method : public : SetContentType(type : String) ~ Nil {
+			@response_headers->Insert("Content-Type", type);
+		}
+
+		#~
+		Gets the request URL
+		@return request URL
+		~#
+		method : public : GetUrl() ~ String {
+			return @request_url;
+		}
+
+		#~
+		Gets a request header
+		@param name header name
+		@return request header
+		~#
+		method : public : GetRequestHeader(name : String) ~ String {
+			return @request_headers->Find(name)<String>;
+		}
+
+		#~
+		Gets a response header
+		@param name header name
+		@return response header
+		~#
+		method : public : GetResponseHeader(name : String) ~ String {
+			return @response_headers->Find(name)<String>;
+		}
+
+		#~
+		Sets a response header
+		@param name header name
+		@param value header value
+		~#
+		method : public : SetResponseHeader(name : String, value : String) ~ Nil {
+			if(value = Nil | value->IsEmpty()) {
+				@response_headers->Remove(name);
+			}
+			else {
+				@response_headers->Insert(name, value)<String>;
+			};
+		}
+
+		#~
+		Removed a response header
+		@param name header name
+		~#
+		method : public : RemoveResponseHeader(name : String) ~ Nil {
+			SetResponseHeader(name, Nil);
+		}
+
+		#~
+		Check for a response header
+		@param name header name
+		@return true if header exists, false otherwise
+		~#
+		method : public : HasResponseHeader(name : String) ~ Bool {
+			return @response_headers->Has(name);
 		}
 	}
 
@@ -1796,7 +1900,7 @@ bundle Web.HTTP {
 
 						# write response
 						response_headers := Map->New()<String, String>;
-						response := ProcessGet(request_url, request_headers, response_headers);
+						response := ProcessGet(Request->New(request_url, request_headers, response_headers));
 						ProcessResponse(response, response_headers);
 					}
 					# POST request
@@ -1815,7 +1919,7 @@ bundle Web.HTTP {
 
 							# write response
 							response_headers := Map->New()<String, String>;
-							response := ProcessPost(buffer, request_url, request_headers, response_headers);
+							response := ProcessPost(Request->New(request_url, request_headers, response_headers, buffer));
 							ProcessResponse(response, response_headers);
 						};
 					};
@@ -1906,22 +2010,17 @@ bundle Web.HTTP {
 
 		#~
 		Callback for GET requests
-		@param request_url URL requested
-		@param request_headers URL request headers
-		@param response_headers URL response headers
+		@param GET request
 		@return GET request content
 		~#
-		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : virtual : ProcessGet(request : Request) ~ Response;
 
 		#~
 		Callback for POST requests
-		@param buffer content to POST
-		@param request_url URL requested
-		@param request_headers URL request headers
-		@param response_headers URL response headers
+		@param GET request
 		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : virtual : ProcessPost(request : Request) ~ Response;
 	}
 
 	#~
@@ -2168,7 +2267,7 @@ bundle Web.HTTP {
 
 						# write response
 						response_headers := Map->New()<String, String>;
-						response := ProcessGet(request_url, request_headers, response_headers);
+						response := ProcessGet(Request->New(request_url, request_headers, response_headers));
 						ProcessResponse(response, response_headers);
 					}
 					# POST request
@@ -2187,7 +2286,7 @@ bundle Web.HTTP {
 							
 							# write response
 							response_headers := Map->New()<String, String>;
-							response := ProcessPost(buffer, request_url, request_headers, response_headers);
+							response := ProcessPost(Request->New(request_url, request_headers, response_headers, buffer));
 							ProcessResponse(response, response_headers);
 						};
 					};
@@ -2282,21 +2381,16 @@ bundle Web.HTTP {
 
 		#~
 		Callback for GET requests
-		@param request_url URL requested
-		@param request_headers URL request headers
-		@param response_headers URL response headers
+		@param GET request
 		@return content
 		~#
-		method : virtual : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : virtual : ProcessGet(request : Request) ~ Response;
 
 		#~
 		Callback for POST requests
-		@param buffer content to POST
-		@param request_url URL requested
-		@param request_headers URL request headers
-		@param response_headers URL response headers
+		@param POST request
 		@return content
 		~#
-		method : virtual : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response;
+		method : virtual : ProcessPost(request : Request) ~ Response;
 	}
 }
