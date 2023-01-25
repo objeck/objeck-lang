@@ -1,27 +1,29 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		str := "2001: A Space Odyssey is a 1968 epic science fiction film produced and directed by Stanley Kubrick. The screenplay was written by Kubrick and science fiction author Arthur C. Clarke, and was inspired by Clarke's 1951 short story \"The Sentinel\" and other short stories by Clarke. Clarke also published a novelisation of the film, in part written concurrently with the screenplay, after the film's release. The film stars Keir Dullea, Gary Lockwood, William Sylvester, and Douglas Rain, and follows a voyage by astronauts, scientists and the sentient supercomputer HAL to Jupiter to investigate an alien monolith.";
-		str->Size()->PrintLine();
+		
+		size := str->Size();
+		size->PrintLine();
 
 		# zlib
 		compressed := str->ToByteArray()->CompressZlib();
 		compressed->Size()->PrintLine();
-		Print(compressed->UncompressZlib());
+		Print(compressed->UncompressZlib(), size);
 		
 		# gzip
 		compressed := str->ToByteArray()->CompressGzip();
 		compressed->Size()->PrintLine();
-		Print(compressed->UncompressGzip());
+		Print(compressed->UncompressGzip(), size);
 
 		# br (deflate)
 		compressed := str->ToByteArray()->CompressBr();
 		compressed->Size()->PrintLine();
-		Print(compressed->UncompressBr());
+		Print(compressed->UncompressBr(), size);
 	}
 
-	function : Print(bytes : Byte[]) ~ Nil {
-		bytes->Size()->PrintLine();		
+	function : Print(bytes : Byte[], size : Int) ~ Nil {
+		ok := bytes->Size() = size;
 		bytes->ToString()->PrintLine();
-		"---"->PrintLine();
+		"--- {$ok} ---"->PrintLine();
 	}
 }
