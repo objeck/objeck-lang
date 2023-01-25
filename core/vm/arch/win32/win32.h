@@ -581,8 +581,12 @@ class System {
 
   static BOOL GetOSDisplayString(LPTSTR buffer)
   {
-    if(IsWindows10OrGreater()) {
-      StringCchCopy(buffer, BUFSIZE, TEXT("Windows 10/11"));
+    if(IsWindows11OrGreater()) {
+      StringCchCopy(buffer, BUFSIZE, TEXT("Windows 11"));
+      return TRUE;
+    }
+    else if(IsWindows10OrGreater()) {
+      StringCchCopy(buffer, BUFSIZE, TEXT("Windows 10"));
       return TRUE;
     }
     else if(IsWindows8Point1OrGreater()) {
@@ -607,6 +611,22 @@ class System {
     }
 
     return FALSE;
+  }
+
+  //
+  // Chuck Walbourn
+  // https://github.com/walbourn/walbourn.github.io
+  //
+  static BOOL IsWindows11OrGreater()
+  {
+    OSVERSIONINFOEXW osvi = { sizeof(osvi), 0, 0, 0, 0, {0}, 0, 0 };
+    DWORDLONG const dwlConditionMask = VerSetConditionMask(VerSetConditionMask(VerSetConditionMask(0, VER_MAJORVERSION, VER_GREATER_EQUAL), VER_MINORVERSION, VER_GREATER_EQUAL), VER_BUILDNUMBER, VER_GREATER_EQUAL);
+
+    osvi.dwMajorVersion = HIBYTE(_WIN32_WINNT_WIN10);
+    osvi.dwMinorVersion = LOBYTE(_WIN32_WINNT_WIN10);
+    osvi.dwBuildNumber = 22000;
+
+    return VerifyVersionInfoW(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, dwlConditionMask) != FALSE;
   }
 };
 

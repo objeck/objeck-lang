@@ -1613,7 +1613,7 @@ void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
 }
 
 /********************************
- * Get version std::string
+ * Get version string
  ********************************/
 void TrapProcessor::ProcessVersion(StackProgram* program, size_t* &op_stack, long* &stack_pos)
 {
