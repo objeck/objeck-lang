@@ -2,6 +2,8 @@
 Web server as a service
 Copyright (c) 2023 Randy Hollines
 The Town: https://museumca.org/on-view/angela-davis-seize-the-time/
+
+TODO: chunked support?
 ~#	
 
 use System.IO.Net; 
