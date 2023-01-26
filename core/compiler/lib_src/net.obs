@@ -1691,44 +1691,33 @@ bundle Web.HTTP.Server {
 	class Request {
 		@request_url : String;
 		@request_headers : Map<String, String>;
-		@response_headers : Map<String, String>;
-		@buffer : Byte[];
+		@content : Byte[];
 
-		New(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) {
+		New(request_url : String, request_headers : Map<String, String>) {
 			@request_url := request_url;
 			@request_headers := request_headers;
-			@response_headers := response_headers;
 		}
 
-		New(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>, buffer : Byte[]) {
+		New(request_url : String, request_headers : Map<String, String>, content : Byte[]) {
 			@request_url := request_url;
 			@request_headers := request_headers;
-			@response_headers := response_headers;
-			@buffer := buffer;
+			@content := content;
 		}
 
 		#~
-		Gets the request body
-		@return request body
+		Gets the request body content
+		@return request content
 		~#
-		method : public : GetBody() ~ String {
-			return @buffer->ToString();
+		method : public : GetContent() ~ String {
+			return @content->ToString();
 		}
 
 		#~
-		Gets the request body bytes
-		@return request body bytes
+		Gets the request body content as bytes
+		@return request content as bytes
 		~#
-		method : public : GetBodyBytes() ~ Byte[] {
-			return @buffer;
-		}
-
-		#~
-		Sets the content type
-		@param type content type
-		~#
-		method : public : SetContentType(type : String) ~ Nil {
-			@response_headers->Insert("Content-Type", type);
+		method : public : GetContentBytes() ~ Byte[] {
+			return @content;
 		}
 
 		#~
@@ -1747,14 +1736,129 @@ bundle Web.HTTP.Server {
 		method : public : GetRequestHeader(name : String) ~ String {
 			return @request_headers->Find(name)<String>;
 		}
+	}
+
+	#~
+	Web server response
+	~#
+	class Response {
+		@code : Int;
+		@content : Byte[];
+		@reason : String;
+		@response_headers : Map<String, String>;
+
+		New() {
+			@response_headers := Map->New()<String, String>;
+			@code := 400;
+		}
+
+		#~
+		Get the response code
+		@return response code
+		~#
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+
+		#~
+		Set response code
+		@param code response code
+		~#
+		method : public : SetCode(code : Int) ~ Nil {
+			@code := code;
+		}
+
+		#~
+		Set response content
+		@param content response content
+		~#
+		method : public : SetContent(content : Byte[]) ~ Nil {
+			@content := content;
+		}
+
+		#~
+		Set response code
+		@param content response content
+		~#
+		method : public : SetContent(content : String) ~ Nil {
+			@content := content->ToByteArray();
+		}
+
+		#~
+		Set response code and content
+		@param code response code
+		@param content response content
+		~#
+		method : public : SetCodeContent(code : Int, content : Byte[]) ~ Nil {
+			@code := code;
+			@content := content;
+		}
+
+		#~
+		Set response code and content
+		@param code response code
+		@param content response content
+		~#
+		method : public : SetCodeContent(code : Int, content : String) ~ Nil {
+			@code := code;
+			@content := content->ToByteArray();
+		}
+
+		#~
+		Get the response content
+		@return response content
+		~#
+		method : public : GetContent() ~ Byte[] {
+			return @content;
+		}
+
+		#~
+		Get the response content as string
+		@return response content as string
+		~#
+		method : public : GetStringContent() ~ String {
+			return @content->ToString();
+		}
+
+		#~
+		Set response reason
+		@param reason response reason
+		~#
+		method : public : SetReason(reason : String) ~ Nil {
+			@reason := reason;
+		}
+
+		#~
+		Get the reason string
+		@return reason sting
+		~#
+		method : public : GetReason() ~ String {
+			return @reason;
+		}
+
+		#~
+		Sets the content type
+		@param type content type
+		~#
+		method : public : SetContentType(type : String) ~ Nil {
+			@response_headers->Insert("Content-Type", type);
+		}
 
 		#~
 		Gets a response header
 		@param name header name
 		@return response header
 		~#
-		method : public : GetResponseHeader(name : String) ~ String {
+		method : public : GetHeader(name : String) ~ String {
 			return @response_headers->Find(name)<String>;
+		}
+
+		#~
+		Gets response headers
+		@return response headers
+		~#
+		method : public : GetHeaders() ~ Map<String, String> {
+			return @response_headers;
 		}
 
 		#~
@@ -1762,7 +1866,7 @@ bundle Web.HTTP.Server {
 		@param name header name
 		@param value header value
 		~#
-		method : public : SetResponseHeader(name : String, value : String) ~ Nil {
+		method : public : SetHeader(name : String, value : String) ~ Nil {
 			if(value = Nil | value->IsEmpty()) {
 				@response_headers->Remove(name);
 			}
@@ -1775,8 +1879,8 @@ bundle Web.HTTP.Server {
 		Removed a response header
 		@param name header name
 		~#
-		method : public : RemoveResponseHeader(name : String) ~ Nil {
-			SetResponseHeader(name, Nil);
+		method : public : RemoveHeader(name : String) ~ Nil {
+			SetHeader(name, Nil);
 		}
 
 		#~
@@ -1784,74 +1888,9 @@ bundle Web.HTTP.Server {
 		@param name header name
 		@return true if header exists, false otherwise
 		~#
-		method : public : HasResponseHeader(name : String) ~ Bool {
+		method : public : HasHeader(name : String) ~ Bool {
 			return @response_headers->Has(name);
-		}
-	}
-
-	#~
-	Web server response
-	~#
-	class Response {
-		@code : Int;
-		@content : Byte[];
-		@reason : String;
-
-		#~
-		Constructor
-		@param code status code
-		~#
-		New(code : Int) {
-			@code := code;
-		}
-
-		#~
-		Constructor
-		@param code status code
-		@param content content
-		~#
-		New(code : Int, content : String) {
-			@code := code;
-			@content := content->ToByteArray();
-		}
-
-		#~
-		Constructor
-		@param code status code
-		@param content content
-		~#
-		New(code : Int, content : Byte[]) {
-			@code := code;
-			@content := content;
-		}
-
-		#~
-		Get the response code
-		@return response code
-		~#
-		method : public : GetCode() ~ Int {
-			return @code;
-		}
-
-		#~
-		Get the response content
-		@return response content
-		~#
-		method : public : GetContent() ~ Byte[] {
-			return @content;
-		}
-
-		method : public : SetReason(reason : String) ~ Nil {
-			@reason := reason;
-		}
-
-		#~
-		Get the reason string
-		@return reason sting
-		~#
-		method : public : GetReason() ~ String {
-			return @reason;
-		}		
+		}	
 
 		#~
 		Get the reason string
@@ -1916,9 +1955,10 @@ bundle Web.HTTP.Server {
 						};
 
 						# write response
-						response_headers := Map->New()<String, String>;
-						response := ProcessGet(Request->New(request_url, request_headers, response_headers));
-						ProcessResponse(response, response_headers);
+						http_request := Request->New(request_url, request_headers);
+						http_response := Response->New();
+						ProcessGet(http_request, http_response);
+						ProcessResponse(http_response);
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
@@ -1935,9 +1975,10 @@ bundle Web.HTTP.Server {
 							};
 
 							# write response
-							response_headers := Map->New()<String, String>;
-							response := ProcessPost(Request->New(request_url, request_headers, response_headers, buffer));
-							ProcessResponse(response, response_headers);
+							http_request := Request->New(request_url, request_headers, buffer);
+							http_response := Response->New();
+							ProcessPost(http_request, http_response);
+							ProcessResponse(http_response);
 						};
 					};
 				};
@@ -1946,8 +1987,9 @@ bundle Web.HTTP.Server {
 			};
 		}
 
-		method : ProcessResponse(response : Response, response_headers : Map<String, String>) ~ Nil {
+		method : ProcessResponse(response : Response) ~ Nil {
 			if(response <> Nil) {
+				response_headers := response->GetHeaders();
 				if(response->GetCode() = 200) {
 					response_header := "";
 					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
@@ -2027,17 +2069,17 @@ bundle Web.HTTP.Server {
 
 		#~
 		Callback for GET requests
-		@param request GET request
-		@return GET request content
+		@param request HTTP request
+		@param response HTTP response
 		~#
-		method : virtual : ProcessGet(request : Request) ~ Response;
+		method : virtual : ProcessGet(request : Request, response : Response) ~ Nil;
 
 		#~
 		Callback for POST requests
-		@param request GET request
-		@return content
+		@param request HTTP request
+		@param response HTTP response
 		~#
-		method : virtual : ProcessPost(request : Request) ~ Response;
+		method : virtual : ProcessPost(request : Request, response : Response) ~ Nil;
 	}
 
 	#~
@@ -2283,9 +2325,10 @@ bundle Web.HTTP.Server {
 						};
 
 						# write response
-						response_headers := Map->New()<String, String>;
-						response := ProcessGet(Request->New(request_url, request_headers, response_headers));
-						ProcessResponse(response, response_headers);
+						http_request := Request->New(request_url, request_headers);
+						http_response := Response->New();
+						ProcessGet(http_request, http_response);
+						ProcessResponse(http_response);
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
@@ -2302,9 +2345,10 @@ bundle Web.HTTP.Server {
 							};
 							
 							# write response
-							response_headers := Map->New()<String, String>;
-							response := ProcessPost(Request->New(request_url, request_headers, response_headers, buffer));
-							ProcessResponse(response, response_headers);
+							http_request := Request->New(request_url, request_headers, buffer);
+							http_response := Response->New();
+							ProcessPost(http_request, http_response);
+							ProcessResponse(http_response);
 						};
 					};
 				};
@@ -2313,8 +2357,9 @@ bundle Web.HTTP.Server {
 			};
 		}
 
-		method : ProcessResponse(response : Response, response_headers : Map<String, String>) ~ Nil {
+		method : ProcessResponse(response : Response) ~ Nil {
 			if(response <> Nil) {
+				response_headers := response->GetHeaders();
 				if(response->GetCode() = 200) {
 					response_header := "";
 					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
@@ -2398,16 +2443,16 @@ bundle Web.HTTP.Server {
 
 		#~
 		Callback for GET requests
-		@param request GET request
-		@return content
+		@param request HTTP request
+		@param response HTTP response
 		~#
-		method : virtual : ProcessGet(request : Request) ~ Response;
+		method : virtual : ProcessGet(request : Request, response : Response) ~ Nil;
 
 		#~
 		Callback for POST requests
-		@param request POST request
-		@return content
+		@param request HTTP request
+		@param response HTTP response
 		~#
-		method : virtual : ProcessPost(request : Request) ~ Response;
+		method : virtual : ProcessPost(request : Request, response : Response) ~ Nil;
 	}
 }
