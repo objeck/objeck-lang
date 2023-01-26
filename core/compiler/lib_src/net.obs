@@ -1744,12 +1744,23 @@ bundle Web.HTTP.Server {
 	class Response {
 		@code : Int;
 		@content : Byte[];
+		@compression : Compression;
+		@is_compressed : Bool;
 		@reason : String;
 		@response_headers : Map<String, String>;
+
+		enum Compression := 100 {
+			NONE,
+			GZIP,
+			DEFLATE,
+			BR
+		}
 
 		New() {
 			@response_headers := Map->New()<String, String>;
 			@code := 400;
+			@compression := Compression->NONE;
+			@is_compressed := false;
 		}
 
 		#~
@@ -1782,6 +1793,34 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : SetContent(content : String) ~ Nil {
 			@content := content->ToByteArray();
+		}
+
+		#~
+		Set the response conpression
+		@param compression response conpression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		~#
+		method : public : SetCompression(compression : Compression) ~ Nil {
+			if(<>@is_compressed & @content <> Nil) {
+				select(compression) {
+					label Compression->GZIP	{
+						@content := @content->CompressGzip();
+						@response_headers->Insert("Content-Encoding", "gzip");
+						@is_compressed := true;
+					}
+
+					label Compression->DEFLATE {
+						@content := @content->CompressZlib();
+						@response_headers->Insert("Content-Encoding", "deflate");
+						@is_compressed := true;
+					}
+
+					label Compression->BR {
+						@content := @content->CompressBr();
+						@response_headers->Insert("Content-Encoding", "br");
+						@is_compressed := true;
+					}
+				};
+			};
 		}
 
 		#~
@@ -1947,8 +1986,8 @@ bundle Web.HTTP.Server {
 					# get request headers
 					request_headers := GetHeaders();
 
-					# GET request
-					if(request_verb->Equals("GET")) {
+					# GET and HEAD request
+					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
 						if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
 							request_url := "/index.html";
@@ -1958,7 +1997,7 @@ bundle Web.HTTP.Server {
 						http_request := Request->New(request_url, request_headers);
 						http_response := Response->New();
 						ProcessGet(http_request, http_response);
-						ProcessResponse(http_response);
+						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
@@ -1987,7 +2026,7 @@ bundle Web.HTTP.Server {
 			};
 		}
 
-		method : ProcessResponse(response : Response) ~ Nil {
+		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
 			if(response <> Nil) {
 				response_headers := response->GetHeaders();
 				if(response->GetCode() = 200) {
@@ -2005,7 +2044,9 @@ bundle Web.HTTP.Server {
 						content_size := content->Size();
 						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-						@client->WriteBuffer(content);
+						if(<>is_head) {
+							@client->WriteBuffer(content);
+						};
 					}
 					else {
 						@client->WriteString("HTTP/1.1 200\r\n\r\n");
@@ -2317,8 +2358,8 @@ bundle Web.HTTP.Server {
 					# get request headers
 					request_headers := GetHeaders();
 
-					# GET request
-					if(request_verb->Equals("GET")) {
+					# GET and HEAD request
+					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
 						if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
 							request_url := "/index.html";
@@ -2328,7 +2369,7 @@ bundle Web.HTTP.Server {
 						http_request := Request->New(request_url, request_headers);
 						http_response := Response->New();
 						ProcessGet(http_request, http_response);
-						ProcessResponse(http_response);
+						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
@@ -2357,7 +2398,7 @@ bundle Web.HTTP.Server {
 			};
 		}
 
-		method : ProcessResponse(response : Response) ~ Nil {
+		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
 			if(response <> Nil) {
 				response_headers := response->GetHeaders();
 				if(response->GetCode() = 200) {
@@ -2375,7 +2416,9 @@ bundle Web.HTTP.Server {
 						content_size := content->Size();
 						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-						@client->WriteBuffer(content);
+						if(<>is_head) {
+							@client->WriteBuffer(content);
+						};
 					}
 					else {
 						@client->WriteString("HTTP/1.1 200\r\n\r\n");
