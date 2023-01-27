@@ -4832,7 +4832,7 @@ bundle System.Time {
 		@return name of the week day
 		~#
 		method : public : GetWeekDayName() ~ String {
-			days_of_week := ["Sunday", "Monday", "Tuesday", "Wednesday","Thursday","Friday","Saturday"];
+			days_of_week := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 			if(@week_day > -1 & @week_day < days_of_week->Size()) {
 				return days_of_week[@week_day];
 			};
