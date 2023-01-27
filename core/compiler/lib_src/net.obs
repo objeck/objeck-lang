@@ -1957,7 +1957,7 @@ bundle Web.HTTP.Server {
 		method : public : HasHeader(name : String) ~ Bool {
 			return @response_headers->Has(name);
 		}
-		
+
 		#~
 		Current GMT time
 		@return current GMT time
@@ -1965,11 +1965,11 @@ bundle Web.HTTP.Server {
 		function : CurrentGmtTime() ~ Date {
 			return System.Time.Date->New(true);
 		}
-
+		
 		#~
-		Formats a date using the HTTP date/time format
+		Formats a date into a string via the HTTP date/time format
 		@param date date/time
-		@return formatting date/time string
+		@return date/time string
 		~#
 		function : FormatTime(date : System.Time.Date) ~ String {
 			buffer := "";
@@ -2011,7 +2011,7 @@ bundle Web.HTTP.Server {
 				buffer += "0";			
 			};
 			buffer += sec;
-			buffer += ": GMT";
+			buffer += " GMT";
 
 			return buffer;
 		}
