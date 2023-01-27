@@ -1956,7 +1956,53 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : HasHeader(name : String) ~ Bool {
 			return @response_headers->Has(name);
-		}	
+		}
+
+
+		function : FormatDate(date : System.Time.Date) ~ String {
+			buffer := "";
+
+			days_of_week := ["Sun", "Mon", "Tue", "Wed","Thu","Fri","Sat"];
+			buffer += days_of_week[date->GetWeekDay()];
+			buffer += ", ";
+
+			day := date->GetDay();
+			if(day < 10) {
+				buffer += "0";			
+			};
+			buffer += day;
+			buffer += " ";
+
+			months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+			buffer += months[date->GetMonth() - 1];
+			buffer += " ";
+
+			buffer += date->GetYear();
+			buffer += " ";
+
+			hour := date->GetHours();
+			if(hour < 10) {
+				buffer += "0";			
+			};
+			buffer += hour;
+			buffer += ":";
+
+			min := date->GetMinutes();
+			if(min < 10) {
+				buffer += "0";			
+			};
+			buffer += min;
+			buffer += ":";
+
+			sec := date->GetSeconds();
+			if(sec < 10) {
+				buffer += "0";			
+			};
+			buffer += sec;
+			buffer += ": GMT";
+
+			return buffer;
+		}
 
 		#~
 		Get the reason string
