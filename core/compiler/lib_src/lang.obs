@@ -4940,7 +4940,7 @@ bundle System.Time {
 		method : public : ToString() ~ String {
 			out := String->New();
 
-			out->Append(GetDayName());
+			out->Append(GetWeekDayName());
 			out->Append(", ");
 			out->Append(GetMonthName());
 			out->Append(" ");
