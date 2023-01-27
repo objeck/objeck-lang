@@ -674,7 +674,12 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   // set token
   wchar_t* end;
   tokens[index]->SetType(TOKEN_INT_LIT);
-  tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &end, base));
+  if(!ident.rfind(L"0b", 0)) {
+    tokens[index]->SetIntLit((int)wcstol(ident.c_str() + 2, &end, 2));
+  }
+  else {
+    tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &end, base));
+  }
   tokens[index]->SetLineNbr(line_nbr);
   tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
@@ -1064,13 +1069,13 @@ void Scanner::ParseToken(int index)
     start_pos = buffer_pos - 1;
 
     // test hex state
-    if(cur_char == L'0' && nxt_char == L'x') {
+    if(cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X')) {
       hex_state = 1;
       NextChar();
     }
     while(iswdigit(cur_char) || cur_char == L'.' || 
           // hex format
-          cur_char == L'x' || (cur_char >= L'a' && cur_char <= L'f') || 
+          cur_char == L'x' || cur_char == L'X' || (cur_char >= L'a' && cur_char <= L'f') ||
           (cur_char >= L'A' && cur_char <= L'F') ||
           // scientific format
           cur_char == L'e' || cur_char == L'E' || 
@@ -1098,7 +1103,7 @@ void Scanner::ParseToken(int index)
         double_state++;
       }      
       // hex integer
-      else if(cur_char == L'x') {
+      else if(cur_char == L'x' || cur_char == L'X') {
         // error
         if(double_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
