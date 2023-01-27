@@ -1748,6 +1748,7 @@ bundle Web.HTTP.Server {
 		@is_compressed : Bool;
 		@reason : String;
 		@response_headers : Map<String, String>;
+		@cookies : Map<String, String>;
 
 		enum Compression := 100 {
 			NONE,
@@ -1757,10 +1758,36 @@ bundle Web.HTTP.Server {
 		}
 
 		New() {
-			@response_headers := Map->New()<String, String>;
 			@code := 400;
 			@compression := Compression->NONE;
 			@is_compressed := false;
+			@response_headers := Map->New()<String, String>;
+			@cookies := Map->New()<String, String>;
+		}
+
+		#~
+		Adds a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
+		method : public : AddCookie(name : String, value : String) ~ Nil {
+			@cookies->Insert(name, value);
+		}
+
+		#~
+		Adds a cookie
+		@param name cookie name
+		~#
+		method : public : RemoveCookie(name : String) ~ Nil {
+			@cookies->Remove(name);
+		}
+
+		#~
+		Gets all cookies
+		@return all cookies
+		~#
+		method : public : GetCookies() ~ Map<String, String> {
+			return @cookies;
 		}
 
 		#~
@@ -1986,6 +2013,8 @@ bundle Web.HTTP.Server {
 					# get request headers
 					request_headers := GetHeaders();
 
+					# TODO: check for cookies
+
 					# GET and HEAD request
 					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
@@ -2043,6 +2072,15 @@ bundle Web.HTTP.Server {
 					if(content <> Nil) {
 						content_size := content->Size();
 						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+
+						cookies := response->GetCookies()<String, String>->GetKeyValues()<Pair<String, String>>;
+						each(i : cookies) {
+							cookie := cookies->Get(i);
+							name := cookie->GetFirst();
+							value := cookie->GetSecond();
+							response_header += "Set-Cookie: {$name}={$value}\r\n";
+						};
+
 						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
 						if(<>is_head) {
 							@client->WriteBuffer(content);
