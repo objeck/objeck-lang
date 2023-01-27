@@ -5,8 +5,8 @@ class Test {
 
 	function : FormatDate(date : System.Time.Date) ~ String {
 		buffer := "";
-
-		days_of_week := ["Sun", "Mon", "Tue", "Wed","Thu","Fri","Sat"];
+		
+		days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 		buffer += days_of_week[date->GetWeekDay()];
 		buffer += ", ";
 
@@ -47,5 +47,4 @@ class Test {
 
 		return buffer;
 	}
-
 }
