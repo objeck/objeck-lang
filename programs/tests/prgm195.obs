@@ -1,9 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		FormatDate(System.Time.Date->New())->PrintLine();
+		FormatTime(System.Time.Date->New(true))->PrintLine();
 	}
 
-	function : FormatDate(date : System.Time.Date) ~ String {
+	function : FormatTime(date : System.Time.Date) ~ String {
 		buffer := "";
 
 		days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
