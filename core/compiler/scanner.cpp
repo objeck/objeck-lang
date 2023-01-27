@@ -674,7 +674,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   // set token
   wchar_t* end;
   tokens[index]->SetType(TOKEN_INT_LIT);
-  if(!ident.rfind(L"0b", 0)) {
+  if(base == 2) {
     tokens[index]->SetIntLit((int)wcstol(ident.c_str() + 2, &end, 2));
   }
   else {
@@ -1065,6 +1065,8 @@ void Scanner::ParseToken(int index)
   else if(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char))) {
     int double_state = 0;
     int hex_state = 0;
+    int bin_state = 0;
+
     // mark
     start_pos = buffer_pos - 1;
 
@@ -1073,8 +1075,15 @@ void Scanner::ParseToken(int index)
       hex_state = 1;
       NextChar();
     }
+
+    // test bin state
+    if(cur_char == L'0' && (nxt_char == L'b' || nxt_char == L'B')) {
+      bin_state = 1;
+      NextChar();
+    }
+
     while(iswdigit(cur_char) || cur_char == L'.' || 
-          // hex format
+          // hex/bin format
           cur_char == L'x' || cur_char == L'X' || (cur_char >= L'a' && cur_char <= L'f') ||
           (cur_char >= L'A' && cur_char <= L'F') ||
           // scientific format
@@ -1083,14 +1092,14 @@ void Scanner::ParseToken(int index)
       // decimal double
       if(cur_char == L'.') {
         // error
-        if(double_state || hex_state) {
+        if(double_state || hex_state || bin_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           NextChar();
           break;
         }
         double_state = 1;
       }
-      else if(!hex_state && (cur_char == L'e' || cur_char == L'E')) {
+      else if(!hex_state && !bin_state && (cur_char == L'e' || cur_char == L'E')) {
         // error
         if(double_state != 1) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
@@ -1118,6 +1127,22 @@ void Scanner::ParseToken(int index)
           hex_state = 1;
         }
       }
+      // bin integer
+      else if(cur_char == L'b' || cur_char == L'B') {
+        // error
+        if(double_state) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          NextChar();
+          break;
+        }
+
+        if(bin_state == 1) {
+          bin_state = 2;
+        }
+        else {
+          hex_state = 1;
+        }
+      }
 
       // next character
       NextChar();
@@ -1130,7 +1155,10 @@ void Scanner::ParseToken(int index)
     else if(hex_state == 2) {
       ParseInteger(index, 16);
     }
-    else if(hex_state || double_state) {
+    else if(bin_state == 2) {
+      ParseInteger(index, 2);
+    }
+    else if(hex_state || bin_state || double_state) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
     }
     else {
