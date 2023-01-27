@@ -12,7 +12,6 @@ TODO:
 
 use System.IO.Net; 
 use System.IO.Filesystem;
-use System.Time;
 use Collection.Generic;
 
 #~
@@ -1962,10 +1961,10 @@ bundle Web.HTTP.Server {
 		Current GMT time
 		@return current GMT time
 		~#
-		function : CurrentGmtTime() ~ Date {
+		function : CurrentGmtTime() ~ System.Time.Date {
 			return System.Time.Date->New(true);
 		}
-		
+
 		#~
 		Formats a date into a string via the HTTP date/time format
 		@param date date/time
