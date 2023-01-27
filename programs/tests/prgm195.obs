@@ -1,11 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		FormatDate(System.Time.Date->New(true))->PrintLine();
+		FormatDate(System.Time.Date->New())->PrintLine();
 	}
 
 	function : FormatDate(date : System.Time.Date) ~ String {
 		buffer := "";
-		
+
 		days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 		buffer += days_of_week[date->GetWeekDay()];
 		buffer += ", ";
@@ -18,7 +18,7 @@ class Test {
 		buffer += " ";
 
 		months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-		buffer += months[date->GetMonth()];
+		buffer += months[date->GetMonth() - 1];
 		buffer += " ";
 
 		buffer += date->GetYear();
@@ -43,7 +43,7 @@ class Test {
 			buffer += "0";			
 		};
 		buffer += sec;
-		buffer += ": GMT";
+		buffer += " GMT";
 
 		return buffer;
 	}
