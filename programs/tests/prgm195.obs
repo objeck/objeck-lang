@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		FormatDate(System.Time.Date->New())->PrintLine();
+		FormatDate(System.Time.Date->New(true))->PrintLine();
 	}
 
 	function : FormatDate(date : System.Time.Date) ~ String {
@@ -15,11 +15,35 @@ class Test {
 			buffer += "0";			
 		};
 		buffer += day;
-		buffer += ", ";
+		buffer += " ";
 
 		months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 		buffer += months[date->GetMonth()];
-		buffer += ", ";
+		buffer += " ";
+
+		buffer += date->GetYear();
+		buffer += " ";
+
+		hour := date->GetHours();
+		if(hour < 10) {
+			buffer += "0";			
+		};
+		buffer += hour;
+		buffer += ":";
+
+		min := date->GetMinutes();
+		if(min < 10) {
+			buffer += "0";			
+		};
+		buffer += min;
+		buffer += ":";
+
+		sec := date->GetSeconds();
+		if(sec < 10) {
+			buffer += "0";			
+		};
+		buffer += sec;
+		buffer += ": GMT";
 
 		return buffer;
 	}

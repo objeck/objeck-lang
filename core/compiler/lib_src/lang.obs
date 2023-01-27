@@ -4807,7 +4807,7 @@ bundle System.Time {
 		#~
 		Constructor 
 		@param day day of month
-		@param month day of year
+		@param month month of year
 		@param year year
 		@param hours hours
 		@param mins minutes
@@ -4850,10 +4850,10 @@ bundle System.Time {
 
 		#~
 		Returns the month 
-		@return 0-11 month value
+		@return 1-12 month value
 		~#
 		method : public : GetMonth() ~ Int {
-			return @month - 1;
+			return @month;
 		}
 		
 		#~
