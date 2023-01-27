@@ -1140,7 +1140,7 @@ void Scanner::ParseToken(int index)
           bin_state = 2;
         }
         else {
-          hex_state = 1;
+          bin_state = 1;
         }
       }
 
