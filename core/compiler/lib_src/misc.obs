@@ -11,8 +11,8 @@ bundle System.Time {
 	class DateUtility {
 		#~
 		Parses a date from a String. Format <i>MM: </i>month, <i>dd: </i>day, <i>yy(yy): </i>year, <i>hh: </i>hour, <i>mm: </i>minutes and <i>ss: </i>seconds. 
-		@param format date string format 
 		@param date_str date
+		@param format date string format 
 		@param gmt true is GMT, false otherwise
 		@return Date instance
 		~#
@@ -159,6 +159,17 @@ bundle System.Time {
 			date->AddSeconds(date_secs);
 
 			return date;
+		}
+
+		#~
+		Formats date into a string
+		@param date date 
+		@param format date string format 
+		@param gmt true is GMT, false otherwise
+		@return Date instance
+		~#
+		function : Format(date : Date, format : String, gmt : Bool) ~ String {
+			return Nil;
 		}
 	}
 	

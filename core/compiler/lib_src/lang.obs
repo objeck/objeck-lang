@@ -4828,10 +4828,10 @@ bundle System.Time {
 		}
 
 		#~
-		Returns name of the day
-		@return name of the day
+		Returns name of the week day
+		@return name of the week day
 		~#
-		method : public : GetDayName() ~ String {
+		method : public : GetWeekDayName() ~ String {
 			days_of_week := ["Sunday", "Monday", "Tuesday", "Wednesday","Thursday","Friday","Saturday"];
 			if(@week_day > -1 & @week_day < days_of_week->Size()) {
 				return days_of_week[@week_day];
@@ -4839,10 +4839,18 @@ bundle System.Time {
 
 			return "";
 		}
-		
+
+		#~
+		Returns day of the week
+		@return 0-6 day value
+		~#
+		method : public : GetWeekDay() ~ Int {
+			return @week_day;
+		}
+
 		#~
 		Returns the month 
-		@return month
+		@return 0-11 month value
 		~#
 		method : public : GetMonth() ~ Int {
 			return @month;
