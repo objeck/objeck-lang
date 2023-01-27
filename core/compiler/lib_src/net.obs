@@ -1787,10 +1787,9 @@ bundle Web.HTTP.Server {
 		@param value cookie value
 		~#
 		method : public : UpdateCookie(name : String, value : String) ~ Nil {
-			@cookies->Remove(name);
-"--- 0 ---"->PrintLine();				
+			if(@cookies->Remove(name)) {
 				@cookies->Insert(name, value);
-			
+			};
 		}
 
 		#~
