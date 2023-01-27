@@ -3,7 +3,7 @@ class Test {
 		map := Collection.Generic.Map->New()<String, String>;
 		map->Insert("foo", "bar");
 #		map->Insert("bar", "foo");
-		map->Remove("foo")->PrintLine();
+		map->Has("foo")->PrintLine();
 
 #		FormatTime(System.Time.Date->New(true))->PrintLine();
 	}
