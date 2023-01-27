@@ -2,8 +2,15 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		map := Collection.Generic.Map->New()<String, String>;
 		map->Insert("foo", "bar");
+		map->Insert("foo", "foo");
+		map->Find("foo")->PrintLine();
+		
 #		map->Insert("bar", "foo");
-		map->Has("foo")->PrintLine();
+		map->Remove("foo")->PrintLine();
+
+		map->Insert("foo", "foo");
+		map->Find("foo")->PrintLine();
+
 
 #		FormatTime(System.Time.Date->New(true))->PrintLine();
 	}
