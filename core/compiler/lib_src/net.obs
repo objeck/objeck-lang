@@ -1690,6 +1690,7 @@ bundle Web.HTTP.Server {
 	class Request {
 		@request_url : String;
 		@request_headers : Map<String, String>;
+		@cookies : Map<String, String>;
 		@content : Byte[];
 
 		New(request_url : String, request_headers : Map<String, String>) {
@@ -1701,6 +1702,50 @@ bundle Web.HTTP.Server {
 			@request_url := request_url;
 			@request_headers := request_headers;
 			@content := content;
+		}
+
+		#~
+		Gets a cookie value
+		@return cookie value
+		~#
+		method : public : GetCookie(name : String) ~ String {
+			ParseCookies();
+			return @cookies->Find(name);
+		}
+
+		#~
+		Checks for a cookie
+		@return true if cookie exists, false otherwise
+		~#
+		method : public : HasCookie(name : String) ~ Bool {
+			ParseCookies();
+			return @cookies->Has(name);
+		}
+
+		#~
+		Gets cookies
+		@return cookies
+		~#
+		method : public : GetCookies() ~ Map<String, String> {
+			ParseCookies();
+			return @cookies;
+		}
+
+		method : ParseCookies() ~ Nil {
+			if(@cookies = Nil) {
+				@cookies := Map->New()<String, String>;
+				
+				cookies_str := @request_headers->Find("Cookie");
+				if(cookies_str <> Nil) {
+					cookie_names_values := cookies_str->Split("; ");
+					each(i : cookie_names_values) {
+						cookie_name_value := cookie_names_values[i]->Split('=');
+						if(cookie_name_value->Size() = 2) {
+							@cookies->Insert(cookie_name_value[0], cookie_name_value[1]);
+						};
+					};
+				};
+			};
 		}
 
 		#~
