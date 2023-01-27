@@ -1957,12 +1957,24 @@ bundle Web.HTTP.Server {
 		method : public : HasHeader(name : String) ~ Bool {
 			return @response_headers->Has(name);
 		}
+		
+		#~
+		Current GMT time
+		@return current GMT time
+		~#
+		function : CurrentGmtTime() ~ Date {
+			return System.Time.Date->New(true);
+		}
 
-
-		function : FormatDate(date : System.Time.Date) ~ String {
+		#~
+		Formats a date using the HTTP date/time format
+		@param date date/time
+		@return formatting date/time string
+		~#
+		function : FormatTime(date : System.Time.Date) ~ String {
 			buffer := "";
 
-			days_of_week := ["Sun", "Mon", "Tue", "Wed","Thu","Fri","Sat"];
+			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 			buffer += days_of_week[date->GetWeekDay()];
 			buffer += ", ";
 
