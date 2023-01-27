@@ -1980,7 +1980,7 @@ bundle Web.HTTP.Server {
 
 			day := date->GetDay();
 			if(day < 10) {
-				buffer += "0";			
+				buffer += '0';			
 			};
 			buffer += day;
 			buffer += " ";
@@ -1994,21 +1994,21 @@ bundle Web.HTTP.Server {
 
 			hour := date->GetHours();
 			if(hour < 10) {
-				buffer += "0";			
+				buffer += '0';			
 			};
 			buffer += hour;
 			buffer += ":";
 
 			min := date->GetMinutes();
 			if(min < 10) {
-				buffer += "0";			
+				buffer += '0';			
 			};
 			buffer += min;
 			buffer += ":";
 
 			sec := date->GetSeconds();
 			if(sec < 10) {
-				buffer += "0";			
+				buffer += '0';			
 			};
 			buffer += sec;
 			buffer += " GMT";
