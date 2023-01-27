@@ -2579,6 +2579,12 @@ bundle Collection.Generic {
 		@param key key for value to remove
 		~#
 		method : public : Remove(key : K) ~ Bool {
+			if(@size = 1 & key->Compare(@root->GetKey()) = 0) {
+				@root := Nil;
+				@size := 0;
+				return true;
+			}
+			
 			node := Remove(key, @root);
 			if(node = Nil) {
 				return false;

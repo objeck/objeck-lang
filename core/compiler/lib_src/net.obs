@@ -1782,6 +1782,18 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Updates a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
+		method : public : UpdateCookie(name : String, value : String) ~ Nil {
+			@cookies->Remove(name);
+"--- 0 ---"->PrintLine();				
+				@cookies->Insert(name, value);
+			
+		}
+
+		#~
 		Gets all cookies
 		@return all cookies
 		~#
