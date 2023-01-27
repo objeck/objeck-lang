@@ -1702,6 +1702,7 @@ bundle Web.HTTP.Server {
 
 		#~
 		Gets a cookie value
+		@param name cookie name
 		@return cookie value
 		~#
 		method : public : GetCookie(name : String) ~ String {
@@ -1711,6 +1712,7 @@ bundle Web.HTTP.Server {
 
 		#~
 		Checks for a cookie
+		@param name cookie name
 		@return true if cookie exists, false otherwise
 		~#
 		method : public : HasCookie(name : String) ~ Bool {
