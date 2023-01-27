@@ -340,7 +340,7 @@ void Scanner::CheckIdentifier(int index)
 {
   try {
     // copy string
-    const size_t length = foo_pos - start_pos;
+    const size_t length = end_pos - start_pos;
     std::wstring ident(buffer, start_pos, length);
     // check string
     ScannerTokenType ident_type = ident_map[ident];
@@ -650,7 +650,7 @@ wchar_t* Scanner::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 void Scanner::CheckString(int index, bool is_valid)
 {
   // copy string
-  const size_t length = foo_pos - start_pos;
+  const size_t length = end_pos - start_pos;
   std::wstring char_string(buffer, start_pos, length);
   // set string
   if(is_valid) {
@@ -668,7 +668,7 @@ void Scanner::CheckString(int index, bool is_valid)
 void Scanner::ParseInteger(int index, int base /*= 0*/)
 {
   // copy string
-  const size_t length = foo_pos - start_pos;
+  const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
 
   // set token
@@ -676,14 +676,14 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   tokens[index]->SetType(TOKEN_INT_LIT);
   tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &end, base));
   tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetLinePos((int)(line_pos - length - 1));
+  tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
 }
 
 void Scanner::ParseDouble(int index)
 {
   // copy string
-  const size_t length = foo_pos - start_pos;
+  const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
   // set token
   tokens[index]->SetType(TOKEN_FLOAT_LIT);
@@ -696,7 +696,7 @@ void Scanner::ParseDouble(int index)
 void Scanner::ParseUnicodeChar(int index)
 {
   // copy string
-  const size_t length = foo_pos - start_pos;
+  const size_t length = end_pos - start_pos;
   if(length < 5) {
     std::wstring ident(buffer, start_pos, length);
     // set token
@@ -912,7 +912,7 @@ void Scanner::ParseToken(int index)
       NextChar();
     }
     // mark
-    foo_pos = buffer_pos - 1;
+    end_pos = buffer_pos - 1;
     // check string
     NextChar();
     CheckString(index, is_valid);
@@ -931,7 +931,7 @@ void Scanner::ParseToken(int index)
         while(iswdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
           NextChar();
         }
-        foo_pos = buffer_pos - 1;
+        end_pos = buffer_pos - 1;
         ParseUnicodeChar(index);
         if(cur_char != L'\'') {
           tokens[index]->SetType(TOKEN_UNKNOWN);
@@ -1051,7 +1051,7 @@ void Scanner::ParseToken(int index)
         NextChar();
       }
       // mark
-      foo_pos = buffer_pos - 1;
+      end_pos = buffer_pos - 1;
       // check identifier
       CheckIdentifier(index);
       return;
@@ -1118,7 +1118,7 @@ void Scanner::ParseToken(int index)
       NextChar();
     }
     // mark
-    foo_pos = buffer_pos - 1;
+    end_pos = buffer_pos - 1;
     if(double_state == 1 || double_state == 3) {
       ParseDouble(index);
     } 
