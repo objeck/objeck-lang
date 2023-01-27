@@ -1,0 +1,9 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		0xA1C->PrintLine(); # hex
+		1023->PrintLine(); # dec
+		-0XCB0->PrintLine(); # hex
+		0b1101->PrintLine(); # bin
+		052->PrintLine(); # oct
+	}
+}
