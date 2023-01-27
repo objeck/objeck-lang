@@ -4853,7 +4853,7 @@ bundle System.Time {
 		@return 0-11 month value
 		~#
 		method : public : GetMonth() ~ Int {
-			return @month;
+			return @month - 1;
 		}
 		
 		#~
