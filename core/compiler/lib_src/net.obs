@@ -1,13 +1,9 @@
 #~
 Web server as a service
 Copyright (c) 2023 Randy Hollines
-The Town: https://museumca.org/on-view/angela-davis-seize-the-time/
 
 TODO: 
-* chunked support(?)
-* POST support
 * DB connection pooling
-* Ignore DELETE, PATCH, CONNECT and TRACE(?)
 ~#	
 
 use System.IO.Net; 
@@ -2537,23 +2533,48 @@ bundle Web.HTTP.Server {
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
-						content_length := request_headers->Find("Content-Length");
-						if(content_length <> Nil) {
-							buffer := Byte->New[content_length->ToInt()];
-							each(i : buffer) {
-								buffer[i] := @client->ReadByte();
-							};
+						content_length_str := request_headers->Find("Content-Length");
+						if(content_length_str <> Nil) {
+							content_length  := content_length_str->ToInt();
+							if(content_length > 0) {
+								buffer := Byte->New[content_length];
 
-							# retrieve content
-							if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
-								request_url := "/index.html";
-							};
+								total_read := 0;
+								temp := Byte->New[1024];
+								do {
+									read := @client->ReadBuffer(0, temp->Size(), temp);
+#~									
+									if(@is_debug) {
+										"Post: content_length={$content_length}, read={$read}, total_read={$total_read}"->PrintLine();
+									};
+~#									
+									Runtime->Copy(buffer, total_read, temp, 0, read);
+									total_read += read;
+								}
+								while(total_read < content_length);
+
+								# retrieve content
+								if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
+									request_url := "/index.html";
+								};
+
+								# write response
+								http_request := Request->New(request_url, request_headers, buffer);
+								http_response := Response->New();
+								ProcessPost(http_request, http_response);
+								ProcessResponse(http_response);
 							
-							# write response
-							http_request := Request->New(request_url, request_headers, buffer);
-							http_response := Response->New();
-							ProcessPost(http_request, http_response);
-							ProcessResponse(http_response);
+								# retrieve content
+								if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
+									request_url := "/index.html";
+								};
+								
+								# write response
+								http_request := Request->New(request_url, request_headers, buffer);
+								http_response := Response->New();
+								ProcessPost(http_request, http_response);
+								ProcessResponse(http_response);
+							};
 						};
 					};
 				};
