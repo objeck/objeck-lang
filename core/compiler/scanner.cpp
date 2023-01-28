@@ -671,14 +671,21 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
 
-  // set token
-  wchar_t* end;
-  tokens[index]->SetType(TOKEN_INT_LIT);
+  // parse and check for errors
+  wchar_t* ending = nullptr;
   if(base == 2) {
-    tokens[index]->SetIntLit((int)wcstol(ident.c_str() + 2, &end, 2));
+    tokens[index]->SetIntLit((int)wcstol(ident.c_str() + 2, &ending, 2));
   }
   else {
-    tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &end, base));
+    tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &ending, base));
+  }
+
+  // set token
+  if(wcslen(ending) > 0) {
+    tokens[index]->SetType(TOKEN_UNKNOWN);
+  }
+  else {
+    tokens[index]->SetType(TOKEN_INT_LIT);
   }
   tokens[index]->SetLineNbr(line_nbr);
   tokens[index]->SetLinePos((int)(line_pos - length - 1));

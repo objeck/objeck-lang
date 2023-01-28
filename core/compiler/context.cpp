@@ -457,7 +457,7 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 
     // add method
     if(!klass->AddMethod(alt_method)) {
-      ProcessError(method, L"Method or function already overloaded '" + method->GetUserName() + L"'");
+      ProcessError(method, L"Method/function already overloaded '" + method->GetUserName() + L"'");
     }
   }
 }
