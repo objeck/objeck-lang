@@ -5,6 +5,6 @@ class Test {
 		0XCB0->PrintLine(); # hex
 		-0b1101->PrintLine(); # bin
 		052->PrintLine(); # oct
-		(0B101 + 8)->PrintLine(); # bin
+		0B10x1->PrintLine(); # bin
 	}
 }

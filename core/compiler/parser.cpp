@@ -3980,6 +3980,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       break;
 
+    case TOKEN_UNKNOWN:
+      ProcessError(L"Unknown token in an invalid expression ", TOKEN_SEMI_COLON);
+      break;
+
     default:
       ProcessError(L"Expected expression", TOKEN_SEMI_COLON);
       break;
