@@ -3898,14 +3898,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     switch(GetToken()) {
     case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos,
-                                                               -scanner->GetToken()->GetIntLit());
+      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -scanner->GetToken()->GetIntLit());
       NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
-      expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos,
-                                                             -scanner->GetToken()->GetFloatLit());
+      expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, -scanner->GetToken()->GetFloatLit());
       NextToken();
       break;
 
