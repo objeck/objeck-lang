@@ -89,7 +89,7 @@ std::wstring Parser::ParseBundleName()
         NextToken();
       }
       else if(Match(TOKEN_IDENT)) {
-        ProcessError(L"Expected period", TOKEN_SEMI_COLON);
+        ProcessError(L"Expected '.'", TOKEN_SEMI_COLON);
         NextToken();
       }
     }
@@ -508,7 +508,7 @@ Enum* Parser::ParseEnum(int depth)
         offset = static_cast<CharacterLiteral*>(label)->GetValue();
       }
       else {
-        ProcessError(L"Expected integer or character literal", TOKEN_CLOSED_PAREN);
+        ProcessError(L"Expected integer/character literal", TOKEN_CLOSED_PAREN);
       }
     }
   }
@@ -789,13 +789,13 @@ void Parser::CalculateConst(Expression* expression, std::stack<int>& values, int
       }
     }
     else {
-      ProcessError(L"Expected integer or character literal expression", TOKEN_CLOSED_PAREN);
+      ProcessError(L"Expected integer/character literal expression", TOKEN_CLOSED_PAREN);
     }
   }
     break;
 
   default:
-    ProcessError(L"Expected integer or character literal expression", TOKEN_CLOSED_PAREN);
+    ProcessError(L"Expected integer/character literal expression", TOKEN_CLOSED_PAREN);
     break;
   }
 }
@@ -926,14 +926,14 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
       Method* method = ParseMethod(true, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+        ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
     }
     else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
       Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+        ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
     }
     else if(Match(TOKEN_IDENT)) {
@@ -1024,14 +1024,14 @@ Class* Parser::ParseInterface(const std::wstring &bundle_name, int depth)
       Method* method = ParseMethod(true, true, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+        ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
     }
     else if(Match(TOKEN_METHOD_ID)) {
       Method* method = ParseMethod(false, true, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+        ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
     }
     else {
@@ -1385,7 +1385,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     NextToken();
   }
   else if(virtual_requried && !is_virtual) {
-    ProcessError(L"Method or function must be declared as virtual", TOKEN_SEMI_COLON);
+    ProcessError(L"Method/function must be declared as virtual", TOKEN_SEMI_COLON);
   }
   else {
     method->SetStatements(ParseStatementList(depth + 1));
@@ -3923,6 +3923,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
       break;
 
+    case TOKEN_UNKNOWN:
+      ProcessError(L"Unknown token in an invalid expression ", TOKEN_SEMI_COLON);
+      break;
+
     default:
       ProcessError(L"Expected expression", TOKEN_SEMI_COLON);
       break;
@@ -3953,7 +3957,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_BAD_CHAR_STRING_LIT:
-      ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
       NextToken();
       break;
 
@@ -4318,7 +4322,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   const std::wstring file_name = GetFileName();
 
   if(prev_method && current_method) {
-    ProcessError(L"Invalid nested anonymous classes");
+    ProcessError(L"Invalid anonymous nested classes");
     return;
   }
 
@@ -4375,14 +4379,14 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
       Method* method = ParseMethod(true, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+        ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
     }
     else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
       Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+        ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
       }
     }
     else if(Match(TOKEN_IDENT)) {
