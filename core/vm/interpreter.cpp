@@ -2127,23 +2127,17 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
 	// dynamic method call
-	if(concrete_call->IsVirtual()) {
+  if(concrete_call->IsVirtual()) {
     // lookup binding
-		StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
-    StackMethod* virtual_call = MemoryManager::GetVirtualEntry(concrete_class, instr->GetOperand(), instr->GetOperand2());
-    if(!virtual_call) {
-      if(!concrete_class) {
-        PopFrame();
-        std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-        StackErrorUnwind();
-#ifdef _DEBUGGER
-        halt = true;
-        return;
-#else
-        exit(1);
-#endif
-      }
+    StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
+    if(!concrete_class) {
+      std::wcerr << L">>> Unable to resolve virtual method call <<<" << std::endl;
+      StackErrorUnwind();
+      exit(1);
+    }
 
+    StackMethod* virtual_call = concrete_class->GetVirtualMethod(instr->GetOperand(), instr->GetOperand2());
+    if(!virtual_call) {
       // binding method
       const std::wstring qualified_method_name = concrete_call->GetName();
       const std::wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
@@ -2156,14 +2150,14 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
         method_name = concrete_class->GetName() + method_ending;
         virtual_call = concrete_class->GetMethod(method_name);
       }
-			// bind method call
-      MemoryManager::AddVirtualEntry(concrete_class, instr->GetOperand(), instr->GetOperand2(), virtual_call);
+      // bind method call
+      concrete_class->AddVirutalMethod(instr->GetOperand(), instr->GetOperand2(), virtual_call);
     }
 #ifdef _DEBUG
     assert(virtual_call);
 #endif
     concrete_call = virtual_call;
-	}
+  }
 
 #ifndef _NO_JIT
   // execute JIT call
