@@ -41,7 +41,6 @@ std::set<size_t*> MemoryManager::allocated_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
-std::unordered_map<cantor_tuple_key, StackMethod*, MemoryManager::cantor_tuple> MemoryManager::virtual_method_table;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -63,7 +62,6 @@ CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
-CRITICAL_SECTION MemoryManager::virtual_method_lock;
 #else
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -72,7 +70,6 @@ pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::virtual_method_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void MemoryManager::Initialize(StackProgram* p)
@@ -96,7 +93,6 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
-  InitializeCriticalSection(&virtual_method_lock);
 #endif
 
   initialized = true;
@@ -1547,27 +1543,4 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       }
     }
   }
-}
-
-StackMethod* MemoryManager::GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id)
-{
-  const auto cantor_hash = std::make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
-  const auto result = virtual_method_table.find(cantor_hash);
-  if(result != virtual_method_table.end()) {
-    return result->second;
-  }
-  
-	return nullptr;
-}
-
-void MemoryManager::AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd)
-{
-#ifndef _GC_SERIAL
-	MUTEX_LOCK(&virtual_method_lock);
-#endif
-  const auto cantor_hash = std::make_tuple(concrete_cls, virtual_cls_id, virtual_mthd_id);
-  virtual_method_table.insert(std::pair<cantor_tuple_key, StackMethod*>(cantor_hash, mthd));
-#ifndef _GC_SERIAL
-	MUTEX_UNLOCK(&virtual_method_lock);
-#endif
 }
