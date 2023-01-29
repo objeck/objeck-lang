@@ -35,7 +35,7 @@ class PageMaker {
 			
 			content := element->GetContent();
 			if(content <> Nil & content->Size() > 0) {
-				content->PrintLine();
+				"\t\t{$content}"->Print();
 			};
 		}
 		else {
@@ -60,13 +60,13 @@ class PageMaker {
 	}
 
 	method : PrintStart() ~ Nil {
-		@html_buffer += "use Web.FastCgi; use Web.HTTP;	class FastCgiModule { function : Action(req : Request, res : Response) ~ Nil { ";
+		@html_buffer += "Collection.Generic;\r\nWeb.HTTP.Server;\r\n\r\nclass FastCgiModule {\r\n\tmethod : ProcessGet(request : Request, response : Response) ~ Nil {";
 		@html_buffer->Print();
 		@html_buffer := "";
 	}
 
 	method : PrintHtml() ~ Nil {
-		"res->AddBody(\""->Print();
+		"\r\n\t\tres->AddBody(\""->Print();
 		@html_buffer->Print();
 		"\");"->PrintLine();
 		@html_buffer := "";
@@ -74,7 +74,7 @@ class PageMaker {
 
 	method : PrintEnd() ~ Nil {
 		PrintHtml();
-		@html_buffer += "res->Submit();	} }";
+		@html_buffer += "\t\tres->Submit();\r\n\t}\r\n}";
 		@html_buffer->Print();
 		@html_buffer := "";
 	}
