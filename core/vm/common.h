@@ -498,12 +498,12 @@ class StackMethod {
  ********************************/
 typedef std::pair<size_t, size_t> virtual_key_pair;
 
+// Szudzik pairing function
 struct virtual_key_pair_hash {
   template <class T1, class T2>
   std::size_t operator() (const std::pair<T1, T2>& virtual_key_pair) const {
-    const size_t a = virtual_key_pair.first;
-    const size_t b = virtual_key_pair.second;
-    return (a + b) * (a + b + 1) / 2 + a;
+    const size_t x = virtual_key_pair.first; const size_t y = virtual_key_pair.second;
+    return x >= y ? x * x + x + y : y * y + x;
   }
 };
 
