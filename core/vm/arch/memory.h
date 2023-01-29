@@ -109,7 +109,6 @@ class MemoryManager {
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
   static CRITICAL_SECTION free_memory_cache_lock;
-  static CRITICAL_SECTION virtual_method_lock;
 #else
   static pthread_mutex_t pda_monitor_lock;
   static pthread_mutex_t pda_frame_lock;
@@ -118,7 +117,6 @@ class MemoryManager {
   static pthread_mutex_t marked_lock;
   static pthread_mutex_t marked_sweep_lock;
 	static pthread_mutex_t free_memory_cache_lock;
-	static pthread_mutex_t virtual_method_lock;
 #endif
     
   // note: protected by 'allocated_lock'
@@ -214,7 +212,6 @@ class MemoryManager {
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
     DeleteCriticalSection(&free_memory_cache_lock);
-    DeleteCriticalSection(&virtual_method_lock);
 #endif
       
     initialized = false;
@@ -265,9 +262,6 @@ class MemoryManager {
     
     return -1;
   }
-
-	static StackMethod* GetVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id);
-	static void AddVirtualEntry(StackClass* concrete_cls, size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd);
 
 #ifdef _DEBUGGER
   static size_t GetAllocationSize() {

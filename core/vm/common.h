@@ -496,9 +496,21 @@ class StackMethod {
 /********************************
  * StackClass class
  ********************************/
+typedef std::pair<size_t, size_t> virtual_key_pair;
+
+struct virtual_key_pair_hash {
+  template <class T1, class T2>
+  std::size_t operator() (const std::pair<T1, T2>& virtual_key_pair) const {
+    const size_t a = virtual_key_pair.first;
+    const size_t b = virtual_key_pair.second;
+    return (a + b) * (a + b + 1) / 2 + a;
+  }
+};
+
 class StackClass {
   std::unordered_map<std::wstring, StackMethod*> method_name_map;
   StackMethod** methods;
+  std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> virtual_methods;
   int method_num;
   long id;
   std::wstring name;
@@ -784,6 +796,22 @@ class StackClass {
     return false;
   }
 #endif
+
+  StackMethod* GetVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id) {
+    const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
+    const std::unordered_map<virtual_key_pair, StackMethod*>::iterator result = virtual_methods.find(virtual_key);
+    if(result != virtual_methods.end()) {
+      return result->second;
+    }
+
+    return nullptr;
+  }
+
+  void AddVirutalMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
+    // TODO: thread safe?
+    const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
+    virtual_methods.insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+  }
 };
 
 /********************************
