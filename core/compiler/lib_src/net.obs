@@ -2124,8 +2124,6 @@ bundle Web.HTTP.Server {
 					# get request headers
 					request_headers := GetHeaders();
 
-					# TODO: check for cookies
-
 					# GET and HEAD request
 					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
@@ -2671,6 +2669,25 @@ bundle Web.HTTP.Server {
 			return headers;
 		}
 
+		#~
+		Callback for GET requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : virtual : ProcessGet(request : Request, response : Response) ~ Nil;
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : virtual : ProcessPost(request : Request, response : Response) ~ Nil;
+	}
+
+	#~
+	Interface for HTTP page requests
+	~#
+	interface RequestPageHandler {
 		#~
 		Callback for GET requests
 		@param request HTTP request
