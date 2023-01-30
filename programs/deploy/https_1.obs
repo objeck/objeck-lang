@@ -9,9 +9,7 @@ use Web.HTTP;
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			headers := Map->New()<String, String>;
-			headers->Insert("User-Agent", "");
-			html := HttpsClient->GetAll(args[0], "text/html", headers);
+			html := HttpsClient->GetAll(args[0]);
 			if(html = Nil) {
 				"--- Unable to fetch URL ---"->ErrorLine();
 			}
