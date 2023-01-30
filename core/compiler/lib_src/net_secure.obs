@@ -1,6 +1,6 @@
 #~~
 Copyright (c) 2023 Randy Hollines
-~~#	
+~~#
 
 use System.IO.Net; 
 use Collection.Generic;
@@ -10,13 +10,15 @@ Web client support (-lib net)
 ~#
 bundle Web.HTTP {
 	#~
-	HTTP client
+	HTTPS client
 	~#
-	class HttpClient {
+	class HttpsClient {
 		@request_headers : Hash<String, String>;
 		@response_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
 		@cookies: Vector<String>;
+		@cert_issuer : String;
+		@cert_subject : String;
 		
 		#~
 		Default constructor 
@@ -34,23 +36,23 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Gets the HTTP request headers
-		@return HTTP request headers
+		Gets the HTTPS request headers
+		@return HTTPS request headers
 		~#
 		method : public : GetRequestHeaders() ~ Hash<String, String> {
 			return @request_headers;
 		}
 
 		#~
-		Gets the HTTP response headers
-		@return HTTP response headers
+		Gets the HTTPS response headers
+		@return HTTPS response headers
 		~#
 		method : public : GetResponseHeaders() ~ Hash<String, String> {
 			return @response_headers;
 		}
 
 		#~
-		Adds a HTTP request header
+		Adds a HTTPS request header
 		@param name header name
 		@param value header value
 		~#
@@ -81,9 +83,9 @@ bundle Web.HTTP {
 		method : public : SetCookie(cookie : String) ~ Nil {
 			@cookies->AddBack(cookie);
 		}
-		
+
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
 		@return vector of read strings
@@ -93,7 +95,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
 		@return read strings
@@ -101,7 +103,7 @@ bundle Web.HTTP {
 		function : PostAll(url : String, data : String) ~ String {
 			document := "";
 			
-			client := HttpClient->New();
+			client := HttpsClient->New();
 			lines := client->Post(url, data);
 			if(lines = Nil) {
 				return Nil;
@@ -115,7 +117,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
 		@param content_type content type
@@ -125,7 +127,7 @@ bundle Web.HTTP {
 		function : PostAll(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {
 			document := "";
 			
-			client := HttpClient->New();
+			client := HttpsClient->New();
 			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 			each(i : header_key_values) {
 				key_value := header_key_values->Get(i);
@@ -147,7 +149,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs a HTTP POST
+		Performs a HTTPS POST
 		@param url URL
 		@param content_type content type
 		@param data data to post
@@ -156,12 +158,12 @@ bundle Web.HTTP {
 		method : public : Post(url : String, data : String, content_type : String) ~ Vector<String> {
 			content := Vector->New()<String>;
 			
-			if(url->StartsWith("http://")) {
-				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+			if(url->StartsWith("https://")) {
+				url := url->SubString("https://"->Size(), url->Size() - "https://"->Size());
 				address := "";
 				location := "/";
 				index := url->Find('/');
-				port := "80";
+				port := "443";
 				if(index > -1) {
 				  address := url->SubString(index);
 				  port_index := address->Find(':');
@@ -178,7 +180,7 @@ bundle Web.HTTP {
 				  address := url;
 				};
 				
-				socket := TCPSocket->New(address, port->ToInt());
+				socket := TCPSecureSocket->New(address, port->ToInt());
 				if(socket->IsOpen()) {
 					post := "POST ";
 					post->Append(location);
@@ -258,11 +260,11 @@ bundle Web.HTTP {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url : String;
-								if(moved_location->StartsWith("http://")) {
+								if(moved_location->StartsWith("https://")) {
 									moved_url := moved_location;
 								}
 								else {
-									moved_url := "http://";
+									moved_url := "https://";
 									moved_url += address;
 									moved_url += moved_location;
 								};
@@ -293,7 +295,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP GET and returns results as a String
+		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@return output as one string
 		~#
@@ -302,7 +304,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs a HTTP GET and returns results as a String
+		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@param headers key/value headers
 		@return output as one string
@@ -312,7 +314,7 @@ bundle Web.HTTP {
 		}
 		
 		#~
-		Performs a HTTP GET and returns results as a String
+		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@param content_type content type
 		@param headers key/value headers
@@ -321,7 +323,7 @@ bundle Web.HTTP {
 		function : GetAll(url : String, content_type : String, headers : Map<String, String>) ~ String {
 			document := "";
 			
-			client := HttpClient->New();
+			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 				each(i : header_key_values) {
@@ -345,16 +347,32 @@ bundle Web.HTTP {
 		}
 				
 		#~
-		Performs a HTTP GET
+		Performs a HTTPS GET
 		@param url URL
 		@return vector of read strings
 		~#
 		method : public : Get(url : String) ~ Vector<String> {
 			return Get(url, "text/plain");
 		}
+
+		#~
+		Gets the socket's X.509 certificate issurer name
+		@return certificate issurer name
+		~#
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
+		}
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
+		}
 		
 		#~
-		Performs a HTTP GET
+		Performs a HTTPS GET
 		@param url URL
 		@param content_type content type
 		@return vector of read strings
@@ -362,12 +380,12 @@ bundle Web.HTTP {
 		method : public : Get(url : String, content_type : String) ~ Vector<String> {
 			content := Vector->New()<String>;
 			
-			if(url->StartsWith("http://")) {
-				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+			if(url->StartsWith("https://")) {
+				url := url->SubString("https://"->Size(), url->Size() - "https://"->Size());
 				address := "";
 				location := "/";
 				index := url->Find('/');
-				port := "80";
+				port := "443";
 				if(index > -1) {
 				  address := url->SubString(index);
 				  port_index := address->Find(':');
@@ -384,7 +402,7 @@ bundle Web.HTTP {
 				  address := url;
 				};
 				
-				socket := TCPSocket->New(address, port->ToInt());
+				socket := TCPSecureSocket->New(address, port->ToInt());
 				if(socket->IsOpen()) {
 					get := "GET ";
 					get->Append(location);
@@ -461,11 +479,11 @@ bundle Web.HTTP {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
 								moved_url : String;
-								if(moved_location->StartsWith("http://")) {
+								if(moved_location->StartsWith("https://")) {
 									moved_url := moved_location;
 								}
 								else {
-									moved_url := "http://";
+									moved_url := "https://";
 									moved_url += address;
 									moved_url += moved_location;
 								};
@@ -501,6 +519,8 @@ bundle Web.HTTP {
 								while(count < 2);
 							};							
 						};
+						@cert_issuer := socket->GetIssuer();
+						@cert_subject := socket->GetSubject();
 					};
 					socket->Close();
 				}
@@ -519,10 +539,10 @@ Web server support (-lib net)
 ~#
 bundle Web.HTTP.Server {
 	#~
-	Request handler for HTTP GET and POST requests
+	Request handler for HTTPS GET and POST requests
 	~#
-	class HttpRequestHandler from System.Concurrency.Thread {
-		@client : TCPSocket;
+	class HttpsRequestHandler from System.Concurrency.Thread {
+		@client : TCPSecureSocket;
 		@is_debug : Bool;
 
 		New() {
@@ -534,7 +554,7 @@ bundle Web.HTTP.Server {
 		}
         
 		method : public : Run(param : Base) ~ Nil {
-			@client := param->As(TCPSocket);
+			@client := param->As(TCPSecureSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
 				# get request

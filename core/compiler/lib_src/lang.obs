@@ -7846,11 +7846,19 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Gets the X.509 certificate's issuer name
+		Gets the X.509 certificate issuer name
 		@return certificate issuer name
 		~#
 		method : public : GetIssuer() ~ String {
-			SOCK_TCP_SSL_CERT;
+			SOCK_TCP_SSL_ISSUER;
+		}
+
+		#~
+		Gets the X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			SOCK_TCP_SSL_SUBJECT;
 		}
 		
 		#~
@@ -8098,7 +8106,15 @@ bundle System.IO.Net {
 		@return certificate issuer name
 		~#
 		method : public : GetIssuer() ~ String {
-			SOCK_TCP_SSL_CERT;
+			SOCK_TCP_SSL_ISSUER;
+		}
+
+		#~
+		Gets the X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			SOCK_TCP_SSL_SUBJECT;
 		}
 
 		#~

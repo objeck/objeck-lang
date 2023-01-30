@@ -1,0 +1,1246 @@
+#~~
+Copyright (c) 2023 Randy Hollines
+~~#
+
+use System.IO.Net; 
+use Collection.Generic;
+
+#~
+Web client support (-lib net)
+~#
+bundle Web.HTTP {
+	#~
+	URL parser, encoder and decoder
+	~#
+	class Url {
+		@parsed : Bool;
+		@url : String;
+		@scheme : String;
+		@host : String;
+		@port : Int;
+		@frag : String;
+		@query : String;
+		@path : String;
+
+		#~
+		Parsed URL into components
+		@param url raw URL
+		~#
+		New(url : String) {
+			@url := url;
+			@port := -1;
+			@parsed := ParseUrl(url);
+		}
+
+		#~
+		Determines if given URL has been parsed correctly
+		@return true if parsed, false otherwise
+		~#
+		method : public : Parsed() ~ Bool {
+			return @parsed;
+		}
+
+		#~
+		Gets original URL
+		@return original URL
+		~#
+		method : public : GetUrl() ~ String {
+			return @url;
+		}
+
+		#~
+		Gets scheme
+		@return scheme, Nil if not present
+		~#
+		method : public : GetScheme() ~ String {
+			if(@parsed) {
+				return @scheme;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets host
+		@return host, Nil if not present
+		~#
+		method : public : GetHost() ~ String {
+			if(@parsed) {
+				return @host;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets scheme
+		@return scheme, Nil if not present
+		~#
+		method : public : GetQuery() ~ String {
+			if(@parsed) {
+				return @query;
+			};
+
+			return Nil;
+		}
+		
+		#~
+		Gets port
+		@return port, -1 if not present
+		~#
+		method : public : GetPort() ~ Int {
+			if(@parsed) {
+				return @port;
+			};
+
+			return -1;
+		}
+
+		#~
+		Gets fragment
+		@return fragment, Nil if not present
+		~#
+		method : public : GetFragment() ~ String {
+			if(@parsed) {
+				return @frag;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets path
+		@return path, Nil if not present
+		~#
+		method : public : GetPath() ~ String {
+			if(@parsed) {
+				return @path;
+			};
+
+			return Nil;
+		}
+
+		method : ParseUrl(url : String) ~ Bool {
+			# "-- url='{$url}' --"->PrintLine();
+			scheme_index := url->Find(':');
+			if(scheme_index < 0) {
+				"--- No scheme ---"->ErrorLine();
+				return false;
+			};
+			@scheme := url->SubString(0, scheme_index);
+			# "\t-- scheme='{$@scheme}' --"->PrintLine();
+
+			scheme_index += 1;
+			rest := url->SubString(scheme_index, url->Size() - scheme_index);
+			# "\t-- rest='{$rest}' --"->PrintLine();
+
+			if(rest->StartsWith("//")) {
+				parts := rest->SubString(2, rest->Size() - 2)->Split("/");
+				if(parts->Size() = 0) {
+					ParsePart(rest->SubString(2, rest->Size() - 2), 0, false);
+				}
+				else {
+					each(i : parts) {
+						ParsePart(parts[i], i, i = parts->Size() - 1);
+					};
+				};
+			}
+			else {
+				@path := rest;
+			};
+
+			return true;
+		}
+
+		method : ParsePart(part : String, index : Int, last : Bool) ~ Nil {
+			# "\t-- part='{$part}' --"->PrintLine();
+
+			# host and port
+			if(index = 0) {
+				if(part->StartsWith('[') | part->StartsWith('(')) {
+					@host := part;
+				}
+				else {
+					port_index := part->Find(':');
+					if(port_index > -1) {
+						@host := part->SubString(port_index);
+						port_index += 1;
+						port_str := part->SubString(port_index, part->Size() - port_index);
+						@port := port_str->ToInt();
+					}
+					else {
+						@host := part;
+					};
+				};
+			}
+			# path, query and fragment
+			else {
+				if(@path = Nil) {
+					@path := "";
+				};
+				@path += '/';
+
+				# query and fragment
+				if(last) {
+					sub_part : String;
+					frag_index := part->Find('#');
+					if(frag_index > -1) {
+						sub_part := part->SubString(frag_index);
+						# "\t-- sub_part='{$sub_part}' --"->PrintLine();							
+
+						frag_index += 1;
+						@frag := part->SubString(frag_index, part->Size() - frag_index);
+					}
+					else {
+						sub_part := part;
+					};
+
+					query_index := sub_part->Find('?');
+					if(query_index > -1) {
+						# add to path
+						if(query_index > 0)	{
+							@path += sub_part->SubString(query_index);
+						};
+						query_index += 1;
+
+						@query := sub_part->SubString(query_index, sub_part->Size() - query_index);
+					}
+					else {
+						@path += sub_part;
+					};
+				}
+				# path
+				else {
+					@path += part;
+				};
+			};
+		}
+
+		#~
+		General encoding for HTML or XML strings
+		@param str string to encode 
+		@return encoded string 
+		~#
+		function : native : Encode(str : String) ~ String {
+			buffer := String->New();
+			each(i : str) {
+				c := str->Get(i);
+				select(c) {
+					label ' ': {
+						buffer->Append("%20");
+					}
+
+					label ';': {
+						buffer->Append("%3B");
+					}
+
+					label '=': {
+						buffer->Append("%3D");
+					}
+
+					label '$': {
+						buffer->Append("%26");
+					}
+
+					label ',': {
+						buffer->Append("%2C");
+					}
+
+					label '<': {
+						buffer->Append("%3C");
+					}
+
+					label '>': {
+						buffer->Append("%3E");
+					}
+
+					label '^': {
+						buffer->Append("%5E");
+					}
+
+					label '`': {
+						buffer->Append("%60");
+					}
+
+					label '\\': {
+						buffer->Append("%5C");
+					}
+
+					label '[': {
+						buffer->Append("%5B");
+					}
+
+					label ']': {
+						buffer->Append("%5D");
+					}
+
+					label '{': {
+						buffer->Append("%7B");
+					}
+
+					label '}': {
+						buffer->Append("%7D");
+					}
+
+					label '|': {
+						buffer->Append("%7C");
+					}
+
+					label '"': {
+						buffer->Append("%22");
+					}
+
+					label ':': {
+						buffer->Append("%3A");
+					}
+
+					label '/': {
+						buffer->Append("%2F");
+					}
+
+					label '#': {
+						buffer->Append("%23");
+					}
+
+					label '?': {
+						buffer->Append("%3F");
+					}
+
+					label '&': {
+						buffer->Append("%24");
+					}
+
+					label '@': {
+						buffer->Append("%40");
+					}
+
+					label '%': {
+						buffer->Append("%25");
+					}
+
+					label '+': {
+						buffer->Append("%2B");
+					}
+
+					label '~': {
+						buffer->Append("%7E");
+					}
+
+					other: {
+						buffer->Append(c);
+					}
+				};
+			};
+			
+			return buffer;
+		}
+
+		#~
+		General decoding for HTML or XML strings		
+		@param str encoded string
+		@return decoded string
+		~#
+		function : native : Decode(str : String) ~ String {
+			buffer := String->New();
+			each(i : str) {
+				c := str->Get(i);
+				if(c = '%' & i + 2 < str->Size()) {
+					value := "0x";
+					value->Append(str->Get(i + 1));
+					value->Append(str->Get(i + 2));
+					buffer->Append(value->ToInt()->As(Char));
+					i += 2;
+				}
+				else {
+					buffer->Append(c);
+				};
+			};
+
+			return buffer;
+		}
+
+		#~
+		String representation of URL
+		@return string representation of URL
+		~#
+		method : public : ToString() ~ String {
+			buffer := "{$@url}\n";
+
+			if(@scheme <> Nil) {
+				buffer += "\tscheme='{$@scheme}'\n";
+			};
+
+			if(@host <> Nil) {
+				buffer += "\thost='{$@host}'\n";
+			};
+
+			if(@path <> Nil) {
+				buffer += "\tpath='{$@path}'\n";
+			};
+			
+			if(@port > -1) {
+				buffer += "\tport='{$@port}'\n";
+			};
+
+			if(@query <> Nil) {
+				buffer += "\tquery='{$@query}'\n";
+			};
+			
+			if(@frag <> Nil) {
+				buffer += "\tfragment='{$@frag}'\n";
+			};
+					
+			return buffer;			
+		}
+	}
+
+	class : private : SocketCommon {
+		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
+			done := false;
+			do {
+				size_line := "0x";
+				size_line->Append(socket->ReadLine());
+				chunk_size := size_line->ToInt();
+				if(chunk_size > 0) {
+
+					total_read := 0;								
+					buffer := Byte->New[8192];
+					do {
+						total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
+						content->AddBack(String->New(buffer));
+						buffer->Clear();
+					}
+					while(total_read < chunk_size);
+
+					# read CRLF
+					socket->ReadByte(); 
+					socket->ReadByte();
+				}
+				else {
+					done := true;
+				};
+			}
+			while(done <> true);
+		}
+
+		function : ReadLength(length : Int, content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
+			total_read := 0;								
+			buffer := Byte->New[8192];
+			do {
+				total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
+				content->AddBack(String->New(buffer));
+				buffer->Clear();
+			}
+			while(total_read < length);
+		}
+	}
+	
+	#~
+	Downloads web content
+	~#
+	class WebDownloader {
+		#~
+		Downloads content for the given URLs
+		@param urls list of URLs to download content from
+		@param headers key/value headers
+		@return map of URLs and content
+		~#
+		function : Download(urls : Vector<String>, headers : Map<String, String>) ~ Vector<Pair<String, String>> {
+			group_size := 3;
+
+			downloaders := Downloader->New[urls->Size()];
+			each(i : urls) {
+				downloaders[i] := Downloader->New(urls->Get(i), headers);
+			};
+
+			download_count := 0;
+			while(download_count < urls->Size()) {
+				group_ending := download_count + group_size;
+				if(group_ending >= urls->Size()) {
+					group_ending := urls->Size();
+				};
+
+				for(i := download_count; i < group_ending; i += 1;) {
+					downloader := downloaders[i];
+					downloader->Execute(Nil);
+				};
+
+				for(i := download_count; i < group_ending; i += 1;) {
+					downloader := downloaders[i];
+					downloader->Join();
+				};
+
+				download_count += group_ending;
+			};
+
+			results := Map->New()<String, String>;
+			each(i : urls) {
+				downloader := downloaders[i];
+				results->Insert(downloader->GetUrl(), downloader->GetContent());
+			};
+
+			return results->GetKeyValues();
+		}
+	}
+
+	class Downloader from System.Concurrency.Thread {
+		@url : String;
+		@content : String;
+		@headers : Map<String, String>;
+
+		New(url : String, headers : Map<String, String>) {
+			Parent();
+			@url := url;
+			@headers := headers;
+		}
+
+		method : public : GetUrl() ~ String {
+			return @url;
+		}
+
+		method : public : GetContent() ~ String {
+			return @content;
+		}
+
+		method : public : Run(param : Base) ~ Nil {
+			if(@url->StartsWith("https://")) {
+				@content := HttpsClient->GetAll(@url, @headers);
+			}
+			else if(@url->StartsWith("http://")) {
+				@content := HttpClient->GetAll(@url, @headers);
+			};
+		}
+	}
+}
+
+#~
+Web server support (-lib net)
+~#
+bundle Web.HTTP.Server {
+	#~
+	HTTP and HTTP web server
+	~#
+	class WebServer {
+		@secure_server : static : TCPSecureSocketServer;
+		@server : static : TCPSocketServer;
+		@is_debug : static : Bool;
+        
+		#~
+		Starts a HTTPS server that listens for requests
+		@param callback class inherited from 'HttpsRequestHandler'
+		@param port server port
+		@param cert SSL certificate
+		@param cert_key SSL certificate key
+		@param cert_key_passwd SSL certificate password
+		@param is_debug true for debug output, false otherwise
+		~#
+		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String) ~ Nil {
+			ServeSecure(callback, port, cert, cert_key, cert_key_passwd, false);
+		}
+
+		#~
+		Starts a HTTPS server that listens for requests
+		@param callback class inherited from 'HttpsRequestHandler'
+		@param port server port
+		@param cert SSL certificate
+		@param cert_key SSL certificate key
+		@param cert_key_passwd SSL certificate password
+		@param is_debug true for debug output, false otherwise
+		~#
+		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
+			@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, port);
+			@is_debug := is_debug;
+
+	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
+			if(@secure_server->Listen()) {
+				platform := Runtime->GetPlatform();
+				host := TCPSocket->HostName();
+
+				if(@is_debug) {
+					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+				};
+
+				while(true) {
+					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+					handler->SetDebug(@is_debug);
+					handler->Execute(@secure_server->Accept());
+				};
+			}
+			else {
+				err_msg := @secure_server->GetLastError();
+				"Error: '{$err_msg}'"->ErrorLine();
+			};
+	  	}
+
+	  	#~
+		Starts a HTTP server that listens for requests
+		@param callback class inherited from 'HttpRequestHandler'
+		@param port server port
+		@param is_debug true for debug output, false otherwise
+		~#
+	  	function : Serve(callback : Class, port : Int) ~ Nil {
+	  		Serve(callback, port, false);
+	  	}
+
+	  	#~
+		Starts a HTTP server that listens for requests
+		@param callback class inherited from 'HttpRequestHandler'
+		@param port server port
+		@param is_debug true for debug output, false otherwise
+		~#
+	  	function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
+	  		@server := TCPSocketServer->New(port);
+			@is_debug := is_debug;
+
+	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
+			if(@server->Listen(8)) {
+				platform := Runtime->GetPlatform();
+				host := TCPSocket->HostName();
+
+				if(@is_debug) {
+					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+				};
+                
+				while(true) {
+					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+					handler->SetDebug(@is_debug);
+					handler->Execute(@server->Accept());
+				};
+			}
+			else {
+				err_msg := @server->GetLastError();
+				"Error: '{$err_msg}'"->ErrorLine();
+			};
+	  	}
+
+		function : Shutdown(id : Int) ~ Nil {
+			if(@secure_server <> Nil) {
+				@secure_server->Close();
+			};
+
+			if(@server <> Nil) {
+				@server->Close();
+			};
+            
+			if(@is_debug) {
+				"Shutting down..."->PrintLine();
+			};
+			Runtime->Exit(0);
+		}
+	}
+
+	#~
+	Web server request
+	~#
+	class Request {
+		@request_url : String;
+		@request_headers : Map<String, String>;
+		@cookies : Map<String, String>;
+		@content : Byte[];
+
+		New(request_url : String, request_headers : Map<String, String>) {
+			@request_url := request_url;
+			@request_headers := request_headers;
+		}
+
+		New(request_url : String, request_headers : Map<String, String>, content : Byte[]) {
+			@request_url := request_url;
+			@request_headers := request_headers;
+			@content := content;
+		}
+
+		#~
+		Gets a cookie value
+		@param name cookie name
+		@return cookie value
+		~#
+		method : public : GetCookie(name : String) ~ String {
+			ParseCookies();
+			return @cookies->Find(name);
+		}
+
+		#~
+		Checks for a cookie
+		@param name cookie name
+		@return true if cookie exists, false otherwise
+		~#
+		method : public : HasCookie(name : String) ~ Bool {
+			ParseCookies();
+			return @cookies->Has(name);
+		}
+
+		#~
+		Gets cookies
+		@return cookies
+		~#
+		method : public : GetCookies() ~ Map<String, String> {
+			ParseCookies();
+			return @cookies;
+		}
+
+		method : ParseCookies() ~ Nil {
+			if(@cookies = Nil) {
+				@cookies := Map->New()<String, String>;
+				
+				cookies_str := @request_headers->Find("Cookie");
+				if(cookies_str <> Nil) {
+					cookie_names_values := cookies_str->Split("; ");
+					each(i : cookie_names_values) {
+						cookie_name_value := cookie_names_values[i]->Split('=');
+						if(cookie_name_value->Size() = 2) {
+							@cookies->Insert(cookie_name_value[0], cookie_name_value[1]);
+						};
+					};
+				};
+			};
+		}
+
+		#~
+		Gets the request body content
+		@return request content
+		~#
+		method : public : GetContent() ~ String {
+			return @content->ToString();
+		}
+
+		#~
+		Gets the request body content as bytes
+		@return request content as bytes
+		~#
+		method : public : GetContentBytes() ~ Byte[] {
+			return @content;
+		}
+
+		#~
+		Gets the request URL
+		@return request URL
+		~#
+		method : public : GetUrl() ~ String {
+			return @request_url;
+		}
+
+		#~
+		Gets a request header
+		@param name header name
+		@return request header
+		~#
+		method : public : GetRequestHeader(name : String) ~ String {
+			return @request_headers->Find(name)<String>;
+		}
+	}
+
+	#~
+	Web server response
+	~#
+	class Response {
+		@code : Int;
+		@content : Byte[];
+		@compression : Compression;
+		@is_compressed : Bool;
+		@reason : String;
+		@response_headers : Map<String, String>;
+		@cookies : Map<String, String>;
+
+		enum Compression := 100 {
+			NONE,
+			GZIP,
+			DEFLATE,
+			BR
+		}
+
+		New() {
+			@code := 400;
+			@compression := Compression->NONE;
+			@is_compressed := false;
+			@response_headers := Map->New()<String, String>;
+			@cookies := Map->New()<String, String>;
+		}
+
+		#~
+		Adds a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
+		method : public : AddCookie(name : String, value : String) ~ Nil {
+			@cookies->Insert(name, value);
+		}
+
+		#~
+		Adds a cookie
+		@param name cookie name
+		~#
+		method : public : RemoveCookie(name : String) ~ Nil {
+			@cookies->Remove(name);
+		}
+
+		#~
+		Updates a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
+		method : public : UpdateCookie(name : String, value : String) ~ Nil {
+			if(@cookies->Remove(name)) {
+				@cookies->Insert(name, value);
+			};
+		}
+
+		#~
+		Gets all cookies
+		@return all cookies
+		~#
+		method : public : GetCookies() ~ Map<String, String> {
+			return @cookies;
+		}
+
+		#~
+		Get the response code
+		@return response code
+		~#
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+
+		#~
+		Set response code
+		@param code response code
+		~#
+		method : public : SetCode(code : Int) ~ Nil {
+			@code := code;
+		}
+
+		#~
+		Set response content
+		@param content response content
+		~#
+		method : public : SetContent(content : Byte[]) ~ Nil {
+			@content := content;
+		}
+
+		#~
+		Set response code
+		@param content response content
+		~#
+		method : public : SetContent(content : String) ~ Nil {
+			@content := content->ToByteArray();
+		}
+
+		#~
+		Set the response conpression
+		@param compression response conpression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		~#
+		method : public : SetCompression(compression : Compression) ~ Nil {
+			if(<>@is_compressed & @content <> Nil) {
+				select(compression) {
+					label Compression->GZIP	{
+						@content := @content->CompressGzip();
+						@response_headers->Insert("Content-Encoding", "gzip");
+						@is_compressed := true;
+					}
+
+					label Compression->DEFLATE {
+						@content := @content->CompressZlib();
+						@response_headers->Insert("Content-Encoding", "deflate");
+						@is_compressed := true;
+					}
+
+					label Compression->BR {
+						@content := @content->CompressBr();
+						@response_headers->Insert("Content-Encoding", "br");
+						@is_compressed := true;
+					}
+				};
+			};
+		}
+
+		#~
+		Set response code and content
+		@param code response code
+		@param content response content
+		~#
+		method : public : SetCodeContent(code : Int, content : Byte[]) ~ Nil {
+			@code := code;
+			@content := content;
+		}
+
+		#~
+		Set response code and content
+		@param code response code
+		@param content response content
+		~#
+		method : public : SetCodeContent(code : Int, content : String) ~ Nil {
+			@code := code;
+			@content := content->ToByteArray();
+		}
+
+		#~
+		Get the response content
+		@return response content
+		~#
+		method : public : GetContent() ~ Byte[] {
+			return @content;
+		}
+
+		#~
+		Get the response content as string
+		@return response content as string
+		~#
+		method : public : GetStringContent() ~ String {
+			return @content->ToString();
+		}
+
+		#~
+		Set response reason
+		@param reason response reason
+		~#
+		method : public : SetReason(reason : String) ~ Nil {
+			@reason := reason;
+		}
+
+		#~
+		Get the reason string
+		@return reason sting
+		~#
+		method : public : GetReason() ~ String {
+			return @reason;
+		}
+
+		#~
+		Sets the content type
+		@param type content type
+		~#
+		method : public : SetContentType(type : String) ~ Nil {
+			@response_headers->Insert("Content-Type", type);
+		}
+
+		#~
+		Gets a response header
+		@param name header name
+		@return response header
+		~#
+		method : public : GetHeader(name : String) ~ String {
+			return @response_headers->Find(name)<String>;
+		}
+
+		#~
+		Gets response headers
+		@return response headers
+		~#
+		method : public : GetHeaders() ~ Map<String, String> {
+			return @response_headers;
+		}
+
+		#~
+		Sets a response header
+		@param name header name
+		@param value header value
+		~#
+		method : public : SetHeader(name : String, value : String) ~ Nil {
+			if(value = Nil | value->IsEmpty()) {
+				@response_headers->Remove(name);
+			}
+			else {
+				@response_headers->Insert(name, value)<String>;
+			};
+		}
+
+		#~
+		Removed a response header
+		@param name header name
+		~#
+		method : public : RemoveHeader(name : String) ~ Nil {
+			SetHeader(name, Nil);
+		}
+
+		#~
+		Check for a response header
+		@param name header name
+		@return true if header exists, false otherwise
+		~#
+		method : public : HasHeader(name : String) ~ Bool {
+			return @response_headers->Has(name);
+		}
+
+		#~
+		Current GMT time
+		@return current GMT time
+		~#
+		function : CurrentGmtTime() ~ System.Time.Date {
+			return System.Time.Date->New(true);
+		}
+
+		#~
+		Formats a date into a string via the HTTP date/time format
+		@param date date/time
+		@return date/time string
+		~#
+		function : FormatTime(date : System.Time.Date) ~ String {
+			buffer := "";
+
+			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+			buffer += days_of_week[date->GetWeekDay()];
+			buffer += ", ";
+
+			day := date->GetDay();
+			if(day < 10) {
+				buffer += '0';			
+			};
+			buffer += day;
+			buffer += " ";
+
+			months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+			buffer += months[date->GetMonth() - 1];
+			buffer += " ";
+
+			buffer += date->GetYear();
+			buffer += " ";
+
+			hour := date->GetHours();
+			if(hour < 10) {
+				buffer += '0';			
+			};
+			buffer += hour;
+			buffer += ":";
+
+			min := date->GetMinutes();
+			if(min < 10) {
+				buffer += '0';			
+			};
+			buffer += min;
+			buffer += ":";
+
+			sec := date->GetSeconds();
+			if(sec < 10) {
+				buffer += '0';			
+			};
+			buffer += sec;
+			buffer += " GMT";
+
+			return buffer;
+		}
+
+		#~
+		Get the reason string
+		@return reason sting
+		~#
+		method : public : ToString() ~ String {
+			if(@content <> Nil) {
+				content_size := @content->Size();
+				return "code={$@code}, reason={$@reason}, content_size={$content_size}";
+			};
+
+			return "<Nil>";
+		}
+	}
+	
+	#~
+	Multipart encoding
+	~#
+	class MultipartEncoding {
+		@encoded : Byte[];
+
+		#~
+		Parses multipart encoding
+		@param encoded encoded bytes
+		~#
+		New(encoded : Byte[]) {
+			@encoded := encoded;
+		}
+		
+		#~
+		Parses multipart encoding
+		@return content parts
+		~#
+	    method : public : native : Parse() ~ Vector<MultipartContent> {
+	        multipart_content := Vector->New()<MultipartContent>;
+
+	        # read encoding string
+	        marker_bytes := ReadLine(0, @encoded);
+	        if(marker_bytes = Nil) {
+	            return Nil;
+	        };
+
+	        encoding_size := @encoded->Size();
+	        
+	        # fetch all markers
+	        marker_indexes := Byte->FindAll(@encoded, marker_bytes);
+	        if(marker_indexes = Nil) {
+	            return Nil;
+	        };
+
+	        boundry_index := 0;
+	        for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
+	            boundary_bytes := ReadLine(marker_indexes[i], @encoded);
+	            if(boundary_bytes = Nil) {
+	                return Nil;
+	            };
+	            boundry_index += boundary_bytes->Size();
+
+	            # read white space
+	            if(<>MatchSpace(boundry_index, @encoded)) {
+	                return Nil;
+	            };
+	            boundry_index += 2;
+	 
+	            # read content headers
+	            done := false;
+	            headers := Map->New()<String, String>;
+	            do {
+	                # read content line
+	                header_bytes := ReadLine(boundry_index, @encoded);
+	                if(header_bytes <> Nil) {            
+	                    boundry_index += header_bytes->Size();
+	                    content_str := header_bytes->ToString();
+	                    
+	                    # parse header name/value pair
+	                    content_str_index := content_str->Find(':');
+	                    if(content_str_index > 0) {
+	                        header_name := content_str->SubString(content_str_index);
+	                        content_str_index += 2;
+	                        header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
+	                        
+	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
+	                            headers->Insert(header_name, header_value);
+	                        };
+	                    };
+	                }
+	                else {
+	                    done := true;
+	                };
+
+	                # read white space
+	                if(<>MatchSpace(boundry_index, @encoded)) {
+	                    return Nil;
+	                };
+	                boundry_index += 2;
+	            }
+	            while(<>done);
+	            
+	            # read content
+	            content_size := marker_indexes[i + 1] - boundry_index - 2;
+	            
+	            content_bytes := Byte->New[content_size];
+	            if(<>Runtime->Copy(content_bytes, 0, @encoded, boundry_index, content_size)) {
+	                return Nil;
+	            };
+	            boundry_index += content_bytes->Size();
+
+	            # read white space
+	            if(<>MatchSpace(boundry_index, @encoded)) {
+	                return Nil;
+	            };
+	            boundry_index += 2;
+
+	            multipart_content->AddBack(MultipartContent->New(headers, content_bytes));
+	        };
+
+			# read ending boundary
+	        boundary_bytes := ReadLine(marker_indexes[marker_indexes->Size() - 1], @encoded);
+	        if(boundary_bytes = Nil) {
+	            return Nil;
+	        };
+	        boundry_index += boundary_bytes->Size();
+
+	        # read white space
+	        if(<>MatchSpace(boundry_index, @encoded)) {
+	            return Nil;
+	        };
+	        boundry_index += 2;
+
+	        boundary_str := boundary_bytes->ToString();
+	        if(boundary_str->EndsWith("--") & encoding_size = boundry_index) {
+	            return multipart_content;
+	        };
+
+	        return Nil;
+	    }
+
+	    method : native : ReadLine(offset : Int, encoded : Byte[]) ~ Byte[] {
+	        i := offset;
+	        if(i < encoded->Size()) {
+	            done := false;
+	            read := 0;
+	            while(<>done & i < encoded->Size()) {
+	                byte := encoded[i++];
+	                if(byte = '\r') {
+	                    done := true;
+	                }
+	                else {
+	                    read += 1;
+	                };
+	            };
+
+	            line := Byte->New[read];
+	            if(Runtime->Copy(line, 0, encoded, offset, read)) {
+	                return line;
+	            };
+	        };
+
+	        return Nil;
+	    }
+
+	    method : native : MatchSpace(offset : Int, encoded : Byte[]) ~ Bool {
+	        if(offset + 1 < encoded->Size()) {
+	            return encoded[offset] = '\r' & encoded[offset + 1] = '\n';
+	        };
+
+	        return false;
+	    }
+	}
+
+	#~
+	Multipart content type
+	~#
+	class MultipartContent {
+	    @headers : Map<String, String>;
+	    @content : Byte[];
+
+	    New(headers :  Map<String, String>, content : Byte[]) {
+	        @headers := headers;
+	        @content := content;
+	    }
+
+	    #~
+		Get MIME content header
+		@param name header name
+		@return header value
+		~#
+	    method : public : GetHeader(name : String) ~ String {    
+	        return @headers->Find(name);
+	    }
+
+	    #~
+		Get MIME content header names
+		@return header names
+		~#
+	    method : public : GetHeaderNames() ~ Vector<String> {    
+	        return @headers->GetKeys()<String>;
+	    }
+
+	    #~
+		Get MIME content
+		@return MIME bytes
+		~#
+	    method : public : GetContent() ~ Byte[] {
+	        return @content;
+	    }
+	}
+
+	#~
+	Interface for HTTP page requests
+	~#
+	interface RequestPageHandler {
+		#~
+		Callback for GET requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : virtual : ProcessGet(request : Request, response : Response) ~ Nil;
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : virtual : ProcessPost(request : Request, response : Response) ~ Nil;
+	}
+}
