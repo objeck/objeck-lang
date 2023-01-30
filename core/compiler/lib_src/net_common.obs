@@ -424,7 +424,7 @@ bundle Web.HTTP {
 		}
 
 		function : ReadLength(length : Int, content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
-			total_read := 0;								
+			total_read := 0;		
 			buffer := Byte->New[8192];
 			do {
 				total_read += socket->ReadBuffer(0, buffer->Size(), buffer);

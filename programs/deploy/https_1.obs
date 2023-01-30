@@ -3,16 +3,21 @@
 # run: obr https_1.obe
 ~#
 
+use Collection.Generic;
 use Web.HTTP;
 
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
-		html := HttpsClient->New()->GetAll("https://www.nasa.gov");
-		if(html = Nil) {
-			"--- Unable to fetch URL ---"->ErrorLine();
-		}
-		else {
-			html->PrintLine();
+		if(args->Size() = 1) {
+			headers := Map->New()<String, String>;
+			headers->Insert("User-Agent", "");
+			html := HttpsClient->GetAll(args[0], "text/html", headers);
+			if(html = Nil) {
+				"--- Unable to fetch URL ---"->ErrorLine();
+			}
+			else {
+				html->PrintLine();
+			};
 		};
 	}
 }
