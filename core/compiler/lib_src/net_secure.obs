@@ -25,7 +25,9 @@ bundle Web.HTTP {
 		~#
 		New() {
 			@request_headers := Hash->New()<String, String>;
-			@request_headers->Insert("Connection", "keep-alive");							
+			@request_headers->Insert("Connection", "Upgrade, HTTP2-Settings");						
+			@request_headers->Insert("Upgrade", "h2c");
+			@request_headers->Insert("HTTP2-Settings", ""); 
 			@request_headers->Insert("Cache-Control", "max-age=0");
 			@request_headers->Insert("User-Agent", "Mozilla/5.0 (compatible)");
 			
@@ -658,6 +660,10 @@ bundle Web.HTTP.Server {
 							name := cookie->GetFirst();
 							value := cookie->GetSecond();
 							response_header += "Set-Cookie: {$name}={$value}\r\n";
+
+							if(@is_debug) {
+								"cooke: {$name}={$value}"->PrintLine();
+							};
 						};
 
 						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
