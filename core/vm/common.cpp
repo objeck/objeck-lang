@@ -2131,8 +2131,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_TCP_SSL_CONNECT:
       return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_CERT:
-      return SockTcpSslCert(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_ISSUER:
+      return SockTcpSslIssuer(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_TCP_SSL_SUBJECT:
+      return SockTcpSslSubject(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_TCP_SSL_CLOSE:
       return SockTcpSslClose(program, inst, op_stack, stack_pos, frame);
@@ -3560,13 +3563,30 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
   return true;
 }
 
-bool TrapProcessor::SockTcpSslCert(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   X509* cert = (X509*)instance[2];
   if(cert) {
     char buffer[LARGE_BUFFER_MAX ];
     X509_NAME_oneline(X509_get_issuer_name(cert), buffer, LARGE_BUFFER_MAX - 1);
+    const std::wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  X509* cert = (X509*)instance[2];
+  if(cert) {
+    char buffer[LARGE_BUFFER_MAX];
+    X509_NAME_oneline(X509_get_subject_name(cert), buffer, LARGE_BUFFER_MAX - 1);
     const std::wstring in = BytesToUnicode(buffer);
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }

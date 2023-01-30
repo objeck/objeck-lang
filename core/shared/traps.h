@@ -157,7 +157,8 @@ namespace instructions {
     // ssl socket
     SOCK_TCP_SSL_CONNECT,
     SOCK_TCP_SSL_CLOSE,
-    SOCK_TCP_SSL_CERT,
+    SOCK_TCP_SSL_ISSUER,
+    SOCK_TCP_SSL_SUBJECT,
     SOCK_TCP_SSL_IN_BYTE,
     SOCK_TCP_SSL_IN_BYTE_ARY,
     SOCK_TCP_SSL_IN_CHAR_ARY,
