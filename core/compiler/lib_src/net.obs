@@ -23,11 +23,8 @@ bundle Web.HTTP {
 		~#
 		New() {
 			@request_headers := Hash->New()<String, String>;
-			@request_headers->Insert("Connection", "Upgrade, HTTP2-Settings");						
-			@request_headers->Insert("Upgrade", "h2c");
-			@request_headers->Insert("HTTP2-Settings", ""); 
-			@request_headers->Insert("Cache-Control", "max-age=0");
-			@request_headers->Insert("User-Agent", "Mozilla/5.0 (compatible)");
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
 			
 			@response_headers := Hash->New()<String, String>;
 
@@ -58,6 +55,14 @@ bundle Web.HTTP {
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
 			@request_headers->Insert(name->ToLower(), value);
+		}
+
+		#~
+		Removes a HTTP request header
+		@param name header name
+		~#
+		method : public : RemoveHeader(name : String) ~  Nil {
+			@request_headers->Remove(name->ToLower());
 		}
 		
 		#~
@@ -159,6 +164,10 @@ bundle Web.HTTP {
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("http://")) {
+				if(url->EndsWith('/')) {
+					url->Pop();
+				};
+
 				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
 				address := "";
 				location := "/";
@@ -330,7 +339,13 @@ bundle Web.HTTP {
 					key_value := header_key_values->Get(i);
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
-					client->AddHeader(key, value);
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
 				};
 			};
 
@@ -365,6 +380,10 @@ bundle Web.HTTP {
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("http://")) {
+				if(url->EndsWith('/')) {
+					url->Pop();
+				};
+
 				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
 				address := "";
 				location := "/";
