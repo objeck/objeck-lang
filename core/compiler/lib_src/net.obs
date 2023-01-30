@@ -1,4 +1,4 @@
-#~
+f#~
 Web server as a service
 Copyright (c) 2023 Randy Hollines
 
@@ -665,24 +665,7 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							done := false;
-							do {
-								size_line := "0x";
-								size_line->Append(socket->ReadLine());
-								chunk_size := size_line->ToInt();
-								line := "";
-								if(chunk_size > 0) {
-									for(i := 0; i < chunk_size; i += 1;) {
-										line->Append(socket->ReadByte());
-									};
-									socket->ReadLine();
-									content->AddBack(line);
-								}
-								else {
-									done := true;
-								};
-							}
-							while(done <> true);
+							SocketCommon->ReadChunked(content, socket);
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
