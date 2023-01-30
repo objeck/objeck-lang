@@ -301,7 +301,8 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_HOST_NAME"] = SOCK_TCP_HOST_NAME;
   ident_map[L"SOCK_TCP_RESOLVE_NAME"] = SOCK_TCP_RESOLVE_NAME;
   ident_map[L"SOCK_TCP_SSL_CONNECT"] = SOCK_TCP_SSL_CONNECT;
-  ident_map[L"SOCK_TCP_SSL_CERT"] = SOCK_TCP_SSL_CERT;
+  ident_map[L"SOCK_TCP_SSL_ISSUER"] = SOCK_TCP_SSL_ISSUER;
+  ident_map[L"SOCK_TCP_SSL_SUBJECT"] = SOCK_TCP_SSL_SUBJECT;
   ident_map[L"SOCK_TCP_SSL_CLOSE"] = SOCK_TCP_SSL_CLOSE;
   ident_map[L"SOCK_TCP_SSL_IN_BYTE"] = SOCK_TCP_SSL_IN_BYTE;
   ident_map[L"SOCK_TCP_SSL_IN_BYTE_ARY"] = SOCK_TCP_SSL_IN_BYTE_ARY;
@@ -542,7 +543,8 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_HOST_NAME:
     case SOCK_TCP_RESOLVE_NAME:
     case SOCK_TCP_SSL_CONNECT:
-    case SOCK_TCP_SSL_CERT:
+    case SOCK_TCP_SSL_ISSUER:
+    case SOCK_TCP_SSL_SUBJECT:
     case SOCK_TCP_SSL_CLOSE:
     case SOCK_TCP_SSL_IN_BYTE:
     case SOCK_TCP_SSL_IN_BYTE_ARY:

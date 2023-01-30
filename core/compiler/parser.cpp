@@ -2669,9 +2669,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case SOCK_TCP_SSL_CERT:
+    case SOCK_TCP_SSL_ISSUER:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_TCP_SSL_CERT);
+                                                               instructions::SOCK_TCP_SSL_ISSUER);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SUBJECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SUBJECT);
       NextToken();
       break;
 
