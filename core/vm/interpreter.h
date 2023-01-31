@@ -298,6 +298,10 @@ namespace Runtime {
     void inline CpyCharAry(size_t* &op_stack, long* &stack_pos);
     void inline CpyIntAry(size_t* &op_stack, long* &stack_pos);
     void inline CpyFloatAry(size_t* &op_stack, long* &stack_pos);
+    void inline ZeroByteAry(size_t*& op_stack, long*& stack_pos);
+    void inline ZeroCharAry(size_t*& op_stack, long*& stack_pos);
+    void inline ZeroIntAry(size_t*& op_stack, long*& stack_pos);
+    void inline ZeroFloatAry(size_t*& op_stack, long*& stack_pos);
     void inline ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline AsyncMthdCall(size_t* &op_stack, long* &stack_pos);

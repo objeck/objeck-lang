@@ -654,6 +654,10 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     case instructions::CPY_CHAR_ARY:
     case instructions::CPY_INT_ARY:
     case instructions::CPY_FLOAT_ARY:
+    case instructions::ZERO_BYTE_ARY:
+    case instructions::ZERO_CHAR_ARY:
+    case instructions::ZERO_INT_ARY:
+    case instructions::ZERO_FLOAT_ARY:
     case instructions::DLL_LOAD:
     case instructions::DLL_UNLOAD:
     case instructions::DLL_FUNC_CALL:

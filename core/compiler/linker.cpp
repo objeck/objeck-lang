@@ -1255,6 +1255,22 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, CPY_FLOAT_ARY));
       break;
 
+    case ZERO_BYTE_ARY:
+      instrs.push_back(new LibraryInstr(line_num, ZERO_BYTE_ARY));
+      break;
+
+    case ZERO_CHAR_ARY:
+      instrs.push_back(new LibraryInstr(line_num, ZERO_CHAR_ARY));
+      break;
+
+    case ZERO_INT_ARY:
+      instrs.push_back(new LibraryInstr(line_num, ZERO_INT_ARY));
+      break;
+
+    case ZERO_FLOAT_ARY:
+      instrs.push_back(new LibraryInstr(line_num, ZERO_FLOAT_ARY));
+      break;
+
     case CEIL_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, CEIL_FLOAT));
       break;

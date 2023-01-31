@@ -134,6 +134,10 @@ namespace instructions {
     CPY_CHAR_ARY,
     CPY_INT_ARY,
     CPY_FLOAT_ARY,
+    ZERO_BYTE_ARY,
+    ZERO_CHAR_ARY,
+    ZERO_INT_ARY,
+    ZERO_FLOAT_ARY,
     // casting & type check
     OBJ_INST_CAST,
     OBJ_TYPE_OF,

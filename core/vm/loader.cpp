@@ -738,6 +738,22 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, CPY_FLOAT_ARY);
       break;
 
+    case ZERO_BYTE_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, ZERO_BYTE_ARY);
+      break;
+
+    case ZERO_CHAR_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, ZERO_CHAR_ARY);
+      break;
+
+    case ZERO_INT_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, ZERO_INT_ARY);
+      break;
+
+    case ZERO_FLOAT_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, ZERO_FLOAT_ARY);
+      break;
+
     case FLOR_FLOAT:
       mthd_instrs[i] = new StackInstr(line_num, FLOR_FLOAT);
       break;
