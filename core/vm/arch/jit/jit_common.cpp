@@ -577,27 +577,6 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   }
     break;
 
-    // TODO:
-  case ZERO_BYTE_ARY: {
-
-  }
-    break;
-
-  case ZERO_CHAR_ARY: {
-
-  }
-    break;
-
-  case ZERO_INT_ARY: {
-
-  }
-    break;
-
-  case ZERO_FLOAT_ARY: {
-
-  }
-    break;
-
   case CPY_FLOAT_ARY: {
     long length = (long)PopInt(op_stack, stack_pos);
     const long src_offset = (long)PopInt(op_stack, stack_pos);
@@ -627,6 +606,38 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     else {
       PushInt(op_stack, stack_pos, 0);
     }
+  }
+    break;
+
+  case ZERO_BYTE_ARY: {
+    size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    const size_t array_len = array_ptr[0];
+    char* buffer = (char*)(array_ptr + 3);
+    memset(buffer, 0, array_len * sizeof(char));
+  }
+    break;
+
+  case ZERO_CHAR_ARY: {
+    size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    const size_t array_len = array_ptr[0];
+    wchar_t* buffer = (wchar_t*)(array_ptr + 3);
+    memset(buffer, 0, array_len * sizeof(wchar_t));
+  }
+    break;
+
+  case ZERO_INT_ARY: {
+    size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    const size_t array_len = array_ptr[0];
+    size_t* buffer = (size_t*)(array_ptr + 3);
+    memset(buffer, 0, array_len * sizeof(size_t));
+  }
+    break;
+
+  case ZERO_FLOAT_ARY: {
+    size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+    const size_t array_len = array_ptr[0];
+    FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
+    memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));
   }
     break;
 
