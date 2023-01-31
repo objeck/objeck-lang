@@ -331,7 +331,7 @@ bundle System {
 		@param b byte array
 		~#
 		function : native : Clear(b : Byte[]) ~ Nil {
-			ZERO_BYTE_ARY
+			ZERO_BYTE_ARY;
 		}
 		
 		#~
@@ -834,7 +834,7 @@ bundle System {
 		@param c array
 		~#
 		function : native : Clear(c : Char[]) ~ Nil {
-			ZERO_CHAR_ARY
+			ZERO_CHAR_ARY;
 		}
 		
 		#~
@@ -1213,7 +1213,7 @@ bundle System {
 		@param a array
 		~#
 		function : native : Clear(a : Int[]) ~ Nil {
-			ZERO_INT_ARY
+			ZERO_INT_ARY;
 		}
 
 		function : Size(i : Int[,]) ~ Int[] {
@@ -1687,7 +1687,7 @@ bundle System {
 		@param f array
 		~#
 		function : native : Clear(f : Float[]) ~ Nil {
-			ZERO_FLOAT_ARY
+			ZERO_FLOAT_ARY;
 		}
 
 		function : Size(f : Float[,]) ~ Int[] {

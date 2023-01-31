@@ -760,19 +760,19 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case instructions::ZERO_BYTE_ARY:
-    GetLogger() << i << L":\ZERO_BYTE_ARY" << std::endl;
+    GetLogger() << i << L":\tZERO_BYTE_ARY" << std::endl;
     break;
 
   case instructions::ZERO_CHAR_ARY:
-    GetLogger() << i << L":\ZERO_CHAR_ARY" << std::endl;
+    GetLogger() << i << L":\tZERO_CHAR_ARY" << std::endl;
     break;
 
   case instructions::ZERO_INT_ARY:
-    GetLogger() << i << L":\ZERO_INT_ARY" << std::endl;
+    GetLogger() << i << L":\tZERO_INT_ARY" << std::endl;
     break;
 
   case instructions::ZERO_FLOAT_ARY:
-    GetLogger() << i << L":\ZERO_FLOAT_ARY" << std::endl;
+    GetLogger() << i << L":\tZERO_FLOAT_ARY" << std::endl;
     break;
 
   case instructions::CEIL_FLOAT:
