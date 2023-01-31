@@ -619,23 +619,8 @@ bundle Web.HTTP.Server {
 						if(content_length_str <> Nil) {
 							content_length  := content_length_str->ToInt();
 							if(content_length > 0) {
-								buffer := Byte->New[content_length];
-
-								total_read := 0;
-								temp := Byte->New[1024];
-								do {
-									read := @client->ReadBuffer(0, temp->Size(), temp);
-									#~									
-									if(@is_debug) {
-										"Post: content_length={$content_length}, read={$read}, total_read={$total_read}"->PrintLine();
-									};
-									~#
-
-									Runtime->Copy(buffer, total_read, temp, 0, read);
-									total_read += read;
-								}
-								while(total_read < content_length);
-
+								buffer := SocketCommon->ReadPost(content_length, @client);
+								
 								# retrieve content
 								if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
 									request_url := "/index.html";

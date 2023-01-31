@@ -1,6 +1,6 @@
 #~
 # compile: obc -src https_1.obs -lib net
-# run: obr https_1.obe
+# run: obr https_1.obe url
 ~#
 
 use Collection.Generic;
