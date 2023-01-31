@@ -2058,6 +2058,30 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case ZERO_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ZERO_BYTE_ARY);
+      NextToken();
+      break;
+
+    case ZERO_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ZERO_CHAR_ARY);
+      NextToken();
+      break;
+
+    case ZERO_INT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ZERO_INT_ARY);
+      NextToken();
+      break;
+
+    case ZERO_FLOAT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ZERO_FLOAT_ARY);
+      NextToken();
+      break;
+
     case CEIL_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::CEIL_FLOAT);

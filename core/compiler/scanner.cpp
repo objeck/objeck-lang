@@ -155,6 +155,10 @@ void Scanner::LoadKeywords()
   ident_map[L"CPY_CHAR_ARY"] = CPY_CHAR_ARY;
   ident_map[L"CPY_INT_ARY"] = CPY_INT_ARY;
   ident_map[L"CPY_FLOAT_ARY"] = CPY_FLOAT_ARY;
+  ident_map[L"ZERO_BYTE_ARY"] = ZERO_BYTE_ARY;
+  ident_map[L"ZERO_CHAR_ARY"] = ZERO_CHAR_ARY;
+  ident_map[L"ZERO_INT_ARY"] = ZERO_INT_ARY;
+  ident_map[L"ZERO_FLOAT_ARY"] = ZERO_FLOAT_ARY;
   ident_map[L"FLOR_FLOAT"] = FLOR_FLOAT;
   ident_map[L"CEIL_FLOAT"] = CEIL_FLOAT;
   ident_map[L"SIN_FLOAT"] = SIN_FLOAT;
@@ -402,6 +406,10 @@ void Scanner::CheckIdentifier(int index)
     case CPY_CHAR_ARY:
     case CPY_INT_ARY:
     case CPY_FLOAT_ARY:
+    case ZERO_BYTE_ARY:
+    case ZERO_CHAR_ARY:
+    case ZERO_INT_ARY:
+    case ZERO_FLOAT_ARY:
     case FLOR_FLOAT:
     case CEIL_FLOAT:
     case SIN_FLOAT:
