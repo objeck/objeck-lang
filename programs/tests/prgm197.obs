@@ -1,16 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := Byte->New[3];
-		b[0] := 0xA;
-		b[1] := 0x12;
-		b[2] := 0x7;
+#		a := 3.125e7;
+#		a->PrintLine();
 
-		b[0]->PrintLine();
-		b[2]->PrintLine();
-		
-		b->Clear();
-
-		b[0]->PrintLine();
-		b[2]->PrintLine();
+		a := 549.5;
+		a->PrintLine();
 	}
 }
