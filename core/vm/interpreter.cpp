@@ -1404,6 +1404,28 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
   }
 }
 
+void StackInterpreter::ZeroByteAry(size_t*& op_stack, long*& stack_pos)
+{
+  size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+
+  char* str = (char*)(array_ptr + 3);
+}
+
+void StackInterpreter::ZeroCharAry(size_t*& op_stack, long*& stack_pos)
+{
+
+}
+
+void StackInterpreter::ZeroIntAry(size_t*& op_stack, long*& stack_pos)
+{
+
+}
+
+void StackInterpreter::ZeroFloatAry(size_t*& op_stack, long*& stack_pos)
+{
+
+}
+
 void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG

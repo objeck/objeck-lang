@@ -759,6 +759,22 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tCPY_FLOAT_ARY" << std::endl;
     break;
 
+  case instructions::ZERO_BYTE_ARY:
+    GetLogger() << i << L":\ZERO_BYTE_ARY" << std::endl;
+    break;
+
+  case instructions::ZERO_CHAR_ARY:
+    GetLogger() << i << L":\ZERO_CHAR_ARY" << std::endl;
+    break;
+
+  case instructions::ZERO_INT_ARY:
+    GetLogger() << i << L":\ZERO_INT_ARY" << std::endl;
+    break;
+
+  case instructions::ZERO_FLOAT_ARY:
+    GetLogger() << i << L":\ZERO_FLOAT_ARY" << std::endl;
+    break;
+
   case instructions::CEIL_FLOAT:
     GetLogger()  << i << L":\tCEIL_FLOAT" << std::endl;
     break;
