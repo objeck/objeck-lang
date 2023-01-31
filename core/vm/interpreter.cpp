@@ -1463,7 +1463,7 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, long*& stack_pos)
 void StackInterpreter::ZeroByteAry(size_t*& op_stack, long*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-  const long array_len = (long)array_ptr[0];
+  const size_t array_len = array_ptr[0];
   char* buffer = (char*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(char));
 }
@@ -1471,7 +1471,7 @@ void StackInterpreter::ZeroByteAry(size_t*& op_stack, long*& stack_pos)
 void StackInterpreter::ZeroCharAry(size_t*& op_stack, long*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-  const long array_len = (long)array_ptr[0];
+  const size_t array_len = array_ptr[0];
   wchar_t* buffer = (wchar_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(wchar_t));
 }
@@ -1479,7 +1479,7 @@ void StackInterpreter::ZeroCharAry(size_t*& op_stack, long*& stack_pos)
 void StackInterpreter::ZeroIntAry(size_t*& op_stack, long*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-  const long array_len = (long)array_ptr[0];
+  const size_t array_len = array_ptr[0];
   size_t* buffer = (size_t*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(size_t));
 }
@@ -1487,7 +1487,7 @@ void StackInterpreter::ZeroIntAry(size_t*& op_stack, long*& stack_pos)
 void StackInterpreter::ZeroFloatAry(size_t*& op_stack, long*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-  const long array_len = (long)array_ptr[0];
+  const size_t array_len = array_ptr[0];
   FLOAT_VALUE* buffer = (FLOAT_VALUE*)(array_ptr + 3);
   memset(buffer, 0, array_len * sizeof(FLOAT_VALUE));
 }
