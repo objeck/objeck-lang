@@ -336,6 +336,22 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       CpyFloatAry(op_stack, stack_pos);
       break;
 
+    case ZERO_BYTE_ARY:
+      ZeroByteAry(op_stack, stack_pos);
+      break;
+
+    case ZERO_CHAR_ARY:
+      ZeroCharAry(op_stack, stack_pos);
+      break;
+
+    case ZERO_INT_ARY:
+      ZeroIntAry(op_stack, stack_pos);
+      break;
+
+    case ZERO_FLOAT_ARY:
+      ZeroFloatAry(op_stack, stack_pos);
+      break;
+
       // Note: no supported via JIT -- *start*
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
