@@ -1423,6 +1423,9 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 void StackInterpreter::ZeroByteAry(size_t*& op_stack, long*& stack_pos)
 {
   size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  const long array_len = (long)array_ptr[0];
+
+  std::wcout << array_len << std::endl;
 
   char* str = (char*)(array_ptr + 3);
 }
