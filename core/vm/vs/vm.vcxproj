@@ -124,6 +124,7 @@
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\instrs.h" />
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
     <ClInclude Include="..\arch\jit\jit_common.h" />
