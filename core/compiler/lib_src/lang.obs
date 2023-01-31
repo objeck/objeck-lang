@@ -330,7 +330,7 @@ bundle System {
 		Set all array elements to zero
 		@param b byte array
 		~#
-		function : native : Clear(b : Byte[]) ~ Nil {
+		function : Clear(b : Byte[]) ~ Nil {
 			ZERO_BYTE_ARY;
 		}
 		
@@ -833,7 +833,7 @@ bundle System {
 		Set all array elements to zero
 		@param c array
 		~#
-		function : native : Clear(c : Char[]) ~ Nil {
+		function : Clear(c : Char[]) ~ Nil {
 			ZERO_CHAR_ARY;
 		}
 		
@@ -1212,7 +1212,7 @@ bundle System {
 		Set all array elements to zero
 		@param a array
 		~#
-		function : native : Clear(a : Int[]) ~ Nil {
+		function : Clear(a : Int[]) ~ Nil {
 			ZERO_INT_ARY;
 		}
 
@@ -1686,7 +1686,7 @@ bundle System {
 		Set all array elements to zero
 		@param f array
 		~#
-		function : native : Clear(f : Float[]) ~ Nil {
+		function : Clear(f : Float[]) ~ Nil {
 			ZERO_FLOAT_ARY;
 		}
 
