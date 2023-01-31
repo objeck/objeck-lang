@@ -289,12 +289,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							SocketCommon->ReadChunked(content, socket);
+							WebCommon->ReadChunked(content, socket);
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								SocketCommon->ReadLength(length_header->ToInt(), content, socket);
+								WebCommon->ReadLength(length_header->ToInt(), content, socket);
 							};						
 						};
 					};
@@ -518,12 +518,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							SocketCommon->ReadChunked(content, socket);
+							WebCommon->ReadChunked(content, socket);
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								SocketCommon->ReadLength(length_header->ToInt(), content, socket);
+								WebCommon->ReadLength(length_header->ToInt(), content, socket);
 							}
 							else {
 								count := 0;
@@ -619,7 +619,7 @@ bundle Web.HTTP.Server {
 						if(content_length_str <> Nil) {
 							content_length  := content_length_str->ToInt();
 							if(content_length > 0) {
-								buffer := SocketCommon->ReadPost(content_length, @client);
+								buffer := WebCommon->ReadPost(content_length, @client);
 								
 								# retrieve content
 								if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {

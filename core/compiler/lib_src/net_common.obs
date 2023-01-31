@@ -394,7 +394,7 @@ bundle Web.HTTP {
 		}
 	}
 
-	class SocketCommon {
+	class WebCommon {
 		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
 			done := false;
 			do {
