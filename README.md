@@ -15,9 +15,6 @@ class Hello {
 }
 ```
 
-### Latest
-1/16/2023: Looking for project contributors to assist with new language features, bug fixes, testing, text editor support etc. This project has grown, in a good way, to more to be than a one person effort. Drop me a note if your are interested.
-
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 ### Features
