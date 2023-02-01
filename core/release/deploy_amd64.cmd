@@ -59,10 +59,10 @@ copy vs\Release\x64\*.dll ..\..\release\deploy64\lib\native
 cd ..\..\release
 
 REM app
-cd WindowsLauncher
+cd ..\utils\WindowsApp
 devenv AppLauncher.sln /rebuild "Release|x64"
-copy x64\Release\*.exe ..\deploy64\app
-cd ..
+copy x64\Release\*.exe ..\..\release\deploy64\app
+cd ..\..\release
 
 REM copy examples
 mkdir deploy64\examples\

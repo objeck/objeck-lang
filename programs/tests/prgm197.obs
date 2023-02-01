@@ -3,7 +3,7 @@ class Test {
 		b := Float->New[3];
 		b[0] := 1.223;
 		b[1] := 458.48;
-		b[2] :=3.125e7;
+		b[2]:=3.125e7;
 
 		b[0]->PrintLine();
 		b[2]->PrintLine();
