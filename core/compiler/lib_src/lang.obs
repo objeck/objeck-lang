@@ -1025,7 +1025,7 @@ bundle System {
 		#~
 		Calculates the double factorial of existing value
 		@ignore-param n
-		@return factorial of existing value
+		@return double factorial of existing value
 		~#
 		function : native : DoubleFactorial(n : Int) ~ Int {
 			result = 1;
@@ -1407,7 +1407,7 @@ bundle System {
 		#~
 		Calculates the double factorial of existing value
 		@ignore-param n
-		@return factorial of existing value
+		@return double factorial of existing value
 		~#
 		function : native : DoubleFactorial(n : Int) ~ Float {
 			result = 1.0;
