@@ -123,6 +123,7 @@ void Scanner::LoadKeywords()
   ident_map[L"method"] = TOKEN_METHOD_ID;
   ident_map[L"select"] = TOKEN_SELECT_ID;
   ident_map[L"other"] = TOKEN_OTHER_ID;
+  ident_map[L"otherwise"] = TOKEN_OTHER_ID;
   ident_map[L"enum"] = TOKEN_ENUM_ID;
   ident_map[L"consts"] = TOKEN_CONSTS_ID;
   ident_map[L"for"] = TOKEN_FOR_ID;

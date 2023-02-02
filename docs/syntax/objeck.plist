@@ -33,6 +33,7 @@
 		<string>interface</string>
 		<string>select</string>
 		<string>other</string>
+		<string>otherwise</string>
 		<string>enum</string>
 		<string>for</string>
 		<string>each</string>

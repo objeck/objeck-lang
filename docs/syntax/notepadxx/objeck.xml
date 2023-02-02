@@ -24,7 +24,7 @@
             <Keywords name="Folders in comment, open">#~</Keywords>
             <Keywords name="Folders in comment, middle"></Keywords>
             <Keywords name="Folders in comment, close">~#</Keywords>
-            <Keywords name="Keywords1">and or xor virtual if else do while break continue use bundle native static public private class interface function method select other enum for each reverse label return leaving lambdas consts</Keywords>
+            <Keywords name="Keywords1">and or xor virtual if else do while break continue use bundle native static public private class interface function method select other otherwise enum for each reverse label return leaving lambdas consts</Keywords>
             <Keywords name="Keywords2">Byte Int Parent implements from Float Char Bool Nil String true false</Keywords>
             <Keywords name="Keywords3"></Keywords>
             <Keywords name="Keywords4"></Keywords>
