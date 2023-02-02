@@ -1,5 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Float->SquareRoot(16)->PrintLine();
+#		Float->SquareRoot(16)->PrintLine();
+		Float->Factorial(-.5)->PrintLine();
 	}
 }
