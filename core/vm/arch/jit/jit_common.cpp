@@ -346,6 +346,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
             // hexadecimal
           case 'x':
+          case 'X':
             PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 16));
             return;
 

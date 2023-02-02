@@ -1009,20 +1009,17 @@ bundle System {
 		@return factorial of existing value
 		~#
 		function : native : Factorial(n : Int) ~ Int {
+			if(n < 0) {
+				return 0;
+			};
+
 			result := 1;
+			
 			for(i := 1; i <= n; i += 1;) {
 				result *= i;
 			};
 
 			return result;
-		}
-
-		#~
-		Models a 50/50 coin flip
-		@return random true or false
-		}
-		function : CoinFlip() ~ Bool {
-			return Random(1) % 2 = 0;
 		}
 
 		#~
@@ -1389,13 +1386,7 @@ bundle System {
 		@return factorial of existing value
 		~#
 		function : native : Factorial(n : Float) ~ Int {
-			result := 1.0;
-			
-			for(i := 1; i <= n; i += 1;) {
-				result *= i;
-			};
-
-			return result;
+			FACT_FLOAT;
 		}	
 
 		#~
