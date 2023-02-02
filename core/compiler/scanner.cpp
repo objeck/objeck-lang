@@ -173,6 +173,7 @@ void Scanner::LoadKeywords()
   ident_map[L"LOG_FLOAT"] = LOG_FLOAT;
   ident_map[L"POW_FLOAT"] = POW_FLOAT;
   ident_map[L"SQRT_FLOAT"] = SQRT_FLOAT;
+  ident_map[L"TGAMMA_FLOAT"] = TGAMMA_FLOAT;
   ident_map[L"RAND_FLOAT"] = RAND_FLOAT;
   ident_map[L"LOAD_CLS_INST_ID"] = LOAD_CLS_INST_ID;
   ident_map[L"LOAD_CLS_BY_INST"] = LOAD_CLS_BY_INST;
@@ -424,6 +425,7 @@ void Scanner::CheckIdentifier(int index)
     case LOG_FLOAT:
     case POW_FLOAT:
     case SQRT_FLOAT:
+    case FACT_FLOAT:
     case RAND_FLOAT:
     case LOAD_CLS_INST_ID:
     case LOAD_CLS_BY_INST:
