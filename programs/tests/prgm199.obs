@@ -1,0 +1,19 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		value := 13;
+		
+		select(value) {
+			label 7 {
+				"seven"->PrintLine();
+			}
+
+			label 11 {
+				"eleven"->PrintLine();
+			}
+
+			otherwise {
+				"even back do' lil joe"->PrintLine();
+			}
+		};
+	}
+}
