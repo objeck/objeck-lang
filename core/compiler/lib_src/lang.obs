@@ -1385,7 +1385,7 @@ bundle System {
 		@ignore-param n
 		@return factorial of existing value
 		~#
-		function : native : Factorial(n : Float) ~ Int {
+		function : Factorial(n : Float) ~ Int {
 			FACT_FLOAT;
 		}	
 
