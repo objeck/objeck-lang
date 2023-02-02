@@ -394,7 +394,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case FACT_FLOAT:
-      PushFloat(std::tgamma(PopFloat(op_stack, stack_pos) + 1.0), op_stack, stack_pos);
+      PushFloat(tgamma(PopFloat(op_stack, stack_pos) + 1.0), op_stack, stack_pos);
       break;
 
     case RAND_FLOAT:
