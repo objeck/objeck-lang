@@ -36,6 +36,7 @@
       <item>break</item>
       <item>continue</item>
       <item>other</item>
+      <item>otherwise</item>
       <item>for</item>
       <item>each</item>
       <item>reverse</item>

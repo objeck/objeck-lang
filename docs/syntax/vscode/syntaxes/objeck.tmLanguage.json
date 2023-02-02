@@ -96,7 +96,7 @@
 		"keywords": {
 			"patterns": [
 				{
-					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|other|for|each|reverse|label|return|critical)\\b",
+					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|other|otherwise|for|each|reverse|label|return|critical)\\b",
 					"name": "keyword.control.objeck"
 				},
 				{
