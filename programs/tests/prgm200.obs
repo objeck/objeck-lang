@@ -4,8 +4,8 @@ class Test {
 			System.IO.Standard->Print("int_fact=")->Print(Int->Factorial(i))->Print(", float_fact=")->PrintLine(Float->Factorial(i->As(Float)));
 		};
 
-		System.IO.Standard->Print("float_fact=")->PrintLine(Int->DoubleFactorial(-0.5));
-		System.IO.Standard->Print("float_double_fact=")->PrintLine(Int->DoubleFactorial(6));
+		System.IO.Standard->Print("float_fact=")->PrintLine(Float->Factorial(-2.5));
+		System.IO.Standard->Print("float_double_fact=")->PrintLine(Float->DoubleFactorial(6));
 		System.IO.Standard->Print("float_gamma=")->PrintLine(Float->Gamma(2.5));
 	}
 }
