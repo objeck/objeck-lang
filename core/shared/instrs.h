@@ -109,7 +109,7 @@ namespace instructions {
     LOG_FLOAT,
     POW_FLOAT,
     SQRT_FLOAT,
-    FACT_FLOAT,
+    GAMMA_FLOAT,
     RAND_FLOAT,
     // conversions
     I2F,

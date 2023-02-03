@@ -827,8 +827,8 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tSQRT_FLOAT" << std::endl;
     break;
 
-  case instructions::FACT_FLOAT:
-    GetLogger() << i << L":\tTFACT_FLOAT" << std::endl;
+  case instructions::GAMMA_FLOAT:
+    GetLogger() << i << L":\tTGAMMA_FLOAT" << std::endl;
     break;
 
   case I2F:
