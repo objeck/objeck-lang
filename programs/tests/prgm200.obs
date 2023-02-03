@@ -1,10 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Float->SquareRoot(16)->PrintLine();
-		Float->Gamma(5.0)->PrintLine();
-		Float->Factorial(-0.5)->PrintLine();
-		Int->Factorial(4)->PrintLine();
-		Float->Factorial(4.0)->PrintLine();
-		Int->DoubleFactorial(5)->PrintLine();
+		each(i : 10) {
+			System.IO.Standard->Print("int_fact=")->Print(Int->Factorial(i))->Print(", float_fact=")->PrintLine(Float->Factorial(i->As(Float)));
+		};
+
+		System.IO.Standard->Print("float_fact=")->PrintLine(Int->DoubleFactorial(-0.5));
+		System.IO.Standard->Print("float_double_fact=")->PrintLine(Int->DoubleFactorial(6));
+		System.IO.Standard->Print("float_gamma=")->PrintLine(Float->Gamma(2.5));
 	}
 }
