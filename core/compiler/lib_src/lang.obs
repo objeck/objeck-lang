@@ -1009,10 +1009,6 @@ bundle System {
 		@return factorial of the value
 		~#
 		function : native : Factorial(n : Int) ~ Int {
-			if(n < 0) {
-				return 0;
-			};
-			
 			result := 1;
 			
 			for(i := 1; i <= n; i += 1;) {
