@@ -1415,7 +1415,7 @@ bundle System {
 		@return factorial value
 		~#
 		function : Factorial(n : Float) ~ Float {
-			return Gamma(n) + 1.0;
+			return Gamma(n + 1.0);
 		}
 
 		#~
