@@ -496,23 +496,11 @@ class StackMethod {
 /********************************
  * StackClass class
  ********************************/
-typedef std::pair<size_t, size_t> virtual_key_pair;
-
-// Szudzik pairing function
-struct virtual_key_pair_hash {
-  template <class T1, class T2>
-  std::size_t operator() (const std::pair<T1, T2>& virtual_key_pair) const {
-    const size_t x = virtual_key_pair.first; 
-    const size_t y = virtual_key_pair.second;
-
-    return x >= y ? x * x + x + y : y * y + x;
-  }
-};
+using virtual_key_pair = std::pair<size_t, size_t>;
 
 class StackClass {
   std::unordered_map<std::wstring, StackMethod*> method_name_map;
   StackMethod** methods;
-  std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> virtual_methods;
   int method_num;
   long id;
   std::wstring name;
@@ -529,7 +517,19 @@ class StackClass {
   long inst_num_dclrs;
   size_t* cls_mem;
   bool is_debug;
+  
+  // Szudzik pairing function
+  struct virtual_key_pair_hash {
+    template <class T1, class T2>
+    size_t operator() (const std::pair<T1, T2>& virtual_key_pair) const {
+      const size_t x = virtual_key_pair.first;
+      const size_t y = virtual_key_pair.second;
 
+      return x >= y ? x * x + x + y : y * y + x;
+    }
+  };
+  std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> virtual_methods;
+  
   long InitializeClassMemory(long size) {
     if(size > 0) {
       cls_mem = (size_t*)calloc(size, sizeof(char));
@@ -800,8 +800,8 @@ class StackClass {
 #endif
 
   StackMethod* GetVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id) {
-    const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    const std::unordered_map<virtual_key_pair, StackMethod*>::iterator result = virtual_methods.find(virtual_key);
+    const auto virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
+    const auto result = virtual_methods.find(virtual_key);
     if(result != virtual_methods.end()) {
       return result->second;
     }
