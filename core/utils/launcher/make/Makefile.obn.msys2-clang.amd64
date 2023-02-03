@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++11 -Wno-unused-function
+ARGS=-O3 -Wall -std=c++17 -Wno-unused-function
 
 CC=clang++
 SRC=launcher.o
