@@ -458,6 +458,7 @@ void JitArm64::ProcessInstructions() {
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case LOG_FLOAT:
+    case GAMMA_FLOAT:
     case FLOR_FLOAT:
     case CEIL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
@@ -3625,7 +3626,11 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   case LOG_FLOAT:
     func_ptr = log;
     break;
-      
+
+  case GAMMA_FLOAT:
+    func_ptr = tgamma;
+    break;
+
   case FLOR_FLOAT:
     func_ptr = floor;
     break;

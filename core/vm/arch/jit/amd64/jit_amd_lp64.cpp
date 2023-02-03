@@ -467,6 +467,7 @@ void JitAmd64::ProcessInstructions() {
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case LOG_FLOAT:
+    case GAMMA_FLOAT:
     case ATAN2_FLOAT:
     case MOD_FLOAT:
     case POW_FLOAT:
@@ -2296,6 +2297,10 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
 
   case LOG_FLOAT:
     holder = call_xfunc(log, left);
+    break;
+
+  case GAMMA_FLOAT:
+    holder = call_xfunc(tgamma, left);
     break;
 
   case ATAN2_FLOAT:
