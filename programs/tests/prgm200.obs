@@ -3,5 +3,6 @@ class Test {
 #		Float->SquareRoot(16)->PrintLine();
 		Float->Factorial(-.5)->PrintLine();
 		Int->Factorial(-1)->PrintLine();
+		Int->DoubleFactorial(5)->PrintLine();
 	}
 }
