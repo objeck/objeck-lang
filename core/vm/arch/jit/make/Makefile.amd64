@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++11 -Wno-unused-function -Wno-unused-variable
+ARGS=-O3 -Wall -std=c++17 -Wno-unused-function -Wno-unused-variable
 
 CC=g++
 AR=ar
