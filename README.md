@@ -20,13 +20,14 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and chec
 ### Features
 * Object-oriented with functional features
   * Classes, interfaces and first-class functions
+  * Type inference
+  * Lambda expressions
+  * Closures
   * Generics with type boxing
   * Anonymous classes 
   * Reflection 
   * Object serialization 
-  * Type inference
-  * Lambda expressions
-  * Closures
+  
 * Libraries 
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (vectors, queues, trees, hashes, etc.)
   * [HTTP and HTTPS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src) client and web server as a service
