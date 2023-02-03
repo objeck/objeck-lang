@@ -15,7 +15,7 @@ class Hello {
 }
 ```
 
-See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
+See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/tests/rc).
 
 ### Features
 * Object-oriented with functional features
