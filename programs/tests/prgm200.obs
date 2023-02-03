@@ -7,5 +7,6 @@ class Test {
 		System.IO.Standard->Print("float_fact=")->PrintLine(Float->Factorial(-2.5));
 		System.IO.Standard->Print("float_double_fact=")->PrintLine(Float->DoubleFactorial(6));
 		System.IO.Standard->Print("float_gamma=")->PrintLine(Float->Gamma(2.5));
+		System.IO.Standard->Print("float_sin=")->PrintLine(Float->Sin(2.5));
 	}
 }
