@@ -1,0 +1,8 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		numbers := [1, 2, 3, 4, 5];
+		reverse(i : numbers) {
+			numbers[i]->PrintLine();
+		};
+	}
+}
