@@ -1,7 +1,7 @@
 /**
  * JIT compiler for ARMv8 architecture (Apple Silicon and Linux ARM 64-bit)
  *
- * Copyright (c) 2020-2021, Randy Hollines
+ * Copyright (c) 2020-2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
