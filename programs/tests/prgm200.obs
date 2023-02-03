@@ -1,9 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		Float->SquareRoot(16)->PrintLine();
+		Float->Gamma(5.0)->PrintLine();
 		Float->Factorial(-0.5)->PrintLine();
-		Int->Factorial(-1)->PrintLine();
-		Float->Factorial(4)->PrintLine();
+		Int->Factorial(4)->PrintLine();
+		Float->Factorial(4.0)->PrintLine();
 		Int->DoubleFactorial(5)->PrintLine();
 	}
 }
