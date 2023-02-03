@@ -3,6 +3,21 @@ class Test {
 #		Float->SquareRoot(16)->PrintLine();
 		Float->Factorial(-.5)->PrintLine();
 		Int->Factorial(-1)->PrintLine();
-		Int->DoubleFactorial(5)->PrintLine();
+		DoubleFactorial(6)->PrintLine();
+	}
+
+	function : DoubleFactorial(n : Int) ~ Int {
+		value := 1;
+
+		for(i := n; i >= 0; i -= 2;) {
+			if(i = 0 | i = 1) {
+				return value;
+			}
+			else {
+				value *= i;
+			};
+		};
+
+		return value;
 	}
 }
