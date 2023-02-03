@@ -1,4 +1,4 @@
-ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declarations -Wunused-variable
+ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++17 -Wno-deprecated-declarations -Wunused-variable
 
 CC=g++
 AR=ar

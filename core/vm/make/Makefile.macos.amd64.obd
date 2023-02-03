@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++11 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -Wno-strict-overflow -Wno-unused-function  -Wno-unused-variable -Wno-int-to-void-pointer-cast
+ARGS=-O3 -Wall -std=c++17 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -Wno-strict-overflow -Wno-unused-function  -Wno-unused-variable -Wno-int-to-void-pointer-cast
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 

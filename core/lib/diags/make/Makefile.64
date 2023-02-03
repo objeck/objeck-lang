@@ -1,6 +1,6 @@
 CC=g++
-# ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++11
-ARGS=-g -Wall -Wno-unused-function -D_X64 -D_DIAG_LIB -std=c++11
+# ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++17
+ARGS=-g -Wall -Wno-unused-function -D_X64 -D_DIAG_LIB -std=c++17
 SRC=../../compiler/scanner.o ../../compiler/parser.o ../../compiler/context.o ../../compiler/tree.o ../../compiler/types.o diags.o 
 EXE=diags
 
