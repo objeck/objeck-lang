@@ -1,0 +1,12 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: armadillo
+Description: Fast C++ matrix library with syntax similar to MATLAB and Octave
+URL: http://arma.sourceforge.net
+Version: 11.4.3
+
+Libs: "-L${libdir}" -larmadillo
+Requires: lapack blas
+Cflags: "-I${includedir}"
