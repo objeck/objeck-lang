@@ -924,8 +924,8 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Set the response conpression
-		@param compression response conpression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		Set the response compression, should be called after the content is set
+		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
 		~#
 		method : public : SetCompression(compression : Compression) ~ Nil {
 			if(<>@is_compressed & @content <> Nil) {
@@ -949,6 +949,47 @@ bundle Web.HTTP.Server {
 					}
 				};
 			};
+		}
+
+		#~
+		Set response code, content and compression type
+		@param code response code
+		@param content response content
+		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		~#
+		method : public : SetCodeContentCompressed(code : Int, content : String, compression : Compression) ~ Nil {
+			SetCodeContentCompressed(code, content->ToByteArray(), compression);
+		}
+
+		#~
+		Set response code, content and compression type
+		@param code response code
+		@param content response content
+		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		~#
+		method : public : SetCodeContentCompressed(code : Int, content : Byte[], compression : Compression) ~ Nil {
+			@code := code;
+			@content := content;
+			SetCompression(compression);
+		}
+
+		#~
+		Set content and compression type
+		@param content response content
+		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		~#
+		method : public : SetContentCompressed(content : String, compression : Compression) ~ Nil {
+			SetContentCompressed(content->ToByteArray(), compression);
+		}
+
+		#~
+		Set content and compression type
+		@param content response content
+		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		~#
+		method : public : SetContentCompressed(content : Byte[], compression : Compression) ~ Nil {
+			@content := content;
+			SetCompression(compression);
 		}
 
 		#~
