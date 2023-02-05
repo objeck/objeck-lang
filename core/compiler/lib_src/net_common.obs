@@ -351,6 +351,9 @@ bundle Web.HTTP {
 					buffer->Append(value->ToInt()->As(Char));
 					i += 2;
 				}
+				else if(c = '+') {
+					buffer->Append(' ');
+				}
 				else {
 					buffer->Append(c);
 				};
@@ -656,6 +659,7 @@ bundle Web.HTTP.Server {
 	class Request {
 		@request_url : String;
 		@request_headers : Map<String, String>;
+		@request_params : Map<String, String>;
 		@cookies : Map<String, String>;
 		@content : Byte[];
 
@@ -671,13 +675,91 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Gets a parameter value
+		@param name parameter name
+		@return parameter value
+		~#
+		method : public : GetParam(name : String) ~ String {
+			ParseParams();
+
+			if(@request_params <> Nil) {
+				return @request_params->Find(name);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Checks for a parameter
+		@param name parameter name
+		@return true if parameter exists, false otherwise
+		~#
+		method : public : HasParam(name : String) ~ Bool {
+			ParseParams();
+
+			if(@request_params <> Nil) {
+				return @request_params->Has(name);
+			};
+
+			return false;
+		}
+
+		#~
+		Gets parameters
+		@return parameters
+		~#
+		method : public : GetParams() ~ Map<String, String> {
+			ParseParams();
+
+			if(@request_params <> Nil) {
+				return @request_params;
+			};
+
+			return Nil;
+		}
+
+		method : ParseParams() ~ Nil {
+			if(@content <> Nil & @request_params = Nil) {
+				@request_params := Map->New()<String, String>;
+
+				params_str := @content->ToString();
+				param_names_values := params_str->Split('&');
+				each(i : param_names_values) {
+					param_name_value := param_names_values[i]->Split('=');
+					if(param_name_value->Size() = 2) {
+						@request_params->Insert(param_name_value[0], param_name_value[1]);
+					};
+				};
+			};
+		}
+
+		#~
+		Gets cookies
+		@return cookies
+		~#
+		method : public : GetCookies() ~ Map<String, String> {
+			ParseCookies();
+
+			if(@cookies <> Nil) {
+				return @cookies;
+			};
+
+			return Nil;
+		}
+
+		#~
 		Gets a cookie value
 		@param name cookie name
 		@return cookie value
 		~#
 		method : public : GetCookie(name : String) ~ String {
 			ParseCookies();
-			return @cookies->Find(name);
+
+			if(@cookies <> Nil) {
+				return @cookies->Find(name);
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -687,16 +769,12 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : HasCookie(name : String) ~ Bool {
 			ParseCookies();
-			return @cookies->Has(name);
-		}
 
-		#~
-		Gets cookies
-		@return cookies
-		~#
-		method : public : GetCookies() ~ Map<String, String> {
-			ParseCookies();
-			return @cookies;
+			if(@cookies <> Nil) {
+				return @cookies->Has(name);
+			};
+
+			return false;
 		}
 
 		method : ParseCookies() ~ Nil {
