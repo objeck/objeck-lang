@@ -957,8 +957,8 @@ bundle Web.HTTP.Server {
 		@param content response content
 		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
 		~#
-		method : public : SetCodeContentCompressed(code : Int, content : String, compression : Compression) ~ Nil {
-			SetCodeContentCompressed(code, content->ToByteArray(), compression);
+		method : public : SetCodeContentCompression(code : Int, content : String, compression : Compression) ~ Nil {
+			SetCodeContentCompression(code, content->ToByteArray(), compression);
 		}
 
 		#~
@@ -967,7 +967,7 @@ bundle Web.HTTP.Server {
 		@param content response content
 		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
 		~#
-		method : public : SetCodeContentCompressed(code : Int, content : Byte[], compression : Compression) ~ Nil {
+		method : public : SetCodeContentCompression(code : Int, content : Byte[], compression : Compression) ~ Nil {
 			@code := code;
 			@content := content;
 			SetCompression(compression);
@@ -978,8 +978,8 @@ bundle Web.HTTP.Server {
 		@param content response content
 		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
 		~#
-		method : public : SetContentCompressed(content : String, compression : Compression) ~ Nil {
-			SetContentCompressed(content->ToByteArray(), compression);
+		method : public : SetContentCompression(content : String, compression : Compression) ~ Nil {
+			SetContentCompression(content->ToByteArray(), compression);
 		}
 
 		#~
@@ -987,7 +987,7 @@ bundle Web.HTTP.Server {
 		@param content response content
 		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
 		~#
-		method : public : SetContentCompressed(content : Byte[], compression : Compression) ~ Nil {
+		method : public : SetContentCompression(content : Byte[], compression : Compression) ~ Nil {
 			@content := content;
 			SetCompression(compression);
 		}
