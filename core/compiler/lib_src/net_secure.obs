@@ -611,15 +611,10 @@ bundle Web.HTTP.Server {
 
 						# write response
 						http_request := Request->New(request_url, request_headers);
-						http_response := Response->New();
+						http_response := Response->New(@server_config, http_request->GetUrl());
 						
-						server_config := false;
-						if(@server_config <> Nil & @server_config->IsHandlingFiles()) {
-							server_config := @server_config->ProcessGet(http_request, http_response);
-						};
-						
-						if(<>server_config) {
-							ProcessGet(http_request, http_response);
+						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+							@server_config->ProcessGet(http_request, http_response);
 						};
 						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
@@ -638,8 +633,11 @@ bundle Web.HTTP.Server {
 
 								# write response
 								http_request := Request->New(request_url, request_headers, buffer);
-								http_response := Response->New();
-								ProcessPost(http_request, http_response);
+								http_response := Response->New(@server_config, http_request->GetUrl());
+								
+								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+									@server_config->ProcessPost(http_request, http_response);
+								};
 								ProcessResponse(http_response);
 							};
 						};
@@ -749,14 +747,16 @@ bundle Web.HTTP.Server {
 		Callback for GET requests
 		@param request HTTP request
 		@param response HTTP response
+		@return true to continue processing, false otherwise
 		~#
-		method : virtual : ProcessGet(request : Request, response : Response) ~ Nil;
+		method : virtual : ProcessGet(request : Request, response : Response) ~ Bool;
 
 		#~
 		Callback for POST requests
 		@param request HTTP request
 		@param response HTTP response
+		@return true to continue processing, false otherwise
 		~#
-		method : virtual : ProcessPost(request : Request, response : Response) ~ Nil;
+		method : virtual : ProcessPost(request : Request, response : Response) ~ Bool;
 	}
 }
