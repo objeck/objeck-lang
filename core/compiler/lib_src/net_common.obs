@@ -553,7 +553,7 @@ bundle Web.HTTP.Server {
         
 		#~
 		Starts a HTTPS server that listens for requests
-		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json'>example</a>)
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json' target='_blank'>example</a>)
 		@return true if configured and started, false otherwise
 		~#
 		function : ServeSecure(filename : String) ~ Bool {
@@ -614,7 +614,7 @@ bundle Web.HTTP.Server {
 
 	  	#~
 		Starts a HTTP server that listens for requests
-		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json'>example</a>)
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json' target='_blank'>example</a>)
 		@return true if configured and started, false otherwise
 		~#
 		function : Serve(filename : String) ~ Bool {
@@ -693,7 +693,7 @@ bundle Web.HTTP.Server {
 		@cert_key : String;
 		@cert_passwd : String;
 		@file_type_handler_map : Hash<String, FileTypeHandler>;
-		
+
 		New(filename : String) {
 			@filename := filename;
 			@file_type_handler_map := Hash->New()<String, FileTypeHandler>;
