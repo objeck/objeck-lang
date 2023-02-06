@@ -553,7 +553,7 @@ bundle Web.HTTP.Server {
         
 		#~
 		Starts a HTTPS server that listens for requests
-		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json' target='_blank'>example</a>)
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json' target='_blank'>example</a>)
 		~#
 		function : ServeSecure(filename : String) ~ Nil {
 			if(@server_config = Nil) {
@@ -631,7 +631,7 @@ bundle Web.HTTP.Server {
 
 	  	#~
 		Starts a HTTP server that listens for requests
-		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json' target='_blank'>example</a>)
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json' target='_blank'>example</a>)
 		~#
 		function : Serve(filename : String) ~ Nil {
 			@server_config := WebServerConfig->New(filename);
