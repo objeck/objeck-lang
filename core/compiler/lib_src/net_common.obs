@@ -4,6 +4,7 @@ Copyright (c) 2023 Randy Hollines
 
 use System.IO.Net; 
 use Collection.Generic;
+use Data.JSON;
 
 #~
 Web client support (-lib net)
@@ -650,6 +651,183 @@ bundle Web.HTTP.Server {
 				"Shutting down..."->PrintLine();
 			};
 			Runtime->Exit(0);
+		}
+	}
+
+	class WebServerConfig {
+		@file_type_handler_map : Hash<String, FileTypeHandler>;
+
+		New() {
+			@file_type_handler_map := Hash->New()<String, FileTypeHandler>;
+		}
+
+		method : Process(filename : String) ~ Bool {		
+			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+			if(parser->Parse()) {
+				files_json := parser->GetRoot()->Get("files");
+				if(files_json <> Nil) {
+					each(i : files_json) {
+						file_json := files_json->Get(i);
+						if(file_json->Has("types")) {
+							if(<>AddFile(file_json)) {
+								return false;
+							};
+						};
+					};
+				};
+
+				return true;
+			};
+
+			return false;
+		}
+
+		method : AddFile(file_json : JsonElement) ~ Bool {
+			types_json := file_json->Get("types");
+			location_json :=  file_json->Get("location");
+
+			if(types_json <> Nil & location_json <> Nil) {
+				types_str := types_json->GetString();
+				type_strs := types_str->Split(',');
+				if(type_strs->Size() > 0) {
+					each(i : type_strs) {
+						if(<>AddHandler(type_strs[i], file_json)) {
+							return false;
+						};
+					};
+				}
+				else {
+					if(<>AddHandler(types_str, file_json)) {
+						return false;
+					};
+				};
+			};
+
+			return true;
+		}
+
+		method : AddHandler(type : String, file_json : JsonElement) ~ Bool {
+			alias_str : String;
+			alias_json := file_json->Get("alias");
+			if(alias_json <> Nil) {
+				alias_str := alias_json->GetString();
+			};
+
+			location_str : String;
+			location_json := file_json->Get("location");
+			if(location_json <> Nil) {
+				location_str := location_json->GetString();
+			};
+
+			cache_flag : Bool;
+			cache_json := file_json->Get("cache");
+			if(cache_json <> Nil) {
+				cache_flag := cache_json->GetBool();
+			};
+
+			# get/add handler
+			type_handler := @file_type_handler_map->Find(type);
+			if(type_handler = Nil) {
+				type_handler := FileTypeHandler->New(type);
+				@file_type_handler_map->Insert(type, type_handler);
+			};
+
+			if(<>type_handler->Insert(alias_str, location_str, cache_flag)) {
+				"Unable to add file, duplicate location '{$location_str}'"->ErrorLine();
+				return false;
+			};
+
+			return true;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			file_type_pairs := @file_type_handler_map->GetKeyValues()<Pair<String, FileTypeHandler>>;
+			each(i : file_type_pairs) {
+				file_type_pair := file_type_pairs->Get(i);
+
+				file_type_name := file_type_pair->GetFirst();
+				buffer += "[{$file_type_name}]\n";
+				file_type_handler := file_type_pair->GetSecond();
+				buffer += file_type_handler->ToString();
+			};
+			
+			return buffer;
+		}
+	}
+
+	class : private : FileTypeHandler {
+		@type : String;
+		@alias_map : Map<String, FileHandler>;
+		@location_map : Map<String, FileHandler>;
+
+		New(type : String) {
+			@type := type;
+			@alias_map := Map->New()<String, FileHandler>;
+			@location_map := Map->New()<String, FileHandler>;
+		}
+
+		method : public : Insert(alias_str : String, location_str : String, cache_flag : Bool) ~ Bool {
+			if(@location_map->Has(location_str)) {
+				return false;
+			};
+
+			file_handler := FileHandler->New(@type, alias_str, location_str, cache_flag);
+			@location_map->Insert(location_str, file_handler);
+			if(alias_str <> Nil) {
+				@alias_map->Insert(alias_str, file_handler);
+			};
+
+			return true;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			file_handlers := @location_map->GetValues()<FileHandler>;
+			each(i : file_handlers) {
+				file_handler := file_handlers->Get(i);
+				buffer += '\t';
+				buffer += file_handler->ToString();
+				buffer += "\n";
+			};
+
+			return buffer;
+		}
+	}
+
+	class : private : FileHandler {
+		@type : String;
+		@alias_str : String;
+		@location : String;
+		@cache : Bool;
+
+		New(type : String, alias_str : String, location : String, cache : Bool) {
+			@type := type;
+			@alias_str := alias_str;
+			@location := location;
+			@cache := cache;
+		}
+
+		method : public : GetAlias() ~ String {
+			return @alias_str;
+		}
+
+		method : public : GetLocation() ~ String {
+			return @location;
+		}
+
+		method : public : GetCache() ~ Bool {
+			return @cache;
+		}
+
+		method : public : ToString() ~ String {
+			if(@alias_str <> Nil) {
+				return "alias='{$@alias_str}', location='{$@location}', cache='{$@cache}', type='{$@type}'";
+			};
+
+			return "location='{$@location}', cache='{$@cache}', type='{$@type}'";
 		}
 	}
 
