@@ -683,26 +683,84 @@ bundle Web.HTTP.Server {
 		}
 	}
 
-	class : private : WebServerConfig {
+	class WebServerConfig {
 		@filename : String;
+		@host : String;
+		@port : Int;
+		@cert_path : String;
+		@cert_key : String;
+		@cert_passwd : String;
 		@file_type_handler_map : Hash<String, FileTypeHandler>;
 
 		New(filename : String) {
-			filename := @filename;
+			@filename := filename;
 			@file_type_handler_map := Hash->New()<String, FileTypeHandler>;
 		}
 
-		method : public : Load() ~ Bool {		
+		method : public : GetFilename() ~ String {
+			return @filename;
+		}
+
+		method : public : GetHost() ~ String {
+			return @host;
+		}
+
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
+
+		method : public : GetCertPath() ~ String {
+			return @cert_path;
+		}
+
+		method : public : GetCertKey() ~ String {
+			return @cert_key;
+		}
+
+		method : public : Load() ~ Bool {
 			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
 			if(parser->Parse()) {
+				# process network config
+				network_json := parser->GetRoot()->Get("network");
+				if(network_json = Nil) {
+					return false;
+				};
+				
+				network_host_json := network_json->Get("host");
+				network_port_json := network_json->Get("port");
+				if(network_host_json = Nil | network_port_json = Nil) {
+					return false;
+				};
+				@host := network_host_json->GetString();
+				@port := network_port_json->GetString()->ToInt()
+				;
+
+				if(network_json->Has("secure")) {
+					network_secure_json := network_json->Get("secure");
+
+					network_cert_path_json := network_secure_json->Get("cert_path");
+					network_cert_key_json := network_secure_json->Get("cert_key_path");
+					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
+
+					if(network_cert_path_json = Nil | network_cert_key_json = Nil | network_cert_passwd_json = Nil) {
+						return false;
+					};
+					@cert_path := network_cert_path_json->GetString();
+					@cert_key := network_cert_key_json->GetString();
+					@cert_passwd := network_cert_passwd_json->GetString();
+				};
+
+				# process files
 				files_json := parser->GetRoot()->Get("files");
-				if(files_json <> Nil) {
-					each(i : files_json) {
-						file_json := files_json->Get(i);
-						if(file_json->Has("types")) {
-							if(<>AddFile(file_json)) {
-								return false;
-							};
+				if(files_json = Nil) {
+					return false;
+				};
+
+				each(i : files_json) {
+					file_json := files_json->Get(i);
+					if(file_json->Has("types")) {
+						if(<>AddFiles(file_json)) {
+							return false;
 						};
 					};
 				};
@@ -713,7 +771,7 @@ bundle Web.HTTP.Server {
 			return false;
 		}
 
-		method : AddFile(file_json : JsonElement) ~ Bool {
+		method : AddFiles(file_json : JsonElement) ~ Bool {
 			types_json := file_json->Get("types");
 			location_json :=  file_json->Get("location");
 
@@ -772,14 +830,19 @@ bundle Web.HTTP.Server {
 		}
 
 		method : public : ToString() ~ String {
-			buffer := "";
+			buffer := "[Network]\n";
+			buffer += "\tfilename='{$@filename}', host='{$@host}', port='{$@port}'\n";
+			if(@cert_path <> Nil & @cert_key <> Nil & @cert_passwd <> Nil) {
+				buffer += "\tcert_path='{$@cert_path}', cert_key='{$@cert_key}', cert_passwd='{$@cert_passwd}'\n";
+			};
 
+			buffer += "[Files]\n";
 			file_type_pairs := @file_type_handler_map->GetKeyValues()<Pair<String, FileTypeHandler>>;
 			each(i : file_type_pairs) {
 				file_type_pair := file_type_pairs->Get(i);
 
 				file_type_name := file_type_pair->GetFirst();
-				buffer += "[{$file_type_name}]\n";
+				buffer += "\t{{$file_type_name}}\n";
 				file_type_handler := file_type_pair->GetSecond();
 				buffer += file_type_handler->ToString();
 			};
