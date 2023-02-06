@@ -7149,7 +7149,7 @@ bundle System.IO.Filesystem {
 		#~
 		Reads a file's contents into a string
 		@param name file name
-		@return character string
+		@return character string, Nil if file is not found
 		~#
 		function : ReadFile(name : String) ~ String {
 			len := File->Size(name);
@@ -7170,7 +7170,7 @@ bundle System.IO.Filesystem {
 		#~
 		Reads a file's contents into byte array
 		@param name file name
-		@return byte array
+		@return byte array, Nil if file is not found
 		~#
 		function : ReadBinaryFile(name : String) ~ Byte[] {
 			len := File->Size(name);
