@@ -564,13 +564,15 @@ bundle Web.HTTP.Server {
 	~#
 	class HttpsRequestHandler from System.Concurrency.Thread {
 		@client : TCPSecureSocket;
+		@server_config : WebServerConfig;
 		@is_debug : Bool;
 
 		New() {
 			Parent();
 		}
 
-		method : public : SetDebug(is_debug : Bool) ~ Nil {
+		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
+			@server_config := server_config;
 			@is_debug := is_debug;
 		}
         
@@ -610,6 +612,10 @@ bundle Web.HTTP.Server {
 						# write response
 						http_request := Request->New(request_url, request_headers);
 						http_response := Response->New();
+						
+						if(@server_config <> Nil & @server_config->IsHandlingFiles()) {
+							@server_config->ProcessGet(http_request, http_response);
+						};
 						ProcessGet(http_request, http_response);
 						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
