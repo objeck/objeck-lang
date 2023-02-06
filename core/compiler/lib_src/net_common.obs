@@ -732,12 +732,10 @@ bundle Web.HTTP.Server {
 					return false;
 				};
 				@host := network_host_json->GetString();
-				@port := network_port_json->GetString()->ToInt()
-				;
-
-				if(network_json->Has("secure")) {
-					network_secure_json := network_json->Get("secure");
-
+				@port := network_port_json->GetString()->ToInt();
+				
+				network_secure_json := network_json->Get("secure");
+				if(network_secure_json <> Nil) {
 					network_cert_path_json := network_secure_json->Get("cert_path");
 					network_cert_key_json := network_secure_json->Get("cert_key_path");
 					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
