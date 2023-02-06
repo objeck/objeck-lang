@@ -553,7 +553,7 @@ bundle Web.HTTP.Server {
         
 		#~
 		Starts a HTTPS server that listens for requests
-		@param filename configuration file
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json'>example</a>)
 		@return true if configured and started, false otherwise
 		~#
 		function : ServeSecure(filename : String) ~ Bool {
@@ -614,7 +614,7 @@ bundle Web.HTTP.Server {
 
 	  	#~
 		Starts a HTTP server that listens for requests
-		@param filename configuration file
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json'>example</a>)
 		@return true if configured and started, false otherwise
 		~#
 		function : Serve(filename : String) ~ Bool {
@@ -733,7 +733,7 @@ bundle Web.HTTP.Server {
 				};
 				@host := network_host_json->GetString();
 				@port := network_port_json->GetString()->ToInt();
-				
+
 				network_secure_json := network_json->Get("secure");
 				if(network_secure_json <> Nil) {
 					network_cert_path_json := network_secure_json->Get("cert_path");
