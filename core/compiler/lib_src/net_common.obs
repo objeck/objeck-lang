@@ -753,8 +753,21 @@ bundle Web.HTTP.Server {
 			return @cert_passwd;
 		}
 
-		# TODO: implement
-		method : public : HasHandler(request_url : String) ~ Bool {
+		# TODO: implement / cache?
+		method : public : HasGroupHandler(request_url : String) ~ Bool {
+			alias_str := request_url->SubString(1, request_url->Size() - 1);
+			if(alias_str = Nil) {
+				return false;
+			};
+
+			file_groups := @file_group_handler_map->GetValues()<FileGroupHandler>;
+			each(i : file_groups) {
+				file_group := file_groups->Get(i);
+				if(file_group->HasGroupHander(alias_str)) {
+					return true;
+				};
+			};
+
 			return false;
 		}
 
@@ -1037,6 +1050,10 @@ bundle Web.HTTP.Server {
 			return @alias_map->Find(alias_str);
 		}
 
+		method : public : HasGroupHander(alias_str : String) ~ Bool {
+			return @alias_map->Has(alias_str);
+		}
+
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -1311,9 +1328,9 @@ bundle Web.HTTP.Server {
 		Check to see if the response has configured handler
 		@return true if handler exists, false otherwise
 		~#
-		method : public : HasHandler() ~ Bool {
+		method : public : HasGroupHandler() ~ Bool {
 			if(@server_config <> Nil & @request_url <> Nil) {
-				@server_config->HasHandler(@request_url);
+				return @server_config->HasGroupHandler(@request_url);
 			};
 
 			return false;
