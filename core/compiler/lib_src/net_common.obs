@@ -685,13 +685,15 @@ bundle Web.HTTP.Server {
 
 	class WebServerConfig {
 		@filename : String;
+		@instance_str : String;
+		@is_debug : Bool;
 		@host : String;
 		@port : Int;
 		@cert_path : String;
 		@cert_key : String;
 		@cert_passwd : String;
 		@file_type_handler_map : Hash<String, FileTypeHandler>;
-
+		
 		New(filename : String) {
 			@filename := filename;
 			@file_type_handler_map := Hash->New()<String, FileTypeHandler>;
@@ -699,6 +701,19 @@ bundle Web.HTTP.Server {
 
 		method : public : GetFilename() ~ String {
 			return @filename;
+		}
+
+		method : public : GetInstance() ~ Class {
+			class_instance := Class->Instance(@instance_str);
+			if(class_instance <> Nil) {
+				class_instance->GetClass();
+			};
+
+			return Nil;
+		}
+		
+		method : public : IsDebug() ~ Bool {
+			return @is_debug;
 		}
 
 		method : public : GetHost() ~ String {
@@ -726,14 +741,21 @@ bundle Web.HTTP.Server {
 					return false;
 				};
 				
+				network_instance_json := network_json->Get("instance");
 				network_host_json := network_json->Get("host");
 				network_port_json := network_json->Get("port");
-				if(network_host_json = Nil | network_port_json = Nil) {
+				if(network_instance_json = Nil | network_host_json = Nil | network_port_json = Nil) {
 					return false;
 				};
+				@instance_str := network_instance_json->GetString();
 				@host := network_host_json->GetString();
 				@port := network_port_json->GetString()->ToInt();
 
+				is_debug_json := network_json->Get("debug");
+				if(is_debug_json <> Nil) {
+					@is_debug := is_debug_json->GetBool();
+				};
+				
 				network_secure_json := network_json->Get("secure");
 				if(network_secure_json <> Nil) {
 					network_cert_path_json := network_secure_json->Get("cert_path");
@@ -829,7 +851,7 @@ bundle Web.HTTP.Server {
 
 		method : public : ToString() ~ String {
 			buffer := "[Network]\n";
-			buffer += "\tfilename='{$@filename}', host='{$@host}', port='{$@port}'\n";
+			buffer += "\tfilename='{$@filename}', instance='{$@instance_str}', host='{$@host}', port={$@port}, is_debug={$@is_debug}\n";
 			if(@cert_path <> Nil & @cert_key <> Nil & @cert_passwd <> Nil) {
 				buffer += "\tcert_path='{$@cert_path}', cert_key='{$@cert_key}', cert_passwd='{$@cert_passwd}'\n";
 			};
