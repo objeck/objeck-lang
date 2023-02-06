@@ -666,6 +666,10 @@ bundle Web.HTTP.Server {
 		New(request_url : String, request_headers : Map<String, String>) {
 			@request_url := request_url;
 			@request_headers := request_headers;
+
+			if(@request_url->StartsWith("/?")) {
+				@content := @request_url->SubString(2, @request_url->Size() - 2)->ToByteArray();
+			};
 		}
 
 		New(request_url : String, request_headers : Map<String, String>, content : Byte[]) {
@@ -721,11 +725,19 @@ bundle Web.HTTP.Server {
 		method : ParseParams() ~ Nil {
 			if(@content <> Nil & @request_params = Nil) {
 				@request_params := Map->New()<String, String>;
-
+				
 				params_str := @content->ToString();
 				param_names_values := params_str->Split('&');
-				each(i : param_names_values) {
-					param_name_value := param_names_values[i]->Split('=');
+				if(param_names_values->Size() > 0) {
+					each(i : param_names_values) {
+						param_name_value := param_names_values[i]->Split('=');
+						if(param_name_value->Size() = 2) {
+							@request_params->Insert(param_name_value[0], param_name_value[1]);
+						};
+					};
+				}
+				else {
+					param_name_value := params_str->Split('=');
 					if(param_name_value->Size() = 2) {
 						@request_params->Insert(param_name_value[0], param_name_value[1]);
 					};
