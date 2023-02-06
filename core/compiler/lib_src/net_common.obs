@@ -707,10 +707,12 @@ bundle Web.HTTP.Server {
 		@cert_key_path : String;
 		@cert_passwd : String;
 		@file_group_handler_map : Hash<String, FileGroupHandler>;
+		@content_cache : Map<String, ByteArrayHolder>;
 
 		New(filename : String) {
 			@filename := filename;
 			@file_group_handler_map := Hash->New()<String, FileGroupHandler>;
+			@content_cache := Map->New()<String, ByteArrayHolder>;
 		}
 
 		method : public : GetFilename() ~ String {
@@ -918,29 +920,48 @@ bundle Web.HTTP.Server {
 					return false;
 				};
 
-				if(@is_debug) {
-					"file request: alias='{$alias_str}'"->PrintLine();
-				};
-				
 				file_handler := file_group_handler->GetFileHander(alias_str);
 				if(file_handler = Nil) {
 					return false;
 				};
-				
-				# TODO: check cache and cache
-foo := file_handler->ToString();
-"### {$foo} ###"->PrintLine();				
-				buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_handler->GetLocation());
-				if(buffer = Nil) {
-					return false;
+
+				if(@is_debug) {
+					file_handler_str := file_handler->ToString();
+					"---\n=> File properties: {$file_handler_str}"->PrintLine();
 				};
-
+				
+				buffer : Byte[];
+				file_location := file_handler->GetLocation();
+				# use caching
+				if(file_handler->IsCached()) {
+					buffer_holder := @content_cache->Find(file_location);
+					if(buffer_holder = Nil) {
+						buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_location);
+						if(buffer = Nil) {
+							return false;
+						};
+						@content_cache->Insert(file_location, ByteArrayHolder->New(buffer));
+						if(@is_debug) {
+							"---"->PrintLine();
+						};
+					}
+					else {
+						if(@is_debug) {
+							"=> Cached\n---"->PrintLine();
+						};
+						buffer := buffer_holder->Get();
+					};
+				}
+				# non-caching
+				else {	
+					buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_location);
+					if(buffer = Nil) {
+						return false;
+					};					
+				};
 				response->SetCodeContent(200, buffer);
+				
 				return true;
-			}
-			# alas
-			else {
-
 			};
 
 			return false;
@@ -1022,7 +1043,7 @@ foo := file_handler->ToString();
 			return @mime_type;
 		}
 
-		method : public : GetCache() ~ Bool {
+		method : public : IsCached() ~ Bool {
 			return @cache;
 		}
 
