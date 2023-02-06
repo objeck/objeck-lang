@@ -122,18 +122,18 @@ bundle Web.HTTP {
 		}
 
 		method : ParseUrl(url : String) ~ Bool {
-			# "-- url='{$url}' --"->PrintLine();
+			# "-- url=''{$url}' --"->PrintLine();
 			scheme_index := url->Find(':');
 			if(scheme_index < 0) {
 				"--- No scheme ---"->ErrorLine();
 				return false;
 			};
 			@scheme := url->SubString(0, scheme_index);
-			# "\t-- scheme='{$@scheme}' --"->PrintLine();
+			# "\t-- scheme=''{$@scheme}' --"->PrintLine();
 
 			scheme_index += 1;
 			rest := url->SubString(scheme_index, url->Size() - scheme_index);
-			# "\t-- rest='{$rest}' --"->PrintLine();
+			# "\t-- rest=''{$rest}' --"->PrintLine();
 
 			if(rest->StartsWith("//")) {
 				parts := rest->SubString(2, rest->Size() - 2)->Split("/");
@@ -154,7 +154,7 @@ bundle Web.HTTP {
 		}
 
 		method : ParsePart(part : String, index : Int, last : Bool) ~ Nil {
-			# "\t-- part='{$part}' --"->PrintLine();
+			# "\t-- part=''{$part}' --"->PrintLine();
 
 			# host and port
 			if(index = 0) {
@@ -187,7 +187,7 @@ bundle Web.HTTP {
 					frag_index := part->Find('#');
 					if(frag_index > -1) {
 						sub_part := part->SubString(frag_index);
-						# "\t-- sub_part='{$sub_part}' --"->PrintLine();							
+						# "\t-- sub_part=''{$sub_part}' --"->PrintLine();							
 
 						frag_index += 1;
 						@frag := part->SubString(frag_index, part->Size() - frag_index);
@@ -368,30 +368,30 @@ bundle Web.HTTP {
 		@return string representation of URL
 		~#
 		method : public : ToString() ~ String {
-			buffer := "{$@url}\n";
+			buffer := "'{$@url}\n";
 
 			if(@scheme <> Nil) {
-				buffer += "\tscheme='{$@scheme}'\n";
+				buffer += "\tscheme=''{$@scheme}'\n";
 			};
 
 			if(@host <> Nil) {
-				buffer += "\thost='{$@host}'\n";
+				buffer += "\thost=''{$@host}'\n";
 			};
 
 			if(@path <> Nil) {
-				buffer += "\tpath='{$@path}'\n";
+				buffer += "\tpath=''{$@path}'\n";
 			};
 			
 			if(@port > -1) {
-				buffer += "\tport='{$@port}'\n";
+				buffer += "\tport=''{$@port}'\n";
 			};
 
 			if(@query <> Nil) {
-				buffer += "\tquery='{$@query}'\n";
+				buffer += "\tquery=''{$@query}'\n";
 			};
 			
 			if(@frag <> Nil) {
-				buffer += "\tfragment='{$@frag}'\n";
+				buffer += "\tfragment=''{$@frag}'\n";
 			};
 					
 			return buffer;			
@@ -447,7 +447,7 @@ bundle Web.HTTP {
 				read := socket->ReadBuffer(0, temp->Size(), temp);
 				#~									
 				if(@is_debug) {
-					"Post: content_length={$content_length}, read={$read}, total_read={$total_read}"->PrintLine();
+					"Post: content_length='{$content_length}, read='{$read}, total_read='{$total_read}"->PrintLine();
 				};
 				~#
 
@@ -554,15 +554,32 @@ bundle Web.HTTP.Server {
 		#~
 		Starts a HTTPS server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json' target='_blank'>example</a>)
-		@return true if configured and started, false otherwise
 		~#
-		function : ServeSecure(filename : String) ~ Bool {
-			@server_config := WebServerConfig->New(filename);
-			if(@server_config->Load()) {
-				# callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool
+		function : ServeSecure(filename : String) ~ Nil {
+			if(@server_config = Nil) {
+				@server_config := WebServerConfig->New(filename);
 			};
 
-			return false;
+			if(@server_config->Load()) {
+				callback := @server_config->GetClass();
+				port := @server_config->GetPort();
+				cert := @server_config->GetCertPath();
+				cert_key := @server_config->GetCertKeyPath();
+				cert_key_passwd := @server_config->GetCertPassword();
+
+				if(@server_config->IsDebug()) {
+					callback_str := "<Nil>";
+					if(callback <> Nil) {
+						callback_str := callback->GetName();
+					};
+
+					"implement='{$callback_str}', port={$port}, cert='{$cert}', cert_key='{$cert_key}', cert_passwd='{$cert_key_passwd}'"->PrintLine();
+				};
+
+				if(callback <> Nil & port > 0 & cert <> Nil & cert_key <> Nil & cert_key_passwd <> Nil) {
+					ServeSecure(callback, port, cert, cert_key, cert_key_passwd, @server_config->IsDebug());
+				};
+			};
 		}
 
 		#~
@@ -597,33 +614,30 @@ bundle Web.HTTP.Server {
 				host := TCPSocket->HostName();
 
 				if(@is_debug) {
-					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+					"Running on '{$host} ('{$platform}) port '{$port}..."->PrintLine();
 				};
 
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-					handler->SetDebug(@is_debug);
+					handler->SetConfig(@server_config, @is_debug);
 					handler->Execute(@secure_server->Accept());
 				};
 			}
 			else {
 				err_msg := @secure_server->GetLastError();
-				"Error: '{$err_msg}'"->ErrorLine();
+				"Error: ''{$err_msg}'"->ErrorLine();
 			};
 	  	}
 
 	  	#~
 		Starts a HTTP server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/config.json' target='_blank'>example</a>)
-		@return true if configured and started, false otherwise
 		~#
-		function : Serve(filename : String) ~ Bool {
+		function : Serve(filename : String) ~ Nil {
 			@server_config := WebServerConfig->New(filename);
 			if(@server_config->Load()) {
 				# callback : Class, port : Int, is_debug : Bool
 			};
-
-			return false;
 		}
 
 	  	#~
@@ -652,18 +666,18 @@ bundle Web.HTTP.Server {
 				host := TCPSocket->HostName();
 
 				if(@is_debug) {
-					"Running on {$host} ({$platform}) port {$port}..."->PrintLine();
+					"Running on '{$host} ('{$platform}) port '{$port}..."->PrintLine();
 				};
                 
 				while(true) {
 					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
-					handler->SetDebug(@is_debug);
+					handler->SetConfig(@server_config, @is_debug);
 					handler->Execute(@server->Accept());
 				};
 			}
 			else {
 				err_msg := @server->GetLastError();
-				"Error: '{$err_msg}'"->ErrorLine();
+				"Error: ''{$err_msg}'"->ErrorLine();
 			};
 	  	}
 
@@ -683,14 +697,14 @@ bundle Web.HTTP.Server {
 		}
 	}
 
-	class WebServerConfig {
+	class WebServerConfig implements RequestPageHandler {
 		@filename : String;
 		@instance_str : String;
 		@is_debug : Bool;
-		@host : String;
+		@is_handling_files : Bool;
 		@port : Int;
 		@cert_path : String;
-		@cert_key : String;
+		@cert_key_path : String;
 		@cert_passwd : String;
 		@file_type_handler_map : Hash<String, FileTypeHandler>;
 
@@ -703,10 +717,10 @@ bundle Web.HTTP.Server {
 			return @filename;
 		}
 
-		method : public : GetInstance() ~ Class {
+		method : public : GetClass() ~ Class {
 			class_instance := Class->Instance(@instance_str);
 			if(class_instance <> Nil) {
-				class_instance->GetClass();
+				return class_instance->GetClass();
 			};
 
 			return Nil;
@@ -716,8 +730,8 @@ bundle Web.HTTP.Server {
 			return @is_debug;
 		}
 
-		method : public : GetHost() ~ String {
-			return @host;
+		method : public : IsHandlingFiles() ~ Bool {
+			return @is_handling_files;
 		}
 
 		method : public : GetPort() ~ Int {
@@ -728,13 +742,17 @@ bundle Web.HTTP.Server {
 			return @cert_path;
 		}
 
-		method : public : GetCertKey() ~ String {
-			return @cert_key;
+		method : public : GetCertKeyPath() ~ String {
+			return @cert_key_path;
+		}
+
+		method : public : GetCertPassword() ~ String {
+			return @cert_passwd;
 		}
 
 		method : public : Load() ~ Bool {
 			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
-			if(parser->Parse()) {
+			if(parser->Parse()) {				
 				# process network config
 				network_json := parser->GetRoot()->Get("network");
 				if(network_json = Nil) {
@@ -742,13 +760,11 @@ bundle Web.HTTP.Server {
 				};
 				
 				network_instance_json := network_json->Get("instance");
-				network_host_json := network_json->Get("host");
 				network_port_json := network_json->Get("port");
-				if(network_instance_json = Nil | network_host_json = Nil | network_port_json = Nil) {
+				if(network_instance_json = Nil | network_port_json = Nil) {
 					return false;
 				};
 				@instance_str := network_instance_json->GetString();
-				@host := network_host_json->GetString();
 				@port := network_port_json->GetString()->ToInt();
 
 				is_debug_json := network_json->Get("debug");
@@ -766,23 +782,23 @@ bundle Web.HTTP.Server {
 						return false;
 					};
 					@cert_path := network_cert_path_json->GetString();
-					@cert_key := network_cert_key_json->GetString();
+					@cert_key_path := network_cert_key_json->GetString();
 					@cert_passwd := network_cert_passwd_json->GetString();
 				};
 
 				# process files
 				files_json := parser->GetRoot()->Get("files");
-				if(files_json = Nil) {
-					return false;
-				};
-
-				each(i : files_json) {
-					file_json := files_json->Get(i);
-					if(file_json->Has("types")) {
-						if(<>AddFiles(file_json)) {
-							return false;
+				if(files_json <> Nil) {				
+					each(i : files_json) {
+						file_json := files_json->Get(i);
+						if(file_json->Has("types")) {
+							if(<>AddFiles(file_json)) {
+								return false;
+							};
 						};
 					};
+				
+					@is_handling_files := true;
 				};
 
 				return true;
@@ -816,13 +832,13 @@ bundle Web.HTTP.Server {
 		}
 
 		method : AddHandler(type : String, file_json : JsonElement) ~ Bool {
-			alias_str : String;
+			alias_str : String := "<None>";
 			alias_json := file_json->Get("alias");
 			if(alias_json <> Nil) {
 				alias_str := alias_json->GetString();
 			};
 
-			location_str : String;
+			location_str : String := "<None>";
 			location_json := file_json->Get("location");
 			if(location_json <> Nil) {
 				location_str := location_json->GetString();
@@ -842,7 +858,7 @@ bundle Web.HTTP.Server {
 			};
 
 			if(<>type_handler->Insert(alias_str, location_str, cache_flag)) {
-				"Unable to add file, duplicate location '{$location_str}'"->ErrorLine();
+				"Unable to add file: alias='{$alias_str}', location='{$location_str}'"->ErrorLine();
 				return false;
 			};
 
@@ -851,9 +867,9 @@ bundle Web.HTTP.Server {
 
 		method : public : ToString() ~ String {
 			buffer := "[Network]\n";
-			buffer += "\tfilename='{$@filename}', instance='{$@instance_str}', host='{$@host}', port={$@port}, is_debug={$@is_debug}\n";
-			if(@cert_path <> Nil & @cert_key <> Nil & @cert_passwd <> Nil) {
-				buffer += "\tcert_path='{$@cert_path}', cert_key='{$@cert_key}', cert_passwd='{$@cert_passwd}'\n";
+			buffer += "\tfilename=''{$@filename}', instance=''{$@instance_str}', handling_files=''{$@is_handling_files}', port='{$@port}, is_debug='{$@is_debug}\n";
+			if(@cert_path <> Nil & @cert_key_path <> Nil & @cert_passwd <> Nil) {
+				buffer += "\tcert_path=''{$@cert_path}', cert_key=''{$@cert_key_path}', cert_passwd=''{$@cert_passwd}'\n";
 			};
 
 			buffer += "[Files]\n";
@@ -862,48 +878,101 @@ bundle Web.HTTP.Server {
 				file_type_pair := file_type_pairs->Get(i);
 
 				file_type_name := file_type_pair->GetFirst();
-				buffer += "\t{{$file_type_name}}\n";
+				buffer += "\t{'{$file_type_name}}\n";
 				file_type_handler := file_type_pair->GetSecond();
 				buffer += file_type_handler->ToString();
 			};
 			
 			return buffer;
 		}
+
+		#~
+		Callback for GET requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessGet(request : Request, response : Response) ~ Bool {
+			request_url := request->GetUrl();
+			request_type_index := request_url->FindLast('.');
+			# alias
+			if(request_type_index > 0) {
+				request_type := request_url->SubString(request_type_index, request_url->Size() - request_type_index);
+				if(request_type = Nil) {
+					return false;
+				};
+
+				file_type_handler := @file_type_handler_map->Find(request_type);
+				if(file_type_handler = Nil) {
+					return false;
+				};
+
+				alias_str := request_url->SubString(1, request_url->Size() - 1);
+				if(alias_str = Nil) {
+					return false;
+				};
+
+				if(@is_debug) {
+					"file request: alias='{$alias_str}'"->PrintLine();
+				};
+				
+				file_handler := file_type_handler->GetFileHander(alias_str);
+				if(file_handler = Nil) {
+					return false;
+				};
+foo := file_handler->ToString();
+"### {$foo} ###"->PrintLine();
+
+			}
+			# alas
+			else {
+
+			};
+
+			return false;
+		}
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPost(request : Request, response : Response) ~ Bool {
+			return true;
+		}
 	}
 
 	class : private : FileTypeHandler {
 		@type : String;
 		@alias_map : Map<String, FileHandler>;
-		@location_map : Map<String, FileHandler>;
 
 		New(type : String) {
 			@type := type;
 			@alias_map := Map->New()<String, FileHandler>;
-			@location_map := Map->New()<String, FileHandler>;
 		}
 
 		method : public : Insert(alias_str : String, location_str : String, cache_flag : Bool) ~ Bool {
-			if(@location_map->Has(location_str)) {
+			if(alias_str->Equals("<None>") | location_str->Equals("<None>") | @alias_map->Has(location_str)) {
 				return false;
 			};
 
 			file_handler := FileHandler->New(@type, alias_str, location_str, cache_flag);
-			@location_map->Insert(location_str, file_handler);
-			if(alias_str <> Nil) {
-				@alias_map->Insert(alias_str, file_handler);
-			};
+			@alias_map->Insert(alias_str, file_handler);
 
 			return true;
+		}
+
+		method : public : GetFileHander(alias_str : String) ~ FileHandler {
+			return @alias_map->Find(alias_str);
 		}
 
 		method : public : ToString() ~ String {
 			buffer := "";
 
-			file_handlers := @location_map->GetValues()<FileHandler>;
-			each(i : file_handlers) {
-				file_handler := file_handlers->Get(i);
+			alias_handlers := @alias_map->GetValues()<FileHandler>;
+			each(i : alias_handlers) {
+				alias_handler := alias_handlers->Get(i);
 				buffer += '\t';
-				buffer += file_handler->ToString();
+				buffer += alias_handler->ToString();
 				buffer += "\n";
 			};
 
@@ -938,10 +1007,10 @@ bundle Web.HTTP.Server {
 
 		method : public : ToString() ~ String {
 			if(@alias_str <> Nil) {
-				return "alias='{$@alias_str}', location='{$@location}', cache='{$@cache}', type='{$@type}'";
+				return "alias=''{$@alias_str}', location=''{$@location}', cache=''{$@cache}', type=''{$@type}'";
 			};
 
-			return "location='{$@location}', cache='{$@cache}', type='{$@type}'";
+			return "location=''{$@location}', cache=''{$@cache}', type=''{$@type}'";
 		}
 	}
 
@@ -1469,7 +1538,7 @@ bundle Web.HTTP.Server {
 		method : public : ToString() ~ String {
 			if(@content <> Nil) {
 				content_size := @content->Size();
-				return "code={$@code}, reason={$@reason}, content_size={$content_size}";
+				return "code='{$@code}, reason='{$@reason}, content_size='{$content_size}";
 			};
 
 			return "<Nil>";
@@ -1678,13 +1747,13 @@ bundle Web.HTTP.Server {
 		@param request HTTP request
 		@param response HTTP response
 		~#
-		method : virtual : ProcessGet(request : Request, response : Response) ~ Nil;
+		method : public : virtual : ProcessGet(request : Request, response : Response) ~ Bool;
 
 		#~
 		Callback for POST requests
 		@param request HTTP request
 		@param response HTTP response
 		~#
-		method : virtual : ProcessPost(request : Request, response : Response) ~ Nil;
+		method : public : virtual : ProcessPost(request : Request, response : Response) ~ Bool;
 	}
 }
