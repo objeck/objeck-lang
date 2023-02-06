@@ -6,13 +6,13 @@ int main()
 {
   // Load the ratings.
   arma::mat ratings;
-  if(!data::Load("ratings-only.csv", ratings))
+  if(!data::Load("../data/ratings-only.csv", ratings))
     throw std::runtime_error("Could not load ratings-only.csv!");
   // Now, load the names of the movies as a single-feature categorical dataset.
   // We can use `moviesInfo.UnmapString(i, 0)` to get the i'th string.
   data::DatasetInfo moviesInfo;
   arma::mat movies; // This will be unneeded.
-  if(!data::Load("movies.csv", movies, moviesInfo))
+  if(!data::Load("../data/movies.csv", movies, moviesInfo))
     throw std::runtime_error("Could not load movies.csv!");
 
   // Split the ratings into a training set and a test set, using 10% of the
