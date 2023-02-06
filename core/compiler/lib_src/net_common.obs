@@ -613,7 +613,7 @@ bundle Web.HTTP.Server {
 	  	}
 
 	  	#~
-		Starts a HTTPS server that listens for requests
+		Starts a HTTP server that listens for requests
 		@param filename configuration file
 		@return true if configured and started, false otherwise
 		~#
