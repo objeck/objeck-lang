@@ -122,18 +122,18 @@ bundle Web.HTTP {
 		}
 
 		method : ParseUrl(url : String) ~ Bool {
-			# "-- url=''{$url}' --"->PrintLine();
+			# "-- url='{$url}' --"->PrintLine();
 			scheme_index := url->Find(':');
 			if(scheme_index < 0) {
 				"--- No scheme ---"->ErrorLine();
 				return false;
 			};
 			@scheme := url->SubString(0, scheme_index);
-			# "\t-- scheme=''{$@scheme}' --"->PrintLine();
+			# "\t-- scheme='{$@scheme}' --"->PrintLine();
 
 			scheme_index += 1;
 			rest := url->SubString(scheme_index, url->Size() - scheme_index);
-			# "\t-- rest=''{$rest}' --"->PrintLine();
+			# "\t-- rest='{$rest}' --"->PrintLine();
 
 			if(rest->StartsWith("//")) {
 				parts := rest->SubString(2, rest->Size() - 2)->Split("/");
@@ -154,7 +154,7 @@ bundle Web.HTTP {
 		}
 
 		method : ParsePart(part : String, index : Int, last : Bool) ~ Nil {
-			# "\t-- part=''{$part}' --"->PrintLine();
+			# "\t-- part='{$part}' --"->PrintLine();
 
 			# host and port
 			if(index = 0) {
@@ -187,7 +187,7 @@ bundle Web.HTTP {
 					frag_index := part->Find('#');
 					if(frag_index > -1) {
 						sub_part := part->SubString(frag_index);
-						# "\t-- sub_part=''{$sub_part}' --"->PrintLine();							
+						# "\t-- sub_part='{$sub_part}' --"->PrintLine();							
 
 						frag_index += 1;
 						@frag := part->SubString(frag_index, part->Size() - frag_index);
@@ -371,27 +371,27 @@ bundle Web.HTTP {
 			buffer := "'{$@url}\n";
 
 			if(@scheme <> Nil) {
-				buffer += "\tscheme=''{$@scheme}'\n";
+				buffer += "\tscheme='{$@scheme}'\n";
 			};
 
 			if(@host <> Nil) {
-				buffer += "\thost=''{$@host}'\n";
+				buffer += "\thost='{$@host}'\n";
 			};
 
 			if(@path <> Nil) {
-				buffer += "\tpath=''{$@path}'\n";
+				buffer += "\tpath='{$@path}'\n";
 			};
 			
 			if(@port > -1) {
-				buffer += "\tport=''{$@port}'\n";
+				buffer += "\tport='{$@port}'\n";
 			};
 
 			if(@query <> Nil) {
-				buffer += "\tquery=''{$@query}'\n";
+				buffer += "\tquery='{$@query}'\n";
 			};
 			
 			if(@frag <> Nil) {
-				buffer += "\tfragment=''{$@frag}'\n";
+				buffer += "\tfragment='{$@frag}'\n";
 			};
 					
 			return buffer;			
@@ -625,7 +625,7 @@ bundle Web.HTTP.Server {
 			}
 			else {
 				err_msg := @secure_server->GetLastError();
-				"Error: ''{$err_msg}'"->ErrorLine();
+				"Error: '{$err_msg}'"->ErrorLine();
 			};
 	  	}
 
@@ -677,7 +677,7 @@ bundle Web.HTTP.Server {
 			}
 			else {
 				err_msg := @server->GetLastError();
-				"Error: ''{$err_msg}'"->ErrorLine();
+				"Error: '{$err_msg}'"->ErrorLine();
 			};
 	  	}
 
@@ -703,6 +703,7 @@ bundle Web.HTTP.Server {
 		@is_debug : Bool;
 		@is_handling_files : Bool;
 		@port : Int;
+		@base_dir : String;
 		@cert_path : String;
 		@cert_key_path : String;
 		@cert_passwd : String;
@@ -752,6 +753,11 @@ bundle Web.HTTP.Server {
 			return @cert_passwd;
 		}
 
+		# TODO: implement
+		method : public : HasHandler(request_url : String) ~ Bool {
+			return false;
+		}
+
 		method : public : Load() ~ Bool {
 			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
 			if(parser->Parse()) {				
@@ -770,12 +776,12 @@ bundle Web.HTTP.Server {
 				@port := network_port_json->GetString()->ToInt();
 
 				is_debug_json := network_json->Get("debug");
-				if(is_debug_json <> Nil) {
+				if(is_debug_json <> Nil & <>is_debug_json->IsNull()) {
 					@is_debug := is_debug_json->GetBool();
 				};
 				
 				network_secure_json := network_json->Get("secure");
-				if(network_secure_json <> Nil) {
+				if(network_secure_json <> Nil & <>network_secure_json->IsNull()) {
 					network_cert_path_json := network_secure_json->Get("cert_path");
 					network_cert_key_json := network_secure_json->Get("cert_key_path");
 					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
@@ -790,12 +796,25 @@ bundle Web.HTTP.Server {
 
 				# process files
 				files_json := parser->GetRoot()->Get("files");
-				if(files_json <> Nil) {				
-					each(i : files_json) {
-						file_json := files_json->Get(i);
-						if(file_json->Has("groups")) {
-							if(<>AddFiles(file_json)) {
-								return false;
+				if(files_json <> Nil & <>files_json->IsNull()) {
+					# common configuration 
+					common_json := files_json->Get("common");
+					if(common_json <> Nil) {
+						common_base_dir_json := common_json->Get("base_dir");
+						if(common_base_dir_json <> Nil & <>common_base_dir_json->IsNull()) {
+							@base_dir := common_base_dir_json->GetString();
+						};
+					};
+
+					# individual files
+					items_json := files_json->Get("items");
+					if(items_json <> Nil & <>items_json->IsNull()) {
+						each(i : items_json) {
+							item_json := items_json->Get(i);
+							if(item_json->Has("groups")) {
+								if(<>AddFiles(item_json)) {
+									return false;
+								};
 							};
 						};
 					};
@@ -814,7 +833,7 @@ bundle Web.HTTP.Server {
 			location_json :=  file_json->Get("location");
 			mime_type_json := file_json->Get("mime-type");
 
-			if(groups_json <> Nil & location_json <> Nil) {
+			if(groups_json <> Nil & <>groups_json->IsNull() & location_json <> Nil & <>location_json->IsNull()) {
 				groups_str := groups_json->GetString();
 				type_strs := groups_str->Split(',');
 				if(type_strs->Size() > 0) {
@@ -837,25 +856,25 @@ bundle Web.HTTP.Server {
 		method : AddHandler(group : String, file_json : JsonElement, mime_type_json : JsonElement) ~ Bool {
 			alias_str := "<None>";
 			alias_json := file_json->Get("alias");
-			if(alias_json <> Nil) {
+			if(alias_json <> Nil & <>alias_json->IsNull()) {
 				alias_str := alias_json->GetString();
 			};
 
 			location_str := "<None>";
 			location_json := file_json->Get("location");
-			if(location_json <> Nil) {
+			if(location_json <> Nil & <>location_json->IsNull()) {
 				location_str := location_json->GetString();
 			};
 
 			mime_type_str := "text/plain";
 			mime_type_json := file_json->Get("mime-type");
-			if(mime_type_json <> Nil) {
+			if(mime_type_json <> Nil & <>mime_type_json->IsNull()) {
 				mime_type_str := mime_type_json->GetString();
 			};
 
 			cache_flag : Bool;
 			cache_json := file_json->Get("cache");
-			if(cache_json <> Nil) {
+			if(cache_json <> Nil & <>cache_json->IsNull()) {
 				cache_flag := cache_json->GetBool();
 			};
 
@@ -876,9 +895,9 @@ bundle Web.HTTP.Server {
 
 		method : public : ToString() ~ String {
 			buffer := "[Network]\n";
-			buffer += "\tfilename=''{$@filename}', instance=''{$@instance_str}', handling_files=''{$@is_handling_files}', port='{$@port}, is_debug='{$@is_debug}\n";
+			buffer += "\tfilename='{$@filename}', instance='{$@instance_str}', handling_files='{$@is_handling_files}', port='{$@port}, is_debug='{$@is_debug}\n";
 			if(@cert_path <> Nil & @cert_key_path <> Nil & @cert_passwd <> Nil) {
-				buffer += "\tcert_path=''{$@cert_path}', cert_key=''{$@cert_key_path}', cert_passwd=''{$@cert_passwd}'\n";
+				buffer += "\tcert_path='{$@cert_path}', cert_key='{$@cert_key_path}', cert_passwd='{$@cert_passwd}'\n";
 			};
 
 			buffer += "[Files]\n";
@@ -927,11 +946,28 @@ bundle Web.HTTP.Server {
 
 				if(@is_debug) {
 					file_handler_str := file_handler->ToString();
-					"---\n=> File properties: {$file_handler_str}"->PrintLine();
+					"Item properties: {$file_handler_str}"->PrintLine();
 				};
 				
 				buffer : Byte[];
-				file_location := file_handler->GetLocation();
+
+				file_location : String;
+
+				if(@base_dir <> Nil) {
+					file_location := String->New(@base_dir);
+					if(<>file_location->EndsWith('/') & <>file_location->EndsWith('\\')) {
+						file_location += System.IO.Filesystem.Directory->GetSlash();
+					};
+					file_location += file_handler->GetLocation();
+				}
+				else {
+					file_location := file_handler->GetLocation();
+				};
+
+				if(@is_debug) {
+					"File location='{$file_location}'"->PrintLine();
+				};
+
 				# use caching
 				if(file_handler->IsCached()) {
 					buffer_holder := @content_cache->Find(file_location);
@@ -1048,7 +1084,7 @@ bundle Web.HTTP.Server {
 		}
 
 		method : public : ToString() ~ String {
-			return "alias=''{$@alias_str}', location=''{$@location}', mime_type='{$@mime_type}', cache={$@cache}, group='{$@group}'";
+			return "alias='{$@alias_str}', location='{$@location}', mime_type='{$@mime_type}', cache={$@cache}, group='{$@group}'";
 		}
 	}
 
@@ -1250,6 +1286,8 @@ bundle Web.HTTP.Server {
 		@reason : String;
 		@response_headers : Map<String, String>;
 		@cookies : Map<String, String>;
+		@server_config : WebServerConfig;
+		@request_url : String;
 
 		enum Compression := 100 {
 			NONE,
@@ -1258,12 +1296,27 @@ bundle Web.HTTP.Server {
 			BR
 		}
 
-		New() {
+		New(server_config : WebServerConfig, request_url : String) {
+			@server_config := server_config;
+			@request_url := request_url;
+
 			@code := 400;
 			@compression := Compression->NONE;
 			@is_compressed := false;
 			@response_headers := Map->New()<String, String>;
 			@cookies := Map->New()<String, String>;
+		}
+
+		#~
+		Check to see if the response has configured handler
+		@return true if handler exists, false otherwise
+		~#
+		method : public : HasHandler() ~ Bool {
+			if(@server_config <> Nil & @request_url <> Nil) {
+				@server_config->HasHandler(@request_url);
+			};
+
+			return false;
 		}
 
 		#~
