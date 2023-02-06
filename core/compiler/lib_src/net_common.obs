@@ -706,11 +706,11 @@ bundle Web.HTTP.Server {
 		@cert_path : String;
 		@cert_key_path : String;
 		@cert_passwd : String;
-		@file_type_handler_map : Hash<String, FileTypeHandler>;
+		@file_group_handler_map : Hash<String, FileGroupHandler>;
 
 		New(filename : String) {
 			@filename := filename;
-			@file_type_handler_map := Hash->New()<String, FileTypeHandler>;
+			@file_group_handler_map := Hash->New()<String, FileGroupHandler>;
 		}
 
 		method : public : GetFilename() ~ String {
@@ -791,7 +791,7 @@ bundle Web.HTTP.Server {
 				if(files_json <> Nil) {				
 					each(i : files_json) {
 						file_json := files_json->Get(i);
-						if(file_json->Has("types")) {
+						if(file_json->Has("groups")) {
 							if(<>AddFiles(file_json)) {
 								return false;
 							};
@@ -808,21 +808,22 @@ bundle Web.HTTP.Server {
 		}
 
 		method : AddFiles(file_json : JsonElement) ~ Bool {
-			types_json := file_json->Get("types");
+			groups_json := file_json->Get("groups");
 			location_json :=  file_json->Get("location");
+			mime_type_json := file_json->Get("mime-type");
 
-			if(types_json <> Nil & location_json <> Nil) {
-				types_str := types_json->GetString();
-				type_strs := types_str->Split(',');
+			if(groups_json <> Nil & location_json <> Nil) {
+				groups_str := groups_json->GetString();
+				type_strs := groups_str->Split(',');
 				if(type_strs->Size() > 0) {
 					each(i : type_strs) {
-						if(<>AddHandler(type_strs[i], file_json)) {
+						if(<>AddHandler(type_strs[i], file_json, mime_type_json)) {
 							return false;
 						};
 					};
 				}
 				else {
-					if(<>AddHandler(types_str, file_json)) {
+					if(<>AddHandler(groups_str, file_json, mime_type_json)) {
 						return false;
 					};
 				};
@@ -831,17 +832,23 @@ bundle Web.HTTP.Server {
 			return true;
 		}
 
-		method : AddHandler(type : String, file_json : JsonElement) ~ Bool {
-			alias_str : String := "<None>";
+		method : AddHandler(group : String, file_json : JsonElement, mime_type_json : JsonElement) ~ Bool {
+			alias_str := "<None>";
 			alias_json := file_json->Get("alias");
 			if(alias_json <> Nil) {
 				alias_str := alias_json->GetString();
 			};
 
-			location_str : String := "<None>";
+			location_str := "<None>";
 			location_json := file_json->Get("location");
 			if(location_json <> Nil) {
 				location_str := location_json->GetString();
+			};
+
+			mime_type_str := "text/plain";
+			mime_type_json := file_json->Get("mime-type");
+			if(mime_type_json <> Nil) {
+				mime_type_str := mime_type_json->GetString();
 			};
 
 			cache_flag : Bool;
@@ -851,13 +858,13 @@ bundle Web.HTTP.Server {
 			};
 
 			# get/add handler
-			type_handler := @file_type_handler_map->Find(type);
-			if(type_handler = Nil) {
-				type_handler := FileTypeHandler->New(type);
-				@file_type_handler_map->Insert(type, type_handler);
+			group_handler := @file_group_handler_map->Find(group);
+			if(group_handler = Nil) {
+				group_handler := FileGroupHandler->New(group);
+				@file_group_handler_map->Insert(group, group_handler);
 			};
 
-			if(<>type_handler->Insert(alias_str, location_str, cache_flag)) {
+			if(<>group_handler->Insert(alias_str, location_str, mime_type_str, cache_flag)) {
 				"Unable to add file: alias='{$alias_str}', location='{$location_str}'"->ErrorLine();
 				return false;
 			};
@@ -873,14 +880,14 @@ bundle Web.HTTP.Server {
 			};
 
 			buffer += "[Files]\n";
-			file_type_pairs := @file_type_handler_map->GetKeyValues()<Pair<String, FileTypeHandler>>;
-			each(i : file_type_pairs) {
-				file_type_pair := file_type_pairs->Get(i);
+			file_group_pairs := @file_group_handler_map->GetKeyValues()<Pair<String, FileGroupHandler>>;
+			each(i : file_group_pairs) {
+				file_group_pair := file_group_pairs->Get(i);
 
-				file_type_name := file_type_pair->GetFirst();
-				buffer += "\t{'{$file_type_name}}\n";
-				file_type_handler := file_type_pair->GetSecond();
-				buffer += file_type_handler->ToString();
+				file_group_name := file_group_pair->GetFirst();
+				buffer += "\t{'{$file_group_name}}\n";
+				file_group_handler := file_group_pair->GetSecond();
+				buffer += file_group_handler->ToString();
 			};
 			
 			return buffer;
@@ -893,16 +900,16 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : ProcessGet(request : Request, response : Response) ~ Bool {
 			request_url := request->GetUrl();
-			request_type_index := request_url->FindLast('.');
+			request_group_index := request_url->FindLast('.');
 			# alias
-			if(request_type_index > 0) {
-				request_type := request_url->SubString(request_type_index, request_url->Size() - request_type_index);
-				if(request_type = Nil) {
+			if(request_group_index > 0) {
+				request_group := request_url->SubString(request_group_index, request_url->Size() - request_group_index);
+				if(request_group = Nil) {
 					return false;
 				};
 
-				file_type_handler := @file_type_handler_map->Find(request_type);
-				if(file_type_handler = Nil) {
+				file_group_handler := @file_group_handler_map->Find(request_group);
+				if(file_group_handler = Nil) {
 					return false;
 				};
 
@@ -915,13 +922,21 @@ bundle Web.HTTP.Server {
 					"file request: alias='{$alias_str}'"->PrintLine();
 				};
 				
-				file_handler := file_type_handler->GetFileHander(alias_str);
+				file_handler := file_group_handler->GetFileHander(alias_str);
 				if(file_handler = Nil) {
 					return false;
 				};
+				
+				# TODO: check cache and cache
 foo := file_handler->ToString();
-"### {$foo} ###"->PrintLine();
+"### {$foo} ###"->PrintLine();				
+				buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_handler->GetLocation());
+				if(buffer = Nil) {
+					return false;
+				};
 
+				response->SetCodeContent(200, buffer);
+				return true;
 			}
 			# alas
 			else {
@@ -941,21 +956,21 @@ foo := file_handler->ToString();
 		}
 	}
 
-	class : private : FileTypeHandler {
-		@type : String;
+	class : private : FileGroupHandler {
+		@group : String;
 		@alias_map : Map<String, FileHandler>;
 
-		New(type : String) {
-			@type := type;
+		New(group : String) {
+			@group := group;
 			@alias_map := Map->New()<String, FileHandler>;
 		}
 
-		method : public : Insert(alias_str : String, location_str : String, cache_flag : Bool) ~ Bool {
+		method : public : Insert(alias_str : String, location_str : String, mime_type_str : String, cache_flag : Bool) ~ Bool {
 			if(alias_str->Equals("<None>") | location_str->Equals("<None>") | @alias_map->Has(location_str)) {
 				return false;
 			};
 
-			file_handler := FileHandler->New(@type, alias_str, location_str, cache_flag);
+			file_handler := FileHandler->New(@group, alias_str, location_str, mime_type_str, cache_flag);
 			@alias_map->Insert(alias_str, file_handler);
 
 			return true;
@@ -981,15 +996,17 @@ foo := file_handler->ToString();
 	}
 
 	class : private : FileHandler {
-		@type : String;
+		@group : String;
 		@alias_str : String;
 		@location : String;
+		@mime_type : String;
 		@cache : Bool;
 
-		New(type : String, alias_str : String, location : String, cache : Bool) {
-			@type := type;
+		New(group : String, alias_str : String, location : String, mime_type : String, cache : Bool) {
+			@group := group;
 			@alias_str := alias_str;
 			@location := location;
+			@mime_type := mime_type;
 			@cache := cache;
 		}
 
@@ -1001,16 +1018,16 @@ foo := file_handler->ToString();
 			return @location;
 		}
 
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
 		method : public : GetCache() ~ Bool {
 			return @cache;
 		}
 
 		method : public : ToString() ~ String {
-			if(@alias_str <> Nil) {
-				return "alias=''{$@alias_str}', location=''{$@location}', cache=''{$@cache}', type=''{$@type}'";
-			};
-
-			return "location=''{$@location}', cache=''{$@cache}', type=''{$@type}'";
+			return "alias=''{$@alias_str}', location=''{$@location}', mime_type='{$@mime_type}', cache={$@cache}, group='{$@group}'";
 		}
 	}
 

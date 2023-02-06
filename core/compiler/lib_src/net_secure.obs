@@ -613,10 +613,14 @@ bundle Web.HTTP.Server {
 						http_request := Request->New(request_url, request_headers);
 						http_response := Response->New();
 						
+						server_config := false;
 						if(@server_config <> Nil & @server_config->IsHandlingFiles()) {
-							@server_config->ProcessGet(http_request, http_response);
+							server_config := @server_config->ProcessGet(http_request, http_response);
 						};
-						ProcessGet(http_request, http_response);
+						
+						if(<>server_config) {
+							ProcessGet(http_request, http_response);
+						};
 						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
 					# POST request
