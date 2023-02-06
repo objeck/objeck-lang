@@ -548,8 +548,23 @@ bundle Web.HTTP.Server {
 	class WebServer {
 		@secure_server : static : TCPSecureSocketServer;
 		@server : static : TCPSocketServer;
+		@server_config : static : WebServerConfig;
 		@is_debug : static : Bool;
         
+		#~
+		Starts a HTTPS server that listens for requests
+		@param filename configuration file
+		@return true if configured and started, false otherwise
+		~#
+		function : ServeSecure(filename : String) ~ Bool {
+			@server_config := WebServerConfig->New(filename);
+			if(@server_config->Load()) {
+				# callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool
+			};
+
+			return false;
+		}
+
 		#~
 		Starts a HTTPS server that listens for requests
 		@param callback class inherited from 'HttpsRequestHandler'
@@ -596,6 +611,20 @@ bundle Web.HTTP.Server {
 				"Error: '{$err_msg}'"->ErrorLine();
 			};
 	  	}
+
+	  	#~
+		Starts a HTTPS server that listens for requests
+		@param filename configuration file
+		@return true if configured and started, false otherwise
+		~#
+		function : Serve(filename : String) ~ Bool {
+			@server_config := WebServerConfig->New(filename);
+			if(@server_config->Load()) {
+				# callback : Class, port : Int, is_debug : Bool
+			};
+
+			return false;
+		}
 
 	  	#~
 		Starts a HTTP server that listens for requests
@@ -654,15 +683,17 @@ bundle Web.HTTP.Server {
 		}
 	}
 
-	class WebServerConfig {
+	class : private : WebServerConfig {
+		@filename : String;
 		@file_type_handler_map : Hash<String, FileTypeHandler>;
 
-		New() {
+		New(filename : String) {
+			filename := @filename;
 			@file_type_handler_map := Hash->New()<String, FileTypeHandler>;
 		}
 
-		method : Process(filename : String) ~ Bool {		
-			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+		method : public : Load() ~ Bool {		
+			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
 			if(parser->Parse()) {
 				files_json := parser->GetRoot()->Get("files");
 				if(files_json <> Nil) {
