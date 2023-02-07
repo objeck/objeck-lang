@@ -7581,6 +7581,16 @@ bundle System.IO.Filesystem {
 		Copies a directory
 		@param s source directory
 		@param d destination directory
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String) ~ Bool {
+			return Copy(s, d, false);
+		}
+
+		#~
+		Copies a directory
+		@param s source directory
+		@param d destination directory
 		@param r recursive copy
 		@return true if file was copied
 		~#
