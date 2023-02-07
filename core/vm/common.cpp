@@ -2387,6 +2387,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
     case DIR_LIST:
       return DirList(program, inst, op_stack, stack_pos, frame);
+
+    case DIR_COPY:
+      return DirCopy(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -5212,6 +5215,44 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
     PushInt(0, op_stack, stack_pos);
   }
 
+  return true;
+}
+
+bool TrapProcessor::DirCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+  const bool recursive = PopInt(op_stack, stack_pos);
+
+  if(!to || !from) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  to = (size_t*)to[0];
+  const std::wstring wto_name((wchar_t*)(to + 3));
+
+  from = (size_t*)from[0];
+  const std::wstring wfrom_name((wchar_t*)(from + 3));
+
+  const std::string to_name = UnicodeToBytes(wto_name);
+  const std::string from_name = UnicodeToBytes(wfrom_name);
+  
+  std::filesystem::copy_options  copy_options = std::filesystem::copy_options::update_existing | std::filesystem::copy_options::directories_only;
+  if(recursive) {
+    copy_options |= std::filesystem::copy_options::recursive;
+  }
+
+  std::error_code error_code;
+  std::filesystem::copy(from_name, to_name, copy_options, error_code);
+
+  if(error_code.value()) {
+    PushInt(1, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  
   return true;
 }
 
