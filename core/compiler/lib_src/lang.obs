@@ -7570,7 +7570,7 @@ bundle System.IO.Filesystem {
 		@return true if directory was renamed
 		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
-			if(Directory->Exists(s)) {
+			if(System.IO.Filesystem.Directory->Exists(o)) {
 				return System.IO.Filesystem.File->Rename(o, n);
 			};
 
