@@ -7083,7 +7083,7 @@ bundle System.IO.Filesystem {
 		@param d destination filename
 		@return true if file was copied
 		~#
-		function : Rename(s : System.String, d : System.String) ~ Bool {
+		function : Copy(s : System.String, d : System.String) ~ Bool {
 			FILE_COPY;
 		}
 	}
