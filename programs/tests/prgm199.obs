@@ -1,19 +1,14 @@
+use Collection.Generic;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := 13;
-		
-		select(value) {
-			label 7 {
-				"seven"->PrintLine();
-			}
+		map := Map->New()<String, String>;
+		map->Insert("authenticated", "foo");
+		map->Find("authenticated")->PrintLine();
 
-			label 11 {
-				"eleven"->PrintLine();
-			}
-
-			otherwise {
-				"even back do' lil joe"->PrintLine();
-			}
+		if(map->Remove("authenticated")) {
+			map->Insert("authenticated", "bar");
 		};
+		map->Find("authenticated")->PrintLine();
 	}
 }
