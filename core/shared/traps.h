@@ -131,6 +131,7 @@ namespace instructions {
     FILE_EOF,
     FILE_DELETE,
     FILE_RENAME,
+    FILE_COPY,
     // directory operations
     DIR_CREATE,
     DIR_SLASH,
