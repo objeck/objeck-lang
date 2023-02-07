@@ -5192,6 +5192,7 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  const bool overwrite = PopInt(op_stack, stack_pos);
   const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -5208,11 +5209,19 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
 
   const std::string to_name = UnicodeToBytes(wto_name);
   const std::string from_name = UnicodeToBytes(wfrom_name);
-  if(std::filesystem::copy_file(from_name, to_name)) {
-    PushInt(1, op_stack, stack_pos);
+
+  std::filesystem::copy_options options;
+  if(overwrite) {
+    options |= std::filesystem::copy_options::overwrite_existing;
+  }
+
+  std::error_code error_code;
+  std::filesystem::copy_file(from_name, to_name, options, error_code);
+  if(error_code) {
+    PushInt(0, op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(1, op_stack, stack_pos);
   }
 
   return true;
