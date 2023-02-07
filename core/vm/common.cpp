@@ -5210,7 +5210,7 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
   const std::string to_name = UnicodeToBytes(wto_name);
   const std::string from_name = UnicodeToBytes(wfrom_name);
 
-  std::filesystem::copy_options options;
+  std::filesystem::copy_options options = std::filesystem::copy_options::none;
   if(overwrite) {
     options |= std::filesystem::copy_options::overwrite_existing;
   }
