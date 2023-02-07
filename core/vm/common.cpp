@@ -5220,9 +5220,9 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
 
 bool TrapProcessor::DirCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  const bool recursive = PopInt(op_stack, stack_pos);
   const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
-  const bool recursive = PopInt(op_stack, stack_pos);
 
   if(!to || !from) {
     PushInt(0, op_stack, stack_pos);
