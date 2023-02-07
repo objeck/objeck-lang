@@ -7564,6 +7564,31 @@ bundle System.IO.Filesystem {
 	~#
 	class Directory {
 		#~
+		Renames a directory
+		@param o original directory
+		@param n new directory
+		@return true if directory was renamed
+		~#
+		function : Rename(o : System.String, n : System.String) ~ Bool {
+			if(Directory->Exists(s)) {
+				return System.IO.Filesystem.File->Rename(o, n);
+			};
+
+			return false;
+		}
+
+		#~
+		Copies a directory
+		@param s source directory
+		@param d destination directory
+		@param r recursive copy
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String, r : Bool) ~ Bool {
+			DIR_COPY;
+		}
+
+		#~
 		Creates a directory
 		@param n directory name
 		@return true if directory was created 

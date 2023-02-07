@@ -261,6 +261,7 @@ enum ScannerTokenType {
   DIR_SLASH,
   DIR_EXISTS,
   DIR_LIST,
+  DIR_COPY,
   // socket operations
   SOCK_TCP_CONNECT,
   SOCK_TCP_IS_CONNECTED,
