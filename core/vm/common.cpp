@@ -5237,17 +5237,21 @@ bool TrapProcessor::DirCopy(StackProgram* program, size_t* inst, size_t*& op_sta
 
   const std::string to_name = UnicodeToBytes(wto_name);
   const std::string from_name = UnicodeToBytes(wfrom_name);
-  
-  std::filesystem::copy_options  copy_options = std::filesystem::copy_options::update_existing | std::filesystem::copy_options::directories_only;
-  if(recursive) {
-    copy_options |= std::filesystem::copy_options::recursive;
-  }
 
-  std::error_code error_code;
-  std::filesystem::copy(from_name, to_name, copy_options, error_code);
+  if(File::DirExists(from_name.c_str())) {
+    std::filesystem::copy_options copy_options = std::filesystem::copy_options::overwrite_existing;
+    if(recursive) {
+      copy_options |= std::filesystem::copy_options::recursive;
+    }
 
-  if(error_code.value()) {
-    PushInt(1, op_stack, stack_pos);
+    std::error_code error_code;
+    std::filesystem::copy(from_name, to_name, copy_options, error_code);
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
   }
   else {
     PushInt(0, op_stack, stack_pos);
