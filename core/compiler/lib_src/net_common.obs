@@ -753,11 +753,16 @@ bundle Web.HTTP.Server {
 			return @cert_passwd;
 		}
 
-		# TODO: implement / cache?
-		method : public : HasGroupHandler(request_url : String) ~ Bool {
-			alias_str := request_url->SubString(1, request_url->Size() - 1);
-			if(alias_str = Nil) {
-				return false;
+		method : public : HasStaticHandler(name : String) ~ Bool {
+			alias_str : String;
+			if(name->StartsWith('/')) {
+				alias_str := name->SubString(1, name->Size() - 1);
+				if(alias_str = Nil) {
+					return false;
+				};
+			}
+			else {
+				alias_str := name;
 			};
 
 			file_groups := @file_group_handler_map->GetValues()<FileGroupHandler>;
@@ -946,7 +951,14 @@ bundle Web.HTTP.Server {
 		}
 
 		method : Process(request : Request, response : Response) ~ Bool {
-			request_url := request->GetUrl();
+			request_url : String;
+			if(response->HasForwardAlias()) {
+				request_url := response->GetForwardAlias();
+			}
+			else {
+				request_url := request->GetUrl();
+			};
+
 			request_group_index := request_url->FindLast('.');
 			# alias
 			if(request_group_index > 0) {
@@ -1261,8 +1273,17 @@ bundle Web.HTTP.Server {
 
 			if(attribs_str <> Nil) {
 				attrib_names_values := attribs_str->Split("; ");
-				each(i : attrib_names_values) {
-					attrib_name_value := attrib_names_values[i]->Split('=');
+				if(attrib_names_values->Size() > 0) {
+					each(i : attrib_names_values) {
+						attrib_name_value := attrib_names_values[i]->Split('=');
+						if(attrib_name_value->Size() = 2) {
+							attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
+							attribs->Insert(attrib_name_value[0], attrib_value);
+						};
+					};
+				}
+				else {
+					attrib_name_value := attribs_str->Split('=');
 					if(attrib_name_value->Size() = 2) {
 						attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
 						attribs->Insert(attrib_name_value[0], attrib_value);
@@ -1320,6 +1341,7 @@ bundle Web.HTTP.Server {
 		@cookies : Map<String, String>;
 		@server_config : WebServerConfig;
 		@request_url : String;
+		@forward_alias_name : String;
 
 		enum Compression := 100 {
 			NONE,
@@ -1343,9 +1365,9 @@ bundle Web.HTTP.Server {
 		Check to see if the response has configured handler
 		@return true if handler exists, false otherwise
 		~#
-		method : public : HasGroupHandler() ~ Bool {
+		method : public : HasStaticHandler() ~ Bool {
 			if(@server_config <> Nil & @request_url <> Nil) {
-				return @server_config->HasGroupHandler(@request_url);
+				return @server_config->HasStaticHandler(@request_url);
 			};
 
 			return false;
@@ -1361,11 +1383,35 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Adds a cookie
-		@param name cookie name
+		Set the forward page alias
+		@param name forward page alias
+		@return true if set, false otherwise
 		~#
-		method : public : RemoveCookie(name : String) ~ Nil {
-			@cookies->Remove(name);
+		method : public : SetForwardAlias(alias_name : String) ~ Bool {
+			if(@server_config <> Nil & @server_config->HasStaticHandler(alias_name)) {
+				@forward_alias_name := "/";
+				@forward_alias_name += alias_name;
+
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Gets the forward page alias
+		@return forward page alias
+		~#
+		method : public : GetForwardAlias() ~ String {
+			return @forward_alias_name;
+		}
+
+		#~
+		Checks the forward page alias
+		@return true if forward page alias exists, false otherwise
+		~#
+		method : public : HasForwardAlias() ~ Bool {
+			return @forward_alias_name <> Nil;
 		}
 
 		#~
@@ -1374,9 +1420,16 @@ bundle Web.HTTP.Server {
 		@param value cookie value
 		~#
 		method : public : UpdateCookie(name : String, value : String) ~ Nil {
-			if(@cookies->Remove(name)) {
-				@cookies->Insert(name, value);
-			};
+			@cookies->Insert(name, value);
+		}
+
+		#~
+		Adds a cookie
+		@param name cookie name
+		~#
+		method : public : RemoveCookie(name : String) ~ Nil {
+			now := FormatGmtTime();
+			@cookies->Insert(name, "; expires={$now}");
 		}
 
 		#~
@@ -1597,11 +1650,11 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Current GMT time
-		@return current GMT time
+		Formats the currnet time into a string via the HTTP date/time format
+		@return currnet date/time string
 		~#
-		function : CurrentGmtTime() ~ System.Time.Date {
-			return System.Time.Date->New(true);
+		function : FormatGmtTime() ~ String {
+			return FormatGmtTime(System.Time.Date->New(true));
 		}
 
 		#~
@@ -1609,7 +1662,7 @@ bundle Web.HTTP.Server {
 		@param date date/time
 		@return date/time string
 		~#
-		function : FormatTime(date : System.Time.Date) ~ String {
+		function : FormatGmtTime(date : System.Time.Date) ~ String {
 			buffer := "";
 
 			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
