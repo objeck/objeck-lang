@@ -4411,6 +4411,14 @@ bundle System {
 		}
 
 		#~
+		Creates a new instance of the string
+		@return new string instance
+		~#
+		method : public : Copy() ~ String {
+			return String->New(@string);
+		}
+
+		#~
 		Print a string
 		~#
 		method : public : Print() ~ Nil {
@@ -7084,6 +7092,17 @@ bundle System.IO.Filesystem {
 		@return true if file was copied
 		~#
 		function : Copy(s : System.String, d : System.String) ~ Bool {
+			return Copy(s, d, false);
+		}
+
+		#~
+		Copies a file
+		@param s source filename
+		@param d destination filename
+		@param o true to overwrite existing file, false otherwise
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String, o : Bool) ~ Bool {
 			FILE_COPY;
 		}
 	}
