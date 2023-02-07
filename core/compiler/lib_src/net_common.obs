@@ -933,6 +933,19 @@ bundle Web.HTTP.Server {
 		@param response HTTP response
 		~#
 		method : public : ProcessGet(request : Request, response : Response) ~ Bool {
+			return Process(request , response);
+		}
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPost(request : Request, response : Response) ~ Bool {
+			return Process(request , response);
+		}
+
+		method : Process(request : Request, response : Response) ~ Bool {
 			request_url := request->GetUrl();
 			request_group_index := request_url->FindLast('.');
 			# alias
@@ -1014,15 +1027,6 @@ bundle Web.HTTP.Server {
 			};
 
 			return false;
-		}
-
-		#~
-		Callback for POST requests
-		@param request HTTP request
-		@param response HTTP response
-		~#
-		method : public : ProcessPost(request : Request, response : Response) ~ Bool {
-			return true;
 		}
 	}
 
@@ -1243,19 +1247,30 @@ bundle Web.HTTP.Server {
 
 		method : ParseCookies() ~ Nil {
 			if(@cookies = Nil) {
-				@cookies := Map->New()<String, String>;
-				
-				cookies_str := @request_headers->Find("Cookie");
-				if(cookies_str <> Nil) {
-					cookie_names_values := cookies_str->Split("; ");
-					each(i : cookie_names_values) {
-						cookie_name_value := cookie_names_values[i]->Split('=');
-						if(cookie_name_value->Size() = 2) {
-							@cookies->Insert(cookie_name_value[0], cookie_name_value[1]);
-						};
+				@cookies := ParseAttribs(@request_headers->Find("Cookie"));
+			};
+		}
+
+		#~
+		Parses parameter attributes
+		@param attribs_str string of attributes
+		@return parameter attributes
+		~#
+		function : ParseAttribs(attribs_str : String) ~ Map<String, String> {
+			attribs := Map->New()<String, String>;
+
+			if(attribs_str <> Nil) {
+				attrib_names_values := attribs_str->Split("; ");
+				each(i : attrib_names_values) {
+					attrib_name_value := attrib_names_values[i]->Split('=');
+					if(attrib_name_value->Size() = 2) {
+						attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
+						attribs->Insert(attrib_name_value[0], attrib_value);
 					};
 				};
 			};
+
+			return attribs;
 		}
 
 		#~

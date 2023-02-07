@@ -46,7 +46,9 @@
 #include "arch/memory.h"
 #include "arch/posix/posix.h"
 #endif
+
 #include <csignal>
+#include <filesystem>
 
 #ifdef _WIN32
 CRITICAL_SECTION StackProgram::program_cs;
@@ -2361,6 +2363,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
     case FILE_RENAME:
       return FileRename(program, inst, op_stack, stack_pos, frame);
+
+    case FILE_COPY:
+      return FileCopy(program, inst, op_stack, stack_pos, frame);
 
     case FILE_CREATE_TIME:
       return FileCreateTime(program, inst, op_stack, stack_pos, frame);
@@ -5177,6 +5182,34 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
   }
   else {
     PushInt(1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!to || !from) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  to = (size_t*)to[0];
+  const std::wstring wto_name((wchar_t*)(to + 3));
+
+  from = (size_t*)from[0];
+  const std::wstring wfrom_name((wchar_t*)(from + 3));
+
+  const std::string to_name = UnicodeToBytes(wto_name);
+  const std::string from_name = UnicodeToBytes(wfrom_name);
+  if(std::filesystem::copy_file(from_name, to_name)) {
+    PushInt(1, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;
