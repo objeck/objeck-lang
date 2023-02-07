@@ -584,7 +584,7 @@ bundle Web.HTTP.Server {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					"Request: '{$request}' from '{$request_address}'\n==="->PrintLine();
+					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
 				};
 
 				# parse request
