@@ -1402,6 +1402,33 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Adds a cookie
+		@param attribs pairs of cookie names and values
+		~#
+		method : public : AddCookie(attribs : Vector<Pair<String, String>>) ~ Nil {
+			attrib_str := "";
+
+			each(i : attribs) {
+				attrib := attribs->Get(i);
+
+				name := attrib->GetFirst();
+				value := attrib->GetSecond();
+
+				attrib_str += name;
+				if(value <> Nil) {
+					attrib_str += '=';
+					attrib_str += value;
+				};
+
+				if(i + 1 < attribs->Size()) {
+					attrib_str += "; ";
+				};
+			};
+
+			@cookies->Insert(attrib_str, Nil);
+		}
+
+		#~
 		Set the forward page alias
 		@param name forward page alias
 		@return true if set, false otherwise
