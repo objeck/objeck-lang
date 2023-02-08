@@ -1,0 +1,24 @@
+use Collection.Generic;
+
+#~
+cookie = JSESSIONID=ajax:8442368683411932627; SameSite=None; Path=/; Domain=.www.linkedin.com; Secure
+cookie = lang=v=2&lang=en-us; SameSite=None; Path=/; Domain=linkedin.com; Secure
+cookie = bcookie="v=2&8143b07a-57c8-43e1-8c71-75df62704e44"; domain=.linkedin.com; Path=/; Secure; Expires=Thu
+cookie = bscookie="v=1&20230208221605133f3a21-294b-4919-8284-d8add717bb73AQEJ0obMctF08GwRVwEwt3sd2gBX_Q_7"; domain=.www.linkedin.com; Path=/; Secure; Expires=Thu
+cookie = lidc="b=OGST07:s=O:r=O:a=O:p=O:g=2469:u=1:x=1:i=1675894565:t=1675980965:v=2:sig=AQFDYntkJPhW6cZh2z7QaYUMBf4RR5EZ"; Expires=Thu
+~#
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+	}
+}
+
+class Cookie {
+	@name : String;
+	@value : String;
+	@attribs : Map<String, String>;
+
+	New(cookie_str : String) {
+
+	}
+}
