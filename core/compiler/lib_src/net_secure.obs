@@ -485,7 +485,7 @@ bundle Web.HTTP {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-									# IO.Standard->Print("cookie=")->PrintLine(value);									
+IO.Standard->Print("cookie=")->PrintLine(value);									
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
