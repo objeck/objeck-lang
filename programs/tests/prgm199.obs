@@ -2,13 +2,6 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		map := Map->New()<String, String>;
-		map->Insert("authenticated", "foo");
-		map->Find("authenticated")->PrintLine();
-
-		if(map->Remove("authenticated")) {
-			map->Insert("authenticated", "bar");
-		};
-		map->Find("authenticated")->PrintLine();
+		16.0->SquareRoot()->PrintLine();
 	}
 }

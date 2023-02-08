@@ -399,6 +399,37 @@ bundle Web.HTTP {
 	}
 
 	class WebCommon {
+		#~
+		Parses header attributes
+		@param attribs_str string of attributes
+		@return header attributes
+		~#
+		function : ParseHeaderAttribs(attribs_str : String) ~ Map<String, String> {
+			attribs := Map->New()<String, String>;
+
+			if(attribs_str <> Nil) {
+				attrib_names_values := attribs_str->Split("; ");
+				if(attrib_names_values->Size() > 0) {
+					each(i : attrib_names_values) {
+						attrib_name_value := attrib_names_values[i]->Split('=');
+						if(attrib_name_value->Size() = 2) {
+							attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
+							attribs->Insert(attrib_name_value[0], attrib_value);
+						};
+					};
+				}
+				else {
+					attrib_name_value := attribs_str->Split('=');
+					if(attrib_name_value->Size() = 2) {
+						attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
+						attribs->Insert(attrib_name_value[0], attrib_value);
+					};
+				};
+			};
+
+			return attribs;
+		}
+
 		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
 			done := false;
 			do {
@@ -535,6 +566,10 @@ bundle Web.HTTP {
 				@content := HttpClient->GetAll(@url, @headers);
 			};
 		}
+	}
+
+	class Cookie {
+
 	}
 }
 
@@ -1147,7 +1182,7 @@ bundle Web.HTTP.Server {
 		@request_url : String;
 		@request_headers : Map<String, String>;
 		@request_params : Map<String, String>;
-		@cookies : Map<String, String>;
+		@cookies : Map<String, Cookie>;
 		@content : Byte[];
 
 		New(request_url : String, request_headers : Map<String, String>) {
@@ -1236,13 +1271,7 @@ bundle Web.HTTP.Server {
 		Gets cookies
 		@return cookies
 		~#
-		method : public : GetCookies() ~ Map<String, String> {
-			ParseCookies();
-
-			if(@cookies <> Nil) {
-				return @cookies;
-			};
-
+		method : public : GetCookies() ~ Map<String, Cookie> {
 			return Nil;
 		}
 
@@ -1251,13 +1280,7 @@ bundle Web.HTTP.Server {
 		@param name cookie name
 		@return cookie value
 		~#
-		method : public : GetCookie(name : String) ~ String {
-			ParseCookies();
-
-			if(@cookies <> Nil) {
-				return @cookies->Find(name);
-			};
-
+		method : public : GetCookie(name : String) ~ Cookie {
 			return Nil;
 		}
 
@@ -1267,50 +1290,11 @@ bundle Web.HTTP.Server {
 		@return true if cookie exists, false otherwise
 		~#
 		method : public : HasCookie(name : String) ~ Bool {
-			ParseCookies();
-
-			if(@cookies <> Nil) {
-				return @cookies->Has(name);
-			};
-
 			return false;
 		}
 
 		method : ParseCookies() ~ Nil {
-			if(@cookies = Nil) {
-				@cookies := ParseAttribs(@request_headers->Find("Cookie"));
-			};
-		}
-
-		#~
-		Parses parameter attributes
-		@param attribs_str string of attributes
-		@return parameter attributes
-		~#
-		function : ParseAttribs(attribs_str : String) ~ Map<String, String> {
-			attribs := Map->New()<String, String>;
-
-			if(attribs_str <> Nil) {
-				attrib_names_values := attribs_str->Split("; ");
-				if(attrib_names_values->Size() > 0) {
-					each(i : attrib_names_values) {
-						attrib_name_value := attrib_names_values[i]->Split('=');
-						if(attrib_name_value->Size() = 2) {
-							attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
-							attribs->Insert(attrib_name_value[0], attrib_value);
-						};
-					};
-				}
-				else {
-					attrib_name_value := attribs_str->Split('=');
-					if(attrib_name_value->Size() = 2) {
-						attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
-						attribs->Insert(attrib_name_value[0], attrib_value);
-					};
-				};
-			};
-
-			return attribs;
+			
 		}
 
 		#~
@@ -1357,7 +1341,7 @@ bundle Web.HTTP.Server {
 		@is_compressed : Bool;
 		@reason : String;
 		@response_headers : Map<String, String>;
-		@cookies : Map<String, String>;
+		@cookies : Map<String, Cookie>;
 		@server_config : WebServerConfig;
 		@request_url : String;
 		@forward_alias_name : String;
@@ -1377,7 +1361,42 @@ bundle Web.HTTP.Server {
 			@compression := Compression->NONE;
 			@is_compressed := false;
 			@response_headers := Map->New()<String, String>;
-			@cookies := Map->New()<String, String>;
+			@cookies := Map->New()<String, Cookie>;
+		}
+
+		#~
+		Adds a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
+		method : public : AddCookie(cookie : Cookie) ~ Nil {
+			
+		}
+
+		#~
+		Updates a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
+		method : public : GetCookie(name : String) ~ Cookie {
+			return Nil;
+		}
+
+		#~
+		Removes a cookie
+		@param name cookie name
+		~#
+		method : public : RemoveCookie(name : String) ~ Nil {
+#			now := FormatGmtTime();
+#			@cookies->Insert(name, "; expires={$now}");
+		}
+
+		#~
+		Gets all cookies
+		@return all cookies
+		~#
+		method : public : GetCookies() ~ Map<String, Cookie> {
+			return Nil;
 		}
 
 		#~
@@ -1390,42 +1409,6 @@ bundle Web.HTTP.Server {
 			};
 
 			return false;
-		}
-
-		#~
-		Adds a cookie
-		@param name cookie name
-		@param value cookie value
-		~#
-		method : public : AddCookie(name : String, value : String) ~ Nil {
-			@cookies->Insert(name, value);
-		}
-
-		#~
-		Adds a cookie
-		@param attribs pairs of cookie names and values
-		~#
-		method : public : AddCookie(attribs : Vector<Pair<String, String>>) ~ Nil {
-			attrib_str := "";
-
-			each(i : attribs) {
-				attrib := attribs->Get(i);
-
-				name := attrib->GetFirst();
-				value := attrib->GetSecond();
-
-				attrib_str += name;
-				if(value <> Nil) {
-					attrib_str += '=';
-					attrib_str += value;
-				};
-
-				if(i + 1 < attribs->Size()) {
-					attrib_str += "; ";
-				};
-			};
-
-			@cookies->Insert(attrib_str, Nil);
 		}
 
 		#~
@@ -1458,32 +1441,6 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : HasForwardAlias() ~ Bool {
 			return @forward_alias_name <> Nil;
-		}
-
-		#~
-		Updates a cookie
-		@param name cookie name
-		@param value cookie value
-		~#
-		method : public : UpdateCookie(name : String, value : String) ~ Nil {
-			@cookies->Insert(name, value);
-		}
-
-		#~
-		Removes a cookie
-		@param name cookie name
-		~#
-		method : public : RemoveCookie(name : String) ~ Nil {
-			now := FormatGmtTime();
-			@cookies->Insert(name, "; expires={$now}");
-		}
-
-		#~
-		Gets all cookies
-		@return all cookies
-		~#
-		method : public : GetCookies() ~ Map<String, String> {
-			return @cookies;
 		}
 
 		#~
