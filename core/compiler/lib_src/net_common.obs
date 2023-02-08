@@ -1433,10 +1433,10 @@ bundle Web.HTTP.Server {
 		@param name forward page alias
 		@return true if set, false otherwise
 		~#
-		method : public : SetForwardAlias(alias_name : String) ~ Bool {
-			if(@server_config <> Nil & @server_config->HasStaticHandler(alias_name)) {
-				@forward_alias_name := "/";
-				@forward_alias_name += alias_name;
+		method : public : SetForwardAlias(name : String) ~ Bool {
+			if(@server_config <> Nil & @server_config->HasStaticHandler(name)) {
+				@forward_name := "/";
+				@forward_name += name;
 
 				return true;
 			};
@@ -1470,7 +1470,7 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Adds a cookie
+		Removes a cookie
 		@param name cookie name
 		~#
 		method : public : RemoveCookie(name : String) ~ Nil {
