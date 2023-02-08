@@ -782,12 +782,14 @@ bundle Web.HTTP.Server {
 				# process network config
 				network_json := parser->GetRoot()->Get("network");
 				if(network_json = Nil) {
+					"Error: missing 'network' tag"->ErrorLine();
 					return false;
 				};
 				
 				network_instance_json := network_json->Get("instance");
 				network_port_json := network_json->Get("port");
 				if(network_instance_json = Nil | network_port_json = Nil) {
+					"Error: missing 'instance' or 'port' tag"->ErrorLine();
 					return false;
 				};
 				@instance_str := network_instance_json->GetString();
@@ -805,6 +807,7 @@ bundle Web.HTTP.Server {
 					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
 
 					if(network_cert_path_json = Nil | network_cert_key_json = Nil | network_cert_passwd_json = Nil) {
+						"Error: missing SSL certificate tags"->ErrorLine();
 						return false;
 					};
 					@cert_path := network_cert_path_json->GetString();
@@ -856,12 +859,23 @@ bundle Web.HTTP.Server {
 				type_strs := groups_str->Split(',');
 				if(type_strs->Size() > 0) {
 					each(i : type_strs) {
-						if(<>AddHandler(type_strs[i], file_json, mime_type_json)) {
+						type_str := type_strs[i];
+						if(<>type_str->StartsWith('.')) {
+							"Error: 'groups' values must start with '.'"->ErrorLine();
+							return false;
+						};
+
+						if(<>AddHandler(type_str, file_json, mime_type_json)) {
 							return false;
 						};
 					};
 				}
 				else {
+					if(<>groups_str->StartsWith('.')) {
+						"Error: 'groups' value must start with '.'"->ErrorLine();
+						return false;
+					};
+
 					if(<>AddHandler(groups_str, file_json, mime_type_json)) {
 						return false;
 					};
@@ -876,6 +890,11 @@ bundle Web.HTTP.Server {
 			alias_json := file_json->Get("alias");
 			if(alias_json <> Nil & <>alias_json->IsNull()) {
 				alias_str := alias_json->GetString();
+			};
+
+			if(alias_str->StartsWith('.') | alias_str->EndsWith('.') | alias_str->Count('.') <> 1) {
+				"Error: 'alias' value must have a file extension"->ErrorLine();
+				return false;
 			};
 
 			location_str := "<None>";
