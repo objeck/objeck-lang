@@ -249,7 +249,7 @@ bundle Web.HTTP {
 								
 								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
-									offset := value->Find(';');
+									offset := value->Find(',');
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
@@ -462,7 +462,7 @@ bundle Web.HTTP {
 								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
-									offset := value->Find(';');
+									offset := value->Find(',');
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
@@ -651,7 +651,12 @@ bundle Web.HTTP.Server {
 							cookie := cookies->Get(i);
 							name := cookie->GetFirst();
 							value := cookie->GetSecond();
+							if(value = Nil) {
+								response_header += "Set-Cookie: {$name}\r\n";
+							}
+							else {
 							response_header += "Set-Cookie: {$name}={$value}\r\n";
+							};
 
 							if(@is_debug) {
 								"cooke: {$name}={$value}"->PrintLine();
