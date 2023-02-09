@@ -29,18 +29,24 @@ class Test {
 	function : RandomString() ~ String {
 		buffer := "";
 
-		now_allowed := ['@',',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}'];
+		not_allowed := ['@',',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}'];
 
-		found := false;
-		do {
-			char := Int->Random(33, 126)->As(Char);
-			each(i : )
-		}
-		while(<>found);
+		for(i := Int->Random(4, 20); i >= 0; i -= 1;) {
+			char : Char;
+			found := false;
+			do {
+				
+				char := Int->Random(33, 126)->As(Char);
+				each(i : not_allowed) {
+					found := char = not_allowed[i];
+				};
 
-char->PrintLine();
-
-		
+				
+			}
+			while(<>found);
+			
+			buffer += char;
+		};
 
 		return buffer;
 	}
