@@ -4411,6 +4411,14 @@ bundle System {
 		}
 
 		#~
+		Creates a new instance of the string
+		@return new string instance
+		~#
+		method : public : Copy() ~ String {
+			return String->New(@string);
+		}
+
+		#~
 		Print a string
 		~#
 		method : public : Print() ~ Nil {
@@ -6736,7 +6744,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Default constructor
-		@param name file name
+		@param name filename
 		~#
 		New(name : System.String) {
 			Parent();
@@ -6744,8 +6752,8 @@ bundle System.IO.Filesystem {
 		}
 		
 		#~
-		Gets the file name
-		@return file name
+		Gets the filename
+		@return filename
 		~#
 		method : public : GetName() ~ String {
 			return @name;
@@ -6785,7 +6793,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Gets the full path name for file
-		@param n file name
+		@param n filename
 		@return full path name, Nil otherwise
 		~#
 		function : GetFullName(n : System.String) ~ System.String {
@@ -6801,8 +6809,8 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Gets a temporary file name
-		@return temporary file name
+		Gets a temporary filename
+		@return temporary filename
 		~#
 		function : GetTempName() ~ System.String {
 			FILE_TEMP_NAME;
@@ -6810,7 +6818,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Returns the size of the file
-		@param n file name
+		@param n filename
 		@return size of the file
 		~#
 		function : Size(n : System.String) ~ Int {
@@ -6827,7 +6835,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Returns the time in which the file was created
-		@param n file name
+		@param n filename
 		@return create date
 		~#
 		function : CreateTime(n : System.String) ~ Date {
@@ -6844,7 +6852,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Returns the time in which the file was created
-		@param n file name
+		@param n filename
 		@param gmt true if GMT
 		@return create date
 		~#
@@ -6872,7 +6880,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Returns the time in which the file was modified 
-		@param n file name
+		@param n filename
 		@return modified date
 		~#
 		function : ModifiedTime(n : System.String) ~ Date {
@@ -6881,7 +6889,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Returns the time in which the file was modified 
-		@param n file name
+		@param n filename
 		@param gmt true if GMT
 		@return modified date
 		~#
@@ -6900,7 +6908,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Returns the time in which the file was accessed 
-		@param n file name
+		@param n filename
 		@return accessed date
 		~#
 		function : AccessedTime(n : System.String) ~ Date {
@@ -6917,7 +6925,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Returns the time in which the file was accessed 
-		@param n file name
+		@param n filename
 		@param gmt true if GMT
 		@return accessed date
 		~#
@@ -6945,7 +6953,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Deletes a file
-		@param n file name
+		@param n filename
 		@return true if file was deleted
 		~#
 		function : Delete(n : System.String) ~ Bool {
@@ -6967,7 +6975,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Gets the file owner name
-		@param n file name
+		@param n filename
 		@return file owner name
 		~#
 		function : Owner(n : System.String) ~ System.String {
@@ -6984,7 +6992,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Gets the file group name
-		@param n file name
+		@param n filename
 		@return file group name
 		~#
 		function : Group(n : System.String) ~ System.String {
@@ -7001,7 +7009,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Check to see if a file can be read-only
-		@param n file name
+		@param n filename
 		@return true if file can be read-only
 		~#
 		function : IsReadWrite(n : System.String) ~ Bool {
@@ -7018,7 +7026,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Check to see if a file can be read
-		@param n file name
+		@param n filename
 		@return true if file can be read
 		~#
 		function : IsReadOnly(n : System.String) ~ Bool {
@@ -7035,7 +7043,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Check to see if a file can be written
-		@param n file name
+		@param n filename
 		@return true if file can be written
 		~#
 		function : IsWriteOnly(n : System.String) ~ Bool {
@@ -7052,7 +7060,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Check to see if a file exists
-		@param n file name
+		@param n filename
 		@return true if file exists
 		~#
 		function : Exists(n : System.String) ~ Bool {
@@ -7069,12 +7077,33 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Renames a file
-		@param o original file name
-		@param n new file name
+		@param o original filename
+		@param n new filename
 		@return true if file was renamed
 		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
 			FILE_RENAME;
+		}
+
+		#~
+		Copies a file
+		@param s source filename
+		@param d destination filename
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String) ~ Bool {
+			return Copy(s, d, false);
+		}
+
+		#~
+		Copies a file
+		@param s source filename
+		@param d destination filename
+		@param o true to overwrite existing file, false otherwise
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String, o : Bool) ~ Bool {
+			FILE_COPY;
 		}
 	}
 
@@ -7084,7 +7113,7 @@ bundle System.IO.Filesystem {
 	class FileReader from File implements System.IO.InputStream {
 		#~
 		Default constructor.
-		@param name file name
+		@param name filename
 		~#
 		New(name : System.String) {
 			Parent(name);
@@ -7148,7 +7177,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Reads a file's contents into a string
-		@param name file name
+		@param name filename
 		@return character string, Nil if file is not found
 		~#
 		function : ReadFile(name : String) ~ String {
@@ -7169,7 +7198,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Reads a file's contents into byte array
-		@param name file name
+		@param name filename
 		@return byte array, Nil if file is not found
 		~#
 		function : ReadBinaryFile(name : String) ~ Byte[] {
@@ -7193,7 +7222,7 @@ bundle System.IO.Filesystem {
 	class FileWriter from File implements System.IO.OutputStream {
 		#~
 		Opens a new file.
-		@param name file name
+		@param name filename
 		~#
 		New(name : System.String) {
 			Parent(name);
@@ -7202,7 +7231,7 @@ bundle System.IO.Filesystem {
 		
 		#~
 		Opens a new file or appends to an existing one.
-		@param name file name
+		@param name filename
 		@param append if true, opens a file for appending otherwise creates a new file
 		~#
 		New(name : System.String, append : Bool) {
@@ -7224,7 +7253,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Write string to file
-		@param name file name
+		@param name filename
 		@param content string to write
 		@return true if successful, false otherwise
 		~#
@@ -7241,7 +7270,7 @@ bundle System.IO.Filesystem {
 
 		#~
 		Write bytes to file
-		@param name file name
+		@param name filename
 		@param content to write
 		@return true if successful, false otherwise
 		~#
@@ -7553,6 +7582,41 @@ bundle System.IO.Filesystem {
 	Provide file directory operations
 	~#
 	class Directory {
+		#~
+		Renames a directory
+		@param o original directory
+		@param n new directory
+		@return true if directory was renamed
+		~#
+		function : Rename(o : System.String, n : System.String) ~ Bool {
+			if(System.IO.Filesystem.Directory->Exists(o)) {
+				return System.IO.Filesystem.File->Rename(o, n);
+			};
+
+			return false;
+		}
+
+		#~
+		Copies a directory
+		@param s source directory
+		@param d destination directory
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String) ~ Bool {
+			return Copy(s, d, false);
+		}
+
+		#~
+		Copies a directory
+		@param s source directory
+		@param d destination directory
+		@param r recursive copy
+		@return true if file was copied
+		~#
+		function : Copy(s : System.String, d : System.String, r : Bool) ~ Bool {
+			DIR_COPY;
+		}
+
 		#~
 		Creates a directory
 		@param n directory name

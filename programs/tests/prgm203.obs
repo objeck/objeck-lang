@@ -1,0 +1,436 @@
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		inputs := [
+			"JSESSIONID=ajax:8442368683411932627; SameSite=None; Path=/; Domain=.www.linkedin.com; Secure",
+			"lang=v=2&lang=en-us; SameSite=None; Path=/; Domain=linkedin.com; Secure",
+			"bcookie=\"v=2&8143b07a-57c8-43e1-8c71-75df62704e44\"; domain=.linkedin.com; Path=/; Secure; Expires=Thu",
+			"bscookie=\"v=1&20230208221605133f3a21-294b-4919-8284-d8add717bb73AQEJ0obMctF08GwRVwEwt3sd2gBX_Q_7\"; domain=.www.linkedin.com; Path=/; Secure; Expires=Thu",
+			"lidc=\"b=OGST07:s=O:r=O:a=O:p=O:g=2469:u=1:x=1:i=1675894565:t=1675980965:v=2:sig=AQFDYntkJPhW6cZh2z7QaYUMBf4RR5EZ\"; Expires=Thu"
+		];
+
+		each(i : inputs) {
+			input := inputs[i];
+			input->PrintLine();
+
+			cookie := Cookie->New(input, false);
+			output := cookie->ToString();
+			cookie->ToShortString()->PrintLine();
+
+			output->PrintLine();
+			(input->Size() = output->Size())->PrintLine();
+			"---"->PrintLine();
+		};
+
+		each(i : 16) {
+			cookie := Cookie->New(RandomName(), RandomValue(), true);
+
+			attrib_count := Int->Random(3, 8);
+			each(j : attrib_count) {
+				cookie->AddAttrib(RandomName(), RandomValue());
+			};
+
+			if(Int->Random(1) = 0) {
+				cookie->SetExpiration(System.Time.Date->New(Int->Random(1, 30), Int->Random(1, 12), 23, true));
+			};
+
+			output := cookie->ToString();
+			cookie->ToShortString()->PrintLine();
+
+			output->PrintLine();
+			"---"->PrintLine();
+		};
+	}
+
+	function : native : RandomName() ~ String {
+		buffer := "";
+
+		end := Int->Random(3, 9);
+		for(i := end; i >= 0; i -= 1;) {
+			select(Int->Random(4)) {
+				# number
+				label 0 {
+					buffer += Int->Random(48, 57)->As(Char);
+				}
+
+				# upper letter
+				label 1 {
+					buffer += Int->Random(65, 90)->As(Char);
+				}
+
+				# lower letter
+				label 2 {
+					buffer += Int->Random(97, 122)->As(Char);
+				}
+
+				# underscore
+				label 3 {
+					if(i <> 0 & i <> end) {
+						buffer += '_';
+					};
+				}
+
+				# minus
+				label 4 {
+					if(i <> 0 & i <> end) {
+						buffer += '-';
+					};
+				}
+			};
+		};
+
+		return buffer;
+	}
+
+	function : native : RandomValue() ~ String {
+		buffer := "";
+
+		not_allowed := ['@',',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}'];
+
+		for(i := Int->Random(8, 32); i >= 0; i -= 1;) {
+			char := Int->Random(33, 126)->As(Char);
+			
+			allowed := true;
+			each(j : not_allowed) {
+				if(char = not_allowed[j]) {
+					allowed := false;
+					break;
+				};
+			};
+
+			if(allowed) {
+				buffer += char;
+			};
+		};
+
+		if(Int->Random(1) = 0) {
+			return buffer;
+		}
+		else {
+			return "\"{$buffer}\"";
+		};
+	}
+}
+
+#~
+HTTP cookie
+~#
+class Cookie {
+	@name : String;
+	@value : String;
+	@attribs : Map<String, String>;
+	@expires : System.Time.Date;
+	@is_debug : Bool;
+
+	#~
+	Constructor
+	@param name cookie name
+	@param value cookie value
+	@param is_debug true to display debug information
+	~#
+	New(name : String, value : String, is_debug : Bool) {
+		@name := name;
+		@value := value;
+		@is_debug := is_debug;
+	}
+
+	#~
+	Constructor
+	@param name cookie name
+	@param value cookie value
+	~#
+	New(name : String, value : String) {
+		@name := name;
+		@value := value;
+	}
+
+	#~
+	Constructor
+	@param cookie_str cookie string
+	~#
+	New(cookie_str : String) {
+		Parse(cookie_str);
+	}
+
+	#~
+	Constructor
+	@param cookie_str cookie string
+	@param is_debug true to display debug information
+	~#
+	New(cookie_str : String, is_debug : Bool) {
+		@is_debug := is_debug;
+		Parse(cookie_str);
+	}
+
+	#~
+	Get cookie name
+	@return cookie name
+	~#
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	#~
+	Set cookie name
+	@param cookie name
+	~#
+	method : public : SetName(name : String) ~ Nil {
+		@name := name;
+	}
+
+	#~
+	Get cookie value
+	@return cookie value
+	~#
+	method : public : GetValue() ~ String {
+		return @value->RemoveAll('"');
+	}
+
+	#~
+	Set cookie value
+	@param cookie value
+	~#
+	method : public : SetValue(value : String) ~ Nil {
+		@value := value;
+	}
+
+	#~
+	Get cookie attribute
+	@param name attribute name
+	@return cookie attribute value
+	~#
+	method : public : GetAttrib(name : String) ~ String {
+		if(@attribs <> Nil) {
+			return @attribs->Find(name);
+		};
+
+		return Nil;
+	}
+
+	#~
+	Adds a cookie attribute
+	@param name attribute name
+	@return true if added, false otherwise
+	~#
+	method : public : AddAttrib(name : String) ~ Bool {
+		return AddAttrib(name, Nil);
+	}
+
+	#~
+	Adds a cookie attribute
+	@param name attribute name
+	@param value attribute value
+	@return true if added, false otherwise
+	~#
+	method : public : AddAttrib(name : String, value : String) ~ Bool {
+		if(@attribs = Nil) {
+			@attribs := Map->New()<String, String>;
+		};
+
+		if(@attribs->Has(name)) {
+			return false;
+		};
+
+		@attribs->Insert(name, value);
+		return true;
+	}
+
+	#~
+	Removes an attribute
+	@param name attribute name
+	@return true if added, false otherwise
+	~#
+	method : public : RemoveAttrib(name : String) ~ Bool {
+		if(@attribs <> Nil) {
+			return @attribs->Remove(name);
+		};
+
+		return false;
+	}
+
+	#~
+	Sets the cookie to expire
+	~#
+	method : public : Expire() ~ Nil {
+		@expires := System.Time.Date->New(true);
+	}
+
+	#~
+	Sets the cookie to expiration date
+	@param expires expiration date
+	~#
+	method : public : SetExpiration(expires : System.Time.Date) ~ Bool {
+		if(@attribs <> Nil & @attribs->Has("Expires")) {
+			return false;
+		};
+		
+		@expires := expires;
+		return true;
+	}
+
+	#~
+	Formats a cookie into a string
+	@return string formatted cookie
+	~#
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		buffer += @name;
+		buffer += '=';
+		buffer += @value;
+
+		if(@attribs <> Nil) {
+			buffer += "; ";
+
+			attrib_pairs := @attribs->GetKeyValues()<Pair<String, String>>;
+			each(i : attrib_pairs) {
+				attrib_pair := attrib_pairs->Get(i);
+
+				name := attrib_pair->GetFirst();
+				value := attrib_pair->GetSecond();
+
+				if(value = Nil) {
+					buffer += name;
+				}
+				else {
+					buffer += name;
+					buffer += '=';
+					buffer += value;
+				};
+
+				if(i + 1 < attrib_pairs->Size()) {
+					buffer += "; ";
+				};
+			};
+		};
+
+		if(@expires <> Nil) {
+			buffer += "; ";
+			buffer += FormatGmtTime(@expires);
+		};
+
+		return buffer;
+	}
+
+	#~
+	Formats a cookie name and value
+	@return string formatted cookie name and value
+	~#
+	method : public : ToShortString() ~ String {
+		buffer := "";
+		
+		buffer += @name;
+		buffer += '=';
+		buffer += @value;
+
+		return buffer;
+	}
+	
+	method : Parse(cookie_str : String) ~ Nil {
+		if(cookie_str <> Nil) {
+			names_values := cookie_str->Split("; ");
+			if(names_values->Size() > 0) {
+				each(i : names_values) {
+					name_value := names_values[i]->Split('=');
+					if(name_value->Size() = 2) {						
+						name := name_value[0];
+						value := name_value[1];
+						Add(name, value, i);
+					}
+					else if(name_value->Size() > 2) {
+						pair := names_values[i];
+						mid := pair->Find('=');
+						name := pair->SubString(0, mid);
+						mid += 1;
+						value := pair->SubString(mid, pair->Size() - mid);
+						Add(name, value, i);
+					}
+					else {
+						name := names_values[i];
+						Add(name, Nil, i);
+					};
+				};
+			}
+			else {
+				name_value := cookie_str->Split('=');
+				if(name_value->Size() = 2) {
+					name := name_value[0];
+					value := name_value[1];
+					Add(name, value, 0);
+				};
+			};
+		};
+
+		if(@is_debug) {
+			"---"->PrintLine();
+		};
+	}
+
+	method : Add(name : String, value : String, index : Int) ~ Nil {
+		if(index = 0) {
+			@name := name;
+			@value := value;
+		}
+		else {
+			if(@attribs = Nil) {
+				@attribs := Map->New()<String, String>;
+			};
+			@attribs->Insert(name, value);
+		};
+
+		if(@is_debug) {
+			if(value = Nil) {
+				"name='{$name}'"->PrintLine();
+			}
+			else {
+				"name='{$name}', value='{$value}'"->PrintLine();
+			};
+		};
+	}
+	
+	method : FormatGmtTime(date : System.Time.Date) ~ String {
+		buffer := "";
+
+		days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		buffer += days_of_week[date->GetWeekDay()];
+		buffer += ", ";
+
+		day := date->GetDay();
+		if(day < 10) {
+			buffer += '0';			
+		};
+		buffer += day;
+		buffer += " ";
+
+		months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		buffer += months[date->GetMonth() - 1];
+		buffer += " ";
+
+		buffer += date->GetYear();
+		buffer += " ";
+
+		hour := date->GetHours();
+		if(hour < 10) {
+			buffer += '0';			
+		};
+		buffer += hour;
+		buffer += ":";
+
+		min := date->GetMinutes();
+		if(min < 10) {
+			buffer += '0';			
+		};
+		buffer += min;
+		buffer += ":";
+
+		sec := date->GetSeconds();
+		if(sec < 10) {
+			buffer += '0';			
+		};
+		buffer += sec;
+		buffer += " GMT";
+
+		return buffer;
+	}
+}

@@ -1282,6 +1282,13 @@ class FuncSnippet from Snippet {
 			 };
 		};
 
+		# TODO: hack, at some point the code doc system should be rewritten!
+		if(MatchChar('>')) {
+			while(@cur_char <> ')' & @cur_char <> '{') {
+				NextChar();
+			};
+		};
+
 		return start;
 	}
 	
