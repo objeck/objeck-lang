@@ -6,7 +6,7 @@ class Hello {
 	function : Main(args : String[]) ~ Nil {
 		client := HttpsClient->New();
 		client->AddHeader("authorization", "Bearer <id>");
-		json := client->GetAll("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2");
+		json := client->GetSimple("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2");
 
 		doc := JsonParser->New(json)->Parse();
 		if(doc <> Nil) {
