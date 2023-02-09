@@ -61,7 +61,7 @@ class Cookie {
 	@return cookie value
 	~#
 	method : public : GetValue() ~ String {
-		return @value;
+		return @value->RemoveAll('"');
 	}
 
 	#~
@@ -189,7 +189,7 @@ class Cookie {
 					name_value := names_values[i]->Split('=');
 					if(name_value->Size() = 2) {						
 						name := name_value[0];
-						value := name_value[1]->RemoveAll('"');
+						value := name_value[1];
 						Add(name, value, i);
 					}
 					else if(name_value->Size() > 2) {
@@ -197,7 +197,7 @@ class Cookie {
 						mid := pair->Find('=');
 						name := pair->SubString(0, mid);
 						mid += 1;
-						value := pair->SubString(mid, pair->Size() - mid)->RemoveAll('"');
+						value := pair->SubString(mid, pair->Size() - mid);
 						Add(name, value, i);
 					}
 					else {
@@ -210,7 +210,7 @@ class Cookie {
 				name_value := cookie_str->Split('=');
 				if(name_value->Size() = 2) {
 					name := name_value[0];
-					value := name_value[1]->RemoveAll('"');
+					value := name_value[1];
 					Add(name, value, 0);
 				};
 			};
