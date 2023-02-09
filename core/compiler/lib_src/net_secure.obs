@@ -16,7 +16,7 @@ bundle Web.HTTP {
 		@request_headers : Hash<String, String>;
 		@response_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
-		@cookies: Vector<String>;
+		@cookies: Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
 		
@@ -31,7 +31,7 @@ bundle Web.HTTP {
 			@response_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := false;
-			@cookies := Vector->New()<String>;
+			@cookies := Vector->New()<Cookie>;
 		}
 		
 		#~
@@ -79,15 +79,15 @@ bundle Web.HTTP {
 		Gets the cookies
 		@return vector of cookies
 		~#
-		method : public : GetCookies() ~ Vector<String> {
+		method : public : GetCookies() ~ Vector<Cookie> {
 			return @cookies;
 		}	
 		
 		#~
 		Sets a cookie
-		@param cookie cookie nane and value
+		@param cookie cookie
 		~#
-		method : public : SetCookie(cookie : String) ~ Nil {
+		method : public : SetCookie(cookie : Cookie) ~ Nil {
 			@cookies->AddBack(cookie);
 		}
 
@@ -97,7 +97,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return vector of read strings
 		~#
-		method : public : Post(url : String, data : String) ~ Vector<String> {
+		method : public : Post(url : String, data : String) ~ String {
 			return Post(url, data, "text/plain");
 		}
 		
@@ -107,7 +107,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return read strings
 		~#
-		function : PostAll(url : String, data : String) ~ String {
+		function : PostSimple(url : String, data : String) ~ String {
 			document := "";
 			
 			client := HttpsClient->New();
@@ -131,9 +131,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : PostAll(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {
-			document := "";
-			
+		function : PostSimple(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {			
 			client := HttpsClient->New();
 			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 			each(i : header_key_values) {
@@ -143,16 +141,7 @@ bundle Web.HTTP {
 				client->AddHeader(key, value);
 			};
 
-			lines := client->Post(url, data, content_type);
-			if(lines = Nil) {
-				return Nil;
-			};
-
-			each(i : lines) {
-				document->Append(lines->Get(i));
-			};
-
-			return document;
+			return client->Post(url, data, content_type);
 		}
 
 		#~
@@ -162,7 +151,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return vector of read strings
 		~#
-		method : public : Post(url : String, data : String, content_type : String) ~ Vector<String> {
+		method : public : Post(url : String, data : String, content_type : String) ~ String {
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("https://")) {
@@ -216,7 +205,7 @@ bundle Web.HTTP {
 					if(@cookies_enabled & @cookies->Size() > 0) {
 						post->Append("Cookie: ");
 						each(i : @cookies) {
-							post->Append(@cookies->Get(i));
+							post->Append(@cookies->Get(i)->ToShortString());
 							if(i + 1 < @cookies->Size()) {
 								post->Append("; ");
 							};
@@ -251,12 +240,8 @@ bundle Web.HTTP {
 								
 								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
-									offset := value->Find(',');
-									if(offset > -1) {
-										value := value->SubString(offset);
-									};
-									@cookies->AddBack(value);
-									# IO.Standard->Print("cookie=")->PrintLine(value);									
+									@cookies->AddBack(Cookie->New(value));
+									# IO.Standard->Print("cookie=")->PrintLine(value);
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
@@ -302,7 +287,13 @@ bundle Web.HTTP {
 				};
 			};
 			
-			return content;
+			document := "";
+
+			each(i : content) {
+				document->Append(content->Get(i));
+			};
+
+			return document;
 		}
 		
 		#~
@@ -310,8 +301,8 @@ bundle Web.HTTP {
 		@param url URL
 		@return output as one string
 		~#
-		function : GetAll(url : String) ~ String {
-			return GetAll(url, "text/plain", Nil);
+		function : GetSimple(url : String) ~ String {
+			return GetSimple(url, "text/plain", Nil);
 		}
 
 		#~
@@ -320,8 +311,8 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output as one string
 		~#
-		function : GetAll(url : String, headers : Map<String, String>) ~ String {
-			return GetAll(url, "text/plain", headers);
+		function : GetSimple(url : String, headers : Map<String, String>) ~ String {
+			return GetSimple(url, "text/plain", headers);
 		}
 		
 		#~
@@ -331,9 +322,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output as one string
 		~#
-		function : GetAll(url : String, content_type : String, headers : Map<String, String>) ~ String {
-			document := "";
-			
+		function : GetSimple(url : String, content_type : String, headers : Map<String, String>) ~ String {			
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -351,16 +340,7 @@ bundle Web.HTTP {
 				};
 			};
 
-			lines := client->Get(url, content_type);
-			if(lines = Nil) {
-				return Nil;
-			};
-
-			each(i : lines) {
-				document->Append(lines->Get(i));
-			};
-
-			return document;
+			return client->Get(url, content_type);
 		}
 				
 		#~
@@ -368,7 +348,7 @@ bundle Web.HTTP {
 		@param url URL
 		@return vector of read strings
 		~#
-		method : public : Get(url : String) ~ Vector<String> {
+		method : public : Get(url : String) ~ String {
 			return Get(url, "text/plain");
 		}
 
@@ -394,7 +374,7 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return vector of read strings
 		~#
-		method : public : Get(url : String, content_type : String) ~ Vector<String> {
+		method : public : Get(url : String, content_type : String) ~ String {
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("https://")) {
@@ -444,7 +424,7 @@ bundle Web.HTTP {
 					if(@cookies_enabled & @cookies->Size() > 0) {
 						get->Append("Cookie: ");
 						each(i : @cookies) {
-							get->Append(@cookies->Get(i));
+							get->Append(@cookies->Get(i)->ToShortString());
 							if(i + 1 < @cookies->Size()) {
 								get->Append("; ");
 							};
@@ -480,12 +460,8 @@ bundle Web.HTTP {
 								
 								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
-									offset := value->Find(',');
-									if(offset > -1) {
-										value := value->SubString(offset);
-									};
-									@cookies->AddBack(value);
-									# IO.Standard->Print("cookie=")->PrintLine(value);									
+									@cookies->AddBack(Cookie->New(value));
+									# IO.Standard->Print("cookie=")->PrintLine(value);
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
@@ -550,7 +526,13 @@ bundle Web.HTTP {
 				};
 			};	
 			
-			return content;
+			document := "";
+
+			each(i : content) {
+				document->Append(content->Get(i));
+			};
+
+			return document;
 		}
 	}
 }
