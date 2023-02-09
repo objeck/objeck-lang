@@ -23,35 +23,99 @@ class Test {
 			"---"->PrintLine();
 		};
 
-		RandomString()->PrintLine();
+		each(i : 16) {
+			cookie := Cookie->New(RandomName(), RandomValue(), true);
+
+			attrib_count := Int->Random(3, 8);
+			each(j : attrib_count) {
+				cookie->AddAttrib(RandomName(), RandomValue());
+			};
+
+			if(Int->Random(1) = 0) {
+				cookie->SetExpiration(System.Time.Date->New(Int->Random(1, 30), Int->Random(1, 12), 23, true));
+			};
+
+			output := cookie->ToString();
+			cookie->ToShortString()->PrintLine();
+
+			output->PrintLine();
+			"---"->PrintLine();
+		};
 	}
 
-	function : RandomString() ~ String {
+	function : native : RandomName() ~ String {
 		buffer := "";
 
-		not_allowed := ['@',',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}'];
+		end := Int->Random(3, 9);
+		for(i := end; i >= 0; i -= 1;) {
+			select(Int->Random(4)) {
+				# number
+				label 0 {
+					buffer += Int->Random(48, 57)->As(Char);
+				}
 
-		for(i := Int->Random(4, 20); i >= 0; i -= 1;) {
-			char : Char;
-			found := false;
-			do {
-				
-				char := Int->Random(33, 126)->As(Char);
-				each(i : not_allowed) {
-					found := char = not_allowed[i];
-				};
+				# upper letter
+				label 1 {
+					buffer += Int->Random(65, 90)->As(Char);
+				}
 
-				
-			}
-			while(<>found);
-			
-			buffer += char;
+				# lower letter
+				label 2 {
+					buffer += Int->Random(97, 122)->As(Char);
+				}
+
+				# underscore
+				label 3 {
+					if(i <> 0 & i <> end) {
+						buffer += '_';
+					};
+				}
+
+				# minus
+				label 4 {
+					if(i <> 0 & i <> end) {
+						buffer += '-';
+					};
+				}
+			};
 		};
 
 		return buffer;
 	}
+
+	function : native : RandomValue() ~ String {
+		buffer := "";
+
+		not_allowed := ['@',',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}'];
+
+		for(i := Int->Random(8, 32); i >= 0; i -= 1;) {
+			char := Int->Random(33, 126)->As(Char);
+			
+			allowed := true;
+			each(j : not_allowed) {
+				if(char = not_allowed[j]) {
+					allowed := false;
+					break;
+				};
+			};
+
+			if(allowed) {
+				buffer += char;
+			};
+		};
+
+		if(Int->Random(1) = 0) {
+			return buffer;
+		}
+		else {
+			return "\"{$buffer}\"";
+		};
+	}
 }
 
+#~
+HTTP cookie
+~#
 class Cookie {
 	@name : String;
 	@value : String;
@@ -59,15 +123,41 @@ class Cookie {
 	@expires : System.Time.Date;
 	@is_debug : Bool;
 
+	#~
+	Constructor
+	@param name cookie name
+	@param value cookie value
+	@param is_debug true to display debug information
+	~#
+	New(name : String, value : String, is_debug : Bool) {
+		@name := name;
+		@value := value;
+		@is_debug := is_debug;
+	}
+
+	#~
+	Constructor
+	@param name cookie name
+	@param value cookie value
+	~#
 	New(name : String, value : String) {
 		@name := name;
 		@value := value;
 	}
 
+	#~
+	Constructor
+	@param cookie_str cookie string
+	~#
 	New(cookie_str : String) {
 		Parse(cookie_str);
 	}
 
+	#~
+	Constructor
+	@param cookie_str cookie string
+	@param is_debug true to display debug information
+	~#
 	New(cookie_str : String, is_debug : Bool) {
 		@is_debug := is_debug;
 		Parse(cookie_str);
@@ -121,6 +211,15 @@ class Cookie {
 	#~
 	Adds a cookie attribute
 	@param name attribute name
+	@return true if added, false otherwise
+	~#
+	method : public : AddAttrib(name : String) ~ Bool {
+		return AddAttrib(name, Nil);
+	}
+
+	#~
+	Adds a cookie attribute
+	@param name attribute name
 	@param value attribute value
 	@return true if added, false otherwise
 	~#
@@ -167,7 +266,7 @@ class Cookie {
 		};
 		
 		@expires := expires;
-		return false;
+		return true;
 	}
 
 	#~
