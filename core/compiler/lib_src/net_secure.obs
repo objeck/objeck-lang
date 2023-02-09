@@ -107,7 +107,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return read strings
 		~#
-		function : PostSimple(url : String, data : String) ~ String {
+		function : QuickPost(url : String, data : String) ~ String {
 			document := "";
 			
 			client := HttpsClient->New();
@@ -131,7 +131,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : PostSimple(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {			
+		function : QuickPost(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {			
 			client := HttpsClient->New();
 			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 			each(i : header_key_values) {
@@ -301,8 +301,8 @@ bundle Web.HTTP {
 		@param url URL
 		@return output as one string
 		~#
-		function : GetSimple(url : String) ~ String {
-			return GetSimple(url, "text/plain", Nil);
+		function : QuickGet(url : String) ~ String {
+			return QuickGet(url, "text/plain", Nil);
 		}
 
 		#~
@@ -311,8 +311,8 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output as one string
 		~#
-		function : GetSimple(url : String, headers : Map<String, String>) ~ String {
-			return GetSimple(url, "text/plain", headers);
+		function : QuickGet(url : String, headers : Map<String, String>) ~ String {
+			return QuickGet(url, "text/plain", headers);
 		}
 		
 		#~
@@ -322,7 +322,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output as one string
 		~#
-		function : GetSimple(url : String, content_type : String, headers : Map<String, String>) ~ String {			
+		function : QuickGet(url : String, content_type : String, headers : Map<String, String>) ~ String {			
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
