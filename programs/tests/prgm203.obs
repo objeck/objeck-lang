@@ -2,7 +2,7 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		tests := [
+		inputs := [
 			"JSESSIONID=ajax:8442368683411932627; SameSite=None; Path=/; Domain=.www.linkedin.com; Secure",
 			"lang=v=2&lang=en-us; SameSite=None; Path=/; Domain=linkedin.com; Secure",
 			"bcookie=\"v=2&8143b07a-57c8-43e1-8c71-75df62704e44\"; domain=.linkedin.com; Path=/; Secure; Expires=Thu",
@@ -10,8 +10,17 @@ class Test {
 			"lidc=\"b=OGST07:s=O:r=O:a=O:p=O:g=2469:u=1:x=1:i=1675894565:t=1675980965:v=2:sig=AQFDYntkJPhW6cZh2z7QaYUMBf4RR5EZ\"; Expires=Thu"
 		];
 
-		each(i : tests) {
-			Cookie->New(tests[i], true);
+		each(i : inputs) {
+			input := inputs[i];
+			input->PrintLine();
+
+			cookie := Cookie->New(input, false);
+			output := cookie->ToString();
+			cookie->ToShortString()->PrintLine();
+
+			output->PrintLine();
+			(input->Size() = output->Size())->PrintLine();
+			"---"->PrintLine();
 		};
 	}
 }
@@ -40,11 +49,27 @@ class Cookie {
 	}
 
 	#~
+	Set cookie name
+	@param cookie name
+	~#
+	method : public : SetName(name : String) ~ Nil {
+		@name := name;
+	}
+
+	#~
 	Get cookie value
 	@return cookie value
 	~#
 	method : public : GetValue() ~ String {
 		return @value;
+	}
+
+	#~
+	Set cookie value
+	@param cookie value
+	~#
+	method : public : SetValue(value : String) ~ Nil {
+		@value := value;
 	}
 
 	#~
@@ -58,6 +83,38 @@ class Cookie {
 		};
 
 		return Nil;
+	}
+
+	#~
+	Adds a cookie attribute
+	@param name attribute name
+	@param value attribute value
+	@return true if added, false otherwise
+	~#
+	method : public : AddAttrib(name : String, value : String) ~ Bool {
+		if(@attribs = Nil) {
+			@attribs := Map->New()<String, String>;
+		};
+
+		if(@attribs->Has(name)) {
+			return false;
+		};
+
+		@attribs->Insert(name, value);
+		return true;
+	}
+
+	#~
+	Removes an attribute
+	@param name attribute name
+	@return true if added, false otherwise
+	~#
+	method : public : RemoveAttrib(name : String) ~ Bool {
+		if(@attribs <> Nil) {
+			return @attribs->Remove(name);
+		};
+
+		return false;
 	}
 
 	#~
@@ -80,7 +137,46 @@ class Cookie {
 	@return string formatted cookie
 	~#
 	method : public : ToString() ~ String {
-		buffer := "";
+		buffer := @name->Copy();
+		buffer += '=';
+		buffer += @value;
+
+		if(@attribs <> Nil) {
+			buffer += "; ";
+
+			attrib_pairs := @attribs->GetKeyValues()<Pair<String, String>>;
+			each(i : attrib_pairs) {
+				attrib_pair := attrib_pairs->Get(i);
+
+				name := attrib_pair->GetFirst();
+				value := attrib_pair->GetSecond();
+
+				if(value = Nil) {
+					buffer += name;
+				}
+				else {
+					buffer += name;
+					buffer += '=';
+					buffer += value;
+				};
+
+				if(i + 1 < attrib_pairs->Size()) {
+					buffer += "; ";
+				};
+			};
+		};
+
+		return buffer;
+	}
+
+	#~
+	Formats a cookie name and value
+	@return string formatted cookie name and value
+	~#
+	method : public : ToShortString() ~ String {
+		buffer := @name->Copy();
+		buffer += '=';
+		buffer += @value;
 
 		return buffer;
 	}
@@ -93,7 +189,7 @@ class Cookie {
 					name_value := names_values[i]->Split('=');
 					if(name_value->Size() = 2) {						
 						name := name_value[0];
-						value := name_value[1]->RemoveAll('"')->RemoveAll('\'');
+						value := name_value[1]->RemoveAll('"');
 						Add(name, value, i);
 					}
 					else if(name_value->Size() > 2) {
@@ -101,7 +197,7 @@ class Cookie {
 						mid := pair->Find('=');
 						name := pair->SubString(0, mid);
 						mid += 1;
-						value := pair->SubString(mid, pair->Size() - mid)->RemoveAll('"')->RemoveAll('\'');
+						value := pair->SubString(mid, pair->Size() - mid)->RemoveAll('"');
 						Add(name, value, i);
 					}
 					else {
@@ -114,7 +210,7 @@ class Cookie {
 				name_value := cookie_str->Split('=');
 				if(name_value->Size() = 2) {
 					name := name_value[0];
-					value := name_value[1]->RemoveAll('"')->RemoveAll('\'');
+					value := name_value[1]->RemoveAll('"');
 					Add(name, value, 0);
 				};
 			};
