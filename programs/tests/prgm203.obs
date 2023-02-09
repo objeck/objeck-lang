@@ -1,15 +1,18 @@
 use Collection.Generic;
 
-#~
-cookie = JSESSIONID=ajax:8442368683411932627; SameSite=None; Path=/; Domain=.www.linkedin.com; Secure
-cookie = lang=v=2&lang=en-us; SameSite=None; Path=/; Domain=linkedin.com; Secure
-cookie = bcookie="v=2&8143b07a-57c8-43e1-8c71-75df62704e44"; domain=.linkedin.com; Path=/; Secure; Expires=Thu
-cookie = bscookie="v=1&20230208221605133f3a21-294b-4919-8284-d8add717bb73AQEJ0obMctF08GwRVwEwt3sd2gBX_Q_7"; domain=.www.linkedin.com; Path=/; Secure; Expires=Thu
-cookie = lidc="b=OGST07:s=O:r=O:a=O:p=O:g=2469:u=1:x=1:i=1675894565:t=1675980965:v=2:sig=AQFDYntkJPhW6cZh2z7QaYUMBf4RR5EZ"; Expires=Thu
-~#
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		tests := [
+			"JSESSIONID=ajax:8442368683411932627; SameSite=None; Path=/; Domain=.www.linkedin.com; Secure",
+			"lang=v=2&lang=en-us; SameSite=None; Path=/; Domain=linkedin.com; Secure",
+			"bcookie=\"v=2&8143b07a-57c8-43e1-8c71-75df62704e44\"; domain=.linkedin.com; Path=/; Secure; Expires=Thu",
+			"bscookie=\"v=1&20230208221605133f3a21-294b-4919-8284-d8add717bb73AQEJ0obMctF08GwRVwEwt3sd2gBX_Q_7\"; domain=.www.linkedin.com; Path=/; Secure; Expires=Thu",
+			"lidc=\"b=OGST07:s=O:r=O:a=O:p=O:g=2469:u=1:x=1:i=1675894565:t=1675980965:v=2:sig=AQFDYntkJPhW6cZh2z7QaYUMBf4RR5EZ\"; Expires=Thu"
+		];
+
+		each(i : tests) {
+			Cookie->New(tests[i], true);
+		};
 	}
 }
 
@@ -17,8 +20,175 @@ class Cookie {
 	@name : String;
 	@value : String;
 	@attribs : Map<String, String>;
+	@expires : System.Time.Date;
+	@is_debug : Bool;
 
 	New(cookie_str : String) {
+		Parse(cookie_str);
+	}
+	New(cookie_str : String, is_debug : Bool) {
+		@is_debug := is_debug;
+		Parse(cookie_str);
+	}
 
+	#~
+	Get cookie name
+	@return cookie name
+	~#
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	#~
+	Get cookie value
+	@return cookie value
+	~#
+	method : public : GetValue() ~ String {
+		return @value;
+	}
+
+	#~
+	Get cookie attribute
+	@param name attribute name
+	@return cookie attribute value
+	~#
+	method : public : GetAttrib(name : String) ~ String {
+		if(@attribs <> Nil) {
+			return @attribs->Find(name);
+		};
+
+		return Nil;
+	}
+
+	#~
+	Sets the cookie to expire
+	~#
+	method : public : Expire() ~ Nil {
+		@expires := System.Time.Date->New(true);
+	}
+
+	#~
+	Sets the cookie to expiration date
+	@param expires expiration date
+	~#
+	method : public : SetExpire(expires : System.Time.Date) ~ Nil {
+		@expires := expires;
+	}
+
+	#~
+	Formats a cookie into a string
+	@return string formatted cookie
+	~#
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		return buffer;
+	}
+	
+	method : Parse(cookie_str : String) ~ Nil {
+		if(cookie_str <> Nil) {
+			names_values := cookie_str->Split("; ");
+			if(names_values->Size() > 0) {
+				each(i : names_values) {
+					name_value := names_values[i]->Split('=');
+					if(name_value->Size() = 2) {						
+						name := name_value[0];
+						value := name_value[1]->RemoveAll('"')->RemoveAll('\'');
+						Add(name, value, i);
+					}
+					else if(name_value->Size() > 2) {
+						pair := names_values[i];
+						mid := pair->Find('=');
+						name := pair->SubString(0, mid);
+						mid += 1;
+						value := pair->SubString(mid, pair->Size() - mid)->RemoveAll('"')->RemoveAll('\'');
+						Add(name, value, i);
+					}
+					else {
+						name := names_values[i];
+						Add(name, Nil, i);
+					};
+				};
+			}
+			else {
+				name_value := cookie_str->Split('=');
+				if(name_value->Size() = 2) {
+					name := name_value[0];
+					value := name_value[1]->RemoveAll('"')->RemoveAll('\'');
+					Add(name, value, 0);
+				};
+			};
+		};
+
+		if(@is_debug) {
+			"---"->PrintLine();
+		};
+	}
+
+	method : Add(name : String, value : String, index : Int) ~ Nil {
+		if(index = 0) {
+			@name := name;
+			@value := value;
+		}
+		else {
+			if(@attribs = Nil) {
+				@attribs := Map->New()<String, String>;
+			};
+			@attribs->Insert(name, value);
+		};
+
+		if(@is_debug) {
+			if(value = Nil) {
+				"name='{$name}'"->PrintLine();
+			}
+			else {
+				"name='{$name}', value='{$value}'"->PrintLine();
+			};
+		};
+	}
+	
+	method : FormatGmtTime(date : System.Time.Date) ~ String {
+		buffer := "";
+
+		days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		buffer += days_of_week[date->GetWeekDay()];
+		buffer += ", ";
+
+		day := date->GetDay();
+		if(day < 10) {
+			buffer += '0';			
+		};
+		buffer += day;
+		buffer += " ";
+
+		months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		buffer += months[date->GetMonth() - 1];
+		buffer += " ";
+
+		buffer += date->GetYear();
+		buffer += " ";
+
+		hour := date->GetHours();
+		if(hour < 10) {
+			buffer += '0';			
+		};
+		buffer += hour;
+		buffer += ":";
+
+		min := date->GetMinutes();
+		if(min < 10) {
+			buffer += '0';			
+		};
+		buffer += min;
+		buffer += ":";
+
+		sec := date->GetSeconds();
+		if(sec < 10) {
+			buffer += '0';			
+		};
+		buffer += sec;
+		buffer += " GMT";
+
+		return buffer;
 	}
 }

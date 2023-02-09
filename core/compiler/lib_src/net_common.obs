@@ -399,37 +399,6 @@ bundle Web.HTTP {
 	}
 
 	class WebCommon {
-		#~
-		Parses header attributes
-		@param attribs_str string of attributes
-		@return header attributes
-		~#
-		function : ParseHeaderAttribs(attribs_str : String) ~ Map<String, String> {
-			attribs := Map->New()<String, String>;
-
-			if(attribs_str <> Nil) {
-				attrib_names_values := attribs_str->Split("; ");
-				if(attrib_names_values->Size() > 0) {
-					each(i : attrib_names_values) {
-						attrib_name_value := attrib_names_values[i]->Split('=');
-						if(attrib_name_value->Size() = 2) {
-							attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
-							attribs->Insert(attrib_name_value[0], attrib_value);
-						};
-					};
-				}
-				else {
-					attrib_name_value := attribs_str->Split('=');
-					if(attrib_name_value->Size() = 2) {
-						attrib_value := attrib_name_value[1]->RemoveAll('"')->RemoveAll('\'');
-						attribs->Insert(attrib_name_value[0], attrib_value);
-					};
-				};
-			};
-
-			return attribs;
-		}
-
 		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
 			done := false;
 			do {
@@ -1650,64 +1619,6 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : HasHeader(name : String) ~ Bool {
 			return @response_headers->Has(name);
-		}
-
-		#~
-		Formats the currnet time into a string via the HTTP date/time format
-		@return currnet date/time string
-		~#
-		function : FormatGmtTime() ~ String {
-			return FormatGmtTime(System.Time.Date->New(true));
-		}
-
-		#~
-		Formats a date into a string via the HTTP date/time format
-		@param date date/time
-		@return date/time string
-		~#
-		function : FormatGmtTime(date : System.Time.Date) ~ String {
-			buffer := "";
-
-			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-			buffer += days_of_week[date->GetWeekDay()];
-			buffer += ", ";
-
-			day := date->GetDay();
-			if(day < 10) {
-				buffer += '0';			
-			};
-			buffer += day;
-			buffer += " ";
-
-			months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-			buffer += months[date->GetMonth() - 1];
-			buffer += " ";
-
-			buffer += date->GetYear();
-			buffer += " ";
-
-			hour := date->GetHours();
-			if(hour < 10) {
-				buffer += '0';			
-			};
-			buffer += hour;
-			buffer += ":";
-
-			min := date->GetMinutes();
-			if(min < 10) {
-				buffer += '0';			
-			};
-			buffer += min;
-			buffer += ":";
-
-			sec := date->GetSeconds();
-			if(sec < 10) {
-				buffer += '0';			
-			};
-			buffer += sec;
-			buffer += " GMT";
-
-			return buffer;
 		}
 
 		#~
