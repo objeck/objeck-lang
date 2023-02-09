@@ -635,7 +635,7 @@ bundle Web.HTTP {
 
 		#~
 		Set cookie name
-		@param cookie name
+		@param name cookie name
 		~#
 		method : public : SetName(name : String) ~ Nil {
 			@name := name;
@@ -651,7 +651,7 @@ bundle Web.HTTP {
 
 		#~
 		Set cookie value
-		@param cookie value
+		@param value cookie value
 		~#
 		method : public : SetValue(value : String) ~ Nil {
 			@value := value;
@@ -851,7 +851,7 @@ bundle Web.HTTP {
 			};
 		}
 		
-		method : FormatGmtTime(date : System.Time.Date) ~ String {
+		method : native : FormatGmtTime(date : System.Time.Date) ~ String {
 			buffer := "";
 
 			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1722,8 +1722,7 @@ bundle Web.HTTP.Server {
 
 		#~
 		Adds a cookie
-		@param name cookie name
-		@param value cookie value
+		@param cookie cookie
 		~#
 		method : public : AddCookie(cookie : Cookie) ~ Nil {
 			@cookies->Insert(cookie->GetName(), cookie);
