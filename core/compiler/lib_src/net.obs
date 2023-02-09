@@ -69,7 +69,7 @@ bundle Web.HTTP {
 		Sets cookie support
 		@param cookies_enabled true if cookies are enabled, false otherwise
 		~#
-		method : public : CookiesEnabled(cookies_enabled : Bool) ~ Nil {
+		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
 		}	
 		
@@ -646,21 +646,12 @@ bundle Web.HTTP.Server {
 						content_size := content->Size();
 						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 
-						cookies := response->GetCookies()<String, String>->GetKeyValues()<Pair<String, String>>;
+						cookies := response->GetCookies()<Cookie>;
 						each(i : cookies) {
 							cookie := cookies->Get(i);
-							name := cookie->GetFirst();
-							value := cookie->GetSecond();
-							if(value = Nil) {
-								response_header += "Set-Cookie: {$name}\r\n";
-							}
-							else {
-							response_header += "Set-Cookie: {$name}={$value}\r\n";
-							};
-
-							if(@is_debug) {
-								"cooke: {$name}={$value}"->PrintLine();
-							};
+							response_header += "Set-Cookie: ";
+							response_header += cookie->ToString();
+							response_header += "\r\n";
 						};
 
 						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");

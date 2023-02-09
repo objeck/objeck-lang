@@ -485,7 +485,7 @@ bundle Web.HTTP {
 										value := value->SubString(offset);
 									};
 									@cookies->AddBack(value);
-IO.Standard->Print("cookie=")->PrintLine(value);									
+									# IO.Standard->Print("cookie=")->PrintLine(value);									
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
@@ -666,22 +666,12 @@ bundle Web.HTTP.Server {
 						content_size := content->Size();
 						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 
-						cookies := response->GetCookies()<String, String>->GetKeyValues()<Pair<String, String>>;
+						cookies := response->GetCookies()<Cookie>;
 						each(i : cookies) {
 							cookie := cookies->Get(i);
-							name := cookie->GetFirst();
-							value := cookie->GetSecond();
-
-							if(value = Nil) {
-								response_header += "Set-Cookie: {$name}\r\n";
-							}
-							else {
-								response_header += "Set-Cookie: {$name}={$value}\r\n";
-							};
-
-							if(@is_debug) {
-								"cooke: {$name}={$value}"->PrintLine();
-							};
+							response_header += "Set-Cookie: ";
+							response_header += cookie->ToString();
+							response_header += "\r\n";
 						};
 
 						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
