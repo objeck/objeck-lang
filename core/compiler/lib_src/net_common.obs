@@ -709,7 +709,13 @@ bundle Web.HTTP {
 		Sets the cookie to expire
 		~#
 		method : public : Expire() ~ Nil {
+			@value := "";
+
+			if(@attribs <> Nil & @attribs->Has("Expires")) {
+				@attribs->Remove("Expires");
+			};
 			@expires := System.Time.Date->New(true);
+			
 		}
 
 		#~
@@ -718,10 +724,10 @@ bundle Web.HTTP {
 		~#
 		method : public : SetExpiration(expires : System.Time.Date) ~ Bool {
 			if(@attribs <> Nil & @attribs->Has("Expires")) {
-				return false;
+				@attribs->Remove("Expires");
 			};
-			
 			@expires := expires;
+			
 			return true;
 		}
 
