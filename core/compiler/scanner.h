@@ -255,11 +255,13 @@ enum ScannerTokenType {
   FILE_EOF,
   FILE_DELETE,
   FILE_RENAME,
+  FILE_COPY,
   // directory-operations
   DIR_CREATE,
   DIR_SLASH,
   DIR_EXISTS,
   DIR_LIST,
+  DIR_COPY,
   // socket operations
   SOCK_TCP_CONNECT,
   SOCK_TCP_IS_CONNECTED,

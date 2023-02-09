@@ -131,11 +131,13 @@ namespace instructions {
     FILE_EOF,
     FILE_DELETE,
     FILE_RENAME,
+    FILE_COPY,
     // directory operations
     DIR_CREATE,
     DIR_SLASH,
     DIR_EXISTS,
     DIR_LIST,
+    DIR_COPY,
     // socket i/o
     SOCK_TCP_CONNECT,
     SOCK_TCP_BIND,

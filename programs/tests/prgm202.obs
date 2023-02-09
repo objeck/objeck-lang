@@ -1,0 +1,55 @@
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		attribs := Vector->New()<Pair<String, String>>;
+		attribs->AddBack(Pair->New("id", "a3fWa")<String, String>);
+		attribs->AddBack(Pair->New("Max-Age", "2592000")<String, String>);
+		attribs->AddBack(Pair->New("HttpOnly", Nil)<String, String>);
+
+		AddCookie(attribs)->PrintLine();
+
+		map := Map->New()<String, String>;
+		map->Insert("foo", Nil);
+		map->Insert("bar", Nil);
+		map->Insert("me", "you");
+
+		vector := map->GetKeyValues()<Pair<String, String>>;
+		each(i : vector) {
+			pair := vector->Get(i);
+			
+			name := pair->GetFirst();
+			value := pair->GetSecond();
+
+			if(value = Nil) {
+				name->PrintLine();
+			}
+			else {
+				"{$name}={$value}"->PrintLine();
+			};
+		};
+	}
+
+	function : AddCookie(attribs : Vector<Pair<String, String>>) ~ String {
+		attrib_str := "";
+
+		each(i : attribs) {
+			attrib := attribs->Get(i);
+
+			name := attrib->GetFirst();
+			value := attrib->GetSecond();
+
+			attrib_str += name;
+			if(value <> Nil) {
+				attrib_str += '=';
+				attrib_str += value;
+			};
+
+			if(i + 1 < attribs->Size()) {
+				attrib_str += "; ";
+			};
+		};
+
+		return attrib_str;
+	}
+}
