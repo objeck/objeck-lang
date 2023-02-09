@@ -22,6 +22,27 @@ class Test {
 			(input->Size() = output->Size())->PrintLine();
 			"---"->PrintLine();
 		};
+
+		RandomString()->PrintLine();
+	}
+
+	function : RandomString() ~ String {
+		buffer := "";
+
+		now_allowed := ['@',',', ';', ':', '\\', '"', '/', '[', ']', '?', '=', '{', '}'];
+
+		found := false;
+		do {
+			char := Int->Random(33, 126)->As(Char);
+			each(i : )
+		}
+		while(<>found);
+
+char->PrintLine();
+
+		
+
+		return buffer;
 	}
 }
 
@@ -32,9 +53,15 @@ class Cookie {
 	@expires : System.Time.Date;
 	@is_debug : Bool;
 
+	New(name : String, value : String) {
+		@name := name;
+		@value := value;
+	}
+
 	New(cookie_str : String) {
 		Parse(cookie_str);
 	}
+
 	New(cookie_str : String, is_debug : Bool) {
 		@is_debug := is_debug;
 		Parse(cookie_str);
@@ -128,8 +155,13 @@ class Cookie {
 	Sets the cookie to expiration date
 	@param expires expiration date
 	~#
-	method : public : SetExpire(expires : System.Time.Date) ~ Nil {
+	method : public : SetExpiration(expires : System.Time.Date) ~ Bool {
+		if(@attribs <> Nil & @attribs->Has("Expires")) {
+			return false;
+		};
+		
 		@expires := expires;
+		return false;
 	}
 
 	#~
@@ -138,7 +170,7 @@ class Cookie {
 	~#
 	method : public : ToString() ~ String {
 		buffer := "";
-		
+
 		buffer += @name;
 		buffer += '=';
 		buffer += @value;
@@ -166,6 +198,11 @@ class Cookie {
 					buffer += "; ";
 				};
 			};
+		};
+
+		if(@expires <> Nil) {
+			buffer += "; ";
+			buffer += FormatGmtTime(@expires);
 		};
 
 		return buffer;
