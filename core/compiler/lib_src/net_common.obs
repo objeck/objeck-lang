@@ -567,10 +567,10 @@ bundle Web.HTTP {
 
 		method : public : Run(param : Base) ~ Nil {
 			if(@url->StartsWith("https://")) {
-				@content := HttpsClient->GetAll(@url, @headers);
+				@content := HttpsClient->GetSimple(@url, @headers);
 			}
 			else if(@url->StartsWith("http://")) {
-				@content := HttpClient->GetAll(@url, @headers);
+				@content := HttpClient->GetSimple(@url, @headers);
 			};
 		}
 	}
@@ -1524,7 +1524,7 @@ bundle Web.HTTP.Server {
 			@request_headers := request_headers;
 			@content := content;
 		}
-		
+
 		#~
 		Parses an attribute string
 		@param attrib_str attribute string
@@ -1533,7 +1533,7 @@ bundle Web.HTTP.Server {
 		function : ParseAttribs(attrib_str : String) ~ Map<String, String> {
 			return WebCommon->ParseAttribs(attrib_str);
 		}
-		
+
 		#~
 		Gets a parameter value
 		@param name parameter name
