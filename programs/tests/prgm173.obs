@@ -2,6 +2,6 @@ use Web.HTTP;
 
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
-		HttpsClient->New()->GetSimple("https://www." + "linux.org")->PrintLine();
+		HttpsClient->New()->QuickGet("https://www." + "linux.org")->PrintLine();
 	}
 }

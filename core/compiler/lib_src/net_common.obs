@@ -567,10 +567,10 @@ bundle Web.HTTP {
 
 		method : public : Run(param : Base) ~ Nil {
 			if(@url->StartsWith("https://")) {
-				@content := HttpsClient->GetSimple(@url, @headers);
+				@content := HttpsClient->QuickGet(@url, @headers);
 			}
 			else if(@url->StartsWith("http://")) {
-				@content := HttpClient->GetSimple(@url, @headers);
+				@content := HttpClient->QuickGet(@url, @headers);
 			};
 		}
 	}
