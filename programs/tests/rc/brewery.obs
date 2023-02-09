@@ -3,7 +3,7 @@ use Data.JSON;
 
 class Brewery {
 	function : Main(args : String[]) ~ Nil {
-		text := HttpsClient->GetSimple("https://api.openbrewerydb.org/breweries/search?query=new-belgium");
+		text := HttpsClient->QuickGet("https://api.openbrewerydb.org/breweries/search?query=new-belgium");
 		if(text = Nil) {
 			"--- Unable to fetch brewery ---"->PrintLine();
 		}
@@ -21,7 +21,7 @@ class Brewery {
 			if(found_brewery <> Nil) {
 				lat := found_brewery->Get("latitude")->GetValue();
 				lon := found_brewery->Get("longitude")->GetValue();
-				text := HttpsClient->GetSimple("https://www.7timer.info/bin/civillight.php?lon={$lon}&lat={$lat}&ac=0&unit=metric&output=json&tzshift=0");
+				text := HttpsClient->QuickGet("https://www.7timer.info/bin/civillight.php?lon={$lon}&lat={$lat}&ac=0&unit=metric&output=json&tzshift=0");
 				if(text = Nil) {
 					"--- Unable to fetch weather ---"->PrintLine();
 				}
