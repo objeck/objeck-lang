@@ -137,7 +137,9 @@ class Cookie {
 	@return string formatted cookie
 	~#
 	method : public : ToString() ~ String {
-		buffer := @name->Copy();
+		buffer := "";
+		
+		buffer += @name;
 		buffer += '=';
 		buffer += @value;
 
