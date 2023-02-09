@@ -405,31 +405,25 @@ bundle Web.HTTP {
 			names_values := attrib_str->Split("; ");
 			if(names_values->Size() > 0) {
 				each(i : names_values) {
-					name_value := names_values[i]->Split('=');
-					if(name_value->Size() = 2) {						
-						name := name_value[0];
-						value := name_value[1];
-						attribs->Insert(name, value);
-					}
-					else if(name_value->Size() > 2) {
-						pair := names_values[i];
-						mid := pair->Find('=');
-						name := pair->SubString(0, mid);
-						mid += 1;
-						value := pair->SubString(mid, pair->Size() - mid);
+					names_value := names_values[i];					
+					name_value_index := names_value->Find('=');
+					if(name_value_index > 0) {						
+						name := names_value->SubString(0, name_value_index);
+						name_value_index += 1;
+						value := names_value->SubString(name_value_index, names_value->Size() - name_value_index);
 						attribs->Insert(name, value);
 					}
 					else {
-						name := names_values[i];
-						attribs->Insert(name, Nil);
+						attribs->Insert(names_value, Nil);
 					};
 				};
 			}
 			else {
-				name_value := attrib_str->Split('=');
-				if(name_value->Size() = 2) {
-					name := name_value[0];
-					value := name_value[1];
+				name_value_index := attrib_str->Find('=');
+				if(name_value_index > 0) {						
+					name := attrib_str->SubString(0, name_value_index);
+					name_value_index += 1;
+					value := attrib_str->SubString(name_value_index, attrib_str->Size() - name_value_index);
 					attribs->Insert(name, value);
 				};
 			};
@@ -794,31 +788,25 @@ bundle Web.HTTP {
 				names_values := cookie_str->Split("; ");
 				if(names_values->Size() > 0) {
 					each(i : names_values) {
-						name_value := names_values[i]->Split('=');
-						if(name_value->Size() = 2) {						
-							name := name_value[0];
-							value := name_value[1];
-							Add(name, value, i);
-						}
-						else if(name_value->Size() > 2) {
-							pair := names_values[i];
-							mid := pair->Find('=');
-							name := pair->SubString(0, mid);
-							mid += 1;
-							value := pair->SubString(mid, pair->Size() - mid);
+						names_value := names_values[i];					
+						name_value_index := names_value->Find('=');
+						if(name_value_index > 0) {						
+							name := names_value->SubString(0, name_value_index);
+							name_value_index += 1;
+							value := names_value->SubString(name_value_index, names_value->Size() - name_value_index);
 							Add(name, value, i);
 						}
 						else {
-							name := names_values[i];
-							Add(name, Nil, i);
+							Add(names_value, Nil, i);
 						};
 					};
 				}
 				else {
-					name_value := cookie_str->Split('=');
-					if(name_value->Size() = 2) {
-						name := name_value[0];
-						value := name_value[1];
+					name_value_index := cookie_str->Find('=');
+					if(name_value_index > 0) {						
+						name := cookie_str->SubString(0, name_value_index);
+						name_value_index += 1;
+						value := cookie_str->SubString(name_value_index, cookie_str->Size() - name_value_index);
 						Add(name, value, 0);
 					};
 				};
