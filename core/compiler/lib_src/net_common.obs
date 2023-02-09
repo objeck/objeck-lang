@@ -399,6 +399,44 @@ bundle Web.HTTP {
 	}
 
 	class WebCommon {
+		function : ParseAttribs(attrib_str : String) ~ Map<String, String> {
+			attribs := Map->New()<String, String>;
+
+			names_values := attrib_str->Split("; ");
+			if(names_values->Size() > 0) {
+				each(i : names_values) {
+					name_value := names_values[i]->Split('=');
+					if(name_value->Size() = 2) {						
+						name := name_value[0];
+						value := name_value[1];
+						attribs->Insert(name, value);
+					}
+					else if(name_value->Size() > 2) {
+						pair := names_values[i];
+						mid := pair->Find('=');
+						name := pair->SubString(0, mid);
+						mid += 1;
+						value := pair->SubString(mid, pair->Size() - mid);
+						attribs->Insert(name, value);
+					}
+					else {
+						name := names_values[i];
+						attribs->Insert(name, Nil);
+					};
+				};
+			}
+			else {
+				name_value := attrib_str->Split('=');
+				if(name_value->Size() = 2) {
+					name := name_value[0];
+					value := name_value[1];
+					attribs->Insert(name, value);
+				};
+			};
+
+			return attribs;
+		}
+
 		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
 			done := false;
 			do {
@@ -529,11 +567,333 @@ bundle Web.HTTP {
 
 		method : public : Run(param : Base) ~ Nil {
 			if(@url->StartsWith("https://")) {
-				@content := HttpsClient->GetAll(@url, @headers);
+				@content := HttpsClient->GetSimple(@url, @headers);
 			}
 			else if(@url->StartsWith("http://")) {
-				@content := HttpClient->GetAll(@url, @headers);
+				@content := HttpClient->GetSimple(@url, @headers);
 			};
+		}
+	}
+
+	#~
+	HTTP cookie
+	~#
+	class Cookie {
+		@name : String;
+		@value : String;
+		@attribs : Map<String, String>;
+		@expires : System.Time.Date;
+		@is_debug : Bool;
+
+		#~
+		Constructor
+		@param name cookie name
+		@param value cookie value
+		@param is_debug true to display debug information
+		~#
+		New(name : String, value : String, is_debug : Bool) {
+			@name := name;
+			@value := value;
+			@is_debug := is_debug;
+		}
+
+		#~
+		Constructor
+		@param name cookie name
+		@param value cookie value
+		~#
+		New(name : String, value : String) {
+			@name := name;
+			@value := value;
+		}
+
+		#~
+		Constructor
+		@param cookie_str cookie string
+		~#
+		New(cookie_str : String) {
+			Parse(cookie_str);
+		}
+
+		#~
+		Constructor
+		@param cookie_str cookie string
+		@param is_debug true to display debug information
+		~#
+		New(cookie_str : String, is_debug : Bool) {
+			@is_debug := is_debug;
+			Parse(cookie_str);
+		}
+
+		#~
+		Get cookie name
+		@return cookie name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Set cookie name
+		@param cookie name
+		~#
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+
+		#~
+		Get cookie value
+		@return cookie value
+		~#
+		method : public : GetValue() ~ String {
+			return @value->RemoveAll('"');
+		}
+
+		#~
+		Set cookie value
+		@param cookie value
+		~#
+		method : public : SetValue(value : String) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Get cookie attribute
+		@param name attribute name
+		@return cookie attribute value
+		~#
+		method : public : GetAttrib(name : String) ~ String {
+			if(@attribs <> Nil) {
+				return @attribs->Find(name);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Adds a cookie attribute
+		@param name attribute name
+		@return true if added, false otherwise
+		~#
+		method : public : AddAttrib(name : String) ~ Bool {
+			return AddAttrib(name, Nil);
+		}
+
+		#~
+		Adds a cookie attribute
+		@param name attribute name
+		@param value attribute value
+		@return true if added, false otherwise
+		~#
+		method : public : AddAttrib(name : String, value : String) ~ Bool {
+			if(@attribs = Nil) {
+				@attribs := Map->New()<String, String>;
+			};
+
+			if(@attribs->Has(name)) {
+				return false;
+			};
+
+			@attribs->Insert(name, value);
+			return true;
+		}
+
+		#~
+		Removes an attribute
+		@param name attribute name
+		@return true if added, false otherwise
+		~#
+		method : public : RemoveAttrib(name : String) ~ Bool {
+			if(@attribs <> Nil) {
+				return @attribs->Remove(name);
+			};
+
+			return false;
+		}
+
+		#~
+		Sets the cookie to expire
+		~#
+		method : public : Expire() ~ Nil {
+			@expires := System.Time.Date->New(true);
+		}
+
+		#~
+		Sets the cookie to expiration date
+		@param expires expiration date
+		~#
+		method : public : SetExpiration(expires : System.Time.Date) ~ Bool {
+			if(@attribs <> Nil & @attribs->Has("Expires")) {
+				return false;
+			};
+			
+			@expires := expires;
+			return true;
+		}
+
+		#~
+		Formats a cookie into a string
+		@return string formatted cookie
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer += @name;
+			buffer += '=';
+			buffer += @value;
+
+			if(@attribs <> Nil) {
+				buffer += "; ";
+
+				attrib_pairs := @attribs->GetKeyValues()<Pair<String, String>>;
+				each(i : attrib_pairs) {
+					attrib_pair := attrib_pairs->Get(i);
+
+					name := attrib_pair->GetFirst();
+					value := attrib_pair->GetSecond();
+
+					if(value = Nil) {
+						buffer += name;
+					}
+					else {
+						buffer += name;
+						buffer += '=';
+						buffer += value;
+					};
+
+					if(i + 1 < attrib_pairs->Size()) {
+						buffer += "; ";
+					};
+				};
+			};
+
+			if(@expires <> Nil) {
+				buffer += "; ";
+				buffer += FormatGmtTime(@expires);
+			};
+
+			return buffer;
+		}
+
+		#~
+		Formats a cookie name and value
+		@return string formatted cookie name and value
+		~#
+		method : public : ToShortString() ~ String {
+			buffer := "";
+			
+			buffer += @name;
+			buffer += '=';
+			buffer += @value;
+
+			return buffer;
+		}
+		
+		method : Parse(cookie_str : String) ~ Nil {
+			if(cookie_str <> Nil) {
+				names_values := cookie_str->Split("; ");
+				if(names_values->Size() > 0) {
+					each(i : names_values) {
+						name_value := names_values[i]->Split('=');
+						if(name_value->Size() = 2) {						
+							name := name_value[0];
+							value := name_value[1];
+							Add(name, value, i);
+						}
+						else if(name_value->Size() > 2) {
+							pair := names_values[i];
+							mid := pair->Find('=');
+							name := pair->SubString(0, mid);
+							mid += 1;
+							value := pair->SubString(mid, pair->Size() - mid);
+							Add(name, value, i);
+						}
+						else {
+							name := names_values[i];
+							Add(name, Nil, i);
+						};
+					};
+				}
+				else {
+					name_value := cookie_str->Split('=');
+					if(name_value->Size() = 2) {
+						name := name_value[0];
+						value := name_value[1];
+						Add(name, value, 0);
+					};
+				};
+			};
+
+			if(@is_debug) {
+				"---"->PrintLine();
+			};
+		}
+
+		method : Add(name : String, value : String, index : Int) ~ Nil {
+			if(index = 0) {
+				@name := name;
+				@value := value;
+			}
+			else {
+				if(@attribs = Nil) {
+					@attribs := Map->New()<String, String>;
+				};
+				@attribs->Insert(name, value);
+			};
+
+			if(@is_debug) {
+				if(value = Nil) {
+					"name='{$name}'"->PrintLine();
+				}
+				else {
+					"name='{$name}', value='{$value}'"->PrintLine();
+				};
+			};
+		}
+		
+		method : FormatGmtTime(date : System.Time.Date) ~ String {
+			buffer := "";
+
+			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+			buffer += days_of_week[date->GetWeekDay()];
+			buffer += ", ";
+
+			day := date->GetDay();
+			if(day < 10) {
+				buffer += '0';			
+			};
+			buffer += day;
+			buffer += " ";
+
+			months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+			buffer += months[date->GetMonth() - 1];
+			buffer += " ";
+
+			buffer += date->GetYear();
+			buffer += " ";
+
+			hour := date->GetHours();
+			if(hour < 10) {
+				buffer += '0';			
+			};
+			buffer += hour;
+			buffer += ":";
+
+			min := date->GetMinutes();
+			if(min < 10) {
+				buffer += '0';			
+			};
+			buffer += min;
+			buffer += ":";
+
+			sec := date->GetSeconds();
+			if(sec < 10) {
+				buffer += '0';			
+			};
+			buffer += sec;
+			buffer += " GMT";
+
+			return buffer;
 		}
 	}
 }
@@ -753,11 +1113,16 @@ bundle Web.HTTP.Server {
 			return @cert_passwd;
 		}
 
-		# TODO: implement / cache?
-		method : public : HasGroupHandler(request_url : String) ~ Bool {
-			alias_str := request_url->SubString(1, request_url->Size() - 1);
-			if(alias_str = Nil) {
-				return false;
+		method : public : HasStaticHandler(name : String) ~ Bool {
+			alias_str : String;
+			if(name->StartsWith('/')) {
+				alias_str := name->SubString(1, name->Size() - 1);
+				if(alias_str = Nil) {
+					return false;
+				};
+			}
+			else {
+				alias_str := name;
 			};
 
 			file_groups := @file_group_handler_map->GetValues()<FileGroupHandler>;
@@ -777,12 +1142,14 @@ bundle Web.HTTP.Server {
 				# process network config
 				network_json := parser->GetRoot()->Get("network");
 				if(network_json = Nil) {
+					"Error: missing 'network' tag"->ErrorLine();
 					return false;
 				};
 				
 				network_instance_json := network_json->Get("instance");
 				network_port_json := network_json->Get("port");
 				if(network_instance_json = Nil | network_port_json = Nil) {
+					"Error: missing 'instance' or 'port' tag"->ErrorLine();
 					return false;
 				};
 				@instance_str := network_instance_json->GetString();
@@ -800,6 +1167,7 @@ bundle Web.HTTP.Server {
 					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
 
 					if(network_cert_path_json = Nil | network_cert_key_json = Nil | network_cert_passwd_json = Nil) {
+						"Error: missing SSL certificate tags"->ErrorLine();
 						return false;
 					};
 					@cert_path := network_cert_path_json->GetString();
@@ -851,12 +1219,23 @@ bundle Web.HTTP.Server {
 				type_strs := groups_str->Split(',');
 				if(type_strs->Size() > 0) {
 					each(i : type_strs) {
-						if(<>AddHandler(type_strs[i], file_json, mime_type_json)) {
+						type_str := type_strs[i];
+						if(<>type_str->StartsWith('.')) {
+							"Error: 'groups' values must start with '.'"->ErrorLine();
+							return false;
+						};
+
+						if(<>AddHandler(type_str, file_json, mime_type_json)) {
 							return false;
 						};
 					};
 				}
 				else {
+					if(<>groups_str->StartsWith('.')) {
+						"Error: 'groups' value must start with '.'"->ErrorLine();
+						return false;
+					};
+
 					if(<>AddHandler(groups_str, file_json, mime_type_json)) {
 						return false;
 					};
@@ -871,6 +1250,11 @@ bundle Web.HTTP.Server {
 			alias_json := file_json->Get("alias");
 			if(alias_json <> Nil & <>alias_json->IsNull()) {
 				alias_str := alias_json->GetString();
+			};
+
+			if(alias_str->StartsWith('.') | alias_str->EndsWith('.') | alias_str->Count('.') <> 1) {
+				"Error: 'alias' value must have a file extension"->ErrorLine();
+				return false;
 			};
 
 			location_str := "<None>";
@@ -933,7 +1317,27 @@ bundle Web.HTTP.Server {
 		@param response HTTP response
 		~#
 		method : public : ProcessGet(request : Request, response : Response) ~ Bool {
-			request_url := request->GetUrl();
+			return Process(request , response);
+		}
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPost(request : Request, response : Response) ~ Bool {
+			return Process(request , response);
+		}
+
+		method : Process(request : Request, response : Response) ~ Bool {
+			request_url : String;
+			if(response->HasForwardAlias()) {
+				request_url := response->GetForwardAlias();
+			}
+			else {
+				request_url := request->GetUrl();
+			};
+
 			request_group_index := request_url->FindLast('.');
 			# alias
 			if(request_group_index > 0) {
@@ -1014,15 +1418,6 @@ bundle Web.HTTP.Server {
 			};
 
 			return false;
-		}
-
-		#~
-		Callback for POST requests
-		@param request HTTP request
-		@param response HTTP response
-		~#
-		method : public : ProcessPost(request : Request, response : Response) ~ Bool {
-			return true;
 		}
 	}
 
@@ -1112,7 +1507,7 @@ bundle Web.HTTP.Server {
 		@request_url : String;
 		@request_headers : Map<String, String>;
 		@request_params : Map<String, String>;
-		@cookies : Map<String, String>;
+		@cookies : Map<String, Cookie>;
 		@content : Byte[];
 
 		New(request_url : String, request_headers : Map<String, String>) {
@@ -1128,6 +1523,15 @@ bundle Web.HTTP.Server {
 			@request_url := request_url;
 			@request_headers := request_headers;
 			@content := content;
+		}
+
+		#~
+		Parses an attribute string
+		@param attrib_str attribute string
+		@return map of names/values
+		~#
+		function : ParseAttribs(attrib_str : String) ~ Map<String, String> {
+			return WebCommon->ParseAttribs(attrib_str);
 		}
 
 		#~
@@ -1198,32 +1602,14 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Gets cookies
-		@return cookies
-		~#
-		method : public : GetCookies() ~ Map<String, String> {
-			ParseCookies();
-
-			if(@cookies <> Nil) {
-				return @cookies;
-			};
-
-			return Nil;
-		}
-
-		#~
 		Gets a cookie value
 		@param name cookie name
 		@return cookie value
 		~#
-		method : public : GetCookie(name : String) ~ String {
+		method : public : GetCookie(name : String) ~ Cookie {
 			ParseCookies();
 
-			if(@cookies <> Nil) {
-				return @cookies->Find(name);
-			};
-
-			return Nil;
+			return @cookies->Find(name);
 		}
 
 		#~
@@ -1234,16 +1620,22 @@ bundle Web.HTTP.Server {
 		method : public : HasCookie(name : String) ~ Bool {
 			ParseCookies();
 
-			if(@cookies <> Nil) {
-				return @cookies->Has(name);
-			};
+			return @cookies->Has(name);
+		}
 
-			return false;
+		#~
+		Gets cookies
+		@return cookies
+		~#
+		method : public : GetCookies() ~ Vector<Cookie> {
+			ParseCookies();
+
+			return @cookies->GetValues()<Cookie>;
 		}
 
 		method : ParseCookies() ~ Nil {
 			if(@cookies = Nil) {
-				@cookies := Map->New()<String, String>;
+				@cookies := Map->New()<String, Cookie>;
 				
 				cookies_str := @request_headers->Find("Cookie");
 				if(cookies_str <> Nil) {
@@ -1251,7 +1643,10 @@ bundle Web.HTTP.Server {
 					each(i : cookie_names_values) {
 						cookie_name_value := cookie_names_values[i]->Split('=');
 						if(cookie_name_value->Size() = 2) {
-							@cookies->Insert(cookie_name_value[0], cookie_name_value[1]);
+							name := cookie_name_value[0];
+							value := cookie_name_value[1];
+
+							@cookies->Insert(name, Cookie->New(name, value));
 						};
 					};
 				};
@@ -1302,9 +1697,10 @@ bundle Web.HTTP.Server {
 		@is_compressed : Bool;
 		@reason : String;
 		@response_headers : Map<String, String>;
-		@cookies : Map<String, String>;
+		@cookies : Map<String, Cookie>;
 		@server_config : WebServerConfig;
 		@request_url : String;
+		@forward_alias_name : String;
 
 		enum Compression := 100 {
 			NONE,
@@ -1321,19 +1717,7 @@ bundle Web.HTTP.Server {
 			@compression := Compression->NONE;
 			@is_compressed := false;
 			@response_headers := Map->New()<String, String>;
-			@cookies := Map->New()<String, String>;
-		}
-
-		#~
-		Check to see if the response has configured handler
-		@return true if handler exists, false otherwise
-		~#
-		method : public : HasGroupHandler() ~ Bool {
-			if(@server_config <> Nil & @request_url <> Nil) {
-				return @server_config->HasGroupHandler(@request_url);
-			};
-
-			return false;
+			@cookies := Map->New()<String, Cookie>;
 		}
 
 		#~
@@ -1341,16 +1725,8 @@ bundle Web.HTTP.Server {
 		@param name cookie name
 		@param value cookie value
 		~#
-		method : public : AddCookie(name : String, value : String) ~ Nil {
-			@cookies->Insert(name, value);
-		}
-
-		#~
-		Adds a cookie
-		@param name cookie name
-		~#
-		method : public : RemoveCookie(name : String) ~ Nil {
-			@cookies->Remove(name);
+		method : public : AddCookie(cookie : Cookie) ~ Nil {
+			@cookies->Insert(cookie->GetName(), cookie);
 		}
 
 		#~
@@ -1358,9 +1734,18 @@ bundle Web.HTTP.Server {
 		@param name cookie name
 		@param value cookie value
 		~#
-		method : public : UpdateCookie(name : String, value : String) ~ Nil {
-			if(@cookies->Remove(name)) {
-				@cookies->Insert(name, value);
+		method : public : GetCookie(name : String) ~ Cookie {
+			return @cookies->Find(name);
+		}
+
+		#~
+		Removes a cookie
+		@param name cookie name
+		~#
+		method : public : RemoveCookie(name : String) ~ Nil {
+			cookie := @cookies->Find(name);
+			if(cookie <> Nil) {
+				cookie->Expire();
 			};
 		}
 
@@ -1368,8 +1753,52 @@ bundle Web.HTTP.Server {
 		Gets all cookies
 		@return all cookies
 		~#
-		method : public : GetCookies() ~ Map<String, String> {
-			return @cookies;
+		method : public : GetCookies() ~ Vector<Cookie> {
+			return @cookies->GetValues()<Cookie>;
+		}
+
+		#~
+		Check to see if the response has configured handler
+		@return true if handler exists, false otherwise
+		~#
+		method : public : HasStaticHandler() ~ Bool {
+			if(@server_config <> Nil & @request_url <> Nil) {
+				return @server_config->HasStaticHandler(@request_url);
+			};
+
+			return false;
+		}
+
+		#~
+		Set the forward page alias
+		@param name forward page alias
+		@return true if set, false otherwise
+		~#
+		method : public : SetForwardAlias(name : String) ~ Bool {
+			if(@server_config <> Nil & @server_config->HasStaticHandler(name)) {
+				@forward_name := "/";
+				@forward_name += name;
+
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Gets the forward page alias
+		@return forward page alias
+		~#
+		method : public : GetForwardAlias() ~ String {
+			return @forward_alias_name;
+		}
+
+		#~
+		Checks the forward page alias
+		@return true if forward page alias exists, false otherwise
+		~#
+		method : public : HasForwardAlias() ~ Bool {
+			return @forward_alias_name <> Nil;
 		}
 
 		#~
@@ -1579,64 +2008,6 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : HasHeader(name : String) ~ Bool {
 			return @response_headers->Has(name);
-		}
-
-		#~
-		Current GMT time
-		@return current GMT time
-		~#
-		function : CurrentGmtTime() ~ System.Time.Date {
-			return System.Time.Date->New(true);
-		}
-
-		#~
-		Formats a date into a string via the HTTP date/time format
-		@param date date/time
-		@return date/time string
-		~#
-		function : FormatTime(date : System.Time.Date) ~ String {
-			buffer := "";
-
-			days_of_week := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-			buffer += days_of_week[date->GetWeekDay()];
-			buffer += ", ";
-
-			day := date->GetDay();
-			if(day < 10) {
-				buffer += '0';			
-			};
-			buffer += day;
-			buffer += " ";
-
-			months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-			buffer += months[date->GetMonth() - 1];
-			buffer += " ";
-
-			buffer += date->GetYear();
-			buffer += " ";
-
-			hour := date->GetHours();
-			if(hour < 10) {
-				buffer += '0';			
-			};
-			buffer += hour;
-			buffer += ":";
-
-			min := date->GetMinutes();
-			if(min < 10) {
-				buffer += '0';			
-			};
-			buffer += min;
-			buffer += ":";
-
-			sec := date->GetSeconds();
-			if(sec < 10) {
-				buffer += '0';			
-			};
-			buffer += sec;
-			buffer += " GMT";
-
-			return buffer;
 		}
 
 		#~

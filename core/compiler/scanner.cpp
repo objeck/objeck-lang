@@ -244,9 +244,11 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_IS_OPEN"] = FILE_IS_OPEN;
   ident_map[L"FILE_DELETE"] = FILE_DELETE;
   ident_map[L"FILE_RENAME"] = FILE_RENAME;
+  ident_map[L"FILE_COPY"] = FILE_COPY;
   ident_map[L"DIR_CREATE"] = DIR_CREATE;
   ident_map[L"DIR_SLASH"] = DIR_SLASH;
   ident_map[L"DIR_EXISTS"] = DIR_EXISTS;
+  ident_map[L"DIR_COPY"] = DIR_COPY;
   ident_map[L"DIR_LIST"] = DIR_LIST;
   ident_map[L"ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
   ident_map[L"DLL_LOAD"] = DLL_LOAD;
@@ -491,10 +493,12 @@ void Scanner::CheckIdentifier(int index)
     case FILE_IS_OPEN:
     case FILE_DELETE:
     case FILE_RENAME:
+    case FILE_COPY:
     case DIR_CREATE:
     case DIR_SLASH:
     case DIR_EXISTS:
     case DIR_LIST:
+    case DIR_COPY:
     case ASYNC_MTHD_CALL:
     case DLL_LOAD:
     case DLL_UNLOAD:
