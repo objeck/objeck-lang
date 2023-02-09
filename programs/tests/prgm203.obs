@@ -176,7 +176,9 @@ class Cookie {
 	@return string formatted cookie name and value
 	~#
 	method : public : ToShortString() ~ String {
-		buffer := @name->Copy();
+		buffer := "";
+		
+		buffer += @name;
 		buffer += '=';
 		buffer += @value;
 
