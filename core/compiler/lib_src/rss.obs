@@ -121,10 +121,10 @@ bundle Web.RSS {
 			xml := "";
 
 			if(path->StartsWith("http:")) {
-				xml := HttpClient->New()->GetAll(path);
+				xml := HttpClient->New()->GetSimple(path);
 			}
 			else if(path->StartsWith("https:")) {
-				xml := HttpsClient->New()->GetAll(path);
+				xml := HttpsClient->New()->GetSimple(path);
 			}
 			else {
 				xml := FileReader->ReadFile(path);
