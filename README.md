@@ -41,7 +41,7 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and chec
 * Garbage collection
 * JIT support for all targets
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
-  * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows, Linux and macOS (depreciated)
+  * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows, Linux and macOS (depreciated for Intel macOS)
 
 ## Documentation
 Please refer to the programmer's guide [documentation](https://www.objeck.org/doc/api/index.html) and [online tutorial](https://www.objeck.org/getting_started.html).
