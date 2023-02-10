@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -std=c++17 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result
+ARGS=-O3 -Wall -D_DEBUGGER -D_GNU_SOURCE -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -std=c++17 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
