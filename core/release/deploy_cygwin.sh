@@ -13,7 +13,7 @@ mkdir deploy-cygwin/doc
 
 # build compiler
 cd ../compiler
-cp make/Makefile.amd64 Makefile
+cp make/Makefile.cygwin.amd64 Makefile
 
 make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy-cygwin/bin
@@ -22,14 +22,14 @@ cp ../vm/misc/*.pem ../release/deploy-cygwin/lib
 
 # build VM
 cd ../vm
-cp make/Makefile.amd64 Makefile
+cp make/Makefile.cygwin.amd64 Makefile
 
 make clean; make -j3
 cp obr ../release/deploy-cygwin/bin
 
 # build debugger
 cd ../debugger
-cp make/Makefile.amd64 Makefile
+cp make/Makefile.cygwin.amd64 Makefile
 
 make clean; make -j3
 cp obd ../release/deploy-cygwin/bin
@@ -54,10 +54,10 @@ cp diags.dll ../../release/deploy-cygwin/lib/native/libobjk_diags.dll
 
 cd ../../utils/launcher
 
-make -f make/Makefile.obb.amd64 clean; make -f make/Makefile.obb.amd64
+make -f make/Makefile.obb.cygwin.amd64 clean; make -f make/Makefile.obb.cygwin.amd64
 cp obb ../../release/deploy-cygwin/bin
 
-make -f make/Makefile.obn.amd64 clean; make -f make/Makefile.obn.amd64
+make -f make/Makefile.obn.cygwin.amd64 clean; make -f make/Makefile.obn.cygwin.amd64
 cp obn ../../release/deploy-cygwin/lib/native/misc/
 
 cp ../../vm/misc/config.prop ../../release/deploy-cygwin/lib/native/misc
