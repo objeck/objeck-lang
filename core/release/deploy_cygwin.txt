@@ -1,0 +1,3 @@
+Packages to install:
+
+gcc-c++ zlib-devel libssl-devel libreadline-devel p7zip make
