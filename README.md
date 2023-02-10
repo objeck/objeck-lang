@@ -95,5 +95,5 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
   *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-clang</code>
   *  Set the path for to the Clang64 'bin' directory
   *  Reference <code>objeck-lang/core/release/deploy-msys2-clang/readme.html</code> to set additional paths and find examples
-  * Under the Clang64
-    * TBH
+* Under the Clang64
+  * TBH
