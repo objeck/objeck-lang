@@ -40,8 +40,8 @@ cd ../lib/odbc
 # cp odbc.dll ../../release/deploy-cygwin/lib/native/libobjk_odbc.dll
 
 cd ../openssl
-# ./build_cygwin.sh openssl
-# cp openssl.dll ../../release/deploy-cygwin/lib/native/libobjk_openssl.dll
+./build_cygwin.sh openssl
+cp openssl.dll ../../release/deploy-cygwin/lib/native/libobjk_openssl.dll
 
 cd ../sdl
 # ./build_cygwin.sh sdl
@@ -49,8 +49,8 @@ cd ../sdl
 # cp lib/fonts/*.ttf ../../release/deploy-cygwin/lib/sdl/fonts
 
 cd ../diags
-# ./build_cygwin.sh diags
-# cp diags.dll ../../release/deploy-cygwin/lib/native/libobjk_diags.dll
+./build_cygwin.sh diags
+cp diags.dll ../../release/deploy-cygwin/lib/native/libobjk_diags.dll
 
 cd ../../utils/launcher
 
