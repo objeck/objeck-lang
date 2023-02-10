@@ -60,13 +60,19 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
-### Building on Linux and macOS
+### Building on Linux
 *  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
-*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>macos</code> for x64 Linux or macOS
+*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>rpi</code> for x64 or ARM64 Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
-*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set addtional paths and find examples
+*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
 
-### Building on Windows
+### Building on macOS
+*  Install Xcode with command line tools
+*  Open a command shell and go to <code>objeck-lang/core/release</code> and run <code>./deploy_macos_arm64.sh</code>
+*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
+*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
+
+### Building on Windows (Visual Studio)
 *  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/x64</code>
 *  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
 *  Ensure the core build completes successfully (in Release mode)
@@ -74,7 +80,7 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
-### Building under MSYS2 on Windows
+### Building on Windows (MSYS2: UCRT64, Clang64 and Cygwin64)
 * Under the UCRT64 shell (best MSYS2 Unicode support)
   * Package dependencies
   * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
@@ -89,3 +95,5 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
   *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-clang</code>
   *  Set the path for to the Clang64 'bin' directory
   *  Reference <code>objeck-lang/core/release/deploy-msys2-clang/readme.html</code> to set additional paths and find examples
+  * Under the Clang64
+    * TBH
