@@ -15,7 +15,7 @@ mkdir deploy-cygwin/doc
 cd ../compiler
 cp make/Makefile.amd64 Makefile
 
-make clean; make -j1 OBJECK_LIB_PATH=///".///"
+make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy-cygwin/bin
 cp ../lib/*.obl ../release/deploy-cygwin/lib
 cp ../vm/misc/*.pem ../release/deploy-cygwin/lib
@@ -24,14 +24,14 @@ cp ../vm/misc/*.pem ../release/deploy-cygwin/lib
 cd ../vm
 cp make/Makefile.amd64 Makefile
 
-make clean; make -j1
+make clean; make -j3
 cp obr ../release/deploy-cygwin/bin
 
 # build debugger
 cd ../debugger
 cp make/Makefile.amd64 Makefile
 
-make clean; make -j1
+make clean; make -j3
 cp obd ../release/deploy-cygwin/bin
 
 # build libraries
