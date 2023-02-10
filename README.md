@@ -80,8 +80,8 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
-### Building on Windows (MSYS2: UCRT64, Clang64 and Cygwin64)
-* Under the UCRT64 shell (best MSYS2 Unicode support)
+### Building on Windows (MSYS2)
+* Under the UCRT64 (Unicode shell support)
   * Package dependencies
   * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc</code>
   * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-ucrt.sh</code>
