@@ -63,13 +63,13 @@ Please refer to the programmer's guide [documentation](https://www.objeck.org/do
 ## Code
 Objeck can be built for a variety of targets.
 
-### Linux
+### Linux (x64, ARM64)
 *  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
 *  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>rpi</code> for x64 or ARM64 Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
 
-### macOS
+### macOS (Apple Silicon)
 *  Install Xcode with command line tools
 *  Open a command shell and go to <code>objeck-lang/core/release</code> and run <code>./deploy_macos_arm64.sh</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
@@ -98,5 +98,3 @@ Objeck can be built for a variety of targets.
   *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-clang</code>
   *  Set the path for to the Clang64 'bin' directory
   *  Reference <code>objeck-lang/core/release/deploy-msys2-clang/readme.html</code> to set additional paths and find examples
-* Under the Clang64
-  * TBH
