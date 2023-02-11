@@ -18,16 +18,6 @@ class Hello {
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/tests/rc).
 
 ### Features
-* Object-oriented with functional features
-  * Classes, interfaces and first-class functions
-  * Type inference
-  * Lambda expressions
-  * Closures
-  * Generics with type boxing
-  * Anonymous classes 
-  * Reflection 
-  * Object serialization
-
 * Libraries 
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (vectors, queues, trees, hashes, etc.)
   * [HTTP and HTTPS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src) client and web server as a service
@@ -37,6 +27,15 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and chec
   * Database access
   * [Query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs)
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
+* Object-oriented with functional features
+  * Classes, interfaces and first-class functions
+  * Type inference
+  * Lambda expressions
+  * Closures
+  * Generics with type boxing
+  * Anonymous classes 
+  * Reflection 
+  * Object serialization
 * Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
 * JIT support for all targets
