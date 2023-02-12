@@ -163,9 +163,11 @@ bundle Web.HTTP {
 				};
 
 				port := url->GetPort();
-				if(port = 0) {
+				if(port < 0) {
 					port := 443;
 				};
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+
 				
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
@@ -373,10 +375,11 @@ bundle Web.HTTP {
 				};
 
 				port := url->GetPort();
-				if(port = 0) {
+				if(port < 0) {
 					port := 443;
 				};
-				
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					get := "GET ";
