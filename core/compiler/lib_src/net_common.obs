@@ -142,7 +142,7 @@ bundle Web.HTTP {
 			# "-- url='{$url}' --"->PrintLine();
 			scheme_index := url->Find(':');
 			if(scheme_index < 0) {
-				"--- No scheme ---"->ErrorLine();
+				# "--- No URL scheme ---"->ErrorLine();
 				return false;
 			};
 			@scheme := url->SubString(0, scheme_index);
