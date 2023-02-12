@@ -96,7 +96,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return vector of read strings
 		~#
-		method : public : Post(url : String, data : String) ~ String {
+		method : public : Post(url : Web.HTTP.Url, data : String) ~ String {
 			return Post(url, data, "text/plain");
 		}
 		
@@ -106,7 +106,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return read strings
 		~#
-		function : QuickPost(url : String, data : String) ~ String {
+		function : QuickPost(url : Web.HTTP.Url, data : String) ~ String {
 			document := "";
 			
 			client := HttpClient->New();
@@ -130,8 +130,8 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPost(url : String, data : String, content_type : String, headers : Map<String, String>) ~ String {			
-			client := HttpClient->New();
+		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String, headers : Map<String, String>) ~ String {			
+			client := HttpsClient->New();
 			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 			each(i : header_key_values) {
 				key_value := header_key_values->Get(i);
@@ -150,36 +150,23 @@ bundle Web.HTTP {
 		@param data data to post
 		@return vector of read strings
 		~#
-		method : public : Post(url : String, data : String, content_type : String) ~ String {
+		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ String {
 			content := Vector->New()<String>;
 			
-			if(url->StartsWith("http://")) {
-				if(url->EndsWith('/')) {
-					url->Pop();
+			if(url->GetScheme()->Equals("http")) {
+				address := url->GetHost();
+				
+				location := url->GetPath();
+				if(location = Nil) {
+					location := "/";
 				};
 
-				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
-				address := "";
-				location := "/";
-				index := url->Find('/');
-				port := "80";
-				if(index > -1) {
-				  address := url->SubString(index);
-				  port_index := address->Find(':');
-				  if(port_index > -1) {
-				    port_index += 1;
-				    port := address->SubString(port_index, address->Size() - port_index);
-				    address := address->SubString(port_index - 1);
-				  }
-				  else {
-				    location->Append(url->SubString(index + 1, url->Size() - index - 1));
-				  };
-				}
-				else {
-				  address := url;
+				port := url->GetPort();
+				if(port = 0) {
+					port := 443;
 				};
 				
-				socket := TCPSocket->New(address, port->ToInt());
+				socket := TCPSocket->New(address, port);
 				if(socket->IsOpen()) {
 					post := "POST ";
 					post->Append(location);
@@ -254,19 +241,19 @@ bundle Web.HTTP {
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
-								moved_url : String;
+								moved_url_str : String;
 								if(moved_location->StartsWith("http://")) {
-									moved_url := moved_location;
+									moved_url_str := moved_location;
 								}
 								else {
-									moved_url := "http://";
-									moved_url += address;
-									moved_url += moved_location;
+									moved_url_str := "http://";
+									moved_url_str += address;
+									moved_url_str += moved_location;
 								};
 								@response_headers->Empty();
 
-								# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
-								return Get(moved_url, content_type);
+								# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
+								return Get(Url->New(moved_url_str), content_type);
 							};
 						};
 
@@ -300,7 +287,7 @@ bundle Web.HTTP {
 		@param url URL
 		@return output as one string
 		~#
-		function : QuickGet(url : String) ~ String {
+		function : QuickGet(url : Web.HTTP.Url) ~ String {
 			return QuickGet(url, "text/plain", Nil);
 		}
 
@@ -310,7 +297,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output as one string
 		~#
-		function : QuickGet(url : String, headers : Map<String, String>) ~ String {
+		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ String {
 			return QuickGet(url, "text/plain", headers);
 		}
 		
@@ -321,7 +308,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output as one string
 		~#
-		function : QuickGet(url : String, content_type : String, headers : Map<String, String>) ~ String {			
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ String {			
 			client := HttpClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -347,7 +334,7 @@ bundle Web.HTTP {
 		@param url URL
 		@return vector of read strings
 		~#
-		method : public : Get(url : String) ~ String {
+		method : public : Get(url : Web.HTTP.Url) ~ String {
 			return Get(url, "text/plain");
 		}
 		
@@ -357,36 +344,23 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return vector of read strings
 		~#
-		method : public : Get(url : String, content_type : String) ~ String {
+		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ String {
 			content := Vector->New()<String>;
 			
-			if(url->StartsWith("http://")) {
-				if(url->EndsWith('/')) {
-					url->Pop();
+			if(url->GetScheme()->Equals("http")) {
+				address := url->GetHost();
+				
+				location := url->GetPath();
+				if(location = Nil) {
+					location := "/";
 				};
 
-				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
-				address := "";
-				location := "/";
-				index := url->Find('/');
-				port := "80";
-				if(index > -1) {
-				  address := url->SubString(index);
-				  port_index := address->Find(':');
-				  if(port_index > -1) {
-				    port_index += 1;
-				    port := address->SubString(port_index, address->Size() - port_index);
-				    address := address->SubString(port_index - 1);
-				  }
-				  else {
-				    location->Append(url->SubString(index + 1, url->Size() - index - 1));
-				  };
-				}
-				else {
-				  address := url;
+				port := url->GetPort();
+				if(port = 0) {
+					port := 80;
 				};
 				
-				socket := TCPSocket->New(address, port->ToInt());
+				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					get := "GET ";
 					get->Append(location);
@@ -458,19 +432,19 @@ bundle Web.HTTP {
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
 							if(moved_location <> Nil) {
-								moved_url : String;
+								moved_url_str : String;
 								if(moved_location->StartsWith("http://")) {
-									moved_url := moved_location;
+									moved_url_str := moved_location;
 								}
 								else {
-									moved_url := "http://";
-									moved_url += address;
-									moved_url += moved_location;
+									moved_url_str := "http://";
+									moved_url_str += address;
+									moved_url_str += moved_location;
 								};
 								@response_headers->Empty();
 
-								# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url);
-								return Get(moved_url, content_type);
+								# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
+								return Get(Url->New(moved_url_str), content_type);
 							};
 						};
 

@@ -13,7 +13,7 @@ bundle Web.HTTP {
 	#~
 	URL parser, encoder and decoder
 	~#
-	class Url {
+	class Url implements Compare {
 		@parsed : Bool;
 		@url : String;
 		@scheme : String;
@@ -31,6 +31,23 @@ bundle Web.HTTP {
 			@url := url;
 			@port := -1;
 			@parsed := ParseUrl(url);
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			return @url->Compare(rhs);
+		}
+
+		#~
+		Returns a hash ID for the given class
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @url->HashID();
 		}
 
 		#~
@@ -171,6 +188,10 @@ bundle Web.HTTP {
 					}
 					else {
 						@host := part;
+					};
+
+					if(@host->EndsWith('/')) {
+						@path := "/";
 					};
 				};
 			}
@@ -502,7 +523,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return map of URLs and content
 		~#
-		function : Download(urls : Vector<String>, headers : Map<String, String>) ~ Vector<Pair<String, String>> {
+		function : Download(urls : Vector<Url>, headers : Map<String, String>) ~ Vector<Pair<Url, String>> {
 			group_size := 3;
 
 			downloaders := Downloader->New[urls->Size()];
@@ -530,7 +551,7 @@ bundle Web.HTTP {
 				download_count += group_ending;
 			};
 
-			results := Map->New()<String, String>;
+			results := Map->New()<Url, String>;
 			each(i : urls) {
 				downloader := downloaders[i];
 				results->Insert(downloader->GetUrl(), downloader->GetContent());
@@ -541,17 +562,17 @@ bundle Web.HTTP {
 	}
 
 	class Downloader from System.Concurrency.Thread {
-		@url : String;
+		@url : Url;
 		@content : String;
 		@headers : Map<String, String>;
 
-		New(url : String, headers : Map<String, String>) {
+		New(url : Url, headers : Map<String, String>) {
 			Parent();
 			@url := url;
 			@headers := headers;
 		}
 
-		method : public : GetUrl() ~ String {
+		method : public : GetUrl() ~ Url {
 			return @url;
 		}
 
@@ -560,10 +581,10 @@ bundle Web.HTTP {
 		}
 
 		method : public : Run(param : Base) ~ Nil {
-			if(@url->StartsWith("https://")) {
+			if(@url->GetScheme()->Equals("https")) {
 				@content := HttpsClient->QuickGet(@url, @headers);
 			}
-			else if(@url->StartsWith("http://")) {
+			else if(@url->GetScheme()->Equals("http")) {
 				@content := HttpClient->QuickGet(@url, @headers);
 			};
 		}
