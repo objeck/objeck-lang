@@ -89,7 +89,7 @@ bundle Web.HTTP {
 		method : public : SetCookie(cookie : Cookie) ~ Nil {
 			@cookies->AddBack(cookie);
 		}
-		
+
 		#~
 		Performs a HTTP POST
 		@param url URL
@@ -162,9 +162,10 @@ bundle Web.HTTP {
 				};
 
 				port := url->GetPort();
-				if(port = 0) {
+				if(port < 0) {
 					port := 443;
 				};
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 				
 				socket := TCPSocket->New(address, port);
 				if(socket->IsOpen()) {
@@ -356,10 +357,11 @@ bundle Web.HTTP {
 				};
 
 				port := url->GetPort();
-				if(port = 0) {
+				if(port < 0) {
 					port := 80;
 				};
-				
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					get := "GET ";
@@ -414,8 +416,8 @@ bundle Web.HTTP {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+								
 								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 									# IO.Standard->Print("cookie=")->PrintLine(value);
