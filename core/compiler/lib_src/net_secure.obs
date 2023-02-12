@@ -162,6 +162,18 @@ bundle Web.HTTP {
 					location := "/";
 				};
 
+				query := url->GetQuery();
+				if(query = Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := url->GetFragment();
+				if(frag = Nil) {
+					location += '#';
+					location += frag;
+				};
+
 				port := url->GetPort();
 				if(port < 0) {
 					port := 443;
@@ -372,6 +384,23 @@ bundle Web.HTTP {
 				location := url->GetPath();
 				if(location = Nil) {
 					location := "/";
+				};
+
+				query := url->GetQuery();
+				if(query = Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := url->GetFragment();
+				if(frag = Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := url->GetPort();
+				if(port < 0) {
+					port := 443;
 				};
 
 				port := url->GetPort();
