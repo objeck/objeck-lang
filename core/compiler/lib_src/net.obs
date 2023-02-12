@@ -94,7 +94,7 @@ bundle Web.HTTP {
 		Performs a HTTP POST
 		@param url URL
 		@param data data to post
-		@return vector of read strings
+		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : String) ~ String {
 			return Post(url, data, "text/plain");
@@ -148,7 +148,7 @@ bundle Web.HTTP {
 		@param url URL
 		@param content_type content type
 		@param data data to post
-		@return vector of read strings
+		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ String {
 			content := Vector->New()<String>;
@@ -333,7 +333,7 @@ bundle Web.HTTP {
 		#~
 		Performs a HTTP GET
 		@param url URL
-		@return vector of read strings
+		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url) ~ String {
 			return Get(url, "text/plain");
@@ -343,7 +343,7 @@ bundle Web.HTTP {
 		Performs a HTTP GET
 		@param url URL
 		@param content_type content type
-		@return vector of read strings
+		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ String {
 			content := Vector->New()<String>;
