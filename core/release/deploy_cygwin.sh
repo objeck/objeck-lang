@@ -18,6 +18,8 @@ cp make/Makefile.cygwin.amd64 Makefile
 make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy-cygwin/bin
 cp ../lib/*.obl ../release/deploy-cygwin/lib
+rm -rf ../release/deploy-cygwin/lib/sdl*.obl
+rm -rf ../release/deploy-cygwin/lib/odbc.obl
 cp ../vm/misc/*.pem ../release/deploy-cygwin/lib
 
 # build VM
