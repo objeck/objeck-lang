@@ -163,13 +163,13 @@ bundle Web.HTTP {
 				};
 
 				query := url->GetQuery();
-				if(query = Nil) {
+				if(query <> Nil) {
 					location += '?';
 					location += query;
 				};
 
 				frag := url->GetFragment();
-				if(frag = Nil) {
+				if(frag <> Nil) {
 					location += '#';
 					location += frag;
 				};
@@ -387,13 +387,13 @@ bundle Web.HTTP {
 				};
 
 				query := url->GetQuery();
-				if(query = Nil) {
+				if(query <> Nil) {
 					location += '?';
 					location += query;
 				};
 
 				frag := url->GetFragment();
-				if(frag = Nil) {
+				if(frag <> Nil) {
 					location += '#';
 					location += frag;
 				};
