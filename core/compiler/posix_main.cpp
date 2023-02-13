@@ -67,8 +67,6 @@ int main(int argc, char* argv[])
   usage += L" (Windows x86_64)";
 #elif _WIN32
   usage += L" (Windows x86)";
-#elif __CYGWIN__
-  usage += L" (Cygwin x86_64)";
 #elif _OSX
 #ifdef _ARM64
   usage += L" (macOS ARM64)";
