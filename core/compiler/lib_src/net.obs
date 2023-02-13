@@ -18,7 +18,6 @@ bundle Web.HTTP {
 		@cookies_enabled : Bool;
 		@cookies: Vector<Cookie>;
 		
-		
 		#~
 		Default constructor 
 		~#
