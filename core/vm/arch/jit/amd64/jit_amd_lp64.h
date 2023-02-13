@@ -87,12 +87,7 @@ namespace Runtime {
 
 #define MAX_DBLS 256
 #define BUFFER_SIZE 512
-
-#ifndef I386_PGBYTES
-#ifndef __CYGWIN__
 #define PAGE_SIZE 4096
-#endif
-#endif
 
   // register type
   typedef enum _RegType {
