@@ -1,4 +1,8 @@
-# Objeck ![alt text](docs/images/gear_wheel_256.png "An Objeck")
+# Objeck 
+
+<p align="center">
+  <img src="docs/images/gear_wheel_256.png" />
+</p>
 
 | Description | Badge |
 | :----------- | :----------- |
