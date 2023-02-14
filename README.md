@@ -24,6 +24,8 @@ class Hello {
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
 
+---
+
 ### Features
 * Object-oriented
   * Inheritance
