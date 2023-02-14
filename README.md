@@ -1,6 +1,8 @@
 # Objeck 
 
-![alt text](docs/images/gear_wheel_256.png "An Objeck")
+<p align="center">
+  <img src="docs/images/gear_wheel_256.png" alt="An Objeck"/>
+</p>
 
 [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
