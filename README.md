@@ -19,13 +19,11 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
 
 ### Features
 * Object-oriented with functional features
-  * Classes, inheritance and interfaces
+  * Classes that support inheritance, anonymous declaration, reflection and interfaces
   * Type inference
   * Lambda expressions
   * First-class functions and closures
   * Generics with type boxing
-  * Anonymous classes 
-  * Reflection 
   * Object serialization
 * Native support for threads, sockets, files, date/time, etc.
 * Garbage collection
