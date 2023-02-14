@@ -4,9 +4,24 @@
   <img src="docs/images/gear_wheel_256.png" />
 </p>
 
+<table border="1" width="100%" ID="Table2" style="margin: 0px;">
+  <tr>
+    <td>Continuous integration</td>
+    <td>[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)</td>
+  </tr>
+  <tr>
+    <td>Continuous integration</td>
+    <td>[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)</td>
+  </tr>
+  <tr>
+    <td>Continuous integration</td>
+    <td>[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)</td>
+  </tr>
+</table>
+
 | Description | Badge |
 | :----------- | :----------- |
-| Continuous integration | [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
+| Continuous integration |  |
 | Static analysis | [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
 | Community | [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb) |
 
