@@ -39,7 +39,7 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
   * Encryption and hashing APIs via an OpenSSL wrapper
   * In memory [query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs) with SQL-like syntax
   * Database access via an ODBC wrapper
-  * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
+  * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
 
 ### Screenshots
