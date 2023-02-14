@@ -2,11 +2,12 @@
 
 <p align="center">
   <img src="docs/images/gear_wheel_256.png" alt="An Objeck"/>
-</p>
 
-[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
-[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
-[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb) |
+
+[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)
+[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck)
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb)
+</p>
 
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
