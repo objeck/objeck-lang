@@ -1,29 +1,6 @@
 # Objeck 
 
-<p align="center">
-  <img src="docs/images/gear_wheel_256.png" />
-</p>
-
-<table border="1" width="100%">
-  <tr>
-    <td>Continuous integration</td>
-    <td><img src='https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg' alt='C/C++ CI'/></td>
-  </tr>
-  <tr>
-    <td>Static analysis</td>
-    <td><img src='https://img.shields.io/coverity/scan/10314.svg' alt='C/C++ CI'/></td>
-  </tr>
-  <tr>
-    <td>Community</td>
-    <td><img src='https://badgen.net/badge/icon/discord?icon=discord&label' alt='C/C++ CI'/></td>
-  </tr>
-</table>
-
-| Description | Badge |
-| :----------- | :----------- |
-| Continuous integration |  |
-| Static analysis | [![Coverity Scan Build Status]()](https://scan.coverity.com/projects/objeck) |
-| Community | [![Discord]()](https://discord.gg/qEaCGWR7nb) |
+![alt text](docs/images/gear_wheel_256.png "An Objeck")
 
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
@@ -38,6 +15,12 @@ class Hello {
 ```
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
+
+| Description | Badge |
+| :----------- | :----------- |
+| Continuous integration | [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
+| Static analysis | [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
+| Community | [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb) |
 
 ### Features
 * Object-oriented
