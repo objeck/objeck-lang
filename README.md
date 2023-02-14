@@ -22,8 +22,9 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
 * Object-oriented
   * Inheritance
   * Interfaces
-  * Anonymous class declarations
-  * Reflection
+  * Anonymous declarations
+  * Reflection 
+  * Dependency injection
   * Generics
   * Type boxing
   * Serialization
