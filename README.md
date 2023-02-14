@@ -2,6 +2,10 @@
 
 ![alt text](docs/images/gear_wheel_256.png "An Objeck")
 
+[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
+[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
+[![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb) |
+
 Objeck is an object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
 ```ruby
@@ -15,10 +19,6 @@ class Hello {
 ```
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
-
-| Continuous integration | [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
-| Static analysis | [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
-| Community | [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb) |
 
 ### Features
 * Object-oriented
