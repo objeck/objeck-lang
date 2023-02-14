@@ -6,15 +6,15 @@
 
 <table border="1" width="100%">
   <tr>
-    <td width=80%>Continuous integration</td>
+    <td>Continuous integration</td>
     <td><img src='https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg' alt='C/C++ CI'/></td>
   </tr>
   <tr>
-    <td width=80%>Static analysis</td>
+    <td>Static analysis</td>
     <td><img src='https://img.shields.io/coverity/scan/10314.svg' alt='C/C++ CI'/></td>
   </tr>
   <tr>
-    <td width=80%>Community</td>
+    <td>Community</td>
     <td><img src='https://badgen.net/badge/icon/discord?icon=discord&label' alt='C/C++ CI'/></td>
   </tr>
 </table>
