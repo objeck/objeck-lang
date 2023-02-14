@@ -16,8 +16,6 @@ class Hello {
 
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
 
-| Description | Badge |
-| :----------- | :----------- |
 | Continuous integration | [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
 | Static analysis | [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
 | Community | [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/qEaCGWR7nb) |
