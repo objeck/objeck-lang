@@ -1,7 +1,7 @@
 # Objeck 
 
 <p align="center">
-  <img src="docs/images/gear_wheel_256.png" alt="An Objeck"/>
+  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" alt="An Objeck"/></a>
 </p>
 
 <p align="center">
