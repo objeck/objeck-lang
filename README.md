@@ -7,7 +7,7 @@
 <table border="1" width="100%" ID="Table2" style="margin: 0px;">
   <tr>
     <td>Continuous integration</td>
-    <td>[![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml)</td>
+    <td><a href='https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml'><img src='https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg' alt='C/C++ CI'/></a>
   </tr>
   <tr>
     <td>Continuous integration</td>
