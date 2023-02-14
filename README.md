@@ -1,6 +1,5 @@
 # Objeck
 
-| <!-- --> | <!-- --> |
 | --- | --- |
 | Continuous integration | [![C/C++ CI](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml) |
 | Static analysis | [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/10314.svg)](https://scan.coverity.com/projects/objeck) |
