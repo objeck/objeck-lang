@@ -121,7 +121,8 @@ class Parser {
   }
   // get line position of current token
   inline int GetLinePosition() {
-    return scanner->GetToken()->GetLinePosition();
+    const int line_pos = scanner->GetToken()->GetLinePosition();
+    return line_pos > -1 ? line_pos : 0;
   }
   // get filename of current token
   inline const std::wstring GetFileName() {
