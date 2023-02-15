@@ -43,7 +43,7 @@ Examples on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
 * JIT compiled
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows 10/11, Linux and macOS
-* [Online tutorial](https://www.objeck.org/getting_started.html).
+* [Online tutorial](https://www.objeck.org/getting_started.html)
 * [API documentation](https://www.objeck.org/doc/api/index.html)
 
 ## Libraries
