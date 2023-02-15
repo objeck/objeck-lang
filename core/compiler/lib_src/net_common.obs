@@ -948,7 +948,7 @@ bundle Web.HTTP.Server {
 						callback_str := callback->GetName();
 					};
 
-					"implement='{$callback_str}', port={$port}, cert='{$cert}', cert_key='{$cert_key}', cert_passwd='{$cert_key_passwd}'"->PrintLine();
+					"=> Web server config: impl_class='{$callback_str}', port={$port}, cert='{$cert}', cert_key='{$cert_key}', cert_passwd='{$cert_key_passwd}'"->PrintLine();
 				};
 
 				if(callback <> Nil & port > 0 & cert <> Nil & cert_key <> Nil & cert_key_passwd <> Nil) {
@@ -989,7 +989,7 @@ bundle Web.HTTP.Server {
 				host := TCPSocket->HostName();
 
 				if(@is_debug) {
-					"Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
+					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
 				while(true) {
@@ -1041,7 +1041,7 @@ bundle Web.HTTP.Server {
 				host := TCPSocket->HostName();
 
 				if(@is_debug) {
-					"Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
+					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
                 
 				while(true) {
