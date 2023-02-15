@@ -11,7 +11,7 @@
 <h1 align="center">Objeck, it's Programmable</h1>
 
 ```ruby
-class Hello {
+class HelloWorld {
   function : Main(args : String[]) ~ Nil {
     hellos := ["Hello World", "Καλημέρα κόσμε", "こんにちは 世界"];
     each(i : hellos) {
