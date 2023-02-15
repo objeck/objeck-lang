@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" alt="An Objeck"/></a>
+  <a href="https://www.objeck.org"><img src="docs/images/vcr.png" alt="An Objeck"/></a>
 </p>
 
 <p align="center">
@@ -8,7 +8,7 @@
   <a href="https://discord.gg/qEaCGWR7nb"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" alt="Discord"></a>
 </p>
 
-<h1 align="center">Objeck a Progamming Language</h1>
+<h1 align="center">Objeck, a Progammable Language</h1>
 
 ```ruby
 class Hello {
