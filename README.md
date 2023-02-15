@@ -10,9 +10,6 @@
 
 <h1 align="center">Objeck a Progamming Language</h1>
 
-## Overview
-An object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
-
 ```ruby
 class Hello {
   function : Main(args : String[]) ~ Nil {
