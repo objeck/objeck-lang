@@ -560,30 +560,30 @@ bundle Web.HTTP.Server {
 				};
 
 				# parse request
-				request_verb : String; request_url : String;
+				request_verb : String; request_path : String;
 				if(request->Size() > 0) {
 					request_parts := request->Split(" ");
 					if(request_parts->Size() = 3) {
 						request_verb := request_parts[0];
-						request_url := request_parts[1];
+						request_path := request_parts[1];
 					};
 				};
 
 				# verify request
-				if(request_verb <> Nil & request_url <> Nil & <>request_url->IsEmpty()) {
+				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
 					# get request headers
 					request_headers := GetHeaders();
 
 					# GET and HEAD request
 					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
-						if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
-							request_url := "/index.html";
+						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+							request_path := "/index.html";
 						};
 
 						# write response
-						http_request := Request->New(request_url, request_headers);
-						http_response := Response->New(@server_config, http_request->GetUrl());
+						http_request := Request->New(request_path, request_headers);
+						http_response := Response->New(@server_config, http_request->GetPath());
 						
 						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
 							@server_config->ProcessGet(http_request, http_response);
@@ -599,13 +599,13 @@ bundle Web.HTTP.Server {
 								buffer := WebCommon->ReadPost(content_length, @client);
 								
 								# retrieve content
-								if(request_url = Nil | request_url->Equals("/") | request_url->Has("..")) {
-									request_url := "/index.html";
+								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+									request_path := "/index.html";
 								};
 
 								# write response
-								http_request := Request->New(request_url, request_headers, buffer);
-								http_response := Response->New(@server_config, http_request->GetUrl());
+								http_request := Request->New(request_path, request_headers, buffer);
+								http_response := Response->New(@server_config, http_request->GetPath());
 								
 								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
 									@server_config->ProcessPost(http_request, http_response);
