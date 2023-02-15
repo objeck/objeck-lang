@@ -37,6 +37,7 @@ Examples on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
   * Lambda expressions
   * First-class functions
 * Type inference
+* Native Unicode support
 * Native support for threads, sockets, files, time, etc.
 * Garbage collection
 * JIT support
