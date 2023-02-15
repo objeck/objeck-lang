@@ -989,7 +989,7 @@ bundle Web.HTTP.Server {
 				host := TCPSocket->HostName();
 
 				if(@is_debug) {
-					"Running on '{$host} ('{$platform}) port '{$port}..."->PrintLine();
+					"Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
 				while(true) {
@@ -1041,7 +1041,7 @@ bundle Web.HTTP.Server {
 				host := TCPSocket->HostName();
 
 				if(@is_debug) {
-					"Running on '{$host} ('{$platform}) port '{$port}..."->PrintLine();
+					"Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
                 
 				while(true) {
@@ -1345,18 +1345,18 @@ bundle Web.HTTP.Server {
 		}
 
 		method : Process(request : Request, response : Response) ~ Bool {
-			request_url : String;
+			request_path : String;
 			if(response->HasForwardAlias()) {
-				request_url := response->GetForwardAlias();
+				request_path := response->GetForwardAlias();
 			}
 			else {
-				request_url := request->GetUrl();
+				request_path := request->GetPath();
 			};
 
-			request_group_index := request_url->FindLast('.');
+			request_group_index := request_path->FindLast('.');
 			# alias
 			if(request_group_index > 0) {
-				request_group := request_url->SubString(request_group_index, request_url->Size() - request_group_index);
+				request_group := request_path->SubString(request_group_index, request_path->Size() - request_group_index);
 				if(request_group = Nil) {
 					return false;
 				};
@@ -1366,7 +1366,7 @@ bundle Web.HTTP.Server {
 					return false;
 				};
 
-				alias_str := request_url->SubString(1, request_url->Size() - 1);
+				alias_str := request_path->SubString(1, request_path->Size() - 1);
 				if(alias_str = Nil) {
 					return false;
 				};
@@ -1519,23 +1519,33 @@ bundle Web.HTTP.Server {
 	Web server request
 	~#
 	class Request {
-		@request_url : String;
+		@request_line : String;
+		@request_path : String;
+		@request_query : String;
+
 		@request_headers : Map<String, String>;
 		@request_params : Map<String, String>;
 		@cookies : Map<String, Cookie>;
 		@content : Byte[];
 
-		New(request_url : String, request_headers : Map<String, String>) {
-			@request_url := request_url;
+		New(request_line : String, request_headers : Map<String, String>) {
+			@request_line := request_line;
 			@request_headers := request_headers;
 
-			if(@request_url->StartsWith("/?")) {
-				@content := @request_url->SubString(2, @request_url->Size() - 2)->ToByteArray();
+			query_index := @request_line->Find('?');
+			if(query_index > 0) {
+				@request_path := @request_line->SubString(query_index);
+				query_index += 1;
+				@request_query := @request_line->SubString(query_index, @request_line->Size() - query_index);
+				@content := @request_query->ToByteArray();
+			}
+			else {
+				@request_path := request_line;
 			};
 		}
 
-		New(request_url : String, request_headers : Map<String, String>, content : Byte[]) {
-			@request_url := request_url;
+		New(request_line : String, request_headers : Map<String, String>, content : Byte[]) {
+			@request_line := request_line;
 			@request_headers := request_headers;
 			@content := content;
 		}
@@ -1603,7 +1613,9 @@ bundle Web.HTTP.Server {
 					each(i : param_names_values) {
 						param_name_value := param_names_values[i]->Split('=');
 						if(param_name_value->Size() = 2) {
-							@request_params->Insert(param_name_value[0], param_name_value[1]);
+							name := param_name_value[0];
+							value := Url->Decode(param_name_value[1]);
+							@request_params->Insert(name, value);
 						};
 					};
 				}
@@ -1685,11 +1697,27 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Gets the request URL
-		@return request URL
+		Gets the request line
+		@return request line
 		~#
-		method : public : GetUrl() ~ String {
-			return @request_url;
+		method : public : GetRequestLine() ~ String {
+			return @request_line;
+		}
+
+		#~
+		Gets the request path
+		@return request path
+		~#
+		method : public : GetPath() ~ String {
+			return @request_path;
+		}
+
+		#~
+		Gets the request query
+		@return request query
+		~#
+		method : public : GetQuery() ~ String {
+			return @request_query;
 		}
 
 		#~
@@ -1714,7 +1742,7 @@ bundle Web.HTTP.Server {
 		@response_headers : Map<String, String>;
 		@cookies : Map<String, Cookie>;
 		@server_config : WebServerConfig;
-		@request_url : String;
+		@request_path : String;
 		@forward_alias_name : String;
 
 		enum Compression := 100 {
@@ -1724,9 +1752,9 @@ bundle Web.HTTP.Server {
 			BR
 		}
 
-		New(server_config : WebServerConfig, request_url : String) {
+		New(server_config : WebServerConfig, request_path : String) {
 			@server_config := server_config;
-			@request_url := request_url;
+			@request_path := request_path;
 
 			@code := 400;
 			@compression := Compression->NONE;
@@ -1776,8 +1804,8 @@ bundle Web.HTTP.Server {
 		@return true if handler exists, false otherwise
 		~#
 		method : public : HasStaticHandler() ~ Bool {
-			if(@server_config <> Nil & @request_url <> Nil) {
-				return @server_config->HasStaticHandler(@request_url);
+			if(@server_config <> Nil & @request_path <> Nil) {
+				return @server_config->HasStaticHandler(@request_path);
 			};
 
 			return false;
@@ -1790,7 +1818,10 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : SetForwardAlias(name : String) ~ Bool {
 			if(@server_config <> Nil & @server_config->HasStaticHandler(name)) {
-				@forward_name := "/";
+				@forward_name := "";
+				if(<>name->StartsWith('/')) {
+					@forward_name += '/';
+				};
 				@forward_name += name;
 
 				return true;
@@ -1934,6 +1965,30 @@ bundle Web.HTTP.Server {
 		method : public : SetCodeContent(code : Int, content : String) ~ Nil {
 			@code := code;
 			@content := content->ToByteArray();
+		}
+
+		#~
+		Set response code and content
+		@param code response code
+		@param type content type
+		@param content response content
+		~#
+		method : public : SetCodeTypeContent(code : Int, type : String, content : Byte[]) ~ Nil {
+			@code := code;
+			@content := content;
+			SetContentType(type);
+		}
+
+		#~
+		Set response code and content
+		@param code response code
+		@param type content type
+		@param content response content
+		~#
+		method : public : SetCodeTypeContent(code : Int, type : String, content : String) ~ Nil {
+			@code := code;
+			@content := content->ToByteArray();
+			SetContentType(type);
 		}
 
 		#~
