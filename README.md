@@ -1,3 +1,5 @@
+# Objeck
+
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" alt="An Objeck"/></a>
 </p>
@@ -8,7 +10,6 @@
   <a href="https://discord.gg/qEaCGWR7nb"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" alt="Discord"></a>
 </p>
 
-# Objeck
 An object-oriented programming language with functional features. Objeck emphasizes, expression, simplicity, portability, and scalability. The programming environment consists of a compiler, virtual machine, and command line debugger with IDE plugins.
 
 ```ruby
