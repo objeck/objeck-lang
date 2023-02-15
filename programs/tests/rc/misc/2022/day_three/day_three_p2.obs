@@ -1,0 +1,106 @@
+use Collection.Generic;
+
+class AoC {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			inputs := ReadInput(args[0])<String>;
+
+			index := item_sum := 0;
+			three_elves := String->New[3];
+			each(i : inputs) {
+				input := inputs->Get(i);
+
+				if((i + 1) % 3 = 0) {
+					three_elves[index] := input;
+					item_value := CarryThree(three_elves);
+					Runtime->Assert(item_value > 0);
+					item_sum += item_value;
+
+					group := i + 1;
+					"{$group}: {$item_value}"->PrintLine();					
+					
+					# reset
+					index := 0;
+				}
+				else {
+					three_elves[index++] := input;
+				};
+			};
+			"---\n{$item_sum}"->PrintLine();
+		};
+	}
+
+	function : CarryThree(three_elves : String[]) ~ Int {
+		first_elf := three_elves[0];
+
+		first_elf_set := Map->New()<IntHolder, IntHolder>;
+		each(i : first_elf) {
+			elf_key := first_elf->Get(i);
+
+			key : Int;
+			if(elf_key->IsLower()) {
+				key := (elf_key - 96)->ToInt();
+			}
+			else {
+				key := (elf_key - 38)->ToInt();
+			};
+
+			first_elf_set->Insert(key, 0);
+		};
+
+		for(i := 1; i < three_elves->Size(); i += 1;) {
+			elf := three_elves[i];
+
+			each(j : elf) {
+				elf_key := elf->Get(j);
+
+				key : Int;
+				if(elf_key->IsLower()) {
+					key := (elf_key - 96)->ToInt();
+				}
+				else {
+					key := (elf_key - 38)->ToInt();
+				};
+
+				elf_count := first_elf_set->Find(key);
+				if(elf_count <> Nil) {
+					if(elf_count->Get() = i - 1) {
+						elf_count->Add(1);
+					};
+				};
+			};
+		};
+
+		first_elf_key_values := first_elf_set->GetKeyValues()<Pair<IntHolder, IntHolder>>;
+		each(i : first_elf_key_values) {
+			first_elf_key_value := first_elf_key_values->Get(i)<Pair<IntHolder, IntHolder>>;
+			first_elf_key := first_elf_key_value->GetFirst();
+			first_elf_value := first_elf_key_value->GetSecond();
+
+			if(first_elf_value = 2) {
+				return first_elf_key;
+			};
+		};
+
+		return -1;
+	}
+
+	function : ReadInput(file : String) ~ Vector<String> {
+		inputs := Vector->New()<String>;
+
+		reader := System.IO.Filesystem.FileReader->New(file);
+		leaving {
+			reader->Close();
+		};
+
+		line := reader->ReadLine();
+		while(line <> Nil) {
+			if(<>line->IsEmpty()) {
+				inputs->AddBack(line);
+			};
+			line := reader->ReadLine();
+		};
+
+		return inputs;
+	}
+}

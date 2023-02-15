@@ -1,0 +1,192 @@
+use Collection.Generic;
+
+class AoC {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			stacks_max := 9;
+
+			stacks := CompareList->New[stacks_max]<CharHolder>;
+			each(i : stacks_max) {
+				stacks[i] := CompareList->New()<CharHolder>;
+			};
+			
+			# read data
+			inputs := ReadData(args[0])<String>;
+
+			# load crates
+			line_nbr := LoadCrates(inputs, stacks);
+			PrintStacks(stacks);
+
+			# load instructions
+			instrs := LoadInstructions(inputs, line_nbr);
+
+			# process instructions
+			ProcessInstructions(instrs, stacks);
+		};
+	}
+
+	function : ProcessInstructions(instrs : Vector<IntArrayHolder>, stacks : CompareList[]<CharHolder>) ~ Nil {
+		order_stack := Stack->New()<CharHolder>;
+
+		each(i : instrs) {
+			instr := instrs->Get(i)->Get();
+
+			from_pos := instr[1];
+			to_pos := instr[2];
+			count := instr[0] + 1;
+
+			"[{$from_pos}→{$to_pos}:{$count}]"->PrintLine();
+			"---"->PrintLine();
+
+			from_list := stacks[from_pos];
+			to_list := stacks[to_pos];
+
+			order_stack->Empty();
+			each(j : count) {
+				value := from_list->Back();
+				from_list->RemoveBack();			
+				order_stack->Push(value);	
+			};
+
+			while(<>order_stack->IsEmpty()) {
+				to_list->AddBack(order_stack->Pop());
+			};
+
+			PrintStacks(stacks);
+		};
+
+		PrintStackTops(stacks);
+	}
+
+	function : LoadCrates(inputs : Vector<String>, stacks : CompareList[]<CharHolder>) ~ Int {
+		line_nbr := 0;
+
+		done := false;
+		instrs : Vector<IntArrayHolder>;
+		for(; <>done & line_nbr < inputs->Size(); line_nbr += 1;) {
+			input := inputs->Get(line_nbr);
+			if(input->IsEmpty()) {
+				done := true;
+			}
+			else {
+				each(line_pos : input) {
+					char := input->Get(line_pos);
+					if(char->IsChar()) {
+						select(line_pos) {
+							label 1: {
+								stacks[0]->AddFront(char);
+							}
+
+							label 5: {
+								stacks[1]->AddFront(char);
+							}
+
+							label 9: {
+								stacks[2]->AddFront(char);
+							}
+
+							label 13: {
+								stacks[3]->AddFront(char);
+							}
+
+							label 17: {
+								stacks[4]->AddFront(char);
+							}
+
+							label 21: {
+								stacks[5]->AddFront(char);
+							}
+
+							label 25: {
+								stacks[6]->AddFront(char);
+							}
+
+							label 29: {
+								stacks[7]->AddFront(char);
+							}
+
+							label 33: {
+								stacks[8]->AddFront(char);
+							}
+						};
+					};
+				};
+			};
+		};
+
+		return line_nbr;
+	}
+
+	function : LoadInstructions(inputs : Vector<String>, line_nbr : Int) ~ Vector<IntArrayHolder> {
+		instrs := Vector->New()<IntArrayHolder>;
+
+		for(; line_nbr < inputs->Size(); line_nbr += 1;) {
+			instr := Int->New[3];
+			instr_pos := 0;
+
+			input := inputs->Get(line_nbr);
+			each(line_pos : input) {
+				char := input->Get(line_pos);
+				if(char->IsDigit()) {
+					str_digit := "";
+					while(char->IsDigit()) {
+						str_digit->Append(char);
+						char := input->Get(++line_pos);
+					};
+					instr[instr_pos++] := str_digit->ToInt() - 1;
+				};
+			};
+			instrs->AddBack(IntArrayHolder->New(instr));
+		};
+
+		return instrs;
+	}
+
+	function : PrintStackTops(stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : stacks) {
+			stack := stacks[i];
+			if(<>stack->IsEmpty()) {
+				stack->Back()->Print();
+			};
+		};
+		'\n'->Print();
+	}
+
+	function : PrintStacks(stacks : CompareList[]<CharHolder>) ~ Nil {
+		each(i : stacks) {
+			stack := stacks[i];
+
+			stack->Rewind();
+			"{$i}: "->Print();
+			while(stack->More()) {
+				char := stack->Get();
+				char->Print();
+				# next
+				stack->Next();
+
+				if(stack->More()) {
+					", "->Print();
+				};
+			};
+			'\n'->Print();
+		};
+		"======"->PrintLine();
+	}
+
+	function : ReadData(file : String) ~ Vector<String> {
+		inputs := Vector->New()<String>;
+
+		reader := System.IO.Filesystem.FileReader->New(file);
+		leaving {
+			reader->Close();
+		};
+
+		line_nbr := reader->ReadLine();
+		while(line_nbr <> Nil) {
+			inputs->AddBack(line_nbr);
+			line_nbr := reader->ReadLine();
+		};
+
+		return inputs;
+	}
+}
