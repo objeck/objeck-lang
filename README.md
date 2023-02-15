@@ -71,7 +71,7 @@ Examples on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
 ## Code
-Objeck can be built for a variety of targets.
+Objeck can be built for a variety of targets. The language is implemented in C++ and assembly (i.e., JIT machine code).
 
 ### Linux (x64, ARM64)
 *  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
