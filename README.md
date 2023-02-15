@@ -37,8 +37,8 @@ Examples on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
   * Lambda expressions
   * First-class functions
 * Type inference
-* Native Unicode support
-* Native support for threads, sockets, files, time, etc.
+* Unicode support
+* OS-level support for threads, sockets, files, time, etc.
 * Garbage collection
 * JIT support
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
