@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/vcr.png" alt="An Objeck"/></a>
+  <a href="https://www.objeck.org"><img src="docs/images/vcr2.png" alt="An Objeck"/></a>
 </p>
 
 <p align="center">
