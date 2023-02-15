@@ -20,7 +20,7 @@ class Hello {
 }
 ```
 
-Examples on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck).
+More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc).
 
 ## Key Features
 * Object-oriented
