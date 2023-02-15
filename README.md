@@ -13,9 +13,10 @@
 ```ruby
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World" → PrintLine();
-    "Καλημέρα κόσμε" → PrintLine();
-    "こんにちは 世界" → PrintLine();
+    hellos := ["Hello World", "Καλημέρα κόσμε", "こんにちは 世界"];
+    each(i : hellos) {
+      hellos[i]->PrintLine();
+    };
   }
 }
 ```
