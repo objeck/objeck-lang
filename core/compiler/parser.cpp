@@ -4689,13 +4689,20 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
   NextToken();
 
+  // add count entry
+  std::wstring bound_ident;
+  if(bind_var) {
+    bound_ident = count_ident;
+    count_ident = L'#' + count_ident + L"_index";
+  }
+  std::wstring count_scope_name = GetScopeName(count_ident);
+
   // add bind variable entry
   Assignment* bind_assign = nullptr;
   if(bind_var) {
-    const std::wstring bound_ident = L'#' + count_ident + L"_index";
     const std::wstring bind_scope_name = GetScopeName(bound_ident);
     Type* bind_left_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
-    SymbolEntry* bind_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, bind_scope_name,
+    SymbolEntry* bind_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, bind_scope_name, 
                                                                        bind_left_type, false, current_method != nullptr);
 #ifdef _DEBUG
     Debug(L"Adding bind variable: '" + bind_scope_name + L"'", depth + 2);
@@ -4707,9 +4714,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                           bind_left_var, nullptr);
   }
-  
+
   // add count entry
-  const std::wstring count_scope_name = GetScopeName(count_ident);
   Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
   SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, 
                                                                       count_type, false, current_method != nullptr);
