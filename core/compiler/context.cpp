@@ -3957,7 +3957,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       }
       // object instance
       else {
-        // TOOD: Get(..) method call expression with index parameter (have index)
+        // TOOD: check for Get(..) + make method call expression with index parameter (have index)
       }
       
       // TODO: a rabbit jumps out of a hat
