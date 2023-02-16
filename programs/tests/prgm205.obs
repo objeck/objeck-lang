@@ -16,18 +16,22 @@ class Test {
 ~#
 
 		# ===
-#~
+
 		strings := Collection.Generic.Vector->New()<String>;
 		strings->AddBack("abd");
 		strings->AddBack("efg");
 		strings->AddBack("hij");
 
+		# access to the index
 		each(i : strings) {
 			string := strings->Get(i);
+			string += ", ";
+			string += i;
+			string += "23";
 			string->PrintLine();
 		};
-~#
-		
+
+#~		
 		# ---
 
 		strings := Collection.Generic.Vector->New()<String>;
@@ -36,9 +40,11 @@ class Test {
 		strings->AddBack("hij");
 		strings->AddBack("lmn");
 
+		# no access to the index
 		each(string := strings) {
+			string += ", 123";
 			string->PrintLine();
 		};
-
+~#
 	}
 }
