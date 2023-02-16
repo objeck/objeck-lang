@@ -3946,7 +3946,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   in_loop++;
   StatementList* statements = for_stmt->GetStatements();
   if(for_stmt->IsBoundVariable()) {
-    // TODO: magic tricks
+    // create bound variable and add an assignment statement
     CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     if(cond_expr) {
       MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
@@ -3960,7 +3960,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
         // TOOD: Get(..) method call with index expression parameter (have index)
       }
       
-      // TODO: a rabbit appears
+      // TODO: a rabbit jumps out of a hat
       Expression* right = nullptr;
 
       // build and add assignment
@@ -3968,7 +3968,6 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       Assignment* assignment = TreeFactory::Instance()->MakeAssignment(for_stmt->GetFileName(), -1, -1, -1, -1, left, right);
       statements->AddFrontStatement(assignment);
     }
-    // TODO: else, however this is built from the parser vs. source
   }
   AnalyzeStatements(statements, depth + 1);
   in_loop--;
