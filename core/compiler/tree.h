@@ -3368,6 +3368,13 @@ namespace frontend {
       return tmp;
     }
 
+    For* MakeFor(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Statement* pre_stmt, Expression* cond_expr,
+                 Statement* update_stmt, const std::wstring &bind_var_name, StatementList* stmts) {
+      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmt, cond_expr, update_stmt, stmts);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
     CriticalSection* MakeCriticalSection(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* var, StatementList* stmts) {
       CriticalSection* tmp = new CriticalSection(file_name, line_num, line_pos, end_line_num, end_line_pos, var, stmts);
       statements.push_back(tmp);
