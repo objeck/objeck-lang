@@ -3926,6 +3926,7 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 {
   current_table->NewScope();
+  
   // pre
   AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
 
@@ -3943,8 +3944,35 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   
   // statements
   in_loop++;
-  AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
+  StatementList* statements = for_stmt->GetStatements();
+  if(for_stmt->IsBoundVariable()) {
+    // TODO: magic tricks
+    CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+    if(cond_expr) {
+      MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
+      SymbolEntry* mthd_call_entry = mthd_call_expr->GetEntry();
+      // array
+      if(mthd_call_entry && mthd_call_entry->GetType()->GetDimension() > 0) {
+        // TODO: variable with index expression (have index)
+      }
+      // object instance
+      else {
+        // TOOD: Get(..) method call with index expression parameter (have index)
+      }
+      
+      // TODO: a rabbit appears
+      Expression* right = nullptr;
+
+      // build and add assignment
+      Variable* left = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), -1, -1, for_stmt->GetBoundVariableName());
+      Assignment* assignment = TreeFactory::Instance()->MakeAssignment(for_stmt->GetFileName(), -1, -1, -1, -1, left, right);
+      statements->AddFrontStatement(assignment);
+    }
+    // TODO: else, however this is built from the parser vs. source
+  }
+  AnalyzeStatements(statements, depth + 1);
   in_loop--;
+
   current_table->PreviousScope();
 }
 
