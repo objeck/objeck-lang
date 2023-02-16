@@ -1,0 +1,8 @@
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		url := Web.HTTP.Url->New("https://www.nasa.org/index.html?a=b&c=d#foo");
+		url->ToString()->PrintLine();
+	}
+}
