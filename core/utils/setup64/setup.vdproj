@@ -87,12 +87,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_08CC6524F4A748538C0525B1C2A029B5"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_09285BC19B6B453C8A19D2D703513E74"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -291,6 +285,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_235D9FAA64DE446B993591F25781EB30"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -310,12 +310,6 @@
         "Entry"
         {
         "MsmKey" = "8:_24EB84698FB64D979BAEC057EA9B3179"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_25279C72FDAC4638BD45E1C19A91C6C3"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -771,12 +765,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_613272F1B66443AC98217BB9441D803A"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_6326786E16744A26B54DC3A7FF711F34"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -891,13 +879,13 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_71D9F41076064618AD1DC5489B89979B"
+        "MsmKey" = "8:_72060BBEE4844FDBA0962536DAD0DF32"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
-        "MsmKey" = "8:_72060BBEE4844FDBA0962536DAD0DF32"
+        "MsmKey" = "8:_72C64F0A450C455C9B2F5A38BA4AB579"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1077,12 +1065,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_908F293C346C463ABD40C1EF88549725"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_90B19DA83DA14062927105674F795D25"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1191,12 +1173,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_AA63019373F94925B0BF596BCEFD9BCC"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_ADB4E5647BDA45FDB3936274FC70E64B"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1288,12 +1264,6 @@
         "Entry"
         {
         "MsmKey" = "8:_BE8FFE76D6E44FAFB933E0E94C97B62B"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_C143FA7FFEFD4A2289494416681279AA"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -2135,26 +2105,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_08CC6524F4A748538C0525B1C2A029B5"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\banner.jpg"
-            "TargetName" = "8:banner.jpg"
-            "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_09285BC19B6B453C8A19D2D703513E74"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\api\\web.http.server-requestpagehandler.html"
@@ -2815,6 +2765,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_220F6D8BAEB8410E901F8380677E0CC2"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\banner.jpg"
+            "TargetName" = "8:banner.jpg"
+            "Tag" = "8:"
+            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_235D9FAA64DE446B993591F25781EB30"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\examples\\visitor_20.obs"
@@ -2881,26 +2851,6 @@
             "TargetName" = "8:data.json-jsonbuilder.html"
             "Tag" = "8:"
             "Folder" = "8:_3CB55EF833954EAF975ADC2C724AB562"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_25279C72FDAC4638BD45E1C19A91C6C3"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\readme.ico"
-            "TargetName" = "8:readme.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4415,26 +4365,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_613272F1B66443AC98217BB9441D803A"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\objeck.ico"
-            "TargetName" = "8:objeck.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6326786E16744A26B54DC3A7FF711F34"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\examples\\2d_game_13.obs"
@@ -4815,12 +4745,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_71D9F41076064618AD1DC5489B89979B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_72060BBEE4844FDBA0962536DAD0DF32"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\examples.ico"
-            "TargetName" = "8:examples.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\api\\game.framework-position.html"
+            "TargetName" = "8:game.framework-position.html"
             "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
+            "Folder" = "8:_3CB55EF833954EAF975ADC2C724AB562"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4835,12 +4765,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_72060BBEE4844FDBA0962536DAD0DF32"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_72C64F0A450C455C9B2F5A38BA4AB579"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\api\\game.framework-position.html"
-            "TargetName" = "8:game.framework-position.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\objeck.ico"
+            "TargetName" = "8:objeck.ico"
             "Tag" = "8:"
-            "Folder" = "8:_3CB55EF833954EAF975ADC2C724AB562"
+            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -5435,26 +5365,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_908F293C346C463ABD40C1EF88549725"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\toolset.ico"
-            "TargetName" = "8:toolset.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_90B19DA83DA14062927105674F795D25"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\api\\game.sdl2-hints.html"
@@ -5815,26 +5725,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AA63019373F94925B0BF596BCEFD9BCC"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\guide.ico"
-            "TargetName" = "8:guide.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ADB4E5647BDA45FDB3936274FC70E64B"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\examples\\serial_14.obs"
@@ -6141,26 +6031,6 @@
             "TargetName" = "8:game.sdl2-imageflags.html"
             "Tag" = "8:"
             "Folder" = "8:_3CB55EF833954EAF975ADC2C724AB562"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C143FA7FFEFD4A2289494416681279AA"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\icons\\api.ico"
-            "TargetName" = "8:api.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_6FADC4E13587494FBC4E6E59F69DC6E7"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -8119,7 +7989,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{C9E27093-26C6-4E2D-A162-87F4925D07BC}"
-        "PackageCode" = "8:{7D68BA65-7804-432F-8E78-70760C4E8A5E}"
+        "PackageCode" = "8:{5E13F9B1-3475-468E-87A9-1A0F8572B961}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -8264,7 +8134,7 @@
             "Target" = "8:_8F4CD9F429F2405794B8402066909883"
             "Folder" = "8:_5A9EBD748DA546DBB2FF6CCF939DD67C"
             "WorkingFolder" = "8:_B79B2A6BD3C243269BDA9F5CBBDD5F37"
-            "Icon" = "8:_613272F1B66443AC98217BB9441D803A"
+            "Icon" = "8:_72C64F0A450C455C9B2F5A38BA4AB579"
             "Feature" = "8:"
             }
         }
@@ -8295,7 +8165,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -8333,7 +8203,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "CopyrightWarning"
@@ -8382,7 +8252,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "InstallAllUsersVisible"
@@ -8418,7 +8288,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -8441,7 +8311,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "EulaText"
@@ -8498,7 +8368,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "ShowProgress"
@@ -8543,7 +8413,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "CopyrightWarning"
@@ -8592,7 +8462,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -8615,7 +8485,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "EulaText"
@@ -8663,7 +8533,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -8701,7 +8571,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "ShowProgress"
@@ -8746,7 +8616,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_08CC6524F4A748538C0525B1C2A029B5"
+                            "Value" = "8:_220F6D8BAEB8410E901F8380677E0CC2"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "UpdateText"
