@@ -426,7 +426,7 @@ namespace frontend {
       return statements;
     }
 
-    void AddFrontStatement(Statement* s) {
+    void PrependStatement(Statement* s) {
       statements.insert(statements.begin(), s);
     }
 
@@ -1623,15 +1623,15 @@ namespace frontend {
     Statement* pre_stmt;
     Expression* cond_expr;
     Statement* update_stmt;
-    std::wstring bind_var_name;
+    Assignment* bind_assign;
     StatementList* statements;
 
     For(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-        Statement* pre, Expression* cond, Statement* update, const std::wstring& bind_name, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+        Statement* pre, Expression* cond, Statement* update, Assignment* bind_assignment, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       pre_stmt = pre;
       cond_expr = cond;
       update_stmt = update;
-      bind_var_name = bind_name;
+      bind_assign = bind_assignment;
       statements = stmts;
     }
 
@@ -1640,6 +1640,7 @@ namespace frontend {
       pre_stmt = pre;
       cond_expr = cond;
       update_stmt = update;
+      bind_assign = nullptr;
       statements = stmts;
     }
 
@@ -1663,12 +1664,12 @@ namespace frontend {
       return update_stmt;
     }
 
-    bool IsBoundVariable() {
-      return !bind_var_name.empty();
+    bool IsBoundAssignment() {
+      return bind_assign != nullptr;
     }
 
-    const std::wstring GetBoundVariableName() {
-      return bind_var_name;
+    Assignment* GetBoundAssignment() {
+      return bind_assign;
     }
 
     StatementList* GetStatements() {
@@ -3391,8 +3392,8 @@ namespace frontend {
     }
 
     For* MakeFor(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Statement* pre_stmt, Expression* cond_expr,
-                 Statement* update_stmt, const std::wstring &bind_var_name, StatementList* stmts) {
-      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmt, cond_expr, update_stmt, bind_var_name, stmts);
+                 Statement* update_stmt, Assignment* bind_assignment, StatementList* stmts) {
+      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmt, cond_expr, update_stmt, bind_assignment, stmts);
       statements.push_back(tmp);
       return tmp;
     }

@@ -4675,7 +4675,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
-  const std::wstring count_ident = scanner->GetToken()->GetIdentifier();
+  std::wstring count_ident = scanner->GetToken()->GetIdentifier();
   int line_pos = GetLinePosition() + (int)count_ident.size();
   NextToken();
 
@@ -4689,24 +4689,40 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
   NextToken();
 
-  // add entry
+  // add count entry
+  std::wstring bound_ident;
   std::wstring count_scope_name;
-  
-  Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
+
+  // add bind variable entry
+  Assignment* bind_assign = nullptr;
   if(bind_var) {
-    count_scope_name += GetScopeName(L'#' + count_ident);
-    count_scope_name += L"_index";
-  }
-  else {
-    count_scope_name += GetScopeName(count_ident);
-  }
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, type, false, current_method != nullptr);
+    bound_ident = count_ident;
+    count_ident = L'#' + count_ident + L"_index";
 
+    const std::wstring bind_scope_name = GetScopeName(bound_ident);
+    Type* bind_left_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
+    SymbolEntry* bind_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, bind_scope_name,
+                                                                       bind_left_type, false, current_method != nullptr);
 #ifdef _DEBUG
-  Debug(L"Adding variable: '" + count_scope_name + L"', bind_var=" + (bind_var ? L"true" : L"false"), depth + 2);
+    Debug(L"Adding bind variable: '" + bind_scope_name + L"'", depth + 2);
 #endif
-
-  if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
+    if(!symbol_table->CurrentParseScope()->AddEntry(bind_entry)) {
+      ProcessError(L"Variable already defined in this scope: '" + bound_ident + L"'");
+    }
+    Variable* bind_left_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, bound_ident);
+    bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                          bind_left_var, nullptr);
+  }
+  
+  // add count entry
+  count_scope_name += GetScopeName(count_ident);
+  Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+  SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, 
+                                                                      count_type, false, current_method != nullptr);
+#ifdef _DEBUG
+  Debug(L"Adding count variable: '" + count_scope_name + L"'", depth + 2);
+#endif
+  if(!symbol_table->CurrentParseScope()->AddEntry(count_entry)) {
     ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
   }
 
@@ -4715,26 +4731,26 @@ For* Parser::ParseEach(bool reverse, int depth)
 
   // reverse iterator 
   if(reverse) {
-    Expression* list_right = nullptr;
+    Expression* left_pre_count = nullptr;
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
-      list_right = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
+      left_pre_count = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
       break;
 
     case TOKEN_INT_LIT:
-      list_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
+      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
       break;
 
     case TOKEN_FLOAT_LIT:
-      list_right = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
+      left_pre_count = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
       break;
 
     case TOKEN_IDENT: {
       const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
       const std::wstring ident = L"Size";
       const int line_pos = GetLinePosition() - 1;
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, 
-                                                           -1, -1, list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+      left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, 
+                                                               -1, -1, list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 
@@ -4747,10 +4763,10 @@ For* Parser::ParseEach(bool reverse, int depth)
     // pre-condition
     Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
     CalculatedExpression* pre_right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SUB_EXPR);
-    pre_right->SetLeft(list_right);
+    pre_right->SetLeft(left_pre_count);
     pre_right->SetRight(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1));
     Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_left, pre_right);
-    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, count_assign);
+    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_entry, count_assign);
 
     // conditional expression
     Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
@@ -4763,7 +4779,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     // update statement
     Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)count_ident.size(), count_ident);
     Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), update_left, update_right, SUB_ASSIGN_STMT);
+    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
+                                                                   update_left, update_right, SUB_ASSIGN_STMT);
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
@@ -4776,26 +4793,26 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
   // forward iterator 
   else {
-    Expression* list_right = nullptr;
+    Expression* left_pre_count = nullptr;
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
-      list_right = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
+      left_pre_count = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
       break;
 
     case TOKEN_INT_LIT:
-      list_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
+      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
       break;
 
     case TOKEN_FLOAT_LIT:
-      list_right = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
+      left_pre_count = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
       break;
 
     case TOKEN_IDENT: {
       const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
       const std::wstring ident = L"Size";
       const int line_pos = GetLinePosition();
-      list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-                                                           list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+      left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
+                                                               list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
     }
       break;
 
@@ -4809,13 +4826,13 @@ For* Parser::ParseEach(bool reverse, int depth)
     Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, 1, count_ident);
     Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
     Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_left, count_right);
-    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, count_assign);
+    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_entry, count_assign);
 
     // conditional expression
     Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, 1, count_ident);
     cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, LES_EXPR);
     cond_expr->SetLeft(list_left);
-    cond_expr->SetRight(list_right);
+    cond_expr->SetRight(left_pre_count);
     symbol_table->CurrentParseScope()->NewParseScope();
 
     // update statement
@@ -4834,8 +4851,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   if(bind_var) {
-    const std::wstring bind_var_name = GetScopeName(count_ident);
-    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, bind_var_name, statements);
+    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, bind_assign, statements);
   }
 
   return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, statements);
