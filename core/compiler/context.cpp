@@ -3396,7 +3396,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
             // validate backing
             ValidateGenericBacking(concrete_type, backing_name, static_cast<Expression*>(method_call));
           }
-          else {
+          else if(concrete_types.size() == 1) {
             // concrete type
             ResolveClassEnumType(concrete_type);
             const std::wstring concrete_name = concrete_type->GetName();
@@ -3933,6 +3933,7 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 {
   current_table->NewScope();
+  
   // pre
   AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
 
@@ -3950,8 +3951,69 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   
   // statements
   in_loop++;
-  AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
+  StatementList* statements = for_stmt->GetStatements();
+  if(for_stmt->IsBoundAssignment()) {
+    // create bound variable and add an assignment statement
+    CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+    if(cond_expr) {
+      MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
+      SymbolEntry* mthd_call_entry = mthd_call_expr->GetEntry();
+      
+      // TODO: build right-hand expression
+      Expression* right_expr = nullptr;
+      if(mthd_call_entry && mthd_call_entry->GetType()) {
+        // array variable
+        if(mthd_call_entry->GetType()->GetDimension() > 0) {
+          const std::wstring& entry_name = mthd_call_entry->GetName();
+          const size_t start = entry_name.rfind(':');
+          if(start != std::wstring::npos) {
+            const std::wstring& var_name = entry_name.substr(start + 1);
+            Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), var_name);
+
+            ExpressionList* indices = TreeFactory::Instance()->MakeExpressionList();
+            indices->AddExpression(static_cast<CalculatedExpression*>(for_stmt->GetExpression())->GetLeft());
+            variable->SetIndices(indices);
+          
+            // bind new variable
+            AnalyzeVariable(variable, mthd_call_entry, depth + 1);
+            right_expr = variable;
+          }
+        }
+        // object instance
+        else if(mthd_call_entry->GetType()->GetType() == CLASS_TYPE) {
+          const std::wstring& entry_name = mthd_call_entry->GetName();
+          const size_t start = entry_name.rfind(':');
+          if(start != std::wstring::npos) {
+            const std::wstring& var_name = entry_name.substr(start + 1);
+            const std::wstring ident = L"Get";
+
+            ExpressionList* params = TreeFactory::Instance()->MakeExpressionList();
+            params->AddExpression(static_cast<CalculatedExpression*>(for_stmt->GetExpression())->GetLeft());
+            MethodCall* right_mthd_call = TreeFactory::Instance()->MakeMethodCall(for_stmt->GetFileName(), for_stmt->GetLineNumber(), 
+                                                                                  for_stmt->GetLinePosition(), for_stmt->GetEndLineNumber(), 
+                                                                                  for_stmt->GetEndLinePosition(), -1, -1, var_name, ident, params);
+            
+            // bind new method call
+            AnalyzeMethodCall(right_mthd_call, depth);
+            right_expr = right_mthd_call;
+          }
+        }
+      }
+
+      // update bound assignment
+      if(right_expr) {
+        Assignment* assignment = for_stmt->GetBoundAssignment();
+        assignment->SetExpression(right_expr);
+        statements->PrependStatement(assignment);
+      }
+      else {
+        ProcessError(expression, L"Expected class or array type");
+      }
+    }
+  }
+  AnalyzeStatements(statements, depth + 1);
   in_loop--;
+
   current_table->PreviousScope();
 }
 
