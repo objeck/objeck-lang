@@ -3945,28 +3945,41 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   // statements
   in_loop++;
   StatementList* statements = for_stmt->GetStatements();
-  if(for_stmt->IsBoundVariable()) {
+  if(for_stmt->IsBoundAssignment()) {
     // create bound variable and add an assignment statement
     CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     if(cond_expr) {
       MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
       SymbolEntry* mthd_call_entry = mthd_call_expr->GetEntry();
-      // array
+      
+      // TODO: build right-hand expression
+      Expression* right_expr = nullptr;
+
+      // array variable
       if(mthd_call_entry && mthd_call_entry->GetType()->GetDimension() > 0) {
-        // TODO: make variable + add entry with index expression (have index)
+        const std::wstring& entry_name = mthd_call_entry->GetName();
+        const size_t start = entry_name.rfind(':');
+        if(start != std::wstring::npos) {
+          const std::wstring& var_name = entry_name.substr(start + 1);
+          Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), var_name);
+          
+          ExpressionList* indices = TreeFactory::Instance()->MakeExpressionList();
+          indices->AddExpression(static_cast<CalculatedExpression*>(for_stmt->GetExpression())->GetLeft());
+          variable->SetIndices(indices);
+          
+          AnalyzeVariable(variable, mthd_call_entry, depth + 1);
+          right_expr = variable;
+        }
       }
       // object instance
       else {
         // TOOD: check for Get(..) + make method call expression with index parameter (have index)
       }
       
-      // TODO: a rabbit jumps out of a hat
-      Expression* right = nullptr;
-
-      // build and add assignment
-      Variable* left = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), -1, -1, for_stmt->GetBoundVariableName());
-      Assignment* assignment = TreeFactory::Instance()->MakeAssignment(for_stmt->GetFileName(), -1, -1, -1, -1, left, right);
-      statements->AddFrontStatement(assignment);
+      // update bound assignment
+      Assignment* assignment = for_stmt->GetBoundAssignment();
+      assignment->SetExpression(right_expr);
+      statements->PrependStatement(assignment);
     }
   }
   AnalyzeStatements(statements, depth + 1);
