@@ -11,13 +11,14 @@
 <h1 align="center">Objeck, it's Programmable</h1>
 
 ```ruby
-class HelloWorld {
-  function : Main(args : String[]) ~ Nil {
-    hellos := ["Hello World", "Καλημέρα κόσμε", "こんにちは 世界"];
-    each(i : hellos) {
-      hellos[i]->PrintLine();
-    };
-  }
+class Hello {
+   function : Main(args : String[]) ~ Nil {
+      hiya := Collection.Generic.Vector->New()<String>;
+      hiya->AddBack("Hello World");
+      hiya->AddBack("Καλημέρα κόσμε");
+      hiya->AddBack("こんにちは 世界");
+      hiya->Each(\^(h) => h->PrintLine());
+   }
 }
 ```
 
