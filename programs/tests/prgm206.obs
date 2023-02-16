@@ -17,6 +17,29 @@ class Test {
 		map->Insert(7, "Seven");
 		map->Insert(9, "Nine");
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
-			
+	
+
+
+		each(i : nums) {
+			num := nums[i];
+			num->PrintLine();
+		};
+
+		# ---
+
+		each(num := nums) {
+			num->PrintLine();
+		};
+
+		strings := Collection.Generic.Vector->New()<String>;
+		strings->AddBack("abd");
+		strings->AddBack("efg");
+		strings->AddBack("hij");
+		strings->AddBack("lmn");
+
+		each(string := strings) {
+			string += ", 123";
+			string->PrintLine();
+		};		
 	}
 }
