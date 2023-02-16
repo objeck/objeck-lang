@@ -3396,7 +3396,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
             // validate backing
             ValidateGenericBacking(concrete_type, backing_name, static_cast<Expression*>(method_call));
           }
-          else {
+          else if(concrete_types.size() == 1) {
             // concrete type
             ResolveClassEnumType(concrete_type);
             const std::wstring concrete_name = concrete_type->GetName();
