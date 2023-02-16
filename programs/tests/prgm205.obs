@@ -1,0 +1,8 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		nums := [1, 3, 5, 7];
+		each(num := nums) {
+			num->PrintLine();
+		};
+	}
+}
