@@ -4711,8 +4711,8 @@ For* Parser::ParseEach(bool reverse, int depth)
       ProcessError(L"Variable already defined in this scope: '" + bound_ident + L"'");
     }
     Variable* bind_left_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, bound_ident);
-    bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                          bind_left_var, nullptr);
+    bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), 
+                                                          GetLinePosition(), bind_left_var, nullptr);
   }
 
   // add count entry
@@ -4729,7 +4729,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   Statement* pre_stmt = nullptr; CalculatedExpression* cond_expr = nullptr;
   Statement* update_stmt = nullptr; StatementList* statements = nullptr;
 
-  // reverse iterator 
+  // reverse iteration 
   if(reverse) {
     Expression* left_pre_count = nullptr;
     switch(GetToken()) {
