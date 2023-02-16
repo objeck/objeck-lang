@@ -4679,24 +4679,36 @@ For* Parser::ParseEach(bool reverse, int depth)
   int line_pos = GetLinePosition() + (int)count_ident.size();
   NextToken();
 
+  // colon with integer binding, assignment for variable binding
+  bool bind_var = false;
+  if(Match(TOKEN_ASSIGN)) {
+    bind_var = true;
+  }
+  else if(!Match(TOKEN_COLON)) {
+    ProcessError(L"Expected ':' or ':='", TOKEN_COLON);
+  }
+  NextToken();
+
   // add entry
+  std::wstring count_scope_name;
+  
   Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
-  const std::wstring count_scope_name = GetScopeName(count_ident);
+  if(bind_var) {
+    count_scope_name += GetScopeName(L'#' + count_ident);
+    count_scope_name += L"_index";
+  }
+  else {
+    count_scope_name += GetScopeName(count_ident);
+  }
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, type, false, current_method != nullptr);
 
 #ifdef _DEBUG
-  Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
+  Debug(L"Adding variable: '" + count_scope_name + L"', bind_var=" + (bind_var ? L"true" : L"false"), depth + 2);
 #endif
 
-  bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-  if(!was_added) {
+  if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
     ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
   }
-
-  if(!Match(TOKEN_COLON)) {
-    ProcessError(L"Expected ':'", TOKEN_COLON);
-  }
-  NextToken();
 
   Statement* pre_stmt = nullptr; CalculatedExpression* cond_expr = nullptr;
   Statement* update_stmt = nullptr; StatementList* statements = nullptr;
@@ -4819,6 +4831,11 @@ For* Parser::ParseEach(bool reverse, int depth)
     statements = ParseStatementList(depth + 1);
     symbol_table->CurrentParseScope()->PreviousParseScope();
     symbol_table->CurrentParseScope()->PreviousParseScope();
+  }
+
+  if(bind_var) {
+    const std::wstring bind_var_name = GetScopeName(count_ident);
+    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, bind_var_name, statements);
   }
 
   return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, statements);
