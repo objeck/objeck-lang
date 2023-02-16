@@ -4016,7 +4016,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
         assignment->SetExpression(right_expr);
         statements->PrependStatement(assignment);
       }
-      else {
+      else if(expression) {
         ProcessError(expression, L"Expected class or array type");
       }
     }
