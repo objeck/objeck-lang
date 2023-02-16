@@ -3953,11 +3953,11 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       SymbolEntry* mthd_call_entry = mthd_call_expr->GetEntry();
       // array
       if(mthd_call_entry && mthd_call_entry->GetType()->GetDimension() > 0) {
-        // TODO: variable with index expression (have index)
+        // TODO: make variable + add entry with index expression (have index)
       }
       // object instance
       else {
-        // TOOD: Get(..) method call with index expression parameter (have index)
+        // TOOD: Get(..) method call expression with index parameter (have index)
       }
       
       // TODO: a rabbit jumps out of a hat
