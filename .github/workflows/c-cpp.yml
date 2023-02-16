@@ -45,6 +45,7 @@ jobs:
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/serial_14.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/threads_6.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/visitor_20.obs; \
+        ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/loops_19.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
 
     - name: run-tests
@@ -66,6 +67,7 @@ jobs:
         ./obr ../../../../programs/deploy/serial_14.obe; \
         ./obr ../../../../programs/deploy/threads_6.obe; \
         ./obr ../../../../programs/deploy/visitor_20.obe; \
+        ./obr ../../../../programs/deploy/loops_19.obe; \
         ./obr ../../../../programs/deploy/xml_2.obe
 
     - name: doc-apis
