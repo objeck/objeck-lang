@@ -42,7 +42,9 @@ class Test {
 
 		reverse(string := strings) {
 			string += ", 123";
-			string->PrintLine();
+			each(letter := string) {
+				letter->PrintLine();
+			};
 		};
 	}
 }
