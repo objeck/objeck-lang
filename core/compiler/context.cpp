@@ -3934,10 +3934,10 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 {
   current_table->NewScope();
   
-  // pre
+  // pre-expression
   AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
 
-  // expression
+  // conditional expression
   Expression* expression = for_stmt->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
@@ -3946,17 +3946,27 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
   }
 
-  // update
+  // update expression
   AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
   
   // statements
   in_loop++;
   StatementList* statements = for_stmt->GetStatements();
+
+  // create bound variable and add assignment statement
   if(for_stmt->IsBoundAssignment()) {
-    // create bound variable and add an assignment statement
-    CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
-    if(cond_expr) {
-      MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
+    MethodCall* mthd_call_expr = nullptr;
+    if(for_stmt->GetExpression()->GetExpressionType() == LES_EXPR) {
+      CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+      mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
+    }
+    else {
+      Assignment* assign = static_cast<Declaration*>(for_stmt->GetPreStatement())->GetAssignment();
+      CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(assign->GetExpression());
+      mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetLeft());
+    }
+
+    if(mthd_call_expr) {
       SymbolEntry* mthd_call_entry = mthd_call_expr->GetEntry();
       
       // TODO: build right-hand expression

@@ -1,20 +1,22 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~
-		nums := [1.2, 3.4, 5.6, 7.8];
 
+		nums := [1.2, 3.4, 5.6, 7.8];
+#~
 		each(i : nums) {
 			num := nums[i];
 			num->PrintLine();
 		};
 
 		# ---
-
-		each(num := nums) {
-			num->PrintLine();
-		};
 ~#
 
+		reverse(num := nums) {
+#		each(num := nums) {
+			num->PrintLine();
+		};
+
+#~
 		# ===
 
 		strings := Collection.Generic.Vector->New()<String>;
@@ -30,8 +32,7 @@ class Test {
 			string += "23";
 			string->PrintLine();
 		};
-
-#~		
+~#		
 		# ---
 
 		strings := Collection.Generic.Vector->New()<String>;
@@ -41,10 +42,10 @@ class Test {
 		strings->AddBack("lmn");
 
 		# no access to the index
-		each(string := strings) {
+		reverse(string := strings) {
 			string += ", 123";
 			string->PrintLine();
 		};
-~#
+
 	}
 }
