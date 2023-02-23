@@ -266,7 +266,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   return mem;
 }
 
-size_t* MemoryManager::AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
+size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
 {
   if (size < 0) {
     std::wcerr << L">>> Invalid allocation size: " << size << L" <<<" << std::endl;

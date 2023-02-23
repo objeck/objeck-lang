@@ -2754,8 +2754,8 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
     context.stack_pos = stack_pos;
     context.call_method_by_name = APITools_MethodCall;
     context.call_method_by_id = APITools_MethodCallId;
-    context.alloc_array = MemoryManager::AllocateArray;
-    context.alloc_obj = MemoryManager::AllocateObject;
+    context.alloc_managed_array = MemoryManager::AllocateArray;
+    context.alloc_managed_obj = MemoryManager::AllocateObject;
     (*ext_func)(context);
   }
 #else
@@ -2780,8 +2780,8 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
     context.stack_pos = stack_pos;
     context.call_method_by_name = APITools_MethodCall;
     context.call_method_by_id = APITools_MethodCallId;
-    context.alloc_array = MemoryManager::AllocateArray;
-    context.alloc_obj = MemoryManager::AllocateObject;
+    context.alloc_managed_array = MemoryManager::AllocateArray;
+    context.alloc_managed_obj = MemoryManager::AllocateObject;
     (*ext_func)(context);
   }  
 #endif
