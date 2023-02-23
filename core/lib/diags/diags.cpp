@@ -44,7 +44,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void load_lib()
+  void load_lib(VMContext& context)
   {
 #ifdef _DEBUG
     OpenLogger("debug.log");

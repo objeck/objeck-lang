@@ -2530,7 +2530,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
  * Shared library operations
  ********************************/
 
-typedef void (*ext_load_def)();
+typedef void (*ext_load_def)(VMContext& callbacks);
 void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -2632,7 +2632,17 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     exit(1);
 #endif
   }
-  (*ext_load)();
+
+  // call function
+  VMContext context;
+  context.data_array = nullptr;
+  context.op_stack = nullptr;
+  context.stack_pos = nullptr;
+  context.call_method_by_id = APITools_MethodCallId;
+  context.call_method_by_name = APITools_MethodCall;
+  context.alloc_managed_array = MemoryManager::AllocateArray;
+  context.alloc_managed_obj = MemoryManager::AllocateObject;
+  (*ext_load)(context);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
@@ -2657,7 +2667,15 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #endif
   }
   // call function
-  (*ext_load)();
+  VMContext context;
+  context.data_array = nullptr;
+  context.op_stack = nullptr;
+  context.stack_pos = nullptr;
+  context.call_method_by_id = APITools_MethodCallId;
+  context.call_method_by_name = APITools_MethodCall;
+  context.alloc_managed_array = MemoryManager::AllocateArray;
+  context.alloc_managed_obj = MemoryManager::AllocateObject;
+  (*ext_load)(context);
 #endif
 }
 
@@ -2673,7 +2691,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
     // call unload function  
-    ext_load_def ext_unload = (ext_load_def)GetProcAddress(dll_handle, "unload_lib");
+    ext_unload_def ext_unload = (ext_unload_def)GetProcAddress(dll_handle, "unload_lib");
     if(!ext_unload) {
       std::wcerr << L">>> Runtime error calling function: unload_lib <<<" << std::endl;
       FreeLibrary(dll_handle);

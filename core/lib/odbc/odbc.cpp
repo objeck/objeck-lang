@@ -40,7 +40,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void load_lib() 
+  void load_lib(VMContext& context) 
   {
     if(!env) {
       SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
