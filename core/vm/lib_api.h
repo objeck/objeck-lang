@@ -546,7 +546,7 @@ inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
 }
 
 //
-// Gets the C++ string values from an Objeck string array reference (i.e. StringArrayHolder)
+// Gets the C++ string values from an Objeck string array reference (i.e. StringArrayHolder) by index
 //
 std::vector<std::wstring> APITools_GetStringsValues(VMContext& context, size_t index) {
   std::vector<std::wstring> strings_values;
