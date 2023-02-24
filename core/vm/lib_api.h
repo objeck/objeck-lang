@@ -53,8 +53,7 @@ struct VMContext {
   size_t* op_stack;
   long* stack_pos;
   // managed allocation routines
-  APITools_AllocateArray_Ptr alloc_managed_array;
-  APITools_AllocateObject_Ptr alloc_managed_obj;
+  APITools_AllocateArray_Ptr alloc_managed_array;  APITools_AllocateObject_Ptr alloc_managed_obj;
   // method call routines
   APITools_MethodCallByName_Ptr call_method_by_name;
   APITools_MethodCallById_Ptr call_method_by_id;
@@ -63,9 +62,9 @@ struct VMContext {
 //
 // Gets the number of parameters being passes
 //
-const long APITools_GetArgumentCount(VMContext& context) {
+const size_t APITools_GetArgumentCount(VMContext& context) {
   if(context.data_array) {
-    return (long)context.data_array[0];
+    return context.data_array[0];
   }
 
   return 0;
@@ -193,15 +192,15 @@ size_t* APITools_MakeByteArray(VMContext& context, const size_t char_array_size)
 //
 // Gets an array of integer elements
 //
-long APITools_GetIntArrayElement(size_t* array, size_t index) {
-  if(!array) {
+long APITools_GetIntArrayElement(size_t* data_array, size_t index) {
+  if(!data_array) {
     return 0;
   }
 
-  const size_t src_array_len = array[0];
+  const size_t src_array_len = data_array[0];
   if(index < src_array_len) {
-    size_t* src_array_ptr = array + 3;
-    return (long)src_array_ptr[index];
+    data_array += ARRAY_HEADER_OFFSET;
+    return (long)data_array[index];
   }
 
   return 0;
@@ -210,15 +209,15 @@ long APITools_GetIntArrayElement(size_t* array, size_t index) {
 //
 // Sets an integer array element
 //
-void APITools_SetIntArrayElement(size_t* array, size_t index, long value) {
-  if(!array) {
+void APITools_SetIntArrayElement(size_t* data_array, size_t index, long value) {
+  if(!data_array) {
     return;
   }
 
-  const size_t src_array_len = array[0];
+  const size_t src_array_len = data_array[0];
   if(index < src_array_len) {
-    size_t* src_array_ptr = array + 3;
-    src_array_ptr[index] = value;
+    data_array += ARRAY_HEADER_OFFSET;
+    data_array[index] = value;
   }
 }
 
@@ -232,18 +231,34 @@ wchar_t APITools_GetCharArrayElement(size_t* array, size_t index) {
 
   const size_t src_array_len = array[0];
   if(index < src_array_len) {
-    size_t* src_array_ptr = array + 3;
-
-    wchar_t* value_array = (wchar_t*)src_array_ptr;
+    array += ARRAY_HEADER_OFFSET;
+    wchar_t* value_array = (wchar_t*)array;
     return value_array[index];
   }
 
   return 0;
 }
 
+
 //
-// TODO: APITools_SetCharArrayElement
+// Sets the Char array element value in a reference
 //
+void APITools_SetCharArrayElement(size_t* data_array, size_t index, wchar_t value) {
+  if(!data_array) {
+    return;
+  }
+
+  const size_t src_array_len = data_array[0];
+  if(index < src_array_len) {
+    data_array += ARRAY_HEADER_OFFSET;
+    wchar_t* value_array = (wchar_t*)data_array;
+#ifdef _DEBUG
+    assert(value_array);
+#endif
+    value_array[index] = value;
+  }
+}
+
 
 //
 // Gets an byte array element
@@ -255,9 +270,8 @@ unsigned char APITools_GetByteArrayElement(size_t* array, size_t index) {
 
   const size_t src_array_len = array[0];
   if(index < src_array_len) {
-    size_t* src_array_ptr = array + 3;
-
-    unsigned char* value_array = (unsigned char*)src_array_ptr;
+    array += ARRAY_HEADER_OFFSET;
+    unsigned char* value_array = (unsigned char*)array;
     return value_array[index];
   }
 
@@ -265,8 +279,23 @@ unsigned char APITools_GetByteArrayElement(size_t* array, size_t index) {
 }
 
 //
-// TODO: APITools_SetByteArrayElement
+// Sets the Byte array element value in a reference
 //
+void APITools_SetByteArrayElement(size_t* data_array, size_t index, unsigned char value) {
+  if(!data_array) {
+    return;
+  }
+
+  const size_t src_array_len = data_array[0];
+  if(index < src_array_len) {
+    data_array += ARRAY_HEADER_OFFSET;
+    unsigned char* value_array = (unsigned char*)data_array;
+#ifdef _DEBUG
+    assert(value_array);
+#endif
+    value_array[index] = value;
+  }
+}
 
 //
 // Gets an float array element
@@ -278,9 +307,8 @@ double APITools_GetFloatArrayElement(size_t* array, size_t index) {
 
   const size_t src_array_len = array[0];
   if(index < src_array_len) {
-    size_t* src_array_ptr = array + 3;
-
-    double* value_array = (double*)src_array_ptr;
+    array += ARRAY_HEADER_OFFSET;
+    double* value_array = (double*)array;
     return value_array[index];
   }
 
@@ -288,17 +316,21 @@ double APITools_GetFloatArrayElement(size_t* array, size_t index) {
 }
 
 //
-// Sets an float array element
+// Sets the Float array element value in a reference
 //
-void APITools_SetFloatArrayElement(size_t* array, size_t index, double value) {
-  if(!array) {
+void APITools_SetFloatArrayElement(size_t* data_array, size_t index, double value) {
+  if(!data_array) {
     return;
   }
 
-  const size_t src_array_len = array[0];
+  const size_t src_array_len = data_array[0];
   if(index < src_array_len) {
-    size_t* src_array_ptr = array + 3;
-    memcpy(&src_array_ptr[index], &value, sizeof(value));
+    data_array += ARRAY_HEADER_OFFSET;
+    double* value_array = (double*)data_array;
+#ifdef _DEBUG
+    assert(value_array);
+#endif
+    value_array[index] = value;
   }
 }
 
@@ -480,7 +512,7 @@ size_t* APITools_CreateStringObject(VMContext& context, const std::wstring& valu
   char_array[2] = char_array_size;
 
   // copy string
-  wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+  wchar_t* char_array_ptr = (wchar_t*)(char_array + ARRAY_HEADER_OFFSET);
 #ifdef _WIN32
   wcsncpy_s(char_array_ptr, char_array_size + 1, value.c_str(), value.size());
 #else
@@ -505,7 +537,7 @@ inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
     size_t* string_holder = (size_t*)str_obj[index];
     if(string_holder) {
       size_t* char_array = (size_t*)string_holder[0];
-      wchar_t* str = (wchar_t*)(char_array + 3);
+      const wchar_t* str = (wchar_t*)(char_array + ARRAY_HEADER_OFFSET);
       return str;
     }
   }
