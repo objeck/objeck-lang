@@ -44,7 +44,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void load_lib()
+  void load_lib(VMContext& context)
   {
 #ifdef _DEBUG
     OpenLogger("debug.log");
@@ -106,15 +106,15 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
-    size_t* names_array = APITools_GetArray(APITools_GetObjectValue(context, 2));
-    const long names_array_size = APITools_GetArraySize(names_array);
+    size_t* names_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 2));
+    const size_t names_array_size = APITools_GetArraySize(names_array);
 
-    size_t* texts_array = APITools_GetArray(APITools_GetObjectValue(context, 3));
-    const long texts_array_size = APITools_GetArraySize(texts_array);
+    size_t* texts_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 3));
+    const size_t texts_array_size = APITools_GetArraySize(texts_array);
 
     if(names_array_size > 0 && names_array_size == texts_array_size) {
       std::vector<std::pair<std::wstring, std::wstring>> texts;
-      for(long i = 0; i < texts_array_size; ++i) {
+      for(size_t i = 0; i < texts_array_size; ++i) {
         const wchar_t* file_name = APITools_GetStringValue(names_array, i);
         const wchar_t* file_text = APITools_GetStringValue(texts_array, i);
 
@@ -220,7 +220,7 @@ extern "C" {
         size_t* bundle_array_ptr = bundle_array + 3;
 
         bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, bundle_name);
+        bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, bundle_name);
         bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
         bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
         bundle_symb_obj[ResultPosition::POS_START_POS] = bundle->GetLinePosition();
@@ -243,8 +243,8 @@ extern "C" {
         Class* klass = klasses[j];
 
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, klass->GetName());
-        klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, klass->GetFileName());
+        klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, klass->GetName());
+        klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, klass->GetFileName());
         klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
         klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber() - 1;
         klass_symb_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition() - 1;
@@ -266,8 +266,8 @@ extern "C" {
           if(mthd_name_index != std::wstring::npos) {
             mthd_name = mthd_name.substr(mthd_name_index + 1, mthd_name.size() - mthd_name_index - 1);
           }
-          mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_name);
-          mthd_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd->GetFileName());
+          mthd_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, mthd_name);
+          mthd_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, mthd->GetFileName());
 
           if(mthd->IsStatic()) {
             mthd_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FUNC; // function
@@ -305,8 +305,8 @@ extern "C" {
         }
 
         size_t* eenum_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-        eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, eenum_name);
-        eenum_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, eenum->GetFileName());
+        eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, eenum_name);
+        eenum_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, eenum->GetFileName());
         eenum_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ENUM; // enum type
         eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber();
         eenum_symb_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition();
@@ -323,7 +323,7 @@ extern "C" {
 
     // file root
     size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, file_uri);
+    file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, file_uri);
     file_symb_obj[ResultPosition::POS_CODE] = validated ? 1 : 0;
     file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
     file_symb_obj[ResultPosition::POS_CHILDREN] = bundle_array ? (size_t)bundle_array : (size_t)klass_array;
@@ -381,8 +381,8 @@ extern "C" {
             }
 
             size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
-            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, node->GetFileName());
+            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_name);
+            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, node->GetFileName());
             def_obj[ResultPosition::POS_START_LINE] = (size_t)node->GetLineNumber() - 1;
             def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
             def_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
@@ -403,8 +403,8 @@ extern "C" {
           Class* found_klass = nullptr;
           if(analyzer.GetDefinition(klass, line_num, line_pos, found_klass)) {
             size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_klass->GetName());
-            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, found_klass->GetFileName());
+            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_klass->GetName());
+            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, found_klass->GetFileName());
             def_obj[ResultPosition::POS_START_LINE] = (size_t)found_klass->GetLineNumber() - 1;
             def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
             def_obj[ResultPosition::POS_START_POS] = (size_t)found_klass->GetLinePosition() - 1;
@@ -446,7 +446,7 @@ extern "C" {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos;
           if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
             size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_name);
+            dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_name);
             dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = (size_t)found_line - 1;
             dcrl_obj[ResultPosition::POS_START_POS] = (size_t)found_start_pos - 1;
             dcrl_obj[ResultPosition::POS_END_POS] = (size_t)found_end_pos - 1;
@@ -491,7 +491,7 @@ extern "C" {
 
           if(analyzer.GetCompletion(program, method, var_str, mthd_str, line_num, line_pos, completions)) {
             size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"Completions");
+            sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"Completions");
 
             size_t* completions_array = APITools_MakeIntArray(context, (int)completions.size());
             size_t* completions_array_ptr = completions_array + 3;
@@ -501,7 +501,7 @@ extern "C" {
               size_t* completion_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
 
               completion_obj[ResultPosition::POS_CODE] = completion.first;
-              completion_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, completion.second);
+              completion_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, completion.second);
 
               completions_array_ptr[i] = (size_t)completion_obj;
             }
@@ -552,8 +552,8 @@ extern "C" {
               // declaration match
               if(entry->GetLineNumber() == start_line + 1 && entry->GetLinePosition() == start_char + 1 && entry_type_name == cls_var_name) {
                 code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
-                code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_var_name);
+                code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, entry_type_name);
+                code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, entry_var_name);
                 code_action_obj[ResultPosition::POS_START_LINE] = entry->GetType()->GetLineNumber() - 1;
                 code_action_obj[ResultPosition::POS_START_POS] = entry->GetType()->GetLinePosition() - 1;
               }
@@ -561,8 +561,8 @@ extern "C" {
               else if(entry->GetLineNumber() <= start_line + 1 && entry->GetLinePosition() <= start_char + 1) {
                 if(entry_var_name == cls_var_name) {
                   code_action_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                  code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, entry_type_name);
-                  code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, entry_var_name);
+                  code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, entry_type_name);
+                  code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, entry_var_name);
                   code_action_obj[ResultPosition::POS_START_LINE] = entry->GetType()->GetLineNumber() - 1;
                   code_action_obj[ResultPosition::POS_START_POS] = entry->GetType()->GetLinePosition() - 1;
                 }
@@ -617,15 +617,15 @@ extern "C" {
                 SymbolEntry* called_method_entry = called_method->GetEntry();
                 if(called_method_entry) {
                   hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
-                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
+                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, called_method_entry->GetType()->GetName());
                 }
                 else if(called_method->GetVariable() && called_method->GetVariable()->GetEntry()) {
                   called_method_entry = called_method->GetVariable()->GetEntry();
                   hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
-                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, called_method_entry->GetType()->GetName());
+                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, called_method_entry->GetType()->GetName());
                 }
 
-                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, called_method->GetMethodName());
+                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, called_method->GetMethodName());
               }
               else if(found_expression->GetExpressionType() == VAR_EXPR) {
                 Variable* called_variable = static_cast<Variable*>(found_expression);
@@ -640,27 +640,27 @@ extern "C" {
 
             switch(found_type->GetType()) {
             case frontend::BYTE_TYPE:
-              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Byte");
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"System.$Byte");
               break;
 
             case frontend::CHAR_TYPE:
-              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Char");
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"System.$Char");
               break;
 
             case frontend::INT_TYPE:
-              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Int");
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"System.$Int");
               break;
 
             case frontend::FLOAT_TYPE:
-              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Float");
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"System.$Float");
               break;
 
             case frontend::BOOLEAN_TYPE:
-              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, L"System.$Bool");
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"System.$Bool");
               break;
 
             default:
-              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_type->GetName());
+              hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_type->GetName());
               break;
             }
           }
@@ -704,7 +704,7 @@ extern "C" {
           std::vector<Method*> found_methods; std::vector<LibraryMethod*> found_lib_methods;
           if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
             size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_str);
+            sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, mthd_str);
             sig_root_obj[ResultPosition::POS_CODE] = found_methods.empty();
 
             if(!found_methods.empty()) {
@@ -715,7 +715,7 @@ extern "C" {
                 Method* found_method = found_methods[i];
 
                 size_t* mthd_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                mthd_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_method->GetUserName());
+                mthd_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_method->GetUserName());
 
                 // TODO: params
                 std::vector<frontend::Declaration*> declarations = found_method->GetDeclarations()->GetDeclarations();
@@ -725,7 +725,7 @@ extern "C" {
                 for(size_t j = 0; j < declarations.size(); ++j) {
                   std::wstring type_name; GetTypeName(declarations[j]->GetEntry()->GetType(), type_name);
                   size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                  mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
+                  mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, type_name);
 
                   mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
                 }
@@ -744,7 +744,7 @@ extern "C" {
                 LibraryMethod* found_lib_method = found_lib_methods[i];
 
                 size_t* mthd_lib_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                mthd_lib_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, found_lib_method->GetUserName());
+                mthd_lib_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_lib_method->GetUserName());
 
                 // TODO: params
                 std::vector<frontend::Type*> declarations = found_lib_method->GetDeclarationTypes();
@@ -754,7 +754,7 @@ extern "C" {
                 for(size_t j = 0; j < declarations.size(); ++j) {
                   std::wstring type_name; GetTypeName(declarations[j], type_name);
                   size_t* mthd_parm_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-                  mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, type_name);
+                  mthd_parm_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, type_name);
 
                   mthd_parm_array_ptr[j] = (size_t)mthd_parm_obj;
                 }
@@ -855,9 +855,9 @@ size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_
 
     // create objects
     size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
+    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, msg_str);
     diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ERROR; // error type
-    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
+    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, file_str);
     diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
     diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
     diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
@@ -886,9 +886,9 @@ size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_
 
     // create objects
     size_t* diag_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, msg_str);
+    diag_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, msg_str);
     diag_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_WARN; // warning type
-    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, file_str);
+    diag_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, file_str);
     diag_obj[ResultPosition::POS_START_LINE] = (size_t)line_index;
     diag_obj[ResultPosition::POS_START_POS] = (size_t)pos_index;
     diag_obj[ResultPosition::POS_END_LINE] = diag_obj[ResultPosition::POS_END_POS] = -1;
@@ -984,7 +984,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               const std::wstring variable_name = variable->GetName();
               end_pos += (int)variable_name.size();
 
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, variable->GetName());
               reference_obj[ResultPosition::POS_TYPE] = 100;
             }
               break;
@@ -1007,7 +1007,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               }
 
               reference_obj[ResultPosition::POS_TYPE] = 200;
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, method_call->GetMethodName());
             }
               break;
 
@@ -1015,7 +1015,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               break;
             }
 
-            reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
+            reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, expression->GetFileName());
             reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = (size_t)expression->GetLineNumber() - 1;
             reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
             reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
@@ -1035,8 +1035,8 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               int end_pos = start_pos + (int)mthd_dclr_name.size();
 
               reference_obj[ResultPosition::POS_TYPE] = 200;
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, mthd_dclr->GetName());
-              reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, mthd_dclr->GetFileName());
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, mthd_dclr->GetName());
+              reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, mthd_dclr->GetFileName());
               reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = (size_t)mthd_dclr->GetLineNumber() - 1;
               reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
               reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
@@ -1083,7 +1083,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               const std::wstring variable_name = variable->GetName();
               end_pos += (int)variable_name.size();
 
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, variable->GetName());
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, variable->GetName());
               reference_obj[ResultPosition::POS_TYPE] = 100;
             }
               break;
@@ -1092,7 +1092,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               MethodCall* method_call = static_cast<MethodCall*>(expression);
               end_pos += (int)method_call->GetVariableName().size();
               reference_obj[ResultPosition::POS_TYPE] = 200;
-              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringValue(context, method_call->GetMethodName());
+              reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, method_call->GetMethodName());
             }
               break;
 
@@ -1100,7 +1100,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
               break;
             }
 
-            reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringValue(context, expression->GetFileName());
+            reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, expression->GetFileName());
             reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = (size_t)expression->GetLineNumber() - 1;
             reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
             reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;

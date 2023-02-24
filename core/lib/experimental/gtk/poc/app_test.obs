@@ -1,0 +1,20 @@
+use Gtk3;
+
+class Gtk3Test {
+	function : Activate(object : GObject, data : Base) ~ Nil {
+		hi_str := data->As(String);
+		hi_str->PrintLine();
+		
+		app := object->As(Application);
+		win := app->WindowNew();
+		win->SetTitle("Window");
+		win->SetDefaultSize(200, 200);
+		win->ShowAll();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		app := Application->New("org.gtk.example", GApplicationFlags->G_APPLICATION_FLAGS_NONE);
+		app->SignalConnect("activate", Activate(GObject, Base) ~ Nil, "Hi Ya!");
+		app->Run(args);
+	}
+}

@@ -1,4 +1,0 @@
-Compiled 8 source classes.
-Linked 22 library classes.
-Wrote target file: 'code_gen.obe'
----

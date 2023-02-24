@@ -2913,11 +2913,9 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     }
   }
   else {
+    // semi-colon at the end of block statements, optional
     if(Match(TOKEN_SEMI_COLON)) {
       NextToken();
-    }
-    else {
-      ProcessError(L"Invalid statement expected ';'", TOKEN_SEMI_COLON);
     }
   }
 
@@ -3083,6 +3081,11 @@ std::vector<Type*> Parser::ParseGenericTypes(int depth)
         }
         else {
           generic_types.push_back(type);
+
+          if(expand_generic_def) {
+            expand_generic_def = false;
+            return generic_types;
+          }
         }
       }
       else {

@@ -42,7 +42,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void load_lib() {
+  void load_lib(VMContext& context) {
   }
   
   //
@@ -62,10 +62,10 @@ extern "C" {
 #endif
   void openssl_hash_sha256(VMContext& context) {
     // get parameters
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
+    size_t* output_holder = APITools_GetArray(context, 0);
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if(!ctx) {
@@ -120,10 +120,10 @@ extern "C" {
 #endif
   void openssl_hash_sha512(VMContext& context) {
     // get parameters
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
+    size_t* output_holder = APITools_GetArray(context, 0);
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if(!ctx) {
@@ -178,10 +178,10 @@ extern "C" {
 #endif
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
+    size_t* output_holder = APITools_GetArray(context, 0);
 
 #ifdef _WIN32
     // hash 
@@ -257,10 +257,10 @@ extern "C" {
 #endif
   void openssl_hash_md5(VMContext& context) {
     // get parameters
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetByteArray(input_array);
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
+    size_t* output_holder = APITools_GetArray(context, 0);
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if(!ctx) {
@@ -315,15 +315,15 @@ extern "C" {
 #endif
   void openssl_encrypt_aes256(VMContext& context) {
     // get parameters
-    size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
-    const int key_size =  APITools_GetArraySize(key_array) - 1;
-    const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
+    size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];    
+    const long key_size = ((long)APITools_GetArraySize(key_array)) - 1;
+    const unsigned char* key =  (unsigned char*)APITools_GetArray(key_array);
     
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
-    const int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
+    size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];    
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input =  (unsigned char*)APITools_GetArray(input_array);
 
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetArray(context, 0);
     
     // TODO: add salt
     unsigned char* salt = nullptr;
@@ -387,15 +387,15 @@ extern "C" {
 #endif
   void openssl_decrypt_aes256(VMContext& context) {
     // get parameters
-    size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
-    const int key_size =  APITools_GetArraySize(key_array) - 1;
-    const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
+    size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];    
+    const long key_size = ((long)APITools_GetArraySize(key_array)) - 1;
+    const unsigned char* key =  (unsigned char*)APITools_GetArray(key_array);
     
-    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
-    const int input_size =  APITools_GetArraySize(input_array);
-    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
+    size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];    
+    const long input_size = (long)APITools_GetArraySize(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetArray(input_array);
 
-    size_t* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetArray(context, 0);
     
     // TODO: add salt
     unsigned char* salt = nullptr;

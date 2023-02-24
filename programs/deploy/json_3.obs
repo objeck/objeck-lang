@@ -9,27 +9,19 @@ use System.IO.Net;
 
 class JsonWeb {
 	function : Main(args : String[]) ~ Nil {		
-		url := Web.HTTP.Url->New("https://sourceforge.net/projects/openofficeorg.mirror/files/stats/json?start_date=2014-10-29&end_date=2014-11-04");
+		url := Web.HTTP.Url->New("https://reqbin.com/echo/get/json");
 		document := HttpsClient->QuickGet(url);
-
+		
 		parser := JsonParser->New(document);
 		if(parser->Parse()) {
 			root := parser->GetRoot();
-			countries := root->FindElements("countries");
-			if(countries <> Nil & countries->GetType() = JsonElement->JsonType->ARRAY) {
-				total := 0;
-				each(i : countries) {
-					country := countries->Get(i);
-					total += country->Get(1)->GetValue()->ToInt();
-				};
-				"total downloads is {$total}"->PrintLine();
-			}
-			else {
-				"-- Invalid Json! --"->ErrorLine();
+			success := root->Get("success");
+			if(success <> Nil) {
+				success->GetString()->Equals("true")->PrintLine();
+				return;
 			};
-		}
-		else {
-			"-- Unable to parse Json! --"->ErrorLine();
 		};
+		
+		"-- Unable to parse or process JSON! --"->ErrorLine();
 	}
 }
