@@ -499,7 +499,7 @@ size_t* APITools_CreateObject(VMContext& context, const std::wstring& cls_name) 
 }
 
 //
-// Creates a string value Objeck instance reference
+// Creates a String value Objeck instance reference
 //
 size_t* APITools_CreateStringObject(VMContext& context, const std::wstring& value) {
   // create character array
