@@ -101,36 +101,17 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
     case 'm': {
       size_t start = index;
 
-      const std::wstring prefix = L"m.(";
-      int nested_count = 1;
-      size_t found = param_str.find(prefix);
-      while(found != std::wstring::npos) {
-        nested_count++;
-        found = param_str.find(prefix, found + prefix.size());
-      }
-
-      while(nested_count--) {
-        while(index < param_str.size() && param_str[index] != L'~') {
-          index++;
-        }
-        if(param_str[index] == L'~') {
-          index++;
-        }
-      }
-
-      while(index < param_str.size() && param_str[index] != L',') {
-        index++;
-      }
-
-      const std::wstring name = param_str.substr(start, index - start - 1);
+      ParseFuncStr(param_str, index);
+      
+      const std::wstring name = param_str.substr(start, index - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
-      ParseFunctionalType(type);
+      SetFuncType(type);
     }
       break;
 
     case 'o': {
       index += 2;
-      size_t start = index;
+      const size_t start = index;
       while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
         index++;
       }
@@ -220,7 +201,7 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
     break;
 
   case L'm': {
-    size_t start = index;
+    const size_t start = index;
 
     int nested_count = 1;
     const std::wstring prefix = L"m.(";
@@ -245,7 +226,7 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
 
     const std::wstring name = type_name.substr(start, index - start);
     type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
-    ParseFunctionalType(type);
+    SetFuncType(type);
   }
     break;
 
@@ -286,7 +267,43 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
   return type;
 }
 
-void TypeParser::ParseFunctionalType(frontend::Type* func_type)
+void TypeParser::ParseFuncStr(const std::wstring& param_str, size_t &index)
+{
+  size_t nest_count = 0;
+  while(index < param_str.size() && param_str[index] != L')') {
+    if(param_str[index] == L'(') {
+      nest_count++;
+    }
+    index++;
+  }
+
+  while(nest_count) {
+    if(param_str[index] == L')') {
+      nest_count--;
+    }
+    index++;
+  }
+
+#ifdef _DEBUG
+  assert(param_str[index] == L'~');
+#endif
+  index++;
+
+  if(index < param_str.size() && param_str[index] == L'm') {
+    ParseFuncStr(param_str, index);
+  }
+  else {
+    while(index < param_str.size() && param_str[index] != L',') {
+      index++;
+    }
+  }
+
+#ifdef _DEBUG
+  assert(param_str[index] == L',');
+#endif
+}
+
+void TypeParser::SetFuncType(frontend::Type* func_type)
 {
   const std::wstring func_name = func_type->GetName();
 
