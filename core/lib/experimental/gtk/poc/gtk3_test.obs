@@ -1,0 +1,203 @@
+use System.API;
+
+#~
+PoC for Gtk3 support, code generation reference
+~#
+bundle Gtk3 {
+	consts GApplicationFlags {
+		G_APPLICATION_FLAGS_NONE := 0,
+  		G_APPLICATION_DEFAULT_FLAGS := 0,
+		G_APPLICATION_IS_SERVICE := 1,
+		G_APPLICATION_IS_LAUNCHER := 4,
+
+		G_APPLICATION_HANDLES_OPEN := 8, 
+		G_APPLICATION_HANDLES_COMMAND_LINE := 16,
+		G_APPLICATION_SEND_ENVIRONMENT := 32,
+
+		G_APPLICATION_NON_UNIQUE := 64,
+
+		G_APPLICATION_CAN_OVERRIDE_APP_ID := 128,
+		G_APPLICATION_ALLOW_REPLACEMENT := 256,
+		G_APPLICATION_REPLACE := 512
+	}
+
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_gtk3_test");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	class SignalHolder {
+		@handler : (GObject, Base) ~ Nil;
+		@data : Base;
+
+		New(handler : (GObject, Base) ~ Nil, data : Base) {
+			@handler := handler;
+			@data := data;
+		}
+
+		method : public : GetHandler() ~ (GObject, Base) ~ Nil {
+			return @handler;
+		}
+
+		method : public : GetData() ~ Base {
+			return @data;
+		}
+	}
+
+	class GObject {
+		@gobject : Int;
+		
+		New(gobject : Int) {
+			@gobject := gobject;
+		}
+
+		method : public : SignalConnect(detailed_signal : String, handler : (GObject, Base) ~ Nil, data : Base) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := IntHolder->New(@gobject);
+			array_args[1] := detailed_signal;
+			array_args[2] := SignalHolder->New(handler, Nil);
+			array_args[3] := data;
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_gobject_signal_connect", array_args);
+		}
+	}
+
+
+	class Application from GObject {
+		New(application : Int) {
+			Parent(application);
+		}
+
+		New(id : String, flags : GApplicationFlags) {
+			Parent(0);
+
+			# TODO: do not pass @gobject in constructor
+			array_args := Base->New[3];
+
+			array_args[0] := IntHolder->New();
+			array_args[1] := id;
+			array_args[2] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_application_new", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@gobject := value->Get();
+		}
+
+		method : public : Run() ~ Int {
+			return Run(Nil->As(String[]));
+		}
+
+		method : public : Run(args : String[]) ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntHolder->New(@gobject);
+			array_args[1] := StringArrayHolder->New(args);
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_application_run", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : WindowNew() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@gobject);
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_application_window_new", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return Window->New(value->Get());
+		}
+	}
+
+	class Widget from GObject {
+		New(widget : Int) {
+			Parent(widget);
+		}
+
+		method : public : ShowAll() ~ Nil {
+			array_args := Base->New[1];
+
+			array_args[0] := IntHolder->New(@gobject);
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_widget_show_all", array_args);
+		}
+	}
+
+	class Window from Widget {
+		New(window : Int) {
+			Parent(window);
+		}
+
+		method : public : SetTitle(title : String) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntHolder->New(@gobject);
+			array_args[1] := title;
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_window_set_title", array_args);
+		}
+
+		method : public : SetDefaultSize(width : Int, height : Int) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := IntHolder->New(@gobject);
+			array_args[1] := IntHolder->New(width);
+			array_args[2] := IntHolder->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_window_set_default", array_args);
+		}
+	}
+
+	class Tester {
+		function : GetFloatArrayElement(float_array : Float[], index : Int) ~ Float {
+			array_args := Base->New[3];
+
+			array_args[0] := FloatHolder->New();
+			array_args[1] := FloatArrayHolder->New(float_array);
+			array_args[2] := IntHolder->New(index);
+
+			Proxy->GetDllProxy()->CallFunction("tester_get_float_array_elem", array_args);
+
+			value := array_args[0]->As(FloatHolder);
+			return value->Get();
+		}
+
+		function : GetCharArrayElement(char_array : Char[], index : Int) ~ Char {
+			array_args := Base->New[3];
+
+			array_args[0] := CharHolder->New();
+			array_args[1] := CharArrayHolder->New(char_array);
+			array_args[2] := IntHolder->New(index);
+
+			Proxy->GetDllProxy()->CallFunction("tester_get_char_array_elem", array_args);
+
+			value := array_args[0]->As(CharHolder);
+			return value->Get();
+		}
+
+		function : GetByteArrayElement(byte_array : Byte[], index : Int) ~ Byte {
+			array_args := Base->New[3];
+
+			array_args[0] := ByteHolder->New();
+			array_args[1] := ByteArrayHolder->New(byte_array);
+			array_args[2] := IntHolder->New(index);
+
+			Proxy->GetDllProxy()->CallFunction("tester_get_byte_array_elem", array_args);
+
+			value := array_args[0]->As(ByteHolder);
+			return value->Get();
+		}
+	}
+}
