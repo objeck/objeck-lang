@@ -30,17 +30,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include <gtk/gtk.h>
-#include "../../../../vm/lib_api.h"
-#include "../../../../vm/interpreter.h"
-#include "../../../../shared/sys.h"
-
-#define EXEC_STACK_MAX 32
+#include "gtk3_test.h"
 
 extern "C" {
-  static APITools_AllocateObject_Ptr AllocateObject;
-  static APITools_MethodCallById_Ptr MethodCallById;
-  static std::stack<std::pair<size_t*, long*>> exec_stack_allocator;
+  static MemoryAllocator* mem_aloc = nullptr;
 
   //
   // initialize library
@@ -49,14 +42,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void load_lib(VMContext& context) {
-    AllocateObject = context.alloc_managed_obj;
-    MethodCallById = context.call_method_by_id;
-
-    for(size_t i = 0; i < EXEC_STACK_MAX; ++i) {
-      size_t* op_stack = new size_t[OP_STACK_SIZE];
-      long* stack_pos = new long;
-
-      exec_stack_allocator.push(std::pair<size_t*, long*>(op_stack, stack_pos));
+    if(!mem_aloc) {
+      mem_aloc = new MemoryAllocator(context.alloc_managed_obj, context.call_method_by_id);
     }
   }
 
@@ -67,19 +54,9 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void unload_lib() {
-    AllocateObject = nullptr;
-    MethodCallById = nullptr;
-
-    for(size_t i = 0; i < EXEC_STACK_MAX; ++i) {
-      std::pair<size_t*, long*> value = exec_stack_allocator.top();
-
-      size_t* op_stack = value.first;
-      delete op_stack;
-      op_stack = nullptr;
-
-      long* stack_pos = value.second;
-      delete stack_pos;
-      stack_pos = nullptr;
+    if(mem_aloc) {
+      delete mem_aloc;
+      mem_aloc = nullptr;
     }
   }
 
@@ -103,15 +80,16 @@ extern "C" {
         const char prefix_str[] = "Gtk";
         size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);
         if(handler_cname_prefix_offset != std::string::npos) {
-          std::pair<size_t*, long*> exec_stack = exec_stack_allocator.top();
-          exec_stack_allocator.pop();
+          std::pair<size_t*, long*> exec_stack_mem = mem_aloc->FetchExecStackMemory();
 
-          size_t* op_stack = exec_stack.first;
-          long* stack_pos = exec_stack.second;
+          size_t* op_stack = exec_stack_mem.first;
+          long* stack_pos = exec_stack_mem.second;
           
           const std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));
           const std::string handler_objk_name("Gtk3." + post_objk_name);
-          size_t* gobject_obj = AllocateObject(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);
+
+          const APITools_AllocateObject_Ptr alloc_obj = mem_aloc->GetAllocateObject();
+          size_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);
           if(gobject_obj) {
             gobject_obj[0] = (size_t)handler;
 
@@ -121,11 +99,12 @@ extern "C" {
             (*stack_pos) = 2;
 
             // call method
-            MethodCallById(op_stack, stack_pos, nullptr, cls_id, mthd_id);
+            const APITools_MethodCallById_Ptr mthd_call_id = mem_aloc->GetMethodCallById();
+            mthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);
           }
 
           // clean up
-          exec_stack_allocator.push(exec_stack);
+          mem_aloc->ReleaseExecStackMemory(exec_stack_mem);
         }
       }
     }
@@ -183,6 +162,8 @@ extern "C" {
 #else
       argv[0] = strdup("libobjk_gtk3.dll");
 #endif
+      mem_aloc->AddAllocation(argv[0]);
+
       argv[1] = 0;
       
       const int status = g_application_run(G_APPLICATION(application), argc, argv);
@@ -197,17 +178,26 @@ extern "C" {
 #else
       argv[0] = strdup("libobjk_gtk3.dll");
 #endif
+      mem_aloc->AddAllocation(argv[0]);
+
       for(size_t i = 0; i < values.size(); ++i) {
 #ifdef _WIN32        
         argv[i + 1] = _strdup(UnicodeToBytes(values[i]).c_str());
 #else
         argv[i + 1] = strdup(UnicodeToBytes(values[i]).c_str());
-#endif        
+#endif   
+        mem_aloc->AddAllocation(argv[i + 1]);
       }
       argv[argc] = 0;
 
       const int status = g_application_run(G_APPLICATION(application), 1, argv);
       APITools_SetIntValue(context, 0, status);
+
+      // free memory
+      if(mem_aloc) {
+        delete mem_aloc;
+        mem_aloc = nullptr;
+      }
     }
   }
 
@@ -243,41 +233,4 @@ extern "C" {
     const gint height = (gint)APITools_GetIntValue(context, 1);
     gtk_window_set_default_size(window, width, height);
   }
-
-  //
-  // Tests
-  //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void tester_get_float_array_elem(VMContext& context) {
-    size_t* value_array_obj = (size_t*)APITools_GetIntValue(context, 1);
-    size_t index = APITools_GetIntValue(context, 2);
-
-    const double value = APITools_GetFloatArrayElement(value_array_obj, index);
-    APITools_SetFloatValue(context, 0, value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void tester_get_char_array_elem(VMContext& context) {
-    size_t* value_array_obj = (size_t*)APITools_GetIntValue(context, 1);
-    size_t index = APITools_GetIntValue(context, 2);
-
-    const wchar_t value = APITools_GetCharArrayElement(value_array_obj, index);
-    APITools_SetCharValue(context, 0, value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void tester_get_byte_array_elem(VMContext& context) {
-    size_t* value_array_obj = (size_t*)APITools_GetIntValue(context, 1);
-    size_t index = APITools_GetIntValue(context, 2);
-
-    unsigned char value = APITools_GetByteArrayElement(value_array_obj, index);
-    APITools_SetByteValue(context, 0, value);
-  }
-  
 }
