@@ -33,7 +33,7 @@
 #include "gtk3_test.h"
 
 extern "C" {
-  static MemoryAllocator* mem_aloc = nullptr;
+  static ResourceManager* res_manager = nullptr;
 
   //
   // initialize library
@@ -42,8 +42,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void load_lib(VMContext& context) {
-    if(!mem_aloc) {
-      mem_aloc = new MemoryAllocator(context.alloc_managed_obj, context.call_method_by_id);
+    if(!res_manager) {
+      res_manager = new ResourceManager(context.alloc_managed_obj, context.call_method_by_id);
     }
   }
 
@@ -54,9 +54,9 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void unload_lib() {
-    if(mem_aloc) {
-      delete mem_aloc;
-      mem_aloc = nullptr;
+    if(res_manager) {
+      delete res_manager;
+      res_manager = nullptr;
     }
   }
 
@@ -80,7 +80,7 @@ extern "C" {
         const char prefix_str[] = "Gtk";
         size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);
         if(handler_cname_prefix_offset != std::string::npos) {
-          std::pair<size_t*, long*> exec_stack_mem = mem_aloc->GetOpStackMemory();
+          std::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();
 
           size_t* op_stack = exec_stack_mem.first;
           long* stack_pos = exec_stack_mem.second;
@@ -88,7 +88,7 @@ extern "C" {
           const std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));
           const std::string handler_objk_name("Gtk3." + post_objk_name);
 
-          const APITools_AllocateObject_Ptr alloc_obj = mem_aloc->GetAllocateObject();
+          const APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();
           size_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);
           if(gobject_obj) {
             gobject_obj[0] = (size_t)handler;
@@ -99,12 +99,12 @@ extern "C" {
             (*stack_pos) = 2;
 
             // call method
-            const APITools_MethodCallById_Ptr mthd_call_id = mem_aloc->GetMethodCallById();
+            const APITools_MethodCallById_Ptr mthd_call_id = res_manager->GetMethodCallById();
             mthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);
           }
 
           // clean up
-          mem_aloc->ReleaseOpStackMemory(exec_stack_mem);
+          res_manager->ReleaseOpStackMemory(exec_stack_mem);
         }
       }
     }
@@ -162,7 +162,7 @@ extern "C" {
 #else
       argv[0] = strdup("libobjk_gtk3.dll");
 #endif
-      mem_aloc->AddAllocation(argv[0]);
+      res_manager->AddAllocation(argv[0]);
 
       argv[1] = 0;
       
@@ -178,7 +178,7 @@ extern "C" {
 #else
       argv[0] = strdup("libobjk_gtk3.dll");
 #endif
-      mem_aloc->AddAllocation(argv[0]);
+      res_manager->AddAllocation(argv[0]);
 
       for(size_t i = 0; i < values.size(); ++i) {
 #ifdef _WIN32        
@@ -186,7 +186,7 @@ extern "C" {
 #else
         argv[i + 1] = strdup(UnicodeToBytes(values[i]).c_str());
 #endif   
-        mem_aloc->AddAllocation(argv[i + 1]);
+        res_manager->AddAllocation(argv[i + 1]);
       }
       argv[argc] = 0;
 
@@ -194,9 +194,9 @@ extern "C" {
       APITools_SetIntValue(context, 0, status);
 
       // free memory
-      if(mem_aloc) {
-        delete mem_aloc;
-        mem_aloc = nullptr;
+      if(res_manager) {
+        delete res_manager;
+        res_manager = nullptr;
       }
     }
   }
