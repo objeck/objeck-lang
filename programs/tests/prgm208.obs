@@ -1,0 +1,39 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := Collection.Generic.Vector->New()<Collection.Generic.Pair<String, IntHolder>>;
+		a->AddBack(Collection.Generic.Pair->New("a", 1)<String, IntHolder>);
+		a->AddBack(Collection.Generic.Pair->New("b", 2)<String, IntHolder>);
+		Foo(a, "a");
+		"---"->PrintLine();
+
+		c := Collection.Generic.Vector->New()<Collection.Generic.Pair<String, IntHolder>>;
+		c->AddBack(Collection.Generic.Pair->New("c", 3)<String, IntHolder>);
+		Foo(a, "ac", c);
+		"---"->PrintLine();
+		
+		Bar(c);
+		"---"->PrintLine();
+	}
+
+	function : Foo(a : Collection.Generic.Vector<Collection.Generic.Pair<String, IntHolder>>, b : String) ~ Nil {
+		a->Size()->PrintLine();
+		b->PrintLine();
+	}
+
+	function : Foo(a : Collection.Generic.Vector<Collection.Generic.Pair<String, IntHolder>>, b : String, c : Collection.Generic.Vector<Collection.Generic.Pair<String, IntHolder>>) ~ Nil {
+		a->Size()->PrintLine();
+		b->PrintLine();
+		c->Size()->PrintLine();
+	}
+
+	function : Bar(a : Collection.Generic.Vector<Collection.Generic.Pair<String, IntHolder>>) ~ Nil {
+		each(i : 3) {
+			a->Size()->PrintLine();
+		}
+
+		do {
+
+		}
+		while(false)
+	}
+}

@@ -428,10 +428,12 @@ namespace frontend {
    * encode strings
    ********************************/
   class TypeParser {
+    static void ParseFuncStr(const std::wstring& param_str, size_t& index);
+    static void SetFuncType(frontend::Type* func_type);
+
   public:
     static std::vector<frontend::Type*> ParseParameters(const std::wstring& param_str);
     static frontend::Type* ParseType(const std::wstring& type_name);
-    static void ParseFunctionalType(frontend::Type* func_type);
   };
   
   // static array holders
