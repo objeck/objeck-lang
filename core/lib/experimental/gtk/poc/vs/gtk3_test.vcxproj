@@ -21,6 +21,9 @@
   <ItemGroup>
     <ClCompile Include="..\gtk3_test.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\gtk3_test.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9D3AACB3-E6FB-4BC3-8F2C-CAD4C2CFE96D}</ProjectGuid>
     <RootNamespace>gtk3_test</RootNamespace>
