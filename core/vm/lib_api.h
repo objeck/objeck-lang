@@ -529,7 +529,7 @@ size_t* APITools_CreateStringObject(VMContext& context, const std::wstring& valu
 }
 
 //
-// Gets the C++ string value from an Objeck reference
+// Gets the C++ string value from an Objeck reference 
 //
 inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
   if(str_obj && index < str_obj[0]) {
@@ -546,7 +546,28 @@ inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
 }
 
 //
-// Gets the C++ string value from an Objeck reference by index
+// Gets the C++ string values from an Objeck string array reference (i.e. StringArrayHolder)
+//
+std::vector<std::wstring> APITools_GetStringsValues(VMContext& context, size_t index) {
+  std::vector<std::wstring> strings_values;
+
+  size_t* string_array_obj = APITools_GetObjectValue(context, index);
+  if(string_array_obj && string_array_obj[0]) {
+    string_array_obj = (size_t*)string_array_obj[0];
+    const size_t string_array_size = string_array_obj[2];
+
+    for(size_t i = 0; i < string_array_size; ++i) {
+      const wchar_t* str_ptr = APITools_GetStringValue(string_array_obj, i);
+      strings_values.push_back(str_ptr);
+    }
+  }
+
+  return strings_values;
+}
+
+
+//
+// Gets the C++ string value from an Objeck reference by index (i.e. String)
 //
 const wchar_t* APITools_GetStringValue(VMContext &context, size_t index) {
   return APITools_GetStringValue(context.data_array, index);
