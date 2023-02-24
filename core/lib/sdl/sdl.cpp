@@ -409,7 +409,7 @@ extern "C" {
   void sdl_surface_pixels(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
     
-    size_t* pixel_obj = context.alloc_obj(L"Game.SDL2.PixelData", context.op_stack, *context.stack_pos, false);
+    size_t* pixel_obj= APITools_CreateObject(context, L"Game.SDL2.PixelData");
     pixel_obj[0] = (size_t)surface->pixels;
     pixel_obj[1] = (size_t)surface->pitch;
     pixel_obj[2] = (size_t)surface->h;
@@ -1768,7 +1768,7 @@ extern "C" {
       text_obj[2] = event->text.windowID;
 
       const std::wstring w_text = BytesToUnicode(event->text.text);
-      text_obj[3] = (size_t)APITools_CreateStringValue(context, w_text);
+      text_obj[3] = (size_t)APITools_CreateStringObject(context, w_text);
 
       APITools_SetIntValue(context, 0, 0);
     }
@@ -2200,7 +2200,7 @@ extern "C" {
        std::string name(info.name);
       std::wstring wname(name.begin(), name.end());
 
-      info_obj[0] = (size_t)APITools_CreateStringValue(context, wname);
+      info_obj[0] = (size_t)APITools_CreateStringObject(context, wname);
       info_obj[1] = info.flags;
       info_obj[2] = info.num_texture_formats;
 
@@ -2252,7 +2252,7 @@ extern "C" {
        std::string name(info.name);
       std::wstring wname(name.begin(), name.end());
 
-      info_obj[0] = (size_t)APITools_CreateStringValue(context, wname);
+      info_obj[0] = (size_t)APITools_CreateStringObject(context, wname);
       info_obj[1] = info.flags;
       info_obj[2] = info.num_texture_formats;
 
@@ -2494,7 +2494,7 @@ extern "C" {
       assert(width == pitch / sizeof(Uint32));
 #endif
 
-      size_t* pixel_obj = context.alloc_obj(L"Game.SDL2.PixelData", context.op_stack, *context.stack_pos, false);
+      size_t* pixel_obj= APITools_CreateObject(context, L"Game.SDL2.PixelData");
       pixel_obj[0] = (size_t)pixels;
       pixel_obj[1] = (size_t)pitch;
       pixel_obj[2] = (size_t)height;
@@ -2865,7 +2865,7 @@ extern "C" {
     memcpy(byte_array, states, numkeys);
 
     // create 'ByteArrayHolder' holder
-    size_t* byte_obj = context.alloc_obj(L"System.ByteArrayHolder", context.op_stack, *context.stack_pos, false);
+    size_t* byte_obj= APITools_CreateObject(context, L"System.ByteArrayHolder");
     byte_obj[0] = (size_t)array;
     
     APITools_SetObjectValue(context, 0, byte_obj);
