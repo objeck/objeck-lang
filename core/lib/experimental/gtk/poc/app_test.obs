@@ -17,7 +17,7 @@ class Gtk3Test {
 	
 		app := Application->New("org.gtk.example", GApplicationFlags->G_APPLICATION_FLAGS_NONE);
 		app->SignalConnect("activate", Activate(GObject, Base) ~ Nil, "Hi Ya!");
-		app->Run();
+		app->Run(args);
 #~	
 		float_array : Float[] := [1.0, 2.1, 3.3];
 		Tester->GetFloatArrayElement(float_array, 1)->PrintLine();
