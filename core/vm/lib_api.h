@@ -1,5 +1,5 @@
 /***************************************************************************
- * Shared library API header file
+ * Objeck API routines for C++ shared library extensions
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
