@@ -12,7 +12,7 @@ class MemoryAllocator {
   APITools_AllocateObject_Ptr allocate_object;
   APITools_MethodCallById_Ptr method_call_by_id;
   std::stack<std::pair<size_t*, long*>> exec_stack_mem;
-  std::stack<void*> raw_allocations;
+  std::stack<char*> raw_allocations;
 
 public:
   MemoryAllocator(APITools_AllocateObject_Ptr ao, APITools_MethodCallById_Ptr mc) {
@@ -45,7 +45,7 @@ public:
     }
 
     while(!raw_allocations.empty()) {
-      void* mem = raw_allocations.top();
+      char* mem = raw_allocations.top();
       raw_allocations.pop();
       // delete
       delete mem;
@@ -76,7 +76,7 @@ public:
     exec_stack_mem.push(mem_pair);
   }
 
-  void AddAllocation(void* mem) {
+  void AddAllocation(char* mem) {
     raw_allocations.push(mem);
   }
 };
