@@ -1,5 +1,5 @@
 /***************************************************************************
- * GTK3 support for Objeck
+ * GTK3 PoC support for Objeck
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
