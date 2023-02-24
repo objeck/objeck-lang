@@ -173,39 +173,25 @@ extern "C" {
 #endif
     void gtk3_application_run(VMContext& context) {
     GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 0);
-    size_t* string_array_obj = APITools_GetObjectValue(context, 1);
-
-    int argc = 1;
-    if(string_array_obj && string_array_obj[0]) {
-      string_array_obj = (size_t*)string_array_obj[0];
-      const size_t string_array_size = string_array_obj[2];
-
-      argc += (int)string_array_size;
-      char** argv = new char*[string_array_size + 1];
-
-      // TODO: manage memory (create allocator); strdup (is) EVIL
-#ifdef _WIN32
-      argv[0] = _strdup("libobjk_gtk3.dll");
-#else
-      argv[0] = strdup("libobjk_gtk3.dll");
-#endif
-      for(size_t i = 0; i < string_array_size; ++i) {
-        const wchar_t* str_ptr = APITools_GetStringValue(string_array_obj, i);
-#ifdef _WIN32
-        argv[i + 1] = _strdup(UnicodeToBytes(str_ptr).c_str());
-#else
-        argv[i + 1] = strdup(UnicodeToBytes(str_ptr).c_str());
-#endif
-      }
-      argv[string_array_size + 1] = nullptr;
-
-      const int status = g_application_run(G_APPLICATION(application), argc, argv);
+    
+    std::vector<std::wstring> values = APITools_GetStringsValues(context, 1);
+    if(values.empty()) {
+      char* argv[] = { "libobjk_gtk3.dll", 0 };
+      
+      const int status = g_application_run(G_APPLICATION(application), 1, argv);
       APITools_SetIntValue(context, 0, status);
     }
     else {
-      char* argv[] = { "libobjk_gtk3.dll", 0 };
+      // TODO: argv leaked?
+      const size_t argc = values.size() + 2;
+      char** argv = new char*[argc];
+      argv[0] = _strdup("libobjk_gtk3.dll");
+      for(size_t i = 0; i < values.size(); ++i) {
+        argv[i + 1] = _strdup(UnicodeToBytes(values[i]).c_str());
+      }
+      argv[argc - 1] = 0;
 
-      const int status = g_application_run(G_APPLICATION(application), argc, argv);
+      const int status = g_application_run(G_APPLICATION(application), 1, argv);
       APITools_SetIntValue(context, 0, status);
     }
   }
