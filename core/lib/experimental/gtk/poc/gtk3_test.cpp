@@ -176,18 +176,33 @@ extern "C" {
     
     std::vector<std::wstring> values = APITools_GetStringsValues(context, 1);
     if(values.empty()) {
-      char* argv[] = { "libobjk_gtk3.dll", 0 };
+      const int argc = 2;
+      char** argv = new char*[argc];
+#ifdef _WIN32      
+      argv[0] = _strdup("libobjk_gtk3.dll");
+#else
+      argv[0] = strdup("libobjk_gtk3.dll");
+#endif
+      argv[1] = 0;
       
-      const int status = g_application_run(G_APPLICATION(application), 1, argv);
+      const int status = g_application_run(G_APPLICATION(application), argc, argv);
       APITools_SetIntValue(context, 0, status);
     }
     else {
       // TODO: argv leaked?
       const size_t argc = values.size() + 2;
       char** argv = new char*[argc];
+#ifdef _WIN32      
       argv[0] = _strdup("libobjk_gtk3.dll");
+#else
+      argv[0] = strdup("libobjk_gtk3.dll");
+#endif
       for(size_t i = 0; i < values.size(); ++i) {
+#ifdef _WIN32        
         argv[i + 1] = _strdup(UnicodeToBytes(values[i]).c_str());
+#else
+        argv[i + 1] = strdup(UnicodeToBytes(values[i]).c_str());
+#endif        
       }
       argv[argc - 1] = 0;
 
