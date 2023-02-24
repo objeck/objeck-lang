@@ -40,14 +40,14 @@
 
 #define EXEC_STACK_MAX 32
 
-class MemoryAllocator {
+class ResourceManager {
   APITools_AllocateObject_Ptr allocate_object;
   APITools_MethodCallById_Ptr method_call_by_id;
   std::stack<std::pair<size_t*, long*>> op_stack_mem;
   std::stack<char*> raw_allocations;
 
 public:
-  MemoryAllocator(APITools_AllocateObject_Ptr ao, APITools_MethodCallById_Ptr mc) {
+  ResourceManager(APITools_AllocateObject_Ptr ao, APITools_MethodCallById_Ptr mc) {
     allocate_object = ao;
     method_call_by_id = mc;
 
@@ -59,7 +59,7 @@ public:
     }
   }
 
-  ~MemoryAllocator() {
+  ~ResourceManager() {
     allocate_object = nullptr;
     method_call_by_id = nullptr;
 
