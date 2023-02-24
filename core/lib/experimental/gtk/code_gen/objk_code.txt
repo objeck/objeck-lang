@@ -1,0 +1,347 @@
+bundle GTK3 {
+  class : private : Proxy {
+    @lib_proxy : static : DllProxy;
+
+    function : GetDllProxy() ~ DllProxy {
+      if(@lib_proxy = Nil) {
+        @lib_proxy := DllProxy->New("libobjk_gtk3");
+      };
+
+      return @lib_proxy;
+    }
+  }
+
+  class Point {
+    @point : Int;
+
+    New(point : Int) {
+      @point := point;
+    }
+
+    method : public : GetX() ~ Int {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@point);
+
+      Proxy->GetDllProxy()->CallFunction("point_get_x", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : SetX(x : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@point);
+      array_args[1] := IntHolder->New(x);
+
+      Proxy->GetDllProxy()->CallFunction("point_set_x", array_args);
+    }
+
+    method : public : GetY() ~ Int {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@point);
+
+      Proxy->GetDllProxy()->CallFunction("point_get_y", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : SetY(y : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@point);
+      array_args[1] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("point_set_y", array_args);
+    }
+  }
+
+  class RGBA {
+    @rgba : Int;
+
+    New(rgba : Int) {
+      @rgba := rgba;
+    }
+
+    method : public : GetRed() ~ Float {
+      array_args := Base->New[2];
+
+      array_args[0] := FloatHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_get_red", array_args);
+
+      value := array_args[0]->As(FloatHolder);
+      return value->Get();
+    }
+
+    method : public : SetRed(red : Float) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rgba);
+      array_args[1] := FloatHolder->New(red);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_set_red", array_args);
+    }
+
+    method : public : GetGreen() ~ Float {
+      array_args := Base->New[2];
+
+      array_args[0] := FloatHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_get_green", array_args);
+
+      value := array_args[0]->As(FloatHolder);
+      return value->Get();
+    }
+
+    method : public : SetGreen(green : Float) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rgba);
+      array_args[1] := FloatHolder->New(green);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_set_green", array_args);
+    }
+
+    method : public : GetBlue() ~ Float {
+      array_args := Base->New[2];
+
+      array_args[0] := FloatHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_get_blue", array_args);
+
+      value := array_args[0]->As(FloatHolder);
+      return value->Get();
+    }
+
+    method : public : SetBlue(blue : Float) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rgba);
+      array_args[1] := FloatHolder->New(blue);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_set_blue", array_args);
+    }
+
+    method : public : GetAlpha() ~ Float {
+      array_args := Base->New[2];
+
+      array_args[0] := FloatHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_get_alpha", array_args);
+
+      value := array_args[0]->As(FloatHolder);
+      return value->Get();
+    }
+
+    method : public : SetAlpha(alpha : Float) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rgba);
+      array_args[1] := FloatHolder->New(alpha);
+
+      Proxy->GetDllProxy()->CallFunction("rgba_set_alpha", array_args);
+    }
+
+    method : public : Copy() ~ RGBA {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rgba_copy", array_args);
+
+      value := array_args[0]->As(FloatHolder);
+      return RGBA->New(value);
+    }
+
+    method : public : Equal(p2 : RGBA) ~ Bool {
+      array_args := Base->New[3];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+      array_args[2] := p2;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rgba_equal", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : Free() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rgba_free", array_args);
+    }
+
+    method : public : Hash() ~ Int {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rgba_hash", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : Parse(spec : String) ~ Bool {
+      array_args := Base->New[3];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rgba);
+      array_args[2] := spec;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rgba_parse", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : ToString() ~ String {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@rgba);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rgba_to_string", array_args);
+
+      return array_args[0]->As(String);
+    }
+  }
+
+  class Rectangle {
+    @rectangle : Int;
+
+    New(rectangle : Int) {
+      @rectangle := rectangle;
+    }
+
+    method : public : GetX() ~ Int {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rectangle);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_get_x", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : SetX(x : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rectangle);
+      array_args[1] := IntHolder->New(x);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_set_x", array_args);
+    }
+
+    method : public : GetY() ~ Int {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rectangle);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_get_y", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : SetY(y : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rectangle);
+      array_args[1] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_set_y", array_args);
+    }
+
+    method : public : GetWidth() ~ Int {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rectangle);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_get_width", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : SetWidth(width : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rectangle);
+      array_args[1] := IntHolder->New(width);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_set_width", array_args);
+    }
+
+    method : public : GetHeight() ~ Int {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rectangle);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_get_height", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : SetHeight(height : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@rectangle);
+      array_args[1] := IntHolder->New(height);
+
+      Proxy->GetDllProxy()->CallFunction("rectangle_set_height", array_args);
+    }
+
+    method : public : Equal(rect2 : Rectangle) ~ Bool {
+      array_args := Base->New[3];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rectangle);
+      array_args[2] := rect2;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rectangle_equal", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : Intersect(src2 : Rectangle, dest : Rectangle) ~ Bool {
+      array_args := Base->New[4];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@rectangle);
+      array_args[2] := src2;
+      array_args[3] := dest;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rectangle_intersect", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : Union(src2 : Rectangle, dest : Rectangle) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@rectangle);
+      array_args[1] := src2;
+      array_args[2] := dest;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_rectangle_union", array_args);
+    }
+  }
+
+}
