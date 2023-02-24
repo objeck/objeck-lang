@@ -584,7 +584,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_smallint(VMContext& context) 
   {
-    size_t* value = APITools_GetArrayAddress(context, 1);
+    size_t* value = APITools_GetArray(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -636,7 +636,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_bit(VMContext& context) 
   {
-    size_t* value = APITools_GetArrayAddress(context, 1);
+    size_t* value = APITools_GetArray(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -688,7 +688,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_int(VMContext& context) 
   {
-    size_t* value = APITools_GetArrayAddress(context, 1);
+    size_t* value = APITools_GetArray(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -741,7 +741,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_double(VMContext& context) 
   {
-    size_t* value = APITools_GetArrayAddress(context, 1);
+    size_t* value = APITools_GetArray(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -794,7 +794,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_real(VMContext& context) 
   {
-    size_t* value = APITools_GetArrayAddress(context, 1);
+    size_t* value = APITools_GetArray(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -1360,7 +1360,7 @@ extern "C" {
   {
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetArray(byte_array);
-    SQLLEN* value_size = (SQLLEN*)APITools_GetArrayAddress(context, 2);
+    SQLLEN* value_size = (SQLLEN*)APITools_GetArray(context, 2);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 3);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
     std::map<int, std::pair<void*, SQLLEN> >* exec_data = (std::map<int, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 5);
