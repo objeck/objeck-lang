@@ -63,8 +63,8 @@ extern "C" {
   void openssl_hash_sha256(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArrayAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetArrayAddress(input_array);
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArrayAddress(context, 0);
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
@@ -121,8 +121,8 @@ extern "C" {
   void openssl_hash_sha512(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArrayAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetArrayAddress(input_array);
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArrayAddress(context, 0);
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
@@ -179,8 +179,8 @@ extern "C" {
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArrayAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetArrayAddress(input_array);
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArrayAddress(context, 0);
 
 #ifdef _WIN32
@@ -258,8 +258,8 @@ extern "C" {
   void openssl_hash_md5(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArrayAddress(context, 1)[0];
-    int input_size = APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input = (unsigned char*)APITools_GetArrayAddress(input_array);
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArrayAddress(context, 0);
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
@@ -316,12 +316,12 @@ extern "C" {
   void openssl_encrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArrayAddress(context, 1)[0];    
-    const int key_size =  APITools_GetArraySize(key_array) - 1;
-    const unsigned char* key =  (unsigned char*)APITools_GetArrayAddress(key_array);
+    const long key_size = ((long)APITools_GetArraySize(key_array)) - 1;
+    const unsigned char* key =  (unsigned char*)APITools_GetArray(key_array);
     
     size_t* input_array = (size_t*)APITools_GetArrayAddress(context, 2)[0];    
-    const int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetArrayAddress(input_array);
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input =  (unsigned char*)APITools_GetArray(input_array);
 
     size_t* output_holder = APITools_GetArrayAddress(context, 0);
     
@@ -388,12 +388,12 @@ extern "C" {
   void openssl_decrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArrayAddress(context, 1)[0];    
-    const int key_size =  APITools_GetArraySize(key_array) - 1;
-    const unsigned char* key =  (unsigned char*)APITools_GetArrayAddress(key_array);
+    const long key_size = ((long)APITools_GetArraySize(key_array)) - 1;
+    const unsigned char* key =  (unsigned char*)APITools_GetArray(key_array);
     
     size_t* input_array = (size_t*)APITools_GetArrayAddress(context, 2)[0];    
-    const int input_size =  APITools_GetArraySize(input_array);
-    const unsigned char* input =  (unsigned char*)APITools_GetArrayAddress(input_array);
+    const long input_size = (long)APITools_GetArraySize(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetArray(input_array);
 
     size_t* output_holder = APITools_GetArrayAddress(context, 0);
     

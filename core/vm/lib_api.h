@@ -99,7 +99,7 @@ size_t* APITools_GetArrayAddress(VMContext &context, size_t index) {
 //
 // Gets an array reference
 //
-size_t* APITools_GetArrayAddress(size_t* data_array) {
+size_t* APITools_GetArray(size_t* data_array) {
   if(data_array) {
     data_array += ARRAY_HEADER_OFFSET;
     return (size_t*)data_array;
