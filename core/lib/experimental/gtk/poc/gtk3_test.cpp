@@ -171,7 +171,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void gtk3_application_run(VMContext& context) {
+  void gtk3_application_run(VMContext& context) {
     GtkApplication* application = (GtkApplication*)APITools_GetIntValue(context, 0);
     
     std::vector<std::wstring> values = APITools_GetStringsValues(context, 1);
