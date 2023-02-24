@@ -106,10 +106,10 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
-    size_t* names_array = (APITools_GetObjectValue(context, 2));
+    size_t* names_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 2));
     const size_t names_array_size = APITools_GetArraySize(names_array);
 
-    size_t* texts_array = (APITools_GetObjectValue(context, 3));
+    size_t* texts_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 3));
     const size_t texts_array_size = APITools_GetArraySize(texts_array);
 
     if(names_array_size > 0 && names_array_size == texts_array_size) {

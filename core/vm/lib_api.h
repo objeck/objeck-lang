@@ -72,10 +72,9 @@ const long APITools_GetArgumentCount(VMContext& context) {
 }
 
 //
-// Gets an array from an Objeck array holder reference
-// (i.e. ByteArrayHolder, FloatArrayHolder, etc.)
+// Gets an array reference from an Objeck array holder reference
 //
-size_t* APITools_GetArrayHolder(size_t* array_holder) {
+size_t* APITools_GetArrayAddress(size_t* array_holder) {
   if(array_holder) {
     return (size_t*)array_holder[0];
   }
@@ -84,9 +83,9 @@ size_t* APITools_GetArrayHolder(size_t* array_holder) {
 }
 
 //
-// Gets an array reference by index
+// Gets an array by index
 //
-size_t* APITools_GetArrayAddress(VMContext &context, size_t index) {
+size_t* APITools_GetArray(VMContext &context, size_t index) {
   size_t* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -97,7 +96,7 @@ size_t* APITools_GetArrayAddress(VMContext &context, size_t index) {
 }
 
 //
-// Gets an array reference
+// Gets an array 
 //
 size_t* APITools_GetArray(size_t* data_array) {
   if(data_array) {
