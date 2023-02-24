@@ -80,7 +80,7 @@ extern "C" {
         const char prefix_str[] = "Gtk";
         size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);
         if(handler_cname_prefix_offset != std::string::npos) {
-          std::pair<size_t*, long*> exec_stack_mem = mem_aloc->FetchExecStackMemory();
+          std::pair<size_t*, long*> exec_stack_mem = mem_aloc->GetOpStackMemory();
 
           size_t* op_stack = exec_stack_mem.first;
           long* stack_pos = exec_stack_mem.second;
@@ -104,7 +104,7 @@ extern "C" {
           }
 
           // clean up
-          mem_aloc->ReleaseExecStackMemory(exec_stack_mem);
+          mem_aloc->ReleaseOpStackMemory(exec_stack_mem);
         }
       }
     }

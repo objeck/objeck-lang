@@ -11,7 +11,7 @@
 class MemoryAllocator {
   APITools_AllocateObject_Ptr allocate_object;
   APITools_MethodCallById_Ptr method_call_by_id;
-  std::stack<std::pair<size_t*, long*>> exec_stack_mem;
+  std::stack<std::pair<size_t*, long*>> op_stack_mem;
   std::stack<char*> raw_allocations;
 
 public:
@@ -23,7 +23,7 @@ public:
       size_t* op_stack = new size_t[OP_STACK_SIZE];
       long* stack_pos = new long;
 
-      exec_stack_mem.push(std::pair<size_t*, long*>(op_stack, stack_pos));
+      op_stack_mem.push(std::pair<size_t*, long*>(op_stack, stack_pos));
     }
   }
 
@@ -31,9 +31,9 @@ public:
     allocate_object = nullptr;
     method_call_by_id = nullptr;
 
-    while(!exec_stack_mem.empty()) {
-      std::pair<size_t*, long*> value = exec_stack_mem.top();
-      exec_stack_mem.pop();
+    while(!op_stack_mem.empty()) {
+      std::pair<size_t*, long*> value = op_stack_mem.top();
+      op_stack_mem.pop();
 
       size_t* op_stack = value.first;
       delete[] op_stack;
@@ -61,10 +61,10 @@ public:
     return method_call_by_id;
   }
 
-  std::pair<size_t*, long*> FetchExecStackMemory() {
-    if(!exec_stack_mem.empty()) {
-      std::pair<size_t*, long*> mem_pair = exec_stack_mem.top();
-      exec_stack_mem.pop();
+  std::pair<size_t*, long*> GetOpStackMemory() {
+    if(!op_stack_mem.empty()) {
+      std::pair<size_t*, long*> mem_pair = op_stack_mem.top();
+      op_stack_mem.pop();
 
       return mem_pair;
     }
@@ -72,8 +72,8 @@ public:
     return std::pair<size_t*, long*>();
   }
 
-  void ReleaseExecStackMemory(std::pair<size_t*, long*> mem_pair) {
-    exec_stack_mem.push(mem_pair);
+  void ReleaseOpStackMemory(std::pair<size_t*, long*> mem_pair) {
+    op_stack_mem.push(mem_pair);
   }
 
   void AddAllocation(char* mem) {
