@@ -7,7 +7,7 @@
 if [ ! -z "$1" ] && [ "$1" = "clib" ]; then
 	rm -rf *.o *.so
 	g++ -O3 -Wall -std=c++11 -fPIC -c gtk3_test.cpp `pkg-config --cflags gtk+-3.0 --libs gtk+-3.0` -Wno-unused-function 
-	g++ -O3 -shared -Wl,-soname,libobjk_gtk3_test.so.1 -o libobjk_gtk3_test.so *.o 
+	g++ -O3 -shared -Wl,-soname,libobjk_gtk3_test.so.1 -o libobjk_gtk3_test.so *.o -l gtk-3
 	cp libobjk_gtk3_test.so ../../../../release/deploy/lib/native
 fi
 
