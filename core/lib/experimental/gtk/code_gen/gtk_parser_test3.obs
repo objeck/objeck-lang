@@ -88,6 +88,7 @@ class GtkTestRunner {
 			};
 
 			@objk_out->WriteString("}\n");
+			@cxx_out->WriteString("}\n");
 		};
 
 		@objk_out->Close();
