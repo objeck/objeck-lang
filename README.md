@@ -72,7 +72,7 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 * [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
-## Code
+## Working with the Code
 Objeck can be built for a variety of targets. The language is implemented in C++ and assembly (i.e., generated machine code).
 
 ### Linux (x64, ARM64)
