@@ -72,16 +72,8 @@ class GtkTestRunner {
 
 		parser := XmlParser->New(data);
 		if(parser->Parse()) {
-			@objk_out->WriteString("bundle GTK3 {\n");
-			@objk_out->WriteString("  class : private : Proxy {\n");
-			@objk_out->WriteString("    @lib_proxy : static : DllProxy;\n\n");
-			@objk_out->WriteString("    function : GetDllProxy() ~ DllProxy {\n");
-			@objk_out->WriteString("      if(@lib_proxy = Nil) {\n");
-			@objk_out->WriteString("        @lib_proxy := DllProxy->New(\"libobjk_gtk3\");\n");
-			@objk_out->WriteString("      };\n\n");
-			@objk_out->WriteString("      return @lib_proxy;\n");
-			@objk_out->WriteString("    }\n");
-			@objk_out->WriteString("  }\n\n");
+			WriteObjeckHeader();
+			WriteCxxHeader();
 
 			@namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
 
@@ -549,5 +541,99 @@ class GtkTestRunner {
 		};
 
 		return name;
+	}
+
+	method : WriteObjeckHeader() ~ Nil {
+		objk_buffer := "";
+
+		objk_buffer += "bundle GTK3 {\n";
+		objk_buffer += "  class : private : Proxy {\n";
+		objk_buffer += "    @lib_proxy : static : DllProxy;\n\n";
+		objk_buffer += "    function : GetDllProxy() ~ DllProxy {\n";
+		objk_buffer += "      if(@lib_proxy = Nil) {\n";
+		objk_buffer += "        @lib_proxy := DllProxy->New(\"libobjk_gtk3\";\n";
+		objk_buffer += "      };\n\n";
+		objk_buffer += "      return @lib_proxy;\n";
+		objk_buffer += "    }\n";
+		objk_buffer += "  }\n\n";
+		
+		@objk_out->WriteString(objk_buffer);
+	}
+
+	method : WriteCxxHeader() ~ Nil {
+		cxx_buffer := "";
+
+		cxx_buffer += "#include \"gtk3_test.h\"\n\n";
+		cxx_buffer += "extern \"C\" {\n";
+		cxx_buffer += "  static ResourceManager* res_manager = nullptr;\n";
+		cxx_buffer += "\n";
+		cxx_buffer += "  //\n";
+		cxx_buffer += "  // initialize library\n";
+		cxx_buffer += "  //\n";
+		cxx_buffer += "#ifdef _WIN32\n";
+		cxx_buffer += "  __declspec(dllexport)\n";
+		cxx_buffer += "#endif\n";
+		cxx_buffer += "  void load_lib(VMContext& context) {\n";
+		cxx_buffer += "    if(!res_manager) {\n";
+		cxx_buffer += "      res_manager = new ResourceManager(context.alloc_managed_obj, context.call_method_by_id);\n";
+		cxx_buffer += "    }\n";
+		cxx_buffer += "  }\n\n";
+		cxx_buffer += "  //\n";
+		cxx_buffer += "  // release library\n";
+		cxx_buffer += "  //\n";
+		cxx_buffer += "#ifdef _WIN32\n";
+		cxx_buffer += "  __declspec(dllexport)\n";
+		cxx_buffer += "#endif\n";
+		cxx_buffer += "  void unload_lib() {\n";
+		cxx_buffer += "    if(res_manager) {\n";
+		cxx_buffer += "      delete res_manager;\n";
+		cxx_buffer += "      res_manager = nullptr;\n";
+		cxx_buffer += "    }\n";
+		cxx_buffer += "  }\n\n";
+		cxx_buffer += "  //\n";
+		cxx_buffer += "  // GObject\n";
+		cxx_buffer += "  //\n";
+		cxx_buffer += "  static void callback_handler(GObject* handler, gpointer callback_data) {\n";
+		cxx_buffer += "    // well, want to reduce the code below... however what I learned from the SLD2\n";
+		cxx_buffer += "    // bindings is that UIs are order of magnitude slower then supporting program logic\n";
+		cxx_buffer += "    if(handler && callback_data) {\n";
+		cxx_buffer += "      std::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;\n";
+		cxx_buffer += "      size_t const mthd_cls_id = callback_params->first;\n";
+		cxx_buffer += "      const int cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;\n";
+		cxx_buffer += "      const int mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;\n";
+		cxx_buffer += "      size_t* callback_data = callback_params->second;\n\n";
+		cxx_buffer += "      GType handler_ctype = G_TYPE_FROM_INSTANCE(handler);\n";
+		cxx_buffer += "      if(G_TYPE_IS_CLASSED(handler_ctype)) {\n";
+		cxx_buffer += "        const std::string handler_cname(g_type_name(handler_ctype));\n";
+		cxx_buffer += "        const char prefix_str[] = \"Gtk\n";
+		cxx_buffer += "        size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);\n";
+		cxx_buffer += "        if(handler_cname_prefix_offset != std::string::npos) {\n";
+		cxx_buffer += "          std::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();\n\n";
+		cxx_buffer += "          size_t* op_stack = exec_stack_mem.first;\n";
+		cxx_buffer += "          long* stack_pos = exec_stack_mem.second;\n";
+		cxx_buffer += "          \n";
+		cxx_buffer += "          const std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));\n";
+		cxx_buffer += "          const std::string handler_objk_name(\"Gtk3.\" + post_objk_name);\n\m";
+		cxx_buffer += "          const APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();\n";
+		cxx_buffer += "          size_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);\n";
+		cxx_buffer += "          if(gobject_obj) {\n";
+		cxx_buffer += "            gobject_obj[0] = (size_t)handler;\n\n";
+		cxx_buffer += "            // set stack\n";
+		cxx_buffer += "            op_stack[0] = (size_t)gobject_obj;\n";
+		cxx_buffer += "            op_stack[1] = (size_t)callback_data;\n";
+		cxx_buffer += "            (*stack_pos) = 2;\n\n";
+		cxx_buffer += "            // call method\n";
+		cxx_buffer += "            const APITools_MethodCallById_Ptr mthd_call_id = res_manager->GetMethodCallById();\n";
+		cxx_buffer += "            mthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);\n";
+		cxx_buffer += "          }\n\n";
+		cxx_buffer += "          // clean up\n";
+		cxx_buffer += "          res_manager->ReleaseOpStackMemory(exec_stack_mem);\n";
+		cxx_buffer += "        }\n";
+		cxx_buffer += "      }\n";
+		cxx_buffer += "    }\n";
+		cxx_buffer += "  }\n";
+		cxx_buffer += "}\n";
+
+		@cxx_out->WriteString(cxx_buffer);
 	}
 }
