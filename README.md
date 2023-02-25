@@ -69,6 +69,7 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 * [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
+## Component Model
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
 ## Code
