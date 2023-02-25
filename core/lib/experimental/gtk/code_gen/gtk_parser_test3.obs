@@ -41,6 +41,7 @@ class GtkTestRunner {
 		@basic_type_map->Insert("gdouble", "Float");
 		@basic_type_map->Insert("utf8", "String");
 		@basic_type_map->Insert("gchar*", "String");
+		@basic_type_map->Insert("gchar**", "String[]");
 		@basic_type_map->Insert("filename", "String");
 		@basic_type_map->Insert("void", "Nil");
 		@basic_type_map->Insert("guint8*", "Byte[]");
