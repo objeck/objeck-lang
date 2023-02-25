@@ -29,7 +29,13 @@
 ## Targets
 Solution and PoCs will need to run on macOS, Linux and Windows (VS and MSYS2).
 
-# Windows
+### Linux
+```
+apt-get install libgtk-3-dev
+```
+[PoC build script](poc/build_linux.sh)
+
+### Windows
 ```
 cd \
 git clone https://github.com/Microsoft/vcpkg
@@ -38,7 +44,13 @@ cd vcpkg
 vcpkg install gtk3:x64-windows gtk4:x64-windows
 vcpkg integrate install
 ```
+[PoC build script](poc/build_win.cmd)
 
-## Sample output
+### macOS
+```
+TBD
+```
+
+## Code Generation Sample Output
 
 [Work-in-progress...](code_gen/debug/debug.txt)
