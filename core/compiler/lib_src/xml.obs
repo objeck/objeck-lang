@@ -1118,7 +1118,7 @@ bundle Data.XML {
 		Get the number of child elements
 		@return number of child elements
 		~#
-		method : public : GetChildCount() ~ Int {
+		method : public : Size() ~ Int {
 			if(@children <> Nil) {
 				return @children->Size();
 			};
@@ -1131,7 +1131,7 @@ bundle Data.XML {
 		@param i child index
 		@return child element, Nil if not found
 		~#
-		method : public : GetChild(i : Int) ~ XmlElement {
+		method : public : Get(i : Int) ~ XmlElement {
 			if(@children <> Nil & i < @children->Size()) {
 				return @children->Get(i);
 			};
