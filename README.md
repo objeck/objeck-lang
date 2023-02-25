@@ -26,18 +26,18 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
 
 ## Key Features
 * Object-oriented
-  * Inheritance
-  * Interfaces
-  * Anonymous declarations
-  * Reflection 
-  * Dependency injection
-  * Generics
-  * Type boxing
-  * Serialization
+  * [Inheritance](https://en.wikipedia.org/wiki/Inheritance_(object-oriented_programming))
+  * [Interfaces](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming))
+  * [Type Inference](https://en.wikipedia.org/wiki/Type_inference)
+  * [Reflection](https://en.wikipedia.org/wiki/Reflective_programming)
+  * [Dependency injection](https://en.wikipedia.org/wiki/Dependency_injection)
+  * [Generics](https://en.wikipedia.org/wiki/Generic_programming)
+  * [Type boxing](https://en.wikipedia.org/wiki/Boxing_(computer_science))
+  * [Serialization](https://en.wikipedia.org/wiki/Serialization)
 * Functional 
-  * Closures
-  * Lambda expressions
-  * First-class functions
+  * [Closures](https://en.wikipedia.org/wiki/Closure_(computer_programming))
+  * [Lambda expressions](https://en.wikipedia.org/wiki/Anonymous_function)
+  * [First-class functions](https://en.wikipedia.org/wiki/First-class_function)
 * Type inference
 * Unicode support
 * OS-level support for threads, sockets, files, time, etc.
