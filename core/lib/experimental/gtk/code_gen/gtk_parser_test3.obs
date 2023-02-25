@@ -9,6 +9,7 @@ class GtkTestRunner {
 	@debug : Bool;
 	@filename : String;
 	@basic_type_map : Hash<String, String>;
+	@consts_set : Set<String>;
 	@namespace : String;
 	@objk_out : FileWriter;
 	@cxx_out : FileWriter;
@@ -44,6 +45,8 @@ class GtkTestRunner {
 		@basic_type_map->Insert("void", "Nil");
 		@basic_type_map->Insert("guint8*", "Byte[]");
 
+		@consts_set := Set->New()<String>;
+
 		@objk_out := FileWriter->New("objk_code.txt");
 		@cxx_out := FileWriter->New("cxx_code.txt");
 	}
@@ -61,19 +64,37 @@ class GtkTestRunner {
 		timer->Start();
 
 #		TODO: store in look up table and handle as ints
-#		records_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
-#		records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+#		classes_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+#		classes_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
 
-#		records_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+#		classes_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 
 		parser := XmlParser->New(data);
 		if(parser->Parse()) {
+			@objk_out->WriteString("bundle GTK3 {\n");
+			@objk_out->WriteString("  class : private : Proxy {\n");
+			@objk_out->WriteString("    @lib_proxy : static : DllProxy;\n\n");
+			@objk_out->WriteString("    function : GetDllProxy() ~ DllProxy {\n");
+			@objk_out->WriteString("      if(@lib_proxy = Nil) {\n");
+			@objk_out->WriteString("        @lib_proxy := DllProxy->New(\"libobjk_gtk3\");\n");
+			@objk_out->WriteString("      };\n\n");
+			@objk_out->WriteString("      return @lib_proxy;\n");
+			@objk_out->WriteString("    }\n");
+			@objk_out->WriteString("  }\n\n");
+
 			@namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
 
-			records_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
-			if(records_xml <> Nil) {
-				ParseRecords(records_xml);
+			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+			if(enums_xml <> Nil) {
+				ParseEnums(enums_xml);
 			};
+
+			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+			if(classes_xml <> Nil) {
+				ParseClasses(classes_xml);
+			};
+
+			@objk_out->WriteString("}\n");
 		};
 
 		@objk_out->Close();
@@ -86,23 +107,38 @@ class GtkTestRunner {
 		"###\ntime={$tick_secs} sec(s)"->PrintLine();
 	}
 
-	method : ParseRecords(records_xml : Vector<XmlElement>) ~ Nil {
-		@objk_out->WriteString("bundle GTK3 {\n");
-		@objk_out->WriteString("  class : private : Proxy {\n");
-		@objk_out->WriteString("    @lib_proxy : static : DllProxy;\n\n");
-		@objk_out->WriteString("    function : GetDllProxy() ~ DllProxy {\n");
-		@objk_out->WriteString("      if(@lib_proxy = Nil) {\n");
-		@objk_out->WriteString("        @lib_proxy := DllProxy->New(\"libobjk_gtk3\");\n");
-		@objk_out->WriteString("      };\n\n");
-		@objk_out->WriteString("      return @lib_proxy;\n");
-		@objk_out->WriteString("    }\n");
-		@objk_out->WriteString("  }\n\n");
+	method : ParseEnums(enums_xml : Vector<XmlElement>) ~ Nil {
+		cxx_buffer := "";
+		objk_buffer := "";
 
-		each(i : records_xml) {
+		each(enum_xml := enums_xml) {
+			enum_name := enum_xml->GetAttribute("name")->GetValue();
+			@consts_set->Insert(enum_name);
+
+			objk_buffer += "  consts {$enum_name} {\n";
+
+			members_xml := enum_xml->GetChildren("member")<XmlElement>;
+			each(member_xml := members_xml) {
+				value_name := member_xml->GetAttribute("value")->GetValue();
+				identifier_name := member_xml->GetAttribute("identifier")->GetValue();
+
+				objk_buffer += "    {$identifier_name} := {$value_name},\n";
+			};
+			objk_buffer->Pop();
+			objk_buffer->Pop();
+
+			objk_buffer += "\n  }\n\n";
+		};
+
+		@objk_out->WriteString(objk_buffer);
+	}
+
+	method : ParseClasses(classes_xml : Vector<XmlElement>) ~ Nil {
+		each(i : classes_xml) {
 			cxx_buffer := "";
 			objk_buffer := "";
 
-			class_xml := records_xml->Get(i);
+			class_xml := classes_xml->Get(i);
 
 			class_name := class_xml->GetAttribute("name")->GetValue();
 			if(class_name->Equals("Window")) {
@@ -113,12 +149,11 @@ class GtkTestRunner {
 				@debug := false;
 			};
 			
-			if(i + 1 = records_xml->Size()) {
+			if(i + 1 = classes_xml->Size()) {
 				objk_buffer->Pop();
 			};
 			@objk_out->WriteString(objk_buffer);
 		};
-		@objk_out->WriteString("}\n");
 
 		"\n==============================================================="->PrintLine();
 	}
@@ -381,7 +416,13 @@ class GtkTestRunner {
 				}
 				else if(<>type_name->Equals("Nil")) {
 					objk_buffer += "\n      value := array_args[0]->As(IntHolder);\n";
-					objk_buffer += "      return {$type_name}->New(value);\n";
+
+					if(@consts_set->Has(type_name)) {
+						objk_buffer += "      return value->As({$type_name});\n";						
+					}
+					else {
+						objk_buffer += "      return {$type_name}->New(value);\n";
+					};
 				};
 			};
 		};

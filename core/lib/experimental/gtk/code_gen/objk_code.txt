@@ -11,6 +11,409 @@ bundle GTK3 {
     }
   }
 
+  consts AxisUse {
+    GDK_AXIS_IGNORE := 0,
+    GDK_AXIS_X := 1,
+    GDK_AXIS_Y := 2,
+    GDK_AXIS_PRESSURE := 3,
+    GDK_AXIS_XTILT := 4,
+    GDK_AXIS_YTILT := 5,
+    GDK_AXIS_WHEEL := 6,
+    GDK_AXIS_DISTANCE := 7,
+    GDK_AXIS_ROTATION := 8,
+    GDK_AXIS_SLIDER := 9,
+    GDK_AXIS_LAST := 10
+  }
+
+  consts ByteOrder {
+    GDK_LSB_FIRST := 0,
+    GDK_MSB_FIRST := 1
+  }
+
+  consts CrossingMode {
+    GDK_CROSSING_NORMAL := 0,
+    GDK_CROSSING_GRAB := 1,
+    GDK_CROSSING_UNGRAB := 2,
+    GDK_CROSSING_GTK_GRAB := 3,
+    GDK_CROSSING_GTK_UNGRAB := 4,
+    GDK_CROSSING_STATE_CHANGED := 5,
+    GDK_CROSSING_TOUCH_BEGIN := 6,
+    GDK_CROSSING_TOUCH_END := 7,
+    GDK_CROSSING_DEVICE_SWITCH := 8
+  }
+
+  consts CursorType {
+    GDK_X_CURSOR := 0,
+    GDK_ARROW := 2,
+    GDK_BASED_ARROW_DOWN := 4,
+    GDK_BASED_ARROW_UP := 6,
+    GDK_BOAT := 8,
+    GDK_BOGOSITY := 10,
+    GDK_BOTTOM_LEFT_CORNER := 12,
+    GDK_BOTTOM_RIGHT_CORNER := 14,
+    GDK_BOTTOM_SIDE := 16,
+    GDK_BOTTOM_TEE := 18,
+    GDK_BOX_SPIRAL := 20,
+    GDK_CENTER_PTR := 22,
+    GDK_CIRCLE := 24,
+    GDK_CLOCK := 26,
+    GDK_COFFEE_MUG := 28,
+    GDK_CROSS := 30,
+    GDK_CROSS_REVERSE := 32,
+    GDK_CROSSHAIR := 34,
+    GDK_DIAMOND_CROSS := 36,
+    GDK_DOT := 38,
+    GDK_DOTBOX := 40,
+    GDK_DOUBLE_ARROW := 42,
+    GDK_DRAFT_LARGE := 44,
+    GDK_DRAFT_SMALL := 46,
+    GDK_DRAPED_BOX := 48,
+    GDK_EXCHANGE := 50,
+    GDK_FLEUR := 52,
+    GDK_GOBBLER := 54,
+    GDK_GUMBY := 56,
+    GDK_HAND1 := 58,
+    GDK_HAND2 := 60,
+    GDK_HEART := 62,
+    GDK_ICON := 64,
+    GDK_IRON_CROSS := 66,
+    GDK_LEFT_PTR := 68,
+    GDK_LEFT_SIDE := 70,
+    GDK_LEFT_TEE := 72,
+    GDK_LEFTBUTTON := 74,
+    GDK_LL_ANGLE := 76,
+    GDK_LR_ANGLE := 78,
+    GDK_MAN := 80,
+    GDK_MIDDLEBUTTON := 82,
+    GDK_MOUSE := 84,
+    GDK_PENCIL := 86,
+    GDK_PIRATE := 88,
+    GDK_PLUS := 90,
+    GDK_QUESTION_ARROW := 92,
+    GDK_RIGHT_PTR := 94,
+    GDK_RIGHT_SIDE := 96,
+    GDK_RIGHT_TEE := 98,
+    GDK_RIGHTBUTTON := 100,
+    GDK_RTL_LOGO := 102,
+    GDK_SAILBOAT := 104,
+    GDK_SB_DOWN_ARROW := 106,
+    GDK_SB_H_DOUBLE_ARROW := 108,
+    GDK_SB_LEFT_ARROW := 110,
+    GDK_SB_RIGHT_ARROW := 112,
+    GDK_SB_UP_ARROW := 114,
+    GDK_SB_V_DOUBLE_ARROW := 116,
+    GDK_SHUTTLE := 118,
+    GDK_SIZING := 120,
+    GDK_SPIDER := 122,
+    GDK_SPRAYCAN := 124,
+    GDK_STAR := 126,
+    GDK_TARGET := 128,
+    GDK_TCROSS := 130,
+    GDK_TOP_LEFT_ARROW := 132,
+    GDK_TOP_LEFT_CORNER := 134,
+    GDK_TOP_RIGHT_CORNER := 136,
+    GDK_TOP_SIDE := 138,
+    GDK_TOP_TEE := 140,
+    GDK_TREK := 142,
+    GDK_UL_ANGLE := 144,
+    GDK_UMBRELLA := 146,
+    GDK_UR_ANGLE := 148,
+    GDK_WATCH := 150,
+    GDK_XTERM := 152,
+    GDK_LAST_CURSOR := 153,
+    GDK_BLANK_CURSOR := -2,
+    GDK_CURSOR_IS_PIXMAP := -1
+  }
+
+  consts DevicePadFeature {
+    GDK_DEVICE_PAD_FEATURE_BUTTON := 0,
+    GDK_DEVICE_PAD_FEATURE_RING := 1,
+    GDK_DEVICE_PAD_FEATURE_STRIP := 2
+  }
+
+  consts DeviceToolType {
+    GDK_DEVICE_TOOL_TYPE_UNKNOWN := 0,
+    GDK_DEVICE_TOOL_TYPE_PEN := 1,
+    GDK_DEVICE_TOOL_TYPE_ERASER := 2,
+    GDK_DEVICE_TOOL_TYPE_BRUSH := 3,
+    GDK_DEVICE_TOOL_TYPE_PENCIL := 4,
+    GDK_DEVICE_TOOL_TYPE_AIRBRUSH := 5,
+    GDK_DEVICE_TOOL_TYPE_MOUSE := 6,
+    GDK_DEVICE_TOOL_TYPE_LENS := 7
+  }
+
+  consts DeviceType {
+    GDK_DEVICE_TYPE_MASTER := 0,
+    GDK_DEVICE_TYPE_SLAVE := 1,
+    GDK_DEVICE_TYPE_FLOATING := 2
+  }
+
+  consts DragCancelReason {
+    GDK_DRAG_CANCEL_NO_TARGET := 0,
+    GDK_DRAG_CANCEL_USER_CANCELLED := 1,
+    GDK_DRAG_CANCEL_ERROR := 2
+  }
+
+  consts DragProtocol {
+    GDK_DRAG_PROTO_NONE := 0,
+    GDK_DRAG_PROTO_MOTIF := 1,
+    GDK_DRAG_PROTO_XDND := 2,
+    GDK_DRAG_PROTO_ROOTWIN := 3,
+    GDK_DRAG_PROTO_WIN32_DROPFILES := 4,
+    GDK_DRAG_PROTO_OLE2 := 5,
+    GDK_DRAG_PROTO_LOCAL := 6,
+    GDK_DRAG_PROTO_WAYLAND := 7
+  }
+
+  consts EventType {
+    GDK_NOTHING := -1,
+    GDK_DELETE := 0,
+    GDK_DESTROY := 1,
+    GDK_EXPOSE := 2,
+    GDK_MOTION_NOTIFY := 3,
+    GDK_BUTTON_PRESS := 4,
+    GDK_2BUTTON_PRESS := 5,
+    GDK_DOUBLE_BUTTON_PRESS := 5,
+    GDK_3BUTTON_PRESS := 6,
+    GDK_TRIPLE_BUTTON_PRESS := 6,
+    GDK_BUTTON_RELEASE := 7,
+    GDK_KEY_PRESS := 8,
+    GDK_KEY_RELEASE := 9,
+    GDK_ENTER_NOTIFY := 10,
+    GDK_LEAVE_NOTIFY := 11,
+    GDK_FOCUS_CHANGE := 12,
+    GDK_CONFIGURE := 13,
+    GDK_MAP := 14,
+    GDK_UNMAP := 15,
+    GDK_PROPERTY_NOTIFY := 16,
+    GDK_SELECTION_CLEAR := 17,
+    GDK_SELECTION_REQUEST := 18,
+    GDK_SELECTION_NOTIFY := 19,
+    GDK_PROXIMITY_IN := 20,
+    GDK_PROXIMITY_OUT := 21,
+    GDK_DRAG_ENTER := 22,
+    GDK_DRAG_LEAVE := 23,
+    GDK_DRAG_MOTION := 24,
+    GDK_DRAG_STATUS := 25,
+    GDK_DROP_START := 26,
+    GDK_DROP_FINISHED := 27,
+    GDK_CLIENT_EVENT := 28,
+    GDK_VISIBILITY_NOTIFY := 29,
+    GDK_SCROLL := 31,
+    GDK_WINDOW_STATE := 32,
+    GDK_SETTING := 33,
+    GDK_OWNER_CHANGE := 34,
+    GDK_GRAB_BROKEN := 35,
+    GDK_DAMAGE := 36,
+    GDK_TOUCH_BEGIN := 37,
+    GDK_TOUCH_UPDATE := 38,
+    GDK_TOUCH_END := 39,
+    GDK_TOUCH_CANCEL := 40,
+    GDK_TOUCHPAD_SWIPE := 41,
+    GDK_TOUCHPAD_PINCH := 42,
+    GDK_PAD_BUTTON_PRESS := 43,
+    GDK_PAD_BUTTON_RELEASE := 44,
+    GDK_PAD_RING := 45,
+    GDK_PAD_STRIP := 46,
+    GDK_PAD_GROUP_MODE := 47,
+    GDK_EVENT_LAST := 48
+  }
+
+  consts FilterReturn {
+    GDK_FILTER_CONTINUE := 0,
+    GDK_FILTER_TRANSLATE := 1,
+    GDK_FILTER_REMOVE := 2
+  }
+
+  consts FullscreenMode {
+    GDK_FULLSCREEN_ON_CURRENT_MONITOR := 0,
+    GDK_FULLSCREEN_ON_ALL_MONITORS := 1
+  }
+
+  consts GLError {
+    GDK_GL_ERROR_NOT_AVAILABLE := 0,
+    GDK_GL_ERROR_UNSUPPORTED_FORMAT := 1,
+    GDK_GL_ERROR_UNSUPPORTED_PROFILE := 2
+  }
+
+  consts GrabOwnership {
+    GDK_OWNERSHIP_NONE := 0,
+    GDK_OWNERSHIP_WINDOW := 1,
+    GDK_OWNERSHIP_APPLICATION := 2
+  }
+
+  consts GrabStatus {
+    GDK_GRAB_SUCCESS := 0,
+    GDK_GRAB_ALREADY_GRABBED := 1,
+    GDK_GRAB_INVALID_TIME := 2,
+    GDK_GRAB_NOT_VIEWABLE := 3,
+    GDK_GRAB_FROZEN := 4,
+    GDK_GRAB_FAILED := 5
+  }
+
+  consts Gravity {
+    GDK_GRAVITY_NORTH_WEST := 1,
+    GDK_GRAVITY_NORTH := 2,
+    GDK_GRAVITY_NORTH_EAST := 3,
+    GDK_GRAVITY_WEST := 4,
+    GDK_GRAVITY_CENTER := 5,
+    GDK_GRAVITY_EAST := 6,
+    GDK_GRAVITY_SOUTH_WEST := 7,
+    GDK_GRAVITY_SOUTH := 8,
+    GDK_GRAVITY_SOUTH_EAST := 9,
+    GDK_GRAVITY_STATIC := 10
+  }
+
+  consts InputMode {
+    GDK_MODE_DISABLED := 0,
+    GDK_MODE_SCREEN := 1,
+    GDK_MODE_WINDOW := 2
+  }
+
+  consts InputSource {
+    GDK_SOURCE_MOUSE := 0,
+    GDK_SOURCE_PEN := 1,
+    GDK_SOURCE_ERASER := 2,
+    GDK_SOURCE_CURSOR := 3,
+    GDK_SOURCE_KEYBOARD := 4,
+    GDK_SOURCE_TOUCHSCREEN := 5,
+    GDK_SOURCE_TOUCHPAD := 6,
+    GDK_SOURCE_TRACKPOINT := 7,
+    GDK_SOURCE_TABLET_PAD := 8
+  }
+
+  consts ModifierIntent {
+    GDK_MODIFIER_INTENT_PRIMARY_ACCELERATOR := 0,
+    GDK_MODIFIER_INTENT_CONTEXT_MENU := 1,
+    GDK_MODIFIER_INTENT_EXTEND_SELECTION := 2,
+    GDK_MODIFIER_INTENT_MODIFY_SELECTION := 3,
+    GDK_MODIFIER_INTENT_NO_TEXT_INPUT := 4,
+    GDK_MODIFIER_INTENT_SHIFT_GROUP := 5,
+    GDK_MODIFIER_INTENT_DEFAULT_MOD_MASK := 6
+  }
+
+  consts NotifyType {
+    GDK_NOTIFY_ANCESTOR := 0,
+    GDK_NOTIFY_VIRTUAL := 1,
+    GDK_NOTIFY_INFERIOR := 2,
+    GDK_NOTIFY_NONLINEAR := 3,
+    GDK_NOTIFY_NONLINEAR_VIRTUAL := 4,
+    GDK_NOTIFY_UNKNOWN := 5
+  }
+
+  consts OwnerChange {
+    GDK_OWNER_CHANGE_NEW_OWNER := 0,
+    GDK_OWNER_CHANGE_DESTROY := 1,
+    GDK_OWNER_CHANGE_CLOSE := 2
+  }
+
+  consts PropMode {
+    GDK_PROP_MODE_REPLACE := 0,
+    GDK_PROP_MODE_PREPEND := 1,
+    GDK_PROP_MODE_APPEND := 2
+  }
+
+  consts PropertyState {
+    GDK_PROPERTY_NEW_VALUE := 0,
+    GDK_PROPERTY_DELETE := 1
+  }
+
+  consts ScrollDirection {
+    GDK_SCROLL_UP := 0,
+    GDK_SCROLL_DOWN := 1,
+    GDK_SCROLL_LEFT := 2,
+    GDK_SCROLL_RIGHT := 3,
+    GDK_SCROLL_SMOOTH := 4
+  }
+
+  consts SettingAction {
+    GDK_SETTING_ACTION_NEW := 0,
+    GDK_SETTING_ACTION_CHANGED := 1,
+    GDK_SETTING_ACTION_DELETED := 2
+  }
+
+  consts Status {
+    GDK_OK := 0,
+    GDK_ERROR := -1,
+    GDK_ERROR_PARAM := -2,
+    GDK_ERROR_FILE := -3,
+    GDK_ERROR_MEM := -4
+  }
+
+  consts SubpixelLayout {
+    GDK_SUBPIXEL_LAYOUT_UNKNOWN := 0,
+    GDK_SUBPIXEL_LAYOUT_NONE := 1,
+    GDK_SUBPIXEL_LAYOUT_HORIZONTAL_RGB := 2,
+    GDK_SUBPIXEL_LAYOUT_HORIZONTAL_BGR := 3,
+    GDK_SUBPIXEL_LAYOUT_VERTICAL_RGB := 4,
+    GDK_SUBPIXEL_LAYOUT_VERTICAL_BGR := 5
+  }
+
+  consts TouchpadGesturePhase {
+    GDK_TOUCHPAD_GESTURE_PHASE_BEGIN := 0,
+    GDK_TOUCHPAD_GESTURE_PHASE_UPDATE := 1,
+    GDK_TOUCHPAD_GESTURE_PHASE_END := 2,
+    GDK_TOUCHPAD_GESTURE_PHASE_CANCEL := 3
+  }
+
+  consts VisibilityState {
+    GDK_VISIBILITY_UNOBSCURED := 0,
+    GDK_VISIBILITY_PARTIAL := 1,
+    GDK_VISIBILITY_FULLY_OBSCURED := 2
+  }
+
+  consts VisualType {
+    GDK_VISUAL_STATIC_GRAY := 0,
+    GDK_VISUAL_GRAYSCALE := 1,
+    GDK_VISUAL_STATIC_COLOR := 2,
+    GDK_VISUAL_PSEUDO_COLOR := 3,
+    GDK_VISUAL_TRUE_COLOR := 4,
+    GDK_VISUAL_DIRECT_COLOR := 5
+  }
+
+  consts WindowEdge {
+    GDK_WINDOW_EDGE_NORTH_WEST := 0,
+    GDK_WINDOW_EDGE_NORTH := 1,
+    GDK_WINDOW_EDGE_NORTH_EAST := 2,
+    GDK_WINDOW_EDGE_WEST := 3,
+    GDK_WINDOW_EDGE_EAST := 4,
+    GDK_WINDOW_EDGE_SOUTH_WEST := 5,
+    GDK_WINDOW_EDGE_SOUTH := 6,
+    GDK_WINDOW_EDGE_SOUTH_EAST := 7
+  }
+
+  consts WindowType {
+    GDK_WINDOW_ROOT := 0,
+    GDK_WINDOW_TOPLEVEL := 1,
+    GDK_WINDOW_CHILD := 2,
+    GDK_WINDOW_TEMP := 3,
+    GDK_WINDOW_FOREIGN := 4,
+    GDK_WINDOW_OFFSCREEN := 5,
+    GDK_WINDOW_SUBSURFACE := 6
+  }
+
+  consts WindowTypeHint {
+    GDK_WINDOW_TYPE_HINT_NORMAL := 0,
+    GDK_WINDOW_TYPE_HINT_DIALOG := 1,
+    GDK_WINDOW_TYPE_HINT_MENU := 2,
+    GDK_WINDOW_TYPE_HINT_TOOLBAR := 3,
+    GDK_WINDOW_TYPE_HINT_SPLASHSCREEN := 4,
+    GDK_WINDOW_TYPE_HINT_UTILITY := 5,
+    GDK_WINDOW_TYPE_HINT_DOCK := 6,
+    GDK_WINDOW_TYPE_HINT_DESKTOP := 7,
+    GDK_WINDOW_TYPE_HINT_DROPDOWN_MENU := 8,
+    GDK_WINDOW_TYPE_HINT_POPUP_MENU := 9,
+    GDK_WINDOW_TYPE_HINT_TOOLTIP := 10,
+    GDK_WINDOW_TYPE_HINT_NOTIFICATION := 11,
+    GDK_WINDOW_TYPE_HINT_COMBO := 12,
+    GDK_WINDOW_TYPE_HINT_DND := 13
+  }
+
+  consts WindowWindowClass {
+    GDK_INPUT_OUTPUT := 0,
+    GDK_INPUT_ONLY := 1
+  }
+
   class Window {
     @gobject : Int;
 
@@ -377,7 +780,7 @@ bundle GTK3 {
       Proxy->GetDllProxy()->CallFunction("gdk_window_get_drag_protocol", array_args);
 
       value := array_args[0]->As(IntHolder);
-      return DragProtocol->New(value);
+      return value->As(DragProtocol);
     }
 
     method : public : GetEffectiveParent() ~ Window {
@@ -463,7 +866,7 @@ bundle GTK3 {
       Proxy->GetDllProxy()->CallFunction("gdk_window_get_fullscreen_mode", array_args);
 
       value := array_args[0]->As(IntHolder);
-      return FullscreenMode->New(value);
+      return value->As(FullscreenMode);
     }
 
     method : public : GetGeometry(x : Int, y : Int, width : Int, height : Int) ~ Nil {
@@ -667,7 +1070,7 @@ bundle GTK3 {
       Proxy->GetDllProxy()->CallFunction("gdk_window_get_type_hint", array_args);
 
       value := array_args[0]->As(IntHolder);
-      return WindowTypeHint->New(value);
+      return value->As(WindowTypeHint);
     }
 
     method : public : GetUserData(data : Int) ~ Nil {
@@ -709,7 +1112,7 @@ bundle GTK3 {
       Proxy->GetDllProxy()->CallFunction("gdk_window_get_window_type", array_args);
 
       value := array_args[0]->As(IntHolder);
-      return WindowType->New(value);
+      return value->As(WindowType);
     }
 
     method : public : HasNative() ~ Bool {
