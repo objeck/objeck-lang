@@ -62,10 +62,10 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
 
-# Component Model
+## Component Model
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
-## Major Components
+### Major Components
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
