@@ -22,7 +22,7 @@ class Hello {
 }
 ```
 
-More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc).
+More Rosetta Code, [examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc).
 
 ## Key Features
 * Object-oriented
