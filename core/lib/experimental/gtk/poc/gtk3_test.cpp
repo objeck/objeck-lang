@@ -73,7 +73,6 @@ extern "C" {
       const int mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
       size_t* callback_data = callback_params->second;
 
-      // TODO: caching (5 or so lines of code)?
       GType handler_ctype = G_TYPE_FROM_INSTANCE(handler);
       if(G_TYPE_IS_CLASSED(handler_ctype)) {
         const std::string handler_cname(g_type_name(handler_ctype));
@@ -119,7 +118,6 @@ extern "C" {
     size_t* handler_ptr = APITools_GetObjectValue(context, 2);
     size_t* data_ptr = APITools_GetObjectValue(context, 3);
 
-    // TODO: manage memory (make allocator); name to pair mapping?; NEW (is) EVIL
     std::pair<size_t, size_t*>* user_callback_data = new std::pair<size_t, size_t*>;
     user_callback_data->first = handler_ptr[0];
     user_callback_data->second = data_ptr;
