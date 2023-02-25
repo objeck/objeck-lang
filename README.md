@@ -62,15 +62,15 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
 
-## Architecture
+# Component Model
+![alt text](docs/images/toolchain.svg "Objeck System Architecture")
+
+## Major Components
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 * [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
-
-## Component Model
-![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
 ## Code
 Objeck can be built for a variety of targets. The language is implemented in C++ and assembly (i.e., generated machine code).
