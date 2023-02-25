@@ -145,8 +145,10 @@ class GtkTestRunner {
 			
 			if(i + 1 = classes_xml->Size()) {
 				objk_buffer->Pop();
+				cxx_buffer->Pop();
 			};
 			@objk_out->WriteString(objk_buffer);
+			@cxx_out->WriteString(cxx_buffer);
 		};
 
 		"\n==============================================================="->PrintLine();
@@ -216,6 +218,12 @@ class GtkTestRunner {
 
 			c_call_name := "{$ref_name}_get_{$method_case_name}"->ToLower();
 			objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+
+			cxx_buffer += "  #ifdef _WIN32\n";
+			cxx_buffer += "    __declspec(dllexport)";
+			cxx_buffer += "  #endif\n";
+			cxx_buffer += "  void {$c_call_name}(VMContext& context) {\n";
+			cxx_buffer += "  }\n";
 
 			# get return
 			if(type->Equals("Byte")) {
@@ -294,6 +302,13 @@ class GtkTestRunner {
 			params_xml := method_xml->GetFirstChild("parameters");
 			return_xml := method_xml->GetFirstChild("return-value");
 
+			cxx_buffer += "#ifdef _WIN32\n";
+			cxx_buffer += "    __declspec(dllexport)\n";
+			cxx_buffer += "#endif\n";
+			cxx_buffer += "    void gtk3_{$identifier_name}(VMContext& context) {\n";
+			cxx_buffer += "      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);\n";
+			cxx_buffer += "    }\n\n";
+
 			if(EmitMethod(params_xml, return_xml)) {
 				objk_buffer += "    method : public : {$method_case_name}";
 
@@ -316,7 +331,7 @@ class GtkTestRunner {
 					WriteProxyParameters(params_xml, objk_buffer, cxx_buffer, false);
 				};
 
-				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"{$identifier_name}\", array_args);\n";
+				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 				WriteProxyReturn(return_xml, objk_buffer, cxx_buffer);
 				objk_buffer += "    }\n\n";
 			}
@@ -614,7 +629,7 @@ class GtkTestRunner {
 		cxx_buffer += "          long* stack_pos = exec_stack_mem.second;\n";
 		cxx_buffer += "          \n";
 		cxx_buffer += "          const std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));\n";
-		cxx_buffer += "          const std::string handler_objk_name(\"Gtk3.\" + post_objk_name);\n\m";
+		cxx_buffer += "          const std::string handler_objk_name(\"Gtk3.\" + post_objk_name);\n\n";
 		cxx_buffer += "          const APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();\n";
 		cxx_buffer += "          size_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);\n";
 		cxx_buffer += "          if(gobject_obj) {\n";
@@ -633,7 +648,7 @@ class GtkTestRunner {
 		cxx_buffer += "      }\n";
 		cxx_buffer += "    }\n";
 		cxx_buffer += "  }\n";
-		cxx_buffer += "}\n";
+		cxx_buffer += "}\n\n";
 
 		@cxx_out->WriteString(cxx_buffer);
 	}
