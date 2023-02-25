@@ -1,392 +1,3 @@
-Compiled 1 class.
-Linked 29 library classes.
-Wrote target file: 'gtk_parser.obe'
----
-[file: name='gtk3\Gdk-3.0.gir.xml', size=1,250,048 byte(s)]
-###
-
-[record: name='Atom']
-  ---
-  [method: name='name'
-
-[record: name='Color']
-  ["pixel": type: name='guint32', ctype='guint32']
-  ["red": type: name='guint16', ctype='guint16']
-  ["green": type: name='guint16', ctype='guint16']
-  ["blue": type: name='guint16', ctype='guint16']
-  ---
-  [method: name='copy'
-  ---
-  [method: name='equal'
-    [param='colorb', type='Color', ctype='const GdkColor*']
-  ---
-  [method: name='free'
-  ---
-  [method: name='hash'
-  ---
-  [method: name='to_string'
-
-[record: name='DevicePadInterface']
-
-[record: name='DrawingContextClass']
-
-[record: name='EventAny']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-
-[record: name='EventButton']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["axes": type: name='gdouble', ctype='gdouble*']
-  ["state": type: name='ModifierType']
-  ["button": type: name='guint', ctype='guint']
-  ["device": type: name='Device', ctype='GdkDevice*']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-
-[record: name='EventConfigure']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["x": type: name='gint', ctype='gint']
-  ["y": type: name='gint', ctype='gint']
-  ["width": type: name='gint', ctype='gint']
-  ["height": type: name='gint', ctype='gint']
-
-[record: name='EventCrossing']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["subwindow": type: name='Window', ctype='GdkWindow*']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-  ["mode": type: name='CrossingMode', ctype='GdkCrossingMode']
-  ["detail": type: name='NotifyType', ctype='GdkNotifyType']
-  ["focus": type: name='gboolean', ctype='gboolean']
-  ["state": type: name='ModifierType']
-
-[record: name='EventDND']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["context": type: name='DragContext', ctype='GdkDragContext*']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x_root": type: name='gshort', ctype='gshort']
-  ["y_root": type: name='gshort', ctype='gshort']
-
-[record: name='EventExpose']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["area": type: name='Rectangle', ctype='GdkRectangle']
-  ["region": type: name='cairo.Region', ctype='cairo_region_t*']
-  ["count": type: name='gint', ctype='gint']
-
-[record: name='EventFocus']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["in": type: name='gint16', ctype='gint16']
-
-[record: name='EventGrabBroken']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["keyboard": type: name='gboolean', ctype='gboolean']
-  ["implicit": type: name='gboolean', ctype='gboolean']
-  ["grab_window": type: name='Window', ctype='GdkWindow*']
-
-[record: name='EventKey']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["state": type: name='ModifierType']
-  ["keyval": type: name='guint', ctype='guint']
-  ["length": type: name='gint', ctype='gint']
-  ["string": type: name='utf8', ctype='gchar*']
-  ["hardware_keycode": type: name='guint16', ctype='guint16']
-  ["group": type: name='guint8', ctype='guint8']
-  ["is_modifier": type: name='guint', ctype='guint']
-
-[record: name='EventMotion']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["axes": type: name='gdouble', ctype='gdouble*']
-  ["state": type: name='ModifierType']
-  ["is_hint": type: name='gint16', ctype='gint16']
-  ["device": type: name='Device', ctype='GdkDevice*']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-
-[record: name='EventOwnerChange']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["owner": type: name='Window', ctype='GdkWindow*']
-  ["reason": type: name='OwnerChange', ctype='GdkOwnerChange']
-  ["selection": type: name='Atom', ctype='GdkAtom']
-  ["time": type: name='guint32', ctype='guint32']
-  ["selection_time": type: name='guint32', ctype='guint32']
-
-[record: name='EventPadAxis']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["group": type: name='guint', ctype='guint']
-  ["index": type: name='guint', ctype='guint']
-  ["mode": type: name='guint', ctype='guint']
-  ["value": type: name='gdouble', ctype='gdouble']
-
-[record: name='EventPadButton']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["group": type: name='guint', ctype='guint']
-  ["button": type: name='guint', ctype='guint']
-  ["mode": type: name='guint', ctype='guint']
-
-[record: name='EventPadGroupMode']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["group": type: name='guint', ctype='guint']
-  ["mode": type: name='guint', ctype='guint']
-
-[record: name='EventProperty']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["atom": type: name='Atom', ctype='GdkAtom']
-  ["time": type: name='guint32', ctype='guint32']
-  ["state": type: name='PropertyState']
-
-[record: name='EventProximity']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["device": type: name='Device', ctype='GdkDevice*']
-
-[record: name='EventScroll']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["state": type: name='ModifierType']
-  ["direction": type: name='ScrollDirection', ctype='GdkScrollDirection']
-  ["device": type: name='Device', ctype='GdkDevice*']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-  ["delta_x": type: name='gdouble', ctype='gdouble']
-  ["delta_y": type: name='gdouble', ctype='gdouble']
-  ["is_stop": type: name='guint', ctype='guint']
-
-[record: name='EventSelection']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["selection": type: name='Atom', ctype='GdkAtom']
-  ["target": type: name='Atom', ctype='GdkAtom']
-  ["property": type: name='Atom', ctype='GdkAtom']
-  ["time": type: name='guint32', ctype='guint32']
-  ["requestor": type: name='Window', ctype='GdkWindow*']
-
-[record: name='EventSequence']
-
-[record: name='EventSetting']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["action": type: name='SettingAction', ctype='GdkSettingAction']
-  ["name": type: name='utf8', ctype='char*']
-
-[record: name='EventTouch']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["axes": type: name='gdouble', ctype='gdouble*']
-  ["state": type: name='ModifierType']
-  ["sequence": type: name='EventSequence', ctype='GdkEventSequence*']
-  ["emulating_pointer": type: name='gboolean', ctype='gboolean']
-  ["device": type: name='Device', ctype='GdkDevice*']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-
-[record: name='EventTouchpadPinch']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["phase": type: name='gint8', ctype='gint8']
-  ["n_fingers": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["dx": type: name='gdouble', ctype='gdouble']
-  ["dy": type: name='gdouble', ctype='gdouble']
-  ["angle_delta": type: name='gdouble', ctype='gdouble']
-  ["scale": type: name='gdouble', ctype='gdouble']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-  ["state": type: name='ModifierType']
-
-[record: name='EventTouchpadSwipe']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["phase": type: name='gint8', ctype='gint8']
-  ["n_fingers": type: name='gint8', ctype='gint8']
-  ["time": type: name='guint32', ctype='guint32']
-  ["x": type: name='gdouble', ctype='gdouble']
-  ["y": type: name='gdouble', ctype='gdouble']
-  ["dx": type: name='gdouble', ctype='gdouble']
-  ["dy": type: name='gdouble', ctype='gdouble']
-  ["x_root": type: name='gdouble', ctype='gdouble']
-  ["y_root": type: name='gdouble', ctype='gdouble']
-  ["state": type: name='ModifierType']
-
-[record: name='EventVisibility']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["state": type: name='VisibilityState', ctype='GdkVisibilityState']
-
-[record: name='EventWindowState']
-  ["type": type: name='EventType', ctype='GdkEventType']
-  ["window": type: name='Window', ctype='GdkWindow*']
-  ["send_event": type: name='gint8', ctype='gint8']
-  ["changed_mask": type: name='WindowState', ctype='GdkWindowState']
-  ["new_window_state": type: name='WindowState', ctype='GdkWindowState']
-
-[record: name='FrameClockClass']
-
-[record: name='FrameClockPrivate']
-
-[record: name='FrameTimings']
-  ---
-  [method: name='get_complete'
-  ---
-  [method: name='get_frame_counter'
-  ---
-  [method: name='get_frame_time'
-  ---
-  [method: name='get_predicted_presentation_time'
-  ---
-  [method: name='get_presentation_time'
-  ---
-  [method: name='get_refresh_interval'
-  ---
-  [method: name='ref'
-  ---
-  [method: name='unref'
-
-[record: name='Geometry']
-  ["min_width": type: name='gint', ctype='gint']
-  ["min_height": type: name='gint', ctype='gint']
-  ["max_width": type: name='gint', ctype='gint']
-  ["max_height": type: name='gint', ctype='gint']
-  ["base_width": type: name='gint', ctype='gint']
-  ["base_height": type: name='gint', ctype='gint']
-  ["width_inc": type: name='gint', ctype='gint']
-  ["height_inc": type: name='gint', ctype='gint']
-  ["min_aspect": type: name='gdouble', ctype='gdouble']
-  ["max_aspect": type: name='gdouble', ctype='gdouble']
-  ["win_gravity": type: name='Gravity', ctype='GdkGravity']
-
-[record: name='KeymapKey']
-  ["keycode": type: name='guint', ctype='guint']
-  ["group": type: name='gint', ctype='gint']
-  ["level": type: name='gint', ctype='gint']
-
-[record: name='MonitorClass']
-
-[record: name='Point']
-  ["x": type: name='gint', ctype='gint']
-  ["y": type: name='gint', ctype='gint']
-
-[record: name='RGBA']
-  ["red": type: name='gdouble', ctype='gdouble']
-  ["green": type: name='gdouble', ctype='gdouble']
-  ["blue": type: name='gdouble', ctype='gdouble']
-  ["alpha": type: name='gdouble', ctype='gdouble']
-  ---
-  [method: name='copy'
-  ---
-  [method: name='equal'
-    [param='p2', type='RGBA', ctype='gconstpointer']
-  ---
-  [method: name='free'
-  ---
-  [method: name='hash'
-  ---
-  [method: name='parse'
-    [param='spec', type='String', ctype='const gchar*']
-  ---
-  [method: name='to_string'
-
-[record: name='Rectangle']
-  ["x": type: name='gint', ctype='int']
-  ["y": type: name='gint', ctype='int']
-  ["width": type: name='gint', ctype='int']
-  ["height": type: name='gint', ctype='int']
-  ---
-  [method: name='equal'
-    [param='rect2', type='Rectangle', ctype='const GdkRectangle*']
-  ---
-  [method: name='intersect'
-    [param='src2', type='Rectangle', ctype='const GdkRectangle*']
-    [param='dest', type='Rectangle', ctype='GdkRectangle*']
-  ---
-  [method: name='union'
-    [param='src2', type='Rectangle', ctype='const GdkRectangle*']
-    [param='dest', type='Rectangle', ctype='GdkRectangle*']
-
-[record: name='TimeCoord']
-  ["time": type: name='guint32', ctype='guint32']
-
-[record: name='WindowAttr']
-  ["title": type: name='utf8', ctype='gchar*']
-  ["event_mask": type: name='gint', ctype='gint']
-  ["x": type: name='gint', ctype='gint']
-  ["y": type: name='gint', ctype='gint']
-  ["width": type: name='gint', ctype='gint']
-  ["height": type: name='gint', ctype='gint']
-  ["wclass": type: name='WindowWindowClass', ctype='GdkWindowWindowClass']
-  ["visual": type: name='Visual', ctype='GdkVisual*']
-  ["window_type": type: name='WindowType', ctype='GdkWindowType']
-  ["cursor": type: name='Cursor', ctype='GdkCursor*']
-  ["wmclass_name": type: name='utf8', ctype='gchar*']
-  ["wmclass_class": type: name='utf8', ctype='gchar*']
-  ["override_redirect": type: name='gboolean', ctype='gboolean']
-  ["type_hint": type: name='WindowTypeHint', ctype='GdkWindowTypeHint']
-
-[record: name='WindowClass']
-  ["parent_class": type: name='GObject.ObjectClass', ctype='GObjectClass']
-
-[record: name='WindowRedirect']
-
-==========================================================================
-
 bundle GTK3 {
   class : private : Proxy {
     @lib_proxy : static : DllProxy;
@@ -400,2945 +11,1769 @@ bundle GTK3 {
     }
   }
 
-  class Atom {
-    New() {
-    }
-
-    }
-
-    method : public : Name() ~ String {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_atom_name", array_args);
-
-      return Nil;
-    }
+  consts AxisUse {
+    GDK_AXIS_IGNORE := 0,
+    GDK_AXIS_X := 1,
+    GDK_AXIS_Y := 2,
+    GDK_AXIS_PRESSURE := 3,
+    GDK_AXIS_XTILT := 4,
+    GDK_AXIS_YTILT := 5,
+    GDK_AXIS_WHEEL := 6,
+    GDK_AXIS_DISTANCE := 7,
+    GDK_AXIS_ROTATION := 8,
+    GDK_AXIS_SLIDER := 9,
+    GDK_AXIS_LAST := 10
   }
 
-  class Color {
-    @pixel : Int;
-    @red : Int;
-    @green : Int;
-    @blue : Int;
+  consts ByteOrder {
+    GDK_LSB_FIRST := 0,
+    GDK_MSB_FIRST := 1
+  }
 
-    New() {
+  consts CrossingMode {
+    GDK_CROSSING_NORMAL := 0,
+    GDK_CROSSING_GRAB := 1,
+    GDK_CROSSING_UNGRAB := 2,
+    GDK_CROSSING_GTK_GRAB := 3,
+    GDK_CROSSING_GTK_UNGRAB := 4,
+    GDK_CROSSING_STATE_CHANGED := 5,
+    GDK_CROSSING_TOUCH_BEGIN := 6,
+    GDK_CROSSING_TOUCH_END := 7,
+    GDK_CROSSING_DEVICE_SWITCH := 8
+  }
+
+  consts CursorType {
+    GDK_X_CURSOR := 0,
+    GDK_ARROW := 2,
+    GDK_BASED_ARROW_DOWN := 4,
+    GDK_BASED_ARROW_UP := 6,
+    GDK_BOAT := 8,
+    GDK_BOGOSITY := 10,
+    GDK_BOTTOM_LEFT_CORNER := 12,
+    GDK_BOTTOM_RIGHT_CORNER := 14,
+    GDK_BOTTOM_SIDE := 16,
+    GDK_BOTTOM_TEE := 18,
+    GDK_BOX_SPIRAL := 20,
+    GDK_CENTER_PTR := 22,
+    GDK_CIRCLE := 24,
+    GDK_CLOCK := 26,
+    GDK_COFFEE_MUG := 28,
+    GDK_CROSS := 30,
+    GDK_CROSS_REVERSE := 32,
+    GDK_CROSSHAIR := 34,
+    GDK_DIAMOND_CROSS := 36,
+    GDK_DOT := 38,
+    GDK_DOTBOX := 40,
+    GDK_DOUBLE_ARROW := 42,
+    GDK_DRAFT_LARGE := 44,
+    GDK_DRAFT_SMALL := 46,
+    GDK_DRAPED_BOX := 48,
+    GDK_EXCHANGE := 50,
+    GDK_FLEUR := 52,
+    GDK_GOBBLER := 54,
+    GDK_GUMBY := 56,
+    GDK_HAND1 := 58,
+    GDK_HAND2 := 60,
+    GDK_HEART := 62,
+    GDK_ICON := 64,
+    GDK_IRON_CROSS := 66,
+    GDK_LEFT_PTR := 68,
+    GDK_LEFT_SIDE := 70,
+    GDK_LEFT_TEE := 72,
+    GDK_LEFTBUTTON := 74,
+    GDK_LL_ANGLE := 76,
+    GDK_LR_ANGLE := 78,
+    GDK_MAN := 80,
+    GDK_MIDDLEBUTTON := 82,
+    GDK_MOUSE := 84,
+    GDK_PENCIL := 86,
+    GDK_PIRATE := 88,
+    GDK_PLUS := 90,
+    GDK_QUESTION_ARROW := 92,
+    GDK_RIGHT_PTR := 94,
+    GDK_RIGHT_SIDE := 96,
+    GDK_RIGHT_TEE := 98,
+    GDK_RIGHTBUTTON := 100,
+    GDK_RTL_LOGO := 102,
+    GDK_SAILBOAT := 104,
+    GDK_SB_DOWN_ARROW := 106,
+    GDK_SB_H_DOUBLE_ARROW := 108,
+    GDK_SB_LEFT_ARROW := 110,
+    GDK_SB_RIGHT_ARROW := 112,
+    GDK_SB_UP_ARROW := 114,
+    GDK_SB_V_DOUBLE_ARROW := 116,
+    GDK_SHUTTLE := 118,
+    GDK_SIZING := 120,
+    GDK_SPIDER := 122,
+    GDK_SPRAYCAN := 124,
+    GDK_STAR := 126,
+    GDK_TARGET := 128,
+    GDK_TCROSS := 130,
+    GDK_TOP_LEFT_ARROW := 132,
+    GDK_TOP_LEFT_CORNER := 134,
+    GDK_TOP_RIGHT_CORNER := 136,
+    GDK_TOP_SIDE := 138,
+    GDK_TOP_TEE := 140,
+    GDK_TREK := 142,
+    GDK_UL_ANGLE := 144,
+    GDK_UMBRELLA := 146,
+    GDK_UR_ANGLE := 148,
+    GDK_WATCH := 150,
+    GDK_XTERM := 152,
+    GDK_LAST_CURSOR := 153,
+    GDK_BLANK_CURSOR := -2,
+    GDK_CURSOR_IS_PIXMAP := -1
+  }
+
+  consts DevicePadFeature {
+    GDK_DEVICE_PAD_FEATURE_BUTTON := 0,
+    GDK_DEVICE_PAD_FEATURE_RING := 1,
+    GDK_DEVICE_PAD_FEATURE_STRIP := 2
+  }
+
+  consts DeviceToolType {
+    GDK_DEVICE_TOOL_TYPE_UNKNOWN := 0,
+    GDK_DEVICE_TOOL_TYPE_PEN := 1,
+    GDK_DEVICE_TOOL_TYPE_ERASER := 2,
+    GDK_DEVICE_TOOL_TYPE_BRUSH := 3,
+    GDK_DEVICE_TOOL_TYPE_PENCIL := 4,
+    GDK_DEVICE_TOOL_TYPE_AIRBRUSH := 5,
+    GDK_DEVICE_TOOL_TYPE_MOUSE := 6,
+    GDK_DEVICE_TOOL_TYPE_LENS := 7
+  }
+
+  consts DeviceType {
+    GDK_DEVICE_TYPE_MASTER := 0,
+    GDK_DEVICE_TYPE_SLAVE := 1,
+    GDK_DEVICE_TYPE_FLOATING := 2
+  }
+
+  consts DragCancelReason {
+    GDK_DRAG_CANCEL_NO_TARGET := 0,
+    GDK_DRAG_CANCEL_USER_CANCELLED := 1,
+    GDK_DRAG_CANCEL_ERROR := 2
+  }
+
+  consts DragProtocol {
+    GDK_DRAG_PROTO_NONE := 0,
+    GDK_DRAG_PROTO_MOTIF := 1,
+    GDK_DRAG_PROTO_XDND := 2,
+    GDK_DRAG_PROTO_ROOTWIN := 3,
+    GDK_DRAG_PROTO_WIN32_DROPFILES := 4,
+    GDK_DRAG_PROTO_OLE2 := 5,
+    GDK_DRAG_PROTO_LOCAL := 6,
+    GDK_DRAG_PROTO_WAYLAND := 7
+  }
+
+  consts EventType {
+    GDK_NOTHING := -1,
+    GDK_DELETE := 0,
+    GDK_DESTROY := 1,
+    GDK_EXPOSE := 2,
+    GDK_MOTION_NOTIFY := 3,
+    GDK_BUTTON_PRESS := 4,
+    GDK_2BUTTON_PRESS := 5,
+    GDK_DOUBLE_BUTTON_PRESS := 5,
+    GDK_3BUTTON_PRESS := 6,
+    GDK_TRIPLE_BUTTON_PRESS := 6,
+    GDK_BUTTON_RELEASE := 7,
+    GDK_KEY_PRESS := 8,
+    GDK_KEY_RELEASE := 9,
+    GDK_ENTER_NOTIFY := 10,
+    GDK_LEAVE_NOTIFY := 11,
+    GDK_FOCUS_CHANGE := 12,
+    GDK_CONFIGURE := 13,
+    GDK_MAP := 14,
+    GDK_UNMAP := 15,
+    GDK_PROPERTY_NOTIFY := 16,
+    GDK_SELECTION_CLEAR := 17,
+    GDK_SELECTION_REQUEST := 18,
+    GDK_SELECTION_NOTIFY := 19,
+    GDK_PROXIMITY_IN := 20,
+    GDK_PROXIMITY_OUT := 21,
+    GDK_DRAG_ENTER := 22,
+    GDK_DRAG_LEAVE := 23,
+    GDK_DRAG_MOTION := 24,
+    GDK_DRAG_STATUS := 25,
+    GDK_DROP_START := 26,
+    GDK_DROP_FINISHED := 27,
+    GDK_CLIENT_EVENT := 28,
+    GDK_VISIBILITY_NOTIFY := 29,
+    GDK_SCROLL := 31,
+    GDK_WINDOW_STATE := 32,
+    GDK_SETTING := 33,
+    GDK_OWNER_CHANGE := 34,
+    GDK_GRAB_BROKEN := 35,
+    GDK_DAMAGE := 36,
+    GDK_TOUCH_BEGIN := 37,
+    GDK_TOUCH_UPDATE := 38,
+    GDK_TOUCH_END := 39,
+    GDK_TOUCH_CANCEL := 40,
+    GDK_TOUCHPAD_SWIPE := 41,
+    GDK_TOUCHPAD_PINCH := 42,
+    GDK_PAD_BUTTON_PRESS := 43,
+    GDK_PAD_BUTTON_RELEASE := 44,
+    GDK_PAD_RING := 45,
+    GDK_PAD_STRIP := 46,
+    GDK_PAD_GROUP_MODE := 47,
+    GDK_EVENT_LAST := 48
+  }
+
+  consts FilterReturn {
+    GDK_FILTER_CONTINUE := 0,
+    GDK_FILTER_TRANSLATE := 1,
+    GDK_FILTER_REMOVE := 2
+  }
+
+  consts FullscreenMode {
+    GDK_FULLSCREEN_ON_CURRENT_MONITOR := 0,
+    GDK_FULLSCREEN_ON_ALL_MONITORS := 1
+  }
+
+  consts GLError {
+    GDK_GL_ERROR_NOT_AVAILABLE := 0,
+    GDK_GL_ERROR_UNSUPPORTED_FORMAT := 1,
+    GDK_GL_ERROR_UNSUPPORTED_PROFILE := 2
+  }
+
+  consts GrabOwnership {
+    GDK_OWNERSHIP_NONE := 0,
+    GDK_OWNERSHIP_WINDOW := 1,
+    GDK_OWNERSHIP_APPLICATION := 2
+  }
+
+  consts GrabStatus {
+    GDK_GRAB_SUCCESS := 0,
+    GDK_GRAB_ALREADY_GRABBED := 1,
+    GDK_GRAB_INVALID_TIME := 2,
+    GDK_GRAB_NOT_VIEWABLE := 3,
+    GDK_GRAB_FROZEN := 4,
+    GDK_GRAB_FAILED := 5
+  }
+
+  consts Gravity {
+    GDK_GRAVITY_NORTH_WEST := 1,
+    GDK_GRAVITY_NORTH := 2,
+    GDK_GRAVITY_NORTH_EAST := 3,
+    GDK_GRAVITY_WEST := 4,
+    GDK_GRAVITY_CENTER := 5,
+    GDK_GRAVITY_EAST := 6,
+    GDK_GRAVITY_SOUTH_WEST := 7,
+    GDK_GRAVITY_SOUTH := 8,
+    GDK_GRAVITY_SOUTH_EAST := 9,
+    GDK_GRAVITY_STATIC := 10
+  }
+
+  consts InputMode {
+    GDK_MODE_DISABLED := 0,
+    GDK_MODE_SCREEN := 1,
+    GDK_MODE_WINDOW := 2
+  }
+
+  consts InputSource {
+    GDK_SOURCE_MOUSE := 0,
+    GDK_SOURCE_PEN := 1,
+    GDK_SOURCE_ERASER := 2,
+    GDK_SOURCE_CURSOR := 3,
+    GDK_SOURCE_KEYBOARD := 4,
+    GDK_SOURCE_TOUCHSCREEN := 5,
+    GDK_SOURCE_TOUCHPAD := 6,
+    GDK_SOURCE_TRACKPOINT := 7,
+    GDK_SOURCE_TABLET_PAD := 8
+  }
+
+  consts ModifierIntent {
+    GDK_MODIFIER_INTENT_PRIMARY_ACCELERATOR := 0,
+    GDK_MODIFIER_INTENT_CONTEXT_MENU := 1,
+    GDK_MODIFIER_INTENT_EXTEND_SELECTION := 2,
+    GDK_MODIFIER_INTENT_MODIFY_SELECTION := 3,
+    GDK_MODIFIER_INTENT_NO_TEXT_INPUT := 4,
+    GDK_MODIFIER_INTENT_SHIFT_GROUP := 5,
+    GDK_MODIFIER_INTENT_DEFAULT_MOD_MASK := 6
+  }
+
+  consts NotifyType {
+    GDK_NOTIFY_ANCESTOR := 0,
+    GDK_NOTIFY_VIRTUAL := 1,
+    GDK_NOTIFY_INFERIOR := 2,
+    GDK_NOTIFY_NONLINEAR := 3,
+    GDK_NOTIFY_NONLINEAR_VIRTUAL := 4,
+    GDK_NOTIFY_UNKNOWN := 5
+  }
+
+  consts OwnerChange {
+    GDK_OWNER_CHANGE_NEW_OWNER := 0,
+    GDK_OWNER_CHANGE_DESTROY := 1,
+    GDK_OWNER_CHANGE_CLOSE := 2
+  }
+
+  consts PropMode {
+    GDK_PROP_MODE_REPLACE := 0,
+    GDK_PROP_MODE_PREPEND := 1,
+    GDK_PROP_MODE_APPEND := 2
+  }
+
+  consts PropertyState {
+    GDK_PROPERTY_NEW_VALUE := 0,
+    GDK_PROPERTY_DELETE := 1
+  }
+
+  consts ScrollDirection {
+    GDK_SCROLL_UP := 0,
+    GDK_SCROLL_DOWN := 1,
+    GDK_SCROLL_LEFT := 2,
+    GDK_SCROLL_RIGHT := 3,
+    GDK_SCROLL_SMOOTH := 4
+  }
+
+  consts SettingAction {
+    GDK_SETTING_ACTION_NEW := 0,
+    GDK_SETTING_ACTION_CHANGED := 1,
+    GDK_SETTING_ACTION_DELETED := 2
+  }
+
+  consts Status {
+    GDK_OK := 0,
+    GDK_ERROR := -1,
+    GDK_ERROR_PARAM := -2,
+    GDK_ERROR_FILE := -3,
+    GDK_ERROR_MEM := -4
+  }
+
+  consts SubpixelLayout {
+    GDK_SUBPIXEL_LAYOUT_UNKNOWN := 0,
+    GDK_SUBPIXEL_LAYOUT_NONE := 1,
+    GDK_SUBPIXEL_LAYOUT_HORIZONTAL_RGB := 2,
+    GDK_SUBPIXEL_LAYOUT_HORIZONTAL_BGR := 3,
+    GDK_SUBPIXEL_LAYOUT_VERTICAL_RGB := 4,
+    GDK_SUBPIXEL_LAYOUT_VERTICAL_BGR := 5
+  }
+
+  consts TouchpadGesturePhase {
+    GDK_TOUCHPAD_GESTURE_PHASE_BEGIN := 0,
+    GDK_TOUCHPAD_GESTURE_PHASE_UPDATE := 1,
+    GDK_TOUCHPAD_GESTURE_PHASE_END := 2,
+    GDK_TOUCHPAD_GESTURE_PHASE_CANCEL := 3
+  }
+
+  consts VisibilityState {
+    GDK_VISIBILITY_UNOBSCURED := 0,
+    GDK_VISIBILITY_PARTIAL := 1,
+    GDK_VISIBILITY_FULLY_OBSCURED := 2
+  }
+
+  consts VisualType {
+    GDK_VISUAL_STATIC_GRAY := 0,
+    GDK_VISUAL_GRAYSCALE := 1,
+    GDK_VISUAL_STATIC_COLOR := 2,
+    GDK_VISUAL_PSEUDO_COLOR := 3,
+    GDK_VISUAL_TRUE_COLOR := 4,
+    GDK_VISUAL_DIRECT_COLOR := 5
+  }
+
+  consts WindowEdge {
+    GDK_WINDOW_EDGE_NORTH_WEST := 0,
+    GDK_WINDOW_EDGE_NORTH := 1,
+    GDK_WINDOW_EDGE_NORTH_EAST := 2,
+    GDK_WINDOW_EDGE_WEST := 3,
+    GDK_WINDOW_EDGE_EAST := 4,
+    GDK_WINDOW_EDGE_SOUTH_WEST := 5,
+    GDK_WINDOW_EDGE_SOUTH := 6,
+    GDK_WINDOW_EDGE_SOUTH_EAST := 7
+  }
+
+  consts WindowType {
+    GDK_WINDOW_ROOT := 0,
+    GDK_WINDOW_TOPLEVEL := 1,
+    GDK_WINDOW_CHILD := 2,
+    GDK_WINDOW_TEMP := 3,
+    GDK_WINDOW_FOREIGN := 4,
+    GDK_WINDOW_OFFSCREEN := 5,
+    GDK_WINDOW_SUBSURFACE := 6
+  }
+
+  consts WindowTypeHint {
+    GDK_WINDOW_TYPE_HINT_NORMAL := 0,
+    GDK_WINDOW_TYPE_HINT_DIALOG := 1,
+    GDK_WINDOW_TYPE_HINT_MENU := 2,
+    GDK_WINDOW_TYPE_HINT_TOOLBAR := 3,
+    GDK_WINDOW_TYPE_HINT_SPLASHSCREEN := 4,
+    GDK_WINDOW_TYPE_HINT_UTILITY := 5,
+    GDK_WINDOW_TYPE_HINT_DOCK := 6,
+    GDK_WINDOW_TYPE_HINT_DESKTOP := 7,
+    GDK_WINDOW_TYPE_HINT_DROPDOWN_MENU := 8,
+    GDK_WINDOW_TYPE_HINT_POPUP_MENU := 9,
+    GDK_WINDOW_TYPE_HINT_TOOLTIP := 10,
+    GDK_WINDOW_TYPE_HINT_NOTIFICATION := 11,
+    GDK_WINDOW_TYPE_HINT_COMBO := 12,
+    GDK_WINDOW_TYPE_HINT_DND := 13
+  }
+
+  consts WindowWindowClass {
+    GDK_INPUT_OUTPUT := 0,
+    GDK_INPUT_ONLY := 1
+  }
+
+  class Window {
+    @gobject : Int;
+
+    New(gobject : Int) {
+      @gobject := gobject;
     }
 
-    New(pixel: Int, red: Int, green: Int, blue: Int) {
-      @pixel := pixel;
-      @red := red;
-      @green := green;
-      @blue := blue;
-    }
-
-    method : public : Copy() ~ Color {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      # TODO: write record copy
-
-      Proxy->GetDllProxy()->CallFunction("gdk_color_copy", array_args);
-
-      return Nil;
-    }
-
-    method : public : Equal(colorb : Color) ~ Bool {
+    method : public : AddFilter(function : FilterFunc, data : Int) ~ Nil {
       array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := function;
+      array_args[2] := IntHolder->New(data);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_add_filter", array_args);
+    }
+
+    method : public : Beep() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_beep", array_args);
+    }
+
+    method : public : BeginMoveDrag(button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(button);
+      array_args[2] := IntHolder->New(root_x);
+      array_args[3] := IntHolder->New(root_y);
+      array_args[4] := IntHolder->New(timestamp);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_begin_move_drag", array_args);
+    }
+
+    method : public : BeginMoveDragForDevice(device : Device, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+      array_args := Base->New[6];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := device;
+      array_args[2] := IntHolder->New(button);
+      array_args[3] := IntHolder->New(root_x);
+      array_args[4] := IntHolder->New(root_y);
+      array_args[5] := IntHolder->New(timestamp);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_begin_move_drag_for_device", array_args);
+    }
+
+    method : public : BeginPaintRect(rectangle : Rectangle) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := rectangle;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_begin_paint_rect", array_args);
+    }
+
+    method : public : BeginResizeDrag(edge : WindowEdge, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+      array_args := Base->New[6];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := edge;
+      array_args[2] := IntHolder->New(button);
+      array_args[3] := IntHolder->New(root_x);
+      array_args[4] := IntHolder->New(root_y);
+      array_args[5] := IntHolder->New(timestamp);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_begin_resize_drag", array_args);
+    }
+
+    method : public : BeginResizeDragForDevice(edge : WindowEdge, device : Device, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+      array_args := Base->New[7];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := edge;
+      array_args[2] := device;
+      array_args[3] := IntHolder->New(button);
+      array_args[4] := IntHolder->New(root_x);
+      array_args[5] := IntHolder->New(root_y);
+      array_args[6] := IntHolder->New(timestamp);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_begin_resize_drag_for_device", array_args);
+    }
+
+    method : public : ConfigureFinished() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_configure_finished", array_args);
+    }
+
+    method : public : CoordsFromParent(parent_x : Float, parent_y : Float, x : Float, y : Float) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := FloatHolder->New(parent_x);
+      array_args[2] := FloatHolder->New(parent_y);
+      array_args[3] := FloatHolder->New(x);
+      array_args[4] := FloatHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_coords_from_parent", array_args);
+    }
+
+    method : public : CoordsToParent(x : Float, y : Float, parent_x : Float, parent_y : Float) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := FloatHolder->New(x);
+      array_args[2] := FloatHolder->New(y);
+      array_args[3] := FloatHolder->New(parent_x);
+      array_args[4] := FloatHolder->New(parent_y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_coords_to_parent", array_args);
+    }
+
+    method : public : CreateGlContext() ~ GLContext {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_create_gl_context", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return GLContext->New(value);
+    }
+
+    method : public : Deiconify() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_deiconify", array_args);
+    }
+
+    method : public : Destroy() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_destroy", array_args);
+    }
+
+    method : public : DestroyNotify() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_destroy_notify", array_args);
+    }
+
+    method : public : EnableSynchronizedConfigure() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_enable_synchronized_configure", array_args);
+    }
+
+    method : public : EndDrawFrame(context : DrawingContext) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := context;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_end_draw_frame", array_args);
+    }
+
+    method : public : EndPaint() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_end_paint", array_args);
+    }
+
+    method : public : EnsureNative() ~ Bool {
+      array_args := Base->New[2];
       array_args[0] := IntHolder->New();
-      array_args[1] := @self;
+      array_args[1] := IntHolder->New(@gobject);
 
-      # TODO: write record equal
-
-      Proxy->GetDllProxy()->CallFunction("gdk_color_equal", array_args);
+      Proxy->GetDllProxy()->CallFunction("gdk_window_ensure_native", array_args);
 
       value := array_args[0]->As(IntHolder);
       return value->Get() = 0 ? false : true;
     }
 
-    method : public : Free() ~ Nil {
+    method : public : Flush() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_flush", array_args);
+    }
+
+    method : public : Focus(timestamp : Int) ~ Nil {
       array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
 
-      # TODO: write record free
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(timestamp);
 
-      Proxy->GetDllProxy()->CallFunction("gdk_color_free", array_args);
+      Proxy->GetDllProxy()->CallFunction("gdk_window_focus", array_args);
     }
 
-    method : public : Hash() ~ Int {
+    method : public : FreezeToplevelUpdatesLibgtkOnly() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_freeze_toplevel_updates_libgtk_only", array_args);
+    }
+
+    method : public : FreezeUpdates() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_freeze_updates", array_args);
+    }
+
+    method : public : Fullscreen() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_fullscreen", array_args);
+    }
+
+    method : public : FullscreenOnMonitor(monitor : Int) ~ Nil {
       array_args := Base->New[2];
-      array_args[0] := IntHolder->New();
-      array_args[1] := @self;
 
-      Proxy->GetDllProxy()->CallFunction("gdk_color_hash", array_args);
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(monitor);
 
-      value := array_args[0]->As(IntHolder);
-      return value->Get();
+      Proxy->GetDllProxy()->CallFunction("gdk_window_fullscreen_on_monitor", array_args);
     }
 
-    method : public : ToString() ~ String {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
+    method : public : GeometryChanged() ~ Nil {
+      array_args := Base->New[1];
 
-      Proxy->GetDllProxy()->CallFunction("gdk_color_to_string", array_args);
+      array_args[0] := IntHolder->New(@gobject);
 
-      return Nil;
+      Proxy->GetDllProxy()->CallFunction("gdk_window_geometry_changed", array_args);
     }
 
-    method : public : GetPixel() ~ Int {
-      return @pixel;
-    }
-
-    method : public : SetPixel(pixel : Int) ~ Nil {
-      @pixel := pixel;
-    }
-
-    method : public : GetRed() ~ Int {
-      return @red;
-    }
-
-    method : public : SetRed(red : Int) ~ Nil {
-      @red := red;
-    }
-
-    method : public : GetGreen() ~ Int {
-      return @green;
-    }
-
-    method : public : SetGreen(green : Int) ~ Nil {
-      @green := green;
-    }
-
-    method : public : GetBlue() ~ Int {
-      return @blue;
-    }
-
-    method : public : SetBlue(blue : Int) ~ Nil {
-      @blue := blue;
-    }
-  }
-
-  class DevicePadInterface {
-    New() {
-    }
-
-    }
-  }
-
-  class DrawingContextClass {
-    New() {
-    }
-
-    }
-  }
-
-  class EventAny {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-  }
-
-  class EventButton {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @axes : Float;
-    @button : Int;
-    @device : Device;
-    @x_root : Float;
-    @y_root : Float;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, x: Float, y: Float, axes: Float, button: Int, device: Device, x_root: Float, y_root: Float) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @x := x;
-      @y := y;
-      @axes := axes;
-      @button := button;
-      @device := device;
-      @x_root := x_root;
-      @y_root := y_root;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetAxes() ~ Float {
-      return @axes;
-    }
-
-    method : public : SetAxes(axes : Float) ~ Nil {
-      @axes := axes;
-    }
-
-    method : public : GetButton() ~ Int {
-      return @button;
-    }
-
-    method : public : SetButton(button : Int) ~ Nil {
-      @button := button;
-    }
-
-    method : public : GetDevice() ~ Device {
-      return @device;
-    }
-
-    method : public : SetDevice(device : Device) ~ Nil {
-      @device := device;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-  }
-
-  class EventConfigure {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @x : Int;
-    @y : Int;
-    @width : Int;
-    @height : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, x: Int, y: Int, width: Int, height: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @x := x;
-      @y := y;
-      @width := width;
-      @height := height;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetX() ~ Int {
-      return @x;
-    }
-
-    method : public : SetX(x : Int) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Int {
-      return @y;
-    }
-
-    method : public : SetY(y : Int) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetWidth() ~ Int {
-      return @width;
-    }
-
-    method : public : SetWidth(width : Int) ~ Nil {
-      @width := width;
-    }
-
-    method : public : GetHeight() ~ Int {
-      return @height;
-    }
-
-    method : public : SetHeight(height : Int) ~ Nil {
-      @height := height;
-    }
-  }
-
-  class EventCrossing {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @subwindow : Window;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @x_root : Float;
-    @y_root : Float;
-    @mode : CrossingMode;
-    @detail : NotifyType;
-    @focus : Bool;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, subwindow: Window, time: Int, x: Float, y: Float, x_root: Float, y_root: Float, mode: CrossingMode, detail: NotifyType, focus: Bool) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @subwindow := subwindow;
-      @time := time;
-      @x := x;
-      @y := y;
-      @x_root := x_root;
-      @y_root := y_root;
-      @mode := mode;
-      @detail := detail;
-      @focus := focus;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetSubwindow() ~ Window {
-      return @subwindow;
-    }
-
-    method : public : SetSubwindow(subwindow : Window) ~ Nil {
-      @subwindow := subwindow;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-
-    method : public : GetMode() ~ CrossingMode {
-      return @mode;
-    }
-
-    method : public : SetMode(mode : CrossingMode) ~ Nil {
-      @mode := mode;
-    }
-
-    method : public : GetDetail() ~ NotifyType {
-      return @detail;
-    }
-
-    method : public : SetDetail(detail : NotifyType) ~ Nil {
-      @detail := detail;
-    }
-
-    method : public : GetFocus() ~ Bool {
-      return @focus;
-    }
-
-    method : public : SetFocus(focus : Bool) ~ Nil {
-      @focus := focus;
-    }
-  }
-
-  class EventDND {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @context : DragContext;
-    @time : Int;
-    @x_root : Int;
-    @y_root : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, context: DragContext, time: Int, x_root: Int, y_root: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @context := context;
-      @time := time;
-      @x_root := x_root;
-      @y_root := y_root;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetContext() ~ DragContext {
-      return @context;
-    }
-
-    method : public : SetContext(context : DragContext) ~ Nil {
-      @context := context;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetXRoot() ~ Int {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Int) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Int {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Int) ~ Nil {
-      @y_root := y_root;
-    }
-  }
-
-  class EventExpose {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @area : Rectangle;
-    @region : cairo.Region;
-    @count : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, area: Rectangle, region: cairo.Region, count: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @area := area;
-      @region := region;
-      @count := count;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetArea() ~ Rectangle {
-      return @area;
-    }
-
-    method : public : SetArea(area : Rectangle) ~ Nil {
-      @area := area;
-    }
-
-    method : public : GetRegion() ~ cairo.Region {
-      return @region;
-    }
-
-    method : public : SetRegion(region : cairo.Region) ~ Nil {
-      @region := region;
-    }
-
-    method : public : GetCount() ~ Int {
-      return @count;
-    }
-
-    method : public : SetCount(count : Int) ~ Nil {
-      @count := count;
-    }
-  }
-
-  class EventFocus {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @in : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, in: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @in := in;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetIn() ~ Int {
-      return @in;
-    }
-
-    method : public : SetIn(in : Int) ~ Nil {
-      @in := in;
-    }
-  }
-
-  class EventGrabBroken {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @keyboard : Bool;
-    @implicit : Bool;
-    @grab_window : Window;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, keyboard: Bool, implicit: Bool, grab_window: Window) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @keyboard := keyboard;
-      @implicit := implicit;
-      @grab_window := grab_window;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetKeyboard() ~ Bool {
-      return @keyboard;
-    }
-
-    method : public : SetKeyboard(keyboard : Bool) ~ Nil {
-      @keyboard := keyboard;
-    }
-
-    method : public : GetImplicit() ~ Bool {
-      return @implicit;
-    }
-
-    method : public : SetImplicit(implicit : Bool) ~ Nil {
-      @implicit := implicit;
-    }
-
-    method : public : GetGrabWindow() ~ Window {
-      return @grab_window;
-    }
-
-    method : public : SetGrabWindow(grab_window : Window) ~ Nil {
-      @grab_window := grab_window;
-    }
-  }
-
-  class EventKey {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @keyval : Int;
-    @length : Int;
-    @string : String;
-    @hardware_keycode : Int;
-    @group : Int;
-    @is_modifier : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, keyval: Int, length: Int, string: String, hardware_keycode: Int, group: Int, is_modifier: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @keyval := keyval;
-      @length := length;
-      @string := string;
-      @hardware_keycode := hardware_keycode;
-      @group := group;
-      @is_modifier := is_modifier;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetKeyval() ~ Int {
-      return @keyval;
-    }
-
-    method : public : SetKeyval(keyval : Int) ~ Nil {
-      @keyval := keyval;
-    }
-
-    method : public : GetLength() ~ Int {
-      return @length;
-    }
-
-    method : public : SetLength(length : Int) ~ Nil {
-      @length := length;
-    }
-
-    method : public : GetString() ~ String {
-      return @string;
-    }
-
-    method : public : SetString(string : String) ~ Nil {
-      @string := string;
-    }
-
-    method : public : GetHardwareKeycode() ~ Int {
-      return @hardware_keycode;
-    }
-
-    method : public : SetHardwareKeycode(hardware_keycode : Int) ~ Nil {
-      @hardware_keycode := hardware_keycode;
-    }
-
-    method : public : GetGroup() ~ Int {
-      return @group;
-    }
-
-    method : public : SetGroup(group : Int) ~ Nil {
-      @group := group;
-    }
-
-    method : public : GetIsModifier() ~ Int {
-      return @is_modifier;
-    }
-
-    method : public : SetIsModifier(is_modifier : Int) ~ Nil {
-      @is_modifier := is_modifier;
-    }
-  }
-
-  class EventMotion {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @axes : Float;
-    @is_hint : Int;
-    @device : Device;
-    @x_root : Float;
-    @y_root : Float;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, x: Float, y: Float, axes: Float, is_hint: Int, device: Device, x_root: Float, y_root: Float) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @x := x;
-      @y := y;
-      @axes := axes;
-      @is_hint := is_hint;
-      @device := device;
-      @x_root := x_root;
-      @y_root := y_root;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetAxes() ~ Float {
-      return @axes;
-    }
-
-    method : public : SetAxes(axes : Float) ~ Nil {
-      @axes := axes;
-    }
-
-    method : public : GetIsHint() ~ Int {
-      return @is_hint;
-    }
-
-    method : public : SetIsHint(is_hint : Int) ~ Nil {
-      @is_hint := is_hint;
-    }
-
-    method : public : GetDevice() ~ Device {
-      return @device;
-    }
-
-    method : public : SetDevice(device : Device) ~ Nil {
-      @device := device;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-  }
-
-  class EventOwnerChange {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @owner : Window;
-    @reason : OwnerChange;
-    @selection : Atom;
-    @time : Int;
-    @selection_time : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, owner: Window, reason: OwnerChange, selection: Atom, time: Int, selection_time: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @owner := owner;
-      @reason := reason;
-      @selection := selection;
-      @time := time;
-      @selection_time := selection_time;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetOwner() ~ Window {
-      return @owner;
-    }
-
-    method : public : SetOwner(owner : Window) ~ Nil {
-      @owner := owner;
-    }
-
-    method : public : GetReason() ~ OwnerChange {
-      return @reason;
-    }
-
-    method : public : SetReason(reason : OwnerChange) ~ Nil {
-      @reason := reason;
-    }
-
-    method : public : GetSelection() ~ Atom {
-      return @selection;
-    }
-
-    method : public : SetSelection(selection : Atom) ~ Nil {
-      @selection := selection;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetSelectionTime() ~ Int {
-      return @selection_time;
-    }
-
-    method : public : SetSelectionTime(selection_time : Int) ~ Nil {
-      @selection_time := selection_time;
-    }
-  }
-
-  class EventPadAxis {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @group : Int;
-    @index : Int;
-    @mode : Int;
-    @value : Float;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, group: Int, index: Int, mode: Int, value: Float) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @group := group;
-      @index := index;
-      @mode := mode;
-      @value := value;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetGroup() ~ Int {
-      return @group;
-    }
-
-    method : public : SetGroup(group : Int) ~ Nil {
-      @group := group;
-    }
-
-    method : public : GetIndex() ~ Int {
-      return @index;
-    }
-
-    method : public : SetIndex(index : Int) ~ Nil {
-      @index := index;
-    }
-
-    method : public : GetMode() ~ Int {
-      return @mode;
-    }
-
-    method : public : SetMode(mode : Int) ~ Nil {
-      @mode := mode;
-    }
-
-    method : public : GetValue() ~ Float {
-      return @value;
-    }
-
-    method : public : SetValue(value : Float) ~ Nil {
-      @value := value;
-    }
-  }
-
-  class EventPadButton {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @group : Int;
-    @button : Int;
-    @mode : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, group: Int, button: Int, mode: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @group := group;
-      @button := button;
-      @mode := mode;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetGroup() ~ Int {
-      return @group;
-    }
-
-    method : public : SetGroup(group : Int) ~ Nil {
-      @group := group;
-    }
-
-    method : public : GetButton() ~ Int {
-      return @button;
-    }
-
-    method : public : SetButton(button : Int) ~ Nil {
-      @button := button;
-    }
-
-    method : public : GetMode() ~ Int {
-      return @mode;
-    }
-
-    method : public : SetMode(mode : Int) ~ Nil {
-      @mode := mode;
-    }
-  }
-
-  class EventPadGroupMode {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @group : Int;
-    @mode : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, group: Int, mode: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @group := group;
-      @mode := mode;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetGroup() ~ Int {
-      return @group;
-    }
-
-    method : public : SetGroup(group : Int) ~ Nil {
-      @group := group;
-    }
-
-    method : public : GetMode() ~ Int {
-      return @mode;
-    }
-
-    method : public : SetMode(mode : Int) ~ Nil {
-      @mode := mode;
-    }
-  }
-
-  class EventProperty {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @atom : Atom;
-    @time : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, atom: Atom, time: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @atom := atom;
-      @time := time;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetAtom() ~ Atom {
-      return @atom;
-    }
-
-    method : public : SetAtom(atom : Atom) ~ Nil {
-      @atom := atom;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-  }
-
-  class EventProximity {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @device : Device;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, device: Device) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @device := device;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetDevice() ~ Device {
-      return @device;
-    }
-
-    method : public : SetDevice(device : Device) ~ Nil {
-      @device := device;
-    }
-  }
-
-  class EventScroll {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @direction : ScrollDirection;
-    @device : Device;
-    @x_root : Float;
-    @y_root : Float;
-    @delta_x : Float;
-    @delta_y : Float;
-    @is_stop : Int;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, x: Float, y: Float, direction: ScrollDirection, device: Device, x_root: Float, y_root: Float, delta_x: Float, delta_y: Float, is_stop: Int) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @x := x;
-      @y := y;
-      @direction := direction;
-      @device := device;
-      @x_root := x_root;
-      @y_root := y_root;
-      @delta_x := delta_x;
-      @delta_y := delta_y;
-      @is_stop := is_stop;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetDirection() ~ ScrollDirection {
-      return @direction;
-    }
-
-    method : public : SetDirection(direction : ScrollDirection) ~ Nil {
-      @direction := direction;
-    }
-
-    method : public : GetDevice() ~ Device {
-      return @device;
-    }
-
-    method : public : SetDevice(device : Device) ~ Nil {
-      @device := device;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-
-    method : public : GetDeltaX() ~ Float {
-      return @delta_x;
-    }
-
-    method : public : SetDeltaX(delta_x : Float) ~ Nil {
-      @delta_x := delta_x;
-    }
-
-    method : public : GetDeltaY() ~ Float {
-      return @delta_y;
-    }
-
-    method : public : SetDeltaY(delta_y : Float) ~ Nil {
-      @delta_y := delta_y;
-    }
-
-    method : public : GetIsStop() ~ Int {
-      return @is_stop;
-    }
-
-    method : public : SetIsStop(is_stop : Int) ~ Nil {
-      @is_stop := is_stop;
-    }
-  }
-
-  class EventSelection {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @selection : Atom;
-    @target : Atom;
-    @property : Atom;
-    @time : Int;
-    @requestor : Window;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, selection: Atom, target: Atom, property: Atom, time: Int, requestor: Window) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @selection := selection;
-      @target := target;
-      @property := property;
-      @time := time;
-      @requestor := requestor;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetSelection() ~ Atom {
-      return @selection;
-    }
-
-    method : public : SetSelection(selection : Atom) ~ Nil {
-      @selection := selection;
-    }
-
-    method : public : GetTarget() ~ Atom {
-      return @target;
-    }
-
-    method : public : SetTarget(target : Atom) ~ Nil {
-      @target := target;
-    }
-
-    method : public : GetProperty() ~ Atom {
-      return @property;
-    }
-
-    method : public : SetProperty(property : Atom) ~ Nil {
-      @property := property;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetRequestor() ~ Window {
-      return @requestor;
-    }
-
-    method : public : SetRequestor(requestor : Window) ~ Nil {
-      @requestor := requestor;
-    }
-  }
-
-  class EventSequence {
-    New() {
-    }
-
-    }
-  }
-
-  class EventSetting {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @action : SettingAction;
-    @name : String;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, action: SettingAction, name: String) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @action := action;
-      @name := name;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetAction() ~ SettingAction {
-      return @action;
-    }
-
-    method : public : SetAction(action : SettingAction) ~ Nil {
-      @action := action;
-    }
-
-    method : public : GetName() ~ String {
-      return @name;
-    }
-
-    method : public : SetName(name : String) ~ Nil {
-      @name := name;
-    }
-  }
-
-  class EventTouch {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @axes : Float;
-    @sequence : EventSequence;
-    @emulating_pointer : Bool;
-    @device : Device;
-    @x_root : Float;
-    @y_root : Float;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, time: Int, x: Float, y: Float, axes: Float, sequence: EventSequence, emulating_pointer: Bool, device: Device, x_root: Float, y_root: Float) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @time := time;
-      @x := x;
-      @y := y;
-      @axes := axes;
-      @sequence := sequence;
-      @emulating_pointer := emulating_pointer;
-      @device := device;
-      @x_root := x_root;
-      @y_root := y_root;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetAxes() ~ Float {
-      return @axes;
-    }
-
-    method : public : SetAxes(axes : Float) ~ Nil {
-      @axes := axes;
-    }
-
-    method : public : GetSequence() ~ EventSequence {
-      return @sequence;
-    }
-
-    method : public : SetSequence(sequence : EventSequence) ~ Nil {
-      @sequence := sequence;
-    }
-
-    method : public : GetEmulatingPointer() ~ Bool {
-      return @emulating_pointer;
-    }
-
-    method : public : SetEmulatingPointer(emulating_pointer : Bool) ~ Nil {
-      @emulating_pointer := emulating_pointer;
-    }
-
-    method : public : GetDevice() ~ Device {
-      return @device;
-    }
-
-    method : public : SetDevice(device : Device) ~ Nil {
-      @device := device;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-  }
-
-  class EventTouchpadPinch {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @phase : Int;
-    @n_fingers : Int;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @dx : Float;
-    @dy : Float;
-    @angle_delta : Float;
-    @scale : Float;
-    @x_root : Float;
-    @y_root : Float;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, phase: Int, n_fingers: Int, time: Int, x: Float, y: Float, dx: Float, dy: Float, angle_delta: Float, scale: Float, x_root: Float, y_root: Float) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @phase := phase;
-      @n_fingers := n_fingers;
-      @time := time;
-      @x := x;
-      @y := y;
-      @dx := dx;
-      @dy := dy;
-      @angle_delta := angle_delta;
-      @scale := scale;
-      @x_root := x_root;
-      @y_root := y_root;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetPhase() ~ Int {
-      return @phase;
-    }
-
-    method : public : SetPhase(phase : Int) ~ Nil {
-      @phase := phase;
-    }
-
-    method : public : GetNFingers() ~ Int {
-      return @n_fingers;
-    }
-
-    method : public : SetNFingers(n_fingers : Int) ~ Nil {
-      @n_fingers := n_fingers;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetDx() ~ Float {
-      return @dx;
-    }
-
-    method : public : SetDx(dx : Float) ~ Nil {
-      @dx := dx;
-    }
-
-    method : public : GetDy() ~ Float {
-      return @dy;
-    }
-
-    method : public : SetDy(dy : Float) ~ Nil {
-      @dy := dy;
-    }
-
-    method : public : GetAngleDelta() ~ Float {
-      return @angle_delta;
-    }
-
-    method : public : SetAngleDelta(angle_delta : Float) ~ Nil {
-      @angle_delta := angle_delta;
-    }
-
-    method : public : GetScale() ~ Float {
-      return @scale;
-    }
-
-    method : public : SetScale(scale : Float) ~ Nil {
-      @scale := scale;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-  }
-
-  class EventTouchpadSwipe {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @phase : Int;
-    @n_fingers : Int;
-    @time : Int;
-    @x : Float;
-    @y : Float;
-    @dx : Float;
-    @dy : Float;
-    @x_root : Float;
-    @y_root : Float;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, phase: Int, n_fingers: Int, time: Int, x: Float, y: Float, dx: Float, dy: Float, x_root: Float, y_root: Float) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @phase := phase;
-      @n_fingers := n_fingers;
-      @time := time;
-      @x := x;
-      @y := y;
-      @dx := dx;
-      @dy := dy;
-      @x_root := x_root;
-      @y_root := y_root;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetPhase() ~ Int {
-      return @phase;
-    }
-
-    method : public : SetPhase(phase : Int) ~ Nil {
-      @phase := phase;
-    }
-
-    method : public : GetNFingers() ~ Int {
-      return @n_fingers;
-    }
-
-    method : public : SetNFingers(n_fingers : Int) ~ Nil {
-      @n_fingers := n_fingers;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-
-    method : public : GetX() ~ Float {
-      return @x;
-    }
-
-    method : public : SetX(x : Float) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Float {
-      return @y;
-    }
-
-    method : public : SetY(y : Float) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetDx() ~ Float {
-      return @dx;
-    }
-
-    method : public : SetDx(dx : Float) ~ Nil {
-      @dx := dx;
-    }
-
-    method : public : GetDy() ~ Float {
-      return @dy;
-    }
-
-    method : public : SetDy(dy : Float) ~ Nil {
-      @dy := dy;
-    }
-
-    method : public : GetXRoot() ~ Float {
-      return @x_root;
-    }
-
-    method : public : SetXRoot(x_root : Float) ~ Nil {
-      @x_root := x_root;
-    }
-
-    method : public : GetYRoot() ~ Float {
-      return @y_root;
-    }
-
-    method : public : SetYRoot(y_root : Float) ~ Nil {
-      @y_root := y_root;
-    }
-  }
-
-  class EventVisibility {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @state : VisibilityState;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, state: VisibilityState) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @state := state;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetState() ~ VisibilityState {
-      return @state;
-    }
-
-    method : public : SetState(state : VisibilityState) ~ Nil {
-      @state := state;
-    }
-  }
-
-  class EventWindowState {
-    @type : EventType;
-    @window : Window;
-    @send_event : Int;
-    @changed_mask : WindowState;
-    @new_window_state : WindowState;
-
-    New() {
-    }
-
-    New(type: EventType, window: Window, send_event: Int, changed_mask: WindowState, new_window_state: WindowState) {
-      @type := type;
-      @window := window;
-      @send_event := send_event;
-      @changed_mask := changed_mask;
-      @new_window_state := new_window_state;
-    }
-
-    method : public : GetType() ~ EventType {
-      return @type;
-    }
-
-    method : public : SetType(type : EventType) ~ Nil {
-      @type := type;
-    }
-
-    method : public : GetWindow() ~ Window {
-      return @window;
-    }
-
-    method : public : SetWindow(window : Window) ~ Nil {
-      @window := window;
-    }
-
-    method : public : GetSendEvent() ~ Int {
-      return @send_event;
-    }
-
-    method : public : SetSendEvent(send_event : Int) ~ Nil {
-      @send_event := send_event;
-    }
-
-    method : public : GetChangedMask() ~ WindowState {
-      return @changed_mask;
-    }
-
-    method : public : SetChangedMask(changed_mask : WindowState) ~ Nil {
-      @changed_mask := changed_mask;
-    }
-
-    method : public : GetNewWindowState() ~ WindowState {
-      return @new_window_state;
-    }
-
-    method : public : SetNewWindowState(new_window_state : WindowState) ~ Nil {
-      @new_window_state := new_window_state;
-    }
-  }
-
-  class FrameClockClass {
-    New() {
-    }
-
-    }
-  }
-
-  class FrameClockPrivate {
-    New() {
-    }
-
-    }
-  }
-
-  class FrameTimings {
-    New() {
-    }
-
-    }
-
-    method : public : GetComplete() ~ Bool {
+    method : public : GetAcceptFocus() ~ Bool {
       array_args := Base->New[2];
       array_args[0] := IntHolder->New();
-      array_args[1] := @self;
+      array_args[1] := IntHolder->New(@gobject);
 
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_get_complete", array_args);
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_accept_focus", array_args);
 
       value := array_args[0]->As(IntHolder);
       return value->Get() = 0 ? false : true;
     }
 
-    method : public : GetFrameCounter() ~ gint64 {
+    method : public : GetComposited() ~ Bool {
       array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_get_frame_counter", array_args);
-
-      return Nil;
-    }
-
-    method : public : GetFrameTime() ~ gint64 {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_get_frame_time", array_args);
-
-      return Nil;
-    }
-
-    method : public : GetPredictedPresentationTime() ~ gint64 {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_get_predicted_presentation_time", array_args);
-
-      return Nil;
-    }
-
-    method : public : GetPresentationTime() ~ gint64 {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_get_presentation_time", array_args);
-
-      return Nil;
-    }
-
-    method : public : GetRefreshInterval() ~ gint64 {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_get_refresh_interval", array_args);
-
-      return Nil;
-    }
-
-    method : public : Ref() ~ FrameTimings {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_ref", array_args);
-
-      return Nil;
-    }
-
-    method : public : Unref() ~ Nil {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_frame_timings_unref", array_args);
-    }
-  }
-
-  class Geometry {
-    @min_width : Int;
-    @min_height : Int;
-    @max_width : Int;
-    @max_height : Int;
-    @base_width : Int;
-    @base_height : Int;
-    @width_inc : Int;
-    @height_inc : Int;
-    @min_aspect : Float;
-    @max_aspect : Float;
-    @win_gravity : Gravity;
-
-    New() {
-    }
-
-    New(min_width: Int, min_height: Int, max_width: Int, max_height: Int, base_width: Int, base_height: Int, width_inc: Int, height_inc: Int, min_aspect: Float, max_aspect: Float, win_gravity: Gravity) {
-      @min_width := min_width;
-      @min_height := min_height;
-      @max_width := max_width;
-      @max_height := max_height;
-      @base_width := base_width;
-      @base_height := base_height;
-      @width_inc := width_inc;
-      @height_inc := height_inc;
-      @min_aspect := min_aspect;
-      @max_aspect := max_aspect;
-      @win_gravity := win_gravity;
-    }
-
-    method : public : GetMinWidth() ~ Int {
-      return @min_width;
-    }
-
-    method : public : SetMinWidth(min_width : Int) ~ Nil {
-      @min_width := min_width;
-    }
-
-    method : public : GetMinHeight() ~ Int {
-      return @min_height;
-    }
-
-    method : public : SetMinHeight(min_height : Int) ~ Nil {
-      @min_height := min_height;
-    }
-
-    method : public : GetMaxWidth() ~ Int {
-      return @max_width;
-    }
-
-    method : public : SetMaxWidth(max_width : Int) ~ Nil {
-      @max_width := max_width;
-    }
-
-    method : public : GetMaxHeight() ~ Int {
-      return @max_height;
-    }
-
-    method : public : SetMaxHeight(max_height : Int) ~ Nil {
-      @max_height := max_height;
-    }
-
-    method : public : GetBaseWidth() ~ Int {
-      return @base_width;
-    }
-
-    method : public : SetBaseWidth(base_width : Int) ~ Nil {
-      @base_width := base_width;
-    }
-
-    method : public : GetBaseHeight() ~ Int {
-      return @base_height;
-    }
-
-    method : public : SetBaseHeight(base_height : Int) ~ Nil {
-      @base_height := base_height;
-    }
-
-    method : public : GetWidthInc() ~ Int {
-      return @width_inc;
-    }
-
-    method : public : SetWidthInc(width_inc : Int) ~ Nil {
-      @width_inc := width_inc;
-    }
-
-    method : public : GetHeightInc() ~ Int {
-      return @height_inc;
-    }
-
-    method : public : SetHeightInc(height_inc : Int) ~ Nil {
-      @height_inc := height_inc;
-    }
-
-    method : public : GetMinAspect() ~ Float {
-      return @min_aspect;
-    }
-
-    method : public : SetMinAspect(min_aspect : Float) ~ Nil {
-      @min_aspect := min_aspect;
-    }
-
-    method : public : GetMaxAspect() ~ Float {
-      return @max_aspect;
-    }
-
-    method : public : SetMaxAspect(max_aspect : Float) ~ Nil {
-      @max_aspect := max_aspect;
-    }
-
-    method : public : GetWinGravity() ~ Gravity {
-      return @win_gravity;
-    }
-
-    method : public : SetWinGravity(win_gravity : Gravity) ~ Nil {
-      @win_gravity := win_gravity;
-    }
-  }
-
-  class KeymapKey {
-    @keycode : Int;
-    @group : Int;
-    @level : Int;
-
-    New() {
-    }
-
-    New(keycode: Int, group: Int, level: Int) {
-      @keycode := keycode;
-      @group := group;
-      @level := level;
-    }
-
-    method : public : GetKeycode() ~ Int {
-      return @keycode;
-    }
-
-    method : public : SetKeycode(keycode : Int) ~ Nil {
-      @keycode := keycode;
-    }
-
-    method : public : GetGroup() ~ Int {
-      return @group;
-    }
-
-    method : public : SetGroup(group : Int) ~ Nil {
-      @group := group;
-    }
-
-    method : public : GetLevel() ~ Int {
-      return @level;
-    }
-
-    method : public : SetLevel(level : Int) ~ Nil {
-      @level := level;
-    }
-  }
-
-  class MonitorClass {
-    New() {
-    }
-
-    }
-  }
-
-  class Point {
-    @x : Int;
-    @y : Int;
-
-    New() {
-    }
-
-    New(x: Int, y: Int) {
-      @x := x;
-      @y := y;
-    }
-
-    method : public : GetX() ~ Int {
-      return @x;
-    }
-
-    method : public : SetX(x : Int) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Int {
-      return @y;
-    }
-
-    method : public : SetY(y : Int) ~ Nil {
-      @y := y;
-    }
-  }
-
-  class RGBA {
-    @red : Float;
-    @green : Float;
-    @blue : Float;
-    @alpha : Float;
-
-    New() {
-    }
-
-    New(red: Float, green: Float, blue: Float, alpha: Float) {
-      @red := red;
-      @green := green;
-      @blue := blue;
-      @alpha := alpha;
-    }
-
-    method : public : Copy() ~ RGBA {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      # TODO: write record copy
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rgba_copy", array_args);
-
-      return Nil;
-    }
-
-    method : public : Equal(p2 : RGBA) ~ Bool {
-      array_args := Base->New[3];
       array_args[0] := IntHolder->New();
-      array_args[1] := @self;
+      array_args[1] := IntHolder->New(@gobject);
 
-      # TODO: write record equal
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rgba_equal", array_args);
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_composited", array_args);
 
       value := array_args[0]->As(IntHolder);
       return value->Get() = 0 ? false : true;
-    }
-
-    method : public : Free() ~ Nil {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      # TODO: write record free
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rgba_free", array_args);
-    }
-
-    method : public : Hash() ~ Int {
-      array_args := Base->New[2];
-      array_args[0] := IntHolder->New();
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rgba_hash", array_args);
-
-      value := array_args[0]->As(IntHolder);
-      return value->Get();
-    }
-
-    method : public : Parse(spec : String) ~ Bool {
-      array_args := Base->New[3];
-      array_args[0] := IntHolder->New();
-      array_args[1] := @self;
-      array_args[2] := spec;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rgba_parse", array_args);
-
-      value := array_args[0]->As(IntHolder);
-      return value->Get() = 0 ? false : true;
-    }
-
-    method : public : ToString() ~ String {
-      array_args := Base->New[2];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rgba_to_string", array_args);
-
-      return Nil;
-    }
-
-    method : public : GetRed() ~ Float {
-      return @red;
-    }
-
-    method : public : SetRed(red : Float) ~ Nil {
-      @red := red;
-    }
-
-    method : public : GetGreen() ~ Float {
-      return @green;
-    }
-
-    method : public : SetGreen(green : Float) ~ Nil {
-      @green := green;
-    }
-
-    method : public : GetBlue() ~ Float {
-      return @blue;
-    }
-
-    method : public : SetBlue(blue : Float) ~ Nil {
-      @blue := blue;
-    }
-
-    method : public : GetAlpha() ~ Float {
-      return @alpha;
-    }
-
-    method : public : SetAlpha(alpha : Float) ~ Nil {
-      @alpha := alpha;
-    }
-  }
-
-  class Rectangle {
-    @x : Int;
-    @y : Int;
-    @width : Int;
-    @height : Int;
-
-    New() {
-    }
-
-    New(x: Int, y: Int, width: Int, height: Int) {
-      @x := x;
-      @y := y;
-      @width := width;
-      @height := height;
-    }
-
-    method : public : Equal(rect2 : Rectangle) ~ Bool {
-      array_args := Base->New[3];
-      array_args[0] := IntHolder->New();
-      array_args[1] := @self;
-
-      # TODO: write record equal
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rectangle_equal", array_args);
-
-      value := array_args[0]->As(IntHolder);
-      return value->Get() = 0 ? false : true;
-    }
-
-    method : public : Intersect(src2 : Rectangle, dest : Rectangle) ~ Bool {
-      array_args := Base->New[4];
-      array_args[0] := IntHolder->New();
-      array_args[1] := @self;
-      array_args[2] := src2;
-      array_args[3] := dest;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rectangle_intersect", array_args);
-
-      value := array_args[0]->As(IntHolder);
-      return value->Get() = 0 ? false : true;
-    }
-
-    method : public : Union(src2 : Rectangle, dest : Rectangle) ~ Nil {
-      array_args := Base->New[4];
-      array_args[0] := Nil;
-      array_args[1] := @self;
-      array_args[2] := src2;
-      array_args[3] := dest;
-
-      Proxy->GetDllProxy()->CallFunction("gdk_rectangle_union", array_args);
-    }
-
-    method : public : GetX() ~ Int {
-      return @x;
-    }
-
-    method : public : SetX(x : Int) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Int {
-      return @y;
-    }
-
-    method : public : SetY(y : Int) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetWidth() ~ Int {
-      return @width;
-    }
-
-    method : public : SetWidth(width : Int) ~ Nil {
-      @width := width;
-    }
-
-    method : public : GetHeight() ~ Int {
-      return @height;
-    }
-
-    method : public : SetHeight(height : Int) ~ Nil {
-      @height := height;
-    }
-  }
-
-  class TimeCoord {
-    @time : Int;
-
-    New() {
-    }
-
-    New(time: Int) {
-      @time := time;
-    }
-
-    method : public : GetTime() ~ Int {
-      return @time;
-    }
-
-    method : public : SetTime(time : Int) ~ Nil {
-      @time := time;
-    }
-  }
-
-  class WindowAttr {
-    @title : String;
-    @event_mask : Int;
-    @x : Int;
-    @y : Int;
-    @width : Int;
-    @height : Int;
-    @wclass : WindowWindowClass;
-    @visual : Visual;
-    @window_type : WindowType;
-    @cursor : Cursor;
-    @wmclass_name : String;
-    @wmclass_class : String;
-    @override_redirect : Bool;
-    @type_hint : WindowTypeHint;
-
-    New() {
-    }
-
-    New(title: String, event_mask: Int, x: Int, y: Int, width: Int, height: Int, wclass: WindowWindowClass, visual: Visual, window_type: WindowType, cursor: Cursor, wmclass_name: String, wmclass_class: String, override_redirect: Bool, type_hint: WindowTypeHint) {
-      @title := title;
-      @event_mask := event_mask;
-      @x := x;
-      @y := y;
-      @width := width;
-      @height := height;
-      @wclass := wclass;
-      @visual := visual;
-      @window_type := window_type;
-      @cursor := cursor;
-      @wmclass_name := wmclass_name;
-      @wmclass_class := wmclass_class;
-      @override_redirect := override_redirect;
-      @type_hint := type_hint;
-    }
-
-    method : public : GetTitle() ~ String {
-      return @title;
-    }
-
-    method : public : SetTitle(title : String) ~ Nil {
-      @title := title;
-    }
-
-    method : public : GetEventMask() ~ Int {
-      return @event_mask;
-    }
-
-    method : public : SetEventMask(event_mask : Int) ~ Nil {
-      @event_mask := event_mask;
-    }
-
-    method : public : GetX() ~ Int {
-      return @x;
-    }
-
-    method : public : SetX(x : Int) ~ Nil {
-      @x := x;
-    }
-
-    method : public : GetY() ~ Int {
-      return @y;
-    }
-
-    method : public : SetY(y : Int) ~ Nil {
-      @y := y;
-    }
-
-    method : public : GetWidth() ~ Int {
-      return @width;
-    }
-
-    method : public : SetWidth(width : Int) ~ Nil {
-      @width := width;
-    }
-
-    method : public : GetHeight() ~ Int {
-      return @height;
-    }
-
-    method : public : SetHeight(height : Int) ~ Nil {
-      @height := height;
-    }
-
-    method : public : GetWclass() ~ WindowWindowClass {
-      return @wclass;
-    }
-
-    method : public : SetWclass(wclass : WindowWindowClass) ~ Nil {
-      @wclass := wclass;
-    }
-
-    method : public : GetVisual() ~ Visual {
-      return @visual;
-    }
-
-    method : public : SetVisual(visual : Visual) ~ Nil {
-      @visual := visual;
-    }
-
-    method : public : GetWindowType() ~ WindowType {
-      return @window_type;
-    }
-
-    method : public : SetWindowType(window_type : WindowType) ~ Nil {
-      @window_type := window_type;
     }
 
     method : public : GetCursor() ~ Cursor {
-      return @cursor;
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_cursor", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Cursor->New(value);
     }
 
-    method : public : SetCursor(cursor : Cursor) ~ Nil {
-      @cursor := cursor;
+    method : public : GetDecorations(decorations : WMDecoration) ~ Bool {
+      array_args := Base->New[3];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := decorations;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_decorations", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
     }
 
-    method : public : GetWmclassName() ~ String {
-      return @wmclass_name;
+    method : public : GetDeviceCursor(device : Device) ~ Cursor {
+      array_args := Base->New[3];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := device;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_device_cursor", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Cursor->New(value);
     }
 
-    method : public : SetWmclassName(wmclass_name : String) ~ Nil {
-      @wmclass_name := wmclass_name;
+    method : public : GetDeviceEvents(device : Device) ~ EventMask {
+      array_args := Base->New[3];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := device;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_device_events", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return EventMask->New(value);
     }
 
-    method : public : GetWmclassClass() ~ String {
-      return @wmclass_class;
+    method : public : GetDevicePosition(device : Device, x : Int, y : Int, mask : ModifierType) ~ Window {
+      array_args := Base->New[6];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := device;
+      array_args[3] := IntHolder->New(x);
+      array_args[4] := IntHolder->New(y);
+      array_args[5] := mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_device_position", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
     }
 
-    method : public : SetWmclassClass(wmclass_class : String) ~ Nil {
-      @wmclass_class := wmclass_class;
+    method : public : GetDevicePositionDouble(device : Device, x : Float, y : Float, mask : ModifierType) ~ Window {
+      array_args := Base->New[6];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := device;
+      array_args[3] := FloatHolder->New(x);
+      array_args[4] := FloatHolder->New(y);
+      array_args[5] := mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_device_position_double", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
     }
 
-    method : public : GetOverrideRedirect() ~ Bool {
-      return @override_redirect;
+    method : public : GetDisplay() ~ Display {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_display", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Display->New(value);
     }
 
-    method : public : SetOverrideRedirect(override_redirect : Bool) ~ Nil {
-      @override_redirect := override_redirect;
+    method : public : GetDragProtocol(target : Window) ~ DragProtocol {
+      array_args := Base->New[3];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := target;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_drag_protocol", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->As(DragProtocol);
+    }
+
+    method : public : GetEffectiveParent() ~ Window {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_effective_parent", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
+    }
+
+    method : public : GetEffectiveToplevel() ~ Window {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_effective_toplevel", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
+    }
+
+    method : public : GetEventCompression() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_event_compression", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : GetEvents() ~ EventMask {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_events", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return EventMask->New(value);
+    }
+
+    method : public : GetFocusOnMap() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_focus_on_map", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : GetFrameClock() ~ FrameClock {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_frame_clock", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return FrameClock->New(value);
+    }
+
+    method : public : GetFrameExtents(rect : Rectangle) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := rect;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_frame_extents", array_args);
+    }
+
+    method : public : GetFullscreenMode() ~ FullscreenMode {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_fullscreen_mode", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->As(FullscreenMode);
+    }
+
+    method : public : GetGeometry(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(x);
+      array_args[2] := IntHolder->New(y);
+      array_args[3] := IntHolder->New(width);
+      array_args[4] := IntHolder->New(height);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_geometry", array_args);
+    }
+
+    method : public : GetGroup() ~ Window {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_group", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
+    }
+
+    method : public : GetHeight() ~ int {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_height", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return int->New(value);
+    }
+
+    method : public : GetModalHint() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_modal_hint", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : GetOrigin(x : Int, y : Int) ~ Int {
+      array_args := Base->New[4];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := IntHolder->New(x);
+      array_args[3] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_origin", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : GetParent() ~ Window {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_parent", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
+    }
+
+    method : public : GetPassThrough() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_pass_through", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : GetPointer(x : Int, y : Int, mask : ModifierType) ~ Window {
+      array_args := Base->New[5];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := IntHolder->New(x);
+      array_args[3] := IntHolder->New(y);
+      array_args[4] := mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_pointer", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
+    }
+
+    method : public : GetPosition(x : Int, y : Int) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(x);
+      array_args[2] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_position", array_args);
+    }
+
+    method : public : GetRootCoords(x : Int, y : Int, root_x : Int, root_y : Int) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(x);
+      array_args[2] := IntHolder->New(y);
+      array_args[3] := IntHolder->New(root_x);
+      array_args[4] := IntHolder->New(root_y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_root_coords", array_args);
+    }
+
+    method : public : GetRootOrigin(x : Int, y : Int) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(x);
+      array_args[2] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_root_origin", array_args);
+    }
+
+    method : public : GetScaleFactor() ~ Int {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_scale_factor", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get();
+    }
+
+    method : public : GetScreen() ~ Screen {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_screen", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Screen->New(value);
+    }
+
+    method : public : GetSourceEvents(source : InputSource) ~ EventMask {
+      array_args := Base->New[3];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := source;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_source_events", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return EventMask->New(value);
+    }
+
+    method : public : GetState() ~ WindowState {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_state", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return WindowState->New(value);
+    }
+
+    method : public : GetSupportMultidevice() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_support_multidevice", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : GetToplevel() ~ Window {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_toplevel", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Window->New(value);
     }
 
     method : public : GetTypeHint() ~ WindowTypeHint {
-      return @type_hint;
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_type_hint", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->As(WindowTypeHint);
     }
 
-    method : public : SetTypeHint(type_hint : WindowTypeHint) ~ Nil {
-      @type_hint := type_hint;
+    method : public : GetUserData(data : Int) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(data);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_user_data", array_args);
+    }
+
+    method : public : GetVisual() ~ Visual {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_visual", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return Visual->New(value);
+    }
+
+    method : public : GetWidth() ~ int {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_width", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return int->New(value);
+    }
+
+    method : public : GetWindowType() ~ WindowType {
+      array_args := Base->New[2];
+      array_args[0] := Nil;
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_get_window_type", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->As(WindowType);
+    }
+
+    method : public : HasNative() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_has_native", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : Hide() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_hide", array_args);
+    }
+
+    method : public : Iconify() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_iconify", array_args);
+    }
+
+    method : public : InvalidateRect(rect : Rectangle, invalidate_children : Bool) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := rect;
+      array_args[2] := IntHolder->New(invalidate_children = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_invalidate_rect", array_args);
+    }
+
+    method : public : IsDestroyed() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_is_destroyed", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : IsInputOnly() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_is_input_only", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : IsShaped() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_is_shaped", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : IsViewable() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_is_viewable", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : IsVisible() ~ Bool {
+      array_args := Base->New[2];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_is_visible", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : Lower() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_lower", array_args);
+    }
+
+    method : public : Maximize() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_maximize", array_args);
+    }
+
+    method : public : MergeChildInputShapes() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_merge_child_input_shapes", array_args);
+    }
+
+    method : public : MergeChildShapes() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_merge_child_shapes", array_args);
+    }
+
+    method : public : Move(x : Int, y : Int) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(x);
+      array_args[2] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_move", array_args);
+    }
+
+    method : public : MoveResize(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(x);
+      array_args[2] := IntHolder->New(y);
+      array_args[3] := IntHolder->New(width);
+      array_args[4] := IntHolder->New(height);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_move_resize", array_args);
+    }
+
+    method : public : MoveToRect(rect : Rectangle, rect_anchor : Gravity, window_anchor : Gravity, anchor_hints : AnchorHints, rect_anchor_dx : Int, rect_anchor_dy : Int) ~ Nil {
+      array_args := Base->New[7];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := rect;
+      array_args[2] := rect_anchor;
+      array_args[3] := window_anchor;
+      array_args[4] := anchor_hints;
+      array_args[5] := IntHolder->New(rect_anchor_dx);
+      array_args[6] := IntHolder->New(rect_anchor_dy);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_move_to_rect", array_args);
+    }
+
+    method : public : ProcessUpdates(update_children : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(update_children = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_process_updates", array_args);
+    }
+
+    method : public : Raise() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_raise", array_args);
+    }
+
+    method : public : RegisterDnd() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_register_dnd", array_args);
+    }
+
+    method : public : RemoveFilter(function : FilterFunc, data : Int) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := function;
+      array_args[2] := IntHolder->New(data);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_remove_filter", array_args);
+    }
+
+    method : public : Reparent(new_parent : Window, x : Int, y : Int) ~ Nil {
+      array_args := Base->New[4];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := new_parent;
+      array_args[2] := IntHolder->New(x);
+      array_args[3] := IntHolder->New(y);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_reparent", array_args);
+    }
+
+    method : public : Resize(width : Int, height : Int) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(width);
+      array_args[2] := IntHolder->New(height);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_resize", array_args);
+    }
+
+    method : public : Restack(sibling : Window, above : Bool) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := sibling;
+      array_args[2] := IntHolder->New(above = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_restack", array_args);
+    }
+
+    method : public : Scroll(dx : Int, dy : Int) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(dx);
+      array_args[2] := IntHolder->New(dy);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_scroll", array_args);
+    }
+
+    method : public : SetAcceptFocus(accept_focus : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(accept_focus = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_accept_focus", array_args);
+    }
+
+    method : public : SetBackground(color : Color) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := color;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_background", array_args);
+    }
+
+    method : public : SetBackgroundRgba(rgba : RGBA) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := rgba;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_background_rgba", array_args);
+    }
+
+    method : public : SetChildInputShapes() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_child_input_shapes", array_args);
+    }
+
+    method : public : SetChildShapes() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_child_shapes", array_args);
+    }
+
+    method : public : SetComposited(composited : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(composited = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_composited", array_args);
+    }
+
+    method : public : SetCursor(cursor : Cursor) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := cursor;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_cursor", array_args);
+    }
+
+    method : public : SetDecorations(decorations : WMDecoration) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := decorations;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_decorations", array_args);
+    }
+
+    method : public : SetDeviceCursor(device : Device, cursor : Cursor) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := device;
+      array_args[2] := cursor;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_device_cursor", array_args);
+    }
+
+    method : public : SetDeviceEvents(device : Device, event_mask : EventMask) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := device;
+      array_args[2] := event_mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_device_events", array_args);
+    }
+
+    method : public : SetEventCompression(event_compression : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(event_compression = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_event_compression", array_args);
+    }
+
+    method : public : SetEvents(event_mask : EventMask) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := event_mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_events", array_args);
+    }
+
+    method : public : SetFocusOnMap(focus_on_map : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(focus_on_map = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_focus_on_map", array_args);
+    }
+
+    method : public : SetFullscreenMode(mode : FullscreenMode) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := mode;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_fullscreen_mode", array_args);
+    }
+
+    method : public : SetFunctions(functions : WMFunction) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := functions;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_functions", array_args);
+    }
+
+    method : public : SetGeometryHints(geometry : Geometry, geom_mask : WindowHints) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := geometry;
+      array_args[2] := geom_mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_geometry_hints", array_args);
+    }
+
+    method : public : SetGroup(leader : Window) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := leader;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_group", array_args);
+    }
+
+    method : public : SetIconName(name : String) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := name;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_icon_name", array_args);
+    }
+
+    method : public : SetInvalidateHandler(handler : WindowInvalidateHandlerFunc) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := handler;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_invalidate_handler", array_args);
+    }
+
+    method : public : SetKeepAbove(setting : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(setting = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_keep_above", array_args);
+    }
+
+    method : public : SetKeepBelow(setting : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(setting = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_keep_below", array_args);
+    }
+
+    method : public : SetModalHint(modal : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(modal = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_modal_hint", array_args);
+    }
+
+    method : public : SetOpacity(opacity : Float) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := FloatHolder->New(opacity);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_opacity", array_args);
+    }
+
+    method : public : SetOverrideRedirect(override_redirect : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(override_redirect = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_override_redirect", array_args);
+    }
+
+    method : public : SetPassThrough(pass_through : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(pass_through = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_pass_through", array_args);
+    }
+
+    method : public : SetRole(role : String) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := role;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_role", array_args);
+    }
+
+    method : public : SetShadowWidth(left : Int, right : Int, top : Int, bottom : Int) ~ Nil {
+      array_args := Base->New[5];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(left);
+      array_args[2] := IntHolder->New(right);
+      array_args[3] := IntHolder->New(top);
+      array_args[4] := IntHolder->New(bottom);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_shadow_width", array_args);
+    }
+
+    method : public : SetSkipPagerHint(skips_pager : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(skips_pager = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_skip_pager_hint", array_args);
+    }
+
+    method : public : SetSkipTaskbarHint(skips_taskbar : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(skips_taskbar = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_skip_taskbar_hint", array_args);
+    }
+
+    method : public : SetSourceEvents(source : InputSource, event_mask : EventMask) ~ Nil {
+      array_args := Base->New[3];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := source;
+      array_args[2] := event_mask;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_source_events", array_args);
+    }
+
+    method : public : SetStartupId(startup_id : String) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := startup_id;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_startup_id", array_args);
+    }
+
+    method : public : SetStaticGravities(use_static : Bool) ~ Bool {
+      array_args := Base->New[3];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := IntHolder->New(use_static = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_static_gravities", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : SetSupportMultidevice(support_multidevice : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(support_multidevice = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_support_multidevice", array_args);
+    }
+
+    method : public : SetTitle(title : String) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := title;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_title", array_args);
+    }
+
+    method : public : SetTransientFor(parent : Window) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := parent;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_transient_for", array_args);
+    }
+
+    method : public : SetTypeHint(hint : WindowTypeHint) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := hint;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_type_hint", array_args);
+    }
+
+    method : public : SetUrgencyHint(urgent : Bool) ~ Nil {
+      array_args := Base->New[2];
+
+      array_args[0] := IntHolder->New(@gobject);
+      array_args[1] := IntHolder->New(urgent = 0 ? 0 : 1);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_set_urgency_hint", array_args);
+    }
+
+    method : public : Show() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_show", array_args);
+    }
+
+    method : public : ShowUnraised() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_show_unraised", array_args);
+    }
+
+    method : public : ShowWindowMenu(event : Event) ~ Bool {
+      array_args := Base->New[3];
+      array_args[0] := IntHolder->New();
+      array_args[1] := IntHolder->New(@gobject);
+      array_args[2] := event;
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_show_window_menu", array_args);
+
+      value := array_args[0]->As(IntHolder);
+      return value->Get() = 0 ? false : true;
+    }
+
+    method : public : Stick() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_stick", array_args);
+    }
+
+    method : public : ThawToplevelUpdatesLibgtkOnly() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_thaw_toplevel_updates_libgtk_only", array_args);
+    }
+
+    method : public : ThawUpdates() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_thaw_updates", array_args);
+    }
+
+    method : public : Unfullscreen() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_unfullscreen", array_args);
+    }
+
+    method : public : Unmaximize() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_unmaximize", array_args);
+    }
+
+    method : public : Unstick() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_unstick", array_args);
+    }
+
+    method : public : Withdraw() ~ Nil {
+      array_args := Base->New[1];
+
+      array_args[0] := IntHolder->New(@gobject);
+
+      Proxy->GetDllProxy()->CallFunction("gdk_window_withdraw", array_args);
     }
   }
-
-  class WindowClass {
-    @parent_class : GObject.ObjectClass;
-
-    New() {
-    }
-
-    New(parent_class: GObject.ObjectClass) {
-      @parent_class := parent_class;
-    }
-
-    method : public : GetParentClass() ~ GObject.ObjectClass {
-      return @parent_class;
-    }
-
-    method : public : SetParentClass(parent_class : GObject.ObjectClass) ~ Nil {
-      @parent_class := parent_class;
-    }
-  }
-
-  class WindowRedirect {
-    New() {
-    }
-
-    }
-  }
-
-
-###
-time=3.22 sec(s)
+}
