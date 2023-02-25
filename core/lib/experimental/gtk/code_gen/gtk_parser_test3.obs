@@ -307,7 +307,7 @@ class GtkTestRunner {
 			cxx_buffer += "#endif\n";
 			cxx_buffer += "    void gtk3_{$identifier_name}(VMContext& context) {\n";
 			cxx_buffer += "      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);\n";
-			cxx_buffer += "    }\n\n";
+			
 
 			if(EmitMethod(params_xml, return_xml)) {
 				objk_buffer += "    method : public : {$method_case_name}";
@@ -333,7 +333,9 @@ class GtkTestRunner {
 
 				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 				WriteProxyReturn(return_xml, objk_buffer, cxx_buffer);
+
 				objk_buffer += "    }\n\n";
+				cxx_buffer += "    }\n\n";
 			}
 		};
 
