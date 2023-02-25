@@ -41,7 +41,7 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
 * [Unicode support](https://en.wikipedia.org/wiki/Unicode)
 * OS-level support for threads, sockets, files, time, etc.
 * [Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
-* [JIT compiled](https://en.wikipedia.org/wiki/Just-in-time_compilation)
+* [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows 10/11, Linux and macOS
 * [Online tutorial](https://www.objeck.org/getting_started.html)
