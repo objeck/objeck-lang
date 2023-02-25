@@ -1,0 +1,79 @@
+#include "gtk3_test.h"
+
+extern "C" {
+  static ResourceManager* res_manager = nullptr;
+
+  //
+  // initialize library
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void load_lib(VMContext& context) {
+    if(!res_manager) {
+      res_manager = new ResourceManager(context.alloc_managed_obj, context.call_method_by_id);
+    }
+  }
+
+  //
+  // release library
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void unload_lib() {
+    if(res_manager) {
+      delete res_manager;
+      res_manager = nullptr;
+    }
+  }
+
+  //
+  // GObject
+  //
+  static void callback_handler(GObject* handler, gpointer callback_data) {
+    // well, want to reduce the code below... however what I learned from the SLD2
+    // bindings is that UIs are order of magnitude slower then supporting program logic
+    if(handler && callback_data) {
+      std::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;
+      size_t const mthd_cls_id = callback_params->first;
+      const int cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+      const int mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+      size_t* callback_data = callback_params->second;
+
+      GType handler_ctype = G_TYPE_FROM_INSTANCE(handler);
+      if(G_TYPE_IS_CLASSED(handler_ctype)) {
+        const std::string handler_cname(g_type_name(handler_ctype));
+        const char prefix_str[] = "Gtk
+        size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);
+        if(handler_cname_prefix_offset != std::string::npos) {
+          std::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();
+
+          size_t* op_stack = exec_stack_mem.first;
+          long* stack_pos = exec_stack_mem.second;
+          
+          const std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));
+          const std::string handler_objk_name("Gtk3." + post_objk_name);
+
+          const APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();
+          size_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);
+          if(gobject_obj) {
+            gobject_obj[0] = (size_t)handler;
+
+            // set stack
+            op_stack[0] = (size_t)gobject_obj;
+            op_stack[1] = (size_t)callback_data;
+            (*stack_pos) = 2;
+
+            // call method
+            const APITools_MethodCallById_Ptr mthd_call_id = res_manager->GetMethodCallById();
+            mthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);
+          }
+
+          // clean up
+          res_manager->ReleaseOpStackMemory(exec_stack_mem);
+        }
+      }
+    }
+  }
+}

@@ -4,7 +4,7 @@ bundle GTK3 {
 
     function : GetDllProxy() ~ DllProxy {
       if(@lib_proxy = Nil) {
-        @lib_proxy := DllProxy->New("libobjk_gtk3");
+        @lib_proxy := DllProxy->New("libobjk_gtk3";
       };
 
       return @lib_proxy;
