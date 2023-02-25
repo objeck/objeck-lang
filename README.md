@@ -73,7 +73,7 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
 * [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
 ## Working with the Code
-Objeck can be built for a variety of targets. The language is implemented in C++ and assembly (i.e., generated machine code).
+Objeck can be built for a variety of targets. The language is implemented in C++, assembly (i.e., generated machine code) and assisted by code generators for bindings to SDL2 and GTK 3/4.
 
 ### Linux (x64, ARM64)
 *  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip</code>
