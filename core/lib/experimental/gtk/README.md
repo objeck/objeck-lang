@@ -51,6 +51,6 @@ vcpkg integrate install
 TBD
 ```
 
-## Code Generation Sample Output
+## Code Generation
 
-[Work-in-progress...](code_gen/debug/debug.txt)
+[Sample output](code_gen/debug/debug.txt)
