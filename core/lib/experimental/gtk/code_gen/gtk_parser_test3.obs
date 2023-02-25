@@ -610,8 +610,6 @@ class GtkTestRunner {
 		cxx_buffer += "  // GObject\n";
 		cxx_buffer += "  //\n";
 		cxx_buffer += "  static void callback_handler(GObject* handler, gpointer callback_data) {\n";
-		cxx_buffer += "    // well, want to reduce the code below... however what I learned from the SLD2\n";
-		cxx_buffer += "    // bindings is that UIs are order of magnitude slower then supporting program logic\n";
 		cxx_buffer += "    if(handler && callback_data) {\n";
 		cxx_buffer += "      std::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;\n";
 		cxx_buffer += "      size_t const mthd_cls_id = callback_params->first;\n";
