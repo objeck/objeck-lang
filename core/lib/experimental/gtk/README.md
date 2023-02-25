@@ -41,4 +41,4 @@ vcpkg integrate install
 
 ## Sample output
 
-[Work-in-progress (obsolete)](code_gen/debug/debug.txt)
+[Work-in-progress...](code_gen/debug/debug.txt)
