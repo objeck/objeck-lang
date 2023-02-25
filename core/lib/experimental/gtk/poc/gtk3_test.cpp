@@ -170,7 +170,6 @@ extern "C" {
       APITools_SetIntValue(context, 0, status);
     }
     else {
-      // TODO: argv leaked?
       const size_t argc = values.size() + 1;
       char** argv = new char*[argc + 1];
 #ifdef _WIN32      
