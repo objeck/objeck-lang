@@ -38,10 +38,9 @@ More examples, Rosetta Code [solutions](https://github.com/objeck/objeck-lang/tr
   * [Closures](https://en.wikipedia.org/wiki/Closure_(computer_programming))
   * [Lambda expressions](https://en.wikipedia.org/wiki/Anonymous_function)
   * [First-class functions](https://en.wikipedia.org/wiki/First-class_function)
-* Type inference
-* Unicode support
+* [Unicode support](https://en.wikipedia.org/wiki/Unicode)
 * OS-level support for threads, sockets, files, time, etc.
-* Garbage collection
+* [Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * JIT compiled
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows 10/11, Linux and macOS
