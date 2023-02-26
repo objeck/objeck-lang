@@ -1,4 +1,4 @@
-bundle GTK3 {
+gtk3_gdk_window_invalidate_rectbundle GTK3 {
   class : private : Proxy {
     @lib_proxy : static : DllProxy;
 

@@ -481,11 +481,7 @@ class GtkTestRunner {
 				if(<>is_nil) {
 					index += 1;
 				};
-
-				if(<>is_constructor) {
-					index += 1;
-				};
-
+				
 				param_xml := params_xml->Get(i);
 				param_name := param_xml->GetName();
 				if(param_name->Equals("parameter")) {
