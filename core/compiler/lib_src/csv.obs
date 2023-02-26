@@ -192,7 +192,7 @@ bundle Data.CSV {
 			};
 			
 			# store values and sort 
-			sorted := CompareVector->New()<FloatHolder>;
+			sorted := CompareVector->New()<FloatRef>;
 			each(i : @columns) {
 				sorted->AddBack(@columns->Get(i)->ToFloat());
 			};
@@ -344,7 +344,7 @@ bundle Data.CSV {
 			};
 			
 			# store values and sort 
-			sorted := CompareVector->New()<FloatHolder>;
+			sorted := CompareVector->New()<FloatRef>;
 			each(i : @rows) {
 				sorted->AddBack(@rows->Get(i)->ToFloat());
 			};
@@ -369,7 +369,7 @@ bundle Data.CSV {
 	class CsvTable {
 		@data : Vector<CsvRow>;
 		@is_parsed : Bool;
-		@header_names : Hash<String, IntHolder>;
+		@header_names : Hash<String, IntRef>;
 		@ending : String;
 		@replace_str : static : String;
 
@@ -414,7 +414,7 @@ bundle Data.CSV {
 			};
 			
 			if(@is_parsed) {
-				@header_names := Hash->New()<String, IntHolder>;
+				@header_names := Hash->New()<String, IntRef>;
 				headers := @data->Get(0)->As(CsvRow);
 				each(i : headers) {
 					@header_names->Insert(headers->Get(i), i);
@@ -422,7 +422,7 @@ bundle Data.CSV {
 			};
 		}
 		
-		New(data : Vector<CsvRow>, header_names : Hash<String, IntHolder>) {
+		New(data : Vector<CsvRow>, header_names : Hash<String, IntRef>) {
 			@is_parsed := true;
 			@data := data;
 			@header_names := header_names;

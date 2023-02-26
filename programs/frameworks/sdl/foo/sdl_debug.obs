@@ -56,8 +56,8 @@ class Test {
 	function : Regulate() ~ Nil {
 #		Filesystem->GetBasePath()->PrintLine();
 		
-		secs := IntHolder->New();
-		pct := IntHolder->New();
+		secs := IntRef->New();
+		pct := IntRef->New();
 
 		(Power->GetInfo(secs, pct) = PowererState->SDL_POWERSTATE_CHARGING)->PrintLine();
 

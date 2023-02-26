@@ -1083,12 +1083,12 @@ bundle Web.HTTP.Server {
 		@cert_key_path : String;
 		@cert_passwd : String;
 		@file_group_handler_map : Hash<String, FileGroupHandler>;
-		@content_cache : Map<String, ByteArrayHolder>;
+		@content_cache : Map<String, ByteArrayRef>;
 
 		New(filename : String) {
 			@filename := filename;
 			@file_group_handler_map := Hash->New()<String, FileGroupHandler>;
-			@content_cache := Map->New()<String, ByteArrayHolder>;
+			@content_cache := Map->New()<String, ByteArrayRef>;
 		}
 
 		method : public : GetFilename() ~ String {
@@ -1408,7 +1408,7 @@ bundle Web.HTTP.Server {
 						if(buffer = Nil) {
 							return false;
 						};
-						@content_cache->Insert(file_location, ByteArrayHolder->New(buffer));
+						@content_cache->Insert(file_location, ByteArrayRef->New(buffer));
 						if(@is_debug) {
 							"---"->PrintLine();
 						};

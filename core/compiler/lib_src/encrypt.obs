@@ -37,12 +37,12 @@ bundle Encryption {
 		function : SHA256(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
-				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayHolder->New(input);				
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_hash_sha256", array_args);
 				
-				holder := array_args[0]->As(ByteArrayHolder);
+				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
 			
@@ -57,12 +57,12 @@ bundle Encryption {
 		function : SHA512(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
-				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayHolder->New(input);				
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_hash_sha512", array_args);
 				
-				holder := array_args[0]->As(ByteArrayHolder);
+				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
 			
@@ -77,12 +77,12 @@ bundle Encryption {
 		function : MD5(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
-				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayHolder->New(input);				
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_hash_md5", array_args);
 				
-				holder := array_args[0]->As(ByteArrayHolder);
+				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
 			
@@ -97,12 +97,12 @@ bundle Encryption {
 		function : RIPEMD160(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
-				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayHolder->New(input);				
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_hash_ripemd160", array_args);
 				
-				holder := array_args[0]->As(ByteArrayHolder);
+				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
 			
@@ -123,13 +123,13 @@ bundle Encryption {
 		function : AES256(key : Byte[], input : Byte[]) ~ Byte[] {
 			if(key <> Nil & input <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayHolder->New(key);
-				array_args[2] := ByteArrayHolder->New(input);				
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(key);
+				array_args[2] := ByteArrayRef->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_encrypt_aes256", array_args);
 				
-				holder := array_args[0]->As(ByteArrayHolder);
+				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
 			
@@ -165,13 +165,13 @@ bundle Encryption {
 		function : AES256(key : Byte[], input : Byte[]) ~ Byte[] {
 			if(key <> Nil & input <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayHolder->New(key);
-				array_args[2] := ByteArrayHolder->New(input);				
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(key);
+				array_args[2] := ByteArrayRef->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_decrypt_aes256", array_args);
 				
-				holder := array_args[0]->As(ByteArrayHolder);
+				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
 			

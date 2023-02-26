@@ -10,8 +10,8 @@ class LButton {
 	@current_sprite : LButtonSprite;
 	@button_sprite_sheet_texture : LTexture;
 	@sprite_clips : Rect[];
-	@x : IntHolder;
-	@y : IntHolder;
+	@x : IntRef;
+	@y : IntRef;
 
 	enum LButtonSprite {
 		BUTTON_SPRITE_MOUSE_OUT,
@@ -26,8 +26,8 @@ class LButton {
 		@sprite_clips := sprite_clips;
 		@position := Point->New();
 		@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_OUT;
-		@x := IntHolder->New();
-		@y := IntHolder->New();
+		@x := IntRef->New();
+		@y := IntRef->New();
 	}
 
 	# Sets top left position

@@ -2993,9 +2993,9 @@ bundle Collection.Generic {
 	}
 
 	class Func2Composer<X, R> {
-		@func : Func2Holder<X, R>;
+		@func : Func2Ref<X, R>;
 
-		New(first : Func2Holder<X, R>) {
+		New(first : Func2Ref<X, R>) {
 			@func := first;
 		}
 
@@ -3004,7 +3004,7 @@ bundle Collection.Generic {
 			return func(x);
 		}
 
-		method : public : Compose(before : Func2Holder<Base, X>) ~ Func2Composer<Base, R> {
+		method : public : Compose(before : Func2Ref<Base, X>) ~ Func2Composer<Base, R> {
 			return Nil;
 		}
 	}

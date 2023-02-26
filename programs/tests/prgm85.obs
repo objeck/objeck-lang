@@ -3,8 +3,8 @@
 		function : Main(args : String[]) ~ Nil {
 #			b : Base := "hello";
 			x := Collection.Vector->New();
-			x->AddBack(IntHolder->New(13));
-			x->AddBack(IntHolder->New(7));
+			x->AddBack(IntRef->New(13));
+			x->AddBack(IntRef->New(7));
 			b : Base := x;
 #			b : String := "hello";
 			b->As(Collection.Vector)->Size()->PrintLine();

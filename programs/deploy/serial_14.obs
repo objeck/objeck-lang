@@ -16,8 +16,8 @@ class Client {
 			else if(args[0]->Equals("write")) {
 				values := Map->New()<String, Compare>;
 				values->Insert("name", "Objeck");
-				values->Insert("age", IntHolder->New(10));
-				values->Insert("pi", FloatHolder->New(3.145));
+				values->Insert("age", IntRef->New(10));
+				values->Insert("pi", FloatRef->New(3.145));
 
 				serializer := Serializer->New();
 				serializer->Write(values);
@@ -50,7 +50,7 @@ class Client {
 		name := values->Find("name")->As(String);
 		name->PrintLine();
 
-		pi := values->Find("pi")->As(FloatHolder);
+		pi := values->Find("pi")->As(FloatRef);
 		pi->Get()->PrintLine();
 
 		fin := deserializer->ReadObject()->As(String);

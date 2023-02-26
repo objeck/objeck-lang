@@ -2,12 +2,12 @@ use Collection.Generic;
 
 class AoC {
 	@file : String;
-	@dir_totals : CompareVector<IntHolder>;
+	@dir_totals : CompareVector<IntRef>;
 	@debug :  Bool;
 
 	New(file : String) {
 		@file := file;
-		@dir_totals := CompareVector->New()<IntHolder>;
+		@dir_totals := CompareVector->New()<IntRef>;
 		@debug := false;
 	}
 
@@ -49,7 +49,7 @@ class AoC {
 		};
 	}
 
-	method : PrintTree(command : Command, level : IntHolder) ~ Nil {
+	method : PrintTree(command : Command, level : IntRef) ~ Nil {
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);
@@ -85,7 +85,7 @@ class AoC {
 		};
 	}
 
-	method : TotalDirectories(command : Command, level : IntHolder) ~ Nil {
+	method : TotalDirectories(command : Command, level : IntRef) ~ Nil {
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);

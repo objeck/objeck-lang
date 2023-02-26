@@ -8,11 +8,11 @@ class FibonacciWord {
 			c := result->Get(i);
 
 			if(frequencies->Has(c)) {
-				count := frequencies->Find(c)->As(IntHolder);
+				count := frequencies->Find(c)->As(IntRef);
 				count->Set(count->Get() + 1);
 			}
 			else {
-				frequencies->Insert(c, IntHolder->New(1));
+				frequencies->Insert(c, IntRef->New(1));
 			};
 		};
 
@@ -21,7 +21,7 @@ class FibonacciWord {
 
       	counts := frequencies->GetValues(); 
 		each(i : counts) {
-			count := counts->Get(i)->As(IntHolder)->Get();
+			count := counts->Get(i)->As(IntRef)->Get();
 			freq := count->As(Float) / length;
 			entropy += freq * (freq->Log() / 2.0->Log());
 		};

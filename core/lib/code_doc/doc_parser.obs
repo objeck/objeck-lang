@@ -961,7 +961,7 @@ class FuncSnippet from Snippet {
 	@is_native : Bool;
 	@is_virtual : Bool;
 	@is_new : Bool;
-	@types : static : Map<String, IntHolder>;
+	@types : static : Map<String, IntRef>;
 	@ignore_params : Bool;
 	
 	New(buffer : String) {
@@ -979,12 +979,12 @@ class FuncSnippet from Snippet {
 	
 	function : Initialize() ~ Nil {
 		if(@types = Nil) {
-			@types := Map->New()<String, IntHolder>;
-			@types->Insert("Byte", IntHolder->New(SnippetType->Type->BYTE));
-			@types->Insert("Char", IntHolder->New(SnippetType->Type->CHAR));
-			@types->Insert("Int", IntHolder->New(SnippetType->Type->INT));
-			@types->Insert("Float", IntHolder->New(SnippetType->Type->FLOAT));
-			@types->Insert("Nil", IntHolder->New(SnippetType->Type->NIL));
+			@types := Map->New()<String, IntRef>;
+			@types->Insert("Byte", IntRef->New(SnippetType->Type->BYTE));
+			@types->Insert("Char", IntRef->New(SnippetType->Type->CHAR));
+			@types->Insert("Int", IntRef->New(SnippetType->Type->INT));
+			@types->Insert("Float", IntRef->New(SnippetType->Type->FLOAT));
+			@types->Insert("Nil", IntRef->New(SnippetType->Type->NIL));
 		};
 	}
 	
@@ -1225,7 +1225,7 @@ class FuncSnippet from Snippet {
 				rtrn_name := func_rtrn_type->GetTypeName();
 			};
 
-			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
+			rtrn_type := @types->Find(rtrn_name)->As(IntRef);
 			if(rtrn_type <> Nil) {
 				@return_type := SnippetType->New("", rtrn_name, rtrn_type->Get()->As(SnippetType->Type));
 			}

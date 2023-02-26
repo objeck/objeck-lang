@@ -2,13 +2,13 @@ use Collection.Generic;
 
 class FirstClass {
    function : Main(args : String[]) ~ Nil {
-      fl := CompareVector->New()<FloatHolder>;
+      fl := CompareVector->New()<FloatRef>;
       fl->AddBack(1.25); fl->AddBack(3.5); fl->AddBack(6.66);
 
-      il := Vector->New()<FloatHolder>;
+      il := Vector->New()<FloatRef>;
       il->AddBack(101); il->AddBack(321); il->AddBack(950);
       
-      zipped := Map->Zip(fl, il)<FloatHolder, FloatHolder>;
+      zipped := Map->Zip(fl, il)<FloatRef, FloatRef>;
       zipped->Each(\^(a, b) => ( a + b )->PrintLine() );
    }
 }

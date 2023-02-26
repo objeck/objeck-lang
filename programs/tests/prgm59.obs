@@ -10,9 +10,9 @@ bundle Default {
 		function : Run() ~ Nil {
 #~
 			v := Vector->New();
-			v->AddBack(IntHolder->New(23)->As(System.Base));
-			v->AddBack(IntHolder->New(12)->As(System.Base));
-			v->AddBack(IntHolder->New(10)->As(System.Base));
+			v->AddBack(IntRef->New(23)->As(System.Base));
+			v->AddBack(IntRef->New(12)->As(System.Base));
+			v->AddBack(IntRef->New(10)->As(System.Base));
 ~#
 			s := IntStack->New();
 			s->Push(23);

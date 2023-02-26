@@ -1442,16 +1442,16 @@ class Node {
 
 class Scanner {
 	function : Scan(input : String) ~ Vector<Token> {
-		keywords := Hash->New()<String, IntHolder>;
-		keywords->Insert("let", IntHolder->New(Token->Type->LET_KEYWORD));
-		keywords->Insert("write", IntHolder->New(Token->Type->WRITE_KEYWORD));
-		keywords->Insert("list", IntHolder->New(Token->Type->LIST_KEYWORD));
-		keywords->Insert("cond", IntHolder->New(Token->Type->COND_KEYWORD));
-		keywords->Insert("cons", IntHolder->New(Token->Type->CONS_KEYWORD));
-		keywords->Insert("car", IntHolder->New(Token->Type->CAR_KEYWORD));
-		keywords->Insert("cdr", IntHolder->New(Token->Type->CDR_KEYWORD));
-		keywords->Insert("length", IntHolder->New(Token->Type->LENGTH_KEYWORD));
-		keywords->Insert("defun", IntHolder->New(Token->Type->DEFUN_KEYWORD));
+		keywords := Hash->New()<String, IntRef>;
+		keywords->Insert("let", IntRef->New(Token->Type->LET_KEYWORD));
+		keywords->Insert("write", IntRef->New(Token->Type->WRITE_KEYWORD));
+		keywords->Insert("list", IntRef->New(Token->Type->LIST_KEYWORD));
+		keywords->Insert("cond", IntRef->New(Token->Type->COND_KEYWORD));
+		keywords->Insert("cons", IntRef->New(Token->Type->CONS_KEYWORD));
+		keywords->Insert("car", IntRef->New(Token->Type->CAR_KEYWORD));
+		keywords->Insert("cdr", IntRef->New(Token->Type->CDR_KEYWORD));
+		keywords->Insert("length", IntRef->New(Token->Type->LENGTH_KEYWORD));
+		keywords->Insert("defun", IntRef->New(Token->Type->DEFUN_KEYWORD));
 
 		tokens := Vector->New()<Token>;
 

@@ -9,7 +9,7 @@ class BasicAi {
 			lines->Size()->PrintLine();
 			"---"->PrintLine();
 
-			value := IntHolder->New();
+			value := IntRef->New();
 			each(i : lines) {
 				input := GetInput(lines->Get(i), value);
 				dim := input->Size();
@@ -52,7 +52,7 @@ class BasicAi {
 		return targets;
 	}
 
-	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
+	function : GetInput(line : String, value : IntRef) ~ Float[,] {
 		matrix := Float->New[784, 1];
 
 		values := line->Split(",");

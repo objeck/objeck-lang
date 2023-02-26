@@ -226,7 +226,7 @@ bundle CodeGen {
 				buffer += "array_args := Base->New[";
 				buffer += parameters->Size() + 1;
 				buffer += "];\n\t";
-				buffer += "array_args[0] := IntHolder->New();\n";
+				buffer += "array_args[0] := IntRef->New();\n";
 			};
 			
 			each(i : parameters) {
@@ -237,10 +237,10 @@ bundle CodeGen {
 					first_parameter := parameters->Get(0);
 					if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & 
 							GetTypeString(first_parameter->GetType())->Equals(@this_name)) {
-						buffer += "] := IntHolder->New(@";
+						buffer += "] := IntRef->New(@";
 					}
 					else {
-						buffer += "] := IntHolder->New(";
+						buffer += "] := IntRef->New(";
 					};
 					buffer += parameter->GetName();
 					buffer += ");\n";
@@ -250,7 +250,7 @@ bundle CodeGen {
 						label ParsedType->Type->INT: {
 							buffer += "\tarray_args[";
 							buffer += offset;
-							buffer += "] := IntHolder->New(";
+							buffer += "] := IntRef->New(";
 							buffer += parameter->GetName();
 							buffer += ");\n";
 						}
@@ -258,7 +258,7 @@ bundle CodeGen {
 						label ParsedType->Type->BOOL: {
 							buffer += "\tarray_args[";
 							buffer += offset;
-							buffer += "] := IntHolder->New(";
+							buffer += "] := IntRef->New(";
 							buffer += parameter->GetName();
 							buffer += " ? 0 : 1);\n";
 						}
@@ -285,12 +285,12 @@ bundle CodeGen {
 			
 			select(parsed_method->GetReturnType()->GetType()) {
 				label ParsedType->Type->INT: {
-					buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+					buffer += "\tvalue := array_args[0]->As(IntRef);\n";
 					buffer += "\treturn value->Get();\n";
 				}
 				
 				label ParsedType->Type->BOOL: {
-					buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+					buffer += "\tvalue := array_args[0]->As(IntRef);\n";
 					buffer += "\treturn value->Get() = 0 ? false : true;\n";
 				}
 				

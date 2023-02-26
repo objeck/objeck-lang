@@ -2,7 +2,7 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		map := MultiMap->New()<IntHolder, String>;
+		map := MultiMap->New()<IntRef, String>;
 		map->Insert(13, "Who");
 		map->Insert(13, "How");
 		map->Insert(7, "Stop");

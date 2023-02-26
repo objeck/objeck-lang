@@ -17,7 +17,7 @@ bundle System.Time {
 		@return Date instance
 		~#
 		function : Parse(date_str : String, format : String, gmt : Bool) ~ Date {
-			parts := Map->New()<IntHolder, DatePart>;
+			parts := Map->New()<IntRef, DatePart>;
 		
 			# month
 			month := format->Find("MM");
