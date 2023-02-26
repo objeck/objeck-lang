@@ -321,7 +321,7 @@ class GtkTestRunner {
 				objk_buffer += "\t\tmethod : public : {$method_case_name}";
 
 				WriteParameters(params_xml, objk_buffer, cxx_buffer);
-				objk_buffer += "\t ~ {$return_type} {\n";
+				objk_buffer += " ~ {$return_type} {\n";
 
 				cxx_params_buffer := "";
 				cxx_params_count := 0;
@@ -420,7 +420,7 @@ class GtkTestRunner {
 							"\t[param='{$param_name}', type='{$type_name}', ctype='{$type_ctype}']"->PrintLine();
 						};
 
-						objk_buffer += "\t{$param_name} : {$type_name}, ";
+						objk_buffer += "{$param_name} : {$type_name}, ";
 					};
 				};
 			};
