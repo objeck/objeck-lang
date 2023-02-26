@@ -268,11 +268,6 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
 size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
 {
-  if (size < 0) {
-    std::wcerr << L">>> Invalid allocation size: " << size << L" <<<" << std::endl;
-    exit(1);
-  }
-
   size_t calc_size;
   size_t* mem;
   switch (type) {
