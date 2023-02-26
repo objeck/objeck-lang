@@ -324,6 +324,8 @@ class GtkTestRunner {
 					objk_buffer += "      array_args[0] := Nil;\n";
 					objk_buffer += "      array_args[1] := IntRef->New(@{$ref_name});\n";
 					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constructor);
+
+					cxx_params_buffer += "      {$identifier_name}(p1";
 				}
 				else {
 					objk_buffer += "      array_args := Base->New[{$parameters_size}];\n";
@@ -331,11 +333,10 @@ class GtkTestRunner {
 					
 					objk_buffer += "      array_args[1] := IntRef->New(@{$ref_name});\n";
 					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, false, is_constructor);
+
+					cxx_params_buffer += "      const auto status = {$identifier_name}(p1";
 				};
-
 				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
-
-				cxx_params_buffer += "      const auto status = {$identifier_name}(p1";
 				
 				for(i := 1; i < cxx_params_count; i += 1;) {
 					if(i <= cxx_params_count) {
