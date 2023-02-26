@@ -163,8 +163,6 @@ class GtkTestRunner {
 			@objk_out->WriteString(objk_buffer);
 			@cxx_out->WriteString(cxx_buffer);
 		};
-
-		"\n==============================================================="->PrintLine();
 	}
 
 	method : WriteClass(class_name : String, class_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ String {
