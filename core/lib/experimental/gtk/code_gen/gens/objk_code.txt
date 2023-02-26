@@ -424,7 +424,7 @@ bundle GTK3 {
 			@gobject := gobject;
 		}
 
-		method : public : AddFilter(	function : FilterFunc, 	data : Int)	 ~ Nil {
+		method : public : AddFilter(function : FilterFunc, data : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -435,7 +435,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_add_filter", array_args);
 		}
 
-		method : public : Beep()	 ~ Nil {
+		method : public : Beep() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -444,7 +444,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_beep", array_args);
 		}
 
-		method : public : BeginMoveDrag(	button : Int, 	root_x : Int, 	root_y : Int, 	timestamp : Int)	 ~ Nil {
+		method : public : BeginMoveDrag(button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -457,7 +457,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_move_drag", array_args);
 		}
 
-		method : public : BeginMoveDragForDevice(	device : Device, 	button : Int, 	root_x : Int, 	root_y : Int, 	timestamp : Int)	 ~ Nil {
+		method : public : BeginMoveDragForDevice(device : Device, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
 			array_args := Base->New[7];
 
 			array_args[0] := Nil;
@@ -471,7 +471,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_move_drag_for_device", array_args);
 		}
 
-		method : public : BeginPaintRect(	rectangle : Rectangle)	 ~ Nil {
+		method : public : BeginPaintRect(rectangle : Rectangle) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -481,7 +481,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_paint_rect", array_args);
 		}
 
-		method : public : BeginResizeDrag(	edge : WindowEdge, 	button : Int, 	root_x : Int, 	root_y : Int, 	timestamp : Int)	 ~ Nil {
+		method : public : BeginResizeDrag(edge : WindowEdge, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
 			array_args := Base->New[7];
 
 			array_args[0] := Nil;
@@ -495,7 +495,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_resize_drag", array_args);
 		}
 
-		method : public : BeginResizeDragForDevice(	edge : WindowEdge, 	device : Device, 	button : Int, 	root_x : Int, 	root_y : Int, 	timestamp : Int)	 ~ Nil {
+		method : public : BeginResizeDragForDevice(edge : WindowEdge, device : Device, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
 			array_args := Base->New[8];
 
 			array_args[0] := Nil;
@@ -510,7 +510,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_resize_drag_for_device", array_args);
 		}
 
-		method : public : ConfigureFinished()	 ~ Nil {
+		method : public : ConfigureFinished() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -519,7 +519,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_configure_finished", array_args);
 		}
 
-		method : public : CoordsFromParent(	parent_x : Float, 	parent_y : Float, 	x : Float, 	y : Float)	 ~ Nil {
+		method : public : CoordsFromParent(parent_x : Float, parent_y : Float, x : Float, y : Float) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -532,7 +532,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_coords_from_parent", array_args);
 		}
 
-		method : public : CoordsToParent(	x : Float, 	y : Float, 	parent_x : Float, 	parent_y : Float)	 ~ Nil {
+		method : public : CoordsToParent(x : Float, y : Float, parent_x : Float, parent_y : Float) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -545,7 +545,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_coords_to_parent", array_args);
 		}
 
-		method : public : CreateGlContext()	 ~ GLContext {
+		method : public : CreateGlContext() ~ GLContext {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -557,7 +557,7 @@ bundle GTK3 {
 			return GLContext->New(value);
 		}
 
-		method : public : Deiconify()	 ~ Nil {
+		method : public : Deiconify() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -566,7 +566,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_deiconify", array_args);
 		}
 
-		method : public : Destroy()	 ~ Nil {
+		method : public : Destroy() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -575,7 +575,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_destroy", array_args);
 		}
 
-		method : public : DestroyNotify()	 ~ Nil {
+		method : public : DestroyNotify() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -584,7 +584,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_destroy_notify", array_args);
 		}
 
-		method : public : EnableSynchronizedConfigure()	 ~ Nil {
+		method : public : EnableSynchronizedConfigure() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -593,7 +593,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_enable_synchronized_configure", array_args);
 		}
 
-		method : public : EndDrawFrame(	context : DrawingContext)	 ~ Nil {
+		method : public : EndDrawFrame(context : DrawingContext) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -603,7 +603,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_end_draw_frame", array_args);
 		}
 
-		method : public : EndPaint()	 ~ Nil {
+		method : public : EndPaint() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -612,7 +612,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_end_paint", array_args);
 		}
 
-		method : public : EnsureNative()	 ~ Bool {
+		method : public : EnsureNative() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -624,7 +624,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : Flush()	 ~ Nil {
+		method : public : Flush() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -633,7 +633,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_flush", array_args);
 		}
 
-		method : public : Focus(	timestamp : Int)	 ~ Nil {
+		method : public : Focus(timestamp : Int) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -643,7 +643,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_focus", array_args);
 		}
 
-		method : public : FreezeToplevelUpdatesLibgtkOnly()	 ~ Nil {
+		method : public : FreezeToplevelUpdatesLibgtkOnly() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -652,7 +652,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_freeze_toplevel_updates_libgtk_only", array_args);
 		}
 
-		method : public : FreezeUpdates()	 ~ Nil {
+		method : public : FreezeUpdates() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -661,7 +661,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_freeze_updates", array_args);
 		}
 
-		method : public : Fullscreen()	 ~ Nil {
+		method : public : Fullscreen() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -670,7 +670,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_fullscreen", array_args);
 		}
 
-		method : public : FullscreenOnMonitor(	monitor : Int)	 ~ Nil {
+		method : public : FullscreenOnMonitor(monitor : Int) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -680,7 +680,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_fullscreen_on_monitor", array_args);
 		}
 
-		method : public : GeometryChanged()	 ~ Nil {
+		method : public : GeometryChanged() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -689,7 +689,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_geometry_changed", array_args);
 		}
 
-		method : public : GetAcceptFocus()	 ~ Bool {
+		method : public : GetAcceptFocus() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -701,7 +701,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetComposited()	 ~ Bool {
+		method : public : GetComposited() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -713,7 +713,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetCursor()	 ~ Cursor {
+		method : public : GetCursor() ~ Cursor {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -725,7 +725,7 @@ bundle GTK3 {
 			return Cursor->New(value);
 		}
 
-		method : public : GetDecorations(	decorations : WMDecoration)	 ~ Bool {
+		method : public : GetDecorations(decorations : WMDecoration) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
@@ -738,7 +738,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetDeviceCursor(	device : Device)	 ~ Cursor {
+		method : public : GetDeviceCursor(device : Device) ~ Cursor {
 			array_args := Base->New[3];
 	
 			array_args[0] := Nil;
@@ -751,7 +751,7 @@ bundle GTK3 {
 			return Cursor->New(value);
 		}
 
-		method : public : GetDeviceEvents(	device : Device)	 ~ EventMask {
+		method : public : GetDeviceEvents(device : Device) ~ EventMask {
 			array_args := Base->New[3];
 	
 			array_args[0] := Nil;
@@ -764,7 +764,7 @@ bundle GTK3 {
 			return EventMask->New(value);
 		}
 
-		method : public : GetDevicePosition(	device : Device, 	x : Int, 	y : Int, 	mask : ModifierType)	 ~ Window {
+		method : public : GetDevicePosition(device : Device, x : Int, y : Int, mask : ModifierType) ~ Window {
 			array_args := Base->New[6];
 	
 			array_args[0] := Nil;
@@ -780,7 +780,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetDevicePositionDouble(	device : Device, 	x : Float, 	y : Float, 	mask : ModifierType)	 ~ Window {
+		method : public : GetDevicePositionDouble(device : Device, x : Float, y : Float, mask : ModifierType) ~ Window {
 			array_args := Base->New[6];
 	
 			array_args[0] := Nil;
@@ -796,7 +796,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetDisplay()	 ~ Display {
+		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -808,7 +808,7 @@ bundle GTK3 {
 			return Display->New(value);
 		}
 
-		method : public : GetDragProtocol(	target : Window)	 ~ DragProtocol {
+		method : public : GetDragProtocol(target : Window) ~ DragProtocol {
 			array_args := Base->New[3];
 	
 			array_args[0] := Nil;
@@ -821,7 +821,7 @@ bundle GTK3 {
 			return value->As(DragProtocol);
 		}
 
-		method : public : GetEffectiveParent()	 ~ Window {
+		method : public : GetEffectiveParent() ~ Window {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -833,7 +833,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetEffectiveToplevel()	 ~ Window {
+		method : public : GetEffectiveToplevel() ~ Window {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -845,7 +845,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetEventCompression()	 ~ Bool {
+		method : public : GetEventCompression() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -857,7 +857,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetEvents()	 ~ EventMask {
+		method : public : GetEvents() ~ EventMask {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -869,7 +869,7 @@ bundle GTK3 {
 			return EventMask->New(value);
 		}
 
-		method : public : GetFocusOnMap()	 ~ Bool {
+		method : public : GetFocusOnMap() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -881,7 +881,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetFrameClock()	 ~ FrameClock {
+		method : public : GetFrameClock() ~ FrameClock {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -893,7 +893,7 @@ bundle GTK3 {
 			return FrameClock->New(value);
 		}
 
-		method : public : GetFrameExtents(	rect : Rectangle)	 ~ Nil {
+		method : public : GetFrameExtents(rect : Rectangle) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -903,7 +903,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_frame_extents", array_args);
 		}
 
-		method : public : GetFullscreenMode()	 ~ FullscreenMode {
+		method : public : GetFullscreenMode() ~ FullscreenMode {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -915,7 +915,7 @@ bundle GTK3 {
 			return value->As(FullscreenMode);
 		}
 
-		method : public : GetGeometry(	x : Int, 	y : Int, 	width : Int, 	height : Int)	 ~ Nil {
+		method : public : GetGeometry(x : Int, y : Int, width : Int, height : Int) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -928,7 +928,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_geometry", array_args);
 		}
 
-		method : public : GetGroup()	 ~ Window {
+		method : public : GetGroup() ~ Window {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -940,7 +940,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetHeight()	 ~ int {
+		method : public : GetHeight() ~ int {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -952,7 +952,7 @@ bundle GTK3 {
 			return int->New(value);
 		}
 
-		method : public : GetModalHint()	 ~ Bool {
+		method : public : GetModalHint() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -964,7 +964,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetOrigin(	x : Int, 	y : Int)	 ~ Int {
+		method : public : GetOrigin(x : Int, y : Int) ~ Int {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
@@ -978,7 +978,7 @@ bundle GTK3 {
 			return value->Get();
 		}
 
-		method : public : GetParent()	 ~ Window {
+		method : public : GetParent() ~ Window {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -990,7 +990,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetPassThrough()	 ~ Bool {
+		method : public : GetPassThrough() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1002,7 +1002,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetPointer(	x : Int, 	y : Int, 	mask : ModifierType)	 ~ Window {
+		method : public : GetPointer(x : Int, y : Int, mask : ModifierType) ~ Window {
 			array_args := Base->New[5];
 	
 			array_args[0] := Nil;
@@ -1017,7 +1017,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetPosition(	x : Int, 	y : Int)	 ~ Nil {
+		method : public : GetPosition(x : Int, y : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1028,7 +1028,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_position", array_args);
 		}
 
-		method : public : GetRootCoords(	x : Int, 	y : Int, 	root_x : Int, 	root_y : Int)	 ~ Nil {
+		method : public : GetRootCoords(x : Int, y : Int, root_x : Int, root_y : Int) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -1041,7 +1041,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_coords", array_args);
 		}
 
-		method : public : GetRootOrigin(	x : Int, 	y : Int)	 ~ Nil {
+		method : public : GetRootOrigin(x : Int, y : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1052,7 +1052,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_origin", array_args);
 		}
 
-		method : public : GetScaleFactor()	 ~ Int {
+		method : public : GetScaleFactor() ~ Int {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1064,7 +1064,7 @@ bundle GTK3 {
 			return value->Get();
 		}
 
-		method : public : GetScreen()	 ~ Screen {
+		method : public : GetScreen() ~ Screen {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1076,7 +1076,7 @@ bundle GTK3 {
 			return Screen->New(value);
 		}
 
-		method : public : GetSourceEvents(	source : InputSource)	 ~ EventMask {
+		method : public : GetSourceEvents(source : InputSource) ~ EventMask {
 			array_args := Base->New[3];
 	
 			array_args[0] := Nil;
@@ -1089,7 +1089,7 @@ bundle GTK3 {
 			return EventMask->New(value);
 		}
 
-		method : public : GetState()	 ~ WindowState {
+		method : public : GetState() ~ WindowState {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1101,7 +1101,7 @@ bundle GTK3 {
 			return WindowState->New(value);
 		}
 
-		method : public : GetSupportMultidevice()	 ~ Bool {
+		method : public : GetSupportMultidevice() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1113,7 +1113,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : GetToplevel()	 ~ Window {
+		method : public : GetToplevel() ~ Window {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1125,7 +1125,7 @@ bundle GTK3 {
 			return Window->New(value);
 		}
 
-		method : public : GetTypeHint()	 ~ WindowTypeHint {
+		method : public : GetTypeHint() ~ WindowTypeHint {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1137,7 +1137,7 @@ bundle GTK3 {
 			return value->As(WindowTypeHint);
 		}
 
-		method : public : GetUserData(	data : Int)	 ~ Nil {
+		method : public : GetUserData(data : Int) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1147,7 +1147,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_user_data", array_args);
 		}
 
-		method : public : GetVisual()	 ~ Visual {
+		method : public : GetVisual() ~ Visual {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1159,7 +1159,7 @@ bundle GTK3 {
 			return Visual->New(value);
 		}
 
-		method : public : GetWidth()	 ~ int {
+		method : public : GetWidth() ~ int {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1171,7 +1171,7 @@ bundle GTK3 {
 			return int->New(value);
 		}
 
-		method : public : GetWindowType()	 ~ WindowType {
+		method : public : GetWindowType() ~ WindowType {
 			array_args := Base->New[2];
 	
 			array_args[0] := Nil;
@@ -1183,7 +1183,7 @@ bundle GTK3 {
 			return value->As(WindowType);
 		}
 
-		method : public : HasNative()	 ~ Bool {
+		method : public : HasNative() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1195,7 +1195,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : Hide()	 ~ Nil {
+		method : public : Hide() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1204,7 +1204,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_hide", array_args);
 		}
 
-		method : public : Iconify()	 ~ Nil {
+		method : public : Iconify() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1213,7 +1213,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_iconify", array_args);
 		}
 
-		method : public : InvalidateRect(	rect : Rectangle, 	invalidate_children : Bool)	 ~ Nil {
+		method : public : InvalidateRect(rect : Rectangle, invalidate_children : Bool) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1224,7 +1224,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_invalidate_rect", array_args);
 		}
 
-		method : public : IsDestroyed()	 ~ Bool {
+		method : public : IsDestroyed() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1236,7 +1236,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : IsInputOnly()	 ~ Bool {
+		method : public : IsInputOnly() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1248,7 +1248,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : IsShaped()	 ~ Bool {
+		method : public : IsShaped() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1260,7 +1260,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : IsViewable()	 ~ Bool {
+		method : public : IsViewable() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1272,7 +1272,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : IsVisible()	 ~ Bool {
+		method : public : IsVisible() ~ Bool {
 			array_args := Base->New[2];
 	
 			array_args[0] := IntRef->New();
@@ -1284,7 +1284,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : Lower()	 ~ Nil {
+		method : public : Lower() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1293,7 +1293,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_lower", array_args);
 		}
 
-		method : public : Maximize()	 ~ Nil {
+		method : public : Maximize() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1302,7 +1302,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_maximize", array_args);
 		}
 
-		method : public : MergeChildInputShapes()	 ~ Nil {
+		method : public : MergeChildInputShapes() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1311,7 +1311,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_merge_child_input_shapes", array_args);
 		}
 
-		method : public : MergeChildShapes()	 ~ Nil {
+		method : public : MergeChildShapes() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1320,7 +1320,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_merge_child_shapes", array_args);
 		}
 
-		method : public : Move(	x : Int, 	y : Int)	 ~ Nil {
+		method : public : Move(x : Int, y : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1331,7 +1331,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_move", array_args);
 		}
 
-		method : public : MoveResize(	x : Int, 	y : Int, 	width : Int, 	height : Int)	 ~ Nil {
+		method : public : MoveResize(x : Int, y : Int, width : Int, height : Int) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -1344,7 +1344,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_move_resize", array_args);
 		}
 
-		method : public : MoveToRect(	rect : Rectangle, 	rect_anchor : Gravity, 	window_anchor : Gravity, 	anchor_hints : AnchorHints, 	rect_anchor_dx : Int, 	rect_anchor_dy : Int)	 ~ Nil {
+		method : public : MoveToRect(rect : Rectangle, rect_anchor : Gravity, window_anchor : Gravity, anchor_hints : AnchorHints, rect_anchor_dx : Int, rect_anchor_dy : Int) ~ Nil {
 			array_args := Base->New[8];
 
 			array_args[0] := Nil;
@@ -1359,7 +1359,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_move_to_rect", array_args);
 		}
 
-		method : public : ProcessUpdates(	update_children : Bool)	 ~ Nil {
+		method : public : ProcessUpdates(update_children : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1369,7 +1369,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_process_updates", array_args);
 		}
 
-		method : public : Raise()	 ~ Nil {
+		method : public : Raise() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1378,7 +1378,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_raise", array_args);
 		}
 
-		method : public : RegisterDnd()	 ~ Nil {
+		method : public : RegisterDnd() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1387,7 +1387,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_register_dnd", array_args);
 		}
 
-		method : public : RemoveFilter(	function : FilterFunc, 	data : Int)	 ~ Nil {
+		method : public : RemoveFilter(function : FilterFunc, data : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1398,7 +1398,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_remove_filter", array_args);
 		}
 
-		method : public : Reparent(	new_parent : Window, 	x : Int, 	y : Int)	 ~ Nil {
+		method : public : Reparent(new_parent : Window, x : Int, y : Int) ~ Nil {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
@@ -1410,7 +1410,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_reparent", array_args);
 		}
 
-		method : public : Resize(	width : Int, 	height : Int)	 ~ Nil {
+		method : public : Resize(width : Int, height : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1421,7 +1421,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_resize", array_args);
 		}
 
-		method : public : Restack(	sibling : Window, 	above : Bool)	 ~ Nil {
+		method : public : Restack(sibling : Window, above : Bool) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1432,7 +1432,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_restack", array_args);
 		}
 
-		method : public : Scroll(	dx : Int, 	dy : Int)	 ~ Nil {
+		method : public : Scroll(dx : Int, dy : Int) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1443,7 +1443,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_scroll", array_args);
 		}
 
-		method : public : SetAcceptFocus(	accept_focus : Bool)	 ~ Nil {
+		method : public : SetAcceptFocus(accept_focus : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1453,7 +1453,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_accept_focus", array_args);
 		}
 
-		method : public : SetBackground(	color : Color)	 ~ Nil {
+		method : public : SetBackground(color : Color) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1463,7 +1463,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_background", array_args);
 		}
 
-		method : public : SetBackgroundRgba(	rgba : RGBA)	 ~ Nil {
+		method : public : SetBackgroundRgba(rgba : RGBA) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1473,7 +1473,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_background_rgba", array_args);
 		}
 
-		method : public : SetChildInputShapes()	 ~ Nil {
+		method : public : SetChildInputShapes() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1482,7 +1482,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_child_input_shapes", array_args);
 		}
 
-		method : public : SetChildShapes()	 ~ Nil {
+		method : public : SetChildShapes() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1491,7 +1491,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_child_shapes", array_args);
 		}
 
-		method : public : SetComposited(	composited : Bool)	 ~ Nil {
+		method : public : SetComposited(composited : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1501,7 +1501,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_composited", array_args);
 		}
 
-		method : public : SetCursor(	cursor : Cursor)	 ~ Nil {
+		method : public : SetCursor(cursor : Cursor) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1511,7 +1511,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_cursor", array_args);
 		}
 
-		method : public : SetDecorations(	decorations : WMDecoration)	 ~ Nil {
+		method : public : SetDecorations(decorations : WMDecoration) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1521,7 +1521,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_decorations", array_args);
 		}
 
-		method : public : SetDeviceCursor(	device : Device, 	cursor : Cursor)	 ~ Nil {
+		method : public : SetDeviceCursor(device : Device, cursor : Cursor) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1532,7 +1532,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_device_cursor", array_args);
 		}
 
-		method : public : SetDeviceEvents(	device : Device, 	event_mask : EventMask)	 ~ Nil {
+		method : public : SetDeviceEvents(device : Device, event_mask : EventMask) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1543,7 +1543,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_device_events", array_args);
 		}
 
-		method : public : SetEventCompression(	event_compression : Bool)	 ~ Nil {
+		method : public : SetEventCompression(event_compression : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1553,7 +1553,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_event_compression", array_args);
 		}
 
-		method : public : SetEvents(	event_mask : EventMask)	 ~ Nil {
+		method : public : SetEvents(event_mask : EventMask) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1563,7 +1563,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_events", array_args);
 		}
 
-		method : public : SetFocusOnMap(	focus_on_map : Bool)	 ~ Nil {
+		method : public : SetFocusOnMap(focus_on_map : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1573,7 +1573,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_focus_on_map", array_args);
 		}
 
-		method : public : SetFullscreenMode(	mode : FullscreenMode)	 ~ Nil {
+		method : public : SetFullscreenMode(mode : FullscreenMode) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1583,7 +1583,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_fullscreen_mode", array_args);
 		}
 
-		method : public : SetFunctions(	functions : WMFunction)	 ~ Nil {
+		method : public : SetFunctions(functions : WMFunction) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1593,7 +1593,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_functions", array_args);
 		}
 
-		method : public : SetGeometryHints(	geometry : Geometry, 	geom_mask : WindowHints)	 ~ Nil {
+		method : public : SetGeometryHints(geometry : Geometry, geom_mask : WindowHints) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1604,7 +1604,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_geometry_hints", array_args);
 		}
 
-		method : public : SetGroup(	leader : Window)	 ~ Nil {
+		method : public : SetGroup(leader : Window) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1614,7 +1614,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_group", array_args);
 		}
 
-		method : public : SetIconName(	name : String)	 ~ Nil {
+		method : public : SetIconName(name : String) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1623,7 +1623,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_icon_name", array_args);
 		}
 
-		method : public : SetInvalidateHandler(	handler : WindowInvalidateHandlerFunc)	 ~ Nil {
+		method : public : SetInvalidateHandler(handler : WindowInvalidateHandlerFunc) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1633,7 +1633,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_invalidate_handler", array_args);
 		}
 
-		method : public : SetKeepAbove(	setting : Bool)	 ~ Nil {
+		method : public : SetKeepAbove(setting : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1643,7 +1643,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_keep_above", array_args);
 		}
 
-		method : public : SetKeepBelow(	setting : Bool)	 ~ Nil {
+		method : public : SetKeepBelow(setting : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1653,7 +1653,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_keep_below", array_args);
 		}
 
-		method : public : SetModalHint(	modal : Bool)	 ~ Nil {
+		method : public : SetModalHint(modal : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1663,7 +1663,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_modal_hint", array_args);
 		}
 
-		method : public : SetOpacity(	opacity : Float)	 ~ Nil {
+		method : public : SetOpacity(opacity : Float) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1673,7 +1673,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_opacity", array_args);
 		}
 
-		method : public : SetOverrideRedirect(	override_redirect : Bool)	 ~ Nil {
+		method : public : SetOverrideRedirect(override_redirect : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1683,7 +1683,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_override_redirect", array_args);
 		}
 
-		method : public : SetPassThrough(	pass_through : Bool)	 ~ Nil {
+		method : public : SetPassThrough(pass_through : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1693,7 +1693,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_pass_through", array_args);
 		}
 
-		method : public : SetRole(	role : String)	 ~ Nil {
+		method : public : SetRole(role : String) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1702,7 +1702,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_role", array_args);
 		}
 
-		method : public : SetShadowWidth(	left : Int, 	right : Int, 	top : Int, 	bottom : Int)	 ~ Nil {
+		method : public : SetShadowWidth(left : Int, right : Int, top : Int, bottom : Int) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -1715,7 +1715,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_shadow_width", array_args);
 		}
 
-		method : public : SetSkipPagerHint(	skips_pager : Bool)	 ~ Nil {
+		method : public : SetSkipPagerHint(skips_pager : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1725,7 +1725,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_skip_pager_hint", array_args);
 		}
 
-		method : public : SetSkipTaskbarHint(	skips_taskbar : Bool)	 ~ Nil {
+		method : public : SetSkipTaskbarHint(skips_taskbar : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1735,7 +1735,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_skip_taskbar_hint", array_args);
 		}
 
-		method : public : SetSourceEvents(	source : InputSource, 	event_mask : EventMask)	 ~ Nil {
+		method : public : SetSourceEvents(source : InputSource, event_mask : EventMask) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
@@ -1746,7 +1746,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_source_events", array_args);
 		}
 
-		method : public : SetStartupId(	startup_id : String)	 ~ Nil {
+		method : public : SetStartupId(startup_id : String) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1755,7 +1755,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_startup_id", array_args);
 		}
 
-		method : public : SetStaticGravities(	use_static : Bool)	 ~ Bool {
+		method : public : SetStaticGravities(use_static : Bool) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
@@ -1768,7 +1768,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : SetSupportMultidevice(	support_multidevice : Bool)	 ~ Nil {
+		method : public : SetSupportMultidevice(support_multidevice : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1778,7 +1778,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_support_multidevice", array_args);
 		}
 
-		method : public : SetTitle(	title : String)	 ~ Nil {
+		method : public : SetTitle(title : String) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1787,7 +1787,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_title", array_args);
 		}
 
-		method : public : SetTransientFor(	parent : Window)	 ~ Nil {
+		method : public : SetTransientFor(parent : Window) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1797,7 +1797,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_transient_for", array_args);
 		}
 
-		method : public : SetTypeHint(	hint : WindowTypeHint)	 ~ Nil {
+		method : public : SetTypeHint(hint : WindowTypeHint) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1807,7 +1807,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_type_hint", array_args);
 		}
 
-		method : public : SetUrgencyHint(	urgent : Bool)	 ~ Nil {
+		method : public : SetUrgencyHint(urgent : Bool) ~ Nil {
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -1817,7 +1817,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_urgency_hint", array_args);
 		}
 
-		method : public : Show()	 ~ Nil {
+		method : public : Show() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1826,7 +1826,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_show", array_args);
 		}
 
-		method : public : ShowUnraised()	 ~ Nil {
+		method : public : ShowUnraised() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1835,7 +1835,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_show_unraised", array_args);
 		}
 
-		method : public : ShowWindowMenu(	event : Event)	 ~ Bool {
+		method : public : ShowWindowMenu(event : Event) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
@@ -1848,7 +1848,7 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
-		method : public : Stick()	 ~ Nil {
+		method : public : Stick() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1857,7 +1857,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_stick", array_args);
 		}
 
-		method : public : ThawToplevelUpdatesLibgtkOnly()	 ~ Nil {
+		method : public : ThawToplevelUpdatesLibgtkOnly() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1866,7 +1866,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_thaw_toplevel_updates_libgtk_only", array_args);
 		}
 
-		method : public : ThawUpdates()	 ~ Nil {
+		method : public : ThawUpdates() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1875,7 +1875,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_thaw_updates", array_args);
 		}
 
-		method : public : Unfullscreen()	 ~ Nil {
+		method : public : Unfullscreen() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1884,7 +1884,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_unfullscreen", array_args);
 		}
 
-		method : public : Unmaximize()	 ~ Nil {
+		method : public : Unmaximize() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1893,7 +1893,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_unmaximize", array_args);
 		}
 
-		method : public : Unstick()	 ~ Nil {
+		method : public : Unstick() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
@@ -1902,7 +1902,7 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_unstick", array_args);
 		}
 
-		method : public : Withdraw()	 ~ Nil {
+		method : public : Withdraw() ~ Nil {
 			array_args := Base->New[2];
 
 			array_args[0] := Nil;
