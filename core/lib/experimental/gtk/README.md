@@ -53,4 +53,4 @@ TBD
 
 ## Code Generation
 
-Sample out [C++](code_gen/cxx_code.txt) and [Objeck](code_gen/objk_code.txt)
+Sample output [C++](code_gen/cxx_code.txt) and [Objeck](code_gen/objk_code.txt)
