@@ -13,7 +13,7 @@
 ```ruby
 class Hello {
    function : Main(args : String[]) ~ Nil {
-      hiya := Collection.Generic.Vector->New()<String>;
+      hiya := Collection.Vector->New()<String>;
       hiya->AddBack("Hello World");
       hiya->AddBack("Καλημέρα κόσμε");
       hiya->AddBack("こんにちは 世界");
