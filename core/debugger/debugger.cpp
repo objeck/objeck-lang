@@ -627,7 +627,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           //
           // end: Generic collections
           //
-          else if(ref_klass && ref_klass->GetName() == L"System.IntHolder") {
+          else if(ref_klass && ref_klass->GetName() == L"System.IntRef") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
               std::wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << std::endl;
@@ -636,7 +636,16 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
-          else if(ref_klass && ref_klass->GetName() == L"System.ByteHolder") {
+          else if(ref_klass && ref_klass->GetName() == L"System.BoolRef") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance) {
+              std::wcout << L"print: type=System.BoolHolder, value=" << (instance[0] ? L"false" : L"true") << std::endl;
+            }
+            else {
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"System.ByteRef") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
               std::wcout << L"print: type=System.ByteHolder, value=" << (void*)((unsigned char)instance[0]) << std::endl;
@@ -645,7 +654,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
-          else if(ref_klass && ref_klass->GetName() == L"System.CharHolder") {
+          else if(ref_klass && ref_klass->GetName() == L"System.CharRef") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
               std::wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << std::endl;
@@ -654,7 +663,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
-          else if(ref_klass && ref_klass->GetName() == L"System.FloatHolder") {
+          else if(ref_klass && ref_klass->GetName() == L"System.FloatRef") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
               FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
@@ -680,16 +689,19 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
                   const wchar_t* char_string = (wchar_t*)(value_instance + 3);
                   std::wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << std::endl;
                 }
-                else if(klass->GetName() == L"System.IntHolder") {
+                else if(klass->GetName() == L"System.IntRef") {
                   std::wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << std::endl;
                 }
-                else if(klass->GetName() == L"System.ByteHolder") {
+                else if(klass->GetName() == L"System.BoolRef") {
+                  std::wcout << L"print: type=System.BoolHolder, value=" << (instance[0] ? L"false" : L"true") << std::endl;
+                }
+                else if(klass->GetName() == L"System.ByteRef") {
                   std::wcout << L"print: type=System.ByteHolder, value=" << (unsigned char)instance[0] << std::endl;
                 }
-                else if(klass->GetName() == L"System.CharHolder") {
+                else if(klass->GetName() == L"System.CharRef") {
                   std::wcout << L"print: type=System.CharHolder, value=" << (wchar_t)instance[0] << std::endl;
                 }
-                else if(klass->GetName() == L"System.FloatHolder") {
+                else if(klass->GetName() == L"System.FloatRef") {
                   FLOAT_VALUE value = *((FLOAT_VALUE*)(&instance[0]));
                   std::wcout << L"print: type=System.FloatHolder, value=" << value << std::endl;
                 }
