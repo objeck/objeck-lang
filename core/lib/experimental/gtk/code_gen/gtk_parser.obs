@@ -522,7 +522,7 @@ class GtkTestRunner {
 							ctype_xml := type_xml->GetAttribute("name");
 							if(ctype_xml <> Nil) {
 								c_type_name := ctype_xml->GetValue();
-								cxx_buffer += "\n\t\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
+								cxx_buffer += "\n\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
 								cxx_buffer += "\t\t{$c_type_name}* p{$index} = ({$c_type_name}*)p{$index}_obj[0];\n";
 
 								if(i + 1 < params_xml->Size()) {
