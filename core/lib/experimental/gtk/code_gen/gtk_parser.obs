@@ -306,7 +306,7 @@ class GtkTestRunner {
 				cxx_buffer += "    __declspec(dllexport)\n";
 				cxx_buffer += "#endif\n";
 				cxx_buffer += "    void gtk3_{$identifier_name}(VMContext& context) {\n";
-				cxx_buffer += "      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);\n";
+				cxx_buffer += "      GObject* param0 = (GObject*)APITools_GetIntValue(context, 1);\n";
 				
 				objk_buffer += "    method : public : {$method_case_name}";
 
@@ -477,7 +477,12 @@ class GtkTestRunner {
 		if(params_xml <> Nil) {
 			each(i : params_xml) {
 				index := i;
+				
 				if(<>is_nil) {
+					index += 1;
+				};
+
+				if(<>is_constructor) {
 					index += 1;
 				};
 
@@ -493,25 +498,25 @@ class GtkTestRunner {
 						if(type_name->Equals("Int")) {
 							objk_buffer += "      array_args[{$index}] := IntRef->New({$param_name});\n";
 
-							cxx_buffer += "      const long param{$i} = APITools_GetIntValue(context, {$i});\n";
+							cxx_buffer += "      const long param{$index} = APITools_GetIntValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Float")) {
 							objk_buffer += "      array_args[{$index}] := FloatRef->New({$param_name});\n";
 
-							cxx_buffer += "      const double param{$i} = APITools_GetFloatValue(context, {$i});\n";
+							cxx_buffer += "      const double param{$index} = APITools_GetFloatValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Bool")) {
 							objk_buffer += "      array_args[{$index}] := IntRef->New({$param_name} = 0 ? 0 : 1);\n";
 
-							cxx_buffer += "      const bool param{$i} = APITools_GetIntValue(context, {$i}) ? false : true;\n";
+							cxx_buffer += "      const bool param{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
-							cxx_buffer += "      const std::string parm{$i} = UnicodeToBytes(APITools_GetStringValue(context, {$i}));\n";
+							cxx_buffer += "      const std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
 						}
 						else {
 							objk_buffer += "      array_args[{$index}] := {$param_name};\n";
 
-							cxx_buffer += "      const size_t* param{$i} = APITools_GetObjectValue(context, {$i});\n";
+							cxx_buffer += "      const size_t* param{$index} = APITools_GetObjectValue(context, {$index});\n";
 						};
 					};
 				};
@@ -534,9 +539,13 @@ class GtkTestRunner {
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int") | type_name->Equals("Bool")) {
 					objk_buffer += "      array_args[0] := IntRef->New();\n";
+
+					cxx_buffer += "      const long param0 = APITools_GetIntValue(context, 0);\n";
 				}
 				else if(type_name->Equals("Float")) {
 					objk_buffer += "      array_args[0] := FloatRef->New();\n";
+
+					cxx_buffer += "      const long param0 = APITools_GetFloatValue(context, 0);\n";					
 				}
 				else {
 					objk_buffer += "      array_args[0] := Nil;\n";
