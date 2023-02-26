@@ -158,6 +158,10 @@ class GtkTestRunner {
 			"\n[class/record: name='{$class_name}']"->PrintLine();
 		};
 
+		cxx_buffer += "\t//"
+		cxx_buffer += "\t// {$class_name}"
+		cxx_buffer += "\t//"
+
 		# start class
 		objk_buffer += "\tclass {$class_name} {\n";
 
