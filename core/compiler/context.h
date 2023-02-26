@@ -250,9 +250,7 @@ class ContextAnalyzer {
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;
   bool main_found;
-  bool web_found;
   bool is_lib;
-  bool is_web;
   int char_str_index;
   int int_str_index;
   int float_str_index;
@@ -543,11 +541,10 @@ class ContextAnalyzer {
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call, std::wstring &encoding, const int depth);
   
  public:
-  ContextAnalyzer(ParsedProgram* p, std::wstring lib_path, bool l, bool w) {
+  ContextAnalyzer(ParsedProgram* p, std::wstring lib_path, bool l) {
     program = p;
     is_lib = l;
-    is_web = w;
-    main_found = web_found = false;
+    main_found = false;
     // initialize linker
     linker = new Linker(lib_path);
     program->SetLinker(linker);
