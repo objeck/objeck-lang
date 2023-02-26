@@ -432,7 +432,7 @@ extern "C" {
 
 		const auto status = gdk_window_get_device_events(p1, p2);
 
-		APITools_SetIntValue(context, 0, status);
+		APITools_SetIntValue(context, 0, (size_t)status);
 	}
 
 #ifdef _WIN32
@@ -541,7 +541,7 @@ extern "C" {
 
 		const auto status = gdk_window_get_events(p1);
 
-		APITools_SetIntValue(context, 0, status);
+		APITools_SetIntValue(context, 0, (size_t)status);
 	}
 
 #ifdef _WIN32
@@ -754,7 +754,7 @@ extern "C" {
 
 		const auto status = gdk_window_get_source_events(p1, p2);
 
-		APITools_SetIntValue(context, 0, status);
+		APITools_SetIntValue(context, 0, (size_t)status);
 	}
 
 #ifdef _WIN32
@@ -765,7 +765,7 @@ extern "C" {
 
 		const auto status = gdk_window_get_state(p1);
 
-		APITools_SetIntValue(context, 0, status);
+		APITools_SetIntValue(context, 0, (size_t)status);
 	}
 
 #ifdef _WIN32

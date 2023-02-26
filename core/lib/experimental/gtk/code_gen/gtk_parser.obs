@@ -79,7 +79,12 @@ class GtkTestRunner {
 
 			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 			if(enums_xml <> Nil) {
-				ParseEnums(enums_xml);
+				ParseConsts(enums_xml);
+			};
+
+			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+			if(bitfields_xml <> Nil) {
+				ParseConsts(bitfields_xml);
 			};
 
 			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
@@ -101,7 +106,8 @@ class GtkTestRunner {
 		"###\ntime={$tick_secs} sec(s)"->PrintLine();
 	}
 
-	method : ParseEnums(enums_xml : Vector<XmlElement>) ~ Nil {
+	# TODO: GdkWMDecoration
+	method : ParseConsts(enums_xml : Vector<XmlElement>) ~ Nil {
 		objk_buffer := "";
 
 		each(enum_xml := enums_xml) {
