@@ -309,11 +309,14 @@ class GtkTestRunner {
 			return_xml := method_xml->GetFirstChild("return-value");
 
 			if(CanEmitMethod(params_xml, return_xml, false)) {
+				inst_type_xml := params_xml->GetFirstChild("instance-parameter")->GetFirstChild("type");
+				inst_ctype_name := inst_type_xml->GetAttribute("type")->GetValue();
+
 				cxx_buffer += "#ifdef _WIN32\n";
 				cxx_buffer += "\t__declspec(dllexport)\n";
 				cxx_buffer += "#endif\n";
 				cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
-				cxx_buffer += "\t\tGObject* p1 = (GObject*)APITools_GetIntValue(context, 1);\n";
+				cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
 				
 				objk_buffer += "\t\tmethod : public : {$method_case_name}";
 
