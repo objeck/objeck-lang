@@ -84,7 +84,7 @@ extern "C" {
 	void gtk3_gdk_window_add_filter(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		FilterFunc* p2 = (FilterFunc*)p2_obj[0];
 
 		const long p3 = APITools_GetIntValue(context, 3);
@@ -120,7 +120,7 @@ extern "C" {
 	void gtk3_gdk_window_begin_move_drag_for_device(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 		const long p3 = APITools_GetIntValue(context, 3);
@@ -137,7 +137,7 @@ extern "C" {
 	void gtk3_gdk_window_begin_paint_rect(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Rectangle* p2 = (Rectangle*)p2_obj[0];
 
 		gdk_window_begin_paint_rect(p1, p2);
@@ -149,7 +149,7 @@ extern "C" {
 	void gtk3_gdk_window_begin_resize_drag(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WindowEdge* p2 = (WindowEdge*)p2_obj[0];
 
 		const long p3 = APITools_GetIntValue(context, 3);
@@ -166,11 +166,11 @@ extern "C" {
 	void gtk3_gdk_window_begin_resize_drag_for_device(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WindowEdge* p2 = (WindowEdge*)p2_obj[0];
 
 
-			const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		Device* p3 = (Device*)p3_obj[0];
 
 		const long p4 = APITools_GetIntValue(context, 4);
@@ -269,7 +269,7 @@ extern "C" {
 	void gtk3_gdk_window_end_draw_frame(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		DrawingContext* p2 = (DrawingContext*)p2_obj[0];
 
 		gdk_window_end_draw_frame(p1, p2);
@@ -399,7 +399,7 @@ extern "C" {
 	void gtk3_gdk_window_get_decorations(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WMDecoration* p2 = (WMDecoration*)p2_obj[0];
 
 		const auto status = gdk_window_get_decorations(p1, p2);
@@ -413,7 +413,7 @@ extern "C" {
 	void gtk3_gdk_window_get_device_cursor(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 		const auto status = gdk_window_get_device_cursor(p1, p2);
@@ -427,7 +427,7 @@ extern "C" {
 	void gtk3_gdk_window_get_device_events(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 		const auto status = gdk_window_get_device_events(p1, p2);
@@ -441,13 +441,13 @@ extern "C" {
 	void gtk3_gdk_window_get_device_position(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 		const long p3 = APITools_GetIntValue(context, 3);
 		const long p4 = APITools_GetIntValue(context, 4);
 
-			const size_t* p5_obj = APITools_GetObjectValue(context, 5);
+		const size_t* p5_obj = APITools_GetObjectValue(context, 5);
 		ModifierType* p5 = (ModifierType*)p5_obj[0];
 
 		const auto status = gdk_window_get_device_position(p1, p2, p3, p4, p5);
@@ -461,13 +461,13 @@ extern "C" {
 	void gtk3_gdk_window_get_device_position_double(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 		const double p3 = APITools_GetFloatValue(context, 3);
 		const double p4 = APITools_GetFloatValue(context, 4);
 
-			const size_t* p5_obj = APITools_GetObjectValue(context, 5);
+		const size_t* p5_obj = APITools_GetObjectValue(context, 5);
 		ModifierType* p5 = (ModifierType*)p5_obj[0];
 
 		const auto status = gdk_window_get_device_position_double(p1, p2, p3, p4, p5);
@@ -492,7 +492,7 @@ extern "C" {
 	void gtk3_gdk_window_get_drag_protocol(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Window* p2 = (Window*)p2_obj[0];
 
 		const auto status = gdk_window_get_drag_protocol(p1, p2);
@@ -572,7 +572,7 @@ extern "C" {
 	void gtk3_gdk_window_get_frame_extents(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Rectangle* p2 = (Rectangle*)p2_obj[0];
 
 		gdk_window_get_frame_extents(p1, p2);
@@ -678,7 +678,7 @@ extern "C" {
 		const long p2 = APITools_GetIntValue(context, 2);
 		const long p3 = APITools_GetIntValue(context, 3);
 
-			const size_t* p4_obj = APITools_GetObjectValue(context, 4);
+		const size_t* p4_obj = APITools_GetObjectValue(context, 4);
 		ModifierType* p4 = (ModifierType*)p4_obj[0];
 
 		const auto status = gdk_window_get_pointer(p1, p2, p3, p4);
@@ -749,7 +749,7 @@ extern "C" {
 	void gtk3_gdk_window_get_source_events(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		InputSource* p2 = (InputSource*)p2_obj[0];
 
 		const auto status = gdk_window_get_source_events(p1, p2);
@@ -879,7 +879,7 @@ extern "C" {
 	void gtk3_gdk_window_invalidate_rect(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Rectangle* p2 = (Rectangle*)p2_obj[0];
 
 		const bool p3 = APITools_GetIntValue(context, 3) ? false : true;
@@ -1008,19 +1008,19 @@ extern "C" {
 	void gtk3_gdk_window_move_to_rect(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Rectangle* p2 = (Rectangle*)p2_obj[0];
 
 
-			const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		Gravity* p3 = (Gravity*)p3_obj[0];
 
 
-			const size_t* p4_obj = APITools_GetObjectValue(context, 4);
+		const size_t* p4_obj = APITools_GetObjectValue(context, 4);
 		Gravity* p4 = (Gravity*)p4_obj[0];
 
 
-			const size_t* p5_obj = APITools_GetObjectValue(context, 5);
+		const size_t* p5_obj = APITools_GetObjectValue(context, 5);
 		AnchorHints* p5 = (AnchorHints*)p5_obj[0];
 
 		const long p6 = APITools_GetIntValue(context, 6);
@@ -1063,7 +1063,7 @@ extern "C" {
 	void gtk3_gdk_window_remove_filter(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		FilterFunc* p2 = (FilterFunc*)p2_obj[0];
 
 		const long p3 = APITools_GetIntValue(context, 3);
@@ -1077,7 +1077,7 @@ extern "C" {
 	void gtk3_gdk_window_reparent(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Window* p2 = (Window*)p2_obj[0];
 
 		const long p3 = APITools_GetIntValue(context, 3);
@@ -1103,7 +1103,7 @@ extern "C" {
 	void gtk3_gdk_window_restack(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Window* p2 = (Window*)p2_obj[0];
 
 		const bool p3 = APITools_GetIntValue(context, 3) ? false : true;
@@ -1138,7 +1138,7 @@ extern "C" {
 	void gtk3_gdk_window_set_background(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Color* p2 = (Color*)p2_obj[0];
 
 		gdk_window_set_background(p1, p2);
@@ -1150,7 +1150,7 @@ extern "C" {
 	void gtk3_gdk_window_set_background_rgba(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		RGBA* p2 = (RGBA*)p2_obj[0];
 
 		gdk_window_set_background_rgba(p1, p2);
@@ -1190,7 +1190,7 @@ extern "C" {
 	void gtk3_gdk_window_set_cursor(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Cursor* p2 = (Cursor*)p2_obj[0];
 
 		gdk_window_set_cursor(p1, p2);
@@ -1202,7 +1202,7 @@ extern "C" {
 	void gtk3_gdk_window_set_decorations(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WMDecoration* p2 = (WMDecoration*)p2_obj[0];
 
 		gdk_window_set_decorations(p1, p2);
@@ -1214,11 +1214,11 @@ extern "C" {
 	void gtk3_gdk_window_set_device_cursor(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 
-			const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		Cursor* p3 = (Cursor*)p3_obj[0];
 
 		gdk_window_set_device_cursor(p1, p2, p3);
@@ -1230,11 +1230,11 @@ extern "C" {
 	void gtk3_gdk_window_set_device_events(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Device* p2 = (Device*)p2_obj[0];
 
 
-			const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		EventMask* p3 = (EventMask*)p3_obj[0];
 
 		gdk_window_set_device_events(p1, p2, p3);
@@ -1256,7 +1256,7 @@ extern "C" {
 	void gtk3_gdk_window_set_events(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		EventMask* p2 = (EventMask*)p2_obj[0];
 
 		gdk_window_set_events(p1, p2);
@@ -1278,7 +1278,7 @@ extern "C" {
 	void gtk3_gdk_window_set_fullscreen_mode(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		FullscreenMode* p2 = (FullscreenMode*)p2_obj[0];
 
 		gdk_window_set_fullscreen_mode(p1, p2);
@@ -1290,7 +1290,7 @@ extern "C" {
 	void gtk3_gdk_window_set_functions(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WMFunction* p2 = (WMFunction*)p2_obj[0];
 
 		gdk_window_set_functions(p1, p2);
@@ -1302,11 +1302,11 @@ extern "C" {
 	void gtk3_gdk_window_set_geometry_hints(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Geometry* p2 = (Geometry*)p2_obj[0];
 
 
-			const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		WindowHints* p3 = (WindowHints*)p3_obj[0];
 
 		gdk_window_set_geometry_hints(p1, p2, p3);
@@ -1318,7 +1318,7 @@ extern "C" {
 	void gtk3_gdk_window_set_group(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Window* p2 = (Window*)p2_obj[0];
 
 		gdk_window_set_group(p1, p2);
@@ -1340,7 +1340,7 @@ extern "C" {
 	void gtk3_gdk_window_set_invalidate_handler(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WindowInvalidateHandlerFunc* p2 = (WindowInvalidateHandlerFunc*)p2_obj[0];
 
 		gdk_window_set_invalidate_handler(p1, p2);
@@ -1455,11 +1455,11 @@ extern "C" {
 	void gtk3_gdk_window_set_source_events(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		InputSource* p2 = (InputSource*)p2_obj[0];
 
 
-			const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		EventMask* p3 = (EventMask*)p3_obj[0];
 
 		gdk_window_set_source_events(p1, p2, p3);
@@ -1513,7 +1513,7 @@ extern "C" {
 	void gtk3_gdk_window_set_transient_for(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Window* p2 = (Window*)p2_obj[0];
 
 		gdk_window_set_transient_for(p1, p2);
@@ -1525,7 +1525,7 @@ extern "C" {
 	void gtk3_gdk_window_set_type_hint(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		WindowTypeHint* p2 = (WindowTypeHint*)p2_obj[0];
 
 		gdk_window_set_type_hint(p1, p2);
@@ -1565,7 +1565,7 @@ extern "C" {
 	void gtk3_gdk_window_show_window_menu(VMContext& context) {
 		GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);
 
-			const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		Event* p2 = (Event*)p2_obj[0];
 
 		const auto status = gdk_window_show_window_menu(p1, p2);
