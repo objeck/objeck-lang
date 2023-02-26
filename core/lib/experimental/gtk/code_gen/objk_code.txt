@@ -1509,7 +1509,6 @@ bundle GTK3 {
       array_args := Base->New[2];
 
       array_args[0] := IntHolder->New(@gobject);
-      array_args[1] := name;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_icon_name", array_args);
     }
@@ -1581,7 +1580,6 @@ bundle GTK3 {
       array_args := Base->New[2];
 
       array_args[0] := IntHolder->New(@gobject);
-      array_args[1] := role;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_role", array_args);
     }
@@ -1630,7 +1628,6 @@ bundle GTK3 {
       array_args := Base->New[2];
 
       array_args[0] := IntHolder->New(@gobject);
-      array_args[1] := startup_id;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_startup_id", array_args);
     }
@@ -1660,7 +1657,6 @@ bundle GTK3 {
       array_args := Base->New[2];
 
       array_args[0] := IntHolder->New(@gobject);
-      array_args[1] := title;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_title", array_args);
     }
