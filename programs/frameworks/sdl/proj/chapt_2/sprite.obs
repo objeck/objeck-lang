@@ -58,8 +58,8 @@ class SpriteComponent from Component {
 	method : public : SetTexture(texture : Texture) ~ Nil {
 		@texture := texture;
 
-		w := IntHolder->New();
-		h := IntHolder->New();
+		w := IntRef->New();
+		h := IntRef->New();
 		
 		texture->Query(Nil, Nil, w, h);
 

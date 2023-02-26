@@ -32,14 +32,14 @@ bundle Database.ODBC {
 		New(ds : String, username : String, password : String) {
 			Parent();
 			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
+			array_args[0] := IntRef->New();
 			array_args[1] := ds;
 			array_args[2] := username;
 			array_args[3] := password;
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("odbc_connect", array_args);
 			
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			@native_connection := value->Get();
 		}
       	
@@ -57,7 +57,7 @@ bundle Database.ODBC {
 		method : public : Close() ~ Nil {
 			if(@native_connection <> 0) {
 				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@native_connection);
+				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_disconnect", array_args);
 				@native_connection := 0;
@@ -72,13 +72,13 @@ bundle Database.ODBC {
 		method : public : Update(sql : String) ~ Int {
 			if(@native_connection <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@native_connection);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@native_connection);
 				array_args[2] := sql;
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_update_statement", array_args);
 				
-				value := array_args[0]->As(IntHolder);
+				value := array_args[0]->As(IntRef);
 				return value->Get();
 			};
 			
@@ -93,17 +93,17 @@ bundle Database.ODBC {
 		method : public : Select(sql : String) ~ ResultSet {
 			if(@native_connection <> 0) {
 				array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New();
-				array_args[3] := IntHolder->New(@native_connection);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New();
+				array_args[3] := IntRef->New(@native_connection);
 				array_args[4] := sql;
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_select_statement", array_args);
 				
-				native_stmt := array_args[0]->As(IntHolder);
-				native_names := array_args[1]->As(IntHolder);
-				exec_data := array_args[2]->As(IntHolder);
+				native_stmt := array_args[0]->As(IntRef);
+				native_names := array_args[1]->As(IntRef);
+				exec_data := array_args[2]->As(IntRef);
 				return ResultSet->New(native_stmt->Get(), native_names->Get(), exec_data->Get());
 			};
 			
@@ -118,17 +118,17 @@ bundle Database.ODBC {
 		method : public : CreateParameterStatement(sql : String) ~ ParameterStatement {
 			if(@native_connection <> 0) {
 				array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New();
-				array_args[3] := IntHolder->New(@native_connection);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New();
+				array_args[3] := IntRef->New(@native_connection);
 				array_args[4] := sql;
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_pepare_statement", array_args);
 				
-				native_stmt := array_args[0]->As(IntHolder);
-				native_names := array_args[1]->As(IntHolder);
-				exec_data := array_args[2]->As(IntHolder);
+				native_stmt := array_args[0]->As(IntRef);
+				native_names := array_args[1]->As(IntRef);
+				exec_data := array_args[2]->As(IntRef);
 				return ParameterStatement->New(native_stmt->Get(), native_names->Get(), exec_data->Get());
 			};
 			
@@ -160,13 +160,13 @@ bundle Database.ODBC {
 		method : public : SetBit(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_bit_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -181,18 +181,18 @@ bundle Database.ODBC {
 		~#
 		method : public : SetBit(pos : Int, value : Bool) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := IntHolder->New(value ? 1 : 0);
+				in := IntRef->New(value ? 1 : 0);
 				@params->AddBack(in);
 				
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_bit", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -207,13 +207,13 @@ bundle Database.ODBC {
 		method : public : SetSmallInt(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_smallint_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -228,18 +228,18 @@ bundle Database.ODBC {
 		~#
 		method : public : SetSmallInt(pos : Int, value : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := IntHolder->New(value);
+				in := IntRef->New(value);
 				@params->AddBack(in);
 				
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_smallint", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -255,13 +255,13 @@ bundle Database.ODBC {
 		method : public : SetInt(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_int_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -276,18 +276,18 @@ bundle Database.ODBC {
 		~#
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := IntHolder->New(value);
+				in := IntRef->New(value);
 				@params->AddBack(in);
 				
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_int", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -302,13 +302,13 @@ bundle Database.ODBC {
 		method : public : SetDouble(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_double_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -323,18 +323,18 @@ bundle Database.ODBC {
 		~#
 		method : public : SetDouble(pos : Int, value : Float) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := FloatHolder->New(value);
+				in := FloatRef->New(value);
 				@params->AddBack(in);
 				
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_double", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -349,13 +349,13 @@ bundle Database.ODBC {
 		method : public : SetReal(pos : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_real_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -370,18 +370,18 @@ bundle Database.ODBC {
 		~#
 		method : public : SetReal(pos : Int, value : Float) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := FloatHolder->New(value);
+				in := FloatRef->New(value);
 				@params->AddBack(in);
 				
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_real", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -396,13 +396,13 @@ bundle Database.ODBC {
 		method : public : SetVarchar(pos : Int) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_varchar_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -417,18 +417,18 @@ bundle Database.ODBC {
 		~#
 		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := ByteArrayHolder->New(value->ToByteArray());
+				in := ByteArrayRef->New(value->ToByteArray());
 				@params->AddBack(in);
 				
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_varchar", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -443,13 +443,13 @@ bundle Database.ODBC {
 		method : public : SetBlob(pos : Int) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_blob_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -464,19 +464,19 @@ bundle Database.ODBC {
 		~#
 		method : public : SetBlob(pos : Int, buffer : Byte[]) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := ByteArrayHolder->New(buffer);
+				in := ByteArrayRef->New(buffer);
 				@params->AddBack(in);
 				
 				array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@exec_data);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_blob", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -500,20 +500,20 @@ bundle Database.ODBC {
 					length := buffer->Size();
 				};
 
-				in := ByteArrayHolder->New(buffer);
+				in := ByteArrayRef->New(buffer);
 				@params->AddBack(in);
 				
 				array_args := Base->New[6];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := in;
-				array_args[2] := IntHolder->New(length);
-				array_args[3] := IntHolder->New(pos);
-				array_args[4] := IntHolder->New(@native_stmt);
-				array_args[5] := IntHolder->New(@exec_data);
+				array_args[2] := IntRef->New(length);
+				array_args[3] := IntRef->New(pos);
+				array_args[4] := IntRef->New(@native_stmt);
+				array_args[5] := IntRef->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_bytes", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -528,13 +528,13 @@ bundle Database.ODBC {
 		method : public : SetDate(pos : Int) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_date_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -552,14 +552,14 @@ bundle Database.ODBC {
 				@params->AddBack(value);
 
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := value;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_date", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -574,13 +574,13 @@ bundle Database.ODBC {
 		method : public : SetTimestamp(pos : Int) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(pos);
-				array_args[2] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(pos);
+				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_timestamp_null", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -598,14 +598,14 @@ bundle Database.ODBC {
 				@params->AddBack(value);
 
 				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
+				array_args[0] := IntRef->New();
 				array_args[1] := value;
-				array_args[2] := IntHolder->New(pos);
-				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[2] := IntRef->New(pos);
+				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_timestamp", array_args);
 				
-				status := array_args[0]->As(IntHolder);
+				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
 			};
 			
@@ -620,15 +620,15 @@ bundle Database.ODBC {
 		method : public : Update() ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@native_stmt);
-				array_args[2] := IntHolder->New(@exec_data);
-				array_args[3] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@native_stmt);
+				array_args[2] := IntRef->New(@exec_data);
+				array_args[3] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_update", array_args);
 				@params->Empty();
 
-				value := array_args[0]->As(IntHolder);
+				value := array_args[0]->As(IntRef);
 				status := value->Get();
 				if(status < 0) {
 					@native_stmt := 0;
@@ -649,7 +649,7 @@ bundle Database.ODBC {
 		method : public : Select() ~ ResultSet {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_select_statement", array_args);
 				@params->Empty();
@@ -666,7 +666,7 @@ bundle Database.ODBC {
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
 				@params->Empty();
@@ -697,12 +697,12 @@ bundle Database.ODBC {
 		method : public : Next() ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@native_stmt);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_next", array_args);
 				
-				value := array_args[0]->As(IntHolder);
+				value := array_args[0]->As(IntRef);
 				return value->Get() = 1;
       		};
       		
@@ -726,18 +726,18 @@ bundle Database.ODBC {
 		method : public : GetInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_int_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(IntHolder);
+				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
       		
@@ -752,18 +752,18 @@ bundle Database.ODBC {
 		method : public : GetInt(column : String) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_int_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(IntHolder);
+				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
       		
@@ -778,18 +778,18 @@ bundle Database.ODBC {
 		method : public : GetSmallInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_smallint_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(IntHolder);
+				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
       		
@@ -804,18 +804,18 @@ bundle Database.ODBC {
 		method : public : GetSmallInt(column : String) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_smallint_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(IntHolder);
+				value := array_args[1]->As(IntRef);
 				return value->Get();
       		};
       		
@@ -830,18 +830,18 @@ bundle Database.ODBC {
 		method : public : GetBit(column : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_bit_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(IntHolder);
+				value := array_args[1]->As(IntRef);
 				return value->Get() = 1;
       		};
       		
@@ -856,18 +856,18 @@ bundle Database.ODBC {
 		method : public : GetBit(column : String) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_bit_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(IntHolder);
+				value := array_args[1]->As(IntRef);
 				return value->Get() = 1;
       		};
       		
@@ -882,18 +882,18 @@ bundle Database.ODBC {
 		method : public : GetDouble(column : Int) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := FloatHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := FloatRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_double_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(FloatHolder);
+				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
       		
@@ -908,18 +908,18 @@ bundle Database.ODBC {
 		method : public : GetDouble(column : String) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := FloatHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := FloatRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_double_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(FloatHolder);
+				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
       		
@@ -934,18 +934,18 @@ bundle Database.ODBC {
 		method : public : GetReal(column : Int) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := FloatHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := FloatRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_real_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(FloatHolder);
+				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
       		
@@ -960,18 +960,18 @@ bundle Database.ODBC {
 		method : public : GetReal(column : String) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := FloatHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := FloatRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_real_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(FloatHolder);
+				value := array_args[1]->As(FloatRef);
 				return value->Get();
       		};
       		
@@ -986,15 +986,15 @@ bundle Database.ODBC {
 		method : public : GetVarchar(column : Int) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_varchar_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
 				if(@is_null) {
@@ -1014,15 +1014,15 @@ bundle Database.ODBC {
 		method : public : GetVarchar(column : String) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_varchar_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
 				if(@is_null) {
@@ -1042,15 +1042,15 @@ bundle Database.ODBC {
 		method : public : GetBlob(column : Int, buffer : Byte[]) ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := ByteArrayHolder->New(buffer);
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := ByteArrayRef->New(buffer);
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_blob_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
       		};
 		}
@@ -1063,15 +1063,15 @@ bundle Database.ODBC {
 		method : public : GetBlob(column : String, buffer : Byte[]) ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := ByteArrayHolder->New(buffer);
+				array_args[0] := IntRef->New();
+				array_args[1] := ByteArrayRef->New(buffer);
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_blob_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
       		};
 		}
@@ -1084,15 +1084,15 @@ bundle Database.ODBC {
 		method : public : GetDate(column : Int) ~ Database.ODBC.Date {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_date_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
 				if(@is_null) {
@@ -1112,15 +1112,15 @@ bundle Database.ODBC {
 		method : public : GetDate(column : String) ~ Database.ODBC.Date {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_date_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
 				if(@is_null) {
@@ -1140,15 +1140,15 @@ bundle Database.ODBC {
 		method : public : GetTimestamp(column : Int) ~ Timestamp {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
-				array_args[2] := IntHolder->New(column);
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_timestamp_by_id", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
 				if(@is_null) {
@@ -1168,15 +1168,15 @@ bundle Database.ODBC {
 		method : public : GetTimestamp(column : String) ~ Timestamp {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New();
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New();
 				array_args[2] := column;
-				array_args[3] := IntHolder->New(@native_stmt);
-				array_args[4] := IntHolder->New(@native_names);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_timestamp_by_name", array_args);
 				
-				is_null := array_args[0]->As(IntHolder);
+				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
 				
 				if(@is_null) {
@@ -1194,8 +1194,8 @@ bundle Database.ODBC {
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@native_names);
-				array_args[1] := IntHolder->New(@exec_data);
+				array_args[0] := IntRef->New(@native_names);
+				array_args[1] := IntRef->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_close", array_args);
 				@native_names := 0;

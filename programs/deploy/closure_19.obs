@@ -7,14 +7,14 @@ use Collection.Generic;
 
 class Capture {
 	function : Main(args : String[]) ~ Nil {
-		 funcs := Vector->New()<FuncHolder<IntHolder>>;
+		 funcs := Vector->New()<FuncRef<IntRef>>;
 		 
 		 for(i := 0; i < 10; i += 1;) {
-		 	funcs->AddBack(FuncHolder->New(\() ~ IntHolder : () => i->Factorial() * funcs->Size())<IntHolder>);
+		 	funcs->AddBack(FuncRef->New(\() ~ IntRef : () => i->Factorial() * funcs->Size())<IntRef>);
 		 };
 
 		 each(i : funcs) {
-		 	value := funcs->Get(i)<FuncHolder>;
+		 	value := funcs->Get(i)<FuncRef>;
 			func := value->Get();
 		 	func()->Get()->PrintLine();
 		 };

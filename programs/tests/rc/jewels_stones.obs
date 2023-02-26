@@ -7,7 +7,7 @@ class JewelsStones {
 	}
 
 	function : Count(stones : String, jewels : String) ~ Int {
-		bag := Set->New()<CharHolder>;
+		bag := Set->New()<CharRef>;
 
 		each(i : jewels) {
 			bag->Insert(jewels->Get(i));

@@ -52,8 +52,8 @@ bundle Query.RegEx {
 		@input_char : Char;
 		@is_exact : Bool;
 		@is_backtracking : Bool;
-		@backtrack_cache : Map<IntHolder, Expression>;
-		@backtrack_positions : Vector<IntHolder>;
+		@backtrack_cache : Map<IntRef, Expression>;
+		@backtrack_positions : Vector<IntRef>;
         
 		#~
 		Default constructor
@@ -62,8 +62,8 @@ bundle Query.RegEx {
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New()<Expression>;
-			@backtrack_positions := Vector->New()<IntHolder>;
-			@backtrack_cache := Map->New()<IntHolder, Expression>;
+			@backtrack_positions := Vector->New()<IntRef>;
+			@backtrack_cache := Map->New()<IntRef, Expression>;
 
 			Parse();
 		}

@@ -1861,7 +1861,7 @@ bundle System {
 	#~
 	Holds a boolean value
 	~#
-	class BoolHolder implements System.Compare, System.Clone, System.Stringify {
+	class BoolRef implements System.Compare, System.Clone, System.Stringify {
 		@value : Bool;
 
 		#~
@@ -1908,7 +1908,7 @@ bundle System {
 				return -1;
 			};
 			
-			right : BoolHolder := rhs->As(BoolHolder);
+			right : BoolRef := rhs->As(BoolRef);
 			if(@value = right->Get()) {
 				return 0;
 			};
@@ -1921,7 +1921,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return BoolHolder->New(@value);
+			return BoolRef->New(@value);
 		}
 
 		#~
@@ -1948,7 +1948,7 @@ bundle System {
 	#~
 	Holds an byte value
 	~#
-	class ByteHolder implements System.Compare, System.Clone, System.Stringify {
+	class ByteRef implements System.Compare, System.Clone, System.Stringify {
 		@value : Byte;
 
 		#~
@@ -1995,7 +1995,7 @@ bundle System {
 				return -1;
 			};
 			
-			right : ByteHolder := rhs->As(ByteHolder);
+			right : ByteRef := rhs->As(ByteRef);
 			if(@value = right->Get()) {
 				return 0;
 			}
@@ -2011,7 +2011,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return ByteHolder->New(@value);
+			return ByteRef->New(@value);
 		}
 
 		#~
@@ -2038,7 +2038,7 @@ bundle System {
 	#~
 	Holds an character value
 	~#
-	class CharHolder implements System.Compare, System.Clone, System.Stringify {
+	class CharRef implements System.Compare, System.Clone, System.Stringify {
 		@value : Char;
 
 		#~
@@ -2085,7 +2085,7 @@ bundle System {
 				return -1;
 			};
 			
-			right : CharHolder := rhs->As(CharHolder);
+			right : CharRef := rhs->As(CharRef);
 			if(@value = right->Get()) {
 				return 0;
 			}
@@ -2101,7 +2101,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return CharHolder->New(@value);
+			return CharRef->New(@value);
 		}
 
 		#~
@@ -2128,7 +2128,7 @@ bundle System {
 	#~
 	Holds an integer value
 	~#
-	class IntHolder implements System.Compare, System.Clone, System.Stringify {
+	class IntRef implements System.Compare, System.Clone, System.Stringify {
 		@value : Int;
 
 		#~
@@ -2221,7 +2221,7 @@ bundle System {
 				return -1;
 			};
 			
-			right : IntHolder := rhs->As(IntHolder);
+			right : IntRef := rhs->As(IntRef);
 			if(@value = right->Get()) {
 				return 0;
 			}
@@ -2237,7 +2237,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return IntHolder->New(@value);
+			return IntRef->New(@value);
 		}
 
 		#~
@@ -2264,7 +2264,7 @@ bundle System {
 	#~
 	Holds a float
 	~#
-	class FloatHolder implements System.Compare, System.Clone, System.Stringify {
+	class FloatRef implements System.Compare, System.Clone, System.Stringify {
 		@value : Float;
 
 		#~
@@ -2343,7 +2343,7 @@ bundle System {
 				return -1;
 			};
 			
-			right : FloatHolder := rhs->As(FloatHolder);
+			right : FloatRef := rhs->As(FloatRef);
 			if(@value = right->Get()) {
 				return 0;
 			}
@@ -2359,7 +2359,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return FloatHolder->New(@value);
+			return FloatRef->New(@value);
 		}
 		
 		#~
@@ -2386,7 +2386,7 @@ bundle System {
 	#~
 	Holds a byte array
 	~#
-	class ByteArrayHolder {
+	class ByteArrayRef {
 		@values : Byte[];
 
 		#~
@@ -2418,7 +2418,7 @@ bundle System {
 	#~
 	Holds a character array
 	~#
-	class CharArrayHolder {
+	class CharArrayRef {
 		@values : Char[];
 
 		#~
@@ -2450,7 +2450,7 @@ bundle System {
 	#~
 	Holds an integer array
 	~#
-	class IntArrayHolder {
+	class IntArrayRef {
 		@values : Int[];
 
 		#~
@@ -2482,7 +2482,7 @@ bundle System {
 	#~
 	Holds an boolean array
 	~#
-	class BoolArrayHolder {
+	class BoolArrayRef {
 		@values : Bool[];
 
 		#~
@@ -2514,7 +2514,7 @@ bundle System {
 	#~
 	Holds a float array
 	~#
-	class FloatArrayHolder {
+	class FloatArrayRef {
 		@values : Float[];
 
 		#~
@@ -2546,7 +2546,7 @@ bundle System {
 	#~
 	Holds an base array
 	~#
-	class BaseArrayHolder {
+	class BaseArrayRef {
 		@values : Base[];
 
 		#~
@@ -2578,7 +2578,7 @@ bundle System {
 	#~
 	Holds an base array
 	~#
-	class StringArrayHolder {
+	class StringArrayRef {
 		@values : String[];
 
 		#~
@@ -2610,7 +2610,7 @@ bundle System {
 	#~
 	Holds a function of in/out type R
 	~#
-	class FuncHolder <R> {
+	class FuncRef <R> {
 		@func : () ~ R;
 
 		#~
@@ -2642,7 +2642,7 @@ bundle System {
 	#~
 	Holds a function of in type X and out type R
 	~#
-	class Func2Holder <X, R> {
+	class Func2Ref <X, R> {
 		@func : (X) ~ R;
 
 		#~
@@ -2683,7 +2683,7 @@ bundle System {
 	#~
 	Holds a function of in types X, Y and out type R
 	~#
-	class Func3Holder <X, Y, R> {
+	class Func3Ref <X, Y, R> {
 		@func : (X, Y) ~ R;
 
 		#~
@@ -2715,7 +2715,7 @@ bundle System {
 	#~
 	Holds a function of in types X, Y, Z and out type R
 	~#
-	class Func4Holder <X, Y, Z, R> {
+	class Func4Ref <X, Y, Z, R> {
 		@func : (X, Y, Z) ~ R;
 
 		#~

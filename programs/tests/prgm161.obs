@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		map := Collection.Generic.Map->New()<String, IntHolder>;
+		map := Collection.Generic.Map->New()<String, IntRef>;
 		map->Insert("file:///d%3A/Code/objeck-lsp/server/format_code/test.obs", 0);
 		map->Insert("file:///d%3A/Code/objeck-lsp/server/format_code/formatter.obs", 1);
 		map->Remove("file:///d%3A/Code/objeck-lsp/server/format_code/abc.obs")->PrintLine();

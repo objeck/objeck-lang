@@ -12,11 +12,11 @@ class AoC {
 			
 				elf_one := elves[0];
 				elf_one_range := elf_one->Split("-");
-				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntHolder, IntHolder>;
+				elf_one_pair := Pair->New(elf_one_range[0]->ToInt(), elf_one_range[1]->ToInt())<IntRef, IntRef>;
 
 				elf_two := elves[1];
 				elf_two_range := elf_two->Split("-");
-				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntHolder, IntHolder>;
+				elf_two_pair := Pair->New(elf_two_range[0]->ToInt(), elf_two_range[1]->ToInt())<IntRef, IntRef>;
 
 				if((IsContained(elf_one_pair, elf_two_pair) | IsContained(elf_two_pair, elf_one_pair))) {
 					count += 1;
@@ -30,7 +30,7 @@ class AoC {
 		};
 	}
 
-	function : IsContained(elf_one_pair : Pair<IntHolder, IntHolder>, elf_two_pair : Pair<IntHolder, IntHolder>) ~ Bool {
+	function : IsContained(elf_one_pair : Pair<IntRef, IntRef>, elf_two_pair : Pair<IntRef, IntRef>) ~ Bool {
 		elf_one_start := elf_one_pair->GetFirst()->Get();
 		elf_one_end := elf_one_pair->GetSecond()->Get();
 

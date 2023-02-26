@@ -17,55 +17,55 @@ bundle Default {
 			tree : Map := Map->New();
 			s : System.String := System.String->New("Boxer");
 			tree->Insert(s->As(System.Compare) ~ 
-				IntHolder->New(23)->As(System.Base));
+				IntRef->New(23)->As(System.Base));
 
 			s := System.String->New("Anderson");
 			tree->Insert(s->As(System.Compare),
-				IntHolder->New(13)->As(System.Base));
+				IntRef->New(13)->As(System.Base));
 
 			s := System.String->New("Pug");
 			tree->Insert(s->As(System.Compare),
-				IntHolder->New(7)->As(System.Base));
+				IntRef->New(7)->As(System.Base));
 
 			s := System.String->New("Boston");
 			tree->Insert(s->As(System.Compare),
-				IntHolder->New(33)->As(System.Base));
+				IntRef->New(33)->As(System.Base));
 
 			s := System.String->New("Bangel");
 			tree->Insert(s->As(System.Compare),
-				IntHolder->New(4)->As(System.Base));
+				IntRef->New(4)->As(System.Base));
 
 			s := System.String->New(args[0]);
 			tree->Insert(s->As(System.Compare),
-				IntHolder->New(11)->As(System.Base));
+				IntRef->New(11)->As(System.Base));
 ~#
 
 			tree : Map := Map->New();
 			for(i : Int := 0; i < 1000; i := i + 1;) {
-				v : IntHolder := IntHolder->New(i);
+				v : IntRef := IntRef->New(i);
 				s : System.String := System.String->New("Pug-");
 				s->Append((i + 2)->ToString()->ToCharArray());
 				tree->Insert(v->As(System.Compare), s->As(System.Base));
 			};
 
-			f : IntHolder := IntHolder->New(5);
+			f : IntRef := IntRef->New(5);
 			s : System.String := tree->Find(f->As(System.Compare));
 			if(s <> Nil) {
 				s->PrintLine();
 			};
 			
-			v : IntHolder := IntHolder->New(10);
+			v : IntRef := IntRef->New(10);
 			tree->Remove(v->As(System.Compare));
 			
-			v := IntHolder->New(5);
+			v := IntRef->New(5);
 			tree->Remove(v->As(System.Compare));
 			
-			v := IntHolder->New(55);
+			v := IntRef->New(55);
 			tree->Remove(v->As(System.Compare));
 
 			vv : Vector := tree->GetKeys();
 			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
-				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
+				vv->Get(i)->As( Struct.IntRef)->Get()->PrintLine();
 			};
 			"---------------------"->PrintLine();
 
@@ -86,7 +86,7 @@ bundle Default {
 #~
 			vv := tree->GetValues();
 			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
-				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
+				vv->Get(i)->As( Struct.IntRef)->Get()->PrintLine();
 			};		
 			vv->Size()->PrintLine();
 ~#

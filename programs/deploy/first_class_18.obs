@@ -6,18 +6,18 @@
 use Collection.Generic;
 
 alias Func {
-	Double : (FloatHolder) ~ FloatHolder
+	Double : (FloatRef) ~ FloatRef
 }
 
 class FirstClass {
 	function : Main(args : String[]) ~ Nil {
-		vector := Vector->New()<Func2Holder <FloatHolder, FloatHolder>>;
+		vector := Vector->New()<Func2Ref <FloatRef, FloatRef>>;
 		# store functions in collections
-		vector->AddBack(Func2Holder->New(\Func->Double : (v) 
-			=>  v * v)<FloatHolder, FloatHolder>);
+		vector->AddBack(Func2Ref->New(\Func->Double : (v) 
+			=>  v * v)<FloatRef, FloatRef>);
 		# new function from preexisting function at run-time
-		vector->AddBack(Func2Holder->New(\Func->Double : (v) 
-			=> Float->SquareRoot(v->Get()))<FloatHolder, FloatHolder>);
+		vector->AddBack(Func2Ref->New(\Func->Double : (v) 
+			=> Float->SquareRoot(v->Get()))<FloatRef, FloatRef>);
 		# process collection
 		each(i : vector) {
 			# return value of other functions and pass argument to other function
@@ -26,7 +26,7 @@ class FirstClass {
 		};
 	}
 
-	function : Show(func : (FloatHolder) ~ FloatHolder) ~ Nil {
+	function : Show(func : (FloatRef) ~ FloatRef) ~ Nil {
 		func(13.5)->Get()->PrintLine();
 	}
 }

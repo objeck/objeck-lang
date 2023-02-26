@@ -17,7 +17,7 @@ class AoC {
 				left_input->PrintLine();
 				right_input->PrintLine();
 
-				left_input_set := Set->New()<IntHolder>;
+				left_input_set := Set->New()<IntRef>;
 				each(j : left_input) {
 					left_value := left_input->Get(j);
 

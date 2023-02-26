@@ -1,8 +1,8 @@
 use System;
 
 bundle Default {
-	# IntHolder
-	class IntHolder from System.Compare {
+	# IntRef
+	class IntRef from System.Compare {
 		@value : Int;
 
 		New(value : Int) {
@@ -15,7 +15,7 @@ bundle Default {
 		}
 
 		method : public : native : Compare(rhs : System.Compare) ~ Int {
-			right : IntHolder := rhs->As(IntHolder);
+			right : IntRef := rhs->As(IntRef);
 			if(@value = right->Get()) {
 				return 0;
 			}
@@ -78,7 +78,7 @@ bundle Default {
 		
 #		function : Run() ~ Nil {
 		function : native : Run() ~ Nil {
-			v : IntHolder := IntHolder->New(4);
+			v : IntRef := IntRef->New(4);
 			v->HashID()->PrintLine();
 
 			node : TreeNode :=  TreeNode->New(v->As(System.Compare) , 10);

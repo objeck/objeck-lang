@@ -20,15 +20,15 @@ class Person from Thingy {
 		Parent(id);
 		@name := name;
 		@values := StringMap->New();
-		@values->Insert("Jason", IntHolder->New(101));
-		@values->Insert("Mark", IntHolder->New(9));
+		@values->Insert("Jason", IntRef->New(101));
+		@values->Insert("Mark", IntRef->New(9));
 	}
 
 	method : public : Print() ~ Nil {
 		@id->PrintLine();
 		@name->PrintLine();
-		@values->Find("Jason")->As(IntHolder)->Get()->PrintLine();	
-		@values->Find("Mark")->As(IntHolder)->Get()->PrintLine();	
+		@values->Find("Jason")->As(IntRef)->Get()->PrintLine();	
+		@values->Find("Mark")->As(IntRef)->Get()->PrintLine();	
 	}
 }
 

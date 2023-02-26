@@ -44,8 +44,8 @@ class Chalkboard {
 	@card_text_sign : TextSprite;
 
 	# mouse input
-	@mouse_x : IntHolder;
-	@mouse_y : IntHolder;
+	@mouse_x : IntRef;
+	@mouse_y : IntRef;
 	@mouse_pos : Point;
 
 	# sounds
@@ -203,8 +203,8 @@ class Chalkboard {
 	}
 
 	method : WireInput() ~ Nil {
-		@mouse_x := IntHolder->New();
-		@mouse_y := IntHolder->New();
+		@mouse_x := IntRef->New();
+		@mouse_y := IntRef->New();
 		@mouse_pos := Point->New(0, 0);
 	}
 

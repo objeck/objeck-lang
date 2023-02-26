@@ -2,11 +2,11 @@ use Collection.Generic;
 use System.Matrix;
 
 class RPNParser {
-	@stk : Stack<IntHolder>;
-	@digits : List<IntHolder>;
+	@stk : Stack<IntRef>;
+	@digits : List<IntRef>;
 
 	function : Main(args : String[]) ~ Nil {
-		digits := List->New()<IntHolder>;
+		digits := List->New()<IntRef>;
 		"Make 24 with the digits: "->Print();
 		for(i := 0; i < 4; i += 1;) {
 			n : Int := Int->Random(1, 9);
@@ -31,8 +31,8 @@ class RPNParser {
 	}
 
 	New() {
-		@stk := Stack->New()<IntHolder>;
-		@digits := List->New()<IntHolder>;
+		@stk := Stack->New()<IntRef>;
+		@digits := List->New()<IntRef>;
 	}
 
 	method : Op(f : \Func->Calc) ~ Nil {
@@ -70,7 +70,7 @@ class RPNParser {
 		return 0;
 	}
 
-	method : Parse(s : String, digits : List<IntHolder>) ~ Bool {
+	method : Parse(s : String, digits : List<IntRef>) ~ Bool {
 		each(i : s) {
 			Parse(s->Get(i));
 		};
@@ -97,5 +97,5 @@ class RPNParser {
 }
 
 alias Func {
-	Calc : (IntHolder, IntHolder) ~ IntHolder
+	Calc : (IntRef, IntRef) ~ IntRef
 }

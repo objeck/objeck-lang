@@ -13,7 +13,7 @@ enum Oper {
 alias Funcs {
 	Apply : (Int) ~ Int,
 	Oper : (Oper, Int, Int) ~ Int,
-	Double : (FloatHolder) ~ FloatHolder
+	Double : (FloatRef) ~ FloatRef
 }
 
 class Test {
@@ -41,7 +41,7 @@ class Test {
 		};
 		PrintTwo(f2);
 		
-		map := Map->New()<IntHolder, String>;
+		map := Map->New()<IntRef, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
@@ -49,7 +49,7 @@ class Test {
 		map->Insert(9, "Nine");
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
 		
-		limit := map->GetKeys()<IntHolder>->Limit(2)<IntHolder>;
+		limit := map->GetKeys()<IntRef>->Limit(2)<IntRef>;
 		limit->Size()->PrintLine();
 		each(i : limit) {
 			limit->Get(i)->PrintLine();
