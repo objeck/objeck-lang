@@ -48,8 +48,8 @@ class GtkTestRunner {
 
 		@consts_set := Set->New()<String>;
 
-		@objk_out := FileWriter->New("objk_code.txt");
-		@cxx_out := FileWriter->New("cxx_code.txt");
+		@objk_out := FileWriter->New("gens/objk_code.txt");
+		@cxx_out := FileWriter->New("gens/cxx_code.txt");
 	}
 
 	method : Parse() ~ Nil {
