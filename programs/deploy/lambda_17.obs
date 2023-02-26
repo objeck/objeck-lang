@@ -3,7 +3,7 @@
 # run: obr lambda_17.obe
 ~#
 
-use Collection.Generic;
+use Collection;
 
 enum Oper {
 	ADD,

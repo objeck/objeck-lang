@@ -1,5 +1,5 @@
 use Web.HTTP;
-use Collection.Generic;
+use Collection;
 use Data.JSON;
 
 class Hello {

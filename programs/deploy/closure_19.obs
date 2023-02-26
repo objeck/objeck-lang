@@ -3,7 +3,7 @@
 # run: obr closure_19.obe
 ~#
 
-use Collection.Generic;
+use Collection;
 
 class Capture {
 	function : Main(args : String[]) ~ Nil {

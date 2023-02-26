@@ -1,4 +1,4 @@
-use Web.HTTP, Collection.Generic;
+use Web.HTTP, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {

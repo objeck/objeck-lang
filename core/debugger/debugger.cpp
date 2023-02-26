@@ -579,7 +579,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           //
           // start: Generic collections
           //
-          else if(ref_klass && (ref_klass->GetName() == L"Collection.Generic.Vector" || ref_klass->GetName() == L"Collection.Generic.CompareVector")) {
+          else if(ref_klass && (ref_klass->GetName() == L"Collection.Vector" || ref_klass->GetName() == L"Collection.CompareVector")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               size_t* vector_instance = (size_t*)instance[0];
@@ -590,7 +590,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
-          else if(ref_klass && (ref_klass->GetName() == L"Collection.Generic.List" || ref_klass->GetName() == L"Collection.Generic.CompareList")) {
+          else if(ref_klass && (ref_klass->GetName() == L"Collection.List" || ref_klass->GetName() == L"Collection.CompareList")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               size_t* list_instance = (size_t*)instance[0];
@@ -601,7 +601,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
-          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Hash") {
+          else if(ref_klass && ref_klass->GetName() == L"Collection.Hash") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               size_t* hash_instance = (size_t*)instance[0];
@@ -613,7 +613,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
             }
           }
-          else if(ref_klass && ref_klass->GetName() == L"Collection.Generic.Map") {
+          else if(ref_klass && ref_klass->GetName() == L"Collection.Map") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               size_t* map_instance = (size_t*)instance[0];

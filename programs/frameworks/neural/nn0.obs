@@ -1,6 +1,6 @@
 use System.Matrix;
 use System.IO.Filesystem;
-use Collection.Generic;
+use Collection;
 
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {

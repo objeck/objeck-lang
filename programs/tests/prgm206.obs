@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 #~		
-		strings := Collection.Generic.Vector->New()<String>;
+		strings := Collection.Vector->New()<String>;
 		strings->AddBack("One");
 		strings->AddBack("Three");
 		strings->AddBack("Five");
@@ -10,7 +10,7 @@ class Test {
 		strings->Each(\^(s) => s->PrintLine());
 ~#		
 
-		map := Collection.Generic.Map->New()<IntRef, String>;
+		map := Collection.Map->New()<IntRef, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
@@ -31,7 +31,7 @@ class Test {
 			num->PrintLine();
 		};
 
-		strings := Collection.Generic.Vector->New()<String>;
+		strings := Collection.Vector->New()<String>;
 		strings->AddBack("abd");
 		strings->AddBack("efg");
 		strings->AddBack("hij");

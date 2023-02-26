@@ -1,4 +1,4 @@
-use Collection.Generic;
+use Collection;
 use Data.JSON;
 use Web.HTTP;
 

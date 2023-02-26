@@ -4,7 +4,7 @@ Copyright (c) 2014, 2019 Randy Hollines
 ~#
 
 use System.IO.Filesystem;
-use Collection.Generic;
+use Collection;
 
 class HtmlMaker {
 	@parser : SnippetParser;
@@ -608,7 +608,7 @@ class HtmlMaker {
 				if(class_block = Nil) {	
 					class_block := GetBundleClass("System.Date", type_name);
 					if(class_block = Nil) {	
-						class_block := GetBundleClass("Collection.Generic", type_name);
+						class_block := GetBundleClass("Collection", type_name);
 					};
 				};
 			};

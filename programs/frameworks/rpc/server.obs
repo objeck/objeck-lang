@@ -1,6 +1,6 @@
 use System.IO.Net;
 use Data.JSON;
-use Collection.Generic;
+use Collection;
 
 class Server {
 	function : Main(args : String[]) ~ Nil {
