@@ -78,14 +78,7 @@ void FileEmitter::Emit()
       std::wcerr << L"Error: Libraries must end in '.obl'" << std::endl;
       exit(1);
     }
-  } 
-  // web target
-  else if(is_web) {
-    if(!frontend::EndsWith(file_name, L".obw")) {
-      std::wcerr << L"Error: Web applications must end in '.obw'" << std::endl;
-      exit(1);
-    }
-  } 
+  }
   // application target
   else {
     if(!frontend::EndsWith(file_name, L".obe")) {
@@ -95,7 +88,7 @@ void FileEmitter::Emit()
   }
   
   OutputStream out_stream(file_name);
-  program->Write(emit_lib, is_debug, is_web, out_stream);
+  program->Write(emit_lib, is_debug, out_stream);
   if(out_stream.WriteFile()) {
     std::wcout << L"Wrote target file: '" << file_name << L"'\n---" << std::endl;
   }
@@ -109,16 +102,13 @@ void FileEmitter::Emit()
  ****************************/
 IntermediateProgram* IntermediateProgram::instance;
 
-void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream) {
+void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_stream) {
   // version
   WriteInt(VER_NUM, out_stream);
 
   // magic number
   if(emit_lib) {
     WriteInt(MAGIC_NUM_LIB, out_stream);
-  }
-  else if(is_web) {
-    WriteInt(MAGIC_NUM_WEB, out_stream);
   }
   else {
     WriteInt(MAGIC_NUM_EXE, out_stream);

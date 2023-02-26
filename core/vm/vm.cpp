@@ -42,12 +42,6 @@ int Execute(const int argc, const char* argv[])
     Loader loader(argc, commands);
     loader.Load();
 
-    // ignore web applications
-    if(loader.IsWeb()) {
-      std::cerr << L"Web applications must be executed in a FCGI environment." << std::endl;
-      exit(1);
-    }
-
     // execute
     size_t* op_stack = new size_t[OP_STACK_SIZE];
     long* stack_pos = new long;

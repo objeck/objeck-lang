@@ -50,7 +50,6 @@ class Loader {
   size_t buffer_pos;
   int start_class_id;
   int start_method_id;
-  bool is_web;
   std::map<const std::wstring, const int> params;
 
   inline long ReadInt() {
@@ -134,7 +133,6 @@ public:
     }
 
     string_cls_id = -1;
-    is_web = false;
     ReadFile();
     program = new StackProgram;
   }
@@ -149,7 +147,6 @@ public:
       arguments.push_back(argv[i]);
     }
     string_cls_id = -1;
-    is_web = false;
     ReadFile();
     program = new StackProgram;
   }
@@ -182,10 +179,6 @@ public:
     }
 
     return 0;
-  }
-  
-  inline bool IsWeb() {
-    return is_web;
   }
   
   void Load();
