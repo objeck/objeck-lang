@@ -108,19 +108,19 @@ class GtkTestRunner {
 			enum_name := enum_xml->GetAttribute("name")->GetValue();
 			@consts_set->Insert(enum_name);
 
-			objk_buffer += "  consts {$enum_name} {\n";
+			objk_buffer += "\tconsts {$enum_name} {\n";
 
 			members_xml := enum_xml->GetChildren("member")<XmlElement>;
 			each(member_xml := members_xml) {
 				value_name := member_xml->GetAttribute("value")->GetValue();
 				identifier_name := member_xml->GetAttribute("identifier")->GetValue();
 
-				objk_buffer += "    {$identifier_name} := {$value_name},\n";
+				objk_buffer += "\t\t{$identifier_name} := {$value_name},\n";
 			};
 			objk_buffer->Pop();
 			objk_buffer->Pop();
 
-			objk_buffer += "\n  }\n\n";
+			objk_buffer += "\n\t}\n\n";
 		};
 
 		@objk_out->WriteString(objk_buffer);
@@ -159,19 +159,19 @@ class GtkTestRunner {
 		};
 
 		# start class
-		objk_buffer += "  class {$class_name} {\n";
+		objk_buffer += "\tclass {$class_name} {\n";
 
 		ref_name := "gobject"; #class_name->ToLower();
-		objk_buffer += "    @{$ref_name} : Int;\n\n";
+		objk_buffer += "\t\t@{$ref_name} : Int;\n\n";
 
 		# parse parameters
 		fields_xml := class_xml->GetChildren("field")<XmlElement>;
 		getters_setters := ParseParameters(fields_xml, objk_buffer, cxx_buffer);
 
 		# write constructor
-		objk_buffer += "    New({$ref_name} : Int) {\n";
-		objk_buffer += "      @{$ref_name} := {$ref_name};\n";
-		objk_buffer += "    }\n\n";
+		objk_buffer += "\t\tNew({$ref_name} : Int) {\n";
+		objk_buffer += "\t\t\t@{$ref_name} := {$ref_name};\n";
+		objk_buffer += "\t\t}\n\n";
 
 		# write getters and setters
 		WriteGettersSetters(ref_name, getters_setters, objk_buffer, cxx_buffer);
@@ -184,7 +184,7 @@ class GtkTestRunner {
 		WriteMethods(ref_name, methods_xml, objk_buffer, cxx_buffer, false);
 
 		# end class
-		objk_buffer += "  }\n\n";
+		objk_buffer += "\t}\n\n";
 
 		return class_name;
 	}
@@ -199,86 +199,86 @@ class GtkTestRunner {
 			#
 			# getter
 			#
-			objk_buffer += "    method : public : Get{$method_case_name}() ~ {$type} {\n";
-			objk_buffer += "      array_args := Base->New[2];\n\n";
+			objk_buffer += "\t\tmethod : public : Get{$method_case_name}() ~ {$type} {\n";
+			objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
 			
 			# set params
 			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int") | type->Equals("Bool")) {
-				objk_buffer += "      array_args[0] := IntRef->New();\n";
+				objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
 			}
 			else if(type->Equals("Float")) {
-				objk_buffer += "      array_args[0] := FloatRef->New();\n";
+				objk_buffer += "\t\t\tarray_args[0] := FloatRef->New();\n";
 			}
 			else {
-				objk_buffer += "      array_args[0] := Nil;\n";
+				objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
 			};
 
-			objk_buffer += "      array_args[1] := IntRef->New(@{$ref_name});\n";
+			objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
 
 			c_call_name := "{$ref_name}_get_{$method_case_name}"->ToLower();
-			objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+			objk_buffer += "\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
 
-			cxx_buffer += "  #ifdef _WIN32\n";
-			cxx_buffer += "    __declspec(dllexport)";
-			cxx_buffer += "  #endif\n";
-			cxx_buffer += "  void {$c_call_name}(VMContext& context) {\n";
-			cxx_buffer += "  }\n";
+			cxx_buffer += "\t#ifdef _WIN32\n";
+			cxx_buffer += "\t\t__declspec(dllexport)";
+			cxx_buffer += "\t#endif\n";
+			cxx_buffer += "\tvoid {$c_call_name}(VMContext& context) {\n";
+			cxx_buffer += "\t}\n";
 
 			# get return
 			if(type->Equals("Byte")) {
-				objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-				objk_buffer += "      return value->Get()->As(Byte);\n";
+				objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get()->As(Byte);\n";
 			}
 			else if(type->Equals("Char")) {
-				objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-				objk_buffer += "      return value->Get()->As(Char);\n";
+				objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get()->As(Char);\n";
 			}
 			else if(type->Equals("Int")) {
-				objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-				objk_buffer += "      return value->Get();\n";
+				objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get();\n";
 			}
 			else if(type->Equals("Bool")) {
-				objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-				objk_buffer += "      return value->Get() = 0 ? false : true;\n";
+				objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
 			}
 			else if(type->Equals("Float")) {
-				objk_buffer += "\n      value := array_args[0]->As(FloatRef);\n";
-				objk_buffer += "      return value->Get();\n";
+				objk_buffer += "\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
+				objk_buffer += "\t\t\treturn value->Get();\n";
 			}
 			else if(type->Equals("String")) {
-				objk_buffer += "\n      return array_args[0]->As(String);\n";
+				objk_buffer += "\n\t\t\treturn array_args[0]->As(String);\n";
 			}
 			else {
-				objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-				objk_buffer += "      return {$type}->New(value->Get());\n";
+				objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn {$type}->New(value->Get());\n";
 			};
-			objk_buffer += "    }\n\n";
+			objk_buffer += "\t\t}\n\n";
 
 			#
 			# setter
 			#
-			objk_buffer += "    method : public : Set{$method_case_name}({$name} : {$type}) ~ Nil {\n";
-			objk_buffer += "      array_args := Base->New[2];\n\n";
-			objk_buffer += "      array_args[0] := IntRef->New(@{$ref_name});\n";
+			objk_buffer += "\t\tmethod : public : Set{$method_case_name}({$name} : {$type}) ~ Nil {\n";
+			objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
+			objk_buffer += "\t\t\tarray_args[0] := IntRef->New(@{$ref_name});\n";
 
 			# set value
 			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int")) {
-				objk_buffer += "      array_args[1] := IntRef->New({$name});\n";
+				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
 			}
 			else if(type->Equals("Bool")) {
-				objk_buffer += "      array_args[1] := IntRef->New({$name} ? 1 : 0);\n";
+				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name} ? 1 : 0);\n";
 			}
 			else if(type->Equals("Float")) {
-				objk_buffer += "      array_args[1] := FloatRef->New({$name});\n";
+				objk_buffer += "\t\t\tarray_args[1] := FloatRef->New({$name});\n";
 			}
 			else {
-				objk_buffer += "      array_args[1] := {$name};\n";
+				objk_buffer += "\t\t\tarray_args[1] := {$name};\n";
 			};
 
 			c_call_name := "{$ref_name}_set_{$method_case_name}"->ToLower();
-			objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+			objk_buffer += "\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
 
-			objk_buffer += "    }\n\n";
+			objk_buffer += "\t\t}\n\n";
 		};
 
 		objk_buffer->Pop();
@@ -294,7 +294,7 @@ class GtkTestRunner {
 			return_type := GetMappingName(return_type_xml->GetAttribute("type")->GetValue());
 
 			if(@debug) {
-				"  ---\n  [method: name='{$method_name}']"->PrintLine();
+				"\t---\n\t[method: name='{$method_name}']"->PrintLine();
 			};
 
 			# get parameters and returns types
@@ -303,12 +303,12 @@ class GtkTestRunner {
 
 			if(CanEmitMethod(params_xml, return_xml, false)) {
 				cxx_buffer += "#ifdef _WIN32\n";
-				cxx_buffer += "    __declspec(dllexport)\n";
+				cxx_buffer += "\t\t__declspec(dllexport)\n";
 				cxx_buffer += "#endif\n";
-				cxx_buffer += "    void gtk3_{$identifier_name}(VMContext& context) {\n";
-				cxx_buffer += "      GObject* p1 = (GObject*)APITools_GetIntValue(context, 1);\n";
+				cxx_buffer += "\t\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
+				cxx_buffer += "\t\t\tGObject* p1 = (GObject*)APITools_GetIntValue(context, 1);\n";
 				
-				objk_buffer += "    method : public : {$method_case_name}";
+				objk_buffer += "\t\tmethod : public : {$method_case_name}";
 
 				WriteParameters(params_xml, objk_buffer, cxx_buffer);
 				objk_buffer += " ~ {$return_type} {\n";
@@ -319,24 +319,24 @@ class GtkTestRunner {
 				parameters_size := params_xml->Size() + 1;
 				if(return_type->Equals("Nil")) {
 					
-					objk_buffer += "      array_args := Base->New[{$parameters_size}];\n\n";
+					objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
 
-					objk_buffer += "      array_args[0] := Nil;\n";
-					objk_buffer += "      array_args[1] := IntRef->New(@{$ref_name});\n";
+					objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+					objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
 					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constructor);
 
-					cxx_params_buffer += "      {$identifier_name}(p1";
+					cxx_params_buffer += "\t\t\t{$identifier_name}(p1";
 				}
 				else {
-					objk_buffer += "      array_args := Base->New[{$parameters_size}];\n";
+					objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n";
 					WriteProxyReturnParameter(return_xml, objk_buffer, cxx_buffer);
 					
-					objk_buffer += "      array_args[1] := IntRef->New(@{$ref_name});\n";
+					objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
 					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, false, is_constructor);
 
-					cxx_params_buffer += "      const auto status = {$identifier_name}(p1";
+					cxx_params_buffer += "\t\t\tconst auto status = {$identifier_name}(p1";
 				};
-				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
+				objk_buffer += "\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
 				for(i := 1; i < cxx_params_count; i += 1;) {
 					if(i <= cxx_params_count) {
@@ -350,14 +350,14 @@ class GtkTestRunner {
 				cxx_return_buffer := "";
 				WriteProxyReturn(return_xml, objk_buffer, cxx_return_buffer, is_constructor);
 
-				objk_buffer += "    }\n\n";
+				objk_buffer += "\t\t}\n\n";
 
 				cxx_buffer += cxx_params_buffer;
 				if(<>cxx_return_buffer->IsEmpty()) {
 					cxx_buffer += '\n';
 					cxx_buffer += cxx_return_buffer;
 				};
-				cxx_buffer += "    }\n\n";
+				cxx_buffer += "\t\t}\n\n";
 			}
 		};
 
@@ -407,7 +407,7 @@ class GtkTestRunner {
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
 						type_ctype := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
 						if(@debug) {
-							"    [param='{$param_name}', type='{$type_name}', ctype='{$type_ctype}']"->PrintLine();
+							"\t\t[param='{$param_name}', type='{$type_name}', ctype='{$type_ctype}']"->PrintLine();
 						};
 
 						objk_buffer += "{$param_name} : {$type_name}, ";
@@ -433,40 +433,40 @@ class GtkTestRunner {
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int")) {
-					objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-					objk_buffer += "      return value->Get();\n";
+					objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\t\t\treturn value->Get();\n";
 
-					cxx_buffer += "      APITools_SetIntValue(context, 0, status);\n";
+					cxx_buffer += "\t\t\tAPITools_SetIntValue(context, 0, status);\n";
 				}
 				else if(type_name->Equals("Bool")) {
-					objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-					objk_buffer += "      return value->Get() = 0 ? false : true;\n";
+					objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
 
-					cxx_buffer += "      APITools_SetIntValue(context, 0, status);\n";
+					cxx_buffer += "\t\t\tAPITools_SetIntValue(context, 0, status);\n";
 				}
 				else if(type_name->Equals("Float")) {
-					objk_buffer += "\n      value := array_args[0]->As(FloatRef);\n";
-					objk_buffer += "      return value->Get();\n";
+					objk_buffer += "\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
+					objk_buffer += "\t\t\treturn value->Get();\n";
 
-					cxx_buffer += "      APITools_SetFloatValue(context, 0, status);\n";
+					cxx_buffer += "\t\t\tAPITools_SetFloatValue(context, 0, status);\n";
 				}
 				else if(type_name->Equals("String")) {
-					objk_buffer += "\n      return array_args[0]->As(String);\n";
+					objk_buffer += "\n\t\t\treturn array_args[0]->As(String);\n";
 
-					cxx_buffer += "      APITools_SetStringValue(context, 0, status);\n";
+					cxx_buffer += "\t\t\tAPITools_SetStringValue(context, 0, status);\n";
 				}
 				else if(<>type_name->Equals("Nil")) {
-					objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 
 					if(@consts_set->Has(type_name)) {
-						objk_buffer += "      return value->As({$type_name});\n";
+						objk_buffer += "\t\t\treturn value->As({$type_name});\n";
 
-						cxx_buffer += "      APITools_SetIntValue(context, 0, (size_t)status);\n";						
+						cxx_buffer += "\t\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
-						objk_buffer += "      return {$type_name}->New(value);\n";
+						objk_buffer += "\t\t\treturn {$type_name}->New(value);\n";
 
-						cxx_buffer += "      APITools_SetIntValue(context, 0, status);\n";
+						cxx_buffer += "\t\t\tAPITools_SetIntValue(context, 0, status);\n";
 					};
 				};
 			};			
@@ -492,31 +492,35 @@ class GtkTestRunner {
 						
 						# TODO: hash sub-strings
 						if(type_name->Equals("Int")) {
-							objk_buffer += "      array_args[{$index}] := IntRef->New({$param_name});\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
-							cxx_buffer += "      const long p{$index} = APITools_GetIntValue(context, {$index});\n";
+							cxx_buffer += "\t\t\tconst long p{$index} = APITools_GetIntValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Float")) {
-							objk_buffer += "      array_args[{$index}] := FloatRef->New({$param_name});\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name});\n";
 
-							cxx_buffer += "      const double p{$index} = APITools_GetFloatValue(context, {$index});\n";
+							cxx_buffer += "\t\t\tconst double p{$index} = APITools_GetFloatValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Bool")) {
-							objk_buffer += "      array_args[{$index}] := IntRef->New({$param_name} = 0 ? 0 : 1);\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} = 0 ? 0 : 1);\n";
 
-							cxx_buffer += "      const bool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
+							cxx_buffer += "\t\t\tconst bool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
-							cxx_buffer += "      const std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
+							cxx_buffer += "\t\t\tconst std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
 						}
 						else {
-							objk_buffer += "      array_args[{$index}] := {$param_name};\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
 
 							ctype_xml := type_xml->GetAttribute("name");
 							if(ctype_xml <> Nil) {
 								c_type_name := ctype_xml->GetValue();
-								cxx_buffer += "\n      const size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
-								cxx_buffer += "      {$c_type_name}* p{$index} = ({$c_type_name}*)p{$index}_obj[0];\n\n";
+								cxx_buffer += "\n\t\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
+								cxx_buffer += "\t\t\t{$c_type_name}* p{$index} = ({$c_type_name}*)p{$index}_obj[0];\n";
+
+								if(i + 1 < params_xml->Size()) {
+									cxx_buffer += "\n";
+								}
 							};
 						};
 					};
@@ -539,13 +543,13 @@ class GtkTestRunner {
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int") | type_name->Equals("Bool")) {
-					objk_buffer += "\n      array_args[0] := IntRef->New();\n";
+					objk_buffer += "\n\t\t\tarray_args[0] := IntRef->New();\n";
 				}
 				else if(type_name->Equals("Float")) {
-					objk_buffer += "\n      array_args[0] := FloatRef->New();\n";
+					objk_buffer += "\n\t\t\tarray_args[0] := FloatRef->New();\n";
 				}
 				else {
-					objk_buffer += "\n      array_args[0] := Nil;\n";
+					objk_buffer += "\n\t\t\tarray_args[0] := Nil;\n";
 				};
 			};
 		};
@@ -566,7 +570,7 @@ class GtkTestRunner {
 					if(ctype_type_xml <> Nil) {
 						ctype_type := ctype_type_xml->GetValue();
 						if(@debug) {
-							"  [\"{$field_name}\": type: name='{$type_name}', ctype='{$ctype_type}']"->PrintLine();
+							"\t[\"{$field_name}\": type: name='{$type_name}', ctype='{$ctype_type}']"->PrintLine();
 						};
 						
 						mapping_name := GetMappingName(type_name);
@@ -575,7 +579,7 @@ class GtkTestRunner {
 					}
 					else {
 						if(@debug) {
-							"  [\"{$field_name}\": type: name='{$type_name}']"->PrintLine();
+							"\t[\"{$field_name}\": type: name='{$type_name}']"->PrintLine();
 						};
 					};
 				};
@@ -621,15 +625,15 @@ class GtkTestRunner {
 		objk_buffer := "";
 
 		objk_buffer += "bundle GTK3 {\n";
-		objk_buffer += "  class : private : Proxy {\n";
-		objk_buffer += "    @lib_proxy : static : DllProxy;\n\n";
-		objk_buffer += "    function : GetDllProxy() ~ DllProxy {\n";
-		objk_buffer += "      if(@lib_proxy = Nil) {\n";
-		objk_buffer += "        @lib_proxy := DllProxy->New(\"libobjk_gtk3\";\n";
-		objk_buffer += "      };\n\n";
-		objk_buffer += "      return @lib_proxy;\n";
-		objk_buffer += "    }\n";
-		objk_buffer += "  }\n\n";
+		objk_buffer += "\tclass : private : Proxy {\n";
+		objk_buffer += "\t\t@lib_proxy : static : DllProxy;\n\n";
+		objk_buffer += "\t\tfunction : GetDllProxy() ~ DllProxy {\n";
+		objk_buffer += "\t\t\tif(@lib_proxy = Nil) {\n";
+		objk_buffer += "\t\t\t\t@lib_proxy := DllProxy->New(\"libobjk_gtk3\";\n";
+		objk_buffer += "\t\t\t};\n\n";
+		objk_buffer += "\t\t\treturn @lib_proxy;\n";
+		objk_buffer += "\t\t}\n";
+		objk_buffer += "\t}\n\n";
 		
 		@objk_out->WriteString(objk_buffer);
 	}
@@ -639,71 +643,71 @@ class GtkTestRunner {
 
 		cxx_buffer += "#include \"gtk3_test.h\"\n\n";
 		cxx_buffer += "extern \"C\" {\n";
-		cxx_buffer += "  static ResourceManager* res_manager = nullptr;\n";
+		cxx_buffer += "\tstatic ResourceManager* res_manager = nullptr;\n";
 		cxx_buffer += "\n";
-		cxx_buffer += "  //\n";
-		cxx_buffer += "  // initialize library\n";
-		cxx_buffer += "  //\n";
+		cxx_buffer += "\t//\n";
+		cxx_buffer += "\t// initialize library\n";
+		cxx_buffer += "\t//\n";
 		cxx_buffer += "#ifdef _WIN32\n";
-		cxx_buffer += "  __declspec(dllexport)\n";
+		cxx_buffer += "\t__declspec(dllexport)\n";
 		cxx_buffer += "#endif\n";
-		cxx_buffer += "  void load_lib(VMContext& context) {\n";
-		cxx_buffer += "    if(!res_manager) {\n";
-		cxx_buffer += "      res_manager = new ResourceManager(context.alloc_managed_obj, context.call_method_by_id);\n";
-		cxx_buffer += "    }\n";
-		cxx_buffer += "  }\n\n";
-		cxx_buffer += "  //\n";
-		cxx_buffer += "  // release library\n";
-		cxx_buffer += "  //\n";
+		cxx_buffer += "\tvoid load_lib(VMContext& context) {\n";
+		cxx_buffer += "\t\tif(!res_manager) {\n";
+		cxx_buffer += "\t\t\tres_manager = new ResourceManager(context.alloc_managed_obj, context.call_method_by_id);\n";
+		cxx_buffer += "\t\t}\n";
+		cxx_buffer += "\t}\n\n";
+		cxx_buffer += "\t//\n";
+		cxx_buffer += "\t// release library\n";
+		cxx_buffer += "\t//\n";
 		cxx_buffer += "#ifdef _WIN32\n";
-		cxx_buffer += "  __declspec(dllexport)\n";
+		cxx_buffer += "\t__declspec(dllexport)\n";
 		cxx_buffer += "#endif\n";
-		cxx_buffer += "  void unload_lib() {\n";
-		cxx_buffer += "    if(res_manager) {\n";
-		cxx_buffer += "      delete res_manager;\n";
-		cxx_buffer += "      res_manager = nullptr;\n";
-		cxx_buffer += "    }\n";
-		cxx_buffer += "  }\n\n";
-		cxx_buffer += "  //\n";
-		cxx_buffer += "  // GObject\n";
-		cxx_buffer += "  //\n";
-		cxx_buffer += "  static void callback_handler(GObject* handler, gpointer callback_data) {\n";
-		cxx_buffer += "    if(handler && callback_data) {\n";
-		cxx_buffer += "      std::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;\n";
-		cxx_buffer += "      size_t const mthd_cls_id = callback_params->first;\n";
-		cxx_buffer += "      const int cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;\n";
-		cxx_buffer += "      const int mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;\n";
-		cxx_buffer += "      size_t* callback_data = callback_params->second;\n\n";
-		cxx_buffer += "      GType handler_ctype = G_TYPE_FROM_INSTANCE(handler);\n";
-		cxx_buffer += "      if(G_TYPE_IS_CLASSED(handler_ctype)) {\n";
-		cxx_buffer += "        const std::string handler_cname(g_type_name(handler_ctype));\n";
-		cxx_buffer += "        const char prefix_str[] = \"Gtk\n";
-		cxx_buffer += "        size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);\n";
-		cxx_buffer += "        if(handler_cname_prefix_offset != std::string::npos) {\n";
-		cxx_buffer += "          std::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();\n\n";
-		cxx_buffer += "          size_t* op_stack = exec_stack_mem.first;\n";
-		cxx_buffer += "          long* stack_pos = exec_stack_mem.second;\n";
-		cxx_buffer += "          \n";
-		cxx_buffer += "          const std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));\n";
-		cxx_buffer += "          const std::string handler_objk_name(\"Gtk3.\" + post_objk_name);\n\n";
-		cxx_buffer += "          const APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();\n";
-		cxx_buffer += "          size_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);\n";
-		cxx_buffer += "          if(gobject_obj) {\n";
-		cxx_buffer += "            gobject_obj[0] = (size_t)handler;\n\n";
-		cxx_buffer += "            // set stack\n";
-		cxx_buffer += "            op_stack[0] = (size_t)gobject_obj;\n";
-		cxx_buffer += "            op_stack[1] = (size_t)callback_data;\n";
-		cxx_buffer += "            (*stack_pos) = 2;\n\n";
-		cxx_buffer += "            // call method\n";
-		cxx_buffer += "            const APITools_MethodCallById_Ptr mthd_call_id = res_manager->GetMethodCallById();\n";
-		cxx_buffer += "            mthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);\n";
-		cxx_buffer += "          }\n\n";
-		cxx_buffer += "          // clean up\n";
-		cxx_buffer += "          res_manager->ReleaseOpStackMemory(exec_stack_mem);\n";
-		cxx_buffer += "        }\n";
-		cxx_buffer += "      }\n";
-		cxx_buffer += "    }\n";
-		cxx_buffer += "  }\n";
+		cxx_buffer += "\tvoid unload_lib() {\n";
+		cxx_buffer += "\t\tif(res_manager) {\n";
+		cxx_buffer += "\t\t\tdelete res_manager;\n";
+		cxx_buffer += "\t\t\tres_manager = nullptr;\n";
+		cxx_buffer += "\t\t}\n";
+		cxx_buffer += "\t}\n\n";
+		cxx_buffer += "\t//\n";
+		cxx_buffer += "\t// GObject\n";
+		cxx_buffer += "\t//\n";
+		cxx_buffer += "\tstatic void callback_handler(GObject* handler, gpointer callback_data) {\n";
+		cxx_buffer += "\t\tif(handler && callback_data) {\n";
+		cxx_buffer += "\t\t\tstd::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;\n";
+		cxx_buffer += "\t\t\tsize_t const mthd_cls_id = callback_params->first;\n";
+		cxx_buffer += "\t\t\tconst int cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;\n";
+		cxx_buffer += "\t\t\tconst int mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;\n";
+		cxx_buffer += "\t\t\tsize_t* callback_data = callback_params->second;\n\n";
+		cxx_buffer += "\t\t\tGType handler_ctype = G_TYPE_FROM_INSTANCE(handler);\n";
+		cxx_buffer += "\t\t\tif(G_TYPE_IS_CLASSED(handler_ctype)) {\n";
+		cxx_buffer += "\t\t\t\tconst std::string handler_cname(g_type_name(handler_ctype));\n";
+		cxx_buffer += "\t\t\t\tconst char prefix_str[] = \"Gtk\n";
+		cxx_buffer += "\t\t\t\tsize_t handler_cname_prefix_offset = handler_cname.find(prefix_str);\n";
+		cxx_buffer += "\t\t\t\tif(handler_cname_prefix_offset != std::string::npos) {\n";
+		cxx_buffer += "\t\t\t\t\tstd::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();\n\n";
+		cxx_buffer += "\t\t\t\t\tsize_t* op_stack = exec_stack_mem.first;\n";
+		cxx_buffer += "\t\t\t\t\tlong* stack_pos = exec_stack_mem.second;\n";
+		cxx_buffer += "\t\t\t\t\t\n";
+		cxx_buffer += "\t\t\t\t\tconst std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));\n";
+		cxx_buffer += "\t\t\t\t\tconst std::string handler_objk_name(\"Gtk3.\" + post_objk_name);\n\n";
+		cxx_buffer += "\t\t\t\t\tconst APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();\n";
+		cxx_buffer += "\t\t\t\t\tsize_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);\n";
+		cxx_buffer += "\t\t\t\t\tif(gobject_obj) {\n";
+		cxx_buffer += "\t\t\t\t\t\tgobject_obj[0] = (size_t)handler;\n\n";
+		cxx_buffer += "\t\t\t\t\t\t// set stack\n";
+		cxx_buffer += "\t\t\t\t\t\top_stack[0] = (size_t)gobject_obj;\n";
+		cxx_buffer += "\t\t\t\t\t\top_stack[1] = (size_t)callback_data;\n";
+		cxx_buffer += "\t\t\t\t\t\t(*stack_pos) = 2;\n\n";
+		cxx_buffer += "\t\t\t\t\t\t// call method\n";
+		cxx_buffer += "\t\t\t\t\t\tconst APITools_MethodCallById_Ptr mthd_call_id = res_manager->GetMethodCallById();\n";
+		cxx_buffer += "\t\t\t\t\t\tmthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);\n";
+		cxx_buffer += "\t\t\t\t\t}\n\n";
+		cxx_buffer += "\t\t\t\t\t// clean up\n";
+		cxx_buffer += "\t\t\t\t\tres_manager->ReleaseOpStackMemory(exec_stack_mem);\n";
+		cxx_buffer += "\t\t\t\t}\n";
+		cxx_buffer += "\t\t\t}\n";
+		cxx_buffer += "\t\t}\n";
+		cxx_buffer += "\t}\n";
 		cxx_buffer += "}\n\n";
 
 		@cxx_out->WriteString(cxx_buffer);
