@@ -979,7 +979,7 @@ namespace backend {
       return aliases_str;
     }
 
-    void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
+    void Write(bool emit_lib, bool is_debug, OutputStream& out_stream);
 
     void Debug() {
 /*
@@ -1015,7 +1015,6 @@ namespace backend {
     std::wstring file_name;
     bool emit_lib;
     bool is_debug;
-    bool is_web;
     bool show_asm;
 
     std::string ReplaceExt(const std::string &org, const std::string &ext) {
@@ -1030,12 +1029,10 @@ namespace backend {
     }
 
   public:
-    FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, bool s, const std::wstring &n) {
+    FileEmitter(IntermediateProgram* p, bool l, bool d, bool s, const std::wstring &n) {
       program = p;
       emit_lib = l;
       is_debug = d;
-      is_web = w;
-      show_asm = s;
       file_name = n;
 
 #ifndef _DEBUG
