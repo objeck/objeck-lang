@@ -33,6 +33,9 @@ apt-get install libgtk-3-dev
 [PoC build script](poc/build_linux.sh)
 
 ### Windows
+Repository contains required headers, libraries and DLLs.
+
+However, to build GTK from source on Windows
 ```
 cd \
 git clone https://github.com/Microsoft/vcpkg
