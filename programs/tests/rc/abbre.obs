@@ -23,7 +23,7 @@ class Abbreviations  {
 				cache->Empty();
 				each(i : days) {
 					day := days[i];
-					cache->Insert(day, IntHolder->New(1));
+					cache->Insert(day, IntRef->New(1));
 				};
 
 				if(cache->Size() < 7) {
@@ -43,9 +43,9 @@ class Abbreviations  {
 							sd := day->SubString(len);
 						};
 
-						count := cache->Find(sd)->As(IntHolder);
+						count := cache->Find(sd)->As(IntRef);
 						if(count = Nil) {
-							cache->Insert(sd, IntHolder->New(1));
+							cache->Insert(sd, IntRef->New(1));
 						}
 						else {
 							count->Inc();

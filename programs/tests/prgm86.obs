@@ -106,13 +106,13 @@ z->PrintLine();
 
 
 			h := Vector->New();
-			h->AddBack(IntHolder->New(2));	
-			h->AddBack(IntHolder->New(4));	
-			h->AddBack(IntHolder->New(8));	
+			h->AddBack(IntRef->New(2));	
+			h->AddBack(IntRef->New(4));	
+			h->AddBack(IntRef->New(8));	
 
 			total := 0;
 			each(i : h) {
-				total += h->Get(i)->As(IntHolder)->Get();
+				total += h->Get(i)->As(IntRef)->Get();
 			};
 			total->PrintLine();
 			

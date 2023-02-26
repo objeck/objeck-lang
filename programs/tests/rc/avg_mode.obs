@@ -3,18 +3,18 @@
 class Mode {
 	function : Main(args : String[]) ~ Nil {
 		in := Vector->New();
-		in->AddBack(IntHolder->New(1)); in->AddBack(IntHolder->New(3));
-		in->AddBack(IntHolder->New(6)); in->AddBack(IntHolder->New(6));
-		in->AddBack(IntHolder->New(6)); in->AddBack(IntHolder->New(6));
-		in->AddBack(IntHolder->New(7)); in->AddBack(IntHolder->New(7));
-		in->AddBack(IntHolder->New(12)); in->AddBack(IntHolder->New(12));
-		in->AddBack(IntHolder->New(17));
+		in->AddBack(IntRef->New(1)); in->AddBack(IntRef->New(3));
+		in->AddBack(IntRef->New(6)); in->AddBack(IntRef->New(6));
+		in->AddBack(IntRef->New(6)); in->AddBack(IntRef->New(6));
+		in->AddBack(IntRef->New(7)); in->AddBack(IntRef->New(7));
+		in->AddBack(IntRef->New(12)); in->AddBack(IntRef->New(12));
+		in->AddBack(IntRef->New(17));
 		Print(Mode(in));
 
 		in := Vector->New();
-		in->AddBack(IntHolder->New(1)); in->AddBack(IntHolder->New(2));
-		in->AddBack(IntHolder->New(4)); in->AddBack(IntHolder->New(4));
-		in->AddBack(IntHolder->New(1));
+		in->AddBack(IntRef->New(1)); in->AddBack(IntRef->New(2));
+		in->AddBack(IntRef->New(4)); in->AddBack(IntRef->New(4));
+		in->AddBack(IntRef->New(1));
 		Print(Mode(in));
 	}
 	
@@ -26,16 +26,16 @@ class Mode {
 		each(i : coll) {
 			value := coll->Get(i)->As(Compare);
 
-			featched := seen->Find(value)->As(IntHolder);
+			featched := seen->Find(value)->As(IntRef);
 			if(featched <> Nil) {
 				seen->Remove(value);
-				seen->Insert(value, IntHolder->New(featched->Get() + 1));
+				seen->Insert(value, IntRef->New(featched->Get() + 1));
 			}
 			else {
-				seen->Insert(value, IntHolder->New(1));
+				seen->Insert(value, IntRef->New(1));
 			};
 
-			featched := seen->Find(value)->As(IntHolder);
+			featched := seen->Find(value)->As(IntRef);
 			if(featched->Get() > max) {
 				max := featched->Get();
 				maxElems->Empty();
@@ -52,7 +52,7 @@ class Mode {
 	function : Print(out : Vector) ~ Nil {
 		'['->Print();
 		each(i : out) {
-			out->Get(i)->As(IntHolder)->Get()->Print();
+			out->Get(i)->As(IntRef)->Get()->Print();
 			if(i + 1 < out->Size()) {
 				", "->Print();
 			};

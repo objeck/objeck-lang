@@ -66,13 +66,13 @@ bundle GTK3 {
 		~#
 		New(application_id : String, flags : GApplicationFlags) {
 			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
+			array_args[0] := IntRef->New();
 			array_args[1] := application_id;
-			array_args[2] := IntHolder->New(flags);
+			array_args[2] := IntRef->New(flags);
 
 			Proxy->GetDllProxy()->CallFunction("application_new", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			@application := value->Get();
 		}
 
@@ -82,7 +82,7 @@ bundle GTK3 {
 		~#
 		method : public : RemoveWindow(window : GtkWindow) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@application);
+			array_args[0] := IntRef->New(@application);
 			array_args[1] := window;
 
 			Proxy->GetDllProxy()->CallFunction("application_remove_window", array_args);
@@ -94,12 +94,12 @@ bundle GTK3 {
 		~#
 		method : public : GetAppMenu() ~ GMenuModel {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@application);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@application);
 
 			Proxy->GetDllProxy()->CallFunction("application_get_app_menu", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			if(value->Get() <> 0) {
 				return GMenuModel->New(value->Get());
 			};
@@ -113,12 +113,12 @@ bundle GTK3 {
 		~#
 		method : public : GetMenubar() ~ GMenuModel {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@application);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@application);
 
 			Proxy->GetDllProxy()->CallFunction("application_get_menubar", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			if(value->Get() <> 0) {
 				return GMenuModel->New(value->Get());
 			};
@@ -138,15 +138,15 @@ bundle GTK3 {
 		~#
 		method : public : Inhibit(window : GtkWindow, flags : GtkApplicationInhibitFlags, reason : String) ~ Int {
 			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@application);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@application);
 			array_args[2] := window;
-			array_args[3] := IntHolder->New(flags);
+			array_args[3] := IntRef->New(flags);
 			array_args[4] := reason;
 
 			Proxy->GetDllProxy()->CallFunction("application_inhibit", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
 
@@ -158,13 +158,13 @@ bundle GTK3 {
  		~#
 		method : public : IsInhibited(flags : GtkApplicationInhibitFlags) ~ Bool {
 			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@application);
-			array_args[2] := IntHolder->New(flags);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@application);
+			array_args[2] := IntRef->New(flags);
 
 			Proxy->GetDllProxy()->CallFunction("application_is_inhibited", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
 
@@ -174,12 +174,12 @@ bundle GTK3 {
 		~#
 		method : public : GetActiveWindow() ~ GtkWindow {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@application);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@application);
 
 			Proxy->GetDllProxy()->CallFunction("application_get_active_window", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			if(value->Get() <> 0) {
 				return GtkWindow->New(value->Get());
 			};
@@ -209,12 +209,12 @@ bundle GTK3 {
  		~#
 		New(type : GtkWindowType) {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(type);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(type);
 
 			Proxy->GetDllProxy()->CallFunction("window_new", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			@window := value->Get();
 		}
 
@@ -225,7 +225,7 @@ bundle GTK3 {
 		method : public : GetTitle() ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
-			array_args[1] := IntHolder->New(@window);
+			array_args[1] := IntRef->New(@window);
 
 			Proxy->GetDllProxy()->CallFunction("window_get_title", array_args);
 
@@ -241,7 +241,7 @@ bundle GTK3 {
 		~#
 		method : public : SetRole(role : String) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@window);
+			array_args[0] := IntRef->New(@window);
 			array_args[1] := role;
 
 			Proxy->GetDllProxy()->CallFunction("window_set_role", array_args);
@@ -255,8 +255,8 @@ bundle GTK3 {
 		~#
 		method : public : GetRole() ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@window);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@window);
 
 			Proxy->GetDllProxy()->CallFunction("window_get_role", array_args);
 
@@ -269,7 +269,7 @@ bundle GTK3 {
 		~#
 		method : public : RemoveAccelGroup(accel_group : GtkAccelGroup) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@window);
+			array_args[0] := IntRef->New(@window);
 			array_args[1] := accel_group;
 
 			Proxy->GetDllProxy()->CallFunction("window_remove_accel_group", array_args);
@@ -277,23 +277,23 @@ bundle GTK3 {
 
 		method : public : ActivateFocus() ~ Bool {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@window);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@window);
 
 			Proxy->GetDllProxy()->CallFunction("window_activate_focus", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
 
 		method : public : GetFocus() ~ GtkWidget {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@window);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@window);
 
 			Proxy->GetDllProxy()->CallFunction("window_get_focus", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			if(value->Get() <> 0) {
 				return GtkWidget->New(value->Get());
 			};
@@ -303,18 +303,18 @@ bundle GTK3 {
 
 		method : public : GetDefaultWidget() ~ GtkWidget {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@window);
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@window);
 
 			Proxy->GetDllProxy()->CallFunction("window_get_default_widget", array_args);
 
-			value := array_args[0]->As(IntHolder);
+			value := array_args[0]->As(IntRef);
 			return GtkWidget->New(value->Get());
 		}
 		
 		method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@window);
+			array_args[0] := IntRef->New(@window);
 			array_args[1] := parent;
 
 			Proxy->GetDllProxy()->CallFunction("window_set_transient_for", array_args);
@@ -322,7 +322,7 @@ bundle GTK3 {
 		
 		method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@window);
+			array_args[0] := IntRef->New(@window);
 			array_args[1] := attach_widget;
 			
 			Proxy->GetDllProxy()->CallFunction("window_set_attached_to", array_args);

@@ -6,13 +6,13 @@ class RecamanSequence {
 	}
 	
 	function : native : GenerateSequence() ~ Nil {
-		a := Vector->New()<IntHolder>;
+		a := Vector->New()<IntRef>;
 		a->AddBack(0);
  		
-		used := Set->New()<IntHolder>;
+		used := Set->New()<IntRef>;
 		used->Insert(0);
 
-		used1000 := Set->New()<IntHolder>;
+		used1000 := Set->New()<IntRef>;
 		used1000->Insert(0);
  
 		foundDup := false;
@@ -45,7 +45,7 @@ class RecamanSequence {
 		};
 	}
 	
-	function : ToString(a : Vector<IntHolder>) ~ String {
+	function : ToString(a : Vector<IntRef>) ~ String {
 		out := "[";
 		each(i : a) {
 			out += a->Get(i)->Get();

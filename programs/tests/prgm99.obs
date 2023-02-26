@@ -2,14 +2,14 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		map := Map->New()<IntHolder, String>;
+		map := Map->New()<IntRef, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
 
 #~
-		vector := Vector->New()<IntHolder>;
+		vector := Vector->New()<IntRef>;
 		vector->AddBack(11);
 		vector->AddBack(13);
 		vector->AddBack(45);

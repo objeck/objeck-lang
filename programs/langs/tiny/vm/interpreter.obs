@@ -21,7 +21,7 @@ class Interpreter {
 	
 	method : native : Run() ~ Nil  {
 		varibles ← Int → New[16];
-		calc_stack ← Stack → New()<IntHolder>;
+		calc_stack ← Stack → New()<IntRef>;
 		
 		pc ← 0;
 		while(pc < @instructions → Size()) {

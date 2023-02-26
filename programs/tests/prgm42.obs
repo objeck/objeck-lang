@@ -14,7 +14,7 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			tree : Map := Map->New();
 			for(i : Int := 0; i < 1000; i := i + 1;) {
-				v : IntHolder := IntHolder->New(i);
+				v : IntRef := IntRef->New(i);
 				s : System.String := System.String->New("Pug-");
 				s->Append((i + 2)->ToString()->ToCharArray());
 				tree->Insert(v->As(System.Compare), s->As(System.Base));
@@ -22,7 +22,7 @@ bundle Default {
 #~
 			v : Vector := tree->GetKeys();
 			for(i : Int := 0; i < v->Size(); i := i + 1;) {
-				h : IntHolder := v->Get(i)->As( Struct.IntHolder);
+				h : IntRef := v->Get(i)->As( Struct.IntRef);
 				h->Get()->PrintLine();
 			};
 

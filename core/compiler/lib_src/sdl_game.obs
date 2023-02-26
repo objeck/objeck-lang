@@ -576,10 +576,10 @@ bundle Game.Framework {
 			@render_rect->SetY(y);
 			
 			if(<>@scaled) {
-				format := IntHolder->New();
-				access := IntHolder->New();
-				width := IntHolder->New();
-				height := IntHolder->New();
+				format := IntRef->New();
+				access := IntRef->New();
+				width := IntRef->New();
+				height := IntRef->New();
 				@texture->Query(format, access, width, height);
 				@render_rect->SetW(width->Get() * @scale);
 				@render_rect->SetH(height->Get() * @scale);
@@ -1245,7 +1245,7 @@ bundle Game.Framework {
 		@return true of intersection, false otherwise
 		~#
 		method : public : IntersectsLine(x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ Bool {
-			return @rect->IntersectAndLine(IntHolder->New(x1), IntHolder->New(y1), IntHolder->New(x2), IntHolder->New(y2));
+			return @rect->IntersectAndLine(IntRef->New(x1), IntRef->New(y1), IntRef->New(x2), IntRef->New(y2));
 		}
 
 		#~

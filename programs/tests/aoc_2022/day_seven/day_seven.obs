@@ -23,7 +23,7 @@ class AoC {
 		};
 	}
 
-	function : PrintTree(command : Command, level : IntHolder) ~ Nil {
+	function : PrintTree(command : Command, level : IntRef) ~ Nil {
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);
@@ -62,7 +62,7 @@ class AoC {
 		};
 	}
 
-	function : TotalDirectories(command : Command, level : IntHolder) ~ Nil {
+	function : TotalDirectories(command : Command, level : IntRef) ~ Nil {
 		if(command->GetType() = Command->Type->CD) {
 			if(command->GetOperand()->Equals("..")) {
 				level->Sub(1);

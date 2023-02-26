@@ -5,9 +5,9 @@ class AoC {
 		if(args->Size() = 1) {
 			stacks_max := 9;
 
-			stacks := CompareList->New[stacks_max]<CharHolder>;
+			stacks := CompareList->New[stacks_max]<CharRef>;
 			each(i : stacks_max) {
-				stacks[i] := CompareList->New()<CharHolder>;
+				stacks[i] := CompareList->New()<CharRef>;
 			};
 			
 			inputs := ReadInput(args[0])<String>;
@@ -15,7 +15,7 @@ class AoC {
 			# process stacks
 			done := false;
 			line_nbr := 0;
-			instrs : Vector<IntArrayHolder>;
+			instrs : Vector<IntArrayRef>;
 			for(; <>done & line_nbr < inputs->Size(); line_nbr += 1;) {
 				input := inputs->Get(line_nbr);
 				if(input->IsEmpty()) {
@@ -98,8 +98,8 @@ class AoC {
 		};
 	}
 
-	function : LoadInstructions(inputs : Vector<String>, line_nbr : Int) ~ Vector<IntArrayHolder> {
-		instrs := Vector->New()<IntArrayHolder>;
+	function : LoadInstructions(inputs : Vector<String>, line_nbr : Int) ~ Vector<IntArrayRef> {
+		instrs := Vector->New()<IntArrayRef>;
 
 		for(; line_nbr < inputs->Size(); line_nbr += 1;) {
 			instr := Int->New[3];
@@ -117,13 +117,13 @@ class AoC {
 					instr[instr_pos++] := str_digit->ToInt() - 1;
 				};
 			};
-			instrs->AddBack(IntArrayHolder->New(instr));
+			instrs->AddBack(IntArrayRef->New(instr));
 		};
 
 		return instrs;
 	}
 
-	function : PrintStackTops(stacks : CompareList[]<CharHolder>) ~ Nil {
+	function : PrintStackTops(stacks : CompareList[]<CharRef>) ~ Nil {
 		each(i : stacks) {
 			stack := stacks[i];
 			if(<>stack->IsEmpty()) {
@@ -133,7 +133,7 @@ class AoC {
 		'\n'->Print();
 	}
 
-	function : PrintStacks(stacks : CompareList[]<CharHolder>) ~ Nil {
+	function : PrintStacks(stacks : CompareList[]<CharRef>) ~ Nil {
 		each(i : stacks) {
 			stack := stacks[i];
 

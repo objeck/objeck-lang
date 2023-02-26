@@ -10,7 +10,7 @@ class Test {
 		strings->Each(\^(s) => s->PrintLine());
 ~#		
 
-		map := Collection.Generic.Map->New()<IntHolder, String>;
+		map := Collection.Generic.Map->New()<IntRef, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");

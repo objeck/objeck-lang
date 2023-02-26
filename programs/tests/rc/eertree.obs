@@ -61,12 +61,12 @@ class Eertree {
 		s := Vector->New()<String>;
 		SubPalindromesChildren(0, "", tree, s);
 
-		keys := tree->Get(1)->GetEdges()->GetKeys()<CharHolder>;
+		keys := tree->Get(1)->GetEdges()->GetKeys()<CharRef>;
 		each(k : keys) {
 			key := keys->Get(k);
 			str := key->Get()->ToString();
 			s->AddBack(str);
-			value := tree->Get(1)->GetEdges()->Find(key)->As(IntHolder)->Get();
+			value := tree->Get(1)->GetEdges()->Find(key)->As(IntRef)->Get();
 			SubPalindromesChildren(value, str, tree, s);
 		};
 
@@ -74,11 +74,11 @@ class Eertree {
 	}
 
 	function : SubPalindromesChildren(n : Int, p : String, tree : Vector<Node>, s : Vector<String>)	~ Nil {
-		keys := tree->Get(n)->GetEdges()->GetKeys()<CharHolder>;
+		keys := tree->Get(n)->GetEdges()->GetKeys()<CharRef>;
 		each(k : keys) {
 			key := keys->Get(k);
 			c := key->Get();
-			value := tree->Get(n)->GetEdges()->Find(key)->As(IntHolder)->Get();
+			value := tree->Get(n)->GetEdges()->Find(key)->As(IntRef)->Get();
 			str := ""; str += c; str += p; str += c;
 			s->AddBack(str);
 			SubPalindromesChildren(value, str, tree, s);
@@ -100,18 +100,18 @@ class Eertree {
 
 class Node {
 	@length : Int;
-	@edges : Map<CharHolder, IntHolder>;
+	@edges : Map<CharRef, IntRef>;
 	@suffix : Int;
 
-	New(length : Int, edges : Map<CharHolder, IntHolder>, suffix : Int) {
+	New(length : Int, edges : Map<CharRef, IntRef>, suffix : Int) {
 		@length := length;
-		@edges := edges <> Nil ? edges : Map->New()<CharHolder, IntHolder>;
+		@edges := edges <> Nil ? edges : Map->New()<CharRef, IntRef>;
 		@suffix := suffix;
 	}
 
 	New(length : Int) {
 		@length := length;
-		@edges := Map->New()<CharHolder, IntHolder>;
+		@edges := Map->New()<CharRef, IntRef>;
 	}
 
 	method : public : GetLength() ~ Int {
@@ -126,7 +126,7 @@ class Node {
 		@suffix := suffix;
 	}
 
-	method : public : GetEdges() ~ Map<CharHolder, IntHolder> {
+	method : public : GetEdges() ~ Map<CharRef, IntRef> {
 		return @edges;
 	}
 }

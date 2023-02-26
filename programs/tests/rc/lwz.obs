@@ -16,7 +16,7 @@ class LZW {
       for (i := 0; i < 256; i+=1;) {
         key := "";
         key->Append(i->As(Char));
-        dictionary->Insert(key, IntHolder->New(i));
+        dictionary->Insert(key, IntRef->New(i));
 		};
 		
     w := "";
@@ -30,10 +30,10 @@ class LZW {
           w := wc;
         }
         else {
-          value := dictionary->Find(w)->As(IntHolder);
+          value := dictionary->Find(w)->As(IntRef);
           result->AddBack(value->Get());
           # Add wc to the dictionary.				
-          dictionary->Insert(wc, IntHolder->New(dictSize));
+          dictionary->Insert(wc, IntRef->New(dictSize));
           dictSize+=1;
           w := "";
           w->Append(c);
@@ -42,7 +42,7 @@ class LZW {
 		
       # Output the code for w.
       if (w->Size() > 0) {
-        value := dictionary->Find(w)->As(IntHolder);
+        value := dictionary->Find(w)->As(IntRef);
         result->AddBack(value->Get());
       };
 		

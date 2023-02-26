@@ -80,14 +80,14 @@ class Scanner {
 	}
 	
 	method : public : native : Scan() ~ Bool {
-		reserved ← Map → New()<String, IntHolder>;
-		reserved → Insert("while", IntHolder → New(Token → Type → WHILE → As(Int)));
-		reserved → Insert("if", IntHolder → New(Token → Type → IF → As(Int)));
-		reserved → Insert("else", IntHolder → New(Token → Type → ELSE → As(Int)));
-		reserved → Insert("print", IntHolder → New(Token → Type → PRINT → As(Int)));
-		reserved → Insert("puti", IntHolder → New(Token → Type → PUTI → As(Int)));
-		reserved → Insert("putc", IntHolder → New(Token → Type → PUTC → As(Int)));
-		reserved → Insert("puts", IntHolder → New(Token → Type → PUTS → As(Int)));
+		reserved ← Map → New()<String, IntRef>;
+		reserved → Insert("while", IntRef → New(Token → Type → WHILE → As(Int)));
+		reserved → Insert("if", IntRef → New(Token → Type → IF → As(Int)));
+		reserved → Insert("else", IntRef → New(Token → Type → ELSE → As(Int)));
+		reserved → Insert("print", IntRef → New(Token → Type → PRINT → As(Int)));
+		reserved → Insert("puti", IntRef → New(Token → Type → PUTI → As(Int)));
+		reserved → Insert("putc", IntRef → New(Token → Type → PUTC → As(Int)));
+		reserved → Insert("puts", IntRef → New(Token → Type → PUTS → As(Int)));
 		
 		reader ← FileReader → New(@file);
 		leaving {
@@ -114,7 +114,7 @@ class Scanner {
 							@index += 1;
 						};
 					
-						token ← reserved → Find(string) → As(IntHolder);
+						token ← reserved → Find(string) → As(IntRef);
 						if(token <> Nil) {
 							type ← token → Get() → As(Token → Type);
 							@tokens → AddBack(Token → New(@line_num, type, string));

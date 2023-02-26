@@ -18,9 +18,9 @@ bundle Query.Structured {
 	~#
 	class Table {
 		@name : String;
-		@keys : Map<IntHolder, Row>;
+		@keys : Map<IntRef, Row>;
 		@column_names : String[];
-		@column_map : Map<String, IntHolder>;
+		@column_map : Map<String, IntRef>;
 		@head : Row;
 		@tail : Row;
 		@count : Int;
@@ -32,8 +32,8 @@ bundle Query.Structured {
 		@param column_names column names
 		~#
 		New(name : String, column_names : String[]) {
-			@column_map := Map->New()<String, IntHolder>;
-			@keys := Map->New()<IntHolder, Row>;
+			@column_map := Map->New()<String, IntRef>;
+			@keys := Map->New()<IntRef, Row>;
 			@name := name;
 
 			@column_names := String->New[column_names->Size() + 1];
@@ -46,8 +46,8 @@ bundle Query.Structured {
 		}
 
 		New(name : String, column_names : Vector<String>) {
-			@column_map := Map->New()<String, IntHolder>;
-			@keys := Map->New()<IntHolder, Row>;
+			@column_map := Map->New()<String, IntRef>;
+			@keys := Map->New()<IntRef, Row>;
 			@name := name;
 			
 			@column_names := String->New[column_names->Size() + 1];
@@ -75,7 +75,7 @@ bundle Query.Structured {
 		method : public : native : GetIndex(name : String) ~ Int {
 			found := @column_map->Find(name);
 			if(found <> Nil) {
-				return found->As(IntHolder)->Get();
+				return found->As(IntRef)->Get();
 			};
 			
 			return -1;
@@ -169,11 +169,11 @@ bundle Query.Structured {
 			while(row1 <> Nil) {
 				value := row1->Get(index);
 				
-				if(value->TypeOf(IntHolder)) {
-					sum += value->As(IntHolder)->Get();
+				if(value->TypeOf(IntRef)) {
+					sum += value->As(IntRef)->Get();
 				}
-				else if(value->TypeOf(FloatHolder)) {
-					sum += value->As(FloatHolder)->Get();
+				else if(value->TypeOf(FloatRef)) {
+					sum += value->As(FloatRef)->Get();
 				};
 				
 				# next
@@ -200,11 +200,11 @@ bundle Query.Structured {
 			while(row1 <> Nil) {
 				value := row1->Get(index);
 				
-				if(value->TypeOf(IntHolder)) {
-					sum += value->As(IntHolder)->Get();
+				if(value->TypeOf(IntRef)) {
+					sum += value->As(IntRef)->Get();
 				}
-				else if(value->TypeOf(FloatHolder)) {
-					sum += value->As(FloatHolder)->Get();
+				else if(value->TypeOf(FloatRef)) {
+					sum += value->As(FloatRef)->Get();
 				};
 				
 				# next
@@ -333,7 +333,7 @@ bundle Query.Structured {
 		@return newly inserted row1
 		~#
 		method : public : native : Insert() ~ Row {
-			pk := IntHolder->New(@count);
+			pk := IntRef->New(@count);
 			values := Compare->New[@column_names->Size()];
 			values[0] := pk;
 			row1 := Row->New(@self, values);
@@ -446,11 +446,11 @@ bundle Query.Structured {
 						if(str_value->Size() > 0 & str_value->Get(0)->IsDigit()) {
 							# float
 							if(str_value->Has('.')) {
-								row1->Set(j + 1, FloatHolder->New(str_value->ToFloat()));
+								row1->Set(j + 1, FloatRef->New(str_value->ToFloat()));
 							}
 							# int
 							else {
-								row1->Set(j + 1, IntHolder->New(str_value->ToInt()));
+								row1->Set(j + 1, IntRef->New(str_value->ToInt()));
 							};
 						}
 						# date
@@ -597,8 +597,8 @@ bundle Query.Structured {
 	class Row {
 		@values : Compare[];
 		@table : Table;
-		@true_token : static : IntHolder;
-		@false_token : static : IntHolder;
+		@true_token : static : IntRef;
+		@false_token : static : IntRef;
 		@next : Row;
 		@prev : Row;
 		
@@ -658,9 +658,9 @@ bundle Query.Structured {
 		Helper for setting 'true' column value
 		@return 'true' value holder
 		~#
-		function : True() ~ IntHolder {
+		function : True() ~ IntRef {
 			if(@true_token = Nil) {
-				@true_token := IntHolder->New(1);
+				@true_token := IntRef->New(1);
 			};
 			
 			return @true_token;
@@ -670,9 +670,9 @@ bundle Query.Structured {
 		Helper for setting 'false' column value
 		@return 'false' value holder
 		~#
-		function : False() ~ IntHolder {
+		function : False() ~ IntRef {
 			if(@false_token = Nil) {
-				@false_token := IntHolder->New(0);
+				@false_token := IntRef->New(0);
 			};
 			
 			return @false_token;
@@ -713,11 +713,11 @@ bundle Query.Structured {
 				value := @values[i];
 				
 				if(value <> Nil) {
-					if(value->TypeOf(IntHolder)) {
-						buffer += value->As(IntHolder)->ToString();
+					if(value->TypeOf(IntRef)) {
+						buffer += value->As(IntRef)->ToString();
 					}
-					else if(value->TypeOf(FloatHolder)) {
-						buffer += value->As(FloatHolder)->ToString();
+					else if(value->TypeOf(FloatRef)) {
+						buffer += value->As(FloatRef)->ToString();
 					}
 					else if(value->TypeOf(Date)) {
 						buffer += value->As(Date)->ToString();
@@ -1686,12 +1686,12 @@ bundle Query.Structured {
 		
 		New(value : Float) {
 			@type := Type->FLOAT;
-			@value := FloatHolder->New(value);
+			@value := FloatRef->New(value);
 		}
 
 		New(value : Int) {
 			@type := Type->INT;
-			@value := IntHolder->New(value);
+			@value := IntRef->New(value);
 		}
 		
 		method : public : GetType() ~ Type {
@@ -1802,12 +1802,12 @@ bundle Query.Structured {
 
 				label Type->INT: {
 					buffer += "INT, value=";
-					buffer += @value->As(IntHolder)->Get();
+					buffer += @value->As(IntRef)->Get();
 				}
 
 				label Type->FLOAT: {
 					buffer += "FLOAT, value=";
-					f := @value->As(FloatHolder);
+					f := @value->As(FloatRef);
 					buffer += f->Get();
 				}
 

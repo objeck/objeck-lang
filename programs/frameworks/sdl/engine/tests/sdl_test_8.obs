@@ -7,8 +7,8 @@ class Demo {
 	@quit : Bool;
 
 	@mouse_pos : Vector2;
-	@x_pos : IntHolder;
-	@y_pos : IntHolder;
+	@x_pos : IntRef;
+	@y_pos : IntRef;
 
 	@follower : ImageSprite;
 	@follower_vel : Vector2;
@@ -29,8 +29,8 @@ class Demo {
 		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
 
 		@mouse_pos := Vector2->New();
-		@x_pos := IntHolder->New();
-		@y_pos := IntHolder->New();
+		@x_pos := IntRef->New();
+		@y_pos := IntRef->New();
 	}
 
 	method : Run() ~ Nil {

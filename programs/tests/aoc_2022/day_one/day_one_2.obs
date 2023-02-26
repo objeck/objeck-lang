@@ -1,7 +1,7 @@
 class AoC {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			elves_total_calories := Collection.Generic.CompareVector->New()<IntHolder>;
+			elves_total_calories := Collection.Generic.CompareVector->New()<IntRef>;
 
 			elf_total_calories := 0;
 			reader := System.IO.Filesystem.FileReader->New(args[0]);

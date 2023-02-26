@@ -2,16 +2,16 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := CreateHolders(["Here", "are", "some", "sample", "strings", "to", "be", "sorted"]);
+		v := CreateRefs(["Here", "are", "some", "sample", "strings", "to", "be", "sorted"]);
 		"unsorted: "->Print(); Show(v);
 		v->Sort();
 		"sorted: "->Print(); Show(v);
 	}
 	
-	function : CreateHolders(strings : String[]) ~ CompareVector {
+	function : CreateRefs(strings : String[]) ~ CompareVector {
 		vector := CompareVector->New();
 		each(i : strings) {
-			vector->AddBack(StringHolder->New(strings[i]));
+			vector->AddBack(StringRef->New(strings[i]));
 		};
 		
 		return vector;
@@ -19,7 +19,7 @@ class Test {
 	
 	function : Show(v : CompareVector) ~ Nil {
 		each(i : v) {
-			s := v->Get(i)->As(StringHolder);
+			s := v->Get(i)->As(StringRef);
 			s->ToString()->Print();
 			if(i + 1 < v->Size()) {
 				','->Print();
@@ -29,7 +29,7 @@ class Test {
 	}
 }
 
-class StringHolder implements Compare {
+class StringRef implements Compare {
 	@s : String;
 	
 	New(s : String) {
@@ -37,7 +37,7 @@ class StringHolder implements Compare {
 	}
 	
 	method : public : Compare(c : Compare) ~ Int {
-		h := c->As(StringHolder);
+		h := c->As(StringRef);
 		r := h->ToString();
 		size := r->Size() - @s->Size();
 		if(size = 0) {

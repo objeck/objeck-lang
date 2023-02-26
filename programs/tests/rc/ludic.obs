@@ -10,8 +10,8 @@ class Ludic  {
 		Show("Triplets up to 250: ", GetTriplets(LudicUpTo(250)));
 	}
 	
-	function : LudicUpTo(n : Int) ~ CompareVector<IntHolder> {
-		ludics := CompareVector->New()<IntHolder>;
+	function : LudicUpTo(n : Int) ~ CompareVector<IntRef> {
+		ludics := CompareVector->New()<IntRef>;
 		for(i := 1; i <= n; i++;){
 			ludics->AddBack(i);
 		};
@@ -28,13 +28,13 @@ class Ludic  {
 		return ludics;
 	}
 
-	function : GetTriplets(ludics : CompareVector<IntHolder>) ~ Vector<CompareVector<IntHolder> > {
-		triplets := Vector->New()<CompareVector<IntHolder> >;
+	function : GetTriplets(ludics : CompareVector<IntRef>) ~ Vector<CompareVector<IntRef> > {
+		triplets := Vector->New()<CompareVector<IntRef> >;
 
 		for(i := 0; i < ludics->Size() - 2; i++;){
 			thisLudic := ludics->Get(i);
 			if(ludics->Has(thisLudic + 2) & ludics->Has(thisLudic + 6)){
-				triplet := CompareVector->New()<IntHolder>;
+				triplet := CompareVector->New()<IntRef>;
 				triplet->AddBack(thisLudic);
 				triplet->AddBack(thisLudic + 2);
 				triplet->AddBack(thisLudic + 6);
@@ -45,7 +45,7 @@ class Ludic  {
 		return triplets;
 	}
 
-	function : Show(title : String, ludics : CompareVector<IntHolder>, start : Int, end : Int) ~ Nil {
+	function : Show(title : String, ludics : CompareVector<IntRef>, start : Int, end : Int) ~ Nil {
 		title->Print();
 		'['->Print();
 		for(i := start; i < end; i +=1;) {
@@ -57,7 +57,7 @@ class Ludic  {
 		']'->PrintLine();
 	}
 
-	function : Show(title : String, triplets : Vector<CompareVector<IntHolder> >) ~ Nil {
+	function : Show(title : String, triplets : Vector<CompareVector<IntRef> >) ~ Nil {
 		title->PrintLine();
 		each(i : triplets) {
 			triplet := triplets->Get(i);
