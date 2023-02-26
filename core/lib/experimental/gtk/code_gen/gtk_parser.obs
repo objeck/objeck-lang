@@ -531,12 +531,18 @@ class GtkTestRunner {
 							ctype_xml := type_xml->GetAttribute("type");
 							if(ctype_xml <> Nil) {
 								c_type_name := ctype_xml->GetValue();
-								cxx_buffer += "\n\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
-								cxx_buffer += "\t\t{$c_type_name} p{$index} = ({$c_type_name})p{$index}_obj[0];\n";
 
-								if(i + 1 < params_xml->Size()) {
-									cxx_buffer += "\n";
+								if(@consts_set->Has(type_name)) {
+									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$type_name})->As(Int);\n";
 								}
+								else {
+									cxx_buffer += "\n\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
+									cxx_buffer += "\t\t{$c_type_name} p{$index} = ({$c_type_name})p{$index}_obj[0];\n";
+
+									if(i + 1 < params_xml->Size()) {
+										cxx_buffer += "\n";
+									}
+								};
 							};
 						};
 					};
