@@ -1,5 +1,7 @@
 @echo off
 
+del *.obe
+
 obc -src gtk_parser.obs -lib xml
 
 if [%1] NEQ [] (
