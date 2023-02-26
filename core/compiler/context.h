@@ -563,11 +563,11 @@ class ContextAnalyzer {
     type_map[L"String"] = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
 
     // type holders
-    holder_types.insert(L"System.BoolHolder");
-    holder_types.insert(L"System.ByteHolder");
-    holder_types.insert(L"System.CharHolder");
-    holder_types.insert(L"System.IntHolder");
-    holder_types.insert(L"System.FloatHolder");
+    holder_types.insert(L"System.BoolRef");
+    holder_types.insert(L"System.ByteRef");
+    holder_types.insert(L"System.CharRef");
+    holder_types.insert(L"System.IntRef");
+    holder_types.insert(L"System.FloatRef");
 
     capture_method = nullptr;
     capture_table = nullptr;

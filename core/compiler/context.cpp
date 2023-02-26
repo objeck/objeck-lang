@@ -4633,7 +4633,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
       }
       else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) || ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
         const std::wstring cls_name = cls_type->GetName();
-        if(cls_name != L"System.ByteHolder" && cls_name != L"System.CharHolder" && cls_name != L"System.IntHolder") {
+        if(cls_name != L"System.ByteRef" && cls_name != L"System.CharRef" && cls_name != L"System.IntRef") {
           ProcessError(expression, L"Invalid mathematical operation");
         }
       }
@@ -5089,7 +5089,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
         
-        if(left->GetName() == L"System.FloatHolder" || right->GetName() == L"System.FloatHolder") {
+        if(left->GetName() == L"System.FloatRef" || right->GetName() == L"System.FloatRef") {
           expression->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
         }
         else {
