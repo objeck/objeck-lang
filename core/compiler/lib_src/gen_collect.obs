@@ -8,7 +8,7 @@
 ~~#
 
 #~
-Generic collections (-lib gen_collect)
+Collection collections (-lib gen_collect)
 ~#	
 bundle Collection {
 	#~
@@ -173,7 +173,7 @@ bundle Collection {
 	}
 	
 	#~
-	Generic pair
+	Collection pair
 	~#
 	class Pair<F : Compare, S> implements System.Compare  {
 		@first : F;
