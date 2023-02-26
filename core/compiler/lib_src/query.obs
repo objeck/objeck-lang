@@ -3,7 +3,7 @@ Single table in-memory database
 Copyright (c) 2017-2020 Randy Hollines
 ~~#
 
-use Collection.Generic;
+use Collection;
 use System.Time;
 use Query.RegEx;
 use System.IO.Filesystem;

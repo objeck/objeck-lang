@@ -3,7 +3,7 @@ compile: obc -src serial_14.obs
 run: obr serial_14.obe (write|read)
 ~#
 
-use Collection.Generic;
+use Collection;
 use System.IO;
 use System.IO.Filesystem;
 

@@ -1,13 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := Collection.Generic.Vector->New()<Collection.Generic.Pair<String, IntRef>>;
-		a->AddBack(Collection.Generic.Pair->New("a", 1)<String, IntRef>);
-		a->AddBack(Collection.Generic.Pair->New("b", 2)<String, IntRef>);
+		a := Collection.Vector->New()<Collection.Pair<String, IntRef>>;
+		a->AddBack(Collection.Pair->New("a", 1)<String, IntRef>);
+		a->AddBack(Collection.Pair->New("b", 2)<String, IntRef>);
 		Foo(a, "a");
 		"---"->PrintLine();
 
-		c := Collection.Generic.Vector->New()<Collection.Generic.Pair<String, IntRef>>;
-		c->AddBack(Collection.Generic.Pair->New("c", 3)<String, IntRef>);
+		c := Collection.Vector->New()<Collection.Pair<String, IntRef>>;
+		c->AddBack(Collection.Pair->New("c", 3)<String, IntRef>);
 		Foo(a, "ac", c);
 		"---"->PrintLine();
 		
@@ -15,18 +15,18 @@ class Test {
 		"---"->PrintLine();
 	}
 
-	function : Foo(a : Collection.Generic.Vector<Collection.Generic.Pair<String, IntRef>>, b : String) ~ Nil {
+	function : Foo(a : Collection.Vector<Collection.Pair<String, IntRef>>, b : String) ~ Nil {
 		a->Size()->PrintLine();
 		b->PrintLine();
 	}
 
-	function : Foo(a : Collection.Generic.Vector<Collection.Generic.Pair<String, IntRef>>, b : String, c : Collection.Generic.Vector<Collection.Generic.Pair<String, IntRef>>) ~ Nil {
+	function : Foo(a : Collection.Vector<Collection.Pair<String, IntRef>>, b : String, c : Collection.Vector<Collection.Pair<String, IntRef>>) ~ Nil {
 		a->Size()->PrintLine();
 		b->PrintLine();
 		c->Size()->PrintLine();
 	}
 
-	function : Bar(a : Collection.Generic.Vector<Collection.Generic.Pair<String, IntRef>>) ~ Nil {
+	function : Bar(a : Collection.Vector<Collection.Pair<String, IntRef>>) ~ Nil {
 		each(i : 3) {
 			a->Size()->PrintLine();
 		}

@@ -10,7 +10,7 @@
 #~
 Generic collections (-lib gen_collect)
 ~#	
-bundle Collection.Generic {
+bundle Collection {
 	#~
 	Object MRU/LRU cache
 	~#
@@ -2334,7 +2334,7 @@ bundle Collection.Generic {
 			@size := 0;	
 		}		
 
-		method : native : Skew(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+		method : native : Skew(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node = Nil | node->GetLeft() = Nil) {
 				return node;
 			};
@@ -2374,7 +2374,7 @@ bundle Collection.Generic {
 			@size := 0;
 		}
 		
-		method : native : Split(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+		method : native : Split(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node = Nil | node->GetRight() = Nil | 
 					node->GetRight()->GetRight() = Nil) {
 				return node;
@@ -2428,7 +2428,7 @@ bundle Collection.Generic {
 			return Find(key, @root) <> Nil;
 		}
 		
-		method : Find(key : K, node : Collection.Generic.TreeNode<K, V>) ~ V {
+		method : Find(key : K, node : Collection.TreeNode<K, V>) ~ V {
 			if(node <> Nil) {
 				if(key->Compare(node->GetKey()) < 0) {
 					return Find(key, node->GetLeft());
@@ -2453,7 +2453,7 @@ bundle Collection.Generic {
 			return @self;
 		}
 
-		method : Each(node : Collection.Generic.TreeNode<K, V>, f : (K, V) ~ Nil) ~ Nil {
+		method : Each(node : Collection.TreeNode<K, V>, f : (K, V) ~ Nil) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				Each(node->GetLeft(), f);
@@ -2471,13 +2471,13 @@ bundle Collection.Generic {
 		Get a collection of keys
 		@return vector of keys
 		~#
-		method : public : GetKeys() ~  Collection.Generic.Vector<K> {
+		method : public : GetKeys() ~  Collection.Vector<K> {
 			vector := Vector->New()<K>;
 			GetKeys(@root, vector);
 			return vector;
 		}
 
-		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
+		method : GetKeys(node : Collection.TreeNode<K, V>, vector : Collection.Vector<K>) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetKeys(node->GetLeft(), vector);
@@ -2494,13 +2494,13 @@ bundle Collection.Generic {
 		Get a collection of keys
 		@return vector of keys
 		~#
-		method : public : GetKeyValues() ~  Collection.Generic.Vector<Pair<K,V>> {
+		method : public : GetKeyValues() ~  Collection.Vector<Pair<K,V>> {
 			vector := Vector->New()<Pair<K,V>>;
 			GetKeyValues(@root, vector);
 			return vector;
 		}
 
-		method : GetKeyValues(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<Pair<K,V>>) ~ Nil {
+		method : GetKeyValues(node : Collection.TreeNode<K, V>, vector : Collection.Vector<Pair<K,V>>) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetKeyValues(node->GetLeft(), vector);
@@ -2519,13 +2519,13 @@ bundle Collection.Generic {
 		Gets a collection of values
 		@return vector of values
 		~#
-		method : public : GetValues() ~  Collection.Generic.Vector<V> {
+		method : public : GetValues() ~  Collection.Vector<V> {
 			vector := Vector->New()<V>;
 			GetValues(@root, vector);
 			return vector;
 		}
 
-		method : GetValues(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<V>) ~ Nil {
+		method : GetValues(node : Collection.TreeNode<K, V>, vector : Collection.Vector<V>) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetValues(node->GetLeft(), vector);
@@ -2545,14 +2545,14 @@ bundle Collection.Generic {
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
 			if(@root = Nil) {
-				@root := Insert(key, value, Nil->As(Collection.Generic.TreeNode<K, V>));
+				@root := Insert(key, value, Nil->As(Collection.TreeNode<K, V>));
 			}
 			else {
 				@root := Insert(key, value, @root);
 			};
 		}
 		
-		method : Insert(key : K, value : V, node : Collection.Generic.TreeNode<K, V>) ~  Collection.Generic.TreeNode<K, V> {
+		method : Insert(key : K, value : V, node : Collection.TreeNode<K, V>) ~  Collection.TreeNode<K, V> {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1)<K, V>;
 				@size += 1;
@@ -2595,7 +2595,7 @@ bundle Collection.Generic {
 			return true;
 		}
 		
-		method : native : Remove(key : K, node : Collection.Generic.TreeNode<K, V>) ~  Collection.Generic.TreeNode<K, V> {
+		method : native : Remove(key : K, node : Collection.TreeNode<K, V>) ~  Collection.TreeNode<K, V> {
 			if(node = Nil) {
 				return Nil;
 			};
@@ -2636,7 +2636,7 @@ bundle Collection.Generic {
 			return node;
 		}
 		
-		method : Predecessor(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+		method : Predecessor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode<K, V> := node->GetLeft();
 				while(left->GetLeft() <> Nil) {
@@ -2649,7 +2649,7 @@ bundle Collection.Generic {
 			return node;
 		}
 
-		method : Successor(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+		method : Successor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode<K, V> := node->GetRight();
 				while(right->GetRight() <> Nil) {
@@ -2662,7 +2662,7 @@ bundle Collection.Generic {
 			return node;
 		}
 
-		 method : DecreaseLevel(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+		 method : DecreaseLevel(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
 				left : Int := node->GetLeft()->GetLevel();
 				right : Int := node->GetRight()->GetLevel();

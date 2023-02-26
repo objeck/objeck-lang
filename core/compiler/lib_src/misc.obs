@@ -1,5 +1,5 @@
 use System.Time;
-use Collection.Generic;
+use Collection;
 
 #~
 Provides support for conversions (-lib misc)

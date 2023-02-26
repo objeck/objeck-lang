@@ -130,7 +130,7 @@ class AoC {
 		return down_count * right_count * up_count * left_count;
 	}
 
-	method : MakeForest(inputs : Collection.Generic.Vector<String>) ~ Bool {
+	method : MakeForest(inputs : Collection.Vector<String>) ~ Bool {
 		if(<>inputs->IsEmpty()) {
 			row := inputs->Get(0);
 			if(row->Size() = inputs->Size()) {
@@ -150,8 +150,8 @@ class AoC {
 		return false;
 	}
 
-	function : ReadInput(file : String) ~ Collection.Generic.Vector<String> {
-		inputs := Collection.Generic.Vector->New()<String>;
+	function : ReadInput(file : String) ~ Collection.Vector<String> {
+		inputs := Collection.Vector->New()<String>;
 
 		reader := System.IO.Filesystem.FileReader->New(file);
 		leaving {

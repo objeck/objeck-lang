@@ -2,7 +2,7 @@
 # CSV library
 # Copyright (c) 2016-2020 Randy Hollines
 ~~#
-use Collection.Generic;
+use Collection;
 
 #~
 Process and perform calculations on CSV files (-lib csv.obl)

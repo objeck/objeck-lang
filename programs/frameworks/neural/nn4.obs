@@ -6,7 +6,7 @@ Make Your Own Neural Network
 use System.IO.Filesystem;
 use System.Matrix;
 use System.Time;
-use Collection.Generic;
+use Collection;
 
 class NeuralNetwork {
 	@input_nodes : Float;

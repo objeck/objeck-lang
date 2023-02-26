@@ -4,7 +4,7 @@
 # Music: Hustler's Ambition
 ~~#
 
-use Collection.Generic;
+use Collection;
 
 #~
 Support for parsing JSON strings and documents (-lib json.obl)

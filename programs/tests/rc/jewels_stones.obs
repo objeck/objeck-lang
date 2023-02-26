@@ -1,4 +1,4 @@
-use Collection.Generic;
+use Collection;
 
 class JewelsStones {
 	function : Main(args : String[]) ~ Nil {

@@ -4,7 +4,7 @@
 # Copyright (c) 2014-2020 Randy Hollines
 ~~#
 
-use Collection.Generic;
+use Collection;
 
 #~
 Regular expression engine (-lib regex.obl)

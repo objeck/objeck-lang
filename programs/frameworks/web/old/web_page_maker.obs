@@ -60,7 +60,7 @@ class PageMaker {
 	}
 
 	method : PrintStart() ~ Nil {
-		@html_buffer += "Collection.Generic;\r\nWeb.HTTP.Server;\r\n\r\nclass FastCgiModule {\r\n\tmethod : ProcessGet(request : Request, response : Response) ~ Nil {";
+		@html_buffer += "Collection;\r\nWeb.HTTP.Server;\r\n\r\nclass FastCgiModule {\r\n\tmethod : ProcessGet(request : Request, response : Response) ~ Nil {";
 		@html_buffer->Print();
 		@html_buffer := "";
 	}
