@@ -62,6 +62,7 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
   * Database access
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
+  * GTK Windowing support [(work-in-progress)](core/lib/experimental/gtk)
 
 ## Component Model
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
