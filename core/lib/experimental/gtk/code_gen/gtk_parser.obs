@@ -169,7 +169,7 @@ class GtkTestRunner {
 
 	method : WriteClass(class_name : String, class_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ String {
 		if(@debug) {
-			"\n[class/record: name='{$class_name}']"->PrintLine();
+			"###\n[class/record: name='{$class_name}']"->PrintLine();
 		};
 
 		cxx_buffer += "\n\t//\n"
