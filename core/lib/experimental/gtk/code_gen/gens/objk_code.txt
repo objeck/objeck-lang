@@ -667,6 +667,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := edge;
+			array_args[2] := IntRef->New(edge)->As(Int));
 			array_args[3] := IntRef->New(button);
 			array_args[4] := IntRef->New(root_x);
 			array_args[5] := IntRef->New(root_y);
@@ -681,6 +682,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := edge;
+			array_args[2] := IntRef->New(edge)->As(Int));
 			array_args[3] := device;
 			array_args[4] := IntRef->New(button);
 			array_args[5] := IntRef->New(root_x);
@@ -911,6 +913,7 @@ bundle GTK3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := decorations;
+			array_args[2] := IntRef->New(decorations)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_decorations", array_args);
 	
@@ -953,6 +956,7 @@ bundle GTK3 {
 			array_args[3] := IntRef->New(x);
 			array_args[4] := IntRef->New(y);
 			array_args[5] := mask;
+			array_args[5] := IntRef->New(mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position", array_args);
 	
@@ -969,6 +973,7 @@ bundle GTK3 {
 			array_args[3] := FloatRef->New(x);
 			array_args[4] := FloatRef->New(y);
 			array_args[5] := mask;
+			array_args[5] := IntRef->New(mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position_double", array_args);
 	
@@ -1190,6 +1195,7 @@ bundle GTK3 {
 			array_args[2] := IntRef->New(x);
 			array_args[3] := IntRef->New(y);
 			array_args[4] := mask;
+			array_args[4] := IntRef->New(mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_pointer", array_args);
 	
@@ -1262,6 +1268,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := source;
+			array_args[2] := IntRef->New(source)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_source_events", array_args);
 	
@@ -1531,8 +1538,11 @@ bundle GTK3 {
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := rect;
 			array_args[3] := rect_anchor;
+			array_args[3] := IntRef->New(rect_anchor)->As(Int));
 			array_args[4] := window_anchor;
+			array_args[4] := IntRef->New(window_anchor)->As(Int));
 			array_args[5] := anchor_hints;
+			array_args[5] := IntRef->New(anchor_hints)->As(Int));
 			array_args[6] := IntRef->New(rect_anchor_dx);
 			array_args[7] := IntRef->New(rect_anchor_dy);
 	
@@ -1697,6 +1707,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := decorations;
+			array_args[2] := IntRef->New(decorations)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_decorations", array_args);
 		}
@@ -1719,6 +1730,7 @@ bundle GTK3 {
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
 			array_args[3] := event_mask;
+			array_args[3] := IntRef->New(event_mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_device_events", array_args);
 		}
@@ -1739,6 +1751,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := event_mask;
+			array_args[2] := IntRef->New(event_mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_events", array_args);
 		}
@@ -1759,6 +1772,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := mode;
+			array_args[2] := IntRef->New(mode)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_fullscreen_mode", array_args);
 		}
@@ -1769,6 +1783,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := functions;
+			array_args[2] := IntRef->New(functions)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_functions", array_args);
 		}
@@ -1780,6 +1795,7 @@ bundle GTK3 {
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := geometry;
 			array_args[3] := geom_mask;
+			array_args[3] := IntRef->New(geom_mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_geometry_hints", array_args);
 		}
@@ -1921,7 +1937,9 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := source;
+			array_args[2] := IntRef->New(source)->As(Int));
 			array_args[3] := event_mask;
+			array_args[3] := IntRef->New(event_mask)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_source_events", array_args);
 		}
@@ -1983,6 +2001,7 @@ bundle GTK3 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := hint;
+			array_args[2] := IntRef->New(hint)->As(Int));
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_type_hint", array_args);
 		}
