@@ -544,6 +544,7 @@ bundle GTK3 {
 
     method : public : CreateGlContext() ~ GLContext {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -610,6 +611,7 @@ bundle GTK3 {
 
     method : public : EnsureNative() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -686,6 +688,7 @@ bundle GTK3 {
 
     method : public : GetAcceptFocus() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -697,6 +700,7 @@ bundle GTK3 {
 
     method : public : GetComposited() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -708,6 +712,7 @@ bundle GTK3 {
 
     method : public : GetCursor() ~ Cursor {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -719,6 +724,7 @@ bundle GTK3 {
 
     method : public : GetDecorations(decorations : WMDecoration) ~ Bool {
       array_args := Base->New[3];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := decorations;
@@ -731,6 +737,7 @@ bundle GTK3 {
 
     method : public : GetDeviceCursor(device : Device) ~ Cursor {
       array_args := Base->New[3];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := device;
@@ -743,6 +750,7 @@ bundle GTK3 {
 
     method : public : GetDeviceEvents(device : Device) ~ EventMask {
       array_args := Base->New[3];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := device;
@@ -755,6 +763,7 @@ bundle GTK3 {
 
     method : public : GetDevicePosition(device : Device, x : Int, y : Int, mask : ModifierType) ~ Window {
       array_args := Base->New[6];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := device;
@@ -770,6 +779,7 @@ bundle GTK3 {
 
     method : public : GetDevicePositionDouble(device : Device, x : Float, y : Float, mask : ModifierType) ~ Window {
       array_args := Base->New[6];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := device;
@@ -785,6 +795,7 @@ bundle GTK3 {
 
     method : public : GetDisplay() ~ Display {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -796,6 +807,7 @@ bundle GTK3 {
 
     method : public : GetDragProtocol(target : Window) ~ DragProtocol {
       array_args := Base->New[3];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := target;
@@ -808,6 +820,7 @@ bundle GTK3 {
 
     method : public : GetEffectiveParent() ~ Window {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -819,6 +832,7 @@ bundle GTK3 {
 
     method : public : GetEffectiveToplevel() ~ Window {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -830,6 +844,7 @@ bundle GTK3 {
 
     method : public : GetEventCompression() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -841,6 +856,7 @@ bundle GTK3 {
 
     method : public : GetEvents() ~ EventMask {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -852,6 +868,7 @@ bundle GTK3 {
 
     method : public : GetFocusOnMap() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -863,6 +880,7 @@ bundle GTK3 {
 
     method : public : GetFrameClock() ~ FrameClock {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -884,6 +902,7 @@ bundle GTK3 {
 
     method : public : GetFullscreenMode() ~ FullscreenMode {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -908,6 +927,7 @@ bundle GTK3 {
 
     method : public : GetGroup() ~ Window {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -919,6 +939,7 @@ bundle GTK3 {
 
     method : public : GetHeight() ~ int {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -930,6 +951,7 @@ bundle GTK3 {
 
     method : public : GetModalHint() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -941,6 +963,7 @@ bundle GTK3 {
 
     method : public : GetOrigin(x : Int, y : Int) ~ Int {
       array_args := Base->New[4];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := IntRef->New(x);
@@ -954,6 +977,7 @@ bundle GTK3 {
 
     method : public : GetParent() ~ Window {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -965,6 +989,7 @@ bundle GTK3 {
 
     method : public : GetPassThrough() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -976,6 +1001,7 @@ bundle GTK3 {
 
     method : public : GetPointer(x : Int, y : Int, mask : ModifierType) ~ Window {
       array_args := Base->New[5];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := IntRef->New(x);
@@ -1025,6 +1051,7 @@ bundle GTK3 {
 
     method : public : GetScaleFactor() ~ Int {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1036,6 +1063,7 @@ bundle GTK3 {
 
     method : public : GetScreen() ~ Screen {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1047,6 +1075,7 @@ bundle GTK3 {
 
     method : public : GetSourceEvents(source : InputSource) ~ EventMask {
       array_args := Base->New[3];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := source;
@@ -1059,6 +1088,7 @@ bundle GTK3 {
 
     method : public : GetState() ~ WindowState {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1070,6 +1100,7 @@ bundle GTK3 {
 
     method : public : GetSupportMultidevice() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1081,6 +1112,7 @@ bundle GTK3 {
 
     method : public : GetToplevel() ~ Window {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1092,6 +1124,7 @@ bundle GTK3 {
 
     method : public : GetTypeHint() ~ WindowTypeHint {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1113,6 +1146,7 @@ bundle GTK3 {
 
     method : public : GetVisual() ~ Visual {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1124,6 +1158,7 @@ bundle GTK3 {
 
     method : public : GetWidth() ~ int {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1135,6 +1170,7 @@ bundle GTK3 {
 
     method : public : GetWindowType() ~ WindowType {
       array_args := Base->New[2];
+
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
 
@@ -1146,6 +1182,7 @@ bundle GTK3 {
 
     method : public : HasNative() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1186,6 +1223,7 @@ bundle GTK3 {
 
     method : public : IsDestroyed() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1197,6 +1235,7 @@ bundle GTK3 {
 
     method : public : IsInputOnly() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1208,6 +1247,7 @@ bundle GTK3 {
 
     method : public : IsShaped() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1219,6 +1259,7 @@ bundle GTK3 {
 
     method : public : IsViewable() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1230,6 +1271,7 @@ bundle GTK3 {
 
     method : public : IsVisible() ~ Bool {
       array_args := Base->New[2];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
 
@@ -1712,6 +1754,7 @@ bundle GTK3 {
 
     method : public : SetStaticGravities(use_static : Bool) ~ Bool {
       array_args := Base->New[3];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := IntRef->New(use_static = 0 ? 0 : 1);
@@ -1791,6 +1834,7 @@ bundle GTK3 {
 
     method : public : ShowWindowMenu(event : Event) ~ Bool {
       array_args := Base->New[3];
+
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
       array_args[2] := event;

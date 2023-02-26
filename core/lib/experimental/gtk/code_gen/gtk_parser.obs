@@ -250,7 +250,7 @@ class GtkTestRunner {
 			}
 			else {
 				objk_buffer += "\n      value := array_args[0]->As(IntRef);\n";
-				objk_buffer += "      return {$type}->New(value);\n";
+				objk_buffer += "      return {$type}->New(value->Get());\n";
 			};
 			objk_buffer += "    }\n\n";
 
@@ -337,7 +337,7 @@ class GtkTestRunner {
 					cxx_params_buffer += "      const auto status = {$identifier_name}(p1";
 				};
 				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
-				
+
 				for(i := 1; i < cxx_params_count; i += 1;) {
 					if(i <= cxx_params_count) {
 						cxx_params_buffer += ", ";
@@ -539,13 +539,13 @@ class GtkTestRunner {
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int") | type_name->Equals("Bool")) {
-					objk_buffer += "      array_args[0] := IntRef->New();\n";
+					objk_buffer += "\n      array_args[0] := IntRef->New();\n";
 				}
 				else if(type_name->Equals("Float")) {
-					objk_buffer += "      array_args[0] := FloatRef->New();\n";
+					objk_buffer += "\n      array_args[0] := FloatRef->New();\n";
 				}
 				else {
-					objk_buffer += "      array_args[0] := Nil;\n";
+					objk_buffer += "\n      array_args[0] := Nil;\n";
 				};
 			};
 		};
