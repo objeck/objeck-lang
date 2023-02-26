@@ -23,7 +23,7 @@
         - Prototype
         - Script
         - Optimize
-* [PoC](poc) mostly done. Need to test on Linux, macOS and MSYS2 targets (will need a [beer](https://belgianfamilybrewers.be/belgian-beers/delirium-nocturnum/))
+* Basic [PoC](poc) done. Tested on Linux and Windows, macOS is next.
 * Coding binding PoC done, validated however generated code will need to implemented per PoC
 
 ## Targets
