@@ -721,7 +721,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := decorations;
+      array_args[2] := decorations;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_decorations", array_args);
 
@@ -733,7 +733,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := device;
+      array_args[2] := device;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_cursor", array_args);
 
@@ -745,7 +745,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := device;
+      array_args[2] := device;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_events", array_args);
 
@@ -757,10 +757,10 @@ bundle GTK3 {
       array_args := Base->New[6];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := device;
-      array_args[4] := IntRef->New(x);
-      array_args[5] := IntRef->New(y);
-      array_args[6] := mask;
+      array_args[2] := device;
+      array_args[3] := IntRef->New(x);
+      array_args[4] := IntRef->New(y);
+      array_args[5] := mask;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position", array_args);
 
@@ -772,10 +772,10 @@ bundle GTK3 {
       array_args := Base->New[6];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := device;
-      array_args[4] := FloatRef->New(x);
-      array_args[5] := FloatRef->New(y);
-      array_args[6] := mask;
+      array_args[2] := device;
+      array_args[3] := FloatRef->New(x);
+      array_args[4] := FloatRef->New(y);
+      array_args[5] := mask;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position_double", array_args);
 
@@ -798,7 +798,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := target;
+      array_args[2] := target;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_drag_protocol", array_args);
 
@@ -943,8 +943,8 @@ bundle GTK3 {
       array_args := Base->New[4];
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := IntRef->New(x);
-      array_args[4] := IntRef->New(y);
+      array_args[2] := IntRef->New(x);
+      array_args[3] := IntRef->New(y);
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_origin", array_args);
 
@@ -978,9 +978,9 @@ bundle GTK3 {
       array_args := Base->New[5];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := IntRef->New(x);
-      array_args[4] := IntRef->New(y);
-      array_args[5] := mask;
+      array_args[2] := IntRef->New(x);
+      array_args[3] := IntRef->New(y);
+      array_args[4] := mask;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_pointer", array_args);
 
@@ -1049,7 +1049,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := Nil;
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := source;
+      array_args[2] := source;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_source_events", array_args);
 
@@ -1714,7 +1714,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := IntRef->New(use_static = 0 ? 0 : 1);
+      array_args[2] := IntRef->New(use_static = 0 ? 0 : 1);
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_static_gravities", array_args);
 
@@ -1793,7 +1793,7 @@ bundle GTK3 {
       array_args := Base->New[3];
       array_args[0] := IntRef->New();
       array_args[1] := IntRef->New(@gobject);
-      array_args[3] := event;
+      array_args[2] := event;
 
       Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_show_window_menu", array_args);
 
