@@ -66,7 +66,7 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
 ## Component Model
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
 
-### Major Components
+### Major Subsystems
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
