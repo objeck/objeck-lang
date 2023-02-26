@@ -18,13 +18,10 @@
 
 ## Current Plan
 
-* Map GObject basic types
-* Code generation for Gdk records
-        - Prototype
-        - Script
-        - Optimize
+* Map GObject basic types (gint, gdouble, utf8, etc.)
+* Code generation for Application and Window. GObject code might need to be written by hand.
 * Basic [PoC](poc) done. Tested on Linux and Windows, macOS is next.
-* Coding binding PoC done, validated however generated code will need to implemented per PoC
+* Updating the code generator per PoC effort.
 
 ## Targets
 Solution and PoCs will need to run on macOS, Linux and Windows (VS and MSYS2).
