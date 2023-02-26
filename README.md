@@ -72,7 +72,7 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
-* [Just-In-Time (JIT) compiler](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
+* [Just-In-Time (JIT) compilation](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
 ## Working with the Code
 Objeck can be built for a variety of targets. The language is implemented in C++, assembly (i.e., generated machine code) and assisted by code generators for bindings to SDL2 and GTK 3/4.
