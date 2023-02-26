@@ -519,7 +519,7 @@ class GtkTestRunner {
 						else {
 							objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
 
-							ctype_xml := type_xml->GetAttribute("name");
+							ctype_xml := type_xml->GetAttribute("type");
 							if(ctype_xml <> Nil) {
 								c_type_name := ctype_xml->GetValue();
 								cxx_buffer += "\n\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
