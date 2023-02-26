@@ -477,10 +477,6 @@ class GtkTestRunner {
 			each(i : params_xml) {
 				index := i;
 				
-				if(<>is_nil) {
-					index += 1;
-				};
-
 				if(<>is_constructor) {
 					index += 1;
 				};
