@@ -102,7 +102,6 @@ class GtkTestRunner {
 	}
 
 	method : ParseEnums(enums_xml : Vector<XmlElement>) ~ Nil {
-		cxx_buffer := "";
 		objk_buffer := "";
 
 		each(enum_xml := enums_xml) {
@@ -182,7 +181,7 @@ class GtkTestRunner {
 
 		# write methods
 		methods_xml := class_xml->GetChildren("method")<XmlElement>;
-		WriteMethods(ref_name, methods_xml, objk_buffer, cxx_buffer);
+		WriteMethods(ref_name, methods_xml, objk_buffer, cxx_buffer, false);
 
 		# end class
 		objk_buffer += "  }\n\n";
@@ -285,7 +284,7 @@ class GtkTestRunner {
 		objk_buffer->Pop();
 	}
 
-	method : WriteMethods(ref_name : String, methods_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String) ~ Nil {
+	method : WriteMethods(ref_name : String, methods_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String, is_constructor : Bool) ~ Nil {
 		each(method_xml := methods_xml) {
 			method_name := method_xml->GetAttribute("name")->GetValue();
 			identifier_name := method_xml->GetAttribute("identifier")->GetValue();
@@ -302,25 +301,27 @@ class GtkTestRunner {
 			params_xml := method_xml->GetFirstChild("parameters");
 			return_xml := method_xml->GetFirstChild("return-value");
 
-			cxx_buffer += "#ifdef _WIN32\n";
-			cxx_buffer += "    __declspec(dllexport)\n";
-			cxx_buffer += "#endif\n";
-			cxx_buffer += "    void gtk3_{$identifier_name}(VMContext& context) {\n";
-			cxx_buffer += "      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);\n";
-			
-
-			if(EmitMethod(params_xml, return_xml)) {
+			if(CanEmitMethod(params_xml, return_xml, false)) {
+				cxx_buffer += "#ifdef _WIN32\n";
+				cxx_buffer += "    __declspec(dllexport)\n";
+				cxx_buffer += "#endif\n";
+				cxx_buffer += "    void gtk3_{$identifier_name}(VMContext& context) {\n";
+				cxx_buffer += "      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);\n";
+				
 				objk_buffer += "    method : public : {$method_case_name}";
 
 				WriteParameters(params_xml, objk_buffer, cxx_buffer);
 				objk_buffer += " ~ {$return_type} {\n";
+
+				cxx_params_buffer := "";
+				cxx_params_count := 0;
 
 				if(return_type->Equals("Nil")) {
 					parameters_size := params_xml->Size();
 					objk_buffer += "      array_args := Base->New[{$parameters_size}];\n\n";
 
 					objk_buffer += "      array_args[0] := IntHolder->New(@{$ref_name});\n";
-					WriteProxyParameters(params_xml, objk_buffer, cxx_buffer, true);
+					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constructor);
 				}
 				else {
 					parameters_size := params_xml->Size() + 1;
@@ -328,13 +329,34 @@ class GtkTestRunner {
 					WriteProxyReturnParameter(return_xml, objk_buffer, cxx_buffer);
 					
 					objk_buffer += "      array_args[1] := IntHolder->New(@{$ref_name});\n";
-					WriteProxyParameters(params_xml, objk_buffer, cxx_buffer, false);
+					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, false, is_constructor);
 				};
 
 				objk_buffer += "\n      Proxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
-				WriteProxyReturn(return_xml, objk_buffer, cxx_buffer);
+
+				cxx_params_buffer += "      const auto status = {$identifier_name}(param0, ";
+				index := is_constructor ? 0 : 1;
+				each(i : cxx_params_count) {
+					cxx_params_buffer += "param" + index;
+
+					if(i + 1 < cxx_params_count) {
+						cxx_params_buffer += ", ";
+					};
+
+					index += 1;
+				};
+				cxx_params_buffer += ");\n";
+				
+				cxx_return_buffer := "";
+				WriteProxyReturn(return_xml, objk_buffer, cxx_return_buffer, is_constructor);
 
 				objk_buffer += "    }\n\n";
+
+				cxx_buffer += cxx_params_buffer;
+				if(<>cxx_return_buffer->IsEmpty()) {
+					cxx_buffer += '\n';
+					cxx_buffer += cxx_return_buffer;
+				};
 				cxx_buffer += "    }\n\n";
 			}
 		};
@@ -342,7 +364,7 @@ class GtkTestRunner {
 		objk_buffer->Pop();
 	}
 
-	method : EmitMethod(params_xml : XmlElement, return_xml : XmlElement) ~ Bool {
+	method : CanEmitMethod(params_xml : XmlElement, return_xml : XmlElement, is_constructor : Bool) ~ Bool {
 		each(param_xml := params_xml) {
 			param_name := param_xml->GetName();
 			if(param_name->Equals("parameter")) {
@@ -402,44 +424,56 @@ class GtkTestRunner {
 		objk_buffer += ')';
 	}
 
-	method : WriteProxyReturn(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {		
+	method : WriteProxyReturn(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constructor : Bool) ~ Nil {		
 		return_type_xml := return_xml->GetFirstChild("type");
 		if(return_type_xml <> Nil) {
 			type_xml := return_type_xml->GetAttribute("type");
-			if(type_xml <> Nil) {									
+			if(type_xml <> Nil) {				
 				type_name := GetMappingName(type_xml->GetValue());
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int")) {
 					objk_buffer += "\n      value := array_args[0]->As(IntHolder);\n";
 					objk_buffer += "      return value->Get();\n";
+
+					cxx_buffer += "      APITools_SetIntValue(context, 0, status);\n";
 				}
 				else if(type_name->Equals("Bool")) {
 					objk_buffer += "\n      value := array_args[0]->As(IntHolder);\n";
 					objk_buffer += "      return value->Get() = 0 ? false : true;\n";
+
+					cxx_buffer += "      APITools_SetIntValue(context, 0, status);\n";
 				}
 				else if(type_name->Equals("Float")) {
 					objk_buffer += "\n      value := array_args[0]->As(FloatHolder);\n";
 					objk_buffer += "      return value->Get();\n";
+
+					cxx_buffer += "      APITools_SetFloatValue(context, 0, status);\n";
 				}
 				else if(type_name->Equals("String")) {
 					objk_buffer += "\n      return array_args[0]->As(String);\n";
+
+					cxx_buffer += "      APITools_SetStringValue(context, 0, status);\n";
 				}
 				else if(<>type_name->Equals("Nil")) {
 					objk_buffer += "\n      value := array_args[0]->As(IntHolder);\n";
 
 					if(@consts_set->Has(type_name)) {
-						objk_buffer += "      return value->As({$type_name});\n";						
+						objk_buffer += "      return value->As({$type_name});\n";
+
+						cxx_buffer += "      APITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
 						objk_buffer += "      return {$type_name}->New(value);\n";
+
+						cxx_buffer += "      APITools_SetIntValue(context, 0, status);\n";
 					};
 				};
-			};
+			};			
 		};
 	}
 
-	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_nil : Bool) ~ Nil {
+	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_nil : Bool, is_constructor : Bool) ~ Int {
 		if(params_xml <> Nil) {
 			each(i : params_xml) {
 				index := i;
@@ -458,20 +492,36 @@ class GtkTestRunner {
 						# TODO: hash sub-strings
 						if(type_name->Equals("Int")) {
 							objk_buffer += "      array_args[{$index}] := IntHolder->New({$param_name});\n";
+
+							cxx_buffer += "      const long param{$i} = APITools_GetIntValue(context, {$i});\n";
 						}
 						else if(type_name->Equals("Float")) {
 							objk_buffer += "      array_args[{$index}] := FloatHolder->New({$param_name});\n";
+
+							cxx_buffer += "      const double param{$i} = APITools_GetFloatValue(context, {$i});\n";
 						}
 						else if(type_name->Equals("Bool")) {
 							objk_buffer += "      array_args[{$index}] := IntHolder->New({$param_name} = 0 ? 0 : 1);\n";
+
+							cxx_buffer += "      const bool param{$i} = APITools_GetIntValue(context, {$i}) ? false : true;\n";
+						}
+						else if(type_name->Equals("String")) {
+							cxx_buffer += "      const std::string parm{$i} = UnicodeToBytes(APITools_GetStringValue(context, {$i}));\n";
 						}
 						else {
 							objk_buffer += "      array_args[{$index}] := {$param_name};\n";
+
+							cxx_buffer += "      const size_t* param{$i} = APITools_GetObjectValue(context, {$i});\n";
 						};
 					};
 				};
 			};
+
+			cxx_buffer += '\n';
+			return params_xml->Size();
 		};
+
+		return 0;
 	}
 
 	method : WriteProxyReturnParameter(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {		

@@ -32,8 +32,6 @@ extern "C" {
   // GObject
   //
   static void callback_handler(GObject* handler, gpointer callback_data) {
-    // well, want to reduce the code below... however what I learned from the SLD2
-    // bindings is that UIs are order of magnitude slower then supporting program logic
     if(handler && callback_data) {
       std::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;
       size_t const mthd_cls_id = callback_params->first;
@@ -82,1098 +80,1446 @@ extern "C" {
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_add_filter(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_add_filter(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_beep(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_begin_draw_frame(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_beep(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_begin_move_drag(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+
+      const auto status = gdk_window_begin_move_drag(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_begin_move_drag_for_device(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+      const long param5 = APITools_GetIntValue(context, 5);
+
+      const auto status = gdk_window_begin_move_drag_for_device(param0, param1, param2, param3, param4, param5, param6);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_begin_paint_rect(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_begin_paint_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_begin_paint_rect(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_begin_resize_drag(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+      const long param5 = APITools_GetIntValue(context, 5);
+
+      const auto status = gdk_window_begin_resize_drag(param0, param1, param2, param3, param4, param5, param6);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_begin_resize_drag_for_device(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const size_t* param2 = APITools_GetObjectValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+      const long param5 = APITools_GetIntValue(context, 5);
+      const long param6 = APITools_GetIntValue(context, 6);
+
+      const auto status = gdk_window_begin_resize_drag_for_device(param0, param1, param2, param3, param4, param5, param6, param7);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_configure_finished(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_configure_finished(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_coords_from_parent(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const double param1 = APITools_GetFloatValue(context, 1);
+      const double param2 = APITools_GetFloatValue(context, 2);
+      const double param3 = APITools_GetFloatValue(context, 3);
+      const double param4 = APITools_GetFloatValue(context, 4);
+
+      const auto status = gdk_window_coords_from_parent(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_coords_to_parent(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const double param1 = APITools_GetFloatValue(context, 1);
+      const double param2 = APITools_GetFloatValue(context, 2);
+      const double param3 = APITools_GetFloatValue(context, 3);
+      const double param4 = APITools_GetFloatValue(context, 4);
+
+      const auto status = gdk_window_coords_to_parent(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_create_gl_context(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_create_similar_image_surface(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      const auto status = gdk_window_create_gl_context(param0, param1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_create_similar_surface(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_deiconify(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_deiconify(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_destroy(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_destroy(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_destroy_notify(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_destroy_notify(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_enable_synchronized_configure(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_enable_synchronized_configure(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_end_draw_frame(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_end_draw_frame(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_end_paint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_end_paint(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_ensure_native(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_ensure_native(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_flush(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_flush(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_focus(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+
+      const auto status = gdk_window_focus(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_freeze_toplevel_updates_libgtk_only(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_freeze_toplevel_updates_libgtk_only(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_freeze_updates(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_freeze_updates(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_fullscreen(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_fullscreen(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_fullscreen_on_monitor(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+
+      const auto status = gdk_window_fullscreen_on_monitor(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_geometry_changed(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_geometry_changed(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_accept_focus(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_get_background_pattern(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      const auto status = gdk_window_get_accept_focus(param0, param1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_get_children(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
-
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_get_children_with_user_data(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
-
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_get_clip_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_composited(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_composited(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_cursor(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_cursor(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_decorations(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_get_decorations(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_device_cursor(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_get_device_cursor(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_device_events(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_get_device_events(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_device_position(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const size_t* param4 = APITools_GetObjectValue(context, 4);
+
+      const auto status = gdk_window_get_device_position(param0, param1, param2, param3, param4, param5);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_device_position_double(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const double param2 = APITools_GetFloatValue(context, 2);
+      const double param3 = APITools_GetFloatValue(context, 3);
+      const size_t* param4 = APITools_GetObjectValue(context, 4);
+
+      const auto status = gdk_window_get_device_position_double(param0, param1, param2, param3, param4, param5);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_display(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_display(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_drag_protocol(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_get_drag_protocol(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, (size_t)status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_effective_parent(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_effective_parent(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_effective_toplevel(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_effective_toplevel(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_event_compression(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_event_compression(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_events(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_events(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_focus_on_map(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_focus_on_map(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_frame_clock(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_frame_clock(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_frame_extents(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_get_frame_extents(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_fullscreen_mode(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_fullscreen_mode(param0, param1);
+
+      APITools_SetIntValue(context, 0, (size_t)status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_geometry(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+
+      const auto status = gdk_window_get_geometry(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_group(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_group(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_height(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_height(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_modal_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_modal_hint(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_origin(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_get_origin(param0, param1, param2, param3);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_parent(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_parent(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_pass_through(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_pass_through(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_pointer(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const size_t* param3 = APITools_GetObjectValue(context, 3);
+
+      const auto status = gdk_window_get_pointer(param0, param1, param2, param3, param4);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_position(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_get_position(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_root_coords(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+
+      const auto status = gdk_window_get_root_coords(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_root_origin(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_get_root_origin(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_scale_factor(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_scale_factor(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_screen(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_screen(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_source_events(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_get_source_events(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_state(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_state(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_support_multidevice(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_support_multidevice(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_toplevel(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_toplevel(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_type_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_get_update_area(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_get_type_hint(param0, param1);
+
+      APITools_SetIntValue(context, 0, (size_t)status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_user_data(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_get_visible_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_get_user_data(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_visual(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_visual(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_width(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_width(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_get_window_type(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_get_window_type(param0, param1);
+
+      APITools_SetIntValue(context, 0, (size_t)status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_has_native(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_has_native(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_hide(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_hide(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_iconify(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_input_shape_combine_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
-
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_invalidate_maybe_recurse(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_iconify(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_invalidate_rect(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const bool param2 = APITools_GetIntValue(context, 2) ? false : true;
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_invalidate_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_invalidate_rect(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_is_destroyed(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_is_destroyed(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_is_input_only(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_is_input_only(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_is_shaped(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_is_shaped(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_is_viewable(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_is_viewable(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_is_visible(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_is_visible(param0, param1);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_lower(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_mark_paint_from_clip(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_lower(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_maximize(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_maximize(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_merge_child_input_shapes(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_merge_child_input_shapes(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_merge_child_shapes(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_merge_child_shapes(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_move(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_move_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_move(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_move_resize(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+
+      const auto status = gdk_window_move_resize(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_move_to_rect(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const size_t* param2 = APITools_GetObjectValue(context, 2);
+      const size_t* param3 = APITools_GetObjectValue(context, 3);
+      const size_t* param4 = APITools_GetObjectValue(context, 4);
+      const long param5 = APITools_GetIntValue(context, 5);
+      const long param6 = APITools_GetIntValue(context, 6);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_peek_children(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_move_to_rect(param0, param1, param2, param3, param4, param5, param6, param7);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_process_updates(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_process_updates(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_raise(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_raise(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_register_dnd(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_register_dnd(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_remove_filter(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_remove_filter(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_reparent(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+
+      const auto status = gdk_window_reparent(param0, param1, param2, param3, param4);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_resize(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_resize(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_restack(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const bool param2 = APITools_GetIntValue(context, 2) ? false : true;
+
+      const auto status = gdk_window_restack(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_scroll(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+
+      const auto status = gdk_window_scroll(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_accept_focus(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_accept_focus(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_background(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_set_background_pattern(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_set_background(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_background_rgba(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_background_rgba(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_child_input_shapes(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_set_child_input_shapes(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_child_shapes(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_set_child_shapes(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_composited(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_composited(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_cursor(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_cursor(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_decorations(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_decorations(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_device_cursor(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const size_t* param2 = APITools_GetObjectValue(context, 2);
+
+      const auto status = gdk_window_set_device_cursor(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_device_events(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const size_t* param2 = APITools_GetObjectValue(context, 2);
+
+      const auto status = gdk_window_set_device_events(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_event_compression(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_event_compression(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_events(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_events(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_focus_on_map(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_focus_on_map(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_fullscreen_mode(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_fullscreen_mode(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_functions(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_functions(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_geometry_hints(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const size_t* param2 = APITools_GetObjectValue(context, 2);
+
+      const auto status = gdk_window_set_geometry_hints(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_group(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_set_icon_list(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_set_group(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_icon_name(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const std::string parm1 = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+      const auto status = gdk_window_set_icon_name(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_invalidate_handler(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_invalidate_handler(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_keep_above(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_keep_above(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_keep_below(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_keep_below(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_modal_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_modal_hint(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_opacity(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const double param1 = APITools_GetFloatValue(context, 1);
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_set_opaque_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_set_opacity(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_override_redirect(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_override_redirect(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_pass_through(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_pass_through(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_role(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const std::string parm1 = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+      const auto status = gdk_window_set_role(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_shadow_width(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const long param1 = APITools_GetIntValue(context, 1);
+      const long param2 = APITools_GetIntValue(context, 2);
+      const long param3 = APITools_GetIntValue(context, 3);
+      const long param4 = APITools_GetIntValue(context, 4);
+
+      const auto status = gdk_window_set_shadow_width(param0, param1, param2, param3, param4, param5);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_skip_pager_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_skip_pager_hint(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_skip_taskbar_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_skip_taskbar_hint(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_source_events(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+      const size_t* param2 = APITools_GetObjectValue(context, 2);
+
+      const auto status = gdk_window_set_source_events(param0, param1, param2, param3);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_startup_id(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const std::string parm1 = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+      const auto status = gdk_window_set_startup_id(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_static_gravities(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_static_gravities(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_support_multidevice(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
+
+      const auto status = gdk_window_set_support_multidevice(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_title(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const std::string parm1 = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+      const auto status = gdk_window_set_title(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_transient_for(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_transient_for(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_type_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_set_type_hint(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_set_urgency_hint(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const bool param1 = APITools_GetIntValue(context, 1) ? false : true;
 
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_set_user_data(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
-    }
-
-#ifdef _WIN32
-    __declspec(dllexport)
-#endif
-    void gtk3_gdk_window_shape_combine_region(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      const auto status = gdk_window_set_urgency_hint(param0, param1, param2);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_show(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_show(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_show_unraised(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_show_unraised(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_show_window_menu(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+      const size_t* param1 = APITools_GetObjectValue(context, 1);
+
+      const auto status = gdk_window_show_window_menu(param0, param1, param2);
+
+      APITools_SetIntValue(context, 0, status);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_stick(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_stick(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_thaw_toplevel_updates_libgtk_only(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_thaw_toplevel_updates_libgtk_only(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_thaw_updates(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_thaw_updates(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_unfullscreen(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_unfullscreen(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_unmaximize(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_unmaximize(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_unstick(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_unstick(param0, param1);
     }
 
 #ifdef _WIN32
     __declspec(dllexport)
 #endif
     void gtk3_gdk_window_withdraw(VMContext& context) {
-      GObject* gobject = (GObject*)APITools_GetIntValue(context, 0);
+      GObject* param0 = (GObject*)APITools_GetIntValue(context, 0);
+
+      const auto status = gdk_window_withdraw(param0, param1);
     }
 }
