@@ -19,7 +19,7 @@ class Test {
 #~
 		# ===
 
-		strings := Collection.Generic.Vector->New()<String>;
+		strings := Collection.Vector->New()<String>;
 		strings->AddBack("abd");
 		strings->AddBack("efg");
 		strings->AddBack("hij");
@@ -35,7 +35,7 @@ class Test {
 ~#		
 		# ---
 
-		strings := Collection.Generic.Vector->New()<String>;
+		strings := Collection.Vector->New()<String>;
 		strings->AddBack("abd");
 		strings->AddBack("efg");
 		strings->AddBack("hij");

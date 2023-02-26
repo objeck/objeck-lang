@@ -1,4 +1,4 @@
-use Collection.Generic;
+use Collection;
 
 class AoC {
 	@file : String;
@@ -146,7 +146,7 @@ class AoC {
 
 	method : ExecuteCommands(commands : Vector<Command>) ~ Nil {
 		cur_dir : Command;
-		dir_stack := Collection.Generic.Stack->New()<Command>;
+		dir_stack := Collection.Stack->New()<Command>;
 		each(i : commands) {
 			command := commands->Get(i);
 

@@ -7,7 +7,7 @@
 
 use Game.SDL2;
 use Game.Framework;
-use Collection.Generic;
+use Collection;
 
 class Demo {
 	@framework : GameFramework;

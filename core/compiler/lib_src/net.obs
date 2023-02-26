@@ -3,7 +3,7 @@ Copyright (c) 2023 Randy Hollines
 ~~#	
 
 use System.IO.Net; 
-use Collection.Generic;
+use Collection;
 
 #~
 Web client support (-lib net)

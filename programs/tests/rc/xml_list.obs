@@ -1,5 +1,5 @@
 use Data.XML;
-use Collection.Generic;
+use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {

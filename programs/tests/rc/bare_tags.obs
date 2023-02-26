@@ -1,6 +1,6 @@
 use Web.HTTP;
 use Query.RegEx;
-use Collection.Generic;
+use Collection;
 
 class Program {
 	function : Main(args : String[]) ~ Nil {

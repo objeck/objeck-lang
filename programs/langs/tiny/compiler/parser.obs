@@ -1,4 +1,4 @@
-use Collection.Generic;
+use Collection;
 
 class Parser {
 	@tokens : Vector<Token>;

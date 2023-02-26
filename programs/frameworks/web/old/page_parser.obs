@@ -1,5 +1,5 @@
 use System.IO.Filesystem;
-use Collection.Generic;
+use Collection;
 
 #~
 Tag PageParser

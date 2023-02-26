@@ -3,7 +3,7 @@
 # run: obr first_class_18.obe
 ~#
 
-use Collection.Generic;
+use Collection;
 
 alias Func {
 	Double : (FloatRef) ~ FloatRef

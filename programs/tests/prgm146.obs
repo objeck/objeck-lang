@@ -1,4 +1,4 @@
-use Collection.Generic;
+use Collection;
 
 
 
@@ -7,7 +7,7 @@ class Test {
 		m := Map->New()<String, String>;
 		m->Insert("a", "b");
 
-		v := m->GetKeyValues()<Collection.Generic.Pair<String, String>>;
+		v := m->GetKeyValues()<Collection.Pair<String, String>>;
 #		v := m->GetKeys()<IntRef>;
 
 		each(i : v) {
