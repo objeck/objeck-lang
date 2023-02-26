@@ -1287,7 +1287,7 @@ bundle Collection {
 	            @list := list;
 	    }
 
-	    #~
+		#~
 		Advances the pointer Backward
 		~#
 	    method : public : Next() ~ Nil {
@@ -1295,8 +1295,8 @@ bundle Collection {
 	                    @node := @node->GetPrevious();
 	            };
 	    }
-
-	    #~
+	    
+		#~
 		Checks to see the pointer can be advanced Backward
 		@return true if pointer can be advanced, false otherwise
 		~#
