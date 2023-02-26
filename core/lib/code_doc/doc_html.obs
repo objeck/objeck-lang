@@ -389,7 +389,7 @@ class HtmlMaker {
 		out->Close();
 	}
 
-	method : GetGenericLink(start : Int, type_name : String) ~ String {
+	method : GetCollectionLink(start : Int, type_name : String) ~ String {
 		cls_name := type_name->SubString(start);			
 		start += 4;
 		end := type_name->FindLast('&');
@@ -543,7 +543,7 @@ class HtmlMaker {
 
 		start := type_name->Find('&');
 		if(start > - 1 & type_name->Find('-') < 0) {
-			value := GetGenericLink(start, type_name);
+			value := GetCollectionLink(start, type_name);
 			if(array_count > 0) {
 				value += '[';
 				for(i := 1; i < array_count; i +=1;) {
