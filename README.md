@@ -39,7 +39,7 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
   * [Lambda expressions](https://en.wikipedia.org/wiki/Anonymous_function)
   * [First-class functions](https://en.wikipedia.org/wiki/First-class_function)
 * [Unicode support](https://en.wikipedia.org/wiki/Unicode)
-* OS-level support for threads, sockets, filesystem, dates/time, etc.
+* OS-level support for threads, sockets, filesystems, dates/time, etc.
 * [Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
