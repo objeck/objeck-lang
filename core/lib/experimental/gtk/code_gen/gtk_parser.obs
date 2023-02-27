@@ -356,9 +356,9 @@ class GtkTestRunner {
 	method : WriteProxyReturn(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constructor : Bool) ~ Nil {		
 		return_type_xml := return_xml->GetFirstChild("type");
 		if(return_type_xml <> Nil) {
-			type_xml := return_type_xml->GetAttribute("type");
-			if(type_xml <> Nil) {				
-				type_name := XmlElement->DecodeString(GetMappingName(type_xml->GetValue()));
+			type_name_xml := return_type_xml->GetAttribute("name");
+			if(type_name_xml <> Nil) {				
+				type_name := XmlElement->DecodeString(GetMappingName(type_name_xml->GetValue()));
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int")) {
@@ -444,8 +444,6 @@ class GtkTestRunner {
 							cxx_buffer += "\t\tconst std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
 						}
 						else {
-							
-
 							param_type_xml := type_xml->GetAttribute("type");
 							param_name_xml := type_xml->GetAttribute("name");
 							if(param_type_xml <> Nil & param_name_xml <> Nil) {
