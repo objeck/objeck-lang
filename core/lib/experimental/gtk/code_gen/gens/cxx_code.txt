@@ -98,19 +98,6 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void gtk3_gdk_window_add_filter(VMContext& context) {
-		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkFilterFunc p2 = (GdkFilterFunc)p2_obj[0];
-
-		const long p3 = APITools_GetIntValue(context, 3);
-
-		gdk_window_add_filter(p1, p2, p3);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
 	void gtk3_gdk_window_beep(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
@@ -1039,19 +1026,6 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void gtk3_gdk_window_remove_filter(VMContext& context) {
-		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkFilterFunc p2 = (GdkFilterFunc)p2_obj[0];
-
-		const long p3 = APITools_GetIntValue(context, 3);
-
-		gdk_window_remove_filter(p1, p2, p3);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
 	void gtk3_gdk_window_reparent(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
@@ -1249,16 +1223,6 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void gtk3_gdk_window_set_functions(VMContext& context) {
-		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const WMFunction p2 = (WMFunction)APITools_GetIntValue(context, 2);
-
-		gdk_window_set_functions(p1, p2);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
 	void gtk3_gdk_window_set_geometry_hints(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
@@ -1288,17 +1252,6 @@ extern "C" {
 		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_icon_name(p1, p2);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_window_set_invalidate_handler(VMContext& context) {
-		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindowInvalidateHandlerFunc p2 = (GdkWindowInvalidateHandlerFunc)p2_obj[0];
-
-		gdk_window_set_invalidate_handler(p1, p2);
 	}
 
 #ifdef _WIN32
