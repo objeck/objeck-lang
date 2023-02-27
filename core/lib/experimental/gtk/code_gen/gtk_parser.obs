@@ -43,6 +43,7 @@ class GtkTestRunner {
 		@basictype_map->Insert("gfloat", "Float");
 		@basictype_map->Insert("gdouble", "Float");
 		@basictype_map->Insert("utf8", "String");
+		@basictype_map->Insert("const gchar*", "String");
 		@basictype_map->Insert("gchar*", "String");
 		@basictype_map->Insert("gchar**", "String[]");
 		@basictype_map->Insert("filename", "String");
@@ -157,7 +158,7 @@ class GtkTestRunner {
 			class_xml := classes_xml->Get(i);
 
 			@class_name := class_xml->GetAttribute("name")->GetValue();
-			if(@class_name->Equals("Window")) {
+			if(@class_name->Equals("Window") | @class_name->Equals("Device")) {
 				@debug := true;
 
 				WriteClass(class_xml, objk_buffer, cxx_buffer);
@@ -226,7 +227,7 @@ class GtkTestRunner {
 			method_case_name := CamelCaseName(method_name->Copy());
 
 			return_type_xml := method_xml->GetFirstChild("return-value")->GetFirstChild("type");
-			return_type := GetMappingName(return_type_xml->GetAttribute("type")->GetValue());
+			return_type := GetMappingName(XmlElement->DecodeString(return_type_xml->GetAttribute("type")->GetValue()));
 
 			if(@debug) {
 				"\t[method: name='{$method_name}']"->PrintLine();
@@ -357,7 +358,7 @@ class GtkTestRunner {
 		if(return_type_xml <> Nil) {
 			type_xml := return_type_xml->GetAttribute("type");
 			if(type_xml <> Nil) {				
-				type_name := GetMappingName(type_xml->GetValue());
+				type_name := XmlElement->DecodeString(GetMappingName(type_xml->GetValue()));
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int")) {
