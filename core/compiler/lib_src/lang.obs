@@ -7169,7 +7169,7 @@ bundle System.IO.Filesystem {
 		@return character string
 		~#
 		method : public : ReadLine() ~ System.String {
-			if(IsEOF()) {
+			if(IsEoF()) {
 				return Nil;
 			};
 
