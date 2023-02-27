@@ -78,6 +78,21 @@ extern "C" {
 	//
 	// Window
 	//
+
+		const size_t* p1_obj = APITools_GetObjectValue(context, 1);
+		GdkWindow* p1 = (GdkWindow*)p1_obj[0];
+
+
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkWindowAttr* p2 = (GdkWindowAttr*)p2_obj[0];
+
+		const WindowAttributesType p3 = (WindowAttributesType)APITools_GetIntValue(context, 3);
+
+		gdk_window_new(, p2, p3);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
