@@ -206,101 +206,6 @@ class GtkTestRunner {
 		return class_name;
 	}
 
-	method : WriteGettersSetters(ref_name : String, getters_setters : Vector<Pair<String, String>>, objk_buffer : String, cxx_buffer : String) ~ Nil {
-		# write getters and setters
-		each(getter_setter := getters_setters) {
-			name := getter_setter->GetFirst();
-			method_case_name := CamelCaseName(name->Copy());
-			type := getter_setter->GetSecond();
-
-			#
-			# getter
-			#
-			objk_buffer += "\t\tmethod : public : Get{$method_case_name}() ~ {$type} {\n";
-			objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
-			
-			# set params
-			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int") | type->Equals("Bool")) {
-				objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
-			}
-			else if(type->Equals("Float")) {
-				objk_buffer += "\t\t\tarray_args[0] := FloatRef->New();\n";
-			}
-			else {
-				objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
-			};
-
-			objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
-
-			c_call_name := "{$ref_name}_get_{$method_case_name}"->ToLower();
-			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
-
-			cxx_buffer += "#ifdef _WIN32\n";
-			cxx_buffer += "\t__declspec(dllexport)";
-			cxx_buffer += "#endif\n";
-			cxx_buffer += "void {$c_call_name}(VMContext& context) {\n";
-			cxx_buffer += "}\n";
-
-			# get return
-			if(type->Equals("Byte")) {
-				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn value->Get()->As(Byte);\n";
-			}
-			else if(type->Equals("Char")) {
-				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn value->Get()->As(Char);\n";
-			}
-			else if(type->Equals("Int")) {
-				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn value->Get();\n";
-			}
-			else if(type->Equals("Bool")) {
-				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
-			}
-			else if(type->Equals("Float")) {
-				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
-				objk_buffer += "\t\t\treturn value->Get();\n";
-			}
-			else if(type->Equals("String")) {
-				objk_buffer += "\t\n\t\t\treturn array_args[0]->As(String);\n";
-			}
-			else {
-				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn {$type}->New(value->Get());\n";
-			};
-			objk_buffer += "\t\t}\n\n";
-
-			#
-			# setter
-			#
-			objk_buffer += "\t\tmethod : public : Set{$method_case_name}({$name} : {$type}) ~ Nil {\n";
-			objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
-			objk_buffer += "\t\t\tarray_args[0] := IntRef->New(@{$ref_name});\n";
-
-			# set value
-			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int")) {
-				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
-			}
-			else if(type->Equals("Bool")) {
-				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name} ? 1 : 0);\n";
-			}
-			else if(type->Equals("Float")) {
-				objk_buffer += "\t\t\tarray_args[1] := FloatRef->New({$name});\n";
-			}
-			else {
-				objk_buffer += "\t\t\tarray_args[1] := {$name};\n";
-			};
-
-			c_call_name := "{$ref_name}_set_{$method_case_name}"->ToLower();
-			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
-
-			objk_buffer += "\t\t}\n\n";
-		};
-
-		objk_buffer->Pop();
-	}
-
 	method : WriteMethods(ref_name : String, methods_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String, is_constructor : Bool) ~ Nil {
 		each(method_xml := methods_xml) {
 			method_name := method_xml->GetAttribute("name")->GetValue();
@@ -320,6 +225,12 @@ class GtkTestRunner {
 
 			if(CanEmitMethod(params_xml, return_xml, false)) {
 				if(is_constructor) {
+					cxx_buffer += "#ifdef _WIN32\n";
+					cxx_buffer += "\t__declspec(dllexport)\n";
+					cxx_buffer += "#endif\n";
+					cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
+#					cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
+
 					objk_buffer += "\t\tNew("
 					WriteParameters(params_xml, objk_buffer, cxx_buffer);
 					objk_buffer += " {\n";
@@ -398,32 +309,6 @@ class GtkTestRunner {
 		};
 
 		objk_buffer->Pop();
-	}
-
-	method : CanEmitMethod(params_xml : XmlElement, return_xml : XmlElement, is_constructor : Bool) ~ Bool {
-		each(param_xml := params_xml) {
-			param_name := param_xml->GetName();
-			if(param_name->Equals("parameter")) {
-				type_xml := param_xml->GetFirstChild("type");
-				if(type_xml <> Nil) {									
-					type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
-					if(type_name->Has('.')) {
-						return false;
-					};
-				};
-			};
-		};
-
-
-		type_xml := return_xml->GetFirstChild("type");
-		if(type_xml <> Nil) {									
-			type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
-			if(type_name->Has('.')) {
-				return false;
-			};
-		};
-
-		return true;
 	}
 
 	method : WriteParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {
@@ -624,6 +509,127 @@ class GtkTestRunner {
 		};
 
 		return getters_setters;
+	}
+
+	method : WriteGettersSetters(ref_name : String, getters_setters : Vector<Pair<String, String>>, objk_buffer : String, cxx_buffer : String) ~ Nil {
+		# write getters and setters
+		each(getter_setter := getters_setters) {
+			name := getter_setter->GetFirst();
+			method_case_name := CamelCaseName(name->Copy());
+			type := getter_setter->GetSecond();
+
+			#
+			# getter
+			#
+			objk_buffer += "\t\tmethod : public : Get{$method_case_name}() ~ {$type} {\n";
+			objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
+			
+			# set params
+			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int") | type->Equals("Bool")) {
+				objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
+			}
+			else if(type->Equals("Float")) {
+				objk_buffer += "\t\t\tarray_args[0] := FloatRef->New();\n";
+			}
+			else {
+				objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+			};
+
+			objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
+
+			c_call_name := "{$ref_name}_get_{$method_case_name}"->ToLower();
+			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+
+			cxx_buffer += "#ifdef _WIN32\n";
+			cxx_buffer += "\t__declspec(dllexport)";
+			cxx_buffer += "#endif\n";
+			cxx_buffer += "void {$c_call_name}(VMContext& context) {\n";
+			cxx_buffer += "}\n";
+
+			# get return
+			if(type->Equals("Byte")) {
+				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get()->As(Byte);\n";
+			}
+			else if(type->Equals("Char")) {
+				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get()->As(Char);\n";
+			}
+			else if(type->Equals("Int")) {
+				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get();\n";
+			}
+			else if(type->Equals("Bool")) {
+				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
+			}
+			else if(type->Equals("Float")) {
+				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
+				objk_buffer += "\t\t\treturn value->Get();\n";
+			}
+			else if(type->Equals("String")) {
+				objk_buffer += "\t\n\t\t\treturn array_args[0]->As(String);\n";
+			}
+			else {
+				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+				objk_buffer += "\t\t\treturn {$type}->New(value->Get());\n";
+			};
+			objk_buffer += "\t\t}\n\n";
+
+			#
+			# setter
+			#
+			objk_buffer += "\t\tmethod : public : Set{$method_case_name}({$name} : {$type}) ~ Nil {\n";
+			objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
+			objk_buffer += "\t\t\tarray_args[0] := IntRef->New(@{$ref_name});\n";
+
+			# set value
+			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int")) {
+				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
+			}
+			else if(type->Equals("Bool")) {
+				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name} ? 1 : 0);\n";
+			}
+			else if(type->Equals("Float")) {
+				objk_buffer += "\t\t\tarray_args[1] := FloatRef->New({$name});\n";
+			}
+			else {
+				objk_buffer += "\t\t\tarray_args[1] := {$name};\n";
+			};
+
+			c_call_name := "{$ref_name}_set_{$method_case_name}"->ToLower();
+			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+
+			objk_buffer += "\t\t}\n\n";
+		};
+
+		objk_buffer->Pop();
+	}
+
+	method : CanEmitMethod(params_xml : XmlElement, return_xml : XmlElement, is_constructor : Bool) ~ Bool {
+		each(param_xml := params_xml) {
+			param_name := param_xml->GetName();
+			if(param_name->Equals("parameter")) {
+				type_xml := param_xml->GetFirstChild("type");
+				if(type_xml <> Nil) {									
+					type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+					if(type_name->Has('.')) {
+						return false;
+					};
+				};
+			};
+		};
+
+
+		type_xml := return_xml->GetFirstChild("type");
+		if(type_xml <> Nil) {									
+			type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+			if(type_name->Has('.')) {
+				return false;
+			};
+		};
+
+		return true;
 	}
 
 	method : GetMappingName(ctype_name : String) ~ String {
