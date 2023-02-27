@@ -448,7 +448,7 @@ class GtkTestRunner {
 							param_type_xml := type_xml->GetAttribute("type");
 							param_name_xml := type_xml->GetAttribute("name");
 							if(param_type_xml <> Nil & param_name_xml <> Nil) {
-								ctype_type := param_type_xml->GetValue();
+								ctype_type := XmlElement->DecodeString(param_type_xml->GetValue());
 								ctype_name := param_name_xml->GetValue();
 
 								if(@consts_set->Has(type_name)) {

@@ -139,7 +139,7 @@ extern "C" {
 	void gtk3_gdk_window_begin_paint_rect(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		const&#x20;GdkRectangle* p2 = (const&#x20;GdkRectangle*)p2_obj[0];
+		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
 
 		gdk_window_begin_paint_rect(p1, p2);
 	}
@@ -856,7 +856,7 @@ extern "C" {
 	void gtk3_gdk_window_invalidate_rect(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		const&#x20;GdkRectangle* p2 = (const&#x20;GdkRectangle*)p2_obj[0];
+		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
 
 		const bool p3 = APITools_GetIntValue(context, 3) ? false : true;
 
@@ -984,7 +984,7 @@ extern "C" {
 	void gtk3_gdk_window_move_to_rect(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		const&#x20;GdkRectangle* p2 = (const&#x20;GdkRectangle*)p2_obj[0];
+		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
 
 		const Gravity p3 = (Gravity)APITools_GetIntValue(context, 3);
 		const Gravity p4 = (Gravity)APITools_GetIntValue(context, 4);
@@ -1088,7 +1088,7 @@ extern "C" {
 	void gtk3_gdk_window_set_background(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		const&#x20;GdkColor* p2 = (const&#x20;GdkColor*)p2_obj[0];
+		const GdkColor* p2 = (const GdkColor*)p2_obj[0];
 
 		gdk_window_set_background(p1, p2);
 	}
@@ -1099,7 +1099,7 @@ extern "C" {
 	void gtk3_gdk_window_set_background_rgba(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		const&#x20;GdkRGBA* p2 = (const&#x20;GdkRGBA*)p2_obj[0];
+		const GdkRGBA* p2 = (const GdkRGBA*)p2_obj[0];
 
 		gdk_window_set_background_rgba(p1, p2);
 	}
@@ -1226,7 +1226,7 @@ extern "C" {
 	void gtk3_gdk_window_set_geometry_hints(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		const&#x20;GdkGeometry* p2 = (const&#x20;GdkGeometry*)p2_obj[0];
+		const GdkGeometry* p2 = (const GdkGeometry*)p2_obj[0];
 
 		const WindowHints p3 = (WindowHints)APITools_GetIntValue(context, 3);
 
