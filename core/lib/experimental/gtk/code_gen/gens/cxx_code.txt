@@ -271,8 +271,6 @@ extern "C" {
 		const long p4 = APITools_GetIntValue(context, 4);
 
 		gdk_device_get_position(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -287,8 +285,6 @@ extern "C" {
 		const double p4 = APITools_GetFloatValue(context, 4);
 
 		gdk_device_get_position_double(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -335,8 +331,6 @@ extern "C" {
 		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
 
 		gdk_device_get_state(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -406,8 +400,6 @@ extern "C" {
 		const AxisUse p3 = (AxisUse)APITools_GetIntValue(context, 3);
 
 		gdk_device_set_axis_use(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -420,8 +412,6 @@ extern "C" {
 		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
 
 		gdk_device_set_key(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -444,8 +434,6 @@ extern "C" {
 		const long p2 = APITools_GetIntValue(context, 2);
 
 		gdk_device_ungrab(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -460,8 +448,6 @@ extern "C" {
 		const long p4 = APITools_GetIntValue(context, 4);
 
 		gdk_device_warp(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 
@@ -492,8 +478,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_beep(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -507,8 +491,6 @@ extern "C" {
 		const long p5 = APITools_GetIntValue(context, 5);
 
 		gdk_window_begin_move_drag(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -525,8 +507,6 @@ extern "C" {
 		const long p6 = APITools_GetIntValue(context, 6);
 
 		gdk_window_begin_move_drag_for_device(p1, p2, p3, p4, p5, p6);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -538,8 +518,6 @@ extern "C" {
 		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
 
 		gdk_window_begin_paint_rect(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -554,8 +532,6 @@ extern "C" {
 		const long p6 = APITools_GetIntValue(context, 6);
 
 		gdk_window_begin_resize_drag(p1, p2, p3, p4, p5, p6);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -573,8 +549,6 @@ extern "C" {
 		const long p7 = APITools_GetIntValue(context, 7);
 
 		gdk_window_begin_resize_drag_for_device(p1, p2, p3, p4, p5, p6, p7);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -584,8 +558,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_configure_finished(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -599,8 +571,6 @@ extern "C" {
 		const double p5 = APITools_GetFloatValue(context, 5);
 
 		gdk_window_coords_from_parent(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -614,8 +584,6 @@ extern "C" {
 		const double p5 = APITools_GetFloatValue(context, 5);
 
 		gdk_window_coords_to_parent(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -636,8 +604,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_deiconify(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -647,8 +613,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_destroy(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -658,8 +622,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_destroy_notify(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -669,8 +631,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_enable_synchronized_configure(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -682,8 +642,6 @@ extern "C" {
 		GdkDrawingContext* p2 = (GdkDrawingContext*)p2_obj[0];
 
 		gdk_window_end_draw_frame(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -693,8 +651,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_end_paint(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -715,8 +671,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_flush(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -727,8 +681,6 @@ extern "C" {
 		const long p2 = APITools_GetIntValue(context, 2);
 
 		gdk_window_focus(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -738,8 +690,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_freeze_toplevel_updates_libgtk_only(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -749,8 +699,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_freeze_updates(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -760,8 +708,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_fullscreen(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -772,8 +718,6 @@ extern "C" {
 		const long p2 = APITools_GetIntValue(context, 2);
 
 		gdk_window_fullscreen_on_monitor(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -783,8 +727,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_geometry_changed(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -991,8 +933,6 @@ extern "C" {
 		GdkRectangle* p2 = (GdkRectangle*)p2_obj[0];
 
 		gdk_window_get_frame_extents(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1017,8 +957,6 @@ extern "C" {
 		const long p5 = APITools_GetIntValue(context, 5);
 
 		gdk_window_get_geometry(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1112,8 +1050,6 @@ extern "C" {
 		const long p3 = APITools_GetIntValue(context, 3);
 
 		gdk_window_get_position(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1127,8 +1063,6 @@ extern "C" {
 		const long p5 = APITools_GetIntValue(context, 5);
 
 		gdk_window_get_root_coords(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1140,8 +1074,6 @@ extern "C" {
 		const long p3 = APITools_GetIntValue(context, 3);
 
 		gdk_window_get_root_origin(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1230,8 +1162,6 @@ extern "C" {
 		const long p2 = APITools_GetIntValue(context, 2);
 
 		gdk_window_get_user_data(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1285,8 +1215,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_hide(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1296,8 +1224,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_iconify(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1311,8 +1237,6 @@ extern "C" {
 		const bool p3 = APITools_GetIntValue(context, 3) ? false : true;
 
 		gdk_window_invalidate_rect(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1377,8 +1301,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_lower(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1388,8 +1310,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_maximize(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1399,8 +1319,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_merge_child_input_shapes(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1410,8 +1328,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_merge_child_shapes(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1423,8 +1339,6 @@ extern "C" {
 		const long p3 = APITools_GetIntValue(context, 3);
 
 		gdk_window_move(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1438,8 +1352,6 @@ extern "C" {
 		const long p5 = APITools_GetIntValue(context, 5);
 
 		gdk_window_move_resize(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1457,8 +1369,6 @@ extern "C" {
 		const long p7 = APITools_GetIntValue(context, 7);
 
 		gdk_window_move_to_rect(p1, p2, p3, p4, p5, p6, p7);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1469,8 +1379,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_process_updates(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1480,8 +1388,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_raise(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1491,8 +1397,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_register_dnd(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1507,8 +1411,6 @@ extern "C" {
 		const long p4 = APITools_GetIntValue(context, 4);
 
 		gdk_window_reparent(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1520,8 +1422,6 @@ extern "C" {
 		const long p3 = APITools_GetIntValue(context, 3);
 
 		gdk_window_resize(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1535,8 +1435,6 @@ extern "C" {
 		const bool p3 = APITools_GetIntValue(context, 3) ? false : true;
 
 		gdk_window_restack(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1548,8 +1446,6 @@ extern "C" {
 		const long p3 = APITools_GetIntValue(context, 3);
 
 		gdk_window_scroll(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1560,8 +1456,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_accept_focus(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1573,8 +1467,6 @@ extern "C" {
 		const GdkColor* p2 = (const GdkColor*)p2_obj[0];
 
 		gdk_window_set_background(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1586,8 +1478,6 @@ extern "C" {
 		const GdkRGBA* p2 = (const GdkRGBA*)p2_obj[0];
 
 		gdk_window_set_background_rgba(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1597,8 +1487,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_set_child_input_shapes(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1608,8 +1496,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_set_child_shapes(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1620,8 +1506,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_composited(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1633,8 +1517,6 @@ extern "C" {
 		GdkCursor* p2 = (GdkCursor*)p2_obj[0];
 
 		gdk_window_set_cursor(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1645,8 +1527,6 @@ extern "C" {
 		const WMDecoration p2 = (WMDecoration)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_decorations(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1661,8 +1541,6 @@ extern "C" {
 		GdkCursor* p3 = (GdkCursor*)p3_obj[0];
 
 		gdk_window_set_device_cursor(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1676,8 +1554,6 @@ extern "C" {
 		const EventMask p3 = (EventMask)APITools_GetIntValue(context, 3);
 
 		gdk_window_set_device_events(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1688,8 +1564,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_event_compression(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1700,8 +1574,6 @@ extern "C" {
 		const EventMask p2 = (EventMask)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_events(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1712,8 +1584,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_focus_on_map(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1724,8 +1594,6 @@ extern "C" {
 		const FullscreenMode p2 = (FullscreenMode)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_fullscreen_mode(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1739,8 +1607,6 @@ extern "C" {
 		const WindowHints p3 = (WindowHints)APITools_GetIntValue(context, 3);
 
 		gdk_window_set_geometry_hints(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1752,8 +1618,6 @@ extern "C" {
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
 		gdk_window_set_group(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1764,8 +1628,6 @@ extern "C" {
 		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_icon_name(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1776,8 +1638,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_keep_above(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1788,8 +1648,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_keep_below(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1800,8 +1658,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_modal_hint(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1812,8 +1668,6 @@ extern "C" {
 		const double p2 = APITools_GetFloatValue(context, 2);
 
 		gdk_window_set_opacity(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1824,8 +1678,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_override_redirect(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1836,8 +1688,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_pass_through(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1848,8 +1698,6 @@ extern "C" {
 		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_role(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1863,8 +1711,6 @@ extern "C" {
 		const long p5 = APITools_GetIntValue(context, 5);
 
 		gdk_window_set_shadow_width(p1, p2, p3, p4, p5);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1875,8 +1721,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_skip_pager_hint(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1887,8 +1731,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_skip_taskbar_hint(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1900,8 +1742,6 @@ extern "C" {
 		const EventMask p3 = (EventMask)APITools_GetIntValue(context, 3);
 
 		gdk_window_set_source_events(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1912,8 +1752,6 @@ extern "C" {
 		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_startup_id(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1936,8 +1774,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_support_multidevice(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1948,8 +1784,6 @@ extern "C" {
 		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_title(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1961,8 +1795,6 @@ extern "C" {
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
 		gdk_window_set_transient_for(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1973,8 +1805,6 @@ extern "C" {
 		const WindowTypeHint p2 = (WindowTypeHint)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_type_hint(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1985,8 +1815,6 @@ extern "C" {
 		const bool p2 = APITools_GetIntValue(context, 2) ? false : true;
 
 		gdk_window_set_urgency_hint(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -1996,8 +1824,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_show(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2007,8 +1833,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_show_unraised(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2031,8 +1855,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_stick(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2042,8 +1864,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_thaw_toplevel_updates_libgtk_only(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2053,8 +1873,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_thaw_updates(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2064,8 +1882,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_unfullscreen(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2075,8 +1891,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_unmaximize(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2086,8 +1900,6 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_unstick(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -2097,7 +1909,5 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
 		gdk_window_withdraw(p1);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 }
