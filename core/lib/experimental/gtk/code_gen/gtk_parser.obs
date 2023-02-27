@@ -97,7 +97,7 @@ class GtkTestRunner {
 			
 		};
 
-		objk_buffer := "";
+		objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
 		missing_def_keys := @missing_defs->GetKeys()<String>;
 		each(missing_def_key := missing_def_keys) {
 			WriteMissingClass(missing_def_key, objk_buffer);
@@ -106,7 +106,7 @@ class GtkTestRunner {
 		@objk_out->WriteString(objk_buffer);
 
 
-		@objk_out->WriteString("}");
+		@objk_out->WriteString("\n}");
 		@objk_out->Close();
 
 		@cxx_out->WriteString("}");
@@ -783,6 +783,6 @@ class GtkTestRunner {
 		objk_buffer += "\n\tclass {$class_name} {\n"
 		objk_buffer += "\t\tNew(gobject : Int) {\n"
 		objk_buffer += "\t\t}\n"
-		objk_buffer += "\t}\n\n"
+		objk_buffer += "\t}\n"
 	}
 }
