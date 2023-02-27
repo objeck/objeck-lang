@@ -142,7 +142,7 @@ class GtkTestRunner {
 			class_xml := classes_xml->Get(i);
 
 			class_name := class_xml->GetAttribute("name")->GetValue();
-			if(class_name->Equals("Window")) {
+			if(class_name->Equals("Application") | class_name->Equals("Window")) {
 				@debug := true;
 
 				WriteClass(class_name, class_xml, objk_buffer, cxx_buffer);
