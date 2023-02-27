@@ -604,7 +604,7 @@ bundle GTK3 {
 			@gobject := gobject;
 		}
 
-		New((parent : Window, attributes : WindowAttr, attributes_mask : WindowAttributesType) {
+		New(parent : Window, attributes : WindowAttr, attributes_mask : WindowAttributesType) {
 			array_args := Base->New[4];
 
 			array_args[0] := IntRef->New();
