@@ -76,6 +76,382 @@ extern "C" {
 	}
 
 	//
+	// Device
+	//
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_associated_device(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_associated_device(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_axes(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_axes(p1);
+
+		APITools_SetIntValue(context, 0, (size_t)status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_axis(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const AxisUse p3 = (AxisUse)APITools_GetIntValue(context, 3);
+		const double p4 = APITools_GetFloatValue(context, 4);
+
+		const auto status = gdk_device_get_axis(p1, p2, p3, p4);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_axis_use(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const long p2 = APITools_GetIntValue(context, 2);
+
+		const auto status = gdk_device_get_axis_use(p1, p2);
+
+		APITools_SetIntValue(context, 0, (size_t)status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_axis_value(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		GdkAtom p3 = (GdkAtom)p3_obj[0];
+
+		const double p4 = APITools_GetFloatValue(context, 4);
+
+		const auto status = gdk_device_get_axis_value(p1, p2, p3, p4);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_device_type(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_device_type(p1);
+
+		APITools_SetIntValue(context, 0, (size_t)status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_display(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_display(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_has_cursor(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_has_cursor(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_history(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
+
+		const long p3 = APITools_GetIntValue(context, 3);
+		const long p4 = APITools_GetIntValue(context, 4);
+		const long p6 = APITools_GetIntValue(context, 6);
+
+		const auto status = gdk_device_get_history(p1, p2, p3, p4, p5, p6);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_key(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const long p2 = APITools_GetIntValue(context, 2);
+		const long p3 = APITools_GetIntValue(context, 3);
+		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
+
+		const auto status = gdk_device_get_key(p1, p2, p3, p4);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_last_event_window(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_last_event_window(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_mode(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_mode(p1);
+
+		APITools_SetIntValue(context, 0, (size_t)status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_n_axes(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_n_axes(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_n_keys(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_n_keys(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_name(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_name(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_position(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkScreen** p2 = (GdkScreen**)p2_obj[0];
+
+		const long p3 = APITools_GetIntValue(context, 3);
+		const long p4 = APITools_GetIntValue(context, 4);
+
+		gdk_device_get_position(p1, p2, p3, p4);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_position_double(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkScreen** p2 = (GdkScreen**)p2_obj[0];
+
+		const double p3 = APITools_GetFloatValue(context, 3);
+		const double p4 = APITools_GetFloatValue(context, 4);
+
+		gdk_device_get_position_double(p1, p2, p3, p4);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_product_id(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_product_id(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_seat(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_seat(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_source(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_source(p1);
+
+		APITools_SetIntValue(context, 0, (size_t)status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_state(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
+
+		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
+
+		gdk_device_get_state(p1, p2, p3, p4);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_vendor_id(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_device_get_vendor_id(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_window_at_position(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const long p2 = APITools_GetIntValue(context, 2);
+		const long p3 = APITools_GetIntValue(context, 3);
+
+		const auto status = gdk_device_get_window_at_position(p1, p2, p3);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_get_window_at_position_double(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const double p2 = APITools_GetFloatValue(context, 2);
+		const double p3 = APITools_GetFloatValue(context, 3);
+
+		const auto status = gdk_device_get_window_at_position_double(p1, p2, p3);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_grab(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
+
+		const GrabOwnership p3 = (GrabOwnership)APITools_GetIntValue(context, 3);
+		const bool p4 = APITools_GetIntValue(context, 4) ? false : true;
+		const EventMask p5 = (EventMask)APITools_GetIntValue(context, 5);
+		const size_t* p6_obj = APITools_GetObjectValue(context, 6);
+		GdkCursor* p6 = (GdkCursor*)p6_obj[0];
+
+		const long p7 = APITools_GetIntValue(context, 7);
+
+		const auto status = gdk_device_grab(p1, p2, p3, p4, p5, p6, p7);
+
+		APITools_SetIntValue(context, 0, (size_t)status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_set_axis_use(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const long p2 = APITools_GetIntValue(context, 2);
+		const AxisUse p3 = (AxisUse)APITools_GetIntValue(context, 3);
+
+		gdk_device_set_axis_use(p1, p2, p3);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_set_key(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const long p2 = APITools_GetIntValue(context, 2);
+		const long p3 = APITools_GetIntValue(context, 3);
+		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
+
+		gdk_device_set_key(p1, p2, p3, p4);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_set_mode(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const InputMode p2 = (InputMode)APITools_GetIntValue(context, 2);
+
+		const auto status = gdk_device_set_mode(p1, p2);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_ungrab(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const long p2 = APITools_GetIntValue(context, 2);
+
+		gdk_device_ungrab(p1, p2);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_device_warp(VMContext& context) {
+		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		GdkScreen* p2 = (GdkScreen*)p2_obj[0];
+
+		const long p3 = APITools_GetIntValue(context, 3);
+		const long p4 = APITools_GetIntValue(context, 4);
+
+		gdk_device_warp(p1, p2, p3, p4);
+	}
+
+
+	//
 	// Window
 	//
 #ifdef _WIN32
