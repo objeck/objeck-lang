@@ -78,17 +78,19 @@ extern "C" {
 	//
 	// Window
 	//
-
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_window_new(VMContext& context) {
 		const size_t* p1_obj = APITools_GetObjectValue(context, 1);
 		GdkWindow* p1 = (GdkWindow*)p1_obj[0];
-
 
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindowAttr* p2 = (GdkWindowAttr*)p2_obj[0];
 
 		const WindowAttributesType p3 = (WindowAttributesType)APITools_GetIntValue(context, 3);
 
-		gdk_window_new(, p2, p3);
+		const auto status = (size_t)gdk_window_new(p1, p2, p3);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -98,7 +100,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_add_filter(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkFilterFunc p2 = (GdkFilterFunc)p2_obj[0];
 
@@ -134,7 +135,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_begin_move_drag_for_device(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
@@ -151,7 +151,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_begin_paint_rect(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const&#x20;GdkRectangle* p2 = (const&#x20;GdkRectangle*)p2_obj[0];
 
@@ -178,7 +177,6 @@ extern "C" {
 	void gtk3_gdk_window_begin_resize_drag_for_device(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const WindowEdge p2 = (WindowEdge)APITools_GetIntValue(context, 2);
-
 		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		GdkDevice* p3 = (GdkDevice*)p3_obj[0];
 
@@ -277,7 +275,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_end_draw_frame(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDrawingContext* p2 = (GdkDrawingContext*)p2_obj[0];
 
@@ -419,7 +416,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_device_cursor(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
@@ -433,7 +429,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_device_events(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
@@ -447,7 +442,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_device_position(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
@@ -465,7 +459,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_device_position_double(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
@@ -494,7 +487,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_drag_protocol(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindow** p2 = (GdkWindow**)p2_obj[0];
 
@@ -574,7 +566,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_frame_extents(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkRectangle* p2 = (GdkRectangle*)p2_obj[0];
 
@@ -877,7 +868,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_invalidate_rect(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const&#x20;GdkRectangle* p2 = (const&#x20;GdkRectangle*)p2_obj[0];
 
@@ -1006,7 +996,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_move_to_rect(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const&#x20;GdkRectangle* p2 = (const&#x20;GdkRectangle*)p2_obj[0];
 
@@ -1052,7 +1041,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_remove_filter(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkFilterFunc p2 = (GdkFilterFunc)p2_obj[0];
 
@@ -1066,7 +1054,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_reparent(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
@@ -1092,7 +1079,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_restack(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
@@ -1127,7 +1113,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_background(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const&#x20;GdkColor* p2 = (const&#x20;GdkColor*)p2_obj[0];
 
@@ -1139,7 +1124,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_background_rgba(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const&#x20;GdkRGBA* p2 = (const&#x20;GdkRGBA*)p2_obj[0];
 
@@ -1179,7 +1163,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_cursor(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkCursor* p2 = (GdkCursor*)p2_obj[0];
 
@@ -1201,10 +1184,8 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_device_cursor(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
-
 
 		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		GdkCursor* p3 = (GdkCursor*)p3_obj[0];
@@ -1217,7 +1198,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_device_events(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
@@ -1281,7 +1261,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_geometry_hints(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const&#x20;GdkGeometry* p2 = (const&#x20;GdkGeometry*)p2_obj[0];
 
@@ -1295,7 +1274,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_group(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
@@ -1317,7 +1295,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_invalidate_handler(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindowInvalidateHandlerFunc p2 = (GdkWindowInvalidateHandlerFunc)p2_obj[0];
 
@@ -1485,7 +1462,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_transient_for(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
@@ -1535,7 +1511,6 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_show_window_menu(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkEvent* p2 = (GdkEvent*)p2_obj[0];
 

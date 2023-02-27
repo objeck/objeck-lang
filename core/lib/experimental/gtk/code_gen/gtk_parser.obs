@@ -229,9 +229,8 @@ class GtkTestRunner {
 					cxx_buffer += "\t__declspec(dllexport)\n";
 					cxx_buffer += "#endif\n";
 					cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
-#					cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
 
-					objk_buffer += "\t\tNew("
+					objk_buffer += "\t\tNew"
 					WriteParameters(params_xml, objk_buffer, cxx_buffer);
 					objk_buffer += " {\n";
 				}
@@ -262,7 +261,7 @@ class GtkTestRunner {
 
 					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constructor);
 
-					cxx_params_buffer += "\t\t{$identifier_name}(";
+					cxx_params_buffer += "\t\tconst auto status = (size_t){$identifier_name}(p1";
 				}
 				else if(return_type->Equals("Nil")) {
 					
@@ -442,7 +441,7 @@ class GtkTestRunner {
 								}
 								else {
 									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
-									cxx_buffer += "\n\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
+									cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
 									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
 
 									if(i + 1 < params_xml->Size()) {
