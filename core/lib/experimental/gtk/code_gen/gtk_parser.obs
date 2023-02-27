@@ -195,7 +195,7 @@ class GtkTestRunner {
 
 		# parse parameters
 		fields_xml := class_xml->GetChildren("field")<XmlElement>;
-		getters_setters := ParseParameters(fields_xml, objk_buffer, cxx_buffer);
+		getters_setters := ParseGettersSetters(fields_xml, objk_buffer, cxx_buffer);
 
 		# write constructor
 		objk_buffer += "\t\tNew({$ref_name} : Int) {\n";
@@ -339,7 +339,7 @@ class GtkTestRunner {
 					type_xml := param_xml->GetFirstChild("type");
 					if(type_xml <> Nil) {									
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
-						objk_buffer += "{$param_name} : {$type_name}, ";
+						objk_buffer += "{$param_name}_ : {$type_name}, ";
 					};
 				};
 			};
@@ -426,17 +426,17 @@ class GtkTestRunner {
 						
 						# TODO: hash sub-strings
 						if(type_name->Equals("Int")) {
-							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name}_);\n";
 
 							cxx_buffer += "\t\tconst long p{$index} = APITools_GetIntValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Float")) {
-							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name});\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name}_);\n";
 
 							cxx_buffer += "\t\tconst double p{$index} = APITools_GetFloatValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Bool")) {
-							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} ? 0 : 1);\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name}_ ? 0 : 1);\n";
 
 							cxx_buffer += "\t\tconst bool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
@@ -451,7 +451,7 @@ class GtkTestRunner {
 								ctype_name := param_name_xml->GetValue();
 
 								if(@consts_set->Has(type_name)) {
-									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
+									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name}_);\n";
 
 									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
 								}
@@ -460,7 +460,7 @@ class GtkTestRunner {
 										@missing_defs->Insert(type_name);
 									};
 
-									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name}_;\n";
 									cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
 									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
 
@@ -505,7 +505,7 @@ class GtkTestRunner {
 		};
 	}
 
-	method : ParseParameters(fields_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String) ~ Vector<Pair<String, String>> {
+	method : ParseGettersSetters(fields_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String) ~ Vector<Pair<String, String>> {
 		# TODO: check 'writable' flag
 		getters_setters := Vector->New()<Pair<String, String>>;
 
