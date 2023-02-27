@@ -27,6 +27,7 @@ class GtkTestRunner {
 		@basictype_map->Insert("gpointer", "Int");
 		@basictype_map->Insert("gboolean", "Bool");
 		@basictype_map->Insert("gshort", "Int");
+		@basictype_map->Insert("int", "Int");
 		@basictype_map->Insert("gint", "Int");
 		@basictype_map->Insert("gint8", "Int");
 		@basictype_map->Insert("gint16", "Int");
@@ -374,16 +375,16 @@ class GtkTestRunner {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 
 					if(@consts_set->Has(type_name)) {
-						objk_buffer += "\t\t\treturn value->As({$type_name});\n";
+						objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
 
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
 						if(is_constructor) {
-							objk_buffer += "\t\t\t@gobject := {$type_name}->New(value);\n";
+							objk_buffer += "\t\t\t@gobject := value->Get();\n";
 						}
 						else {
-							objk_buffer += "\t\t\treturn {$type_name}->New(value);\n";
+							objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
 						}
 
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, status);\n";
@@ -418,7 +419,7 @@ class GtkTestRunner {
 							cxx_buffer += "\t\tconst double p{$index} = APITools_GetFloatValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Bool")) {
-							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} = 0 ? 0 : 1);\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} ? 0 : 1);\n";
 
 							cxx_buffer += "\t\tconst bool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
@@ -435,7 +436,7 @@ class GtkTestRunner {
 								ctype_name := param_name_xml->GetValue();
 
 								if(@consts_set->Has(type_name)) {
-									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name})->As(Int));\n";
+									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
 									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
 								}
@@ -571,7 +572,7 @@ class GtkTestRunner {
 			}
 			else {
 				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn {$type}->New(value->Get());\n";
+				objk_buffer += "\t\t\treturn value->New(value->Get());\n";
 			};
 			objk_buffer += "\t\t}\n\n";
 
@@ -613,6 +614,10 @@ class GtkTestRunner {
 				if(type_xml <> Nil) {									
 					type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
 					if(type_name->Has('.')) {
+						return false;
+					};
+
+					if(type_name->Has("Func")) {
 						return false;
 					};
 				};
@@ -665,12 +670,13 @@ class GtkTestRunner {
 	method : WriteObjeckHeader() ~ Nil {
 		objk_buffer := "";
 
+		objk_buffer += "use System.API;\n\n";
 		objk_buffer += "bundle GTK3 {\n";
 		objk_buffer += "\tclass : private : Proxy {\n";
 		objk_buffer += "\t\t@lib_proxy : static : DllProxy;\n\n";
 		objk_buffer += "\t\tfunction : GetDllProxy() ~ DllProxy {\n";
 		objk_buffer += "\t\t\tif(@lib_proxy = Nil) {\n";
-		objk_buffer += "\t\t\t\t@lib_proxy := DllProxy->New(\"libobjk_gtk3\";\n";
+		objk_buffer += "\t\t\t\t@lib_proxy := DllProxy->New(\"libobjk_gtk3\");\n";
 		objk_buffer += "\t\t\t};\n\n";
 		objk_buffer += "\t\t\treturn @lib_proxy;\n";
 		objk_buffer += "\t\t}\n";
