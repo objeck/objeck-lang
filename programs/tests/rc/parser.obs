@@ -22,7 +22,7 @@ bundle Default {
 
       line_num := 0;
       reader := FileReader->New(file);
-      while(reader->IsEOF() <> true) {
+      while(reader->IsEoF() <> true) {
         line := reader->ReadString();
         line_num := line_num + 1;
                   

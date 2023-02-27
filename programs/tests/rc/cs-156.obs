@@ -24,7 +24,7 @@ bundle Default {
 		
 		method : native : Run(file : String) ~ Nil {
 			reader := FileReader->New(file);
-			while(reader->IsEOF() <> true) {
+			while(reader->IsEoF() <> true) {
 				ParseFlight(reader->ReadString());
 			};
 			reader->Close();
