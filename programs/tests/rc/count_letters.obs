@@ -12,7 +12,7 @@ class Test {
 	function : CountLetters(filename : String) ~ Int[] {
 		freqs := Int->New[26];
 		reader := FileReader->New(filename);
-		while(reader->IsEOF() <> true) {
+		while(reader->IsEoF() <> true) {
 		line := reader->ReadString()->ToUpper();
 			each(i : line) {
 				ch := line->Get(i);
