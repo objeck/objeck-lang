@@ -13,6 +13,8 @@ class GtkTestRunner {
 	@namespace : String;
 	@objk_out : FileWriter;
 	@cxx_out : FileWriter;
+	@class_name : String;
+	@missing_defs : Set<String>;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -48,6 +50,7 @@ class GtkTestRunner {
 		@basictype_map->Insert("guint8*", "Byte[]");
 
 		@consts_set := Set->New()<String>;
+		@missing_defs := Set->New()<String>;
 
 		@objk_out := FileWriter->New("gens/objk_code.txt");
 		@cxx_out := FileWriter->New("gens/cxx_code.txt");
@@ -91,18 +94,29 @@ class GtkTestRunner {
 				ParseClasses(classes_xml);
 			};
 
-			@objk_out->WriteString("}");
-			@cxx_out->WriteString("}");
+			
 		};
 
+		objk_buffer := "";
+		missing_def_keys := @missing_defs->GetKeys()<String>;
+		each(missing_def_key := missing_def_keys) {
+			WriteMissingClass(missing_def_key, objk_buffer);
+		};
+		objk_buffer->Pop();
+		@objk_out->WriteString(objk_buffer);
+
+
+		@objk_out->WriteString("}");
 		@objk_out->Close();
+
+		@cxx_out->WriteString("}");
 		@cxx_out->Close();
 
 		timer->End();
-
 		String->SetFloatPrecision(3);
 		tick_secs := timer->GetElapsedTime();
 		"###\ntime={$tick_secs} sec(s)"->PrintLine();
+
 	}
 
 	# TODO: GdkWMDecoration
@@ -142,11 +156,11 @@ class GtkTestRunner {
 
 			class_xml := classes_xml->Get(i);
 
-			class_name := class_xml->GetAttribute("name")->GetValue();
-			if(class_name->Equals("Window")) {
+			@class_name := class_xml->GetAttribute("name")->GetValue();
+			if(@class_name->Equals("Window")) {
 				@debug := true;
 
-				WriteClass(class_name, class_xml, objk_buffer, cxx_buffer);
+				WriteClass(class_xml, objk_buffer, cxx_buffer);
 
 				@debug := false;
 			};
@@ -160,22 +174,22 @@ class GtkTestRunner {
 		};
 	}
 
-	method : WriteClass(class_name : String, class_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ String {
+	method : WriteClass(class_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {
 		if(@debug) {
-			"###\n[class/record: name='{$class_name}']"->PrintLine();
+			"###\n[class/record: name='{$@class_name}']"->PrintLine();
 		};
 
 		cxx_buffer += "\n\t//\n"
-		cxx_buffer += "\t// {$class_name}\n"
+		cxx_buffer += "\t// {$@class_name}\n"
 		cxx_buffer += "\t//\n"
 
 		# start class
 		objk_buffer += "\t#\n"
-		objk_buffer += "\t# {$class_name}\n"
+		objk_buffer += "\t# {$@class_name}\n"
 		objk_buffer += "\t#\n"
-		objk_buffer += "\tclass {$class_name} {\n";
+		objk_buffer += "\tclass {$@class_name} {\n";
 
-		ref_name := "gobject"; #class_name->ToLower();
+		ref_name := "gobject";
 		objk_buffer += "\t\t@{$ref_name} : Int;\n\n";
 
 		# parse parameters
@@ -203,8 +217,6 @@ class GtkTestRunner {
 
 		# end class
 		objk_buffer += "\t}\n\n";
-
-		return class_name;
 	}
 
 	method : WriteMethods(ref_name : String, methods_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String, is_constructor : Bool) ~ Nil {
@@ -380,6 +392,10 @@ class GtkTestRunner {
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
+						if(<>type_name->Equals(@class_name) & @debug) {
+							@missing_defs->Insert(type_name);
+						};
+
 						if(is_constructor) {
 							objk_buffer += "\t\t\t@gobject := value->Get();\n";
 						}
@@ -441,6 +457,10 @@ class GtkTestRunner {
 									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
 								}
 								else {
+									if(<>type_name->Equals(@class_name) & @debug) {
+										@missing_defs->Insert(type_name);
+									};
+
 									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
 									cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
 									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
@@ -757,5 +777,12 @@ class GtkTestRunner {
 		cxx_buffer += "\t}\n";
 
 		@cxx_out->WriteString(cxx_buffer);
+	}
+
+	function : WriteMissingClass(class_name : String, objk_buffer : String) ~ Nil {
+		objk_buffer += "\n\tclass {$class_name} {\n"
+		objk_buffer += "\t\tNew(gobject : Int) {\n"
+		objk_buffer += "\t\t}\n"
+		objk_buffer += "\t}\n\n"
 	}
 }
