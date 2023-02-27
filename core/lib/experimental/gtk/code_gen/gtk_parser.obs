@@ -64,12 +64,6 @@ class GtkTestRunner {
 		timer := System.Time.Timer->New();
 		timer->Start();
 
-#		TODO: store in look up table and handle as ints
-#		classes_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
-#		classes_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
-
-#		classes_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
-
 		parser := XmlParser->New(data);
 		if(parser->Parse()) {
 			WriteObjeckHeader();
@@ -199,6 +193,10 @@ class GtkTestRunner {
 		objk_buffer += '\n';
 
 		# write methods
+		constructors_xml := class_xml->GetChildren("constructor")<XmlElement>;
+		WriteMethods(ref_name, constructors_xml, objk_buffer, cxx_buffer, true);
+
+		# write methods
 		methods_xml := class_xml->GetChildren("method")<XmlElement>;
 		WriteMethods(ref_name, methods_xml, objk_buffer, cxx_buffer, false);
 
@@ -321,25 +319,41 @@ class GtkTestRunner {
 			return_xml := method_xml->GetFirstChild("return-value");
 
 			if(CanEmitMethod(params_xml, return_xml, false)) {
-				inst_type_xml := params_xml->GetFirstChild("instance-parameter")->GetFirstChild("type");
-				inst_ctype_name := inst_type_xml->GetAttribute("type")->GetValue();
+				if(is_constructor) {
+					objk_buffer += "\t\tNew("
+					WriteParameters(params_xml, objk_buffer, cxx_buffer);
+					objk_buffer += " {\n";
+				}
+				else {
+					inst_type_xml := params_xml->GetFirstChild("instance-parameter")->GetFirstChild("type");
+					inst_ctype_name := inst_type_xml->GetAttribute("type")->GetValue();
 
-				cxx_buffer += "#ifdef _WIN32\n";
-				cxx_buffer += "\t__declspec(dllexport)\n";
-				cxx_buffer += "#endif\n";
-				cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
-				cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
-				
-				objk_buffer += "\t\tmethod : public : {$method_case_name}";
+					cxx_buffer += "#ifdef _WIN32\n";
+					cxx_buffer += "\t__declspec(dllexport)\n";
+					cxx_buffer += "#endif\n";
+					cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
+					cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
+					
+					objk_buffer += "\t\tmethod : public : {$method_case_name}";
 
-				WriteParameters(params_xml, objk_buffer, cxx_buffer);
-				objk_buffer += " ~ {$return_type} {\n";
+					WriteParameters(params_xml, objk_buffer, cxx_buffer);
+					objk_buffer += " ~ {$return_type} {\n";
+				};
 
 				cxx_params_buffer := "";
 				cxx_params_count := 0;
 
 				parameters_size := params_xml->Size() + 1;
-				if(return_type->Equals("Nil")) {
+
+				if(is_constructor) {
+					objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
+					objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
+
+					cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constructor);
+
+					cxx_params_buffer += "\t\t{$identifier_name}(";
+				}
+				else if(return_type->Equals("Nil")) {
 					
 					objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
 
@@ -481,7 +495,12 @@ class GtkTestRunner {
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
-						objk_buffer += "\t\t\treturn {$type_name}->New(value);\n";
+						if(is_constructor) {
+							objk_buffer += "\t\t\t@gobject := {$type_name}->New(value);\n";
+						}
+						else {
+							objk_buffer += "\t\t\treturn {$type_name}->New(value);\n";
+						}
 
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, status);\n";
 					};
@@ -492,13 +511,9 @@ class GtkTestRunner {
 
 	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_nil : Bool, is_constructor : Bool) ~ Int {
 		if(params_xml <> Nil) {
-			each(i : params_xml) {
-				index := i;
-				
-				if(<>is_constructor) {
-					index += 1;
-				};
+			index := 1;
 
+			each(i : params_xml) {
 				param_xml := params_xml->Get(i);
 				param_name := param_xml->GetName();
 				if(param_name->Equals("parameter")) {
@@ -527,7 +542,7 @@ class GtkTestRunner {
 							cxx_buffer += "\t\tconst std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
 						}
 						else {
-							objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+							
 
 							param_type_xml := type_xml->GetAttribute("type");
 							param_name_xml := type_xml->GetAttribute("name");
@@ -541,6 +556,7 @@ class GtkTestRunner {
 									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
 								}
 								else {
+									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
 									cxx_buffer += "\n\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
 									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
 
@@ -552,6 +568,9 @@ class GtkTestRunner {
 						};
 					};
 				};
+
+				# update
+				index += 1;
 			};
 
 			cxx_buffer += '\n';
