@@ -15,6 +15,8 @@ class GtkTestRunner {
 	@cxx_out : FileWriter;
 	@class_name : String;
 	@missing_defs : Set<String>;
+	@keywords : Set<String>;
+	@emit_classes : Set<String>;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -31,6 +33,7 @@ class GtkTestRunner {
 		@basictype_map->Insert("gshort", "Int");
 		@basictype_map->Insert("int", "Int");
 		@basictype_map->Insert("gint", "Int");
+		@basictype_map->Insert("none", "Nil");
 		@basictype_map->Insert("gint8", "Int");
 		@basictype_map->Insert("gint16", "Int");
 		@basictype_map->Insert("gint32", "Int");
@@ -55,6 +58,14 @@ class GtkTestRunner {
 
 		@objk_out := FileWriter->New("gens/objk_code.txt");
 		@cxx_out := FileWriter->New("gens/cxx_code.txt");
+
+		@keywords := Set->New()<String>;
+		@keywords->Insert("use");
+		@keywords->Insert("value");
+
+		@emit_classes := Set->New()<String>;
+		@emit_classes->Insert("Window");
+		@emit_classes->Insert("Device");
 	}
 
 	method : Parse() ~ Nil {
@@ -101,7 +112,9 @@ class GtkTestRunner {
 		objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
 		missing_def_keys := @missing_defs->GetKeys()<String>;
 		each(missing_def_key := missing_def_keys) {
-			WriteMissingClass(missing_def_key, objk_buffer);
+			if(<>@emit_classes->Has(missing_def_key)) {
+				WriteMissingClass(missing_def_key, objk_buffer);
+			};
 		};
 		objk_buffer->Pop();
 		@objk_out->WriteString(objk_buffer);
@@ -158,7 +171,7 @@ class GtkTestRunner {
 			class_xml := classes_xml->Get(i);
 
 			@class_name := class_xml->GetAttribute("name")->GetValue();
-			if(@class_name->Equals("Window") | @class_name->Equals("Device")) {
+			if(@emit_classes->Has(@class_name)) {
 				@debug := true;
 
 				WriteClass(class_xml, objk_buffer, cxx_buffer);
@@ -336,6 +349,10 @@ class GtkTestRunner {
 					clean_up := true;
 
 					param_name := param_xml->GetAttribute("name")->GetValue();
+					if(@keywords->Has(param_name)) {
+						param_name += '_';
+					};
+
 					type_xml := param_xml->GetFirstChild("type");
 					if(type_xml <> Nil) {									
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
@@ -422,6 +439,11 @@ class GtkTestRunner {
 					param_name := param_xml->GetAttribute("name")->GetValue();
 					type_xml := param_xml->GetFirstChild("type");
 					if(type_xml <> Nil) {									
+						if(@keywords->Has(param_name)) {
+							param_name += '_';
+						};
+
+
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
 						
 						# TODO: hash sub-strings
