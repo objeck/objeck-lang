@@ -491,7 +491,7 @@ class GtkTestRunner {
 		if(return_type_xml <> Nil) {
 			type_xml := return_type_xml->GetAttribute("type");
 			if(type_xml <> Nil) {									
-				type_name := GetMappingName(type_xml->GetValue());
+				type_name := GetMappingName(XmlElement->DecodeString(type_xml->GetValue()));
 				
 				# TODO: hash sub-strings
 				if(type_name->Equals("Int") | type_name->Equals("Bool")) {
