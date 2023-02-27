@@ -6787,8 +6787,15 @@ bundle System.IO.Filesystem {
 		Check if seek pointer is at the end-of-file
 		@return true if at the end-of-file, false otherwise
 		~#
-		method : public : IsEOF() ~ Bool {
+		method : public : IsEoF() ~ Bool {
 			FILE_EOF;
+		}
+
+		#~
+		Flushes the file buffer
+		~#
+		method : public : Flush() ~ Nil {
+			FILE_FLUSH;
 		}
 
 		#~
@@ -7293,13 +7300,6 @@ bundle System.IO.Filesystem {
 		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
-		}
-
-		#~
-		Flushes the file buffer
-		~#
-		method : public : Flush() ~ Nil {
-			FILE_FLUSH;
 		}
 
 		#~
