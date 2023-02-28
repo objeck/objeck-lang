@@ -646,7 +646,7 @@ class Gtk3Binder {
 			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
 
 			cxx_buffer += "#ifdef _WIN32\n";
-			cxx_buffer += "\t__declspec(dllexport)";
+			cxx_buffer += "\t__declspec(dllexport)\n";
 			cxx_buffer += "#endif\n";
 			cxx_buffer += "void {$c_call_name}(VMContext& context) {\n";
 			cxx_buffer += "}\n";
