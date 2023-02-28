@@ -3,7 +3,7 @@ use System.IO.Filesystem;
 use Data.XML;
 
 class Gtk3Binder {
-	@debug : Bool;
+	@is_debug : Bool;
 	@filename : String;
 	@basictype_map : Hash<String, String>;
 	@consts_set : Set<String>;
@@ -69,7 +69,7 @@ class Gtk3Binder {
 		@emit_classes->Insert("RGBA");
 		@emit_classes->Insert("Rectangle");
 
-		@debug := true;
+		@is_debug := true;
 	}
 
 	method : Parse() ~ Nil {
@@ -77,7 +77,7 @@ class Gtk3Binder {
 		data := FileReader->ReadFile(@filename);
 		data_size := data->Size() / 1000;
 		data_size_str := data_size->ToCommaString();
-		"[File: name='{$@filename}', size={$data_size_str} kb(s)]\n---"->PrintLine();
+		"[File: name='{$@filename}', size={$data_size_str} kb]\n---"->PrintLine();
 
 		# parse xml
 		timer := System.Time.Timer->New();
@@ -132,19 +132,19 @@ class Gtk3Binder {
 		timer->End();
 		String->SetFloatPrecision(3);
 		tick_secs := timer->GetElapsedTime();
-		"###\ntime={$tick_secs} sec(s)"->PrintLine();
+		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
 
 	}
 
 	method : ParseConsts(enums_xml : Vector<XmlElement>, is_enum : Bool) ~ Nil {
 		objk_buffer := "";
 
-		if(@debug) {
+		if(@is_debug) {
 			if(is_enum) {
-				"\n[Enums]"->PrintLine();
+				"### [Enums] ###"->PrintLine();
 			}
 			else {
-				"\n[Bitfields]"->PrintLine();
+				"### [Bitfields] ###"->PrintLine();
 			};
 		};
 
@@ -152,8 +152,13 @@ class Gtk3Binder {
 			enum_name := enum_xml->GetAttribute("name")->GetValue();
 			@consts_set->Insert(enum_name);
 
-			if(@debug) {
-				"\tenum/bitfield: name='{$enum_name}'"->PrintLine();
+			if(@is_debug) {
+				if(is_enum) {
+					"\tEnum: name='{$enum_name}'"->PrintLine();
+				}
+				else {
+					"\tBitfield: name='{$enum_name}'"->PrintLine();
+				};
 			};
 
 			objk_buffer += "\tconsts {$enum_name} {\n";
@@ -175,12 +180,12 @@ class Gtk3Binder {
 	}
 
 	method : ParseClasses(classes_xml : Vector<XmlElement>, is_class : Bool) ~ Nil {
-		if(@debug) {
+		if(@is_debug) {
 			if(is_class) {
-				"\n[Classes]"->PrintLine();
+				"### [Classes] ###"->PrintLine();
 			}
 			else {
-				"\n[Records]"->PrintLine();
+				"### [Records] ###"->PrintLine();
 			};
 		};
 
@@ -192,7 +197,7 @@ class Gtk3Binder {
 
 			@class_name := class_xml->GetAttribute("name")->GetValue();
 			if(@emit_classes->Has(@class_name)) {
-				WriteClass(class_xml, objk_buffer, cxx_buffer);
+				WriteClass(class_xml, objk_buffer, cxx_buffer, is_class);
 			};
 			
 			if(i + 1 = classes_xml->Size()) {
@@ -204,9 +209,14 @@ class Gtk3Binder {
 		};
 	}
 
-	method : WriteClass(class_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {
-		if(@debug) {
-			"\tclass/record: name='{$@class_name}'"->PrintLine();
+	method : WriteClass(class_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_class : Bool) ~ Nil {
+		if(@is_debug) {
+			if(is_class) {
+				"\t[Class: name='{$@class_name}']"->PrintLine();
+			}
+			else {
+				"\t[Record: name='{$@class_name}']"->PrintLine();
+			};
 		};
 
 		cxx_buffer += "\n\t//\n"
@@ -263,8 +273,13 @@ class Gtk3Binder {
 
 			return_type := GetMappingName(XmlElement->DecodeString(return_type_xml->GetAttribute("type")->GetValue()));
 
-			if(@debug) {
-				"\t\tmethod: name='{$method_name}'"->PrintLine();
+			if(@is_debug) {
+				if(is_func) {
+					"\t\tfunction: name='{$method_name}'"->PrintLine();
+				}
+				else {
+					"\t\tmethod: name='{$method_name}'"->PrintLine();
+				};
 			};
 
 			# get parameters and returns types
