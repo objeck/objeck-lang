@@ -1910,4 +1910,154 @@ extern "C" {
 
 		gdk_window_withdraw(p1);
 	}
+
+	//
+	// RGBA
+	//
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_red(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_green(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_blue(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_alpha(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rgba_copy(VMContext& context) {
+		const&#x20;GdkRGBA* p1 = (const&#x20;GdkRGBA*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_rgba_copy(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rgba_equal(VMContext& context) {
+		gconstpointer p1 = (gconstpointer)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		gconstpointer p2 = (gconstpointer)p2_obj[0];
+
+		const auto status = gdk_rgba_equal(p1, p2);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rgba_free(VMContext& context) {
+		GdkRGBA* p1 = (GdkRGBA*)APITools_GetIntValue(context, 1);
+
+		gdk_rgba_free(p1);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rgba_hash(VMContext& context) {
+		gconstpointer p1 = (gconstpointer)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_rgba_hash(p1);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rgba_parse(VMContext& context) {
+		GdkRGBA* p1 = (GdkRGBA*)APITools_GetIntValue(context, 1);
+		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+		const auto status = gdk_rgba_parse(p1, p2);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rgba_to_string(VMContext& context) {
+		const&#x20;GdkRGBA* p1 = (const&#x20;GdkRGBA*)APITools_GetIntValue(context, 1);
+
+		const auto status = gdk_rgba_to_string(p1);
+
+		APITools_SetStringValue(context, 0, status);
+	}
+
+
+	//
+	// Rectangle
+	//
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_x(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_y(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_width(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)#endif
+void gobject_get_height(VMContext& context) {
+}
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rectangle_equal(VMContext& context) {
+		const&#x20;GdkRectangle* p1 = (const&#x20;GdkRectangle*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
+
+		const auto status = gdk_rectangle_equal(p1, p2);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rectangle_intersect(VMContext& context) {
+		const&#x20;GdkRectangle* p1 = (const&#x20;GdkRectangle*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
+
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		GdkRectangle* p3 = (GdkRectangle*)p3_obj[0];
+
+		const auto status = gdk_rectangle_intersect(p1, p2, p3);
+
+		APITools_SetIntValue(context, 0, status);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void gtk3_gdk_rectangle_union(VMContext& context) {
+		const&#x20;GdkRectangle* p1 = (const&#x20;GdkRectangle*)APITools_GetIntValue(context, 1);
+		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
+
+		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
+		GdkRectangle* p3 = (GdkRectangle*)p3_obj[0];
+
+		gdk_rectangle_union(p1, p2, p3);
+	}
+
 }

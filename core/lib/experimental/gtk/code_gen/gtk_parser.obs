@@ -66,6 +66,8 @@ class GtkTestRunner {
 		@emit_classes := Set->New()<String>;
 		@emit_classes->Insert("Window");
 		@emit_classes->Insert("Device");
+		@emit_classes->Insert("RGBA");
+		@emit_classes->Insert("Rectangle");
 	}
 
 	method : Parse() ~ Nil {
@@ -99,14 +101,17 @@ class GtkTestRunner {
 				ParseConsts(bitfields_xml);
 			};
 
-			@debug := false;
-
 			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
 			if(classes_xml <> Nil) {
 				ParseClasses(classes_xml);
 			};
 
-			
+			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+			if(records_xml <> Nil) {
+				ParseClasses(records_xml);
+			};
+
+			@debug := false;
 		};
 
 		objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
@@ -133,7 +138,6 @@ class GtkTestRunner {
 
 	}
 
-	# TODO: GdkWMDecoration
 	method : ParseConsts(enums_xml : Vector<XmlElement>) ~ Nil {
 		objk_buffer := "";
 
