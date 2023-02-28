@@ -1,4 +1,4 @@
-#include "gtk3_test.h"
+#include "gtk3_binder.h"
 
 extern "C" {
 	static ResourceManager* res_manager = nullptr;
