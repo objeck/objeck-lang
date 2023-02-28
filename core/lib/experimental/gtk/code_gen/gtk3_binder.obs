@@ -794,7 +794,7 @@ class Gtk3Binder {
 	method : WriteCxxHeader() ~ Nil {
 		cxx_buffer := "";
 
-		cxx_buffer += "#include \"gtk3_test.h\"\n\n";
+		cxx_buffer += "#include \"gtk3_binder.h\"\n\n";
 		cxx_buffer += "extern \"C\" {\n";
 		cxx_buffer += "\tstatic ResourceManager* res_manager = nullptr;\n";
 		cxx_buffer += "\t\n";
