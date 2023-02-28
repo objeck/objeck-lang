@@ -74,7 +74,7 @@ extern "C" {
 			}
 		}
 	}
-	
+
 
 	//
 	// Device
@@ -1988,19 +1988,23 @@ extern "C" {
 	// RGBA
 	//
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_red(VMContext& context) {
 }
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_green(VMContext& context) {
 }
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_blue(VMContext& context) {
 }
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_alpha(VMContext& context) {
 }
 #ifdef _WIN32
@@ -2075,19 +2079,23 @@ void gobject_get_alpha(VMContext& context) {
 	// Rectangle
 	//
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_x(VMContext& context) {
 }
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_y(VMContext& context) {
 }
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_width(VMContext& context) {
 }
 #ifdef _WIN32
-	__declspec(dllexport)#endif
+	__declspec(dllexport)
+#endif
 void gobject_get_height(VMContext& context) {
 }
 #ifdef _WIN32

@@ -34,9 +34,9 @@
 #define __GTK3_TEST_H__
 
 #include <gtk/gtk.h>
-#include "../../../../vm/lib_api.h"
-#include "../../../../vm/interpreter.h"
-#include "../../../../shared/sys.h"
+#include "../../../../../vm/lib_api.h"
+#include "../../../../../vm/interpreter.h"
+#include "../../../../../shared/sys.h"
 
 #define EXEC_STACK_MAX 32
 
