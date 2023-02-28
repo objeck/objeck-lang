@@ -2,54 +2,54 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-      if(args->Size() > 0) {
-         sections := ParseSections(args[0])->GetKeyValues()<Pair<String, String>>;
-         each(i : sections) {
-            section := sections->Get(i);
-            section->GetFirst()->PrintLine();
-            "---"->PrintLine();
-            section->GetSecond()->PrintLine();
-         };
-      };
+		if(args->Size() > 0) {
+			sections := ParseSections(args[0])->GetKeyValues()<Pair<String, String>>;
+			each(i : sections) {
+				section := sections->Get(i);
+				section->GetFirst()->PrintLine();
+				"---"->PrintLine();
+				section->GetSecond()->PrintLine();
+			};
+		};
 	}
 
-   # header: ### [xxx] ###
-   # content: ...
-   function : ParseSections(filename : String) ~ Map<String, String> {
-      section_map := Map->New()<String, String>;
+	# header: ### [xxx] ###
+	# content: ...
+	function : ParseSections(filename : String) ~ Map<String, String> {
+		section_map := Map->New()<String, String>;
 
-      reader := System.IO.Filesystem.FileReader->New(filename);
-      leaving {
-         reader->Close();
-      };
+		reader := System.IO.Filesystem.FileReader->New(filename);
+		leaving {
+			reader->Close();
+		};
 
-      section_buffer := "";
-      section_name : String;
+		section_buffer := "";
+		section_name : String;
 
-      do {
-         line := reader->ReadLine()->Trim();
-         if(<>line->IsEmpty()) {
-            if(line->StartsWith("### [") & line->EndsWith("] ###")) {
-               if(section_name <> Nil) {
-                  section_name := section_name->Remove("### [")->Remove("] ###");
-                  section_map->Insert(section_name, section_buffer);
-               };
+		do {
+			line := reader->ReadLine()->Trim();
+			if(<>line->IsEmpty()) {
+				if(line->StartsWith("### [") & line->EndsWith("] ###")) {
+					if(section_name <> Nil) {
+						section_name := section_name->Remove("### [")->Remove("] ###");
+						section_map->Insert(section_name, section_buffer);
+					};
 
-               section_name := line;
-               section_buffer := "";
-            }
-            else {
-               section_buffer += line + "\r\n";
-            };
-         };
-      }
-      while(<>reader->IsEoF());
+					section_name := line;
+					section_buffer := "";
+				}
+				else {
+					section_buffer += line + "\r\n";
+				};
+			};
+		}
+		while(<>reader->IsEoF());
 
-      if(section_name <> Nil) {
-         section_name := section_name->Remove("### [")->Remove("] ###");
-         section_map->Insert(section_name, section_buffer);
-      };
+		if(section_name <> Nil) {
+			section_name := section_name->Remove("### [")->Remove("] ###");
+			section_map->Insert(section_name, section_buffer);
+		};
 
-      return section_map;
-   }
+		return section_map;
+	}
 }

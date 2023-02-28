@@ -14,6 +14,7 @@ class Gtk3Binder {
 	@missing_defs : Set<String>;
 	@keywords : Set<String>;
 	@emit_classes : Set<String>;
+	@static_content : Map<String, String>;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -58,6 +59,7 @@ class Gtk3Binder {
 		#
 		@objk_out := FileWriter->New("gens/objk_code.txt");
 		@cxx_out := FileWriter->New("gens/cxx_code.txt");
+		@static_content := ParseStaticContent("gens/objk_cxx_static.dat");
 
 		@keywords := Set->New()<String>;
 		@keywords->Insert("use");
@@ -774,20 +776,8 @@ class Gtk3Binder {
 	}
 
 	method : WriteObjeckHeader() ~ Nil {
-		objk_buffer := "";
-
-		objk_buffer += "use System.API;\n\n";
-		objk_buffer += "bundle GTK3 {\n";
-		objk_buffer += "\tclass : private : Proxy {\n";
-		objk_buffer += "\t\t@lib_proxy : static : DllProxy;\n\n";
-		objk_buffer += "\t\tfunction : GetDllProxy() ~ DllProxy {\n";
-		objk_buffer += "\t\t\tif(@lib_proxy = Nil) {\n";
-		objk_buffer += "\t\t\t\t@lib_proxy := DllProxy->New(\"libobjk_gtk3\");\n";
-		objk_buffer += "\t\t\t};\n\n";
-		objk_buffer += "\t\t\treturn @lib_proxy;\n";
-		objk_buffer += "\t\t}\n";
-		objk_buffer += "\t}\n\n";
-		
+		objk_buffer := @static_content->Find("objk_header");
+		Runtime->Assert(objk_buffer <> Nil & <>objk_buffer->IsEmpty());
 		@objk_out->WriteString(objk_buffer);
 	}
 
@@ -870,5 +860,43 @@ class Gtk3Binder {
 		objk_buffer += "\t\tNew(gobject : Int) {\n"
 		objk_buffer += "\t\t}\n"
 		objk_buffer += "\t}\n"
+	}
+
+	function : ParseStaticContent(filename : String) ~ Map<String, String> {
+		section_map := Map->New()<String, String>;
+
+		reader := System.IO.Filesystem.FileReader->New(filename);
+		leaving {
+			reader->Close();
+		};
+
+		section_buffer := "";
+		section_name : String;
+
+		do {
+			line := reader->ReadLine()->Trim();
+			if(<>line->IsEmpty()) {
+				if(line->StartsWith("### [") & line->EndsWith("] ###")) {
+					if(section_name <> Nil) {
+						section_name := section_name->Remove("### [")->Remove("] ###");
+						section_map->Insert(section_name, section_buffer);
+					};
+
+					section_name := line;
+					section_buffer := "";
+				}
+				else {
+					section_buffer += line + "\r\n";
+				};
+			};
+		}
+		while(<>reader->IsEoF());
+
+		if(section_name <> Nil) {
+			section_name := section_name->Remove("### [")->Remove("] ###");
+			section_map->Insert(section_name, section_buffer);
+		};
+
+		return section_map;
 	}
 }
