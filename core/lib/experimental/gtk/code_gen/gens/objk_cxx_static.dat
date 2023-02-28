@@ -1,7 +1,7 @@
 ### [objk_header] ###
 use System.API;
 
-bundle GTK3 {
+bundle Gtk3 {
 	class : private : Proxy {
 		@lib_proxy : static : DllProxy;
 
@@ -91,4 +91,3 @@ extern "C" {
 			}
 		}
 	}
-	
