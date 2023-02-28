@@ -467,7 +467,7 @@ class Gtk3Binder {
 						if(type_name->Equals("Int")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
-							cxx_buffer += "\t\tconst glong p{$index} = APITools_GetIntValue(context, {$index});\n";
+							cxx_buffer += "\t\tconst gint p{$index} = APITools_GetIntValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Float")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name});\n";
