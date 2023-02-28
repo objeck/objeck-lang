@@ -39,7 +39,7 @@ class Gtk3Binder {
 		@basictype_map->Insert("guint8", "Int");
 		@basictype_map->Insert("guint16", "Int");
 		@basictype_map->Insert("guint32", "Int");
-		@basictype_map->Insert("glong", "Int");
+		@basictype_map->Insert("gint", "Int");
 		@basictype_map->Insert("gulong", "Int");
 		@basictype_map->Insert("gfloat", "Float");
 		@basictype_map->Insert("gdouble", "Float");
