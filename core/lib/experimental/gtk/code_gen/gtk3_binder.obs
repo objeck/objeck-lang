@@ -5,7 +5,7 @@ use Data.XML;
 class Gtk3Binder {
 	@is_debug : Bool;
 	@filename : String;
-	@basictype_map : Hash<String, String>;
+	@basic_type_map : Hash<String, String>;
 	@consts_set : Set<String>;
 	@namespace : String;
 	@objk_out : FileWriter;
@@ -25,31 +25,31 @@ class Gtk3Binder {
 	New(filename : String) {
 		@filename := filename;
 
-		@basictype_map := Hash->New()<String, String>;
-		@basictype_map->Insert("gpointer", "Int");
-		@basictype_map->Insert("gboolean", "Bool");
-		@basictype_map->Insert("gshort", "Int");
-		@basictype_map->Insert("int", "Int");
-		@basictype_map->Insert("gint", "Int");
-		@basictype_map->Insert("none", "Nil");
-		@basictype_map->Insert("gint8", "Int");
-		@basictype_map->Insert("gint16", "Int");
-		@basictype_map->Insert("gint32", "Int");
-		@basictype_map->Insert("guint", "Int");
-		@basictype_map->Insert("guint8", "Int");
-		@basictype_map->Insert("guint16", "Int");
-		@basictype_map->Insert("guint32", "Int");
-		@basictype_map->Insert("gint", "Int");
-		@basictype_map->Insert("gulong", "Int");
-		@basictype_map->Insert("gfloat", "Float");
-		@basictype_map->Insert("gdouble", "Float");
-		@basictype_map->Insert("utf8", "String");
-		@basictype_map->Insert("const gchar*", "String");
-		@basictype_map->Insert("gchar*", "String");
-		@basictype_map->Insert("gchar**", "String[]");
-		@basictype_map->Insert("filename", "String");
-		@basictype_map->Insert("void", "Nil");
-		@basictype_map->Insert("guint8*", "Byte[]");
+		@basic_type_map := Hash->New()<String, String>;
+		@basic_type_map->Insert("gpointer", "Int");
+		@basic_type_map->Insert("gboolean", "Bool");
+		@basic_type_map->Insert("gshort", "Int");
+		@basic_type_map->Insert("int", "Int");
+		@basic_type_map->Insert("gint", "Int");
+		@basic_type_map->Insert("none", "Nil");
+		@basic_type_map->Insert("gint8", "Int");
+		@basic_type_map->Insert("gint16", "Int");
+		@basic_type_map->Insert("gint32", "Int");
+		@basic_type_map->Insert("guint", "Int");
+		@basic_type_map->Insert("guint8", "Int");
+		@basic_type_map->Insert("guint16", "Int");
+		@basic_type_map->Insert("guint32", "Int");
+		@basic_type_map->Insert("gint", "Int");
+		@basic_type_map->Insert("gulong", "Int");
+		@basic_type_map->Insert("gfloat", "Float");
+		@basic_type_map->Insert("gdouble", "Float");
+		@basic_type_map->Insert("utf8", "String");
+		@basic_type_map->Insert("const gchar*", "String");
+		@basic_type_map->Insert("gchar*", "String");
+		@basic_type_map->Insert("gchar**", "String[]");
+		@basic_type_map->Insert("filename", "String");
+		@basic_type_map->Insert("void", "Nil");
+		@basic_type_map->Insert("guint8*", "Byte[]");
 
 		@consts_set := Set->New()<String>;
 		@missing_defs := Set->New()<String>;
@@ -758,7 +758,7 @@ class Gtk3Binder {
 	}
 
 	method : GetMappingName(ctype_name : String) ~ String {
-		mapping_name := @basictype_map->Find(ctype_name);
+		mapping_name := @basic_type_map->Find(ctype_name);
 		if(mapping_name <> Nil) {
 			return mapping_name;
 		};
