@@ -77,424 +77,19 @@ extern "C" {
 
 
 	//
-	// Device
-	//
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_associated_device(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_associated_device(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_axes(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_axes(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_axis(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const AxisUse p2 = (AxisUse)APITools_GetIntValue(context, 2);
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-
-		const auto status = gdk_device_get_axis(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_axis_use(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const glong p2 = APITools_GetIntValue(context, 2);
-
-		const auto status = gdk_device_get_axis_use(p1, p2);
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_axis_value(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkAtom p2 = (GdkAtom)p2_obj[0];
-
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-
-		const auto status = gdk_device_get_axis_value(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_device_type(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_device_type(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_display(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_display(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_has_cursor(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_has_cursor(p1, );
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_history(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
-
-		const glong p3 = APITools_GetIntValue(context, 3);
-		const glong p4 = APITools_GetIntValue(context, 4);
-		const glong p5 = APITools_GetIntValue(context, 5);
-
-		const auto status = gdk_device_get_history(p1, p2, p3, p4, p5, p6);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_key(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const glong p2 = APITools_GetIntValue(context, 2);
-		const glong p3 = APITools_GetIntValue(context, 3);
-		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
-
-		const auto status = gdk_device_get_key(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_last_event_window(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_last_event_window(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_mode(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_mode(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_n_axes(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_n_axes(p1, );
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_n_keys(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_n_keys(p1, );
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_name(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_name(p1, );
-
-		APITools_SetStringValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_position(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkScreen** p2 = (GdkScreen**)p2_obj[0];
-
-		const glong p3 = APITools_GetIntValue(context, 3);
-		const glong p4 = APITools_GetIntValue(context, 4);
-
-		gdk_device_get_position(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_position_double(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkScreen** p2 = (GdkScreen**)p2_obj[0];
-
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-		const gdouble p4 = APITools_GetFloatValue(context, 4);
-
-		gdk_device_get_position_double(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_product_id(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_product_id(p1, );
-
-		APITools_SetStringValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_seat(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_seat(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_source(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_source(p1, );
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_state(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
-
-		const ModifierType p3 = (ModifierType)APITools_GetIntValue(context, 3);
-
-		gdk_device_get_state(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_vendor_id(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-
-		const auto status = gdk_device_get_vendor_id(p1, );
-
-		APITools_SetStringValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_window_at_position(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const glong p2 = APITools_GetIntValue(context, 2);
-		const glong p3 = APITools_GetIntValue(context, 3);
-
-		const auto status = gdk_device_get_window_at_position(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_window_at_position_double(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const gdouble p2 = APITools_GetFloatValue(context, 2);
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-
-		const auto status = gdk_device_get_window_at_position_double(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_grab(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
-
-		const GrabOwnership p3 = (GrabOwnership)APITools_GetIntValue(context, 3);
-		const gbool p4 = APITools_GetIntValue(context, 4) ? false : true;
-		const EventMask p5 = (EventMask)APITools_GetIntValue(context, 5);
-		const size_t* p6_obj = APITools_GetObjectValue(context, 6);
-		GdkCursor* p6 = (GdkCursor*)p6_obj[0];
-
-		const glong p7 = APITools_GetIntValue(context, 7);
-
-		const auto status = gdk_device_grab(p1, p2, p3, p4, p5, p6, p7);
-
-		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_set_axis_use(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const glong p2 = APITools_GetIntValue(context, 2);
-		const AxisUse p3 = (AxisUse)APITools_GetIntValue(context, 3);
-
-		gdk_device_set_axis_use(p1, p2, p3);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_set_key(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const glong p2 = APITools_GetIntValue(context, 2);
-		const glong p3 = APITools_GetIntValue(context, 3);
-		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
-
-		gdk_device_set_key(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_set_mode(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const InputMode p2 = (InputMode)APITools_GetIntValue(context, 2);
-
-		const auto status = gdk_device_set_mode(p1, p2);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_ungrab(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const glong p2 = APITools_GetIntValue(context, 2);
-
-		gdk_device_ungrab(p1, p2);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_warp(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkScreen* p2 = (GdkScreen*)p2_obj[0];
-
-		const glong p3 = APITools_GetIntValue(context, 3);
-		const glong p4 = APITools_GetIntValue(context, 4);
-
-		gdk_device_warp(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_free_history(VMContext& context) {
-		const glong p1 = APITools_GetIntValue(context, 1);
-
-		gdk_device_free_history(p1);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_grab_info_libgtk_only(VMContext& context) {
-		const size_t* p1_obj = APITools_GetObjectValue(context, 1);
-		GdkDisplay* p1 = (GdkDisplay*)p1_obj[0];
-
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
-
-		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
-		GdkWindow** p3 = (GdkWindow**)p3_obj[0];
-
-		const gbool p4 = APITools_GetIntValue(context, 4) ? false : true;
-
-		const auto status = gdk_device_grab_info_libgtk_only(p1, p2, p3);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-
-	//
 	// Window
 	//
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
 	void gtk3_gdk_window_new(VMContext& context) {
+		const size_t* p1_obj = APITools_GetObjectValue(context, 1);
+		GdkWindow* p1 = (GdkWindow*)p1_obj[0];
+
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
+		GdkWindowAttr* p2 = (GdkWindowAttr*)p2_obj[0];
 
-		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
-		GdkWindowAttr* p3 = (GdkWindowAttr*)p3_obj[0];
-
-		const WindowAttributesType p4 = (WindowAttributesType)APITools_GetIntValue(context, 4);
+		const gint p3 = (gint)APITools_GetIntValue(context, 3);
 
 		const auto status = (size_t)gdk_window_new(p1, p2, p3);
 
@@ -507,7 +102,7 @@ extern "C" {
 	void gtk3_gdk_window_beep(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_beep(p1, );
+		gdk_window_beep(p1);
 	}
 
 #ifdef _WIN32
@@ -555,7 +150,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_begin_resize_drag(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const WindowEdge p2 = (WindowEdge)APITools_GetIntValue(context, 2);
+		const GdkWindowEdge p2 = (GdkWindowEdge)APITools_GetIntValue(context, 2);
 		const glong p3 = APITools_GetIntValue(context, 3);
 		const glong p4 = APITools_GetIntValue(context, 4);
 		const glong p5 = APITools_GetIntValue(context, 5);
@@ -569,7 +164,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_begin_resize_drag_for_device(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const WindowEdge p2 = (WindowEdge)APITools_GetIntValue(context, 2);
+		const GdkWindowEdge p2 = (GdkWindowEdge)APITools_GetIntValue(context, 2);
 		const size_t* p3_obj = APITools_GetObjectValue(context, 3);
 		GdkDevice* p3 = (GdkDevice*)p3_obj[0];
 
@@ -587,7 +182,7 @@ extern "C" {
 	void gtk3_gdk_window_configure_finished(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_configure_finished(p1, );
+		gdk_window_configure_finished(p1);
 	}
 
 #ifdef _WIN32
@@ -622,7 +217,7 @@ extern "C" {
 	void gtk3_gdk_window_create_gl_context(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_create_gl_context(p1, );
+		const auto status = gdk_window_create_gl_context(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -633,7 +228,7 @@ extern "C" {
 	void gtk3_gdk_window_deiconify(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_deiconify(p1, );
+		gdk_window_deiconify(p1);
 	}
 
 #ifdef _WIN32
@@ -642,7 +237,7 @@ extern "C" {
 	void gtk3_gdk_window_destroy(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_destroy(p1, );
+		gdk_window_destroy(p1);
 	}
 
 #ifdef _WIN32
@@ -651,7 +246,7 @@ extern "C" {
 	void gtk3_gdk_window_destroy_notify(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_destroy_notify(p1, );
+		gdk_window_destroy_notify(p1);
 	}
 
 #ifdef _WIN32
@@ -660,7 +255,7 @@ extern "C" {
 	void gtk3_gdk_window_enable_synchronized_configure(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_enable_synchronized_configure(p1, );
+		gdk_window_enable_synchronized_configure(p1);
 	}
 
 #ifdef _WIN32
@@ -680,7 +275,7 @@ extern "C" {
 	void gtk3_gdk_window_end_paint(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_end_paint(p1, );
+		gdk_window_end_paint(p1);
 	}
 
 #ifdef _WIN32
@@ -689,7 +284,7 @@ extern "C" {
 	void gtk3_gdk_window_ensure_native(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_ensure_native(p1, );
+		const auto status = gdk_window_ensure_native(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -700,7 +295,7 @@ extern "C" {
 	void gtk3_gdk_window_flush(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_flush(p1, );
+		gdk_window_flush(p1);
 	}
 
 #ifdef _WIN32
@@ -719,7 +314,7 @@ extern "C" {
 	void gtk3_gdk_window_freeze_toplevel_updates_libgtk_only(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_freeze_toplevel_updates_libgtk_only(p1, );
+		gdk_window_freeze_toplevel_updates_libgtk_only(p1);
 	}
 
 #ifdef _WIN32
@@ -728,7 +323,7 @@ extern "C" {
 	void gtk3_gdk_window_freeze_updates(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_freeze_updates(p1, );
+		gdk_window_freeze_updates(p1);
 	}
 
 #ifdef _WIN32
@@ -737,7 +332,7 @@ extern "C" {
 	void gtk3_gdk_window_fullscreen(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_fullscreen(p1, );
+		gdk_window_fullscreen(p1);
 	}
 
 #ifdef _WIN32
@@ -756,7 +351,7 @@ extern "C" {
 	void gtk3_gdk_window_geometry_changed(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_geometry_changed(p1, );
+		gdk_window_geometry_changed(p1);
 	}
 
 #ifdef _WIN32
@@ -765,7 +360,7 @@ extern "C" {
 	void gtk3_gdk_window_get_accept_focus(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_accept_focus(p1, );
+		const auto status = gdk_window_get_accept_focus(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -776,7 +371,7 @@ extern "C" {
 	void gtk3_gdk_window_get_composited(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_composited(p1, );
+		const auto status = gdk_window_get_composited(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -787,7 +382,7 @@ extern "C" {
 	void gtk3_gdk_window_get_cursor(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_cursor(p1, );
+		const auto status = gdk_window_get_cursor(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -797,7 +392,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_decorations(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const WMDecoration p2 = (WMDecoration)APITools_GetIntValue(context, 2);
+		const GdkWMDecoration p2 = (GdkWMDecoration)APITools_GetIntValue(context, 2);
 
 		const auto status = gdk_window_get_decorations(p1, p2);
 
@@ -840,7 +435,7 @@ extern "C" {
 
 		const glong p3 = APITools_GetIntValue(context, 3);
 		const glong p4 = APITools_GetIntValue(context, 4);
-		const ModifierType p5 = (ModifierType)APITools_GetIntValue(context, 5);
+		const GdkModifierType p5 = (GdkModifierType)APITools_GetIntValue(context, 5);
 
 		const auto status = gdk_window_get_device_position(p1, p2, p3, p4, p5);
 
@@ -857,7 +452,7 @@ extern "C" {
 
 		const gdouble p3 = APITools_GetFloatValue(context, 3);
 		const gdouble p4 = APITools_GetFloatValue(context, 4);
-		const ModifierType p5 = (ModifierType)APITools_GetIntValue(context, 5);
+		const GdkModifierType p5 = (GdkModifierType)APITools_GetIntValue(context, 5);
 
 		const auto status = gdk_window_get_device_position_double(p1, p2, p3, p4, p5);
 
@@ -870,7 +465,7 @@ extern "C" {
 	void gtk3_gdk_window_get_display(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_display(p1, );
+		const auto status = gdk_window_get_display(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -894,7 +489,7 @@ extern "C" {
 	void gtk3_gdk_window_get_effective_parent(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_effective_parent(p1, );
+		const auto status = gdk_window_get_effective_parent(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -905,7 +500,7 @@ extern "C" {
 	void gtk3_gdk_window_get_effective_toplevel(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_effective_toplevel(p1, );
+		const auto status = gdk_window_get_effective_toplevel(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -916,7 +511,7 @@ extern "C" {
 	void gtk3_gdk_window_get_event_compression(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_event_compression(p1, );
+		const auto status = gdk_window_get_event_compression(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -927,7 +522,7 @@ extern "C" {
 	void gtk3_gdk_window_get_events(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_events(p1, );
+		const auto status = gdk_window_get_events(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -938,7 +533,7 @@ extern "C" {
 	void gtk3_gdk_window_get_focus_on_map(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_focus_on_map(p1, );
+		const auto status = gdk_window_get_focus_on_map(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -949,7 +544,7 @@ extern "C" {
 	void gtk3_gdk_window_get_frame_clock(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_frame_clock(p1, );
+		const auto status = gdk_window_get_frame_clock(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -971,7 +566,7 @@ extern "C" {
 	void gtk3_gdk_window_get_fullscreen_mode(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_fullscreen_mode(p1, );
+		const auto status = gdk_window_get_fullscreen_mode(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -995,7 +590,7 @@ extern "C" {
 	void gtk3_gdk_window_get_group(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_group(p1, );
+		const auto status = gdk_window_get_group(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1006,7 +601,7 @@ extern "C" {
 	void gtk3_gdk_window_get_height(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_height(p1, );
+		const auto status = gdk_window_get_height(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1017,7 +612,7 @@ extern "C" {
 	void gtk3_gdk_window_get_modal_hint(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_modal_hint(p1, );
+		const auto status = gdk_window_get_modal_hint(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1041,7 +636,7 @@ extern "C" {
 	void gtk3_gdk_window_get_parent(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_parent(p1, );
+		const auto status = gdk_window_get_parent(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1052,7 +647,7 @@ extern "C" {
 	void gtk3_gdk_window_get_pass_through(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_pass_through(p1, );
+		const auto status = gdk_window_get_pass_through(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1064,7 +659,7 @@ extern "C" {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 		const glong p2 = APITools_GetIntValue(context, 2);
 		const glong p3 = APITools_GetIntValue(context, 3);
-		const ModifierType p4 = (ModifierType)APITools_GetIntValue(context, 4);
+		const GdkModifierType p4 = (GdkModifierType)APITools_GetIntValue(context, 4);
 
 		const auto status = gdk_window_get_pointer(p1, p2, p3, p4);
 
@@ -1112,7 +707,7 @@ extern "C" {
 	void gtk3_gdk_window_get_scale_factor(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_scale_factor(p1, );
+		const auto status = gdk_window_get_scale_factor(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1123,7 +718,7 @@ extern "C" {
 	void gtk3_gdk_window_get_screen(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_screen(p1, );
+		const auto status = gdk_window_get_screen(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1133,7 +728,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_get_source_events(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const InputSource p2 = (InputSource)APITools_GetIntValue(context, 2);
+		const GdkInputSource p2 = (GdkInputSource)APITools_GetIntValue(context, 2);
 
 		const auto status = gdk_window_get_source_events(p1, p2);
 
@@ -1146,7 +741,7 @@ extern "C" {
 	void gtk3_gdk_window_get_state(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_state(p1, );
+		const auto status = gdk_window_get_state(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1157,7 +752,7 @@ extern "C" {
 	void gtk3_gdk_window_get_support_multidevice(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_support_multidevice(p1, );
+		const auto status = gdk_window_get_support_multidevice(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1168,7 +763,7 @@ extern "C" {
 	void gtk3_gdk_window_get_toplevel(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_toplevel(p1, );
+		const auto status = gdk_window_get_toplevel(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1179,7 +774,7 @@ extern "C" {
 	void gtk3_gdk_window_get_type_hint(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_type_hint(p1, );
+		const auto status = gdk_window_get_type_hint(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1200,7 +795,7 @@ extern "C" {
 	void gtk3_gdk_window_get_visual(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_visual(p1, );
+		const auto status = gdk_window_get_visual(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1211,7 +806,7 @@ extern "C" {
 	void gtk3_gdk_window_get_width(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_width(p1, );
+		const auto status = gdk_window_get_width(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1222,7 +817,7 @@ extern "C" {
 	void gtk3_gdk_window_get_window_type(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_get_window_type(p1, );
+		const auto status = gdk_window_get_window_type(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1233,7 +828,7 @@ extern "C" {
 	void gtk3_gdk_window_has_native(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_has_native(p1, );
+		const auto status = gdk_window_has_native(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1244,7 +839,7 @@ extern "C" {
 	void gtk3_gdk_window_hide(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_hide(p1, );
+		gdk_window_hide(p1);
 	}
 
 #ifdef _WIN32
@@ -1253,7 +848,7 @@ extern "C" {
 	void gtk3_gdk_window_iconify(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_iconify(p1, );
+		gdk_window_iconify(p1);
 	}
 
 #ifdef _WIN32
@@ -1275,7 +870,7 @@ extern "C" {
 	void gtk3_gdk_window_is_destroyed(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_is_destroyed(p1, );
+		const auto status = gdk_window_is_destroyed(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1286,7 +881,7 @@ extern "C" {
 	void gtk3_gdk_window_is_input_only(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_is_input_only(p1, );
+		const auto status = gdk_window_is_input_only(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1297,7 +892,7 @@ extern "C" {
 	void gtk3_gdk_window_is_shaped(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_is_shaped(p1, );
+		const auto status = gdk_window_is_shaped(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1308,7 +903,7 @@ extern "C" {
 	void gtk3_gdk_window_is_viewable(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_is_viewable(p1, );
+		const auto status = gdk_window_is_viewable(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1319,7 +914,7 @@ extern "C" {
 	void gtk3_gdk_window_is_visible(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_window_is_visible(p1, );
+		const auto status = gdk_window_is_visible(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -1330,7 +925,7 @@ extern "C" {
 	void gtk3_gdk_window_lower(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_lower(p1, );
+		gdk_window_lower(p1);
 	}
 
 #ifdef _WIN32
@@ -1339,7 +934,7 @@ extern "C" {
 	void gtk3_gdk_window_maximize(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_maximize(p1, );
+		gdk_window_maximize(p1);
 	}
 
 #ifdef _WIN32
@@ -1348,7 +943,7 @@ extern "C" {
 	void gtk3_gdk_window_merge_child_input_shapes(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_merge_child_input_shapes(p1, );
+		gdk_window_merge_child_input_shapes(p1);
 	}
 
 #ifdef _WIN32
@@ -1357,7 +952,7 @@ extern "C" {
 	void gtk3_gdk_window_merge_child_shapes(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_merge_child_shapes(p1, );
+		gdk_window_merge_child_shapes(p1);
 	}
 
 #ifdef _WIN32
@@ -1392,9 +987,9 @@ extern "C" {
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const GdkRectangle* p2 = (const GdkRectangle*)p2_obj[0];
 
-		const Gravity p3 = (Gravity)APITools_GetIntValue(context, 3);
-		const Gravity p4 = (Gravity)APITools_GetIntValue(context, 4);
-		const AnchorHints p5 = (AnchorHints)APITools_GetIntValue(context, 5);
+		const GdkGravity p3 = (GdkGravity)APITools_GetIntValue(context, 3);
+		const GdkGravity p4 = (GdkGravity)APITools_GetIntValue(context, 4);
+		const GdkAnchorHints p5 = (GdkAnchorHints)APITools_GetIntValue(context, 5);
 		const glong p6 = APITools_GetIntValue(context, 6);
 		const glong p7 = APITools_GetIntValue(context, 7);
 
@@ -1417,7 +1012,7 @@ extern "C" {
 	void gtk3_gdk_window_raise(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_raise(p1, );
+		gdk_window_raise(p1);
 	}
 
 #ifdef _WIN32
@@ -1426,7 +1021,7 @@ extern "C" {
 	void gtk3_gdk_window_register_dnd(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_register_dnd(p1, );
+		gdk_window_register_dnd(p1);
 	}
 
 #ifdef _WIN32
@@ -1516,7 +1111,7 @@ extern "C" {
 	void gtk3_gdk_window_set_child_input_shapes(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_set_child_input_shapes(p1, );
+		gdk_window_set_child_input_shapes(p1);
 	}
 
 #ifdef _WIN32
@@ -1525,7 +1120,7 @@ extern "C" {
 	void gtk3_gdk_window_set_child_shapes(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_set_child_shapes(p1, );
+		gdk_window_set_child_shapes(p1);
 	}
 
 #ifdef _WIN32
@@ -1554,7 +1149,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_decorations(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const WMDecoration p2 = (WMDecoration)APITools_GetIntValue(context, 2);
+		const GdkWMDecoration p2 = (GdkWMDecoration)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_decorations(p1, p2);
 	}
@@ -1581,7 +1176,7 @@ extern "C" {
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkDevice* p2 = (GdkDevice*)p2_obj[0];
 
-		const EventMask p3 = (EventMask)APITools_GetIntValue(context, 3);
+		const GdkEventMask p3 = (GdkEventMask)APITools_GetIntValue(context, 3);
 
 		gdk_window_set_device_events(p1, p2, p3);
 	}
@@ -1601,7 +1196,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_events(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const EventMask p2 = (EventMask)APITools_GetIntValue(context, 2);
+		const GdkEventMask p2 = (GdkEventMask)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_events(p1, p2);
 	}
@@ -1621,7 +1216,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_fullscreen_mode(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const FullscreenMode p2 = (FullscreenMode)APITools_GetIntValue(context, 2);
+		const GdkFullscreenMode p2 = (GdkFullscreenMode)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_fullscreen_mode(p1, p2);
 	}
@@ -1634,7 +1229,7 @@ extern "C" {
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		const GdkGeometry* p2 = (const GdkGeometry*)p2_obj[0];
 
-		const WindowHints p3 = (WindowHints)APITools_GetIntValue(context, 3);
+		const GdkWindowHints p3 = (GdkWindowHints)APITools_GetIntValue(context, 3);
 
 		gdk_window_set_geometry_hints(p1, p2, p3);
 	}
@@ -1768,8 +1363,8 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_source_events(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const InputSource p2 = (InputSource)APITools_GetIntValue(context, 2);
-		const EventMask p3 = (EventMask)APITools_GetIntValue(context, 3);
+		const GdkInputSource p2 = (GdkInputSource)APITools_GetIntValue(context, 2);
+		const GdkEventMask p3 = (GdkEventMask)APITools_GetIntValue(context, 3);
 
 		gdk_window_set_source_events(p1, p2, p3);
 	}
@@ -1832,7 +1427,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_type_hint(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const WindowTypeHint p2 = (WindowTypeHint)APITools_GetIntValue(context, 2);
+		const GdkWindowTypeHint p2 = (GdkWindowTypeHint)APITools_GetIntValue(context, 2);
 
 		gdk_window_set_type_hint(p1, p2);
 	}
@@ -1853,7 +1448,7 @@ extern "C" {
 	void gtk3_gdk_window_show(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_show(p1, );
+		gdk_window_show(p1);
 	}
 
 #ifdef _WIN32
@@ -1862,7 +1457,7 @@ extern "C" {
 	void gtk3_gdk_window_show_unraised(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_show_unraised(p1, );
+		gdk_window_show_unraised(p1);
 	}
 
 #ifdef _WIN32
@@ -1884,7 +1479,7 @@ extern "C" {
 	void gtk3_gdk_window_stick(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_stick(p1, );
+		gdk_window_stick(p1);
 	}
 
 #ifdef _WIN32
@@ -1893,7 +1488,7 @@ extern "C" {
 	void gtk3_gdk_window_thaw_toplevel_updates_libgtk_only(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_thaw_toplevel_updates_libgtk_only(p1, );
+		gdk_window_thaw_toplevel_updates_libgtk_only(p1);
 	}
 
 #ifdef _WIN32
@@ -1902,7 +1497,7 @@ extern "C" {
 	void gtk3_gdk_window_thaw_updates(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_thaw_updates(p1, );
+		gdk_window_thaw_updates(p1);
 	}
 
 #ifdef _WIN32
@@ -1911,7 +1506,7 @@ extern "C" {
 	void gtk3_gdk_window_unfullscreen(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_unfullscreen(p1, );
+		gdk_window_unfullscreen(p1);
 	}
 
 #ifdef _WIN32
@@ -1920,7 +1515,7 @@ extern "C" {
 	void gtk3_gdk_window_unmaximize(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_unmaximize(p1, );
+		gdk_window_unmaximize(p1);
 	}
 
 #ifdef _WIN32
@@ -1929,7 +1524,7 @@ extern "C" {
 	void gtk3_gdk_window_unstick(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_unstick(p1, );
+		gdk_window_unstick(p1);
 	}
 
 #ifdef _WIN32
@@ -1938,7 +1533,7 @@ extern "C" {
 	void gtk3_gdk_window_withdraw(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
 
-		gdk_window_withdraw(p1, );
+		gdk_window_withdraw(p1);
 	}
 
 #ifdef _WIN32
@@ -1960,7 +1555,7 @@ extern "C" {
 		const size_t* p1_obj = APITools_GetObjectValue(context, 1);
 		GdkGeometry* p1 = (GdkGeometry*)p1_obj[0];
 
-		const WindowHints p2 = (WindowHints)APITools_GetIntValue(context, 2);
+		const GdkWindowHints p2 = (GdkWindowHints)APITools_GetIntValue(context, 2);
 		const glong p3 = APITools_GetIntValue(context, 3);
 		const glong p4 = APITools_GetIntValue(context, 4);
 		const glong p5 = APITools_GetIntValue(context, 5);
@@ -1981,7 +1576,7 @@ extern "C" {
 	void gtk3_gdk_window_set_debug_updates(VMContext& context) {
 		const gbool p1 = APITools_GetIntValue(context, 1) ? false : true;
 
-		gdk_window_set_debug_updates();
+		gdk_window_set_debug_update);
 	}
 
 	//
@@ -2013,7 +1608,7 @@ void gobject_get_alpha(VMContext& context) {
 	void gtk3_gdk_rgba_copy(VMContext& context) {
 		const GdkRGBA* p1 = (const GdkRGBA*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_rgba_copy(p1, );
+		const auto status = gdk_rgba_copy(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -2037,7 +1632,7 @@ void gobject_get_alpha(VMContext& context) {
 	void gtk3_gdk_rgba_free(VMContext& context) {
 		GdkRGBA* p1 = (GdkRGBA*)APITools_GetIntValue(context, 1);
 
-		gdk_rgba_free(p1, );
+		gdk_rgba_free(p1);
 	}
 
 #ifdef _WIN32
@@ -2046,7 +1641,7 @@ void gobject_get_alpha(VMContext& context) {
 	void gtk3_gdk_rgba_hash(VMContext& context) {
 		gconstpointer p1 = (gconstpointer)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_rgba_hash(p1, );
+		const auto status = gdk_rgba_hash(p1);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -2069,7 +1664,7 @@ void gobject_get_alpha(VMContext& context) {
 	void gtk3_gdk_rgba_to_string(VMContext& context) {
 		const GdkRGBA* p1 = (const GdkRGBA*)APITools_GetIntValue(context, 1);
 
-		const auto status = gdk_rgba_to_string(p1, );
+		const auto status = gdk_rgba_to_string(p1);
 
 		APITools_SetStringValue(context, 0, status);
 	}

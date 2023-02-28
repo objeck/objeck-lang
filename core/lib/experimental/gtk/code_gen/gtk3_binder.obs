@@ -67,7 +67,7 @@ class Gtk3Binder {
 
 		@emit_classes := Set->New()<String>;
 		@emit_classes->Insert("Window");
-		@emit_classes->Insert("Device");
+#		@emit_classes->Insert("Device");
 		@emit_classes->Insert("RGBA");
 		@emit_classes->Insert("Rectangle");
 
@@ -368,18 +368,25 @@ class Gtk3Binder {
 
 					objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
-					for(i := 1; i < cxx_params_count; i += 1;) {
-						if(is_func) {
-							cxx_params_buffer += "p" + i;
-						}
-						else {
-							cxx_params_buffer += "p" + (i + 1);
-						};
+					if(1 < cxx_params_count) {
+						for(i := 1; i < cxx_params_count; i += 1;) {
+							if(is_func) {
+								cxx_params_buffer += "p" + i;
+							}
+							else {
+								cxx_params_buffer += "p" + (i + 1);
+							};
 
-						if(i < cxx_params_count - 1) {
-							cxx_params_buffer += ", ";
+							if(i < cxx_params_count - 1) {
+								cxx_params_buffer += ", ";
+							};
 						};
+					}
+					else {
+						cxx_params_buffer->Pop();
+						cxx_params_buffer->Pop();
 					};
+
 					cxx_params_buffer += ");\n";
 				};
 								
@@ -436,7 +443,10 @@ class Gtk3Binder {
 	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constr : Bool, is_func : Bool) ~ Int {
 		if(params_xml <> Nil) {
 			index := 1;
-			if(<>is_func) {
+			if(is_constr) {
+				index := 1;
+			}
+			else if(<>is_func) {
 				index += 1;
 			};
 
@@ -477,7 +487,10 @@ class Gtk3Binder {
 							param_name_xml := type_xml->GetAttribute("name");
 							if(param_type_xml <> Nil & param_name_xml <> Nil) {
 								ctype_type := XmlElement->DecodeString(param_type_xml->GetValue());
-								ctype_name := param_name_xml->GetValue();
+								ctype_name := param_type_xml->GetValue();
+								if(ctype_name->EndsWith('*')) {
+									ctype_name->Pop();
+								};
 
 								if(@consts_set->Has(type_name)) {
 									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
