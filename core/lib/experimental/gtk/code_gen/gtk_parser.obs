@@ -2,10 +2,7 @@ use Collection;
 use System.IO.Filesystem;
 use Data.XML;
 
-#~
-Blah code generators are ugly, rather parsing XML or C source
-~#
-class GtkTestRunner {
+class Gtk3Binder {
 	@debug : Bool;
 	@filename : String;
 	@basictype_map : Hash<String, String>;
@@ -20,7 +17,7 @@ class GtkTestRunner {
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			GtkTestRunner->New(args[0])->Parse();
+			Gtk3Binder->New(args[0])->Parse();
 		};
 	}
 
@@ -56,6 +53,9 @@ class GtkTestRunner {
 		@consts_set := Set->New()<String>;
 		@missing_defs := Set->New()<String>;
 
+		#
+		# TOOD: config stuff
+		#
 		@objk_out := FileWriter->New("gens/objk_code.txt");
 		@cxx_out := FileWriter->New("gens/cxx_code.txt");
 
@@ -68,15 +68,16 @@ class GtkTestRunner {
 		@emit_classes->Insert("Device");
 		@emit_classes->Insert("RGBA");
 		@emit_classes->Insert("Rectangle");
+
+		@debug := true;
 	}
 
 	method : Parse() ~ Nil {
 		# read file
 		data := FileReader->ReadFile(@filename);
-		data_size := data->Size()->ToCommaString();
-		if(#~@debug~#true) {
-			"[file: name='{$@filename}', size={$data_size} byte(s)]\n###"->PrintLine();
-		};
+		data_size := data->Size() / 1000;
+		data_size_str := data_size->ToCommaString();
+		"[File: name='{$@filename}', size={$data_size_str} kb(s)]\n---"->PrintLine();
 
 		# parse xml
 		timer := System.Time.Timer->New();
@@ -89,29 +90,26 @@ class GtkTestRunner {
 
 			@namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
 
-			@debug := true;
-
 			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 			if(enums_xml <> Nil) {
-				ParseConsts(enums_xml);
+				ParseConsts(enums_xml, true);
 			};
 
 			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
 			if(bitfields_xml <> Nil) {
-				ParseConsts(bitfields_xml);
+				ParseConsts(bitfields_xml, false);
 			};
 
 			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
 			if(classes_xml <> Nil) {
-				ParseClasses(classes_xml);
+				ParseClasses(classes_xml, true);
 			};
 
 			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
 			if(records_xml <> Nil) {
-				ParseClasses(records_xml);
+				ParseClasses(records_xml, false);
 			};
 
-			@debug := false;
 		};
 
 		objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
@@ -138,15 +136,24 @@ class GtkTestRunner {
 
 	}
 
-	method : ParseConsts(enums_xml : Vector<XmlElement>) ~ Nil {
+	method : ParseConsts(enums_xml : Vector<XmlElement>, is_enum : Bool) ~ Nil {
 		objk_buffer := "";
+
+		if(@debug) {
+			if(is_enum) {
+				"\n[Enums]"->PrintLine();
+			}
+			else {
+				"\n[Bitfields]"->PrintLine();
+			};
+		};
 
 		each(enum_xml := enums_xml) {
 			enum_name := enum_xml->GetAttribute("name")->GetValue();
 			@consts_set->Insert(enum_name);
 
 			if(@debug) {
-				"[enum/bitfield: name='{$enum_name}']"->PrintLine();
+				"\tenum/bitfield: name='{$enum_name}'"->PrintLine();
 			};
 
 			objk_buffer += "\tconsts {$enum_name} {\n";
@@ -167,7 +174,16 @@ class GtkTestRunner {
 		@objk_out->WriteString(objk_buffer);
 	}
 
-	method : ParseClasses(classes_xml : Vector<XmlElement>) ~ Nil {
+	method : ParseClasses(classes_xml : Vector<XmlElement>, is_class : Bool) ~ Nil {
+		if(@debug) {
+			if(is_class) {
+				"\n[Classes]"->PrintLine();
+			}
+			else {
+				"\n[Records]"->PrintLine();
+			};
+		};
+
 		each(i : classes_xml) {
 			cxx_buffer := "";
 			objk_buffer := "";
@@ -176,11 +192,7 @@ class GtkTestRunner {
 
 			@class_name := class_xml->GetAttribute("name")->GetValue();
 			if(@emit_classes->Has(@class_name)) {
-				@debug := true;
-
 				WriteClass(class_xml, objk_buffer, cxx_buffer);
-
-				@debug := false;
 			};
 			
 			if(i + 1 = classes_xml->Size()) {
@@ -194,7 +206,7 @@ class GtkTestRunner {
 
 	method : WriteClass(class_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {
 		if(@debug) {
-			"###\n[class/record: name='{$@class_name}']"->PrintLine();
+			"\tclass/record: name='{$@class_name}'"->PrintLine();
 		};
 
 		cxx_buffer += "\n\t//\n"
@@ -252,14 +264,12 @@ class GtkTestRunner {
 			return_type := GetMappingName(XmlElement->DecodeString(return_type_xml->GetAttribute("type")->GetValue()));
 
 			if(@debug) {
-				"\t[method: name='{$method_name}']"->PrintLine();
+				"\t\tmethod: name='{$method_name}'"->PrintLine();
 			};
 
 			# get parameters and returns types
 			params_xml := method_xml->GetFirstChild("parameters");
 			return_xml := method_xml->GetFirstChild("return-value");
-
-"--- {$method_name} ---"->PrintLine();
 
 			if(CanEmitMethod(params_xml, return_xml, false)) {
 				if(is_constr) {
@@ -279,7 +289,6 @@ class GtkTestRunner {
 					cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
 
 					if(is_func) {
-"--- 1 ---"->PrintLine();						
 						objk_buffer += "\t\tfunction : {$method_case_name}";
 					}
 					else {
@@ -290,10 +299,6 @@ class GtkTestRunner {
 					};
 
 					WriteParameters(params_xml, objk_buffer, cxx_buffer);
-
-"--- 2 ---"->PrintLine();						
-# Test: GrabInfoLibgtkOnly
-
 					objk_buffer += " ~ {$return_type} {\n";
 				};
 
@@ -307,21 +312,26 @@ class GtkTestRunner {
 						objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
 						objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
 
-						cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constr, is_func);
+						cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
 
-						cxx_params_buffer += "\t\tconst auto status = (size_t){$identifier_name}(p1";
+						cxx_params_buffer += "\t\tconst auto status = (size_t){$identifier_name}(p1, ";
 					}
 					else if(return_type->Equals("Nil")) {
+						if(is_func) {
+							parameters_size -= 1;
+						};
 						objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
 
 						if(is_func) {
 							objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
-							objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
-							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, true, is_constr, is_func);
-							cxx_params_buffer += "\t\t{$identifier_name}(p1";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\t{$identifier_name}(";
 						}
 						else {
-
+							objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+							objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\t{$identifier_name}(p1, ";
 						};
 					}
 					else {
@@ -329,23 +339,29 @@ class GtkTestRunner {
 						WriteProxyReturnParameter(return_xml, objk_buffer, cxx_buffer);
 						
 						if(is_func) {						
-							objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
-							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, false, is_constr, is_func);
-							cxx_params_buffer += "\t\tconst auto status = {$identifier_name}(p1";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\tconst auto status = {$identifier_name}(";
 						}
 						else {
-
+							objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\tconst auto status = {$identifier_name}(p1, ";
 						};
 					};
 
 					objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
 					for(i := 1; i < cxx_params_count; i += 1;) {
-						if(i <= cxx_params_count) {
-							cxx_params_buffer += ", ";
+						if(is_func) {
+							cxx_params_buffer += "p" + i;
+						}
+						else {
+							cxx_params_buffer += "p" + (i + 1);
 						};
 
-						cxx_params_buffer += "p" + (i + 1);
+						if(i < cxx_params_count - 1) {
+							cxx_params_buffer += ", ";
+						};
 					};
 					cxx_params_buffer += ");\n";
 				};
@@ -400,7 +416,7 @@ class GtkTestRunner {
 		objk_buffer += ')';
 	}
 
-	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_nil : Bool, is_constr : Bool, is_func : Bool) ~ Int {
+	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constr : Bool, is_func : Bool) ~ Int {
 		if(params_xml <> Nil) {
 			index := 1;
 			if(<>is_func) {
@@ -452,7 +468,7 @@ class GtkTestRunner {
 									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
 								}
 								else {
-									if(<>type_name->Equals(@class_name) & @debug) {
+									if(<>type_name->Equals(@class_name)) {
 										@missing_defs->Insert(type_name);
 									};
 
@@ -466,10 +482,10 @@ class GtkTestRunner {
 								};
 							};
 						};
-					};
 
-					# update
-					index += 1;
+						# update
+						index += 1;
+					};
 				};
 			};
 
@@ -520,7 +536,7 @@ class GtkTestRunner {
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
-						if(<>type_name->Equals(@class_name) & @debug) {
+						if(<>type_name->Equals(@class_name)) {
 							@missing_defs->Insert(type_name);
 						};
 
