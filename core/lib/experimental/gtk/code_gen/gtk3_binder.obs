@@ -310,7 +310,7 @@ class Gtk3Binder {
 					}
 					else {
 						inst_type_xml := params_xml->GetFirstChild("instance-parameter")->GetFirstChild("type");
-						inst_ctype_name := inst_type_xml->GetAttribute("type")->GetValue();
+						inst_ctype_name := XmlElement->DecodeString(inst_type_xml->GetAttribute("type")->GetValue());
 						cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
 						objk_buffer += "\t\tmethod : public : {$method_case_name}";
 					};
@@ -457,17 +457,17 @@ class Gtk3Binder {
 						if(type_name->Equals("Int")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
-							cxx_buffer += "\t\tconst long p{$index} = APITools_GetIntValue(context, {$index});\n";
+							cxx_buffer += "\t\tconst glong p{$index} = APITools_GetIntValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Float")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name});\n";
 
-							cxx_buffer += "\t\tconst double p{$index} = APITools_GetFloatValue(context, {$index});\n";
+							cxx_buffer += "\t\tconst gdouble p{$index} = APITools_GetFloatValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Bool")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} ? 0 : 1);\n";
 
-							cxx_buffer += "\t\tconst bool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
+							cxx_buffer += "\t\tconst gbool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
 							cxx_buffer += "\t\tconst std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
@@ -564,7 +564,7 @@ class Gtk3Binder {
 							objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
 						}
 
-						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, status);\n";
+						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
 					};
 				};
 			};			
