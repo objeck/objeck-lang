@@ -776,83 +776,15 @@ class Gtk3Binder {
 	}
 
 	method : WriteObjeckHeader() ~ Nil {
-		objk_buffer := @static_content->Find("objk_header");
-		Runtime->Assert(objk_buffer <> Nil & <>objk_buffer->IsEmpty());
-		@objk_out->WriteString(objk_buffer);
+		buffer := @static_content->Find("objk_header");
+		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
+		@objk_out->WriteString(buffer);
 	}
 
 	method : WriteCxxHeader() ~ Nil {
-		cxx_buffer := "";
-
-		cxx_buffer += "#include \"gtk3_binder.h\"\n\n";
-		cxx_buffer += "extern \"C\" {\n";
-		cxx_buffer += "\tstatic ResourceManager* res_manager = nullptr;\n";
-		cxx_buffer += "\t\n";
-		cxx_buffer += "\t//\n";
-		cxx_buffer += "\t// Initialize library\n";
-		cxx_buffer += "\t//\n";
-		cxx_buffer += "#ifdef _WIN32\n";
-		cxx_buffer += "\t__declspec(dllexport)\n";
-		cxx_buffer += "#endif\n";
-		cxx_buffer += "\tvoid load_lib(VMContext& context) {\n";
-		cxx_buffer += "\t\tif(!res_manager) {\n";
-		cxx_buffer += "\t\t\tres_manager = new ResourceManager(context.alloc_managed_obj, context.call_method_by_id);\n";
-		cxx_buffer += "\t\t}\n";
-		cxx_buffer += "\t}\n\n";
-		cxx_buffer += "\t//\n";
-		cxx_buffer += "\t// Release library\n";
-		cxx_buffer += "\t//\n";
-		cxx_buffer += "#ifdef _WIN32\n";
-		cxx_buffer += "\t__declspec(dllexport)\n";
-		cxx_buffer += "#endif\n";
-		cxx_buffer += "\tvoid unload_lib() {\n";
-		cxx_buffer += "\t\tif(res_manager) {\n";
-		cxx_buffer += "\t\t\tdelete res_manager;\n";
-		cxx_buffer += "\t\t\tres_manager = nullptr;\n";
-		cxx_buffer += "\t\t}\n";
-		cxx_buffer += "\t}\n\n";
-		cxx_buffer += "\t//\n";
-		cxx_buffer += "\t// GObject\n";
-		cxx_buffer += "\t//\n";
-		cxx_buffer += "\tstatic void callback_handler(GObject* handler, gpointer callback_data) {\n";
-		cxx_buffer += "\t\tif(handler && callback_data) {\n";
-		cxx_buffer += "\t\t\tstd::pair<size_t, size_t*>* callback_params = (std::pair<size_t, size_t*>*)callback_data;\n";
-		cxx_buffer += "\t\t\tsize_t const mthd_cls_id = callback_params->first;\n";
-		cxx_buffer += "\t\t\tconst int cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;\n";
-		cxx_buffer += "\t\t\tconst int mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;\n";
-		cxx_buffer += "\t\t\tsize_t* callback_data = callback_params->second;\n\n";
-		cxx_buffer += "\t\t\tGType handler_ctype = G_TYPE_FROM_INSTANCE(handler);\n";
-		cxx_buffer += "\t\t\tif(G_TYPE_IS_CLASSED(handler_ctype)) {\n";
-		cxx_buffer += "\t\t\t\tconst std::string handler_cname(g_type_name(handler_ctype));\n";
-		cxx_buffer += "\t\t\t\tconst char prefix_str[] = \"Gtk\n";
-		cxx_buffer += "\t\t\t\tsize_t handler_cname_prefix_offset = handler_cname.find(prefix_str);\n";
-		cxx_buffer += "\t\t\t\tif(handler_cname_prefix_offset != std::string::npos) {\n";
-		cxx_buffer += "\t\t\t\t\tstd::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();\n\n";
-		cxx_buffer += "\t\t\t\t\tsize_t* op_stack = exec_stack_mem.first;\n";
-		cxx_buffer += "\t\t\t\t\tlong* stack_pos = exec_stack_mem.second;\n";
-		cxx_buffer += "\t\t\t\t\t\n";
-		cxx_buffer += "\t\t\t\t\tconst std::string post_objk_name = handler_cname.substr(handler_cname_prefix_offset + strlen(prefix_str));\n";
-		cxx_buffer += "\t\t\t\t\tconst std::string handler_objk_name(\"Gtk3.\" + post_objk_name);\n\n";
-		cxx_buffer += "\t\t\t\t\tconst APITools_AllocateObject_Ptr alloc_obj = res_manager->GetAllocateObject();\n";
-		cxx_buffer += "\t\t\t\t\tsize_t* gobject_obj = alloc_obj(BytesToUnicode(handler_objk_name).c_str(), op_stack, *stack_pos, true);\n";
-		cxx_buffer += "\t\t\t\t\tif(gobject_obj) {\n";
-		cxx_buffer += "\t\t\t\t\t\tgobject_obj[0] = (size_t)handler;\n\n";
-		cxx_buffer += "\t\t\t\t\t\t// set stack\n";
-		cxx_buffer += "\t\t\t\t\t\top_stack[0] = (size_t)gobject_obj;\n";
-		cxx_buffer += "\t\t\t\t\t\top_stack[1] = (size_t)callback_data;\n";
-		cxx_buffer += "\t\t\t\t\t\t(*stack_pos) = 2;\n\n";
-		cxx_buffer += "\t\t\t\t\t\t// call method\n";
-		cxx_buffer += "\t\t\t\t\t\tconst APITools_MethodCallById_Ptr mthd_call_id = res_manager->GetMethodCallById();\n";
-		cxx_buffer += "\t\t\t\t\t\tmthd_call_id(op_stack, stack_pos, nullptr, cls_id, mthd_id);\n";
-		cxx_buffer += "\t\t\t\t\t}\n\n";
-		cxx_buffer += "\t\t\t\t\t// clean up\n";
-		cxx_buffer += "\t\t\t\t\tres_manager->ReleaseOpStackMemory(exec_stack_mem);\n";
-		cxx_buffer += "\t\t\t\t}\n";
-		cxx_buffer += "\t\t\t}\n";
-		cxx_buffer += "\t\t}\n";
-		cxx_buffer += "\t}\n";
-
-		@cxx_out->WriteString(cxx_buffer);
+		buffer := @static_content->Find("cxx_header");
+		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
+		@cxx_out->WriteString(buffer);
 	}
 
 	function : WriteMissingClass(class_name : String, objk_buffer : String) ~ Nil {
@@ -874,7 +806,7 @@ class Gtk3Binder {
 		section_name : String;
 
 		do {
-			line := reader->ReadLine()->Trim();
+			line := reader->ReadLine();
 			if(<>line->IsEmpty()) {
 				if(line->StartsWith("### [") & line->EndsWith("] ###")) {
 					if(section_name <> Nil) {
@@ -888,6 +820,9 @@ class Gtk3Binder {
 				else {
 					section_buffer += line + "\r\n";
 				};
+			}
+			else {
+				section_buffer += "\r\n";
 			};
 		}
 		while(<>reader->IsEoF());
