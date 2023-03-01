@@ -806,11 +806,9 @@ class Gtk3Binder {
 
 			c_call_name := "{$ref_name}_set_{$method_case_name}"->ToLower();
 			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
-
-			objk_buffer += "\t\t}\n\n";
+			
+			objk_buffer += "\t\t}\n\n\n";
 		};
-
-		objk_buffer->Pop();
 	}
 
 	method : CanEmitMethod(params_xml : XmlElement, return_xml : XmlElement, is_constr : Bool) ~ Bool {
