@@ -142,6 +142,8 @@ class Gtk3Binder {
 					ParseConsts(bitfields_xml, false);
 				};
 
+				@objk_out->WriteString(@static_content->Find("objk_gobject"));
+
 				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
 				if(classes_xml <> Nil) {
 					ParseClasses(classes_xml, true);
@@ -296,6 +298,7 @@ class Gtk3Binder {
 
 		# write constructor
 		objk_buffer += "\t\tNew({$ref_name} : Int) {\n";
+		objk_buffer += "\t\t\tParent();\n\n";
 		objk_buffer += "\t\t\t@{$ref_name} := {$ref_name};\n";
 		objk_buffer += "\t\t}\n\n";
 
@@ -357,6 +360,7 @@ class Gtk3Binder {
 					objk_buffer += "\t\tNew"
 					WriteParameters(params_xml, objk_buffer, cxx_buffer);
 					objk_buffer += " {\n";
+					objk_buffer += "\t\t\tParent();\n\n";
 				}
 				else {
 					cxx_buffer += "#ifdef _WIN32\n";
@@ -997,6 +1001,8 @@ class Gtk3Binder {
 					each(i : padding) {
 						doc_str += '\t';
 					};
+				}
+				else {
 					doc_str += raw_doc_char;
 				};
 			};
