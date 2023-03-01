@@ -989,7 +989,7 @@ class Gtk3Binder {
 			};
 		};
 
-		return doc_str;
+		return doc_str->ReplaceAll("  ", " ");
 	}
 
 	function : FormatDocParam(doc_xml : XmlElement, padding : Int) ~ String {
