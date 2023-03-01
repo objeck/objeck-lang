@@ -14,6 +14,44 @@ bundle Gtk3 {
 		}
 	}
 
+### [objk_gobject] ###
+	class SignalRef {
+		@handler : (GObject, Base) ~ Nil;
+		@data : Base;
+
+		New(handler : (GObject, Base) ~ Nil, data : Base) {
+			@handler := handler;
+			@data := data;
+		}
+
+		method : public : GetHandler() ~ (GObject, Base) ~ Nil {
+			return @handler;
+		}
+
+		method : public : GetData() ~ Base {
+			return @data;
+		}
+	}
+	
+	class GObject {
+		@gobject : Int;
+		
+		New(gobject : Int) {
+			@gobject := gobject;
+		}
+
+		method : public : SignalConnect(detailed_signal : String, handler : (GObject, Base) ~ Nil, data : Base) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := detailed_signal;
+			array_args[2] := SignalRef->New(handler, Nil);
+			array_args[3] := data;
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_gobject_signal_connect", array_args);
+		}
+	}
+	
 ### [cxx_header] ###
 #include "gtk3_binder.h"
 
