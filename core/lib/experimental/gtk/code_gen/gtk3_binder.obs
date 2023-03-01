@@ -279,7 +279,7 @@ class Gtk3Binder {
 
 		doc_xml := class_xml->GetFirstChild("doc");
 		if(doc_xml <> Nil) {
-			raw_doc_str := doc_xml->GetContent();
+			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
 
 			doc_str += "\t#~\n\t";
 
