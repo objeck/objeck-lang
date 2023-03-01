@@ -909,7 +909,7 @@ class Gtk3Binder {
 		doc_str := "";
 
 		if(doc_xml <> Nil) {
-			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
+			raw_doc_str := doc_xml->GetContent();
 
 			each(i : padding) {
 				doc_str += '\t';
@@ -920,36 +920,18 @@ class Gtk3Binder {
 				doc_str += '\t';
 			};
 
-			count := 0;
 			each(raw_doc_char := raw_doc_str) {
-				skip := false;
-
-				if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
+				if(raw_doc_char = '\n') {
 					doc_str += '\n';
 					each(i : padding) {
 						doc_str += '\t';
 					};
-
-					count := 0;
-					skip := true;
+				}
+				else {
+					doc_str += raw_doc_char;
 				};
-
-				if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
-					if(<>skip) {
-						doc_str += raw_doc_char;
-						count += 1;
-					}
-					else {
-						skip := false;
-					};
-				};
-			};
-
+			}
 			doc_str += '\n';
-
-			each(i : padding) {
-				doc_str += '\t';
-			};
 
 			if(params_xml <> Nil) {
 				doc_str += FormatDocParams(params_xml, padding);
@@ -958,11 +940,18 @@ class Gtk3Binder {
 			if(return_xml <> Nil) {
 				return_doc_xml := return_xml->GetFirstChild("doc");
 				if(return_doc_xml <> Nil) {
+					each(i : padding) {
+						doc_str += '\t';
+					};
+
 					doc_str += "@return ";
 					doc_str += FormatDocParam(return_doc_xml, padding);
 				};
 			};
 
+			each(i : padding) {
+				doc_str += '\t';
+			};
 			doc_str += "~#\n";
 		};
 
@@ -979,7 +968,11 @@ class Gtk3Binder {
 					doc_xml := param_xml->GetFirstChild("doc");
 
 					if(doc_xml <> Nil) {
-						doc_str += '@';
+						each(i : padding) {
+							doc_str += '\t';
+						};
+
+						doc_str += "@param ";
 						doc_str += param_name;
 						doc_str += ' ';
 
@@ -989,7 +982,7 @@ class Gtk3Binder {
 			};
 		};
 
-		return doc_str->ReplaceAll("  ", " ");
+		return doc_str;
 	}
 
 	function : FormatDocParam(doc_xml : XmlElement, padding : Int) ~ String {
@@ -998,36 +991,17 @@ class Gtk3Binder {
 		if(doc_xml <> Nil) {
 			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
 
-			count := 0;
 			each(raw_doc_char := raw_doc_str) {
-				skip := false;
-
-				if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
+				if(raw_doc_char = '\n') {
 					doc_str += '\n';
 					each(i : padding) {
 						doc_str += '\t';
 					};
-
-					count := 0;
-					skip := true;
-				};
-
-				if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
-					if(<>skip) {
-						doc_str += raw_doc_char;
-						count += 1;
-					}
-					else {
-						skip := false;
-					};
+					doc_str += raw_doc_char;
 				};
 			};
 
 			doc_str += '\n';
-
-			each(i : padding) {
-				doc_str += '\t';
-			};
 		};
 
 		return doc_str;
