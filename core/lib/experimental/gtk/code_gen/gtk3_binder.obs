@@ -969,48 +969,56 @@ class Gtk3Binder {
 				if(param_xml->GetName()->Equals("parameter")) {
 					param_name := param_xml->GetAttribute("name")->GetValue();
 					doc_xml := param_xml->GetFirstChild("doc");
-					
-					doc_str += '@';
-					doc_str += param_name;
-					doc_str += ' ';
 
 					if(doc_xml <> Nil) {
-						raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
+						doc_str += '@';
+						doc_str += param_name;
+						doc_str += ' ';
 
-						count := 0;
-						each(raw_doc_char := raw_doc_str) {
-							skip := false;
-
-							if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
-								doc_str += '\n';
-								each(i : padding) {
-									doc_str += '\t';
-								};
-
-								count := 0;
-								skip := true;
-							};
-
-							if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
-								if(<>skip) {
-									doc_str += raw_doc_char;
-									count += 1;
-								}
-								else {
-									skip := false;
-								};
-							};
-						};
-
-						doc_str += '\n';
-
-						each(i : padding) {
-							doc_str += '\t';
-						};
-
-#						doc_str += '\n';
+						doc_str += FormatDocParam(doc_xml, padding);
 					};
 				};
+			};
+		};
+
+		return doc_str;
+	}
+
+	function : FormatDocParam(doc_xml : XmlElement, padding : Int) ~ String {
+		doc_str := "";
+
+		if(doc_xml <> Nil) {
+			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
+
+			count := 0;
+			each(raw_doc_char := raw_doc_str) {
+				skip := false;
+
+				if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
+					doc_str += '\n';
+					each(i : padding) {
+						doc_str += '\t';
+					};
+
+					count := 0;
+					skip := true;
+				};
+
+				if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
+					if(<>skip) {
+						doc_str += raw_doc_char;
+						count += 1;
+					}
+					else {
+						skip := false;
+					};
+				};
+			};
+
+			doc_str += '\n';
+
+			each(i : padding) {
+				doc_str += '\t';
 			};
 		};
 
