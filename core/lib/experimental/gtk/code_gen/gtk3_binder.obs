@@ -275,40 +275,8 @@ class Gtk3Binder {
 		cxx_buffer += "\t// {$@class_name}\n"
 		cxx_buffer += "\t//\n"
 
-		doc_str := "";
-
-		doc_xml := class_xml->GetFirstChild("doc");
-		if(doc_xml <> Nil) {
-			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
-
-			doc_str += "\t#~\n\t";
-
-			count := 0;
-			each(raw_doc_char := raw_doc_str) {
-				skip := false;
-
-				if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
-					doc_str += "\n\t";
-					count := 0;
-					skip := true;
-				};
-
-				if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
-					if(<>skip) {
-						doc_str += raw_doc_char;
-						count += 1;
-					}
-					else {
-						skip := false;
-					};
-				};
-			};
-
-			doc_str += "\n\t~#\n";
-		};
-
 		# start class
-		objk_buffer += doc_str;
+		objk_buffer += FormatDocHeader(class_xml->GetFirstChild("doc"), Nil, 1);
 
 		if(is_class) {
 			objk_buffer += "\tclass {$@class_name} from GObject {\n";
@@ -378,6 +346,8 @@ class Gtk3Binder {
 			is_deprecated := method_xml->GetFirstChild("doc-deprecated") = Nil;
 
 			if(CanEmitMethod(params_xml, return_xml, false) & <>is_deprecated) {
+				objk_buffer += FormatDocHeader(method_xml->GetFirstChild("doc"), params_xml, 2);
+
 				if(is_constr) {
 					cxx_buffer += "#ifdef _WIN32\n";
 					cxx_buffer += "\t__declspec(dllexport)\n";
@@ -806,7 +776,7 @@ class Gtk3Binder {
 
 			c_call_name := "{$ref_name}_set_{$method_case_name}"->ToLower();
 			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
-			
+
 			objk_buffer += "\t\t}\n\n\n";
 		};
 	}
@@ -933,5 +903,117 @@ class Gtk3Binder {
 		};
 
 		return section_map;
+	}
+
+	function : FormatDocHeader(doc_xml : XmlElement, params_xml : XmlElement, padding : Int) ~ String {
+		doc_str := "";
+
+		if(doc_xml <> Nil) {
+			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
+
+			each(i : padding) {
+				doc_str += '\t';
+			};
+
+			doc_str += "#~\n";
+			each(i : padding) {
+				doc_str += '\t';
+			};
+
+			count := 0;
+			each(raw_doc_char := raw_doc_str) {
+				skip := false;
+
+				if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
+					doc_str += '\n';
+					each(i : padding) {
+						doc_str += '\t';
+					};
+
+					count := 0;
+					skip := true;
+				};
+
+				if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
+					if(<>skip) {
+						doc_str += raw_doc_char;
+						count += 1;
+					}
+					else {
+						skip := false;
+					};
+				};
+			};
+
+			doc_str += '\n';
+
+			each(i : padding) {
+				doc_str += '\t';
+			};
+
+			if(params_xml <> Nil) {
+				doc_str += FormatDocParams(params_xml, padding);
+			}
+
+			doc_str += "~#\n";
+		};
+
+		return doc_str;
+	}
+
+	function : FormatDocParams(params_xml : XmlElement, padding : Int) ~ String {
+		doc_str := "";
+
+		if(params_xml <> Nil & params_xml->Size() > 0) {
+			each(param_xml := params_xml) {
+				if(param_xml->GetName()->Equals("parameter")) {
+					param_name := param_xml->GetAttribute("name")->GetValue();
+					doc_xml := param_xml->GetFirstChild("doc");
+					
+					doc_str += '@';
+					doc_str += param_name;
+					doc_str += ' ';
+
+					if(doc_xml <> Nil) {
+						raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
+
+						count := 0;
+						each(raw_doc_char := raw_doc_str) {
+							skip := false;
+
+							if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
+								doc_str += '\n';
+								each(i : padding) {
+									doc_str += '\t';
+								};
+
+								count := 0;
+								skip := true;
+							};
+
+							if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
+								if(<>skip) {
+									doc_str += raw_doc_char;
+									count += 1;
+								}
+								else {
+									skip := false;
+								};
+							};
+						};
+
+						doc_str += '\n';
+
+						each(i : padding) {
+							doc_str += '\t';
+						};
+
+#						doc_str += '\n';
+					};
+				};
+			};
+		};
+
+		return doc_str;
 	}
 }
