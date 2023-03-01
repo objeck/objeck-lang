@@ -17,8 +17,21 @@ class Gtk3Binder {
 	@static_content : Map<String, String>;
 
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			Gtk3Binder->New(args[0])->Parse();
+		if(args->Size() = 2) {
+			binder := Gtk3Binder->New(args[0]);
+
+			if(args[1]->Equals("list")) {
+				binder->Parse(true);
+			}
+			else if(args[1]->Equals("emit")) {
+				binder->Parse(false);
+			}
+			else {
+				"args: filename, [list|emit]"->ErrorLine();
+			};
+		}
+		else {
+			"args: filename, [list|emit]"->ErrorLine();
 		};
 	}
 
@@ -66,15 +79,20 @@ class Gtk3Binder {
 		@keywords->Insert("value");
 
 		@emit_classes := Set->New()<String>;
+		@emit_classes->Insert("Display");
+		@emit_classes->Insert("Color");
+		@emit_classes->Insert("Cursor");
 		@emit_classes->Insert("Window");
-#		@emit_classes->Insert("Device");
+		@emit_classes->Insert("Device");
+		@emit_classes->Insert("Screen");
 		@emit_classes->Insert("RGBA");
 		@emit_classes->Insert("Rectangle");
+		@emit_classes->Insert("DeviceManager");
 
 		@is_debug := true;
 	}
 
-	method : Parse() ~ Nil {
+	method : Parse(is_list : Bool) ~ Nil {
 		# read file
 		data := FileReader->ReadFile(@filename);
 		data_size := data->Size() / 1000;
@@ -87,55 +105,86 @@ class Gtk3Binder {
 
 		parser := XmlParser->New(data);
 		if(parser->Parse()) {
-			WriteObjeckHeader();
-			WriteCxxHeader();
+			if(is_list) {
+				enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+				if(enums_xml <> Nil) {
+					List(enums_xml, "[Enums]");
+				};
 
-			@namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
+				bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+				if(bitfields_xml <> Nil) {
+					List(bitfields_xml, "[Bitfields]");
+				};
 
-			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
-			if(enums_xml <> Nil) {
-				ParseConsts(enums_xml, true);
+				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+				if(classes_xml <> Nil) {
+					List(classes_xml, "[Classes]");
+				};
+
+				records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+				if(records_xml <> Nil) {
+					List(records_xml, "[Records]");
+				};
+			}
+			else {
+				WriteObjeckHeader();
+				WriteCxxHeader();
+
+				@namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
+
+				enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+				if(enums_xml <> Nil) {
+					ParseConsts(enums_xml, true);
+				};
+
+				bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+				if(bitfields_xml <> Nil) {
+					ParseConsts(bitfields_xml, false);
+				};
+
+				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+				if(classes_xml <> Nil) {
+					ParseClasses(classes_xml, true);
+				};
+
+				records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+				if(records_xml <> Nil) {
+					ParseClasses(records_xml, false);
+				};
+				
+				objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
+				missing_def_keys := @missing_defs->GetKeys()<String>;
+				each(missing_def_key := missing_def_keys) {
+					if(<>@emit_classes->Has(missing_def_key)) {
+						WriteMissingClass(missing_def_key, objk_buffer);
+					};
+				};
+				objk_buffer->Pop();
+				@objk_out->WriteString(objk_buffer);
+
+
+				@objk_out->WriteString("\n}");
+				@objk_out->Close();
+
+				@cxx_out->WriteString("}");
+				@cxx_out->Close();
 			};
-
-			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
-			if(bitfields_xml <> Nil) {
-				ParseConsts(bitfields_xml, false);
-			};
-
-			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
-			if(classes_xml <> Nil) {
-				ParseClasses(classes_xml, true);
-			};
-
-			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
-			if(records_xml <> Nil) {
-				ParseClasses(records_xml, false);
-			};
-
 		};
-
-		objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
-		missing_def_keys := @missing_defs->GetKeys()<String>;
-		each(missing_def_key := missing_def_keys) {
-			if(<>@emit_classes->Has(missing_def_key)) {
-				WriteMissingClass(missing_def_key, objk_buffer);
-			};
-		};
-		objk_buffer->Pop();
-		@objk_out->WriteString(objk_buffer);
-
-
-		@objk_out->WriteString("\n}");
-		@objk_out->Close();
-
-		@cxx_out->WriteString("}");
-		@cxx_out->Close();
 
 		timer->End();
 		String->SetFloatPrecision(3);
 		tick_secs := timer->GetElapsedTime();
 		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
 
+	}
+
+	method : List(items_xml : Vector<XmlElement>, name : String) ~ Nil {
+		name->PrintLine();
+
+		each(item_xml := items_xml) {
+			item_name := item_xml->GetAttribute("name")->GetValue();
+			"\t{$item_name}"->PrintLine();
+		};
 	}
 
 	method : ParseConsts(enums_xml : Vector<XmlElement>, is_enum : Bool) ~ Nil {
@@ -206,6 +255,7 @@ class Gtk3Binder {
 				objk_buffer->Pop();
 				cxx_buffer->Pop();
 			};
+			
 			@objk_out->WriteString(objk_buffer);
 			@cxx_out->WriteString(cxx_buffer);
 		};
@@ -287,8 +337,9 @@ class Gtk3Binder {
 			# get parameters and returns types
 			params_xml := method_xml->GetFirstChild("parameters");
 			return_xml := method_xml->GetFirstChild("return-value");
+			is_deprecated := method_xml->GetFirstChild("doc-deprecated") = Nil;
 
-			if(CanEmitMethod(params_xml, return_xml, false)) {
+			if(CanEmitMethod(params_xml, return_xml, false) & <>is_deprecated) {
 				if(is_constr) {
 					cxx_buffer += "#ifdef _WIN32\n";
 					cxx_buffer += "\t__declspec(dllexport)\n";
@@ -477,7 +528,7 @@ class Gtk3Binder {
 						else if(type_name->Equals("Bool")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} ? 0 : 1);\n";
 
-							cxx_buffer += "\t\tconst gbool p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
+							cxx_buffer += "\t\tconst gboolean p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
 							cxx_buffer += "\t\tconst std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
