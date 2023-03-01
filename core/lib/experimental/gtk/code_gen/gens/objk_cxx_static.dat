@@ -59,7 +59,7 @@ extern "C" {
 			GType handler_ctype = G_TYPE_FROM_INSTANCE(handler);
 			if(G_TYPE_IS_CLASSED(handler_ctype)) {
 				const std::string handler_cname(g_type_name(handler_ctype));
-				const char prefix_str[] = "Gtk
+				const char prefix_str[] = "Gtk";
 				size_t handler_cname_prefix_offset = handler_cname.find(prefix_str);
 				if(handler_cname_prefix_offset != std::string::npos) {
 					std::pair<size_t*, long*> exec_stack_mem = res_manager->GetOpStackMemory();
