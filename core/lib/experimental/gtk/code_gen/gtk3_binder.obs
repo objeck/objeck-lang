@@ -275,10 +275,40 @@ class Gtk3Binder {
 		cxx_buffer += "\t// {$@class_name}\n"
 		cxx_buffer += "\t//\n"
 
+		doc_str := "";
+
+		doc_xml := class_xml->GetFirstChild("doc");
+		if(doc_xml <> Nil) {
+			raw_doc_str := doc_xml->GetContent();
+
+			doc_str += "\t#~\n\t";
+
+			count := 0;
+			each(raw_doc_char := raw_doc_str) {
+				skip := false;
+
+				if(count >= 60 & (raw_doc_char = ' '| raw_doc_char = '\r' | raw_doc_char = '\r' | raw_doc_char = '\t')) {
+					doc_str += "\n\t";
+					count := 0;
+					skip := true;
+				};
+
+				if(raw_doc_char <> '\r' & raw_doc_char <> '\n' & raw_doc_char <> '\t') {
+					if(<>skip) {
+						doc_str += raw_doc_char;
+						count += 1;
+					}
+					else {
+						skip := false;
+					};
+				};
+			};
+
+			doc_str += "\n\t~#\n";
+		};
+
 		# start class
-		objk_buffer += "\t#\n"
-		objk_buffer += "\t# {$@class_name}\n"
-		objk_buffer += "\t#\n"
+		objk_buffer += doc_str;
 
 		if(is_class) {
 			objk_buffer += "\tclass {$@class_name} from GObject {\n";
