@@ -255,7 +255,7 @@ class Gtk3Binder {
 				objk_buffer->Pop();
 				cxx_buffer->Pop();
 			};
-			
+
 			@objk_out->WriteString(objk_buffer);
 			@cxx_out->WriteString(cxx_buffer);
 		};
@@ -279,10 +279,18 @@ class Gtk3Binder {
 		objk_buffer += "\t#\n"
 		objk_buffer += "\t# {$@class_name}\n"
 		objk_buffer += "\t#\n"
-		objk_buffer += "\tclass {$@class_name} {\n";
+
+		if(is_class) {
+			objk_buffer += "\tclass {$@class_name} from GObject {\n";
+		}
+		else {
+			objk_buffer += "\tclass {$@class_name} {\n";
+		};
 
 		ref_name := "gobject";
-		objk_buffer += "\t\t@{$ref_name} : Int;\n\n";
+		if(<>is_class) {
+			objk_buffer += "\t\t@{$ref_name} : Int;\n\n";
+		};
 
 		# parse parameters
 		fields_xml := class_xml->GetChildren("field")<XmlElement>;
