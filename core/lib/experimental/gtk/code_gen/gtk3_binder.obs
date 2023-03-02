@@ -346,7 +346,7 @@ class Gtk3Binder {
 			# get parameters and returns types
 			params_xml := method_xml->GetFirstChild("parameters");
 			return_xml := method_xml->GetFirstChild("return-value");
-			is_deprecated := method_xml->GetFirstChild("doc-deprecated") = Nil;
+			is_deprecated := method_xml->GetAttribute("deprecated") <> Nil;
 
 			if(CanEmitMethod(params_xml, return_xml, false) & <>is_deprecated) {
 				objk_buffer += FormatDocHeader(method_xml->GetFirstChild("doc"), params_xml, return_xml, 2);
@@ -385,7 +385,12 @@ class Gtk3Binder {
 				cxx_params_buffer := "";
 				cxx_params_count := 0;
 
-				if(params_xml <> Nil) {
+				if(params_xml = Nil) {
+					objk_buffer += "\t\t\tarray_args := Base->New[1];\n\n";
+					objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+					cxx_params_buffer += "\t\t{$identifier_name}(p1, ";
+				}
+				else {
 					parameters_size := params_xml->Size() + 1;
 
 					if(is_constr) {
