@@ -548,7 +548,7 @@ class Gtk3Binder {
 							cxx_buffer += "\t\tconst gboolean p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
-							cxx_buffer += "\t\tconst std::string parm{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
+							cxx_buffer += "\t\tconst std::string p{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
 						}
 						else {
 							param_type_xml := type_xml->GetAttribute("type");
