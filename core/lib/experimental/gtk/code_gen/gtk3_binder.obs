@@ -58,6 +58,7 @@ class Gtk3Binder {
 		@basic_type_map->Insert("gdouble", "Float");
 		@basic_type_map->Insert("utf8", "String");
 		@basic_type_map->Insert("const gchar*", "String");
+		@basic_type_map->Insert("const char*", "String");
 		@basic_type_map->Insert("gchar*", "String");
 		@basic_type_map->Insert("gchar**", "String[]");
 		@basic_type_map->Insert("filename", "String");
@@ -80,6 +81,7 @@ class Gtk3Binder {
 
 		@emit_classes := Set->New()<String>;
 		@emit_classes->Insert("Display");
+		@emit_classes->Insert("Monitor");
 		@emit_classes->Insert("Color");
 		@emit_classes->Insert("Cursor");
 		@emit_classes->Insert("Window");
@@ -385,16 +387,28 @@ class Gtk3Binder {
 					};
 
 					WriteParameters(params_xml, objk_buffer, cxx_buffer);
-					objk_buffer += " ~ {$return_type} {\n";
+
+					mapping_name := GetMappingName(return_type);
+					objk_buffer += " ~ {$mapping_name} {\n";
 				};
 
 				cxx_params_buffer := "";
 				cxx_params_count := 0;
 
 				if(params_xml = Nil) {
-					objk_buffer += "\t\t\tarray_args := Base->New[1];\n\n";
-					objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
-					cxx_params_buffer += "\t\t{$identifier_name}(p1, ";
+					if(return_type->Equals("Nil")) {
+						objk_buffer += "\t\t\tarray_args := Base->New[0];\n\n";
+						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
+
+						cxx_params_buffer += "\t\t{$identifier_name}();\n";
+					}
+					else {
+						objk_buffer += "\t\t\tarray_args := Base->New[1];\n\n";
+						objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
+
+						cxx_params_buffer += "\t\tconst auto status = {$identifier_name}();\n";
+					};
 				}
 				else {
 					parameters_size := params_xml->Size() + 1;
@@ -554,7 +568,9 @@ class Gtk3Binder {
 							cxx_buffer += "\t\tconst gboolean p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
-							cxx_buffer += "\t\tconst std::string p{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index}));\n";
+							objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+
+							cxx_buffer += "\t\tconst gchar* p{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index})).c_str();\n";
 						}
 						else {
 							param_type_xml := type_xml->GetAttribute("type");
@@ -629,7 +645,7 @@ class Gtk3Binder {
 				else if(type_name->Equals("String")) {
 					objk_buffer += "\t\n\t\t\treturn array_args[0]->As(String);\n";
 
-					cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, status);\n";
+					cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, BytesToUnicode(status));\n";
 				}
 				else if(<>type_name->Equals("Nil")) {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
