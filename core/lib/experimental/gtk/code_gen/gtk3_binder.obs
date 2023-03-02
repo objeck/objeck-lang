@@ -347,8 +347,14 @@ class Gtk3Binder {
 			params_xml := method_xml->GetFirstChild("parameters");
 			return_xml := method_xml->GetFirstChild("return-value");
 			is_deprecated := method_xml->GetAttribute("deprecated") <> Nil;
+			
+			is_introspectable := true;
+			introspectable_attr := method_xml->GetAttribute("introspectable");
+			if(introspectable_attr <> Nil) {
+				is_introspectable := <>introspectable_attr->GetValue()->Equals("0");
+			};
 
-			if(CanEmitMethod(params_xml, return_xml, false) & <>is_deprecated) {
+			if(CanEmitMethod(params_xml, return_xml, false) & <>is_deprecated & is_introspectable) {
 				objk_buffer += FormatDocHeader(method_xml->GetFirstChild("doc"), params_xml, return_xml, 2);
 
 				if(is_constr) {

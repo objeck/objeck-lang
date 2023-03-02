@@ -100,7 +100,7 @@ extern "C" {
 		const size_t* p1_obj = APITools_GetObjectValue(context, 1);
 		GdkDisplay* p1 = (GdkDisplay*)p1_obj[0];
 
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		const auto status = (size_t)gdk_cursor_new_from_name(p1, p2);
 
@@ -158,19 +158,6 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void gtk3_gdk_device_get_axis(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const GdkAxisUse p2 = (GdkAxisUse)APITools_GetIntValue(context, 2);
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-
-		const auto status = gdk_device_get_axis(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
 	void gtk3_gdk_device_get_axis_use(VMContext& context) {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
 		const gint p2 = APITools_GetIntValue(context, 2);
@@ -178,21 +165,6 @@ extern "C" {
 		const auto status = gdk_device_get_axis_use(p1, p2);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_axis_value(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkAtom p2 = (GdkAtom)p2_obj[0];
-
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-
-		const auto status = gdk_device_get_axis_value(p1, p2, p3, p4);
-
-		APITools_SetIntValue(context, 0, status);
 	}
 
 #ifdef _WIN32
@@ -224,23 +196,6 @@ extern "C" {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
 
 		const auto status = gdk_device_get_has_cursor(p1);
-
-		APITools_SetIntValue(context, 0, status);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_get_history(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
-
-		const gint p3 = APITools_GetIntValue(context, 3);
-		const gint p4 = APITools_GetIntValue(context, 4);
-		const gint p5 = APITools_GetIntValue(context, 5);
-
-		const auto status = gdk_device_get_history(p1, p2, p3, p4, p5, p6);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -378,19 +333,6 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void gtk3_gdk_device_get_state(VMContext& context) {
-		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
-
-		const GdkModifierType p3 = (GdkModifierType)APITools_GetIntValue(context, 3);
-
-		gdk_device_get_state(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
 	void gtk3_gdk_device_get_vendor_id(VMContext& context) {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
 
@@ -472,15 +414,6 @@ extern "C" {
 		const gint p4 = APITools_GetIntValue(context, 4);
 
 		gdk_device_warp(p1, p2, p3, p4);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void gtk3_gdk_device_free_history(VMContext& context) {
-		const gint p1 = APITools_GetIntValue(context, 1);
-
-		gdk_device_free_history(p1);
 	}
 
 
@@ -717,7 +650,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_display_notify_startup_complete(VMContext& context) {
 		GdkDisplay* p1 = (GdkDisplay*)APITools_GetIntValue(context, 1);
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_display_notify_startup_complete(p1, p2);
 	}
@@ -878,7 +811,7 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 	void gtk3_gdk_display_open(VMContext& context) {
-		const std::string parm1 = UnicodeToBytes(APITools_GetStringValue(context, 1));
+		const std::string p1 = UnicodeToBytes(APITools_GetStringValue(context, 1));
 
 		const auto status = gdk_display_ope);
 
@@ -2034,7 +1967,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_icon_name(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_icon_name(p1, p2);
 	}
@@ -2104,7 +2037,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_role(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_role(p1, p2);
 	}
@@ -2158,7 +2091,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_startup_id(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_startup_id(p1, p2);
 	}
@@ -2178,7 +2111,7 @@ extern "C" {
 #endif
 	void gtk3_gdk_window_set_title(VMContext& context) {
 		GdkWindow* p1 = (GdkWindow*)APITools_GetIntValue(context, 1);
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		gdk_window_set_title(p1, p2);
 	}
@@ -2411,7 +2344,7 @@ void gobject_get_alpha(VMContext& context) {
 #endif
 	void gtk3_gdk_rgba_parse(VMContext& context) {
 		GdkRGBA* p1 = (GdkRGBA*)APITools_GetIntValue(context, 1);
-		const std::string parm2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
+		const std::string p2 = UnicodeToBytes(APITools_GetStringValue(context, 2));
 
 		const auto status = gdk_rgba_parse(p1, p2);
 
