@@ -332,10 +332,8 @@ class Gtk3Binder {
 			identifier_name := method_xml->GetAttribute("identifier")->GetValue();
 			method_case_name := CamelCaseName(method_name->Copy());
 
-			return_type_xml := method_xml->GetFirstChild("return-value")->GetFirstChild("type");
-
-			return_type := GetMappingName(XmlElement->DecodeString(return_type_xml->GetAttribute("type")->GetValue()));
-
+			# return type value
+			return_type_name := XmlElement->DecodeString(method_xml->GetFirstChild("return-value")->GetFirstChild("type")->GetAttribute("type")->GetValue());
 			if(@is_debug) {
 				if(is_func) {
 					"\t\tfunction: name='{$method_name}'"->PrintLine();
@@ -388,15 +386,16 @@ class Gtk3Binder {
 
 					WriteParameters(params_xml, objk_buffer, cxx_buffer);
 
-					mapping_name := GetMappingName(return_type);
-					objk_buffer += " ~ {$mapping_name} {\n";
+					# set return type name
+					mapped_return_type_name := GetMappingName(return_type_name);
+					objk_buffer += " ~ {$mapped_return_type_name} {\n";
 				};
 
 				cxx_params_buffer := "";
 				cxx_params_count := 0;
 
 				if(params_xml = Nil) {
-					if(return_type->Equals("Nil")) {
+					if(return_type_name->Equals("void")) {
 						objk_buffer += "\t\t\tarray_args := Base->New[0];\n\n";
 						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
@@ -407,7 +406,7 @@ class Gtk3Binder {
 						objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
 						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
-						cxx_params_buffer += "\t\tconst auto status = {$identifier_name}();\n";
+						cxx_params_buffer += "\t\t{$identifier_name}();\n";
 					};
 				}
 				else {
@@ -421,7 +420,7 @@ class Gtk3Binder {
 
 						cxx_params_buffer += "\t\tconst auto status = (size_t){$identifier_name}(p1, ";
 					}
-					else if(return_type->Equals("Nil")) {
+					else if(return_type_name->Equals("void")) {
 						if(is_func) {
 							parameters_size -= 1;
 						};
@@ -515,6 +514,14 @@ class Gtk3Binder {
 					if(type_xml <> Nil) {									
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
 						objk_buffer += "{$param_name} : {$type_name}, ";
+					}
+					else {
+						array_xml := param_xml->GetFirstChild("array");
+						type_xml := array_xml->GetFirstChild("type");
+						if(type_xml <> Nil) {									
+							type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+							objk_buffer += "{$param_name} : {$type_name}[], ";
+						};
 					};
 				};
 			};
@@ -543,15 +550,23 @@ class Gtk3Binder {
 				param_name := param_xml->GetName();
 
 				if(param_name->Equals("parameter")) {
+					is_array := false;
+
 					param_name := param_xml->GetAttribute("name")->GetValue();
 					type_xml := param_xml->GetFirstChild("type");
+					if(type_xml = Nil) {
+						array_xml := param_xml->GetFirstChild("array");
+						type_xml := array_xml->GetFirstChild("type");
+						is_array := true;
+					};
+
 					if(type_xml <> Nil) {									
 						if(@keywords->Has(param_name)) {
 							param_name += '_';
 						};
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
 						
-						# TODO: hash sub-strings
+						# TODO: add array check
 						if(type_name->Equals("Int")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
@@ -592,7 +607,15 @@ class Gtk3Binder {
 										@missing_defs->Insert(type_name);
 									};
 
-									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+									if(is_array) {
+										objk_buffer += "\n\t\t\t{$param_name}_objs := Int->New[0];\n";
+										objk_buffer += "\t\t\t# copy references\n";
+										objk_buffer += "\t\t\tarray_args[{$index}] := IntArrayRef->New({$param_name}_objs);\n\n";
+									}
+									else {
+										objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+									};
+
 									cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
 									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
 
