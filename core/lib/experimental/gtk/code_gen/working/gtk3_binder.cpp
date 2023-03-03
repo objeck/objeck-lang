@@ -719,7 +719,10 @@ extern "C" {
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
 		const gint p3 = APITools_GetIntValue(context, 3);
-		const gint p4 = APITools_GetIntValue(context, 4);
+		const size_t* p4_obj = APITools_GetObjectValue(context, 4);
+		GdkAtom p4 = (GdkAtom)p4_obj[0];
+
+		const gint p5 = APITools_GetIntValue(context, 5);
 
 		gdk_display_store_clipboard(p1, p2, p3, p4, p5);
 	}
@@ -803,7 +806,7 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 	void gtk3_gdk_display_get_default(VMContext& context) {
-		const auto status = gdk_display_get_default();
+		gdk_display_get_default();
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -1028,7 +1031,7 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 	void gtk3_gdk_screen_get_default(VMContext& context) {
-		const auto status = gdk_screen_get_default();
+		gdk_screen_get_default();
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}

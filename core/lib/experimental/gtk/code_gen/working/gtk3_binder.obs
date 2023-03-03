@@ -1,0 +1,5521 @@
+use System.API;
+
+bundle Gtk3 {
+	class : private : Proxy {
+		@lib_proxy : static : DllProxy;
+
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_gtk3");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	consts AxisUse {
+		GDK_AXIS_IGNORE := 0,
+		GDK_AXIS_X := 1,
+		GDK_AXIS_Y := 2,
+		GDK_AXIS_PRESSURE := 3,
+		GDK_AXIS_XTILT := 4,
+		GDK_AXIS_YTILT := 5,
+		GDK_AXIS_WHEEL := 6,
+		GDK_AXIS_DISTANCE := 7,
+		GDK_AXIS_ROTATION := 8,
+		GDK_AXIS_SLIDER := 9,
+		GDK_AXIS_LAST := 10	
+	}
+
+	consts ByteOrder {
+		GDK_LSB_FIRST := 0,
+		GDK_MSB_FIRST := 1	
+	}
+
+	consts CrossingMode {
+		GDK_CROSSING_NORMAL := 0,
+		GDK_CROSSING_GRAB := 1,
+		GDK_CROSSING_UNGRAB := 2,
+		GDK_CROSSING_GTK_GRAB := 3,
+		GDK_CROSSING_GTK_UNGRAB := 4,
+		GDK_CROSSING_STATE_CHANGED := 5,
+		GDK_CROSSING_TOUCH_BEGIN := 6,
+		GDK_CROSSING_TOUCH_END := 7,
+		GDK_CROSSING_DEVICE_SWITCH := 8	
+	}
+
+	consts CursorType {
+		GDK_X_CURSOR := 0,
+		GDK_ARROW := 2,
+		GDK_BASED_ARROW_DOWN := 4,
+		GDK_BASED_ARROW_UP := 6,
+		GDK_BOAT := 8,
+		GDK_BOGOSITY := 10,
+		GDK_BOTTOM_LEFT_CORNER := 12,
+		GDK_BOTTOM_RIGHT_CORNER := 14,
+		GDK_BOTTOM_SIDE := 16,
+		GDK_BOTTOM_TEE := 18,
+		GDK_BOX_SPIRAL := 20,
+		GDK_CENTER_PTR := 22,
+		GDK_CIRCLE := 24,
+		GDK_CLOCK := 26,
+		GDK_COFFEE_MUG := 28,
+		GDK_CROSS := 30,
+		GDK_CROSS_REVERSE := 32,
+		GDK_CROSSHAIR := 34,
+		GDK_DIAMOND_CROSS := 36,
+		GDK_DOT := 38,
+		GDK_DOTBOX := 40,
+		GDK_DOUBLE_ARROW := 42,
+		GDK_DRAFT_LARGE := 44,
+		GDK_DRAFT_SMALL := 46,
+		GDK_DRAPED_BOX := 48,
+		GDK_EXCHANGE := 50,
+		GDK_FLEUR := 52,
+		GDK_GOBBLER := 54,
+		GDK_GUMBY := 56,
+		GDK_HAND1 := 58,
+		GDK_HAND2 := 60,
+		GDK_HEART := 62,
+		GDK_ICON := 64,
+		GDK_IRON_CROSS := 66,
+		GDK_LEFT_PTR := 68,
+		GDK_LEFT_SIDE := 70,
+		GDK_LEFT_TEE := 72,
+		GDK_LEFTBUTTON := 74,
+		GDK_LL_ANGLE := 76,
+		GDK_LR_ANGLE := 78,
+		GDK_MAN := 80,
+		GDK_MIDDLEBUTTON := 82,
+		GDK_MOUSE := 84,
+		GDK_PENCIL := 86,
+		GDK_PIRATE := 88,
+		GDK_PLUS := 90,
+		GDK_QUESTION_ARROW := 92,
+		GDK_RIGHT_PTR := 94,
+		GDK_RIGHT_SIDE := 96,
+		GDK_RIGHT_TEE := 98,
+		GDK_RIGHTBUTTON := 100,
+		GDK_RTL_LOGO := 102,
+		GDK_SAILBOAT := 104,
+		GDK_SB_DOWN_ARROW := 106,
+		GDK_SB_H_DOUBLE_ARROW := 108,
+		GDK_SB_LEFT_ARROW := 110,
+		GDK_SB_RIGHT_ARROW := 112,
+		GDK_SB_UP_ARROW := 114,
+		GDK_SB_V_DOUBLE_ARROW := 116,
+		GDK_SHUTTLE := 118,
+		GDK_SIZING := 120,
+		GDK_SPIDER := 122,
+		GDK_SPRAYCAN := 124,
+		GDK_STAR := 126,
+		GDK_TARGET := 128,
+		GDK_TCROSS := 130,
+		GDK_TOP_LEFT_ARROW := 132,
+		GDK_TOP_LEFT_CORNER := 134,
+		GDK_TOP_RIGHT_CORNER := 136,
+		GDK_TOP_SIDE := 138,
+		GDK_TOP_TEE := 140,
+		GDK_TREK := 142,
+		GDK_UL_ANGLE := 144,
+		GDK_UMBRELLA := 146,
+		GDK_UR_ANGLE := 148,
+		GDK_WATCH := 150,
+		GDK_XTERM := 152,
+		GDK_LAST_CURSOR := 153,
+		GDK_BLANK_CURSOR := -2,
+		GDK_CURSOR_IS_PIXMAP := -1	
+	}
+
+	consts DevicePadFeature {
+		GDK_DEVICE_PAD_FEATURE_BUTTON := 0,
+		GDK_DEVICE_PAD_FEATURE_RING := 1,
+		GDK_DEVICE_PAD_FEATURE_STRIP := 2	
+	}
+
+	consts DeviceToolType {
+		GDK_DEVICE_TOOL_TYPE_UNKNOWN := 0,
+		GDK_DEVICE_TOOL_TYPE_PEN := 1,
+		GDK_DEVICE_TOOL_TYPE_ERASER := 2,
+		GDK_DEVICE_TOOL_TYPE_BRUSH := 3,
+		GDK_DEVICE_TOOL_TYPE_PENCIL := 4,
+		GDK_DEVICE_TOOL_TYPE_AIRBRUSH := 5,
+		GDK_DEVICE_TOOL_TYPE_MOUSE := 6,
+		GDK_DEVICE_TOOL_TYPE_LENS := 7	
+	}
+
+	consts DeviceType {
+		GDK_DEVICE_TYPE_MASTER := 0,
+		GDK_DEVICE_TYPE_SLAVE := 1,
+		GDK_DEVICE_TYPE_FLOATING := 2	
+	}
+
+	consts DragCancelReason {
+		GDK_DRAG_CANCEL_NO_TARGET := 0,
+		GDK_DRAG_CANCEL_USER_CANCELLED := 1,
+		GDK_DRAG_CANCEL_ERROR := 2	
+	}
+
+	consts DragProtocol {
+		GDK_DRAG_PROTO_NONE := 0,
+		GDK_DRAG_PROTO_MOTIF := 1,
+		GDK_DRAG_PROTO_XDND := 2,
+		GDK_DRAG_PROTO_ROOTWIN := 3,
+		GDK_DRAG_PROTO_WIN32_DROPFILES := 4,
+		GDK_DRAG_PROTO_OLE2 := 5,
+		GDK_DRAG_PROTO_LOCAL := 6,
+		GDK_DRAG_PROTO_WAYLAND := 7	
+	}
+
+	consts EventType {
+		GDK_NOTHING := -1,
+		GDK_DELETE := 0,
+		GDK_DESTROY := 1,
+		GDK_EXPOSE := 2,
+		GDK_MOTION_NOTIFY := 3,
+		GDK_BUTTON_PRESS := 4,
+		GDK_2BUTTON_PRESS := 5,
+		GDK_DOUBLE_BUTTON_PRESS := 5,
+		GDK_3BUTTON_PRESS := 6,
+		GDK_TRIPLE_BUTTON_PRESS := 6,
+		GDK_BUTTON_RELEASE := 7,
+		GDK_KEY_PRESS := 8,
+		GDK_KEY_RELEASE := 9,
+		GDK_ENTER_NOTIFY := 10,
+		GDK_LEAVE_NOTIFY := 11,
+		GDK_FOCUS_CHANGE := 12,
+		GDK_CONFIGURE := 13,
+		GDK_MAP := 14,
+		GDK_UNMAP := 15,
+		GDK_PROPERTY_NOTIFY := 16,
+		GDK_SELECTION_CLEAR := 17,
+		GDK_SELECTION_REQUEST := 18,
+		GDK_SELECTION_NOTIFY := 19,
+		GDK_PROXIMITY_IN := 20,
+		GDK_PROXIMITY_OUT := 21,
+		GDK_DRAG_ENTER := 22,
+		GDK_DRAG_LEAVE := 23,
+		GDK_DRAG_MOTION := 24,
+		GDK_DRAG_STATUS := 25,
+		GDK_DROP_START := 26,
+		GDK_DROP_FINISHED := 27,
+		GDK_CLIENT_EVENT := 28,
+		GDK_VISIBILITY_NOTIFY := 29,
+		GDK_SCROLL := 31,
+		GDK_WINDOW_STATE := 32,
+		GDK_SETTING := 33,
+		GDK_OWNER_CHANGE := 34,
+		GDK_GRAB_BROKEN := 35,
+		GDK_DAMAGE := 36,
+		GDK_TOUCH_BEGIN := 37,
+		GDK_TOUCH_UPDATE := 38,
+		GDK_TOUCH_END := 39,
+		GDK_TOUCH_CANCEL := 40,
+		GDK_TOUCHPAD_SWIPE := 41,
+		GDK_TOUCHPAD_PINCH := 42,
+		GDK_PAD_BUTTON_PRESS := 43,
+		GDK_PAD_BUTTON_RELEASE := 44,
+		GDK_PAD_RING := 45,
+		GDK_PAD_STRIP := 46,
+		GDK_PAD_GROUP_MODE := 47,
+		GDK_EVENT_LAST := 48	
+	}
+
+	consts FilterReturn {
+		GDK_FILTER_CONTINUE := 0,
+		GDK_FILTER_TRANSLATE := 1,
+		GDK_FILTER_REMOVE := 2	
+	}
+
+	consts FullscreenMode {
+		GDK_FULLSCREEN_ON_CURRENT_MONITOR := 0,
+		GDK_FULLSCREEN_ON_ALL_MONITORS := 1	
+	}
+
+	consts GLError {
+		GDK_GL_ERROR_NOT_AVAILABLE := 0,
+		GDK_GL_ERROR_UNSUPPORTED_FORMAT := 1,
+		GDK_GL_ERROR_UNSUPPORTED_PROFILE := 2	
+	}
+
+	consts GrabOwnership {
+		GDK_OWNERSHIP_NONE := 0,
+		GDK_OWNERSHIP_WINDOW := 1,
+		GDK_OWNERSHIP_APPLICATION := 2	
+	}
+
+	consts GrabStatus {
+		GDK_GRAB_SUCCESS := 0,
+		GDK_GRAB_ALREADY_GRABBED := 1,
+		GDK_GRAB_INVALID_TIME := 2,
+		GDK_GRAB_NOT_VIEWABLE := 3,
+		GDK_GRAB_FROZEN := 4,
+		GDK_GRAB_FAILED := 5	
+	}
+
+	consts Gravity {
+		GDK_GRAVITY_NORTH_WEST := 1,
+		GDK_GRAVITY_NORTH := 2,
+		GDK_GRAVITY_NORTH_EAST := 3,
+		GDK_GRAVITY_WEST := 4,
+		GDK_GRAVITY_CENTER := 5,
+		GDK_GRAVITY_EAST := 6,
+		GDK_GRAVITY_SOUTH_WEST := 7,
+		GDK_GRAVITY_SOUTH := 8,
+		GDK_GRAVITY_SOUTH_EAST := 9,
+		GDK_GRAVITY_STATIC := 10	
+	}
+
+	consts InputMode {
+		GDK_MODE_DISABLED := 0,
+		GDK_MODE_SCREEN := 1,
+		GDK_MODE_WINDOW := 2	
+	}
+
+	consts InputSource {
+		GDK_SOURCE_MOUSE := 0,
+		GDK_SOURCE_PEN := 1,
+		GDK_SOURCE_ERASER := 2,
+		GDK_SOURCE_CURSOR := 3,
+		GDK_SOURCE_KEYBOARD := 4,
+		GDK_SOURCE_TOUCHSCREEN := 5,
+		GDK_SOURCE_TOUCHPAD := 6,
+		GDK_SOURCE_TRACKPOINT := 7,
+		GDK_SOURCE_TABLET_PAD := 8	
+	}
+
+	consts ModifierIntent {
+		GDK_MODIFIER_INTENT_PRIMARY_ACCELERATOR := 0,
+		GDK_MODIFIER_INTENT_CONTEXT_MENU := 1,
+		GDK_MODIFIER_INTENT_EXTEND_SELECTION := 2,
+		GDK_MODIFIER_INTENT_MODIFY_SELECTION := 3,
+		GDK_MODIFIER_INTENT_NO_TEXT_INPUT := 4,
+		GDK_MODIFIER_INTENT_SHIFT_GROUP := 5,
+		GDK_MODIFIER_INTENT_DEFAULT_MOD_MASK := 6	
+	}
+
+	consts NotifyType {
+		GDK_NOTIFY_ANCESTOR := 0,
+		GDK_NOTIFY_VIRTUAL := 1,
+		GDK_NOTIFY_INFERIOR := 2,
+		GDK_NOTIFY_NONLINEAR := 3,
+		GDK_NOTIFY_NONLINEAR_VIRTUAL := 4,
+		GDK_NOTIFY_UNKNOWN := 5	
+	}
+
+	consts OwnerChange {
+		GDK_OWNER_CHANGE_NEW_OWNER := 0,
+		GDK_OWNER_CHANGE_DESTROY := 1,
+		GDK_OWNER_CHANGE_CLOSE := 2	
+	}
+
+	consts PropMode {
+		GDK_PROP_MODE_REPLACE := 0,
+		GDK_PROP_MODE_PREPEND := 1,
+		GDK_PROP_MODE_APPEND := 2	
+	}
+
+	consts PropertyState {
+		GDK_PROPERTY_NEW_VALUE := 0,
+		GDK_PROPERTY_DELETE := 1	
+	}
+
+	consts ScrollDirection {
+		GDK_SCROLL_UP := 0,
+		GDK_SCROLL_DOWN := 1,
+		GDK_SCROLL_LEFT := 2,
+		GDK_SCROLL_RIGHT := 3,
+		GDK_SCROLL_SMOOTH := 4	
+	}
+
+	consts SettingAction {
+		GDK_SETTING_ACTION_NEW := 0,
+		GDK_SETTING_ACTION_CHANGED := 1,
+		GDK_SETTING_ACTION_DELETED := 2	
+	}
+
+	consts Status {
+		GDK_OK := 0,
+		GDK_ERROR := -1,
+		GDK_ERROR_PARAM := -2,
+		GDK_ERROR_FILE := -3,
+		GDK_ERROR_MEM := -4	
+	}
+
+	consts SubpixelLayout {
+		GDK_SUBPIXEL_LAYOUT_UNKNOWN := 0,
+		GDK_SUBPIXEL_LAYOUT_NONE := 1,
+		GDK_SUBPIXEL_LAYOUT_HORIZONTAL_RGB := 2,
+		GDK_SUBPIXEL_LAYOUT_HORIZONTAL_BGR := 3,
+		GDK_SUBPIXEL_LAYOUT_VERTICAL_RGB := 4,
+		GDK_SUBPIXEL_LAYOUT_VERTICAL_BGR := 5	
+	}
+
+	consts TouchpadGesturePhase {
+		GDK_TOUCHPAD_GESTURE_PHASE_BEGIN := 0,
+		GDK_TOUCHPAD_GESTURE_PHASE_UPDATE := 1,
+		GDK_TOUCHPAD_GESTURE_PHASE_END := 2,
+		GDK_TOUCHPAD_GESTURE_PHASE_CANCEL := 3	
+	}
+
+	consts VisibilityState {
+		GDK_VISIBILITY_UNOBSCURED := 0,
+		GDK_VISIBILITY_PARTIAL := 1,
+		GDK_VISIBILITY_FULLY_OBSCURED := 2	
+	}
+
+	consts VisualType {
+		GDK_VISUAL_STATIC_GRAY := 0,
+		GDK_VISUAL_GRAYSCALE := 1,
+		GDK_VISUAL_STATIC_COLOR := 2,
+		GDK_VISUAL_PSEUDO_COLOR := 3,
+		GDK_VISUAL_TRUE_COLOR := 4,
+		GDK_VISUAL_DIRECT_COLOR := 5	
+	}
+
+	consts WindowEdge {
+		GDK_WINDOW_EDGE_NORTH_WEST := 0,
+		GDK_WINDOW_EDGE_NORTH := 1,
+		GDK_WINDOW_EDGE_NORTH_EAST := 2,
+		GDK_WINDOW_EDGE_WEST := 3,
+		GDK_WINDOW_EDGE_EAST := 4,
+		GDK_WINDOW_EDGE_SOUTH_WEST := 5,
+		GDK_WINDOW_EDGE_SOUTH := 6,
+		GDK_WINDOW_EDGE_SOUTH_EAST := 7	
+	}
+
+	consts WindowType {
+		GDK_WINDOW_ROOT := 0,
+		GDK_WINDOW_TOPLEVEL := 1,
+		GDK_WINDOW_CHILD := 2,
+		GDK_WINDOW_TEMP := 3,
+		GDK_WINDOW_FOREIGN := 4,
+		GDK_WINDOW_OFFSCREEN := 5,
+		GDK_WINDOW_SUBSURFACE := 6	
+	}
+
+	consts WindowTypeHint {
+		GDK_WINDOW_TYPE_HINT_NORMAL := 0,
+		GDK_WINDOW_TYPE_HINT_DIALOG := 1,
+		GDK_WINDOW_TYPE_HINT_MENU := 2,
+		GDK_WINDOW_TYPE_HINT_TOOLBAR := 3,
+		GDK_WINDOW_TYPE_HINT_SPLASHSCREEN := 4,
+		GDK_WINDOW_TYPE_HINT_UTILITY := 5,
+		GDK_WINDOW_TYPE_HINT_DOCK := 6,
+		GDK_WINDOW_TYPE_HINT_DESKTOP := 7,
+		GDK_WINDOW_TYPE_HINT_DROPDOWN_MENU := 8,
+		GDK_WINDOW_TYPE_HINT_POPUP_MENU := 9,
+		GDK_WINDOW_TYPE_HINT_TOOLTIP := 10,
+		GDK_WINDOW_TYPE_HINT_NOTIFICATION := 11,
+		GDK_WINDOW_TYPE_HINT_COMBO := 12,
+		GDK_WINDOW_TYPE_HINT_DND := 13	
+	}
+
+	consts WindowWindowClass {
+		GDK_INPUT_OUTPUT := 0,
+		GDK_INPUT_ONLY := 1	
+	}
+
+	consts AnchorHints {
+		GDK_ANCHOR_FLIP_X := 1,
+		GDK_ANCHOR_FLIP_Y := 2,
+		GDK_ANCHOR_SLIDE_X := 4,
+		GDK_ANCHOR_SLIDE_Y := 8,
+		GDK_ANCHOR_RESIZE_X := 16,
+		GDK_ANCHOR_RESIZE_Y := 32,
+		GDK_ANCHOR_FLIP := 3,
+		GDK_ANCHOR_SLIDE := 12,
+		GDK_ANCHOR_RESIZE := 48	
+	}
+
+	consts AxisFlags {
+		GDK_AXIS_FLAG_X := 2,
+		GDK_AXIS_FLAG_Y := 4,
+		GDK_AXIS_FLAG_PRESSURE := 8,
+		GDK_AXIS_FLAG_XTILT := 16,
+		GDK_AXIS_FLAG_YTILT := 32,
+		GDK_AXIS_FLAG_WHEEL := 64,
+		GDK_AXIS_FLAG_DISTANCE := 128,
+		GDK_AXIS_FLAG_ROTATION := 256,
+		GDK_AXIS_FLAG_SLIDER := 512	
+	}
+
+	consts DragAction {
+		GDK_ACTION_DEFAULT := 1,
+		GDK_ACTION_COPY := 2,
+		GDK_ACTION_MOVE := 4,
+		GDK_ACTION_LINK := 8,
+		GDK_ACTION_PRIVATE := 16,
+		GDK_ACTION_ASK := 32	
+	}
+
+	consts EventMask {
+		GDK_EXPOSURE_MASK := 2,
+		GDK_POINTER_MOTION_MASK := 4,
+		GDK_POINTER_MOTION_HINT_MASK := 8,
+		GDK_BUTTON_MOTION_MASK := 16,
+		GDK_BUTTON1_MOTION_MASK := 32,
+		GDK_BUTTON2_MOTION_MASK := 64,
+		GDK_BUTTON3_MOTION_MASK := 128,
+		GDK_BUTTON_PRESS_MASK := 256,
+		GDK_BUTTON_RELEASE_MASK := 512,
+		GDK_KEY_PRESS_MASK := 1024,
+		GDK_KEY_RELEASE_MASK := 2048,
+		GDK_ENTER_NOTIFY_MASK := 4096,
+		GDK_LEAVE_NOTIFY_MASK := 8192,
+		GDK_FOCUS_CHANGE_MASK := 16384,
+		GDK_STRUCTURE_MASK := 32768,
+		GDK_PROPERTY_CHANGE_MASK := 65536,
+		GDK_VISIBILITY_NOTIFY_MASK := 131072,
+		GDK_PROXIMITY_IN_MASK := 262144,
+		GDK_PROXIMITY_OUT_MASK := 524288,
+		GDK_SUBSTRUCTURE_MASK := 1048576,
+		GDK_SCROLL_MASK := 2097152,
+		GDK_TOUCH_MASK := 4194304,
+		GDK_SMOOTH_SCROLL_MASK := 8388608,
+		GDK_TOUCHPAD_GESTURE_MASK := 16777216,
+		GDK_TABLET_PAD_MASK := 33554432,
+		GDK_ALL_EVENTS_MASK := 67108862	
+	}
+
+	consts FrameClockPhase {
+		GDK_FRAME_CLOCK_PHASE_NONE := 0,
+		GDK_FRAME_CLOCK_PHASE_FLUSH_EVENTS := 1,
+		GDK_FRAME_CLOCK_PHASE_BEFORE_PAINT := 2,
+		GDK_FRAME_CLOCK_PHASE_UPDATE := 4,
+		GDK_FRAME_CLOCK_PHASE_LAYOUT := 8,
+		GDK_FRAME_CLOCK_PHASE_PAINT := 16,
+		GDK_FRAME_CLOCK_PHASE_RESUME_EVENTS := 32,
+		GDK_FRAME_CLOCK_PHASE_AFTER_PAINT := 64	
+	}
+
+	consts ModifierType {
+		GDK_SHIFT_MASK := 1,
+		GDK_LOCK_MASK := 2,
+		GDK_CONTROL_MASK := 4,
+		GDK_MOD1_MASK := 8,
+		GDK_MOD2_MASK := 16,
+		GDK_MOD3_MASK := 32,
+		GDK_MOD4_MASK := 64,
+		GDK_MOD5_MASK := 128,
+		GDK_BUTTON1_MASK := 256,
+		GDK_BUTTON2_MASK := 512,
+		GDK_BUTTON3_MASK := 1024,
+		GDK_BUTTON4_MASK := 2048,
+		GDK_BUTTON5_MASK := 4096,
+		GDK_MODIFIER_RESERVED_13_MASK := 8192,
+		GDK_MODIFIER_RESERVED_14_MASK := 16384,
+		GDK_MODIFIER_RESERVED_15_MASK := 32768,
+		GDK_MODIFIER_RESERVED_16_MASK := 65536,
+		GDK_MODIFIER_RESERVED_17_MASK := 131072,
+		GDK_MODIFIER_RESERVED_18_MASK := 262144,
+		GDK_MODIFIER_RESERVED_19_MASK := 524288,
+		GDK_MODIFIER_RESERVED_20_MASK := 1048576,
+		GDK_MODIFIER_RESERVED_21_MASK := 2097152,
+		GDK_MODIFIER_RESERVED_22_MASK := 4194304,
+		GDK_MODIFIER_RESERVED_23_MASK := 8388608,
+		GDK_MODIFIER_RESERVED_24_MASK := 16777216,
+		GDK_MODIFIER_RESERVED_25_MASK := 33554432,
+		GDK_SUPER_MASK := 67108864,
+		GDK_HYPER_MASK := 134217728,
+		GDK_META_MASK := 268435456,
+		GDK_MODIFIER_RESERVED_29_MASK := 536870912,
+		GDK_RELEASE_MASK := 1073741824,
+		GDK_MODIFIER_MASK := 1543512063	
+	}
+
+	consts SeatCapabilities {
+		GDK_SEAT_CAPABILITY_NONE := 0,
+		GDK_SEAT_CAPABILITY_POINTER := 1,
+		GDK_SEAT_CAPABILITY_TOUCH := 2,
+		GDK_SEAT_CAPABILITY_TABLET_STYLUS := 4,
+		GDK_SEAT_CAPABILITY_KEYBOARD := 8,
+		GDK_SEAT_CAPABILITY_ALL_POINTING := 7,
+		GDK_SEAT_CAPABILITY_ALL := 15	
+	}
+
+	consts WMDecoration {
+		GDK_DECOR_ALL := 1,
+		GDK_DECOR_BORDER := 2,
+		GDK_DECOR_RESIZEH := 4,
+		GDK_DECOR_TITLE := 8,
+		GDK_DECOR_MENU := 16,
+		GDK_DECOR_MINIMIZE := 32,
+		GDK_DECOR_MAXIMIZE := 64	
+	}
+
+	consts WMFunction {
+		GDK_FUNC_ALL := 1,
+		GDK_FUNC_RESIZE := 2,
+		GDK_FUNC_MOVE := 4,
+		GDK_FUNC_MINIMIZE := 8,
+		GDK_FUNC_MAXIMIZE := 16,
+		GDK_FUNC_CLOSE := 32	
+	}
+
+	consts WindowAttributesType {
+		GDK_WA_TITLE := 2,
+		GDK_WA_X := 4,
+		GDK_WA_Y := 8,
+		GDK_WA_CURSOR := 16,
+		GDK_WA_VISUAL := 32,
+		GDK_WA_WMCLASS := 64,
+		GDK_WA_NOREDIR := 128,
+		GDK_WA_TYPE_HINT := 256	
+	}
+
+	consts WindowHints {
+		GDK_HINT_POS := 1,
+		GDK_HINT_MIN_SIZE := 2,
+		GDK_HINT_MAX_SIZE := 4,
+		GDK_HINT_BASE_SIZE := 8,
+		GDK_HINT_ASPECT := 16,
+		GDK_HINT_RESIZE_INC := 32,
+		GDK_HINT_WIN_GRAVITY := 64,
+		GDK_HINT_USER_POS := 128,
+		GDK_HINT_USER_SIZE := 256	
+	}
+
+	consts WindowState {
+		GDK_WINDOW_STATE_WITHDRAWN := 1,
+		GDK_WINDOW_STATE_ICONIFIED := 2,
+		GDK_WINDOW_STATE_MAXIMIZED := 4,
+		GDK_WINDOW_STATE_STICKY := 8,
+		GDK_WINDOW_STATE_FULLSCREEN := 16,
+		GDK_WINDOW_STATE_ABOVE := 32,
+		GDK_WINDOW_STATE_BELOW := 64,
+		GDK_WINDOW_STATE_FOCUSED := 128,
+		GDK_WINDOW_STATE_TILED := 256,
+		GDK_WINDOW_STATE_TOP_TILED := 512,
+		GDK_WINDOW_STATE_TOP_RESIZABLE := 1024,
+		GDK_WINDOW_STATE_RIGHT_TILED := 2048,
+		GDK_WINDOW_STATE_RIGHT_RESIZABLE := 4096,
+		GDK_WINDOW_STATE_BOTTOM_TILED := 8192,
+		GDK_WINDOW_STATE_BOTTOM_RESIZABLE := 16384,
+		GDK_WINDOW_STATE_LEFT_TILED := 32768,
+		GDK_WINDOW_STATE_LEFT_RESIZABLE := 65536	
+	}
+
+	class SignalRef {
+		@handler : (GObject, Base) ~ Nil;
+		@data : Base;
+
+		New(handler : (GObject, Base) ~ Nil, data : Base) {
+			@handler := handler;
+			@data := data;
+		}
+
+		method : public : GetHandler() ~ (GObject, Base) ~ Nil {
+			return @handler;
+		}
+
+		method : public : GetData() ~ Base {
+			return @data;
+		}
+	}
+	
+	class GObject {
+		@gobject : Int;
+		
+		New(gobject : Int) {
+			@gobject := gobject;
+		}
+
+		method : public : SignalConnect(detailed_signal : String, handler : (GObject, Base) ~ Nil, data : Base) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := detailed_signal;
+			array_args[2] := SignalRef->New(handler, Nil);
+			array_args[3] := data;
+
+			Proxy->GetDllProxy()->CallFunction("gtk3_gobject_signal_connect", array_args);
+		}
+	}
+	
+	#~
+	A #GdkCursor represents a cursor. Its contents are private.
+	~#
+	class Cursor from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+
+		#~
+		Creates a new cursor from the set of builtin cursors.
+		@param display the #GdkDisplay for which the cursor will be created
+		@param cursor_type cursor to create
+		@return a new #GdkCursor, or %NULL on failure
+		~#
+		New(display : Display, cursor_type : CursorType) {
+			Parent();
+
+			array_args := Base->New[3];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := display;
+			array_args[2] := IntRef->New(cursor_type);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_new_for_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			@gobject := value->Get();
+		}
+
+		#~
+		Creates a new cursor by looking up @name in the current cursor
+		theme.
+		
+		A recommended set of cursor names that will work across different
+		platforms can be found in the CSS specification:
+		- "none"
+		- ![](default_cursor.png) "default"
+		- ![](help_cursor.png) "help"
+		- ![](pointer_cursor.png) "pointer"
+		- ![](context_menu_cursor.png) "context-menu"
+		- ![](progress_cursor.png) "progress"
+		- ![](wait_cursor.png) "wait"
+		- ![](cell_cursor.png) "cell"
+		- ![](crosshair_cursor.png) "crosshair"
+		- ![](text_cursor.png) "text"
+		- ![](vertical_text_cursor.png) "vertical-text"
+		- ![](alias_cursor.png) "alias"
+		- ![](copy_cursor.png) "copy"
+		- ![](no_drop_cursor.png) "no-drop"
+		- ![](move_cursor.png) "move"
+		- ![](not_allowed_cursor.png) "not-allowed"
+		- ![](grab_cursor.png) "grab"
+		- ![](grabbing_cursor.png) "grabbing"
+		- ![](all_scroll_cursor.png) "all-scroll"
+		- ![](col_resize_cursor.png) "col-resize"
+		- ![](row_resize_cursor.png) "row-resize"
+		- ![](n_resize_cursor.png) "n-resize"
+		- ![](e_resize_cursor.png) "e-resize"
+		- ![](s_resize_cursor.png) "s-resize"
+		- ![](w_resize_cursor.png) "w-resize"
+		- ![](ne_resize_cursor.png) "ne-resize"
+		- ![](nw_resize_cursor.png) "nw-resize"
+		- ![](sw_resize_cursor.png) "sw-resize"
+		- ![](se_resize_cursor.png) "se-resize"
+		- ![](ew_resize_cursor.png) "ew-resize"
+		- ![](ns_resize_cursor.png) "ns-resize"
+		- ![](nesw_resize_cursor.png) "nesw-resize"
+		- ![](nwse_resize_cursor.png) "nwse-resize"
+		- ![](zoom_in_cursor.png) "zoom-in"
+		- ![](zoom_out_cursor.png) "zoom-out"
+		@param display the #GdkDisplay for which the cursor will be created
+		@param name the name of the cursor
+		@return a new #GdkCursor, or %NULL if there is no
+		  cursor with the given name
+		~#
+		New(display : Display, name : String) {
+			Parent();
+
+			array_args := Base->New[3];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := display;
+			array_args[2] := name;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_new_from_name", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			@gobject := value->Get();
+		}
+		#~
+		Returns the cursor type for this cursor.
+		@return a #GdkCursorType
+		~#
+		method : public : GetCursorType() ~ CursorType {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_get_cursor_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(CursorType);
+		}
+
+		#~
+		Returns the display on which the #GdkCursor is defined.
+		@return the #GdkDisplay associated to @cursor
+		~#
+		method : public : GetDisplay() ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_get_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}	}
+
+	#~
+	The #GdkDevice object represents a single input device, such
+	as a keyboard, a mouse, a touchpad, etc.
+	
+	See the #GdkDeviceManager documentation for more information
+	about the various kinds of master and slave devices, and their
+	relationships.
+	~#
+	class Device from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Returns the associated device to @device, if @device is of type
+		%GDK_DEVICE_TYPE_MASTER, it will return the paired pointer or
+		keyboard.
+		
+		If @device is of type %GDK_DEVICE_TYPE_SLAVE, it will return
+		the master device to which @device is attached to.
+		
+		If @device is of type %GDK_DEVICE_TYPE_FLOATING, %NULL will be
+		returned, as there is no associated device.
+		@return The associated device, or
+		  %NULL
+		~#
+		method : public : GetAssociatedDevice() ~ Device {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_associated_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		#~
+		Returns the axes currently available on the device.
+		~#
+		method : public : GetAxes() ~ AxisFlags {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_axes", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(AxisFlags);
+		}
+
+		#~
+		Returns the axis use for @index_.
+		@param index_ the index of the axis.
+		@return a #GdkAxisUse specifying how the axis is used.
+		~#
+		method : public : GetAxisUse(index_ : Int) ~ AxisUse {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(index_);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_axis_use", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(AxisUse);
+		}
+
+		#~
+		Returns the device type for @device.
+		@return the #GdkDeviceType for @device.
+		~#
+		method : public : GetDeviceType() ~ DeviceType {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_device_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(DeviceType);
+		}
+
+		#~
+		Returns the #GdkDisplay to which @device pertains.
+		@return a #GdkDisplay. This memory is owned
+		         by GTK+, and must not be freed or unreffed.
+		~#
+		method : public : GetDisplay() ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}
+
+		#~
+		Determines whether the pointer follows device motion.
+		This is not meaningful for keyboard devices, which don't have a pointer.
+		@return %TRUE if the pointer follows device motion
+		~#
+		method : public : GetHasCursor() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_has_cursor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		If @index_ has a valid keyval, this function will return %TRUE
+		and fill in @keyval and @modifiers with the keyval settings.
+		@param index_ the index of the macro button to get.
+		@param keyval return value for the keyval.
+		@param modifiers return value for modifiers.
+		@return %TRUE if keyval is set for @index.
+		~#
+		method : public : GetKey(index_ : Int, keyval : Int, modifiers : ModifierType) ~ Bool {
+			array_args := Base->New[5];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(index_);
+			array_args[3] := IntRef->New(keyval);
+			array_args[4] := IntRef->New(modifiers);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_key", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Gets information about which window the given pointer device is in, based on events
+		that have been received so far from the display server. If another application
+		has a pointer grab, or this application has a grab with owner_events = %FALSE,
+		%NULL may be returned even if the pointer is physically over one of this
+		application's windows.
+		@return the last window the device
+		~#
+		method : public : GetLastEventWindow() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_last_event_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Determines the mode of the device.
+		@return a #GdkInputSource
+		~#
+		method : public : GetMode() ~ InputMode {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(InputMode);
+		}
+
+		#~
+		Returns the number of axes the device currently has.
+		@return the number of axes.
+		~#
+		method : public : GetNAxes() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_n_axes", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Returns the number of keys the device currently has.
+		@return the number of keys.
+		~#
+		method : public : GetNKeys() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_n_keys", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Determines the name of the device.
+		@return a name
+		~#
+		method : public : GetName() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_name", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Gets the current location of @device. As a slave device
+		coordinates are those of its master pointer, This function
+		may not be called on devices of type %GDK_DEVICE_TYPE_SLAVE,
+		unless there is an ongoing grab on them, see gdk_device_grab().
+		@param screen location to store the #GdkScreen
+		         the @device is on, or %NULL.
+		@param x location to store root window X coordinate of @device, or %NULL.
+		@param y location to store root window Y coordinate of @device, or %NULL.
+		~#
+		method : public : GetPosition(screen : Screen, x : Int, y : Int) ~ Nil {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := screen;
+			array_args[3] := IntRef->New(x);
+			array_args[4] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_position", array_args);
+		}
+
+		#~
+		Gets the current location of @device in double precision. As a slave device's
+		coordinates are those of its master pointer, this function
+		may not be called on devices of type %GDK_DEVICE_TYPE_SLAVE,
+		unless there is an ongoing grab on them. See gdk_device_grab().
+		@param screen location to store the #GdkScreen
+		         the @device is on, or %NULL.
+		@param x location to store root window X coordinate of @device, or %NULL.
+		@param y location to store root window Y coordinate of @device, or %NULL.
+		~#
+		method : public : GetPositionDouble(screen : Screen, x : Float, y : Float) ~ Nil {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := screen;
+			array_args[3] := FloatRef->New(x);
+			array_args[4] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_position_double", array_args);
+		}
+
+		#~
+		Returns the product ID of this device, or %NULL if this information couldn't
+		be obtained. This ID is retrieved from the device, and is thus constant for
+		it. See gdk_device_get_vendor_id() for more information.
+		@return the product ID, or %NULL
+		~#
+		method : public : GetProductId() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_product_id", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Returns the #GdkSeat the device belongs to.
+		@return A #GdkSeat. This memory is owned by GTK+ and
+		         must not be freed.
+		~#
+		method : public : GetSeat() ~ Seat {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_seat", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Seat->New(value->Get());
+		}
+
+		#~
+		Determines the type of the device.
+		@return a #GdkInputSource
+		~#
+		method : public : GetSource() ~ InputSource {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_source", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(InputSource);
+		}
+
+		#~
+		Returns the vendor ID of this device, or %NULL if this information couldn't
+		be obtained. This ID is retrieved from the device, and is thus constant for
+		it.
+		
+		This function, together with gdk_device_get_product_id(), can be used to eg.
+		compose #GSettings paths to store settings for this device.
+		
+		|[&lt;!-- language="C" --&gt;
+		 static GSettings *
+		 get_device_settings (GdkDevice *device)
+		 {
+		   const gchar *vendor, *product;
+		   GSettings *settings;
+		   GdkDevice *device;
+		   gchar *path;
+		
+		   vendor = gdk_device_get_vendor_id (device);
+		   product = gdk_device_get_product_id (device);
+		
+		   path = g_strdup_printf ("/org/example/app/devices/%s:%s/", vendor, product);
+		   settings = g_settings_new_with_path (DEVICE_SCHEMA, path);
+		   g_free (path);
+		
+		   return settings;
+		 }
+		]|
+		@return the vendor ID, or %NULL
+		~#
+		method : public : GetVendorId() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_vendor_id", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Obtains the window underneath @device, returning the location of the device in @win_x and @win_y. Returns
+		%NULL if the window tree under @device is not known to GDK (for example, belongs to another application).
+		
+		As a slave device coordinates are those of its master pointer, This
+		function may not be called on devices of type %GDK_DEVICE_TYPE_SLAVE,
+		unless there is an ongoing grab on them, see gdk_device_grab().
+		@param win_x return location for the X coordinate of the device location,
+		        relative to the window origin, or %NULL.
+		@param win_y return location for the Y coordinate of the device location,
+		        relative to the window origin, or %NULL.
+		@return the #GdkWindow under the
+		device position, or %NULL.
+		~#
+		method : public : GetWindowAtPosition(win_x : Int, win_y : Int) ~ Window {
+			array_args := Base->New[4];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(win_x);
+			array_args[3] := IntRef->New(win_y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_window_at_position", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Obtains the window underneath @device, returning the location of the device in @win_x and @win_y in
+		double precision. Returns %NULL if the window tree under @device is not known to GDK (for example,
+		belongs to another application).
+		
+		As a slave device coordinates are those of its master pointer, This
+		function may not be called on devices of type %GDK_DEVICE_TYPE_SLAVE,
+		unless there is an ongoing grab on them, see gdk_device_grab().
+		@param win_x return location for the X coordinate of the device location,
+		        relative to the window origin, or %NULL.
+		@param win_y return location for the Y coordinate of the device location,
+		        relative to the window origin, or %NULL.
+		@return the #GdkWindow under the
+		  device position, or %NULL.
+		~#
+		method : public : GetWindowAtPositionDouble(win_x : Float, win_y : Float) ~ Window {
+			array_args := Base->New[4];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(win_x);
+			array_args[3] := FloatRef->New(win_y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_window_at_position_double", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Specifies how an axis of a device is used.
+		@param index_ the index of the axis
+		@param use specifies how the axis is used
+		~#
+		method : public : SetAxisUse(index_ : Int, use_ : AxisUse) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(index_);
+			array_args[3] := IntRef->New(use_);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_set_axis_use", array_args);
+		}
+
+		#~
+		Specifies the X key event to generate when a macro button of a device
+		is pressed.
+		@param index_ the index of the macro button to set
+		@param keyval the keyval to generate
+		@param modifiers the modifiers to set
+		~#
+		method : public : SetKey(index_ : Int, keyval : Int, modifiers : ModifierType) ~ Nil {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(index_);
+			array_args[3] := IntRef->New(keyval);
+			array_args[4] := IntRef->New(modifiers);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_set_key", array_args);
+		}
+
+		#~
+		Sets a the mode of an input device. The mode controls if the
+		device is active and whether the device&#x2019;s range is mapped to the
+		entire screen or to a single window.
+		
+		Note: This is only meaningful for floating devices, master devices (and
+		slaves connected to these) drive the pointer cursor, which is not limited
+		by the input mode.
+		@param mode the input mode.
+		@return %TRUE if the mode was successfully changed.
+		~#
+		method : public : SetMode(mode : InputMode) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(mode);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_set_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Warps @device in @display to the point @x,@y on
+		the screen @screen, unless the device is confined
+		to a window by a grab, in which case it will be moved
+		as far as allowed by the grab. Warping the pointer
+		creates events as if the user had moved the mouse
+		instantaneously to the destination.
+		
+		Note that the pointer should normally be under the
+		control of the user. This function was added to cover
+		some rare use cases like keyboard navigation support
+		for the color picker in the #GtkColorSelectionDialog.
+		@param screen the screen to warp @device to.
+		@param x the X coordinate of the destination.
+		@param y the Y coordinate of the destination.
+		~#
+		method : public : Warp(screen : Screen, x : Int, y : Int) ~ Nil {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := screen;
+			array_args[3] := IntRef->New(x);
+			array_args[4] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_warp", array_args);
+		}	}
+
+	#~
+	In addition to a single pointer and keyboard for user interface input,
+	GDK contains support for a variety of input devices, including graphics
+	tablets, touchscreens and multiple pointers/keyboards interacting
+	simultaneously with the user interface. Such input devices often have
+	additional features, such as sub-pixel positioning information and
+	additional device-dependent information.
+	
+	In order to query the device hierarchy and be aware of changes in the
+	device hierarchy (such as virtual devices being created or removed, or
+	physical devices being plugged or unplugged), GDK provides
+	#GdkDeviceManager.
+	
+	By default, and if the platform supports it, GDK is aware of multiple
+	keyboard/pointer pairs and multitouch devices. This behavior can be
+	changed by calling gdk_disable_multidevice() before gdk_display_open().
+	There should rarely be a need to do that though, since GDK defaults
+	to a compatibility mode in which it will emit just one enter/leave
+	event pair for all devices on a window. To enable per-device
+	enter/leave events and other multi-pointer interaction features,
+	gdk_window_set_support_multidevice() must be called on
+	#GdkWindows (or gtk_widget_set_support_multidevice() on widgets).
+	window. See the gdk_window_set_support_multidevice() documentation
+	for more information.
+	
+	On X11, multi-device support is implemented through XInput 2.
+	Unless gdk_disable_multidevice() is called, the XInput 2
+	#GdkDeviceManager implementation will be used as the input source.
+	Otherwise either the core or XInput 1 implementations will be used.
+	
+	For simple applications that don&#x2019;t have any special interest in
+	input devices, the so-called &#x201C;client pointer&#x201D;
+	provides a reasonable approximation to a simple setup with a single
+	pointer and keyboard. The device that has been set as the client
+	pointer can be accessed via gdk_device_manager_get_client_pointer().
+	
+	Conceptually, in multidevice mode there are 2 device types. Virtual
+	devices (or master devices) are represented by the pointer cursors
+	and keyboard foci that are seen on the screen. Physical devices (or
+	slave devices) represent the hardware that is controlling the virtual
+	devices, and thus have no visible cursor on the screen.
+	
+	Virtual devices are always paired, so there is a keyboard device for every
+	pointer device. Associations between devices may be inspected through
+	gdk_device_get_associated_device().
+	
+	There may be several virtual devices, and several physical devices could
+	be controlling each of these virtual devices. Physical devices may also
+	be &#x201C;floating&#x201D;, which means they are not attached to any virtual device.
+	
+	# Master and slave devices
+	
+	|[
+	carlos@sacarino:~$ xinput list
+	&#x23A1; Virtual core pointer                          id=2    [master pointer  (3)]
+	&#x239C;   &#x21B3; Virtual core XTEST pointer                id=4    [slave  pointer  (2)]
+	&#x239C;   &#x21B3; Wacom ISDv4 E6 Pen stylus                 id=10   [slave  pointer  (2)]
+	&#x239C;   &#x21B3; Wacom ISDv4 E6 Finger touch               id=11   [slave  pointer  (2)]
+	&#x239C;   &#x21B3; SynPS/2 Synaptics TouchPad                id=13   [slave  pointer  (2)]
+	&#x239C;   &#x21B3; TPPS/2 IBM TrackPoint                     id=14   [slave  pointer  (2)]
+	&#x239C;   &#x21B3; Wacom ISDv4 E6 Pen eraser                 id=16   [slave  pointer  (2)]
+	&#x23A3; Virtual core keyboard                         id=3    [master keyboard (2)]
+	    &#x21B3; Virtual core XTEST keyboard               id=5    [slave  keyboard (3)]
+	    &#x21B3; Power Button                              id=6    [slave  keyboard (3)]
+	    &#x21B3; Video Bus                                 id=7    [slave  keyboard (3)]
+	    &#x21B3; Sleep Button                              id=8    [slave  keyboard (3)]
+	    &#x21B3; Integrated Camera                         id=9    [slave  keyboard (3)]
+	    &#x21B3; AT Translated Set 2 keyboard              id=12   [slave  keyboard (3)]
+	    &#x21B3; ThinkPad Extra Buttons                    id=15   [slave  keyboard (3)]
+	]|
+	
+	By default, GDK will automatically listen for events coming from all
+	master devices, setting the #GdkDevice for all events coming from input
+	devices. Events containing device information are #GDK_MOTION_NOTIFY,
+	#GDK_BUTTON_PRESS, #GDK_2BUTTON_PRESS, #GDK_3BUTTON_PRESS,
+	#GDK_BUTTON_RELEASE, #GDK_SCROLL, #GDK_KEY_PRESS, #GDK_KEY_RELEASE,
+	#GDK_ENTER_NOTIFY, #GDK_LEAVE_NOTIFY, #GDK_FOCUS_CHANGE,
+	#GDK_PROXIMITY_IN, #GDK_PROXIMITY_OUT, #GDK_DRAG_ENTER, #GDK_DRAG_LEAVE,
+	#GDK_DRAG_MOTION, #GDK_DRAG_STATUS, #GDK_DROP_START, #GDK_DROP_FINISHED
+	and #GDK_GRAB_BROKEN. When dealing with an event on a master device,
+	it is possible to get the source (slave) device that the event originated
+	from via gdk_event_get_source_device().
+	
+	On a standard session, all physical devices are connected by default to
+	the "Virtual Core Pointer/Keyboard" master devices, hence routing all events
+	through these. This behavior is only modified by device grabs, where the
+	slave device is temporarily detached for as long as the grab is held, and
+	more permanently by user modifications to the device hierarchy.
+	
+	On certain application specific setups, it may make sense
+	to detach a physical device from its master pointer, and mapping it to
+	an specific window. This can be achieved by the combination of
+	gdk_device_grab() and gdk_device_set_mode().
+	
+	In order to listen for events coming from devices
+	other than a virtual device, gdk_window_set_device_events() must be
+	called. Generally, this function can be used to modify the event mask
+	for any given device.
+	
+	Input devices may also provide additional information besides X/Y.
+	For example, graphics tablets may also provide pressure and X/Y tilt
+	information. This information is device-dependent, and may be
+	queried through gdk_device_get_axis(). In multidevice mode, virtual
+	devices will change axes in order to always represent the physical
+	device that is routing events through it. Whenever the physical device
+	changes, the #GdkDevice:n-axes property will be notified, and
+	gdk_device_list_axes() will return the new device axes.
+	
+	Devices may also have associated &#x201C;keys&#x201D; or
+	macro buttons. Such keys can be globally set to map into normal X
+	keyboard events. The mapping is set using gdk_device_set_key().
+	
+	In GTK+ 3.20, a new #GdkSeat object has been introduced that
+	supersedes #GdkDeviceManager and should be preferred in newly
+	written code.
+	~#
+	class DeviceManager from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Gets the #GdkDisplay associated to @device_manager.
+		@return the #GdkDisplay to which
+		         @device_manager is associated to, or %NULL. This memory is
+		         owned by GDK and must not be freed or unreferenced.
+		~#
+		method : public : GetDisplay() ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_manager_get_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}	}
+
+	#~
+	#GdkDisplay objects purpose are two fold:
+	
+	- To manage and provide information about input devices (pointers and keyboards)
+	
+	- To manage and provide information about the available #GdkScreens
+	
+	GdkDisplay objects are the GDK representation of an X Display,
+	which can be described as a workstation consisting of
+	a keyboard, a pointing device (such as a mouse) and one or more
+	screens.
+	It is used to open and keep track of various GdkScreen objects
+	currently instantiated by the application. It is also used to
+	access the keyboard(s) and mouse pointer(s) of the display.
+	
+	Most of the input device handling has been factored out into
+	the separate #GdkDeviceManager object. Every display has a
+	device manager, which you can obtain using
+	gdk_display_get_device_manager().
+	~#
+	class Display from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Emits a short beep on @display
+		~#
+		method : public : Beep() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_beep", array_args);
+		}
+
+		#~
+		Closes the connection to the windowing system for the given display,
+		and cleans up associated resources.
+		~#
+		method : public : Close() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_close", array_args);
+		}
+
+		#~
+		Returns %TRUE if there is an ongoing grab on @device for @display.
+		@param device a #GdkDevice
+		@return %TRUE if there is a grab in effect for @device.
+		~#
+		method : public : DeviceIsGrabbed(device : Device) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_device_is_grabbed", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Flushes any requests queued for the windowing system; this happens automatically
+		when the main loop blocks waiting for new events, but if your application
+		is drawing without returning control to the main loop, you may need
+		to call this function explicitly. A common case where this function
+		needs to be called is when an application is executing drawing commands
+		from a thread other than the thread where the main loop is running.
+		
+		This is most useful for X11. On windowing systems where requests are
+		handled synchronously, this function will do nothing.
+		~#
+		method : public : Flush() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_flush", array_args);
+		}
+
+		#~
+		Returns a #GdkAppLaunchContext suitable for launching
+		applications on the given display.
+		@return a new #GdkAppLaunchContext for @display.
+		    Free with g_object_unref() when done
+		~#
+		method : public : GetAppLaunchContext() ~ AppLaunchContext {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_app_launch_context", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return AppLaunchContext->New(value->Get());
+		}
+
+		#~
+		Returns the default size to use for cursors on @display.
+		@return the default cursor size.
+		~#
+		method : public : GetDefaultCursorSize() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_cursor_size", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Returns the default group leader window for all toplevel windows
+		on @display. This window is implicitly created by GDK.
+		See gdk_window_set_group().
+		@return The default group leader window
+		for @display
+		~#
+		method : public : GetDefaultGroup() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_group", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Get the default #GdkScreen for @display.
+		@return the default #GdkScreen object for @display
+		~#
+		method : public : GetDefaultScreen() ~ Screen {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_screen", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Screen->New(value->Get());
+		}
+
+		#~
+		Returns the default #GdkSeat for this display.
+		@return the default seat.
+		~#
+		method : public : GetDefaultSeat() ~ Seat {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_seat", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Seat->New(value->Get());
+		}
+
+		#~
+		Gets the next #GdkEvent to be processed for @display, fetching events from the
+		windowing system if necessary.
+		@return the next #GdkEvent to be processed, or %NULL
+		if no events are pending. The returned #GdkEvent should be freed
+		with gdk_event_free().
+		~#
+		method : public : GetEvent() ~ Event {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_event", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Event->New(value->Get());
+		}
+
+		#~
+		Gets the maximal size to use for cursors on @display.
+		@param width the return location for the maximal cursor width
+		@param height the return location for the maximal cursor height
+		~#
+		method : public : GetMaximalCursorSize(width : Int, height : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(width);
+			array_args[3] := IntRef->New(height);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_maximal_cursor_size", array_args);
+		}
+
+		#~
+		Gets a monitor associated with this display.
+		@param monitor_num number of the monitor
+		@return the #GdkMonitor, or %NULL if
+		   @monitor_num is not a valid monitor number
+		~#
+		method : public : GetMonitor(monitor_num : Int) ~ Monitor {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(monitor_num);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_monitor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Monitor->New(value->Get());
+		}
+
+		#~
+		Gets the monitor in which the point (@x, @y) is located,
+		or a nearby monitor if the point is not in any monitor.
+		@param x the x coordinate of the point
+		@param y the y coordinate of the point
+		@return the monitor containing the point
+		~#
+		method : public : GetMonitorAtPoint(x : Int, y : Int) ~ Monitor {
+			array_args := Base->New[4];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_monitor_at_point", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Monitor->New(value->Get());
+		}
+
+		#~
+		Gets the monitor in which the largest area of @window
+		resides, or a monitor close to @window if it is outside
+		of all monitors.
+		@param window a #GdkWindow
+		@return the monitor with the largest overlap with @window
+		~#
+		method : public : GetMonitorAtWindow(window : Window) ~ Monitor {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_monitor_at_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Monitor->New(value->Get());
+		}
+
+		#~
+		Gets the number of monitors that belong to @display.
+		
+		The returned number is valid until the next emission of the
+		#GdkDisplay::monitor-added or #GdkDisplay::monitor-removed signal.
+		@return the number of monitors
+		~#
+		method : public : GetNMonitors() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_n_monitors", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Gets the name of the display.
+		@return a string representing the display name. This string is owned
+		by GDK and should not be modified or freed.
+		~#
+		method : public : GetName() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_name", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Gets the primary monitor for the display.
+		
+		The primary monitor is considered the monitor where the &#x201C;main desktop&#x201D;
+		lives. While normal application windows typically allow the window
+		manager to place the windows, specialized desktop applications
+		such as panels should place themselves on the primary monitor.
+		@return the primary monitor, or %NULL if no primary
+		    monitor is configured by the user
+		~#
+		method : public : GetPrimaryMonitor() ~ Monitor {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_primary_monitor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Monitor->New(value->Get());
+		}
+
+		#~
+		Returns whether the display has events that are waiting
+		to be processed.
+		@return %TRUE if there are events ready to be processed.
+		~#
+		method : public : HasPending() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_has_pending", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Finds out if the display has been closed.
+		@return %TRUE if the display is closed.
+		~#
+		method : public : IsClosed() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_is_closed", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Indicates to the GUI environment that the application has
+		finished loading, using a given identifier.
+		
+		GTK+ will call this function automatically for #GtkWindow
+		with custom startup-notification identifier unless
+		gtk_window_set_auto_startup_notification() is called to
+		disable that feature.
+		@param startup_id a startup-notification identifier, for which
+		    notification process should be completed
+		~#
+		method : public : NotifyStartupComplete(startup_id : String) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := startup_id;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_notify_startup_complete", array_args);
+		}
+
+		#~
+		Gets a copy of the first #GdkEvent in the @display&#x2019;s event queue, without
+		removing the event from the queue.  (Note that this function will
+		not get more events from the windowing system.  It only checks the events
+		that have already been moved to the GDK event queue.)
+		@return a copy of the first #GdkEvent on the event
+		queue, or %NULL if no events are in the queue. The returned
+		#GdkEvent should be freed with gdk_event_free().
+		~#
+		method : public : PeekEvent() ~ Event {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_peek_event", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Event->New(value->Get());
+		}
+
+		#~
+		Appends a copy of the given event onto the front of the event
+		queue for @display.
+		@param event a #GdkEvent.
+		~#
+		method : public : PutEvent(event : Event) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := event;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_put_event", array_args);
+		}
+
+		#~
+		Request #GdkEventOwnerChange events for ownership changes
+		of the selection named by the given atom.
+		@param selection the #GdkAtom naming the selection for which
+		            ownership change notification is requested
+		@return whether #GdkEventOwnerChange events will
+		              be sent.
+		~#
+		method : public : RequestSelectionNotification(selection : Atom) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := selection;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_request_selection_notification", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Sets the double click distance (two clicks within this distance
+		count as a double click and result in a #GDK_2BUTTON_PRESS event).
+		See also gdk_display_set_double_click_time().
+		Applications should not set this, it is a global
+		user-configured setting.
+		@param distance distance in pixels
+		~#
+		method : public : SetDoubleClickDistance(distance : Int) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(distance);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_set_double_click_distance", array_args);
+		}
+
+		#~
+		Sets the double click time (two clicks within this time interval
+		count as a double click and result in a #GDK_2BUTTON_PRESS event).
+		Applications should not set this, it is a global
+		user-configured setting.
+		@param msec double click time in milliseconds (thousandths of a second)
+		~#
+		method : public : SetDoubleClickTime(msec : Int) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(msec);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_set_double_click_time", array_args);
+		}
+
+		#~
+		Issues a request to the clipboard manager to store the
+		clipboard data. On X11, this is a special program that works
+		according to the
+		[FreeDesktop Clipboard Specification](http://www.freedesktop.org/Standards/clipboard-manager-spec).
+		@param clipboard_window a #GdkWindow belonging to the clipboard owner
+		@param time_ a timestamp
+		@param targets an array of targets
+		                   that should be saved, or %NULL
+		                   if all available targets should be saved.
+		@param n_targets length of the @targets array
+		~#
+		method : public : StoreClipboard(clipboard_window : Window, time_ : Int, targets : Atom[], n_targets : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := clipboard_window;
+			array_args[3] := IntRef->New(time_);
+
+			targets_objs := Int->New[0];
+			# copy references
+			array_args[4] := IntArrayRef->New(targets_objs);
+
+			array_args[5] := IntRef->New(n_targets);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_store_clipboard", array_args);
+		}
+
+		#~
+		Returns whether the speicifed display supports clipboard
+		persistance; i.e. if it&#x2019;s possible to store the clipboard data after an
+		application has quit. On X11 this checks if a clipboard daemon is
+		running.
+		@return %TRUE if the display supports clipboard persistance.
+		~#
+		method : public : SupportsClipboardPersistence() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_supports_clipboard_persistence", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns %TRUE if cursors can use an 8bit alpha channel
+		on @display. Otherwise, cursors are restricted to bilevel
+		alpha (i.e. a mask).
+		@return whether cursors can have alpha channels.
+		~#
+		method : public : SupportsCursorAlpha() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_supports_cursor_alpha", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns %TRUE if multicolored cursors are supported
+		on @display. Otherwise, cursors have only a forground
+		and a background color.
+		@return whether cursors can have multiple colors.
+		~#
+		method : public : SupportsCursorColor() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_supports_cursor_color", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns %TRUE if gdk_window_input_shape_combine_mask() can
+		be used to modify the input shape of windows on @display.
+		@return %TRUE if windows with modified input shape are supported
+		~#
+		method : public : SupportsInputShapes() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_supports_input_shapes", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns whether #GdkEventOwnerChange events will be
+		sent when the owner of a selection changes.
+		@return whether #GdkEventOwnerChange events will
+		              be sent.
+		~#
+		method : public : SupportsSelectionNotification() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_supports_selection_notification", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns %TRUE if gdk_window_shape_combine_mask() can
+		be used to create shaped windows on @display.
+		@return %TRUE if shaped windows are supported
+		~#
+		method : public : SupportsShapes() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_supports_shapes", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Flushes any requests queued for the windowing system and waits until all
+		requests have been handled. This is often used for making sure that the
+		display is synchronized with the current state of the program. Calling
+		gdk_display_sync() before gdk_error_trap_pop() makes sure that any errors
+		generated from earlier requests are handled before the error trap is
+		removed.
+		
+		This is most useful for X11. On windowing systems where requests are
+		handled synchronously, this function will do nothing.
+		~#
+		method : public : Sync() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_sync", array_args);
+		}
+		#~
+		Gets the default #GdkDisplay. This is a convenience
+		function for:
+		`gdk_display_manager_get_default_display (gdk_display_manager_get ())`.
+		@return a #GdkDisplay, or %NULL if
+		  there is no default display.
+		~#
+		function : GetDefault() ~ Display {
+			array_args := Base->New[1];
+
+			array_args[0] := Nil;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}
+
+		#~
+		Opens a display.
+		@param display_name the name of the display to open
+		@return a #GdkDisplay, or %NULL if the
+		    display could not be opened
+		~#
+		function : Open(display_name : String) ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := display_name;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_open", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}
+	}
+
+	#~
+	GdkMonitor objects represent the individual outputs that are
+	associated with a #GdkDisplay. GdkDisplay has APIs to enumerate
+	monitors with gdk_display_get_n_monitors() and gdk_display_get_monitor(), and
+	to find particular monitors with gdk_display_get_primary_monitor() or
+	gdk_display_get_monitor_at_window().
+	
+	GdkMonitor was introduced in GTK+ 3.22 and supersedes earlier
+	APIs in GdkScreen to obtain monitor-related information.
+	~#
+	class Monitor from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Gets the display that this monitor belongs to.
+		@return the display
+		~#
+		method : public : GetDisplay() ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}
+
+		#~
+		Retrieves the size and position of an individual monitor within the
+		display coordinate space. The returned geometry is in  &#x201D;application pixels&#x201D;,
+		not in &#x201D;device pixels&#x201D; (see gdk_monitor_get_scale_factor()).
+		@param geometry a #GdkRectangle to be filled with the monitor geometry
+		~#
+		method : public : GetGeometry(geometry : Rectangle) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := geometry;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_geometry", array_args);
+		}
+
+		#~
+		Gets the height in millimeters of the monitor.
+		@return the physical height of the monitor
+		~#
+		method : public : GetHeightMm() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_height_mm", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Gets the name or PNP ID of the monitor's manufacturer, if available.
+		
+		Note that this value might also vary depending on actual
+		display backend.
+		
+		PNP ID registry is located at https://uefi.org/pnp_id_list
+		@return the name of the manufacturer, or %NULL
+		~#
+		method : public : GetManufacturer() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_manufacturer", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Gets the a string identifying the monitor model, if available.
+		@return the monitor model, or %NULL
+		~#
+		method : public : GetModel() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_model", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Gets the refresh rate of the monitor, if available.
+		
+		The value is in milli-Hertz, so a refresh rate of 60Hz
+		is returned as 60000.
+		@return the refresh rate in milli-Hertz, or 0
+		~#
+		method : public : GetRefreshRate() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_refresh_rate", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Gets the internal scale factor that maps from monitor coordinates
+		to the actual device pixels. On traditional systems this is 1, but
+		on very high density outputs this can be a higher value (often 2).
+		
+		This can be used if you want to create pixel based data for a
+		particular monitor, but most of the time you&#x2019;re drawing to a window
+		where it is better to use gdk_window_get_scale_factor() instead.
+		@return the scale factor
+		~#
+		method : public : GetScaleFactor() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_scale_factor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Gets information about the layout of red, green and blue
+		primaries for each pixel in this monitor, if available.
+		@return the subpixel layout
+		~#
+		method : public : GetSubpixelLayout() ~ SubpixelLayout {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_subpixel_layout", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(SubpixelLayout);
+		}
+
+		#~
+		Gets the width in millimeters of the monitor.
+		@return the physical width of the monitor
+		~#
+		method : public : GetWidthMm() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_width_mm", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Retrieves the size and position of the &#x201C;work area&#x201D; on a monitor
+		within the display coordinate space. The returned geometry is in
+		&#x201D;application pixels&#x201D;, not in &#x201D;device pixels&#x201D; (see
+		gdk_monitor_get_scale_factor()).
+		
+		The work area should be considered when positioning menus and
+		similar popups, to avoid placing them below panels, docks or other
+		desktop components.
+		
+		Note that not all backends may have a concept of workarea. This
+		function will return the monitor geometry if a workarea is not
+		available, or does not apply.
+		@param workarea a #GdkRectangle to be filled with
+		    the monitor workarea
+		~#
+		method : public : GetWorkarea(workarea : Rectangle) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := workarea;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_workarea", array_args);
+		}
+
+		#~
+		Gets whether this monitor should be considered primary
+		(see gdk_display_get_primary_monitor()).
+		@return %TRUE if @monitor is primary
+		~#
+		method : public : IsPrimary() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_is_primary", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}	}
+
+	#~
+	#GdkScreen objects are the GDK representation of the screen on
+	which windows can be displayed and on which the pointer moves.
+	X originally identified screens with physical screens, but
+	nowadays it is more common to have a single #GdkScreen which
+	combines several physical monitors (see gdk_screen_get_n_monitors()).
+	
+	GdkScreen is used throughout GDK and GTK+ to specify which screen
+	the top level windows are to be displayed on. it is also used to
+	query the screen specification and default settings such as
+	the default visual (gdk_screen_get_system_visual()), the dimensions
+	of the physical monitors (gdk_screen_get_monitor_geometry()), etc.
+	~#
+	class Screen from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Gets the display to which the @screen belongs.
+		@return the display to which @screen belongs
+		~#
+		method : public : GetDisplay() ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}
+
+		#~
+		Gets the resolution for font handling on the screen; see
+		gdk_screen_set_resolution() for full details.
+		@return the current resolution, or -1 if no resolution
+		has been set.
+		~#
+		method : public : GetResolution() ~ Float {
+			array_args := Base->New[2];
+	
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_resolution", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		#~
+		Gets a visual to use for creating windows with an alpha channel.
+		The windowing system on which GTK+ is running
+		may not support this capability, in which case %NULL will
+		be returned. Even if a non-%NULL value is returned, its
+		possible that the window&#x2019;s alpha channel won&#x2019;t be honored
+		when displaying the window on the screen: in particular, for
+		X an appropriate windowing manager and compositing manager
+		must be running to provide appropriate display.
+		
+		This functionality is not implemented in the Windows backend.
+		
+		For setting an overall opacity for a top-level window, see
+		gdk_window_set_opacity().
+		@return a visual to use for windows
+		    with an alpha channel or %NULL if the capability is not
+		    available.
+		~#
+		method : public : GetRgbaVisual() ~ Visual {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_rgba_visual", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Visual->New(value->Get());
+		}
+
+		#~
+		Gets the root window of @screen.
+		@return the root window
+		~#
+		method : public : GetRootWindow() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_root_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Get the system&#x2019;s default visual for @screen.
+		This is the visual for the root window of the display.
+		The return value should not be freed.
+		@return the system visual
+		~#
+		method : public : GetSystemVisual() ~ Visual {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_system_visual", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Visual->New(value->Get());
+		}
+
+		#~
+		Returns whether windows with an RGBA visual can reasonably
+		be expected to have their alpha channel drawn correctly on
+		the screen.
+		
+		On X11 this function returns whether a compositing manager is
+		compositing @screen.
+		@return Whether windows with RGBA visuals can reasonably be
+		expected to have their alpha channels drawn correctly on the screen.
+		~#
+		method : public : IsComposited() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_is_composited", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Sets the resolution for font handling on the screen. This is a
+		scale factor between points specified in a #PangoFontDescription
+		and cairo units. The default value is 96, meaning that a 10 point
+		font will be 13 units high. (10 * 96. / 72. = 13.3).
+		@param dpi the resolution in “dots per inch”. (Physical inches aren’t actually
+		  involved; the terminology is conventional.)
+		~#
+		method : public : SetResolution(dpi : Float) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(dpi);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_set_resolution", array_args);
+		}
+		#~
+		Gets the default screen for the default display. (See
+		gdk_display_get_default ()).
+		@return a #GdkScreen, or %NULL if
+		    there is no default display.
+		~#
+		function : GetDefault() ~ Screen {
+			array_args := Base->New[1];
+
+			array_args[0] := Nil;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_default", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Screen->New(value->Get());
+		}
+	}
+
+	class Window from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+
+		#~
+		Creates a new #GdkWindow using the attributes from
+		@attributes. See #GdkWindowAttr and #GdkWindowAttributesType for
+		more details.  Note: to use this on displays other than the default
+		display, @parent must be specified.
+		@param parent a #GdkWindow, or %NULL to create the window as a child of
+		  the default root window for the default display.
+		@param attributes attributes of the new window
+		@param attributes_mask mask indicating which
+		  fields in @attributes are valid
+		@return the new #GdkWindow
+		~#
+		New(parent : Window, attributes : WindowAttr, attributes_mask : WindowAttributesType) {
+			Parent();
+
+			array_args := Base->New[4];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := parent;
+			array_args[2] := attributes;
+			array_args[3] := IntRef->New(attributes_mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_new", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			@gobject := value->Get();
+		}
+		#~
+		Emits a short beep associated to @window in the appropriate
+		display, if supported. Otherwise, emits a short beep on
+		the display just as gdk_display_beep().
+		~#
+		method : public : Beep() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_beep", array_args);
+		}
+
+		#~
+		Begins a window move operation (for a toplevel window).
+		
+		This function assumes that the drag is controlled by the
+		client pointer device, use gdk_window_begin_move_drag_for_device()
+		to begin a drag with a different device.
+		@param button the button being used to drag, or 0 for a keyboard-initiated drag
+		@param root_x root window X coordinate of mouse click that began the drag
+		@param root_y root window Y coordinate of mouse click that began the drag
+		@param timestamp timestamp of mouse click that began the drag
+		~#
+		method : public : BeginMoveDrag(button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(button);
+			array_args[3] := IntRef->New(root_x);
+			array_args[4] := IntRef->New(root_y);
+			array_args[5] := IntRef->New(timestamp);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_move_drag", array_args);
+		}
+
+		#~
+		Begins a window move operation (for a toplevel window).
+		You might use this function to implement a &#x201C;window move grip,&#x201D; for
+		example. The function works best with window managers that support the
+		[Extended Window Manager Hints](http://www.freedesktop.org/Standards/wm-spec)
+		but has a fallback implementation for other window managers.
+		@param device the device used for the operation
+		@param button the button being used to drag, or 0 for a keyboard-initiated drag
+		@param root_x root window X coordinate of mouse click that began the drag
+		@param root_y root window Y coordinate of mouse click that began the drag
+		@param timestamp timestamp of mouse click that began the drag
+		~#
+		method : public : BeginMoveDragForDevice(device : Device, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+			array_args := Base->New[7];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+			array_args[3] := IntRef->New(button);
+			array_args[4] := IntRef->New(root_x);
+			array_args[5] := IntRef->New(root_y);
+			array_args[6] := IntRef->New(timestamp);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_move_drag_for_device", array_args);
+		}
+
+		#~
+		Begins a window resize operation (for a toplevel window).
+		
+		This function assumes that the drag is controlled by the
+		client pointer device, use gdk_window_begin_resize_drag_for_device()
+		to begin a drag with a different device.
+		@param edge the edge or corner from which the drag is started
+		@param button the button being used to drag, or 0 for a keyboard-initiated drag
+		@param root_x root window X coordinate of mouse click that began the drag
+		@param root_y root window Y coordinate of mouse click that began the drag
+		@param timestamp timestamp of mouse click that began the drag (use gdk_event_get_time())
+		~#
+		method : public : BeginResizeDrag(edge : WindowEdge, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+			array_args := Base->New[7];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(edge);
+			array_args[3] := IntRef->New(button);
+			array_args[4] := IntRef->New(root_x);
+			array_args[5] := IntRef->New(root_y);
+			array_args[6] := IntRef->New(timestamp);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_resize_drag", array_args);
+		}
+
+		#~
+		Begins a window resize operation (for a toplevel window).
+		You might use this function to implement a &#x201C;window resize grip,&#x201D; for
+		example; in fact #GtkStatusbar uses it. The function works best
+		with window managers that support the
+		[Extended Window Manager Hints](http://www.freedesktop.org/Standards/wm-spec)
+		but has a fallback implementation for other window managers.
+		@param edge the edge or corner from which the drag is started
+		@param device the device used for the operation
+		@param button the button being used to drag, or 0 for a keyboard-initiated drag
+		@param root_x root window X coordinate of mouse click that began the drag
+		@param root_y root window Y coordinate of mouse click that began the drag
+		@param timestamp timestamp of mouse click that began the drag (use gdk_event_get_time())
+		~#
+		method : public : BeginResizeDragForDevice(edge : WindowEdge, device : Device, button : Int, root_x : Int, root_y : Int, timestamp : Int) ~ Nil {
+			array_args := Base->New[8];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(edge);
+			array_args[3] := device;
+			array_args[4] := IntRef->New(button);
+			array_args[5] := IntRef->New(root_x);
+			array_args[6] := IntRef->New(root_y);
+			array_args[7] := IntRef->New(timestamp);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_begin_resize_drag_for_device", array_args);
+		}
+
+		#~
+		Transforms window coordinates from a parent window to a child
+		window, where the parent window is the normal parent as returned by
+		gdk_window_get_parent() for normal windows, and the window's
+		embedder as returned by gdk_offscreen_window_get_embedder() for
+		offscreen windows.
+		
+		For normal windows, calling this function is equivalent to subtracting
+		the return values of gdk_window_get_position() from the parent coordinates.
+		For offscreen windows however (which can be arbitrarily transformed),
+		this function calls the GdkWindow::from-embedder: signal to translate
+		the coordinates.
+		
+		You should always use this function when writing generic code that
+		walks down a window hierarchy.
+		
+		See also: gdk_window_coords_to_parent()
+		@param parent_x X coordinate in parent’s coordinate system
+		@param parent_y Y coordinate in parent’s coordinate system
+		@param x return location for X coordinate in child’s coordinate system
+		@param y return location for Y coordinate in child’s coordinate system
+		~#
+		method : public : CoordsFromParent(parent_x : Float, parent_y : Float, x : Float, y : Float) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(parent_x);
+			array_args[3] := FloatRef->New(parent_y);
+			array_args[4] := FloatRef->New(x);
+			array_args[5] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_coords_from_parent", array_args);
+		}
+
+		#~
+		Transforms window coordinates from a child window to its parent
+		window, where the parent window is the normal parent as returned by
+		gdk_window_get_parent() for normal windows, and the window's
+		embedder as returned by gdk_offscreen_window_get_embedder() for
+		offscreen windows.
+		
+		For normal windows, calling this function is equivalent to adding
+		the return values of gdk_window_get_position() to the child coordinates.
+		For offscreen windows however (which can be arbitrarily transformed),
+		this function calls the GdkWindow::to-embedder: signal to translate
+		the coordinates.
+		
+		You should always use this function when writing generic code that
+		walks up a window hierarchy.
+		
+		See also: gdk_window_coords_from_parent()
+		@param x X coordinate in child’s coordinate system
+		@param y Y coordinate in child’s coordinate system
+		@param parent_x return location for X coordinate
+		in parent’s coordinate system, or %NULL
+		@param parent_y return location for Y coordinate
+		in parent’s coordinate system, or %NULL
+		~#
+		method : public : CoordsToParent(x : Float, y : Float, parent_x : Float, parent_y : Float) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(x);
+			array_args[3] := FloatRef->New(y);
+			array_args[4] := FloatRef->New(parent_x);
+			array_args[5] := FloatRef->New(parent_y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_coords_to_parent", array_args);
+		}
+
+		#~
+		Creates a new #GdkGLContext matching the
+		framebuffer format to the visual of the #GdkWindow. The context
+		is disconnected from any particular window or surface.
+		
+		If the creation of the #GdkGLContext failed, @error will be set.
+		
+		Before using the returned #GdkGLContext, you will need to
+		call gdk_gl_context_make_current() or gdk_gl_context_realize().
+		@return the newly created #GdkGLContext, or
+		%NULL on error
+		~#
+		method : public : CreateGlContext() ~ GLContext {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_create_gl_context", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return GLContext->New(value->Get());
+		}
+
+		#~
+		Attempt to deiconify (unminimize) @window. On X11 the window manager may
+		choose to ignore the request to deiconify. When using GTK+,
+		use gtk_window_deiconify() instead of the #GdkWindow variant. Or better yet,
+		you probably want to use gtk_window_present_with_time(), which raises the window, focuses it,
+		unminimizes it, and puts it on the current desktop.
+		~#
+		method : public : Deiconify() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_deiconify", array_args);
+		}
+
+		#~
+		Destroys the window system resources associated with @window and decrements @window's
+		reference count. The window system resources for all children of @window are also
+		destroyed, but the children&#x2019;s reference counts are not decremented.
+		
+		Note that a window will not be destroyed automatically when its reference count
+		reaches zero. You must call this function yourself before that happens.
+		~#
+		method : public : Destroy() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_destroy", array_args);
+		}
+
+		method : public : DestroyNotify() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_destroy_notify", array_args);
+		}
+
+		#~
+		Indicates that the drawing of the contents of @window started with
+		gdk_window_begin_frame() has been completed.
+		
+		This function will take care of destroying the #GdkDrawingContext.
+		
+		It is an error to call this function without a matching
+		gdk_window_begin_frame() first.
+		@param context the #GdkDrawingContext created by gdk_window_begin_draw_frame()
+		~#
+		method : public : EndDrawFrame(context : DrawingContext) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := context;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_end_draw_frame", array_args);
+		}
+
+		#~
+		Indicates that the backing store created by the most recent call
+		to gdk_window_begin_paint_region() should be copied onscreen and
+		deleted, leaving the next-most-recent backing store or no backing
+		store at all as the active paint region. See
+		gdk_window_begin_paint_region() for full details.
+		
+		It is an error to call this function without a matching
+		gdk_window_begin_paint_region() first.
+		~#
+		method : public : EndPaint() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_end_paint", array_args);
+		}
+
+		#~
+		Tries to ensure that there is a window-system native window for this
+		GdkWindow. This may fail in some situations, returning %FALSE.
+		
+		Offscreen window and children of them can never have native windows.
+		
+		Some backends may not support native child windows.
+		@return %TRUE if the window has a native window, %FALSE otherwise
+		~#
+		method : public : EnsureNative() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_ensure_native", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Sets keyboard focus to @window. In most cases, gtk_window_present_with_time()
+		should be used on a #GtkWindow, rather than calling this function.
+		@param timestamp timestamp of the event triggering the window focus
+		~#
+		method : public : Focus(timestamp : Int) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(timestamp);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_focus", array_args);
+		}
+
+		#~
+		Temporarily freezes a window such that it won&#x2019;t receive expose
+		events.  The window will begin receiving expose events again when
+		gdk_window_thaw_updates() is called. If gdk_window_freeze_updates()
+		has been called more than once, gdk_window_thaw_updates() must be called
+		an equal number of times to begin processing exposes.
+		~#
+		method : public : FreezeUpdates() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_freeze_updates", array_args);
+		}
+
+		#~
+		Moves the window into fullscreen mode. This means the
+		window covers the entire screen and is above any panels
+		or task bars.
+		
+		If the window was already fullscreen, then this function does nothing.
+		
+		On X11, asks the window manager to put @window in a fullscreen
+		state, if the window manager supports this operation. Not all
+		window managers support this, and some deliberately ignore it or
+		don&#x2019;t have a concept of &#x201C;fullscreen&#x201D;; so you can&#x2019;t rely on the
+		fullscreenification actually happening. But it will happen with
+		most standard window managers, and GDK makes a best effort to get
+		it to happen.
+		~#
+		method : public : Fullscreen() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_fullscreen", array_args);
+		}
+
+		#~
+		Moves the window into fullscreen mode on the given monitor. This means
+		the window covers the entire screen and is above any panels or task bars.
+		
+		If the window was already fullscreen, then this function does nothing.
+		@param monitor Which monitor to display fullscreen on.
+		~#
+		method : public : FullscreenOnMonitor(monitor : Int) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(monitor);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_fullscreen_on_monitor", array_args);
+		}
+
+		#~
+		This function informs GDK that the geometry of an embedded
+		offscreen window has changed. This is necessary for GDK to keep
+		track of which offscreen window the pointer is in.
+		~#
+		method : public : GeometryChanged() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_geometry_changed", array_args);
+		}
+
+		#~
+		Determines whether or not the desktop environment shuld be hinted that
+		the window does not want to receive input focus.
+		@return whether or not the window should receive input focus.
+		~#
+		method : public : GetAcceptFocus() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_accept_focus", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Retrieves a #GdkCursor pointer for the cursor currently set on the
+		specified #GdkWindow, or %NULL.  If the return value is %NULL then
+		there is no custom cursor set on the specified window, and it is
+		using the cursor for its parent window.
+		@return a #GdkCursor, or %NULL. The
+		  returned object is owned by the #GdkWindow and should not be
+		  unreferenced directly. Use gdk_window_set_cursor() to unset the
+		  cursor of the window
+		~#
+		method : public : GetCursor() ~ Cursor {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_cursor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Cursor->New(value->Get());
+		}
+
+		#~
+		Returns the decorations set on the GdkWindow with
+		gdk_window_set_decorations().
+		@param decorations The window decorations will be written here
+		@return %TRUE if the window has decorations set, %FALSE otherwise.
+		~#
+		method : public : GetDecorations(decorations : WMDecoration) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(decorations);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_decorations", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Retrieves a #GdkCursor pointer for the @device currently set on the
+		specified #GdkWindow, or %NULL.  If the return value is %NULL then
+		there is no custom cursor set on the specified window, and it is
+		using the cursor for its parent window.
+		@param device a master, pointer #GdkDevice.
+		@return a #GdkCursor, or %NULL. The
+		  returned object is owned by the #GdkWindow and should not be
+		  unreferenced directly. Use gdk_window_set_cursor() to unset the
+		  cursor of the window
+		~#
+		method : public : GetDeviceCursor(device : Device) ~ Cursor {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_cursor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Cursor->New(value->Get());
+		}
+
+		#~
+		Returns the event mask for @window corresponding to an specific device.
+		@param device a #GdkDevice.
+		@return device event mask for @window
+		~#
+		method : public : GetDeviceEvents(device : Device) ~ EventMask {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_events", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventMask);
+		}
+
+		#~
+		Obtains the current device position and modifier state.
+		The position is given in coordinates relative to the upper left
+		corner of @window.
+		
+		Use gdk_window_get_device_position_double() if you need subpixel precision.
+		@param device pointer #GdkDevice to query to.
+		@param x return location for the X coordinate of @device, or %NULL.
+		@param y return location for the Y coordinate of @device, or %NULL.
+		@param mask return location for the modifier mask, or %NULL.
+		@return The window underneath @device
+		(as with gdk_device_get_window_at_position()), or %NULL if the
+		window is not known to GDK.
+		~#
+		method : public : GetDevicePosition(device : Device, x : Int, y : Int, mask : ModifierType) ~ Window {
+			array_args := Base->New[6];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+			array_args[3] := IntRef->New(x);
+			array_args[4] := IntRef->New(y);
+			array_args[5] := IntRef->New(mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Obtains the current device position in doubles and modifier state.
+		The position is given in coordinates relative to the upper left
+		corner of @window.
+		@param device pointer #GdkDevice to query to.
+		@param x return location for the X coordinate of @device, or %NULL.
+		@param y return location for the Y coordinate of @device, or %NULL.
+		@param mask return location for the modifier mask, or %NULL.
+		@return The window underneath @device
+		(as with gdk_device_get_window_at_position()), or %NULL if the
+		window is not known to GDK.
+		~#
+		method : public : GetDevicePositionDouble(device : Device, x : Float, y : Float, mask : ModifierType) ~ Window {
+			array_args := Base->New[6];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+			array_args[3] := FloatRef->New(x);
+			array_args[4] := FloatRef->New(y);
+			array_args[5] := IntRef->New(mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position_double", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Gets the #GdkDisplay associated with a #GdkWindow.
+		@return the #GdkDisplay associated with @window
+		~#
+		method : public : GetDisplay() ~ Display {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_display", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Display->New(value->Get());
+		}
+
+		#~
+		Finds out the DND protocol supported by a window.
+		@param target location of the window
+		   where the drop should happen. This may be @window or a proxy window,
+		   or %NULL if @window does not support Drag and Drop.
+		@return the supported DND protocol.
+		~#
+		method : public : GetDragProtocol(target : Window) ~ DragProtocol {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := target;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_drag_protocol", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(DragProtocol);
+		}
+
+		#~
+		Obtains the parent of @window, as known to GDK. Works like
+		gdk_window_get_parent() for normal windows, but returns the
+		window&#x2019;s embedder for offscreen windows.
+		
+		See also: gdk_offscreen_window_get_embedder()
+		@return effective parent of @window
+		~#
+		method : public : GetEffectiveParent() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_effective_parent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Gets the toplevel window that&#x2019;s an ancestor of @window.
+		
+		Works like gdk_window_get_toplevel(), but treats an offscreen window's
+		embedder as its parent, using gdk_window_get_effective_parent().
+		
+		See also: gdk_offscreen_window_get_embedder()
+		@return the effective toplevel window containing @window
+		~#
+		method : public : GetEffectiveToplevel() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_effective_toplevel", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Get the current event compression setting for this window.
+		@return %TRUE if motion events will be compressed
+		~#
+		method : public : GetEventCompression() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_event_compression", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Gets the event mask for @window for all master input devices. See
+		gdk_window_set_events().
+		@return event mask for @window
+		~#
+		method : public : GetEvents() ~ EventMask {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_events", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventMask);
+		}
+
+		#~
+		Determines whether or not the desktop environment should be hinted that the
+		window does not want to receive input focus when it is mapped.
+		@return whether or not the window wants to receive input focus when
+		it is mapped.
+		~#
+		method : public : GetFocusOnMap() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_focus_on_map", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Gets the frame clock for the window. The frame clock for a window
+		never changes unless the window is reparented to a new toplevel
+		window.
+		@return the frame clock
+		~#
+		method : public : GetFrameClock() ~ FrameClock {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_frame_clock", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return FrameClock->New(value->Get());
+		}
+
+		#~
+		Obtains the bounding box of the window, including window manager
+		titlebar/borders if any. The frame position is given in root window
+		coordinates. To get the position of the window itself (rather than
+		the frame) in root window coordinates, use gdk_window_get_origin().
+		@param rect rectangle to fill with bounding box of the window frame
+		~#
+		method : public : GetFrameExtents(rect : Rectangle) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := rect;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_frame_extents", array_args);
+		}
+
+		#~
+		Obtains the #GdkFullscreenMode of the @window.
+		@return The #GdkFullscreenMode applied to the window when fullscreen.
+		~#
+		method : public : GetFullscreenMode() ~ FullscreenMode {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_fullscreen_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(FullscreenMode);
+		}
+
+		#~
+		Any of the return location arguments to this function may be %NULL,
+		if you aren&#x2019;t interested in getting the value of that field.
+		
+		The X and Y coordinates returned are relative to the parent window
+		of @window, which for toplevels usually means relative to the
+		window decorations (titlebar, etc.) rather than relative to the
+		root window (screen-size background window).
+		
+		On the X11 platform, the geometry is obtained from the X server,
+		so reflects the latest position of @window; this may be out-of-sync
+		with the position of @window delivered in the most-recently-processed
+		#GdkEventConfigure. gdk_window_get_position() in contrast gets the
+		position from the most recent configure event.
+		
+		Note: If @window is not a toplevel, it is much better
+		to call gdk_window_get_position(), gdk_window_get_width() and
+		gdk_window_get_height() instead, because it avoids the roundtrip to
+		the X server and because these functions support the full 32-bit
+		coordinate space, whereas gdk_window_get_geometry() is restricted to
+		the 16-bit coordinates of X11.
+		@param x return location for X coordinate of window (relative to its parent)
+		@param y return location for Y coordinate of window (relative to its parent)
+		@param width return location for width of window
+		@param height return location for height of window
+		~#
+		method : public : GetGeometry(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+			array_args[4] := IntRef->New(width);
+			array_args[5] := IntRef->New(height);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_geometry", array_args);
+		}
+
+		#~
+		Returns the group leader window for @window. See gdk_window_set_group().
+		@return the group leader window for @window
+		~#
+		method : public : GetGroup() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_group", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Returns the height of the given @window.
+		
+		On the X11 platform the returned size is the size reported in the
+		most-recently-processed configure event, rather than the current
+		size on the X server.
+		@return The height of @window
+		~#
+		method : public : GetHeight() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_height", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Determines whether or not the window manager is hinted that @window
+		has modal behaviour.
+		@return whether or not the window has the modal hint set.
+		~#
+		method : public : GetModalHint() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_modal_hint", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Obtains the position of a window in root window coordinates.
+		(Compare with gdk_window_get_position() and
+		gdk_window_get_geometry() which return the position of a window
+		relative to its parent window.)
+		@param x return location for X coordinate
+		@param y return location for Y coordinate
+		@return not meaningful, ignore
+		~#
+		method : public : GetOrigin(x : Int, y : Int) ~ Int {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_origin", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Obtains the parent of @window, as known to GDK. Does not query the
+		X server; thus this returns the parent as passed to gdk_window_new(),
+		not the actual parent. This should never matter unless you&#x2019;re using
+		Xlib calls mixed with GDK calls on the X11 platform. It may also
+		matter for toplevel windows, because the window manager may choose
+		to reparent them.
+		
+		Note that you should use gdk_window_get_effective_parent() when
+		writing generic code that walks up a window hierarchy, because
+		gdk_window_get_parent() will most likely not do what you expect if
+		there are offscreen windows in the hierarchy.
+		@return parent of @window
+		~#
+		method : public : GetParent() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_parent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Returns whether input to the window is passed through to the window
+		below.
+		
+		See gdk_window_set_pass_through() for details
+		~#
+		method : public : GetPassThrough() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_pass_through", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Obtains the position of the window as reported in the
+		most-recently-processed #GdkEventConfigure. Contrast with
+		gdk_window_get_geometry() which queries the X server for the
+		current window position, regardless of which events have been
+		received or processed.
+		
+		The position coordinates are relative to the window&#x2019;s parent window.
+		@param x X coordinate of window
+		@param y Y coordinate of window
+		~#
+		method : public : GetPosition(x : Int, y : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_position", array_args);
+		}
+
+		#~
+		Obtains the position of a window position in root
+		window coordinates. This is similar to
+		gdk_window_get_origin() but allows you to pass
+		in any position in the window, not just the origin.
+		@param x X coordinate in window
+		@param y Y coordinate in window
+		@param root_x return location for X coordinate
+		@param root_y return location for Y coordinate
+		~#
+		method : public : GetRootCoords(x : Int, y : Int, root_x : Int, root_y : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+			array_args[4] := IntRef->New(root_x);
+			array_args[5] := IntRef->New(root_y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_coords", array_args);
+		}
+
+		#~
+		Obtains the top-left corner of the window manager frame in root
+		window coordinates.
+		@param x return location for X position of window frame
+		@param y return location for Y position of window frame
+		~#
+		method : public : GetRootOrigin(x : Int, y : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_origin", array_args);
+		}
+
+		#~
+		Returns the internal scale factor that maps from window coordiantes
+		to the actual device pixels. On traditional systems this is 1, but
+		on very high density outputs this can be a higher value (often 2).
+		
+		A higher value means that drawing is automatically scaled up to
+		a higher resolution, so any code doing drawing will automatically look
+		nicer. However, if you are supplying pixel-based data the scale
+		value can be used to determine whether to use a pixel resource
+		with higher resolution data.
+		
+		The scale of a window may change during runtime, if this happens
+		a configure event will be sent to the toplevel window.
+		@return the scale factor
+		~#
+		method : public : GetScaleFactor() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_scale_factor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Gets the #GdkScreen associated with a #GdkWindow.
+		@return the #GdkScreen associated with @window
+		~#
+		method : public : GetScreen() ~ Screen {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_screen", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Screen->New(value->Get());
+		}
+
+		#~
+		Returns the event mask for @window corresponding to the device class specified
+		by @source.
+		@param source a #GdkInputSource to define the source class.
+		@return source event mask for @window
+		~#
+		method : public : GetSourceEvents(source : InputSource) ~ EventMask {
+			array_args := Base->New[3];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(source);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_source_events", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventMask);
+		}
+
+		#~
+		Gets the bitwise OR of the currently active window state flags,
+		from the #GdkWindowState enumeration.
+		@return window state bitfield
+		~#
+		method : public : GetState() ~ WindowState {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_state", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(WindowState);
+		}
+
+		#~
+		Returns %TRUE if the window is aware of the existence of multiple
+		devices.
+		@return %TRUE if the window handles multidevice features.
+		~#
+		method : public : GetSupportMultidevice() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_support_multidevice", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Gets the toplevel window that&#x2019;s an ancestor of @window.
+		
+		Any window type but %GDK_WINDOW_CHILD is considered a
+		toplevel window, as is a %GDK_WINDOW_CHILD window that
+		has a root window as parent.
+		
+		Note that you should use gdk_window_get_effective_toplevel() when
+		you want to get to a window&#x2019;s toplevel as seen on screen, because
+		gdk_window_get_toplevel() will most likely not do what you expect
+		if there are offscreen windows in the hierarchy.
+		@return the toplevel window containing @window
+		~#
+		method : public : GetToplevel() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_toplevel", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		This function returns the type hint set for a window.
+		@return The type hint set for @window
+		~#
+		method : public : GetTypeHint() ~ WindowTypeHint {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_type_hint", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(WindowTypeHint);
+		}
+
+		#~
+		Retrieves the user data for @window, which is normally the widget
+		that @window belongs to. See gdk_window_set_user_data().
+		@param data return location for user data
+		~#
+		method : public : GetUserData(data : Int) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(data);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_user_data", array_args);
+		}
+
+		#~
+		Gets the #GdkVisual describing the pixel format of @window.
+		@return a #GdkVisual
+		~#
+		method : public : GetVisual() ~ Visual {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_visual", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Visual->New(value->Get());
+		}
+
+		#~
+		Returns the width of the given @window.
+		
+		On the X11 platform the returned size is the size reported in the
+		most-recently-processed configure event, rather than the current
+		size on the X server.
+		@return The width of @window
+		~#
+		method : public : GetWidth() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_width", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Gets the type of the window. See #GdkWindowType.
+		@return type of window
+		~#
+		method : public : GetWindowType() ~ WindowType {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_window_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(WindowType);
+		}
+
+		#~
+		Checks whether the window has a native window or not. Note that
+		you can use gdk_window_ensure_native() if a native window is needed.
+		@return %TRUE if the @window has a native window, %FALSE otherwise.
+		~#
+		method : public : HasNative() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_has_native", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		For toplevel windows, withdraws them, so they will no longer be
+		known to the window manager; for all windows, unmaps them, so
+		they won&#x2019;t be displayed. Normally done automatically as
+		part of gtk_widget_hide().
+		~#
+		method : public : Hide() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_hide", array_args);
+		}
+
+		#~
+		Asks to iconify (minimize) @window. The window manager may choose
+		to ignore the request, but normally will honor it. Using
+		gtk_window_iconify() is preferred, if you have a #GtkWindow widget.
+		
+		This function only makes sense when @window is a toplevel window.
+		~#
+		method : public : Iconify() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_iconify", array_args);
+		}
+
+		#~
+		A convenience wrapper around gdk_window_invalidate_region() which
+		invalidates a rectangular region. See
+		gdk_window_invalidate_region() for details.
+		@param rect rectangle to invalidate or %NULL to invalidate the whole
+		     window
+		@param invalidate_children whether to also invalidate child windows
+		~#
+		method : public : InvalidateRect(rect : Rectangle, invalidate_children : Bool) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := rect;
+			array_args[3] := IntRef->New(invalidate_children ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_invalidate_rect", array_args);
+		}
+
+		#~
+		Check to see if a window is destroyed..
+		@return %TRUE if the window is destroyed
+		~#
+		method : public : IsDestroyed() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_is_destroyed", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Determines whether or not the window is an input only window.
+		@return %TRUE if @window is input only
+		~#
+		method : public : IsInputOnly() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_is_input_only", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Determines whether or not the window is shaped.
+		@return %TRUE if @window is shaped
+		~#
+		method : public : IsShaped() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_is_shaped", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Check if the window and all ancestors of the window are
+		mapped. (This is not necessarily "viewable" in the X sense, since
+		we only check as far as we have GDK window parents, not to the root
+		window.)
+		@return %TRUE if the window is viewable
+		~#
+		method : public : IsViewable() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_is_viewable", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Checks whether the window has been mapped (with gdk_window_show() or
+		gdk_window_show_unraised()).
+		@return %TRUE if the window is mapped
+		~#
+		method : public : IsVisible() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_is_visible", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Lowers @window to the bottom of the Z-order (stacking order), so that
+		other windows with the same parent window appear above @window.
+		This is true whether or not the other windows are visible.
+		
+		If @window is a toplevel, the window manager may choose to deny the
+		request to move the window in the Z-order, gdk_window_lower() only
+		requests the restack, does not guarantee it.
+		
+		Note that gdk_window_show() raises the window again, so don&#x2019;t call this
+		function before gdk_window_show(). (Try gdk_window_show_unraised().)
+		~#
+		method : public : Lower() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_lower", array_args);
+		}
+
+		#~
+		Maximizes the window. If the window was already maximized, then
+		this function does nothing.
+		
+		On X11, asks the window manager to maximize @window, if the window
+		manager supports this operation. Not all window managers support
+		this, and some deliberately ignore it or don&#x2019;t have a concept of
+		&#x201C;maximized&#x201D;; so you can&#x2019;t rely on the maximization actually
+		happening. But it will happen with most standard window managers,
+		and GDK makes a best effort to get it to happen.
+		
+		On Windows, reliably maximizes the window.
+		~#
+		method : public : Maximize() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_maximize", array_args);
+		}
+
+		#~
+		Merges the input shape masks for any child windows into the
+		input shape mask for @window. i.e. the union of all input masks
+		for @window and its children will become the new input mask
+		for @window. See gdk_window_input_shape_combine_region().
+		
+		This function is distinct from gdk_window_set_child_input_shapes()
+		because it includes @window&#x2019;s input shape mask in the set of
+		shapes to be merged.
+		~#
+		method : public : MergeChildInputShapes() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_merge_child_input_shapes", array_args);
+		}
+
+		#~
+		Merges the shape masks for any child windows into the
+		shape mask for @window. i.e. the union of all masks
+		for @window and its children will become the new mask
+		for @window. See gdk_window_shape_combine_region().
+		
+		This function is distinct from gdk_window_set_child_shapes()
+		because it includes @window&#x2019;s shape mask in the set of shapes to
+		be merged.
+		~#
+		method : public : MergeChildShapes() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_merge_child_shapes", array_args);
+		}
+
+		#~
+		Repositions a window relative to its parent window.
+		For toplevel windows, window managers may ignore or modify the move;
+		you should probably use gtk_window_move() on a #GtkWindow widget
+		anyway, instead of using GDK functions. For child windows,
+		the move will reliably succeed.
+		
+		If you&#x2019;re also planning to resize the window, use gdk_window_move_resize()
+		to both move and resize simultaneously, for a nicer visual effect.
+		@param x X coordinate relative to window’s parent
+		@param y Y coordinate relative to window’s parent
+		~#
+		method : public : Move(x : Int, y : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_move", array_args);
+		}
+
+		#~
+		Equivalent to calling gdk_window_move() and gdk_window_resize(),
+		except that both operations are performed at once, avoiding strange
+		visual effects. (i.e. the user may be able to see the window first
+		move, then resize, if you don&#x2019;t use gdk_window_move_resize().)
+		@param x new X position relative to window’s parent
+		@param y new Y position relative to window’s parent
+		@param width new width
+		@param height new height
+		~#
+		method : public : MoveResize(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(x);
+			array_args[3] := IntRef->New(y);
+			array_args[4] := IntRef->New(width);
+			array_args[5] := IntRef->New(height);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_move_resize", array_args);
+		}
+
+		#~
+		Moves @window to @rect, aligning their anchor points.
+		
+		@rect is relative to the top-left corner of the window that @window is
+		transient for. @rect_anchor and @window_anchor determine anchor points on
+		@rect and @window to pin together. @rect's anchor point can optionally be
+		offset by @rect_anchor_dx and @rect_anchor_dy, which is equivalent to
+		offsetting the position of @window.
+		
+		@anchor_hints determines how @window will be moved if the anchor points cause
+		it to move off-screen. For example, %GDK_ANCHOR_FLIP_X will replace
+		%GDK_GRAVITY_NORTH_WEST with %GDK_GRAVITY_NORTH_EAST and vice versa if
+		@window extends beyond the left or right edges of the monitor.
+		
+		Connect to the #GdkWindow::moved-to-rect signal to find out how it was
+		actually positioned.
+		@param rect the destination #GdkRectangle to align @window with
+		@param rect_anchor the point on @rect to align with @window's anchor point
+		@param window_anchor the point on @window to align with @rect's anchor point
+		@param anchor_hints positioning hints to use when limited on space
+		@param rect_anchor_dx horizontal offset to shift @window, i.e. @rect's anchor
+		                 point
+		@param rect_anchor_dy vertical offset to shift @window, i.e. @rect's anchor point
+		~#
+		method : public : MoveToRect(rect : Rectangle, rect_anchor : Gravity, window_anchor : Gravity, anchor_hints : AnchorHints, rect_anchor_dx : Int, rect_anchor_dy : Int) ~ Nil {
+			array_args := Base->New[8];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := rect;
+			array_args[3] := IntRef->New(rect_anchor);
+			array_args[4] := IntRef->New(window_anchor);
+			array_args[5] := IntRef->New(anchor_hints);
+			array_args[6] := IntRef->New(rect_anchor_dx);
+			array_args[7] := IntRef->New(rect_anchor_dy);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_move_to_rect", array_args);
+		}
+
+		#~
+		Raises @window to the top of the Z-order (stacking order), so that
+		other windows with the same parent window appear below @window.
+		This is true whether or not the windows are visible.
+		
+		If @window is a toplevel, the window manager may choose to deny the
+		request to move the window in the Z-order, gdk_window_raise() only
+		requests the restack, does not guarantee it.
+		~#
+		method : public : Raise() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_raise", array_args);
+		}
+
+		#~
+		Registers a window as a potential drop destination.
+		~#
+		method : public : RegisterDnd() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_register_dnd", array_args);
+		}
+
+		#~
+		Reparents @window into the given @new_parent. The window being
+		reparented will be unmapped as a side effect.
+		@param new_parent new parent to move @window into
+		@param x X location inside the new parent
+		@param y Y location inside the new parent
+		~#
+		method : public : Reparent(new_parent : Window, x : Int, y : Int) ~ Nil {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := new_parent;
+			array_args[3] := IntRef->New(x);
+			array_args[4] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_reparent", array_args);
+		}
+
+		#~
+		Resizes @window; for toplevel windows, asks the window manager to resize
+		the window. The window manager may not allow the resize. When using GTK+,
+		use gtk_window_resize() instead of this low-level GDK function.
+		
+		Windows may not be resized below 1x1.
+		
+		If you&#x2019;re also planning to move the window, use gdk_window_move_resize()
+		to both move and resize simultaneously, for a nicer visual effect.
+		@param width new width of the window
+		@param height new height of the window
+		~#
+		method : public : Resize(width : Int, height : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(width);
+			array_args[3] := IntRef->New(height);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_resize", array_args);
+		}
+
+		#~
+		Changes the position of  @window in the Z-order (stacking order), so that
+		it is above @sibling (if @above is %TRUE) or below @sibling (if @above is
+		%FALSE).
+		
+		If @sibling is %NULL, then this either raises (if @above is %TRUE) or
+		lowers the window.
+		
+		If @window is a toplevel, the window manager may choose to deny the
+		request to move the window in the Z-order, gdk_window_restack() only
+		requests the restack, does not guarantee it.
+		@param sibling a #GdkWindow that is a sibling of @window, or %NULL
+		@param above a boolean
+		~#
+		method : public : Restack(sibling : Window, above : Bool) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := sibling;
+			array_args[3] := IntRef->New(above ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_restack", array_args);
+		}
+
+		#~
+		Scroll the contents of @window, both pixels and children, by the
+		given amount. @window itself does not move. Portions of the window
+		that the scroll operation brings in from offscreen areas are
+		invalidated. The invalidated region may be bigger than what would
+		strictly be necessary.
+		
+		For X11, a minimum area will be invalidated if the window has no
+		subwindows, or if the edges of the window&#x2019;s parent do not extend
+		beyond the edges of the window. In other cases, a multi-step process
+		is used to scroll the window which may produce temporary visual
+		artifacts and unnecessary invalidations.
+		@param dx Amount to scroll in the X direction
+		@param dy Amount to scroll in the Y direction
+		~#
+		method : public : Scroll(dx : Int, dy : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(dx);
+			array_args[3] := IntRef->New(dy);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_scroll", array_args);
+		}
+
+		#~
+		Setting @accept_focus to %FALSE hints the desktop environment that the
+		window doesn&#x2019;t want to receive input focus.
+		
+		On X, it is the responsibility of the window manager to interpret this
+		hint. ICCCM-compliant window manager usually respect it.
+		@param accept_focus %TRUE if the window should receive input focus
+		~#
+		method : public : SetAcceptFocus(accept_focus : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(accept_focus ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_accept_focus", array_args);
+		}
+
+		#~
+		Sets the input shape mask of @window to the union of input shape masks
+		for all children of @window, ignoring the input shape mask of @window
+		itself. Contrast with gdk_window_merge_child_input_shapes() which includes
+		the input shape mask of @window in the masks to be merged.
+		~#
+		method : public : SetChildInputShapes() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_child_input_shapes", array_args);
+		}
+
+		#~
+		Sets the shape mask of @window to the union of shape masks
+		for all children of @window, ignoring the shape mask of @window
+		itself. Contrast with gdk_window_merge_child_shapes() which includes
+		the shape mask of @window in the masks to be merged.
+		~#
+		method : public : SetChildShapes() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_child_shapes", array_args);
+		}
+
+		#~
+		Sets the default mouse pointer for a #GdkWindow.
+		
+		Note that @cursor must be for the same display as @window.
+		
+		Use gdk_cursor_new_for_display() or gdk_cursor_new_from_pixbuf() to
+		create the cursor. To make the cursor invisible, use %GDK_BLANK_CURSOR.
+		Passing %NULL for the @cursor argument to gdk_window_set_cursor() means
+		that @window will use the cursor of its parent window. Most windows
+		should use this default.
+		@param cursor a cursor
+		~#
+		method : public : SetCursor(cursor : Cursor) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := cursor;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_cursor", array_args);
+		}
+
+		#~
+		&#x201C;Decorations&#x201D; are the features the window manager adds to a toplevel #GdkWindow.
+		This function sets the traditional Motif window manager hints that tell the
+		window manager which decorations you would like your window to have.
+		Usually you should use gtk_window_set_decorated() on a #GtkWindow instead of
+		using the GDK function directly.
+		
+		The @decorations argument is the logical OR of the fields in
+		the #GdkWMDecoration enumeration. If #GDK_DECOR_ALL is included in the
+		mask, the other bits indicate which decorations should be turned off.
+		If #GDK_DECOR_ALL is not included, then the other bits indicate
+		which decorations should be turned on.
+		
+		Most window managers honor a decorations hint of 0 to disable all decorations,
+		but very few honor all possible combinations of bits.
+		@param decorations decoration hint mask
+		~#
+		method : public : SetDecorations(decorations : WMDecoration) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(decorations);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_decorations", array_args);
+		}
+
+		#~
+		Sets a specific #GdkCursor for a given device when it gets inside @window.
+		Use gdk_cursor_new_for_display() or gdk_cursor_new_from_pixbuf() to create
+		the cursor. To make the cursor invisible, use %GDK_BLANK_CURSOR. Passing
+		%NULL for the @cursor argument to gdk_window_set_cursor() means that
+		@window will use the cursor of its parent window. Most windows should
+		use this default.
+		@param device a master, pointer #GdkDevice
+		@param cursor a #GdkCursor
+		~#
+		method : public : SetDeviceCursor(device : Device, cursor : Cursor) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+			array_args[3] := cursor;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_device_cursor", array_args);
+		}
+
+		#~
+		Sets the event mask for a given device (Normally a floating device, not
+		attached to any visible pointer) to @window. For example, an event mask
+		including #GDK_BUTTON_PRESS_MASK means the window should report button
+		press events. The event mask is the bitwise OR of values from the
+		#GdkEventMask enumeration.
+		
+		See the [input handling overview][event-masks] for details.
+		@param device #GdkDevice to enable events for.
+		@param event_mask event mask for @window
+		~#
+		method : public : SetDeviceEvents(device : Device, event_mask : EventMask) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+			array_args[3] := IntRef->New(event_mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_device_events", array_args);
+		}
+
+		#~
+		Determines whether or not extra unprocessed motion events in
+		the event queue can be discarded. If %TRUE only the most recent
+		event will be delivered.
+		
+		Some types of applications, e.g. paint programs, need to see all
+		motion events and will benefit from turning off event compression.
+		
+		By default, event compression is enabled.
+		@param event_compression %TRUE if motion events should be compressed
+		~#
+		method : public : SetEventCompression(event_compression : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(event_compression ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_event_compression", array_args);
+		}
+
+		#~
+		The event mask for a window determines which events will be reported
+		for that window from all master input devices. For example, an event mask
+		including #GDK_BUTTON_PRESS_MASK means the window should report button
+		press events. The event mask is the bitwise OR of values from the
+		#GdkEventMask enumeration.
+		
+		See the [input handling overview][event-masks] for details.
+		@param event_mask event mask for @window
+		~#
+		method : public : SetEvents(event_mask : EventMask) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(event_mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_events", array_args);
+		}
+
+		#~
+		Setting @focus_on_map to %FALSE hints the desktop environment that the
+		window doesn&#x2019;t want to receive input focus when it is mapped.
+		focus_on_map should be turned off for windows that aren&#x2019;t triggered
+		interactively (such as popups from network activity).
+		
+		On X, it is the responsibility of the window manager to interpret
+		this hint. Window managers following the freedesktop.org window
+		manager extension specification should respect it.
+		@param focus_on_map %TRUE if the window should receive input focus when mapped
+		~#
+		method : public : SetFocusOnMap(focus_on_map : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(focus_on_map ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_focus_on_map", array_args);
+		}
+
+		#~
+		Specifies whether the @window should span over all monitors (in a multi-head
+		setup) or only the current monitor when in fullscreen mode.
+		
+		The @mode argument is from the #GdkFullscreenMode enumeration.
+		If #GDK_FULLSCREEN_ON_ALL_MONITORS is specified, the fullscreen @window will
+		span over all monitors from the #GdkScreen.
+		
+		On X11, searches through the list of monitors from the #GdkScreen the ones
+		which delimit the 4 edges of the entire #GdkScreen and will ask the window
+		manager to span the @window over these monitors.
+		
+		If the XINERAMA extension is not available or not usable, this function
+		has no effect.
+		
+		Not all window managers support this, so you can&#x2019;t rely on the fullscreen
+		window to span over the multiple monitors when #GDK_FULLSCREEN_ON_ALL_MONITORS
+		is specified.
+		@param mode fullscreen mode
+		~#
+		method : public : SetFullscreenMode(mode : FullscreenMode) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(mode);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_fullscreen_mode", array_args);
+		}
+
+		#~
+		Sets the geometry hints for @window. Hints flagged in @geom_mask
+		are set, hints not flagged in @geom_mask are unset.
+		To unset all hints, use a @geom_mask of 0 and a @geometry of %NULL.
+		
+		This function provides hints to the windowing system about
+		acceptable sizes for a toplevel window. The purpose of
+		this is to constrain user resizing, but the windowing system
+		will typically  (but is not required to) also constrain the
+		current size of the window to the provided values and
+		constrain programatic resizing via gdk_window_resize() or
+		gdk_window_move_resize().
+		
+		Note that on X11, this effect has no effect on windows
+		of type %GDK_WINDOW_TEMP or windows where override redirect
+		has been turned on via gdk_window_set_override_redirect()
+		since these windows are not resizable by the user.
+		
+		Since you can&#x2019;t count on the windowing system doing the
+		constraints for programmatic resizes, you should generally
+		call gdk_window_constrain_size() yourself to determine
+		appropriate sizes.
+		@param geometry geometry hints
+		@param geom_mask bitmask indicating fields of @geometry to pay attention to
+		~#
+		method : public : SetGeometryHints(geometry : Geometry, geom_mask : WindowHints) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := geometry;
+			array_args[3] := IntRef->New(geom_mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_geometry_hints", array_args);
+		}
+
+		#~
+		Sets the group leader window for @window. By default,
+		GDK sets the group leader for all toplevel windows
+		to a global window implicitly created by GDK. With this function
+		you can override this default.
+		
+		The group leader window allows the window manager to distinguish
+		all windows that belong to a single application. It may for example
+		allow users to minimize/unminimize all windows belonging to an
+		application at once. You should only set a non-default group window
+		if your application pretends to be multiple applications.
+		@param leader group leader window, or %NULL to restore the default group leader window
+		~#
+		method : public : SetGroup(leader : Window) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := leader;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_group", array_args);
+		}
+
+		#~
+		Windows may have a name used while minimized, distinct from the
+		name they display in their titlebar. Most of the time this is a bad
+		idea from a user interface standpoint. But you can set such a name
+		with this function, if you like.
+		
+		After calling this with a non-%NULL @name, calls to gdk_window_set_title()
+		will not update the icon title.
+		
+		Using %NULL for @name unsets the icon title; further calls to
+		gdk_window_set_title() will again update the icon title as well.
+		
+		Note that some platforms don't support window icons.
+		@param name name of window while iconified (minimized)
+		~#
+		method : public : SetIconName(name : String) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := name;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_icon_name", array_args);
+		}
+
+		#~
+		Set if @window must be kept above other windows. If the
+		window was already above, then this function does nothing.
+		
+		On X11, asks the window manager to keep @window above, if the window
+		manager supports this operation. Not all window managers support
+		this, and some deliberately ignore it or don&#x2019;t have a concept of
+		&#x201C;keep above&#x201D;; so you can&#x2019;t rely on the window being kept above.
+		But it will happen with most standard window managers,
+		and GDK makes a best effort to get it to happen.
+		@param setting whether to keep @window above other windows
+		~#
+		method : public : SetKeepAbove(setting : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(setting ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_keep_above", array_args);
+		}
+
+		#~
+		Set if @window must be kept below other windows. If the
+		window was already below, then this function does nothing.
+		
+		On X11, asks the window manager to keep @window below, if the window
+		manager supports this operation. Not all window managers support
+		this, and some deliberately ignore it or don&#x2019;t have a concept of
+		&#x201C;keep below&#x201D;; so you can&#x2019;t rely on the window being kept below.
+		But it will happen with most standard window managers,
+		and GDK makes a best effort to get it to happen.
+		@param setting whether to keep @window below other windows
+		~#
+		method : public : SetKeepBelow(setting : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(setting ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_keep_below", array_args);
+		}
+
+		#~
+		The application can use this hint to tell the window manager
+		that a certain window has modal behaviour. The window manager
+		can use this information to handle modal windows in a special
+		way.
+		
+		You should only use this on windows for which you have
+		previously called gdk_window_set_transient_for()
+		@param modal %TRUE if the window is modal, %FALSE otherwise.
+		~#
+		method : public : SetModalHint(modal : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(modal ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_modal_hint", array_args);
+		}
+
+		#~
+		Set @window to render as partially transparent,
+		with opacity 0 being fully transparent and 1 fully opaque. (Values
+		of the opacity parameter are clamped to the [0,1] range.)
+		
+		For toplevel windows this depends on support from the windowing system
+		that may not always be there. For instance, On X11, this works only on
+		X screens with a compositing manager running. On Wayland, there is no
+		per-window opacity value that the compositor would apply. Instead, use
+		`gdk_window_set_opaque_region (window, NULL)` to tell the compositor
+		that the entire window is (potentially) non-opaque, and draw your content
+		with alpha, or use gtk_widget_set_opacity() to set an overall opacity
+		for your widgets.
+		
+		For child windows this function only works for non-native windows.
+		
+		For setting up per-pixel alpha topelevels, see gdk_screen_get_rgba_visual(),
+		and for non-toplevels, see gdk_window_set_composited().
+		
+		Support for non-toplevel windows was added in 3.8.
+		@param opacity opacity
+		~#
+		method : public : SetOpacity(opacity : Float) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(opacity);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_opacity", array_args);
+		}
+
+		#~
+		An override redirect window is not under the control of the window manager.
+		This means it won&#x2019;t have a titlebar, won&#x2019;t be minimizable, etc. - it will
+		be entirely under the control of the application. The window manager
+		can&#x2019;t see the override redirect window at all.
+		
+		Override redirect should only be used for short-lived temporary
+		windows, such as popup menus. #GtkMenu uses an override redirect
+		window in its implementation, for example.
+		@param override_redirect %TRUE if window should be override redirect
+		~#
+		method : public : SetOverrideRedirect(override_redirect : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(override_redirect ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_override_redirect", array_args);
+		}
+
+		#~
+		Sets whether input to the window is passed through to the window
+		below.
+		
+		The default value of this is %FALSE, which means that pointer
+		events that happen inside the window are send first to the window,
+		but if the event is not selected by the event mask then the event
+		is sent to the parent window, and so on up the hierarchy.
+		
+		If @pass_through is %TRUE then such pointer events happen as if the
+		window wasn't there at all, and thus will be sent first to any
+		windows below @window. This is useful if the window is used in a
+		transparent fashion. In the terminology of the web this would be called
+		"pointer-events: none".
+		
+		Note that a window with @pass_through %TRUE can still have a subwindow
+		without pass through, so you can get events on a subset of a window. And in
+		that cases you would get the in-between related events such as the pointer
+		enter/leave events on its way to the destination window.
+		@param pass_through a boolean
+		~#
+		method : public : SetPassThrough(pass_through : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(pass_through ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_pass_through", array_args);
+		}
+
+		#~
+		When using GTK+, typically you should use gtk_window_set_role() instead
+		of this low-level function.
+		
+		The window manager and session manager use a window&#x2019;s role to
+		distinguish it from other kinds of window in the same application.
+		When an application is restarted after being saved in a previous
+		session, all windows with the same title and role are treated as
+		interchangeable.  So if you have two windows with the same title
+		that should be distinguished for session management purposes, you
+		should set the role on those windows. It doesn&#x2019;t matter what string
+		you use for the role, as long as you have a different role for each
+		non-interchangeable kind of window.
+		@param role a string indicating its role
+		~#
+		method : public : SetRole(role : String) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := role;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_role", array_args);
+		}
+
+		#~
+		Newer GTK+ windows using client-side decorations use extra geometry
+		around their frames for effects like shadows and invisible borders.
+		Window managers that want to maximize windows or snap to edges need
+		to know where the extents of the actual frame lie, so that users
+		don&#x2019;t feel like windows are snapping against random invisible edges.
+		
+		Note that this property is automatically updated by GTK+, so this
+		function should only be used by applications which do not use GTK+
+		to create toplevel windows.
+		@param left The left extent
+		@param right The right extent
+		@param top The top extent
+		@param bottom The bottom extent
+		~#
+		method : public : SetShadowWidth(left : Int, right : Int, top : Int, bottom : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(left);
+			array_args[3] := IntRef->New(right);
+			array_args[4] := IntRef->New(top);
+			array_args[5] := IntRef->New(bottom);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_shadow_width", array_args);
+		}
+
+		#~
+		Toggles whether a window should appear in a pager (workspace
+		switcher, or other desktop utility program that displays a small
+		thumbnail representation of the windows on the desktop). If a
+		window&#x2019;s semantic type as specified with gdk_window_set_type_hint()
+		already fully describes the window, this function should
+		not be called in addition, instead you should
+		allow the window to be treated according to standard policy for
+		its semantic type.
+		@param skips_pager %TRUE to skip the pager
+		~#
+		method : public : SetSkipPagerHint(skips_pager : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(skips_pager ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_skip_pager_hint", array_args);
+		}
+
+		#~
+		Toggles whether a window should appear in a task list or window
+		list. If a window&#x2019;s semantic type as specified with
+		gdk_window_set_type_hint() already fully describes the window, this
+		function should not be called in addition,
+		instead you should allow the window to be treated according to
+		standard policy for its semantic type.
+		@param skips_taskbar %TRUE to skip the taskbar
+		~#
+		method : public : SetSkipTaskbarHint(skips_taskbar : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(skips_taskbar ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_skip_taskbar_hint", array_args);
+		}
+
+		#~
+		Sets the event mask for any floating device (i.e. not attached to any
+		visible pointer) that has the source defined as @source. This event
+		mask will be applied both to currently existing, newly added devices
+		after this call, and devices being attached/detached.
+		@param source a #GdkInputSource to define the source class.
+		@param event_mask event mask for @window
+		~#
+		method : public : SetSourceEvents(source : InputSource, event_mask : EventMask) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(source);
+			array_args[3] := IntRef->New(event_mask);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_source_events", array_args);
+		}
+
+		#~
+		When using GTK+, typically you should use gtk_window_set_startup_id()
+		instead of this low-level function.
+		@param startup_id a string with startup-notification identifier
+		~#
+		method : public : SetStartupId(startup_id : String) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := startup_id;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_startup_id", array_args);
+		}
+
+		#~
+		This function will enable multidevice features in @window.
+		
+		Multidevice aware windows will need to handle properly multiple,
+		per device enter/leave events, device grabs and grab ownerships.
+		@param support_multidevice %TRUE to enable multidevice support in @window.
+		~#
+		method : public : SetSupportMultidevice(support_multidevice : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(support_multidevice ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_support_multidevice", array_args);
+		}
+
+		#~
+		Sets the title of a toplevel window, to be displayed in the titlebar.
+		If you haven&#x2019;t explicitly set the icon name for the window
+		(using gdk_window_set_icon_name()), the icon name will be set to
+		@title as well. @title must be in UTF-8 encoding (as with all
+		user-readable strings in GDK/GTK+). @title may not be %NULL.
+		@param title title of @window
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := title;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_title", array_args);
+		}
+
+		#~
+		Indicates to the window manager that @window is a transient dialog
+		associated with the application window @parent. This allows the
+		window manager to do things like center @window on @parent and
+		keep @window above @parent.
+		
+		See gtk_window_set_transient_for() if you&#x2019;re using #GtkWindow or
+		#GtkDialog.
+		@param parent another toplevel #GdkWindow
+		~#
+		method : public : SetTransientFor(parent : Window) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := parent;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_transient_for", array_args);
+		}
+
+		#~
+		The application can use this call to provide a hint to the window
+		manager about the functionality of a window. The window manager
+		can use this information when determining the decoration and behaviour
+		of the window.
+		
+		The hint must be set before the window is mapped.
+		@param hint A hint of the function this window will have
+		~#
+		method : public : SetTypeHint(hint : WindowTypeHint) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(hint);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_type_hint", array_args);
+		}
+
+		#~
+		Toggles whether a window needs the user's
+		urgent attention.
+		@param urgent %TRUE if the window is urgent
+		~#
+		method : public : SetUrgencyHint(urgent : Bool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(urgent ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_set_urgency_hint", array_args);
+		}
+
+		#~
+		Like gdk_window_show_unraised(), but also raises the window to the
+		top of the window stack (moves the window to the front of the
+		Z-order).
+		
+		This function maps a window so it&#x2019;s visible onscreen. Its opposite
+		is gdk_window_hide().
+		
+		When implementing a #GtkWidget, you should call this function on the widget's
+		#GdkWindow as part of the &#x201C;map&#x201D; method.
+		~#
+		method : public : Show() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_show", array_args);
+		}
+
+		#~
+		Shows a #GdkWindow onscreen, but does not modify its stacking
+		order. In contrast, gdk_window_show() will raise the window
+		to the top of the window stack.
+		
+		On the X11 platform, in Xlib terms, this function calls
+		XMapWindow() (it also updates some internal GDK state, which means
+		that you can&#x2019;t really use XMapWindow() directly on a GDK window).
+		~#
+		method : public : ShowUnraised() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_show_unraised", array_args);
+		}
+
+		#~
+		Asks the windowing system to show the window menu. The window menu
+		is the menu shown when right-clicking the titlebar on traditional
+		windows managed by the window manager. This is useful for windows
+		using client-side decorations, activating it with a right-click
+		on the window decorations.
+		@param event a #GdkEvent to show the menu for
+		@return %TRUE if the window menu was shown and %FALSE otherwise.
+		~#
+		method : public : ShowWindowMenu(event : Event) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := event;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_show_window_menu", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		&#x201C;Pins&#x201D; a window such that it&#x2019;s on all workspaces and does not scroll
+		with viewports, for window managers that have scrollable viewports.
+		(When using #GtkWindow, gtk_window_stick() may be more useful.)
+		
+		On the X11 platform, this function depends on window manager
+		support, so may have no effect with many window managers. However,
+		GDK will do the best it can to convince the window manager to stick
+		the window. For window managers that don&#x2019;t support this operation,
+		there&#x2019;s nothing you can do to force it to happen.
+		~#
+		method : public : Stick() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_stick", array_args);
+		}
+
+		#~
+		Thaws a window frozen with gdk_window_freeze_updates().
+		~#
+		method : public : ThawUpdates() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_thaw_updates", array_args);
+		}
+
+		#~
+		Moves the window out of fullscreen mode. If the window was not
+		fullscreen, does nothing.
+		
+		On X11, asks the window manager to move @window out of the fullscreen
+		state, if the window manager supports this operation. Not all
+		window managers support this, and some deliberately ignore it or
+		don&#x2019;t have a concept of &#x201C;fullscreen&#x201D;; so you can&#x2019;t rely on the
+		unfullscreenification actually happening. But it will happen with
+		most standard window managers, and GDK makes a best effort to get
+		it to happen.
+		~#
+		method : public : Unfullscreen() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_unfullscreen", array_args);
+		}
+
+		#~
+		Unmaximizes the window. If the window wasn&#x2019;t maximized, then this
+		function does nothing.
+		
+		On X11, asks the window manager to unmaximize @window, if the
+		window manager supports this operation. Not all window managers
+		support this, and some deliberately ignore it or don&#x2019;t have a
+		concept of &#x201C;maximized&#x201D;; so you can&#x2019;t rely on the unmaximization
+		actually happening. But it will happen with most standard window
+		managers, and GDK makes a best effort to get it to happen.
+		
+		On Windows, reliably unmaximizes the window.
+		~#
+		method : public : Unmaximize() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_unmaximize", array_args);
+		}
+
+		#~
+		Reverse operation for gdk_window_stick(); see gdk_window_stick(),
+		and gtk_window_unstick().
+		~#
+		method : public : Unstick() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_unstick", array_args);
+		}
+
+		#~
+		Withdraws a window (unmaps it and asks the window manager to forget about it).
+		This function is not really useful as gdk_window_hide() automatically
+		withdraws toplevel windows before hiding them.
+		~#
+		method : public : Withdraw() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_withdraw", array_args);
+		}
+		#~
+		Constrains a desired width and height according to a
+		set of geometry hints (such as minimum and maximum size).
+		@param geometry a #GdkGeometry structure
+		@param flags a mask indicating what portions of @geometry are set
+		@param width desired width of window
+		@param height desired height of the window
+		@param new_width location to store resulting width
+		@param new_height location to store resulting height
+		~#
+		function : ConstrainSize(geometry : Geometry, flags : WindowHints, width : Int, height : Int, new_width : Int, new_height : Int) ~ Nil {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := geometry;
+			array_args[2] := IntRef->New(flags);
+			array_args[3] := IntRef->New(width);
+			array_args[4] := IntRef->New(height);
+			array_args[5] := IntRef->New(new_width);
+			array_args[6] := IntRef->New(new_height);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_constrain_size", array_args);
+		}
+	}
+	#~
+	A #GdkColor is used to describe a color,
+	similar to the XColor struct used in the X11 drawing API.
+	~#
+	class Color {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetPixel() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_pixel", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetPixel(pixel : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(pixel);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_pixel", array_args);
+		}
+
+
+		method : public : GetRed() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_red", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetRed(red : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(red);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_red", array_args);
+		}
+
+
+		method : public : GetGreen() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_green", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetGreen(green : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(green);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_green", array_args);
+		}
+
+
+		method : public : GetBlue() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_blue", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetBlue(blue : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(blue);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_blue", array_args);
+		}
+	}
+
+	#~
+	A #GdkRGBA is used to represent a (possibly translucent)
+	color, in a way that is compatible with cairo&#x2019;s notion of color.
+	~#
+	class RGBA {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetRed() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_red", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetRed(red : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(red);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_red", array_args);
+		}
+
+
+		method : public : GetGreen() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_green", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetGreen(green : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(green);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_green", array_args);
+		}
+
+
+		method : public : GetBlue() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_blue", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetBlue(blue : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(blue);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_blue", array_args);
+		}
+
+
+		method : public : GetAlpha() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_alpha", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetAlpha(alpha : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(alpha);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_alpha", array_args);
+		}
+
+
+		#~
+		Makes a copy of a #GdkRGBA.
+		
+		The result must be freed through gdk_rgba_free().
+		@return A newly allocated #GdkRGBA, with the same contents as @rgba
+		~#
+		method : public : Copy() ~ RGBA {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_copy", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return RGBA->New(value->Get());
+		}
+
+		#~
+		Compares two RGBA colors.
+		@param p2 another #GdkRGBA pointer
+		@return %TRUE if the two colors compare equal
+		~#
+		method : public : Equal(p2 : RGBA) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := p2;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_equal", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Frees a #GdkRGBA created with gdk_rgba_copy()
+		~#
+		method : public : Free() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_free", array_args);
+		}
+
+		#~
+		A hash function suitable for using for a hash
+		table that stores #GdkRGBAs.
+		@return The hash value for @p
+		~#
+		method : public : Hash() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_hash", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Parses a textual representation of a color, filling in
+		the @red, @green, @blue and @alpha fields of the @rgba #GdkRGBA.
+		
+		The string can be either one of:
+		- A standard name (Taken from the X11 rgb.txt file).
+		- A hexadecimal value in the form &#x201C;\#rgb&#x201D;, &#x201C;\#rrggbb&#x201D;,
+		  &#x201C;\#rrrgggbbb&#x201D; or &#x201D;\#rrrrggggbbbb&#x201D;
+		- A RGB color in the form &#x201C;rgb(r,g,b)&#x201D; (In this case the color will
+		  have full opacity)
+		- A RGBA color in the form &#x201C;rgba(r,g,b,a)&#x201D;
+		
+		Where &#x201C;r&#x201D;, &#x201C;g&#x201D;, &#x201C;b&#x201D; and &#x201C;a&#x201D; are respectively the red, green, blue and
+		alpha color values. In the last two cases, &#x201C;r&#x201D;, &#x201C;g&#x201D;, and &#x201C;b&#x201D; are either integers
+		in the range 0 to 255 or percentage values in the range 0% to 100%, and
+		a is a floating point value in the range 0 to 1.
+		@param spec the string specifying the color
+		@return %TRUE if the parsing succeeded
+		~#
+		method : public : Parse(spec : String) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := spec;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_parse", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns a textual specification of @rgba in the form
+		`rgb(r,g,b)` or
+		`rgba(r g,b,a)`,
+		where &#x201C;r&#x201D;, &#x201C;g&#x201D;, &#x201C;b&#x201D; and &#x201C;a&#x201D; represent the red, green,
+		blue and alpha values respectively. &#x201C;r&#x201D;, &#x201C;g&#x201D;, and &#x201C;b&#x201D; are
+		represented as integers in the range 0 to 255, and &#x201C;a&#x201D;
+		is represented as a floating point value in the range 0 to 1.
+		
+		These string forms are string forms that are supported by
+		the CSS3 colors module, and can be parsed by gdk_rgba_parse().
+		
+		Note that this string representation may lose some
+		precision, since &#x201C;r&#x201D;, &#x201C;g&#x201D; and &#x201C;b&#x201D; are represented as 8-bit
+		integers. If this is a concern, you should use a
+		different representation.
+		@return A newly allocated text string
+		~#
+		method : public : ToString() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_to_string", array_args);
+	
+			return array_args[0]->As(String);
+		}	}
+
+	#~
+	Defines the position and size of a rectangle. It is identical to
+	#cairo_rectangle_int_t.
+	~#
+	class Rectangle {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetX() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_x", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_y", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_y", array_args);
+		}
+
+
+		method : public : GetWidth() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_width", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetWidth(width : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(width);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_width", array_args);
+		}
+
+
+		method : public : GetHeight() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_get_height", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetHeight(height : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(height);
+	
+			Proxy->GetDllProxy()->CallFunction("gobject_set_height", array_args);
+		}
+
+
+		#~
+		Checks if the two given rectangles are equal.
+		@param rect2 a #GdkRectangle
+		@return %TRUE if the rectangles are equal.
+		~#
+		method : public : Equal(rect2 : Rectangle) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := rect2;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rectangle_equal", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Calculates the intersection of two rectangles. It is allowed for
+		@dest to be the same as either @src1 or @src2. If the rectangles
+		do not intersect, @dest&#x2019;s width and height is set to 0 and its x
+		and y values are undefined. If you are only interested in whether
+		the rectangles intersect, but not in the intersecting area itself,
+		pass %NULL for @dest.
+		@param src2 a #GdkRectangle
+		@param dest return location for the
+		intersection of @src1 and @src2, or %NULL
+		@return %TRUE if the rectangles intersect.
+		~#
+		method : public : Intersect(src2 : Rectangle, dest : Rectangle) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := src2;
+			array_args[3] := dest;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rectangle_intersect", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Calculates the union of two rectangles.
+		The union of rectangles @src1 and @src2 is the smallest rectangle which
+		includes both @src1 and @src2 within it.
+		It is allowed for @dest to be the same as either @src1 or @src2.
+		
+		Note that this function does not ignore 'empty' rectangles (ie. with
+		zero width or height).
+		@param src2 a #GdkRectangle
+		@param dest return location for the union of @src1 and @src2
+		~#
+		method : public : Union(src2 : Rectangle, dest : Rectangle) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := src2;
+			array_args[3] := dest;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rectangle_union", array_args);
+		}	}
+
+
+	#
+	# Missing classes/records
+	#
+	class AppLaunchContext {
+		New(gobject : Int) {
+		}
+	}
+
+	class Atom {
+		New(gobject : Int) {
+		}
+	}
+
+	class DrawingContext {
+		New(gobject : Int) {
+		}
+	}
+
+	class Event {
+		New(gobject : Int) {
+		}
+	}
+
+	class FrameClock {
+		New(gobject : Int) {
+		}
+	}
+
+	class GLContext {
+		New(gobject : Int) {
+		}
+	}
+
+	class Geometry {
+		New(gobject : Int) {
+		}
+	}
+
+	class Seat {
+		New(gobject : Int) {
+		}
+	}
+
+	class Visual {
+		New(gobject : Int) {
+		}
+	}
+
+	class WindowAttr {
+		New(gobject : Int) {
+		}
+	}
+}

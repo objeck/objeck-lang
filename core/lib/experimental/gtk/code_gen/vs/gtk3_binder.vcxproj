@@ -19,10 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\gens\gtk3_binder.cpp" />
+    <ClCompile Include="..\working\gtk3_binder.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\gens\gtk3_binder.h" />
+    <ClInclude Include="..\working\gtk3_binder.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{202D9657-DFF5-45E9-A8E5-9968EEB2DB86}</ProjectGuid>
@@ -85,7 +85,7 @@
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\win\include\gtk-3.0;..\..\win\include\harfbuzz;..\..\win\include\gio-win32-2.0;..\..\win\include\gtk-3.0;..\..\win\include\pango-1.0;..\..\win\include\cairo;..\..\win\include\gdk-pixbuf-2.0;..\..\win\include\atk-1.0;..\..\win\include\glib-2.0;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\zlib\win;..\..\..\..\openssl\win\include;..\..\win\include\gtk-3.0;..\..\win\include\harfbuzz;..\..\win\include\gio-win32-2.0;..\..\win\include\pango-1.0;..\..\win\include\cairo;..\..\win\include\gdk-pixbuf-2.0;..\..\win\include\atk-1.0;..\..\win\include\glib-2.0;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\win\lib;$(LibraryPath)</LibraryPath>
     <TargetName>$(ProjectName)</TargetName>
     <OutDir>$(ProjectDir)$(Configuration)\$(Platform)\</OutDir>

@@ -53,4 +53,4 @@ TBD
 
 ## Code Generation
 
-Sample output [C++](code_gen/gens/cxx_code.txt) and [Objeck](code_gen/gens/objk_code.txt)
+Sample output [C++](code_gen/working/gtk3_binder.cpp) and [Objeck](code_gen/working/gtk3_binder.obs)
