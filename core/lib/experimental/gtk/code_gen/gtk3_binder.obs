@@ -403,7 +403,16 @@ class Gtk3Binder {
 					}
 					else {
 						objk_buffer += "\t\t\tarray_args := Base->New[1];\n\n";
-						objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+
+						if(return_type_name->Equals("Float")) {
+							objk_buffer += "\t\n\t\t\tarray_args[0] := FloatRef->New();\n";
+						}
+						else if(return_type_name->Equals("String")) {
+							objk_buffer += "\t\n\t\t\tarray_args[0] := Nil;\n";
+						}
+						else {
+							objk_buffer += "\t\n\t\t\tarray_args[0] := IntRef->New();\n";
+						};
 						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
 						cxx_params_buffer += "\t\t{$identifier_name}();\n";
@@ -707,6 +716,9 @@ class Gtk3Binder {
 				if(type_name->Equals("Float")) {
 					objk_buffer += "\t\n\t\t\tarray_args[0] := FloatRef->New();\n";
 				}
+				else if(type_name->Equals("String")) {
+					objk_buffer += "\t\n\t\t\tarray_args[0] := Nil;\n";
+				}
 				else {
 					objk_buffer += "\t\n\t\t\tarray_args[0] := IntRef->New();\n";
 				};
@@ -936,8 +948,9 @@ class Gtk3Binder {
 	}
 
 	function : WriteMissingClass(class_name : String, objk_buffer : String) ~ Nil {
-		objk_buffer += "\n\tclass {$class_name} {\n"
+		objk_buffer += "\n\tclass {$class_name} from GObject {\n"
 		objk_buffer += "\t\tNew(gobject : Int) {\n"
+		objk_buffer += "\t\t\tParent();\n"
 		objk_buffer += "\t\t}\n"
 		objk_buffer += "\t}\n"
 	}

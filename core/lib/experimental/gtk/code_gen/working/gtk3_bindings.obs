@@ -4954,7 +4954,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_pixel", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_get_pixel", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4966,7 +4966,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(pixel);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_pixel", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_set_pixel", array_args);
 		}
 
 
@@ -4976,7 +4976,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_red", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_get_red", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4988,7 +4988,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(red);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_red", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_set_red", array_args);
 		}
 
 
@@ -4998,7 +4998,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_green", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_get_green", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5010,7 +5010,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(green);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_green", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_set_green", array_args);
 		}
 
 
@@ -5020,7 +5020,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_blue", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_get_blue", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5032,7 +5032,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(blue);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_blue", array_args);
+			Proxy->GetDllProxy()->CallFunction("color_set_blue", array_args);
 		}
 	}
 
@@ -5056,7 +5056,7 @@ bundle Gtk3 {
 			array_args[0] := FloatRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_red", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_get_red", array_args);
 	
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -5068,7 +5068,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := FloatRef->New(red);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_red", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_set_red", array_args);
 		}
 
 
@@ -5078,7 +5078,7 @@ bundle Gtk3 {
 			array_args[0] := FloatRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_green", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_get_green", array_args);
 	
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -5090,7 +5090,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := FloatRef->New(green);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_green", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_set_green", array_args);
 		}
 
 
@@ -5100,7 +5100,7 @@ bundle Gtk3 {
 			array_args[0] := FloatRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_blue", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_get_blue", array_args);
 	
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -5112,7 +5112,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := FloatRef->New(blue);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_blue", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_set_blue", array_args);
 		}
 
 
@@ -5122,7 +5122,7 @@ bundle Gtk3 {
 			array_args[0] := FloatRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_alpha", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_get_alpha", array_args);
 	
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -5134,7 +5134,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := FloatRef->New(alpha);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_alpha", array_args);
+			Proxy->GetDllProxy()->CallFunction("rgba_set_alpha", array_args);
 		}
 
 
@@ -5284,7 +5284,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_x", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_get_x", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5296,7 +5296,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(x);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_x", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_set_x", array_args);
 		}
 
 
@@ -5306,7 +5306,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_y", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_get_y", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5318,7 +5318,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(y);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_y", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_set_y", array_args);
 		}
 
 
@@ -5328,7 +5328,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_width", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_get_width", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5340,7 +5340,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(width);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_width", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_set_width", array_args);
 		}
 
 
@@ -5350,7 +5350,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_get_height", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_get_height", array_args);
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5362,7 +5362,7 @@ bundle Gtk3 {
 			array_args[0] := IntRef->New(@gobject);
 			array_args[1] := IntRef->New(height);
 	
-			Proxy->GetDllProxy()->CallFunction("gobject_set_height", array_args);
+			Proxy->GetDllProxy()->CallFunction("rectangle_set_height", array_args);
 		}
 
 
@@ -5436,8 +5436,9 @@ bundle Gtk3 {
 	#
 	# Missing classes/records
 	#
-	class AppLaunchContext {
+	class AppLaunchContext from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
@@ -5447,43 +5448,51 @@ bundle Gtk3 {
 		}
 	}
 
-	class DrawingContext {
+	class DrawingContext from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class Event {
+	class Event from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class FrameClock {
+	class FrameClock from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class GLContext {
+	class GLContext from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class Geometry {
+	class Geometry from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class Seat {
+	class Seat from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class Visual {
+	class Visual from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
-	class WindowAttr {
+	class WindowAttr from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 }

@@ -39,7 +39,11 @@ bundle Gtk3 {
 		New(gobject : Int) {
 			@gobject := gobject;
 		}
-
+		
+		method : public : GetRef() ~ Int {
+			return @gobject;
+		}
+		
 		method : public : SignalConnect(detailed_signal : String, handler : (GObject, Base) ~ Nil, data : Base) ~ Nil {
 			array_args := Base->New[4];
 
