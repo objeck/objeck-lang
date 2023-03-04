@@ -546,7 +546,7 @@ class Gtk3Binder {
 		objk_buffer += ')';
 	}
 
-	method : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constr : Bool, is_func : Bool) ~ Int {
+	method : native : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constr : Bool, is_func : Bool) ~ Int {
 		if(params_xml <> Nil) {
 			index := 1;
 			if(is_constr) {
@@ -874,7 +874,7 @@ class Gtk3Binder {
 		};
 	}
 
-	method : CanEmitMethod(params_xml : XmlElement, return_xml : XmlElement, is_constr : Bool) ~ Bool {
+	method : native : CanEmitMethod(params_xml : XmlElement, return_xml : XmlElement, is_constr : Bool) ~ Bool {
 		if(params_xml <> Nil) {
 			each(param_xml := params_xml) {
 				param_name := param_xml->GetName();
