@@ -1,6 +1,6 @@
 @echo off
 
-del gens\*.obl gens\*.obs gens\*.cpp gens\*.txt
+del *.obe gens\*.obl gens\*.txt
 
 obc -src gtk3_codegen.obs -lib xml
 
