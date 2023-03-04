@@ -793,30 +793,30 @@ class Gtk3Binder {
 				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 				objk_buffer += "\t\t\treturn value->Get();\n";
 
-				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, obj.{$name});\n";
+				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, obj->{$name});\n";
 			}
 			else if(type->Equals("Bool")) {
 				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 				objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
 
-				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, obj.{$name} ? 1 : 0);\n";
+				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, obj->{$name} ? 1 : 0);\n";
 			}
 			else if(type->Equals("Float")) {
 				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
 				objk_buffer += "\t\t\treturn value->Get();\n";
 
-				cxx_buffer += "\t\tAPITools_SetFloatValue(context, 0, obj.{$name});\n";
+				cxx_buffer += "\t\tAPITools_SetFloatValue(context, 0, obj->{$name});\n";
 			}
 			else if(type->Equals("String")) {
 				objk_buffer += "\t\n\t\t\treturn array_args[0]->As(String);\n";
 
-				cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, obj.{$name});\n";
+				cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, obj->{$name});\n";
 			}
 			else {
 				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 				objk_buffer += "\t\t\treturn {$@class_name}->New(value->Get());\n";
 
-				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)obj.{$name});\n";
+				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)obj->{$name});\n";
 			};
 
 			objk_buffer += "\t\t}\n\n";
@@ -834,32 +834,32 @@ class Gtk3Binder {
 			cxx_buffer += "\t__declspec(dllexport)\n";
 			cxx_buffer += "#endif\n";
 			cxx_buffer += "\tvoid {$c_call_name}(VMContext& context) {\n";
-			cxx_buffer += "\t\tconst {$@namespace}{$@class_name}* obj = ({$@namespace}{$@class_name}*)APITools_GetIntValue(context, 0);\n";
+			cxx_buffer += "\t\t{$@namespace}{$@class_name}* obj = ({$@namespace}{$@class_name}*)APITools_GetIntValue(context, 0);\n";
 
 			# set value
 			if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int")) {
 				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
 
 				cxx_buffer += "\t\tconst auto value = APITools_GetIntValue(context, 1);\n";
-				cxx_buffer += "\t\tobj.{$name} = value;\n";
+				cxx_buffer += "\t\tobj->{$name} = value;\n";
 			}
 			else if(type->Equals("Bool")) {
 				objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name} ? 1 : 0);\n";
 
 				cxx_buffer += "\t\tconst auto value = APITools_GetIntValue(context, 1) ? true : false;\n";
-				cxx_buffer += "\t\tobj.{$name} = value;\n";
+				cxx_buffer += "\t\tobj->{$name} = value;\n";
 			}
 			else if(type->Equals("Float")) {
 				objk_buffer += "\t\t\tarray_args[1] := FloatRef->New({$name});\n";
 
 				cxx_buffer += "\t\tconst auto value = APITools_GetFloatValue(context, 1);\n";
-				cxx_buffer += "\t\tobj.{$name} = value;\n";
+				cxx_buffer += "\t\tobj->{$name} = value;\n";
 			}
 			else {
 				objk_buffer += "\t\t\tarray_args[1] := {$name};\n";
 
 				cxx_buffer += "\t\tconst size_t* value_obj = APITools_GetObjectValue(context, 1);\n";
-				cxx_buffer += "\t\tobj.{$name} = ({$type})value_obj[0];\n";
+				cxx_buffer += "\t\tobj->{$name} = ({$type})value_obj[0];\n";
 			};
 
 			c_call_name := "{$class_ref}_set_{$method_case_name}"->ToLower();
