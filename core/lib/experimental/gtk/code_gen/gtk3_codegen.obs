@@ -15,6 +15,7 @@ class Gtk3Binder {
 	@static_content : Map<String, String>;
 	@settings : MultiMap<String, String>;
 	@keywords : Set<String>;
+	@enums_consts : Set<String>;
 	@emit_classes : Vector<String>;
 
 	function : Main(args : String[]) ~ Nil {
@@ -68,6 +69,7 @@ class Gtk3Binder {
 
 		@consts_set := Set->New()<String>;
 		@missing_defs := Set->New()<String>;
+		@enums_consts := Set->New()<String>;
 
 		# configuration 
 		@objk_out := FileWriter->New("gens/objk_code.txt");
@@ -207,6 +209,8 @@ class Gtk3Binder {
 
 		each(enum_xml := enums_xml) {
 			enum_name := enum_xml->GetAttribute("name")->GetValue();
+			@enums_consts->Insert(enum_name);
+
 			@consts_set->Insert(enum_name);
 
 			if(@is_debug) {
@@ -698,7 +702,12 @@ class Gtk3Binder {
 							objk_buffer += "\t\t\t@gobject := value->Get();\n";
 						}
 						else {
-							objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
+							if(@enums_consts->Has(type_name)) {
+								objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
+							}
+							else {
+								objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
+							};
 						}
 
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
@@ -817,7 +826,12 @@ class Gtk3Binder {
 			}
 			else {
 				objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-				objk_buffer += "\t\t\treturn {$@class_name}->New(value->Get());\n";
+				if(@enums_consts->Has(type)) {
+					objk_buffer += "\t\t\treturn value->Get()->As({$type});\n";
+				}
+				else {
+					objk_buffer += "\t\t\treturn {$type}->New(value->Get());\n";
+				};
 
 				cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)obj->{$name});\n";
 			};
