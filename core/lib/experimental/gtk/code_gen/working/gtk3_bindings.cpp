@@ -2394,23 +2394,71 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_pixel(VMContext& context) {
-}
+	void color_get_pixel(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.pixel);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_red(VMContext& context) {
-}
+	void color_set_pixel(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.pixel = value;
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_green(VMContext& context) {
-}
+	void color_get_red(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.red);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_blue(VMContext& context) {
-}
+	void color_set_red(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.red = value;
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void color_get_green(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.green);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void color_set_green(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.green = value;
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void color_get_blue(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.blue);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void color_set_blue(VMContext& context) {
+		const GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.blue = value;
+	}
+
 
 	//
 	// RGBA
@@ -2418,23 +2466,71 @@ void gobject_get_blue(VMContext& context) {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_red(VMContext& context) {
-}
+	void rgba_get_red(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 1);
+		APITools_SetFloatValue(context, 0, obj.red);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_green(VMContext& context) {
-}
+	void rgba_set_red(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetFloatValue(context, 1);
+		obj.red = value;
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_blue(VMContext& context) {
-}
+	void rgba_get_green(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 1);
+		APITools_SetFloatValue(context, 0, obj.green);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_alpha(VMContext& context) {
-}
+	void rgba_set_green(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetFloatValue(context, 1);
+		obj.green = value;
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rgba_get_blue(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 1);
+		APITools_SetFloatValue(context, 0, obj.blue);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rgba_set_blue(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetFloatValue(context, 1);
+		obj.blue = value;
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rgba_get_alpha(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 1);
+		APITools_SetFloatValue(context, 0, obj.alpha);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rgba_set_alpha(VMContext& context) {
+		const GdkRGBA* obj = (GdkRGBA*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetFloatValue(context, 1);
+		obj.alpha = value;
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
@@ -2509,23 +2605,71 @@ void gobject_get_alpha(VMContext& context) {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_x(VMContext& context) {
-}
+	void rectangle_get_x(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.x);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_y(VMContext& context) {
-}
+	void rectangle_set_x(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.x = value;
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_width(VMContext& context) {
-}
+	void rectangle_get_y(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.y);
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-void gobject_get_height(VMContext& context) {
-}
+	void rectangle_set_y(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.y = value;
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rectangle_get_width(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.width);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rectangle_set_width(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.width = value;
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rectangle_get_height(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 1);
+		APITools_SetIntValue(context, 0, obj.height);
+	}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void rectangle_set_height(VMContext& context) {
+		const GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
+		const auto value = APITools_GetIntValue(context, 1);
+		obj.height = value;
+	}
+
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
