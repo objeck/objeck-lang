@@ -2648,15 +2648,15 @@ bundle Gtk3 {
 		@param x return location for X coordinate in child’s coordinate system
 		@param y return location for Y coordinate in child’s coordinate system
 		~#
-		method : public : CoordsFromParent(parent_x : Float, parent_y : Float, x : Float, y : Float) ~ Nil {
+		method : public : CoordsFromParent(parent_x : Float, parent_y : Float, x : FloatRef, y : FloatRef) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := FloatRef->New(parent_x);
 			array_args[3] := FloatRef->New(parent_y);
-			array_args[4] := FloatRef->New(x);
-			array_args[5] := FloatRef->New(y);
+			array_args[4] := x;
+			array_args[5] := y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_coords_from_parent", array_args);
 		}
@@ -2685,15 +2685,15 @@ bundle Gtk3 {
 		@param parent_y return location for Y coordinate
 		in parent’s coordinate system, or %NULL
 		~#
-		method : public : CoordsToParent(x : Float, y : Float, parent_x : Float, parent_y : Float) ~ Nil {
+		method : public : CoordsToParent(x : Float, y : Float, parent_x : FloatRef, parent_y : FloatRef) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := FloatRef->New(x);
 			array_args[3] := FloatRef->New(y);
-			array_args[4] := FloatRef->New(parent_x);
-			array_args[5] := FloatRef->New(parent_y);
+			array_args[4] := parent_x;
+			array_args[5] := parent_y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_coords_to_parent", array_args);
 		}
@@ -2755,15 +2755,6 @@ bundle Gtk3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_destroy", array_args);
 		}
 
-		method : public : DestroyNotify() ~ Nil {
-			array_args := Base->New[2];
-
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@gobject);
-	
-			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_destroy_notify", array_args);
-		}
-
 		#~
 		Indicates that the drawing of the contents of @window started with
 		gdk_window_begin_frame() has been completed.
@@ -2782,25 +2773,6 @@ bundle Gtk3 {
 			array_args[2] := context;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_end_draw_frame", array_args);
-		}
-
-		#~
-		Indicates that the backing store created by the most recent call
-		to gdk_window_begin_paint_region() should be copied onscreen and
-		deleted, leaving the next-most-recent backing store or no backing
-		store at all as the active paint region. See
-		gdk_window_begin_paint_region() for full details.
-		
-		It is an error to call this function without a matching
-		gdk_window_begin_paint_region() first.
-		~#
-		method : public : EndPaint() ~ Nil {
-			array_args := Base->New[2];
-
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@gobject);
-	
-			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_end_paint", array_args);
 		}
 
 		#~
@@ -2955,12 +2927,12 @@ bundle Gtk3 {
 		@param decorations The window decorations will be written here
 		@return %TRUE if the window has decorations set, %FALSE otherwise.
 		~#
-		method : public : GetDecorations(decorations : WMDecoration) ~ Bool {
+		method : public : GetDecorations(decorations : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(decorations);
+			array_args[2] := decorations;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_decorations", array_args);
 	
@@ -3024,15 +2996,15 @@ bundle Gtk3 {
 		(as with gdk_device_get_window_at_position()), or %NULL if the
 		window is not known to GDK.
 		~#
-		method : public : GetDevicePosition(device : Device, x : Int, y : Int, mask : ModifierType) ~ Window {
+		method : public : GetDevicePosition(device : Device, x : IntRef, y : IntRef, mask : IntRef) ~ Window {
 			array_args := Base->New[6];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
-			array_args[3] := IntRef->New(x);
-			array_args[4] := IntRef->New(y);
-			array_args[5] := IntRef->New(mask);
+			array_args[3] := x;
+			array_args[4] := y;
+			array_args[5] := mask;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position", array_args);
 	
@@ -3052,15 +3024,15 @@ bundle Gtk3 {
 		(as with gdk_device_get_window_at_position()), or %NULL if the
 		window is not known to GDK.
 		~#
-		method : public : GetDevicePositionDouble(device : Device, x : Float, y : Float, mask : ModifierType) ~ Window {
+		method : public : GetDevicePositionDouble(device : Device, x : FloatRef, y : FloatRef, mask : IntRef) ~ Window {
 			array_args := Base->New[6];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
-			array_args[3] := FloatRef->New(x);
-			array_args[4] := FloatRef->New(y);
-			array_args[5] := IntRef->New(mask);
+			array_args[3] := x;
+			array_args[4] := y;
+			array_args[5] := mask;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_device_position_double", array_args);
 	
@@ -3273,16 +3245,16 @@ bundle Gtk3 {
 		@param width return location for width of window
 		@param height return location for height of window
 		~#
-		method : public : GetGeometry(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+		method : public : GetGeometry(x : IntRef, y : IntRef, width : IntRef, height : IntRef) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(x);
-			array_args[3] := IntRef->New(y);
-			array_args[4] := IntRef->New(width);
-			array_args[5] := IntRef->New(height);
-	
+			array_args[2] := x;
+			array_args[3] := y;
+			array_args[4] := width;
+			array_args[5] := height;
+			
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_geometry", array_args);
 		}
 
@@ -3348,13 +3320,13 @@ bundle Gtk3 {
 		@param y return location for Y coordinate
 		@return not meaningful, ignore
 		~#
-		method : public : GetOrigin(x : Int, y : Int) ~ Int {
+		method : public : GetOrigin(x : IntRef, y : IntRef) ~ Int {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(x);
-			array_args[3] := IntRef->New(y);
+			array_args[2] := x;
+			array_args[3] := y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_origin", array_args);
 	
@@ -3417,13 +3389,13 @@ bundle Gtk3 {
 		@param x X coordinate of window
 		@param y Y coordinate of window
 		~#
-		method : public : GetPosition(x : Int, y : Int) ~ Nil {
+		method : public : GetPosition(x : IntRef, y : IntRef) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(x);
-			array_args[3] := IntRef->New(y);
+			array_args[2] := x;
+			array_args[3] := y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_position", array_args);
 		}
@@ -3438,16 +3410,16 @@ bundle Gtk3 {
 		@param root_x return location for X coordinate
 		@param root_y return location for Y coordinate
 		~#
-		method : public : GetRootCoords(x : Int, y : Int, root_x : Int, root_y : Int) ~ Nil {
+		method : public : GetRootCoords(x : Int, y : Int, root_x : IntRef, root_y : IntRef) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(x);
 			array_args[3] := IntRef->New(y);
-			array_args[4] := IntRef->New(root_x);
-			array_args[5] := IntRef->New(root_y);
-	
+			array_args[4] := root_x;
+			array_args[5] := root_y;
+			
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_coords", array_args);
 		}
 
@@ -3457,13 +3429,13 @@ bundle Gtk3 {
 		@param x return location for X position of window frame
 		@param y return location for Y position of window frame
 		~#
-		method : public : GetRootOrigin(x : Int, y : Int) ~ Nil {
+		method : public : GetRootOrigin(x : IntRef, y : IntRef) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(x);
-			array_args[3] := IntRef->New(y);
+			array_args[2] := x;
+			array_args[3] := y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_origin", array_args);
 		}
@@ -3603,21 +3575,6 @@ bundle Gtk3 {
 	
 			value := array_args[0]->As(IntRef);
 			return value->Get()->As(WindowTypeHint);
-		}
-
-		#~
-		Retrieves the user data for @window, which is normally the widget
-		that @window belongs to. See gdk_window_set_user_data().
-		@param data return location for user data
-		~#
-		method : public : GetUserData(data : Int) ~ Nil {
-			array_args := Base->New[3];
-
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(data);
-	
-			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_user_data", array_args);
 		}
 
 		#~
@@ -4963,7 +4920,7 @@ bundle Gtk3 {
 		@param new_width location to store resulting width
 		@param new_height location to store resulting height
 		~#
-		function : ConstrainSize(geometry : Geometry, flags : WindowHints, width : Int, height : Int, new_width : Int, new_height : Int) ~ Nil {
+		function : ConstrainSize(geometry : Geometry, flags : WindowHints, width : Int, height : Int, new_width : IntRef, new_height : IntRef) ~ Nil {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -4971,8 +4928,8 @@ bundle Gtk3 {
 			array_args[2] := IntRef->New(flags);
 			array_args[3] := IntRef->New(width);
 			array_args[4] := IntRef->New(height);
-			array_args[5] := IntRef->New(new_width);
-			array_args[6] := IntRef->New(new_height);
+			array_args[5] := new_width;
+			array_args[6] := new_height;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_constrain_size", array_args);
 		}
