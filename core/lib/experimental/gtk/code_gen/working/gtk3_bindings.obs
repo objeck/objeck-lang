@@ -736,7 +736,7 @@ bundle Gtk3 {
 		method : public : GetCursorType() ~ CursorType {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_get_cursor_type", array_args);
@@ -752,7 +752,7 @@ bundle Gtk3 {
 		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_get_display", array_args);
@@ -792,7 +792,7 @@ bundle Gtk3 {
 		method : public : GetAssociatedDevice() ~ Device {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_associated_device", array_args);
@@ -807,7 +807,7 @@ bundle Gtk3 {
 		method : public : GetAxes() ~ AxisFlags {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_axes", array_args);
@@ -824,7 +824,7 @@ bundle Gtk3 {
 		method : public : GetAxisUse(index_ : Int) ~ AxisUse {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(index_);
 	
@@ -841,7 +841,7 @@ bundle Gtk3 {
 		method : public : GetDeviceType() ~ DeviceType {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_device_type", array_args);
@@ -858,7 +858,7 @@ bundle Gtk3 {
 		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_display", array_args);
@@ -918,7 +918,7 @@ bundle Gtk3 {
 		method : public : GetLastEventWindow() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_last_event_window", array_args);
@@ -934,7 +934,7 @@ bundle Gtk3 {
 		method : public : GetMode() ~ InputMode {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_mode", array_args);
@@ -1059,7 +1059,7 @@ bundle Gtk3 {
 		method : public : GetSeat() ~ Seat {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_seat", array_args);
@@ -1075,7 +1075,7 @@ bundle Gtk3 {
 		method : public : GetSource() ~ InputSource {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_source", array_args);
@@ -1141,7 +1141,7 @@ bundle Gtk3 {
 		method : public : GetWindowAtPosition(win_x : IntRef, win_y : IntRef) ~ Window {
 			array_args := Base->New[4];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := win_x;
 			array_args[3] := win_y;
@@ -1170,7 +1170,7 @@ bundle Gtk3 {
 		method : public : GetWindowAtPositionDouble(win_x : Float, win_y : Float) ~ Window {
 			array_args := Base->New[4];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := FloatRef->New(win_x);
 			array_args[3] := FloatRef->New(win_y);
@@ -1400,7 +1400,7 @@ bundle Gtk3 {
 		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_manager_get_display", array_args);
@@ -1508,7 +1508,7 @@ bundle Gtk3 {
 		method : public : GetAppLaunchContext() ~ AppLaunchContext {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_app_launch_context", array_args);
@@ -1543,7 +1543,7 @@ bundle Gtk3 {
 		method : public : GetDefaultGroup() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_group", array_args);
@@ -1559,7 +1559,7 @@ bundle Gtk3 {
 		method : public : GetDefaultScreen() ~ Screen {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_screen", array_args);
@@ -1575,7 +1575,7 @@ bundle Gtk3 {
 		method : public : GetDefaultSeat() ~ Seat {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default_seat", array_args);
@@ -1594,7 +1594,7 @@ bundle Gtk3 {
 		method : public : GetEvent() ~ Event {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_event", array_args);
@@ -1628,7 +1628,7 @@ bundle Gtk3 {
 		method : public : GetMonitor(monitor_num : Int) ~ Monitor {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(monitor_num);
 	
@@ -1648,7 +1648,7 @@ bundle Gtk3 {
 		method : public : GetMonitorAtPoint(x : Int, y : Int) ~ Monitor {
 			array_args := Base->New[4];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(x);
 			array_args[3] := IntRef->New(y);
@@ -1669,7 +1669,7 @@ bundle Gtk3 {
 		method : public : GetMonitorAtWindow(window : Window) ~ Monitor {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := window;
 	
@@ -1727,7 +1727,7 @@ bundle Gtk3 {
 		method : public : GetPrimaryMonitor() ~ Monitor {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_primary_monitor", array_args);
@@ -1802,7 +1802,7 @@ bundle Gtk3 {
 		method : public : PeekEvent() ~ Event {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_peek_event", array_args);
@@ -2049,7 +2049,7 @@ bundle Gtk3 {
 		function : GetDefault() ~ Display {
 			array_args := Base->New[1];
 
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default", array_args);
 	
@@ -2066,7 +2066,7 @@ bundle Gtk3 {
 		function : Open(display_name : String) ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := display_name;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_open", array_args);
@@ -2100,7 +2100,7 @@ bundle Gtk3 {
 		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_display", array_args);
@@ -2225,7 +2225,7 @@ bundle Gtk3 {
 		method : public : GetSubpixelLayout() ~ SubpixelLayout {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_monitor_get_subpixel_layout", array_args);
@@ -2324,7 +2324,7 @@ bundle Gtk3 {
 		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_display", array_args);
@@ -2372,7 +2372,7 @@ bundle Gtk3 {
 		method : public : GetRgbaVisual() ~ Visual {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_rgba_visual", array_args);
@@ -2388,7 +2388,7 @@ bundle Gtk3 {
 		method : public : GetRootWindow() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_root_window", array_args);
@@ -2406,7 +2406,7 @@ bundle Gtk3 {
 		method : public : GetSystemVisual() ~ Visual {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_system_visual", array_args);
@@ -2463,7 +2463,7 @@ bundle Gtk3 {
 		function : GetDefault() ~ Screen {
 			array_args := Base->New[1];
 
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_default", array_args);
 	
@@ -2713,7 +2713,7 @@ bundle Gtk3 {
 		method : public : CreateGlContext() ~ GLContext {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_create_gl_context", array_args);
@@ -2940,7 +2940,7 @@ bundle Gtk3 {
 		method : public : GetCursor() ~ Cursor {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_cursor", array_args);
@@ -2982,7 +2982,7 @@ bundle Gtk3 {
 		method : public : GetDeviceCursor(device : Device) ~ Cursor {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
 	
@@ -3000,7 +3000,7 @@ bundle Gtk3 {
 		method : public : GetDeviceEvents(device : Device) ~ EventMask {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
 	
@@ -3027,7 +3027,7 @@ bundle Gtk3 {
 		method : public : GetDevicePosition(device : Device, x : Int, y : Int, mask : ModifierType) ~ Window {
 			array_args := Base->New[6];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
 			array_args[3] := IntRef->New(x);
@@ -3055,7 +3055,7 @@ bundle Gtk3 {
 		method : public : GetDevicePositionDouble(device : Device, x : Float, y : Float, mask : ModifierType) ~ Window {
 			array_args := Base->New[6];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := device;
 			array_args[3] := FloatRef->New(x);
@@ -3075,7 +3075,7 @@ bundle Gtk3 {
 		method : public : GetDisplay() ~ Display {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_display", array_args);
@@ -3094,7 +3094,7 @@ bundle Gtk3 {
 		method : public : GetDragProtocol(target : Window) ~ DragProtocol {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := target;
 	
@@ -3115,7 +3115,7 @@ bundle Gtk3 {
 		method : public : GetEffectiveParent() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_effective_parent", array_args);
@@ -3136,7 +3136,7 @@ bundle Gtk3 {
 		method : public : GetEffectiveToplevel() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_effective_toplevel", array_args);
@@ -3169,7 +3169,7 @@ bundle Gtk3 {
 		method : public : GetEvents() ~ EventMask {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_events", array_args);
@@ -3205,7 +3205,7 @@ bundle Gtk3 {
 		method : public : GetFrameClock() ~ FrameClock {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_frame_clock", array_args);
@@ -3238,7 +3238,7 @@ bundle Gtk3 {
 		method : public : GetFullscreenMode() ~ FullscreenMode {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_fullscreen_mode", array_args);
@@ -3293,7 +3293,7 @@ bundle Gtk3 {
 		method : public : GetGroup() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_group", array_args);
@@ -3379,7 +3379,7 @@ bundle Gtk3 {
 		method : public : GetParent() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_parent", array_args);
@@ -3502,7 +3502,7 @@ bundle Gtk3 {
 		method : public : GetScreen() ~ Screen {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_screen", array_args);
@@ -3520,7 +3520,7 @@ bundle Gtk3 {
 		method : public : GetSourceEvents(source : InputSource) ~ EventMask {
 			array_args := Base->New[3];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(source);
 	
@@ -3538,7 +3538,7 @@ bundle Gtk3 {
 		method : public : GetState() ~ WindowState {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_state", array_args);
@@ -3580,7 +3580,7 @@ bundle Gtk3 {
 		method : public : GetToplevel() ~ Window {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_toplevel", array_args);
@@ -3596,7 +3596,7 @@ bundle Gtk3 {
 		method : public : GetTypeHint() ~ WindowTypeHint {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_type_hint", array_args);
@@ -3627,7 +3627,7 @@ bundle Gtk3 {
 		method : public : GetVisual() ~ Visual {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_visual", array_args);
@@ -3663,7 +3663,7 @@ bundle Gtk3 {
 		method : public : GetWindowType() ~ WindowType {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_window_type", array_args);
@@ -5190,7 +5190,7 @@ bundle Gtk3 {
 		method : public : Copy() ~ RGBA {
 			array_args := Base->New[2];
 	
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rgba_copy", array_args);

@@ -704,14 +704,11 @@ class Gtk3Binder {
 				type_name := GetMappingName(XmlElement->DecodeString(type_xml->GetValue()));
 				
 				# TODO: hash sub-strings
-				if(type_name->Equals("Int") | type_name->Equals("Bool")) {
-					objk_buffer += "\t\n\t\t\tarray_args[0] := IntRef->New();\n";
-				}
-				else if(type_name->Equals("Float")) {
+				if(type_name->Equals("Float")) {
 					objk_buffer += "\t\n\t\t\tarray_args[0] := FloatRef->New();\n";
 				}
 				else {
-					objk_buffer += "\t\n\t\t\tarray_args[0] := Nil;\n";
+					objk_buffer += "\t\n\t\t\tarray_args[0] := IntRef->New();\n";
 				};
 			};
 		};
