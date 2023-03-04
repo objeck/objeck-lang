@@ -2405,7 +2405,7 @@ extern "C" {
 	void color_set_pixel(VMContext& context) {
 		GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->pixel = value;
+		obj->pixel = (guint32)value;
 	}
 
 #ifdef _WIN32
@@ -2422,7 +2422,7 @@ extern "C" {
 	void color_set_red(VMContext& context) {
 		GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->red = value;
+		obj->red = (guint16)value;
 	}
 
 #ifdef _WIN32
@@ -2439,7 +2439,7 @@ extern "C" {
 	void color_set_green(VMContext& context) {
 		GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->green = value;
+		obj->green = (guint16)value;
 	}
 
 #ifdef _WIN32
@@ -2456,7 +2456,7 @@ extern "C" {
 	void color_set_blue(VMContext& context) {
 		GdkColor* obj = (GdkColor*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->blue = value;
+		obj->blue = (guint16)value;
 	}
 
 
@@ -2616,7 +2616,7 @@ extern "C" {
 	void rectangle_set_x(VMContext& context) {
 		GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->x = value;
+		obj->x = (gint)value;
 	}
 
 #ifdef _WIN32
@@ -2633,7 +2633,7 @@ extern "C" {
 	void rectangle_set_y(VMContext& context) {
 		GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->y = value;
+		obj->y = (gint)value;
 	}
 
 #ifdef _WIN32
@@ -2650,7 +2650,7 @@ extern "C" {
 	void rectangle_set_width(VMContext& context) {
 		GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->width = value;
+		obj->width = (gint)value;
 	}
 
 #ifdef _WIN32
@@ -2667,7 +2667,7 @@ extern "C" {
 	void rectangle_set_height(VMContext& context) {
 		GdkRectangle* obj = (GdkRectangle*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
-		obj->height = value;
+		obj->height = (gint)value;
 	}
 
 #ifdef _WIN32
