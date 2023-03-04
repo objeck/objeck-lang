@@ -206,10 +206,14 @@ extern "C" {
 	void gtk3_gdk_device_get_key(VMContext& context) {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
 		const gint p2 = APITools_GetIntValue(context, 2);
-		const gint p3 = APITools_GetIntValue(context, 3);
-		const GdkModifierType p4 = (GdkModifierType)APITools_GetIntValue(context, 4);
 
-		const auto status = gdk_device_get_key(p1, p2, p3, p4);
+		guint keyval;
+		GdkModifierType modifiers;
+
+		const auto status = gdk_device_get_key(p1, p2, &keyval, &modifiers);
+
+		APITools_SetIntValue(context, 3, keyval);
+		APITools_SetIntValue(context, 4, modifiers);
 
 		APITools_SetIntValue(context, 0, status);
 	}
@@ -274,13 +278,14 @@ extern "C" {
 #endif
 	void gtk3_gdk_device_get_position(VMContext& context) {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
-		GdkScreen** p2 = (GdkScreen**)p2_obj[0];
+		size_t* p2_obj = APITools_GetObjectValue(context, 2);
+		
+		GdkScreen* screen; gint x, y;
+		gdk_device_get_position(p1, &screen, &x, &y);
 
-		const gint p3 = APITools_GetIntValue(context, 3);
-		const gint p4 = APITools_GetIntValue(context, 4);
-
-		gdk_device_get_position(p1, p2, p3, p4);
+		p2_obj[0] = (size_t)screen;
+		APITools_SetIntValue(context, 3, x);
+		APITools_SetIntValue(context, 4, y);
 	}
 
 #ifdef _WIN32
@@ -291,10 +296,11 @@ extern "C" {
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkScreen** p2 = (GdkScreen**)p2_obj[0];
 
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
-		const gdouble p4 = APITools_GetFloatValue(context, 4);
+		gdouble x, y;
+		gdk_device_get_position_double(p1, p2, &x, &y);
 
-		gdk_device_get_position_double(p1, p2, p3, p4);
+		APITools_SetFloatValue(context, 3, x);
+		APITools_SetFloatValue(context, 4, y);
 	}
 
 #ifdef _WIN32
@@ -346,11 +352,12 @@ extern "C" {
 #endif
 	void gtk3_gdk_device_get_window_at_position(VMContext& context) {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const gint p2 = APITools_GetIntValue(context, 2);
-		const gint p3 = APITools_GetIntValue(context, 3);
+		
+		gint win_x, win_y;
+		const auto status = gdk_device_get_window_at_position(p1, &win_x, &win_y);
 
-		const auto status = gdk_device_get_window_at_position(p1, p2, p3);
-
+		APITools_SetIntValue(context, 3, win_x);
+		APITools_SetIntValue(context, 4, win_y);
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
 
@@ -359,11 +366,12 @@ extern "C" {
 #endif
 	void gtk3_gdk_device_get_window_at_position_double(VMContext& context) {
 		GdkDevice* p1 = (GdkDevice*)APITools_GetIntValue(context, 1);
-		const gdouble p2 = APITools_GetFloatValue(context, 2);
-		const gdouble p3 = APITools_GetFloatValue(context, 3);
+		
+		gdouble win_x, win_y;
+		const auto status = gdk_device_get_window_at_position_double(p1, &win_x, &win_y);
 
-		const auto status = gdk_device_get_window_at_position_double(p1, p2, p3);
-
+		APITools_SetFloatValue(context, 3, win_x);
+		APITools_SetFloatValue(context, 4, win_y);
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
 
@@ -549,7 +557,11 @@ extern "C" {
 		const gint p2 = APITools_GetIntValue(context, 2);
 		const gint p3 = APITools_GetIntValue(context, 3);
 
-		gdk_display_get_maximal_cursor_size(p1, p2, p3);
+		guint width, height;
+		gdk_display_get_maximal_cursor_size(p1, &width, &height);
+		
+		APITools_SetIntValue(context, 2, width);
+		APITools_SetIntValue(context, 3, height);
 	}
 
 #ifdef _WIN32
@@ -719,6 +731,7 @@ extern "C" {
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
 		const gint p3 = APITools_GetIntValue(context, 3);
+		
 		const size_t* p4_obj = APITools_GetObjectValue(context, 4);
 		GdkAtom p4 = (GdkAtom)p4_obj[0];
 
