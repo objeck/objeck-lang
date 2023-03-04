@@ -726,18 +726,28 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 	void gtk3_gdk_display_store_clipboard(VMContext& context) {
+		// TODO: test call
 		GdkDisplay* p1 = (GdkDisplay*)APITools_GetIntValue(context, 1);
 		const size_t* p2_obj = APITools_GetObjectValue(context, 2);
 		GdkWindow* p2 = (GdkWindow*)p2_obj[0];
 
 		const gint p3 = APITools_GetIntValue(context, 3);
 		
-		const size_t* p4_obj = APITools_GetObjectValue(context, 4);
-		GdkAtom p4 = (GdkAtom)p4_obj[0];
+		size_t* targets_obj = APITools_GetObjectValue(context, 4);
+		const size_t* targets_array = APITools_GetArray(targets_obj);
+		const size_t targets_array_size = APITools_GetArraySize(targets_obj);
 
+		GdkAtom** atoms = new GdkAtom*[targets_array_size];
+		for(size_t i = 0; i < targets_array_size; ++i) {
+			size_t* target_obj = (size_t*)targets_array[i];
+			atoms[i] = (GdkAtom*)target_obj[0];
+		}
 		const gint p5 = APITools_GetIntValue(context, 5);
 
-		gdk_display_store_clipboard(p1, p2, p3, p4, p5);
+		gdk_display_store_clipboard(p1, p2, p3, *atoms, p5);
+
+		delete[] atoms;
+		atoms = nullptr;
 	}
 
 #ifdef _WIN32
@@ -819,7 +829,7 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 	void gtk3_gdk_display_get_default(VMContext& context) {
-		gdk_display_get_default();
+		auto status = gdk_display_get_default();
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
@@ -830,7 +840,7 @@ extern "C" {
 	void gtk3_gdk_display_open(VMContext& context) {
 		const gchar* p1 = UnicodeToBytes(APITools_GetStringValue(context, 1)).c_str();
 
-		const auto status = gdk_display_ope);
+		const auto status = gdk_display_open(p1);
 
 		APITools_SetIntValue(context, 0, (size_t)status);
 	}
