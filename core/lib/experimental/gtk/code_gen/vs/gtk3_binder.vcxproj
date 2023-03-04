@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\working\gtk3_binder.cpp" />
+    <ClCompile Include="..\working\gtk3_bindings.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\working\gtk3_binder.h" />
