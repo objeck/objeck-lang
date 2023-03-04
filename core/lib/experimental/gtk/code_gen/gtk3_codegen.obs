@@ -12,9 +12,10 @@ class Gtk3Binder {
 	@cxx_out : FileWriter;
 	@class_name : String;
 	@missing_defs : Set<String>;
-	@keywords : Set<String>;
-	@emit_classes : Set<String>;
 	@static_content : Map<String, String>;
+	@settings : MultiMap<String, String>;
+	@keywords : Set<String>;
+	@emit_classes : Vector<String>;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
@@ -68,28 +69,20 @@ class Gtk3Binder {
 		@consts_set := Set->New()<String>;
 		@missing_defs := Set->New()<String>;
 
-		#
-		# TOOD: config stuff
-		#
+		# configuration 
 		@objk_out := FileWriter->New("gens/objk_code.txt");
 		@cxx_out := FileWriter->New("gens/cxx_code.txt");
 		@static_content := ParseStaticContent("gens/objk_cxx_static.dat");
 
-		@keywords := Set->New()<String>;
-		@keywords->Insert("use");
-		@keywords->Insert("value");
+		LoadConfiguration("gtk3_codegen.set");
+		keywords := @settings->Find("keywords")<String>;
 
-		@emit_classes := Set->New()<String>;
-		@emit_classes->Insert("Display");
-		@emit_classes->Insert("Monitor");
-		@emit_classes->Insert("Color");
-		@emit_classes->Insert("Cursor");
-		@emit_classes->Insert("Window");
-		@emit_classes->Insert("Device");
-		@emit_classes->Insert("Screen");
-		@emit_classes->Insert("RGBA");
-		@emit_classes->Insert("Rectangle");
-		@emit_classes->Insert("DeviceManager");
+		@keywords := Set->New()<String>;
+		each(keyword := keywords) {
+			@keywords->Insert(keyword);
+		};
+
+		@emit_classes := @settings->Find("emit_classes")<String>;
 
 		@is_debug := true;
 	}
@@ -127,6 +120,11 @@ class Gtk3Binder {
 				if(records_xml <> Nil) {
 					List(records_xml, "[Records]");
 				};
+
+				unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+				if(unions_xml <> Nil) {
+					List(unions_xml, "[unions]");
+				};
 			}
 			else {
 				WriteObjeckHeader();
@@ -155,11 +153,16 @@ class Gtk3Binder {
 				if(records_xml <> Nil) {
 					ParseClasses(records_xml, false);
 				};
+
+				unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+				if(unions_xml <> Nil) {
+					ParseClasses(unions_xml, false);
+				};
 				
 				objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
 				missing_def_keys := @missing_defs->GetKeys()<String>;
 				each(missing_def_key := missing_def_keys) {
-					if(<>@emit_classes->Has(missing_def_key)) {
+					if(<>MatchEmitClass(missing_def_key)) {
 						WriteMissingClass(missing_def_key, objk_buffer);
 					};
 				};
@@ -179,7 +182,6 @@ class Gtk3Binder {
 		String->SetFloatPrecision(3);
 		tick_secs := timer->GetElapsedTime();
 		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
-
 	}
 
 	method : List(items_xml : Vector<XmlElement>, name : String) ~ Nil {
@@ -251,7 +253,7 @@ class Gtk3Binder {
 			class_xml := classes_xml->Get(i);
 
 			@class_name := class_xml->GetAttribute("name")->GetValue();
-			if(@emit_classes->Has(@class_name)) {
+			if(MatchEmitClass(@class_name)) {
 				WriteClass(class_xml, objk_buffer, cxx_buffer, is_class);
 			};
 			
@@ -515,7 +517,7 @@ class Gtk3Binder {
 					clean_up := true;
 
 					param_name := param_xml->GetAttribute("name")->GetValue();
-					if(@keywords->Has(param_name)) {
+					if(MatchKeyword(param_name)) {
 						param_name += '_';
 					};
 
@@ -570,7 +572,7 @@ class Gtk3Binder {
 					};
 
 					if(type_xml <> Nil) {									
-						if(@keywords->Has(param_name)) {
+						if(MatchKeyword(param_name)) {
 							param_name += '_';
 						};
 						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
@@ -705,6 +707,7 @@ class Gtk3Binder {
 			};			
 		};
 	}
+
 	method : WriteProxyReturnParameter(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {		
 		return_type_xml := return_xml->GetFirstChild("type");
 		if(return_type_xml <> Nil) {
@@ -918,27 +921,59 @@ class Gtk3Binder {
 		return mapping_name;
 	}
 
-	function : CamelCaseName(name : String) ~ String {
-		if(<>name->IsEmpty()) {
-			name->Set(name->Get(0)->ToUpper(), 0);
-
-			do {
-				underscore_index := name->Find('_');
-				if(underscore_index > -1) {
-					name->Delete(underscore_index);
-					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
-				};
-			}
-			while(underscore_index > -1);
-		};
-
-		return name;
-	}
-
 	method : WriteObjeckHeader() ~ Nil {
 		buffer := @static_content->Find("objk_header");
 		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
 		@objk_out->WriteString(buffer);
+	}
+
+	method : LoadConfiguration(filename : String) ~ Nil {
+		@settings := MultiMap->New()<String, String>;
+
+		file := FileReader->New(filename);
+		leaving {
+			file->Close();
+		};
+
+		do {
+			line := file->ReadLine();
+			if(line <> Nil) {
+				data_start := line->Find(':');
+				if(<>data_start->IsNeg()) {
+					tag := line->SubString(data_start);
+					data_start += 1;
+					data := line->SubString(data_start, line->Size() - data_start);
+					items := data->Split(',');
+					each(item := items) {
+						item := item->Trim();
+						@settings->Insert(tag, item);
+					};
+				};
+			};
+		}
+		while(<>file->IsEoF());
+	}
+
+	method : MatchKeyword(name : String) ~ Bool {
+		return @keywords->Has(name);
+	}
+
+	method : native : MatchEmitClass(name : String) ~ Bool {
+		found := false;
+
+		for(i := 0; <>found & i < @emit_classes->Size(); i += 1;) {
+			emit_class := @emit_classes->Get(i);
+
+			if(emit_class->EndsWith('*')) {
+				compare_class := emit_class->SubString(emit_class->Size() - 1);
+				found := name->StartsWith(compare_class);
+			}
+			else {
+				found := name->Equals(emit_class);
+			};
+		};
+
+		return found;
 	}
 
 	method : WriteCxxHeader() ~ Nil {
@@ -1098,5 +1133,22 @@ class Gtk3Binder {
 		};
 
 		return doc_str;
+	}
+
+	function : CamelCaseName(name : String) ~ String {
+		if(<>name->IsEmpty()) {
+			name->Set(name->Get(0)->ToUpper(), 0);
+
+			do {
+				underscore_index := name->Find('_');
+				if(underscore_index > -1) {
+					name->Delete(underscore_index);
+					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
+				};
+			}
+			while(underscore_index > -1);
+		};
+
+		return name;
 	}
 }
