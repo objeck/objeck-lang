@@ -167,7 +167,7 @@ bundle Gtk3 {
 		GDK_DRAG_PROTO_WAYLAND := 7	
 	}
 
-	consts EventType {
+	consts GdkEventType {
 		GDK_NOTHING := -1,
 		GDK_DELETE := 0,
 		GDK_DESTROY := 1,
@@ -621,6 +621,10 @@ bundle Gtk3 {
 			@gobject := gobject;
 		}
 
+		method : public : GetRef() ~ Int {
+			return @gobject;
+		}
+
 		method : public : SignalConnect(detailed_signal : String, handler : (GObject, Base) ~ Nil, data : Base) ~ Nil {
 			array_args := Base->New[4];
 
@@ -888,15 +892,15 @@ bundle Gtk3 {
 		@param modifiers return value for modifiers.
 		@return %TRUE if keyval is set for @index.
 		~#
-		method : public : GetKey(index_ : Int, keyval : Int, modifiers : ModifierType) ~ Bool {
+		method : public : GetKey(index_ : Int, keyval : IntRef, modifiers : IntRef) ~ Bool {
 			array_args := Base->New[5];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(index_);
-			array_args[3] := IntRef->New(keyval);
-			array_args[4] := IntRef->New(modifiers);
-	
+			array_args[3] := keyval;
+			array_args[4] := modifiers;
+			
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_key", array_args);
 	
 			value := array_args[0]->As(IntRef);
@@ -996,14 +1000,14 @@ bundle Gtk3 {
 		@param x location to store root window X coordinate of @device, or %NULL.
 		@param y location to store root window Y coordinate of @device, or %NULL.
 		~#
-		method : public : GetPosition(screen : Screen, x : Int, y : Int) ~ Nil {
+		method : public : GetPosition(screen : Screen, x : IntRef, y : IntRef) ~ Nil {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := screen;
-			array_args[3] := IntRef->New(x);
-			array_args[4] := IntRef->New(y);
+			array_args[3] := x;
+			array_args[4] := y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_position", array_args);
 		}
@@ -1018,15 +1022,15 @@ bundle Gtk3 {
 		@param x location to store root window X coordinate of @device, or %NULL.
 		@param y location to store root window Y coordinate of @device, or %NULL.
 		~#
-		method : public : GetPositionDouble(screen : Screen, x : Float, y : Float) ~ Nil {
+		method : public : GetPositionDouble(screen : Screen, x : FloatRef, y : FloatRef) ~ Nil {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := screen;
-			array_args[3] := FloatRef->New(x);
-			array_args[4] := FloatRef->New(y);
-	
+			array_args[3] := x;
+			array_args[4] := y;
+			
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_position_double", array_args);
 		}
 
@@ -1134,13 +1138,13 @@ bundle Gtk3 {
 		@return the #GdkWindow under the
 		device position, or %NULL.
 		~#
-		method : public : GetWindowAtPosition(win_x : Int, win_y : Int) ~ Window {
+		method : public : GetWindowAtPosition(win_x : IntRef, win_y : IntRef) ~ Window {
 			array_args := Base->New[4];
 	
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(win_x);
-			array_args[3] := IntRef->New(win_y);
+			array_args[2] := win_x;
+			array_args[3] := win_y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_window_at_position", array_args);
 	
@@ -1604,14 +1608,14 @@ bundle Gtk3 {
 		@param width the return location for the maximal cursor width
 		@param height the return location for the maximal cursor height
 		~#
-		method : public : GetMaximalCursorSize(width : Int, height : Int) ~ Nil {
+		method : public : GetMaximalCursorSize(width : IntRef, height : IntRef) ~ Nil {
 			array_args := Base->New[4];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(width);
-			array_args[3] := IntRef->New(height);
-	
+			array_args[2] := width;
+			array_args[3] := height;
+			
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_maximal_cursor_size", array_args);
 		}
 
@@ -1885,26 +1889,28 @@ bundle Gtk3 {
 		[FreeDesktop Clipboard Specification](http://www.freedesktop.org/Standards/clipboard-manager-spec).
 		@param clipboard_window a #GdkWindow belonging to the clipboard owner
 		@param time_ a timestamp
-		@param targets an array of targets
-		                   that should be saved, or %NULL
-		                   if all available targets should be saved.
+		@param targets an array of targets that should be saved, or %NULL if all available targets should be saved.
 		@param n_targets length of the @targets array
 		~#
 		method : public : StoreClipboard(clipboard_window : Window, time_ : Int, targets : Atom[], n_targets : Int) ~ Nil {
-			array_args := Base->New[6];
+			if(targets->Size() = n_targets) {
+				array_args := Base->New[6];
 
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := clipboard_window;
-			array_args[3] := IntRef->New(time_);
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(@gobject);
+				array_args[2] := clipboard_window;
+				array_args[3] := IntRef->New(time_);
 
-			targets_objs := Int->New[0];
-			# copy references
-			array_args[4] := IntArrayRef->New(targets_objs);
+				targets_objs := Int->New[n_targets];
+				each(i : targets) {
+					targets_objs[i] := IntRef->New(targets[i]->GetRef());
+				};
+				array_args[4] := IntArrayRef->New(targets_objs);
 
-			array_args[5] := IntRef->New(n_targets);
-	
-			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_store_clipboard", array_args);
+				array_args[5] := IntRef->New(n_targets);
+		
+				Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_store_clipboard", array_args);
+			};
 		}
 
 		#~
@@ -2301,6 +2307,10 @@ bundle Gtk3 {
 	of the physical monitors (gdk_screen_get_monitor_geometry()), etc.
 	~#
 	class Screen from GObject {
+		New() {
+			Parent();
+		}
+
 		New(gobject : Int) {
 			Parent();
 
@@ -5474,8 +5484,9 @@ bundle Gtk3 {
 		}
 	}
 
-	class Atom {
+	class Atom from GObject {
 		New(gobject : Int) {
+			Parent();
 		}
 	}
 
