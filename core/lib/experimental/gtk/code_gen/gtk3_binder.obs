@@ -746,6 +746,8 @@ class Gtk3Binder {
 			method_case_name := CamelCaseName(name->Copy());
 			type := getter_setter->GetSecond();
 
+			class_ref := @class_name->ToLower();
+
 			#
 			# getter
 			#
@@ -765,7 +767,7 @@ class Gtk3Binder {
 
 			objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
 
-			c_call_name := "{$ref_name}_get_{$method_case_name}"->ToLower();
+			c_call_name := "{$class_ref}_get_{$method_case_name}"->ToLower();
 			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
 
 			cxx_buffer += "#ifdef _WIN32\n";
@@ -825,7 +827,7 @@ class Gtk3Binder {
 				objk_buffer += "\t\t\tarray_args[1] := {$name};\n";
 			};
 
-			c_call_name := "{$ref_name}_set_{$method_case_name}"->ToLower();
+			c_call_name := "{$class_ref}_set_{$method_case_name}"->ToLower();
 			objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
 
 			objk_buffer += "\t\t}\n\n\n";
