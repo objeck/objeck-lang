@@ -88,8 +88,8 @@
     <IncludePath>..\..\..\zlib\win;..\..\..\openssl\win\include;..\win\include\gtk-3.0;..\win\include\harfbuzz;..\win\include\gio-win32-2.0;..\win\include\gtk-3.0;..\win\include\pango-1.0;..\win\include\cairo;..\win\include\gdk-pixbuf-2.0;..\win\include\atk-1.0;..\win\include\glib-2.0;$(IncludePath)</IncludePath>
     <LibraryPath>..\win\lib;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_gtk3</TargetName>
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\vs\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)\vs\$(Configuration)\$(Platform)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetName>libobjk_gtk3</TargetName>
