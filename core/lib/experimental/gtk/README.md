@@ -53,4 +53,4 @@ TBD
 
 ## Code Generation
 
-Sample output [C++](code_gen/working/gtk3_binder.cpp) and [Objeck](code_gen/working/gtk3_binder.obs)
+Sample output [C++](bindings/gtk3/gtk3_bindings.cpp) and [Objeck](bindings/gtk3//gtk3_bindings.obs)
